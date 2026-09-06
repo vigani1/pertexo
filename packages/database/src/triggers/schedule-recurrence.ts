@@ -158,10 +158,46 @@ function nextCronOccurrence(
   recurrence: Extract<ScheduleRecurrence, { kind: 'cron' }>,
   after: Date,
 ): Date {
-  return resolveCronOccurrence(
+  const cursor = cronParser(recurrence, after);
+  for (;;) {
+    const occurrence = resolveCronOccurrence(
+      recurrence,
+      cursor.next().toDate(),
+    );
+    // Resolution can move a repeated local time backwards. Advance the raw
+    // parser cursor, never the resolved identity, to skip that duplicate.
+    if (occurrence.getTime() > after.getTime()) return occurrence;
+  }
+}
+
+function greatestCronOccurrence(
+  recurrence: Extract<ScheduleRecurrence, { kind: 'cron' }>,
+  observedAt: Date,
+): Date {
+  const cursor = cronParser(recurrence, new Date(observedAt.getTime() + 1));
+  const previousRaw = cursor.prev().toDate();
+  let raw = previousRaw;
+  let greatest = resolveCronOccurrence(recurrence, raw);
+  // A later raw instant in a repeated hour can resolve before an earlier raw
+  // instant. Search only the adjusted window: resolution never moves forward,
+  // so no raw instant at/before the best identity can improve that identity.
+  while (raw.getTime() > greatest.getTime()) {
+    raw = cursor.prev().toDate();
+    const occurrence = resolveCronOccurrence(recurrence, raw);
+    if (occurrence.getTime() > greatest.getTime()) greatest = occurrence;
+  }
+  // During a spring gap the parser's next raw time may resolve back to the
+  // first valid instant, which is already due at the observation time.
+  const next = resolveCronOccurrence(
     recurrence,
-    cronParser(recurrence, after).next().toDate(),
+    cronParser(recurrence, previousRaw).next().toDate(),
   );
+  if (
+    next.getTime() <= observedAt.getTime() &&
+    next.getTime() > greatest.getTime()
+  )
+    greatest = next;
+  return greatest;
 }
 
 export function resolveScheduleObservation(
@@ -194,19 +230,8 @@ export function resolveScheduleObservation(
   if (first.getTime() > observedAt.getTime())
     return Object.freeze({ greatestDueAt: null, nextAt: first });
 
-  const previousRaw = cronParser(recurrence, new Date(observedAt.getTime() + 1))
-    .prev()
-    .toDate();
-  const previous = resolveCronOccurrence(recurrence, previousRaw);
-  let candidate = nextCronOccurrence(recurrence, previousRaw);
-  let greatestDueAt = previous;
-  if (candidate.getTime() <= observedAt.getTime()) {
-    greatestDueAt = candidate;
-    candidate = nextCronOccurrence(recurrence, previousRaw);
-  }
-  while (candidate.getTime() <= observedAt.getTime()) {
-    greatestDueAt = candidate;
-    candidate = nextCronOccurrence(recurrence, candidate);
-  }
-  return Object.freeze({ greatestDueAt, nextAt: candidate });
+  return Object.freeze({
+    greatestDueAt: greatestCronOccurrence(recurrence, observedAt),
+    nextAt: nextCronOccurrence(recurrence, observedAt),
+  });
 }

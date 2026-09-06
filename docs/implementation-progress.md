@@ -28,7 +28,7 @@ original verdict after each fix.
 
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
-| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Open; audit subprocess hangs at baseline |
+| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
 | IWA-02 | Rendered API/worker role configuration and startup contract | Open; missing API settings and disabled worker jobs reproduced |
 | IWA-03 | Atomic provider credential fence through dispatch | Open; HTTP/Slack fence argument dropped |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Open; actual local spans contain synthetic OAuth query material |
@@ -63,6 +63,25 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-01 — DST recurrence correction
+
+The new subprocess regression first failed against the audited implementation
+at its five-second deadline. Recurrence now advances an independent raw parser
+cursor rather than feeding the earlier resolved DST identity back into the
+iterator. Latest-due selection checks the bounded adjusted window, preserves
+spring-gap first-valid-instant semantics and does not enumerate a missed
+backlog. The change implements existing ADR 014, without changing its policy
+or parser version.
+
+Evidence: `pnpm --filter @pertexo/database exec vitest run
+test/schedule-recurrence.test.ts test/schedule-recurrence-dst.test.ts` passes
+16 cases, including Berlin repeated-hour boundaries and restart, Lord Howe's
+half-hour shift, New York spring gaps and a 26-year missed backlog. Both real
+PostgreSQL schedule suites pass eight cases against an isolated migrated
+database. Database build/typecheck and focused ESLint pass. Independent
+read-only review found no remaining defect in these recurrence changes.
+Production DST traffic is not claimed as exercised.
 
 ## Prior review history
 
