@@ -2380,6 +2380,7 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 032 | Bounded deterministic Validate rules and typed mismatch results                  | Validate node slice      |
 | 033 | Truthful persisted workflow activation projection                                | lifecycle API correction |
 | 034 | Workflow archive/restore concurrency and activation convergence                   | lifecycle commands       |
+| 035 | Public artifact uploads, verified finalization and capacity authority              | public artifact API      |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,
