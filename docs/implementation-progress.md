@@ -96,6 +96,12 @@ run against the older audit database stopped before assertions on its stale
 0076 development checksum; the fresh-database run is the accepted evidence
 and no migration ledger was rewritten for this checkpoint.
 
+The full push check subsequently caught four added lines in the existing
+authoring-module size hotspot. Its three shared persistence record types now
+live in a type-only record module consumed directly by the row parser and
+re-exported by the existing public authoring facade. This preserves public
+imports without increasing the hotspot limit or changing runtime behavior.
+
 ### IWA-01 — DST recurrence correction
 
 The new subprocess regression first failed against the audited implementation

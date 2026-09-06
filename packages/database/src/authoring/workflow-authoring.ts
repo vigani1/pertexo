@@ -5,13 +5,8 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import type {
-  WorkflowActivationStatus,
-  WorkflowLifecycleStatus,
-} from '@pertexo/workflow-model/lifecycle';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
-  type workflowCompatibilityReport,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
@@ -29,6 +24,16 @@ import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
+import type {
+  WorkflowDraftRecord,
+  WorkflowRecord,
+  WorkflowVersionRecord,
+} from './workflow-authoring-records.js';
+export type {
+  WorkflowDraftRecord,
+  WorkflowRecord,
+  WorkflowVersionRecord,
+} from './workflow-authoring-records.js';
 import {
   checksumSchema,
   mapDraft,
@@ -75,41 +80,6 @@ export class WorkflowDefinitionPlacementError extends Error {
     super('Workflow draft adds a definition that is not placeable');
   }
 }
-
-export type WorkflowRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  name: string;
-  lifecycleStatus: WorkflowLifecycleStatus;
-  activationStatus: WorkflowActivationStatus;
-  publishedVersionId: string | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-export type WorkflowDraftRecord = Readonly<{
-  workflowId: string;
-  workspaceId: string;
-  revision: number;
-  schemaVersion: number;
-  graphJson: WorkflowGraph;
-  compatibility: ReturnType<typeof workflowCompatibilityReport>;
-  updatedBy: string;
-  updatedAt: Date;
-}>;
-
-export type WorkflowVersionRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  versionNumber: number;
-  schemaVersion: number;
-  graphJson: WorkflowGraph;
-  checksum: string;
-  publishedBy: string;
-  publishedAt: Date;
-}>;
 
 export type CreateWorkflowInput = Readonly<{
   id?: string;

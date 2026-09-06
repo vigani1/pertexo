@@ -14,7 +14,7 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-records.js';
 
 const uuidSchema = z.uuid();
 const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
