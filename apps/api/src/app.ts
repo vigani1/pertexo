@@ -42,6 +42,11 @@ import {
   type ApiScheduleRuntime,
 } from './platform/schedules/schedule-runtime.module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
+import {
+  createApiArtifactRuntime,
+  type ApiArtifactRuntime,
+  type ApiArtifactRuntimeOverrides,
+} from './platform/artifacts/artifact-runtime.module.js';
 
 type ApiApplicationDependencyCore = Readonly<{
   database?: WorkspaceDatabase;
@@ -83,10 +88,21 @@ type WorkflowRuntimeSource =
       workflowOverrides?: ApiWorkflowRuntimeOverrides;
     }>;
 
+type ArtifactRuntimeSource =
+  | Readonly<{
+      artifactRuntime: ApiArtifactRuntime;
+      artifactOverrides?: never;
+    }>
+  | Readonly<{
+      artifactRuntime?: undefined;
+      artifactOverrides?: ApiArtifactRuntimeOverrides;
+    }>;
+
 export type ApiApplicationDependencies = ApiApplicationDependencyCore &
   IdentityRuntimeSource &
   ConnectionRuntimeSource &
-  WorkflowRuntimeSource;
+  WorkflowRuntimeSource &
+  ArtifactRuntimeSource;
 
 export async function createApiApplication(
   config: ApiConfig,
@@ -150,6 +166,30 @@ export async function createApiApplication(
     (identityRuntime === undefined || dependencies.database !== undefined
       ? undefined
       : createApiScheduleRuntime(config.database, undefined, databaseRuntime));
+  let artifactRuntime: ApiArtifactRuntime | undefined;
+  try {
+    artifactRuntime =
+      dependencies.artifactRuntime ??
+      (identityRuntime === undefined || config.artifacts === undefined
+        ? undefined
+        : createApiArtifactRuntime(
+            config.artifacts,
+            config.database,
+            identityRuntime,
+            dependencies.artifactOverrides,
+            databaseRuntime,
+          ));
+  } catch (error: unknown) {
+    await Promise.allSettled([
+      identityRuntime?.close(),
+      workflowRuntime?.close(),
+      connectionRuntime?.close(),
+      webhookRuntime?.close(),
+      scheduleRuntime?.close(),
+      databaseRuntime?.close(),
+    ]);
+    throw error;
+  }
   const fastifyAdapter = new FastifyAdapter({
     trustProxy:
       config.trustedProxyCidrs === undefined ||
@@ -175,6 +215,7 @@ export async function createApiApplication(
         ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
         ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
+        ...(artifactRuntime === undefined ? {} : { artifactRuntime }),
       }),
       fastifyAdapter,
       { abortOnError: false, logger: nestLogger },
@@ -186,6 +227,7 @@ export async function createApiApplication(
       connectionRuntime?.close(),
       webhookRuntime?.close(),
       scheduleRuntime?.close(),
+      artifactRuntime?.close(),
       databaseRuntime?.close(),
     ]);
     throw error;
@@ -203,6 +245,7 @@ export async function createApiApplication(
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
       .checkCompatibility();
     await scheduleRuntime?.checkReadiness();
+    await artifactRuntime?.checkReadiness();
   } catch (error: unknown) {
     await application.close();
     throw error;
@@ -222,11 +265,18 @@ function assertValidRuntimeSources(
     connectionOverrides?: ApiConnectionRuntimeOverrides;
     workflowRuntime?: ApiWorkflowRuntime;
     workflowOverrides?: ApiWorkflowRuntimeOverrides;
+    artifactRuntime?: ApiArtifactRuntime;
+    artifactOverrides?: ApiArtifactRuntimeOverrides;
   };
   assertExclusiveRuntime(
     'identity',
     unchecked.identityRuntime,
     unchecked.identityOverrides,
+  );
+  assertExclusiveRuntime(
+    'artifact',
+    unchecked.artifactRuntime,
+    unchecked.artifactOverrides,
   );
   assertExclusiveRuntime(
     'connection',
@@ -260,11 +310,19 @@ function assertValidRuntimeSources(
       'workflow overrides require available identity runtime creation',
     );
   if (
+    unchecked.artifactOverrides !== undefined &&
+    (config.artifacts === undefined || !identityAvailable)
+  )
+    throw new TypeError(
+      'artifact overrides require configured artifact runtime creation',
+    );
+  if (
     !identityAvailable &&
     (unchecked.connectionRuntime !== undefined ||
       unchecked.workflowRuntime !== undefined ||
       unchecked.webhookRuntime !== undefined ||
-      unchecked.scheduleRuntime !== undefined)
+      unchecked.scheduleRuntime !== undefined ||
+      unchecked.artifactRuntime !== undefined)
   )
     throw new TypeError(
       'feature runtimes require an available identity runtime',

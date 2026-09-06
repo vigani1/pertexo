@@ -5,6 +5,7 @@ import {
 } from './types.js';
 
 const readCapabilities = Object.freeze([
+  'artifact:read',
   'workspace:read',
   'workflow:read',
   'run:read',
@@ -17,6 +18,7 @@ const ownerCapabilities = Object.freeze([
 
 const adminCapabilities = Object.freeze([
   ...readCapabilities,
+  'artifact:upload',
   'workflow:create',
   'workflow:update',
   'workflow:publish',
@@ -31,6 +33,7 @@ const adminCapabilities = Object.freeze([
 
 const builderCapabilities = Object.freeze([
   ...readCapabilities,
+  'artifact:upload',
   'workflow:create',
   'workflow:update',
   'workflow:publish',
@@ -40,6 +43,7 @@ const builderCapabilities = Object.freeze([
 
 const operatorCapabilities = Object.freeze([
   ...readCapabilities,
+  'artifact:upload',
   'run:start',
   'run:cancel',
   'run:replay',

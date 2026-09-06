@@ -1,4 +1,5 @@
 import { mapConnectionError } from './connections/errors.js';
+import { mapArtifactError } from './artifacts/errors.js';
 import { mapIdentityWorkspaceError } from './identity-workspace/errors.js';
 import { mapNodeTestingError } from './node-testing/errors.js';
 import type {
@@ -14,6 +15,10 @@ type RouteErrorMapper = Readonly<{
 }>;
 
 const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
+  {
+    route: /^\/v1\/workspaces\/[^/]+\/artifacts(?:\/|$)/u,
+    map: mapArtifactError,
+  },
   {
     route:
       /^\/v1\/workspaces\/[^/]+\/(?:previews\/[^/]+|workflows\/[^/]+\/draft\/nodes\/[^/]+\/test)$/u,

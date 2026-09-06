@@ -53,6 +53,8 @@ describe('workspace authorization policy', () => {
     expect(AUTHORIZATION_CAPABILITIES).toEqual([
       'workspace:read',
       'workspace:manage',
+      'artifact:read',
+      'artifact:upload',
       'workflow:read',
       'workflow:create',
       'workflow:update',
@@ -91,10 +93,12 @@ describe('workspace authorization policy', () => {
   it('keeps the complete role policy explicit and duplicate-free', () => {
     expect(capabilitiesForRole('owner')).toEqual(AUTHORIZATION_CAPABILITIES);
     expect(capabilitiesForRole('admin')).toEqual([
+      'artifact:read',
       'workspace:read',
       'workflow:read',
       'run:read',
       'connection:read',
+      'artifact:upload',
       'workflow:create',
       'workflow:update',
       'workflow:publish',
@@ -107,10 +111,12 @@ describe('workspace authorization policy', () => {
       'member:manage',
     ]);
     expect(capabilitiesForRole('builder')).toEqual([
+      'artifact:read',
       'workspace:read',
       'workflow:read',
       'run:read',
       'connection:read',
+      'artifact:upload',
       'workflow:create',
       'workflow:update',
       'workflow:publish',
@@ -118,16 +124,19 @@ describe('workspace authorization policy', () => {
       'connection:use',
     ]);
     expect(capabilitiesForRole('operator')).toEqual([
+      'artifact:read',
       'workspace:read',
       'workflow:read',
       'run:read',
       'connection:read',
+      'artifact:upload',
       'run:start',
       'run:cancel',
       'run:replay',
       'connection:use',
     ]);
     expect(capabilitiesForRole('viewer')).toEqual([
+      'artifact:read',
       'workspace:read',
       'workflow:read',
       'run:read',

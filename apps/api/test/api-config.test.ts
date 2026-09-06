@@ -86,6 +86,38 @@ describe('parseApiConfig', () => {
     });
   });
 
+  it('parses an optional complete dual-region artifact configuration locally', () => {
+    const config = parseApiConfig({
+      DATABASE_API_URL:
+        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
+      ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
+      ARTIFACT_STORE_BUCKET: 'pertexo-primary',
+      ARTIFACT_STORE_ENDPOINT: 'http://localhost:19090',
+      ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
+      ARTIFACT_STORE_REGION: 'primary',
+      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
+      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
+      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
+      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:19091',
+      ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
+      ARTIFACT_STORE_RECOVERY_REGION: 'recovery',
+      ARTIFACT_MAX_BYTES: '2048',
+    });
+    expect(config.artifacts?.primary.maxObjectBytes).toBe(2048);
+    expect(config.artifacts?.recovery.maxObjectBytes).toBe(2048);
+  });
+
+  it('rejects partial artifact configuration without exposing credentials', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        ARTIFACT_STORE_ACCESS_KEY_ID: 'sensitive-access-key',
+      }),
+    ).toThrow('Artifact store configuration is incomplete');
+  });
+
   it('requires identity configuration in a deployed environment', () => {
     expect(() =>
       parseApiConfig({
@@ -120,6 +152,18 @@ describe('parseApiConfig', () => {
       CONNECTION_KMS_REGION: 'eu-central-1',
       REDIS_URL: 'rediss://redis.example.test:6380/0',
       TRUST_PROXY_CIDRS: '10.0.0.0/8, 2001:db8::/32',
+      ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
+      ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
+      ARTIFACT_STORE_BUCKET: 'pertexo-primary',
+      ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
+      ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
+      ARTIFACT_STORE_REGION: 'eu-central-1',
+      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
+      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
+      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
+      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://objects-recovery.example.test',
+      ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
+      ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
     });
 
     expect(config.identity).toMatchObject({
@@ -148,6 +192,18 @@ describe('parseApiConfig', () => {
     expect(Object.isFrozen(config.connections)).toBe(true);
     expect(config.webhooks).toEqual(config.connections);
     expect(Object.isFrozen(config.webhooks)).toBe(true);
+    expect(config.artifacts).toMatchObject({
+      primary: {
+        bucket: 'pertexo-primary',
+        region: 'eu-central-1',
+        maxObjectBytes: 10 * 1024 * 1024,
+      },
+      recovery: {
+        bucket: 'pertexo-recovery',
+        region: 'eu-west-1',
+      },
+    });
+    expect(Object.isFrozen(config.artifacts)).toBe(true);
   });
 
   it('rejects partial local identity configuration without exposing its secret', () => {

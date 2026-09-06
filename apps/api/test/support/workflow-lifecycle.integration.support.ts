@@ -16,15 +16,16 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import type {
-  OidcAuthorizationRequest,
-  OidcProviderPort,
-} from '../../src/identity/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiApplication } from '../../src/app.js';
 import { createOidcSecretEncryptionAdapter } from '../../src/identity-infrastructure/index.js';
 import { Pool, type PoolClient } from 'pg';
 import { expect } from 'vitest';
+import {
+  createFakeOidcProvider,
+  loginThroughOidc,
+  type HttpSessionCookies,
+} from './real-oidc-http.fixture.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
 const migrationUrl =
@@ -49,11 +50,7 @@ export const workflowLifecycleDatabaseConfig = parseDatabaseConfig({
   ownerRole,
 });
 
-export type SessionCookies = Readonly<{
-  rawSession: string;
-  csrf: string;
-  cookieHeader: string;
-}>;
+export type SessionCookies = HttpSessionCookies;
 
 export type LifecycleWorkflowIds = Readonly<{
   unpublished: string;
@@ -113,44 +110,6 @@ export type WorkflowLifecycleApiFixture = Readonly<{
   close(): Promise<void>;
 }>;
 
-class FakeOidcProvider implements OidcProviderPort {
-  private latestRequest: OidcAuthorizationRequest | undefined;
-
-  public authorizationUrl(request: OidcAuthorizationRequest): string {
-    this.latestRequest = request;
-    const url = new URL(`${issuer}/authorize`);
-    url.searchParams.set('client_id', request.clientId);
-    url.searchParams.set('redirect_uri', request.redirectUri);
-    url.searchParams.set('scope', request.scopes.join(' '));
-    url.searchParams.set('state', request.state);
-    url.searchParams.set('nonce', request.nonce);
-    url.searchParams.set('code_challenge', request.codeChallenge);
-    url.searchParams.set('code_challenge_method', request.codeChallengeMethod);
-    return url.toString();
-  }
-
-  public exchangeCode(input: {
-    code: string;
-    codeVerifier: string;
-    redirectUri: string;
-  }) {
-    void input.codeVerifier;
-    void input.redirectUri;
-    const request = this.latestRequest;
-    if (request === undefined) throw new Error('authorization was not started');
-    const subject = input.code;
-    return Promise.resolve({
-      issuer,
-      subject,
-      audience: clientId,
-      nonce: request.nonce,
-      email: `${subject}@${new URL(issuer).hostname}`,
-      displayName: `Lifecycle ${subject}`,
-      emailVerified: true,
-    });
-  }
-}
-
 const logger: StructuredLogger = {
   debug: () => undefined,
   error: () => undefined,
@@ -168,7 +127,11 @@ const telemetry: TelemetryLifecycle = {
 };
 
 export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifecycleApiFixture> {
-  const provider = new FakeOidcProvider();
+  const provider = createFakeOidcProvider({
+    issuer,
+    clientId,
+    displayNamePrefix: 'Lifecycle',
+  });
   const identityDatabase = createIdentityWorkspaceDatabase(
     workflowLifecycleDatabaseConfig,
   );
@@ -269,7 +232,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       viewerUserId: subjects.viewer.user.id,
       ids,
       login: (subject: 'owner' | 'operator' | 'viewer') =>
-        login(application, subject),
+        loginThroughOidc(application, subject),
       withOwner,
       setWorkspaceStatus: (status) =>
         setWorkspaceStatusWithOwner(
@@ -351,55 +314,6 @@ async function resolveIdentity(
     email: `${subject}@${new URL(issuer).hostname}`,
     displayName: `Lifecycle ${subject}`,
   });
-}
-
-async function login(
-  application: Awaited<ReturnType<typeof createApiApplication>>,
-  subject: string,
-): Promise<SessionCookies> {
-  const start = await application.inject({
-    method: 'GET',
-    url: '/v1/auth/oidc/start',
-  });
-  expect(start.statusCode, start.payload).toBe(200);
-  const state = start.json<{ authorizationUrl: string }>().authorizationUrl;
-  const stateValue = new URL(state).searchParams.get('state');
-  if (stateValue === null) throw new Error('OIDC state was not returned');
-  const browserBinding = cookieValue(
-    [String(start.headers['set-cookie'])],
-    'pertexo_oidc_binding',
-  );
-  const callback = await application.inject({
-    method: 'GET',
-    url: `/v1/auth/oidc/callback?code=${encodeURIComponent(subject)}&state=${encodeURIComponent(stateValue)}`,
-    headers: {
-      cookie: `pertexo_oidc_binding=${encodeURIComponent(browserBinding)}`,
-    },
-  });
-  expect(callback.statusCode, callback.payload).toBe(204);
-  return sessionCookies(callback.headers['set-cookie']);
-}
-
-function sessionCookies(header: string | string[] | undefined): SessionCookies {
-  const values = Array.isArray(header) ? header : [header ?? ''];
-  const flattened = values.flatMap((value) => value.split(/,(?=[^;]+?=)/u));
-  const rawSession = cookieValue(flattened, 'pertexo_session');
-  const csrf = cookieValue(flattened, 'pertexo_csrf');
-  return {
-    rawSession,
-    csrf,
-    cookieHeader: `pertexo_session=${rawSession}; pertexo_csrf=${csrf}`,
-  };
-}
-
-function cookieValue(values: readonly string[], name: string): string {
-  const prefix = `${name}=`;
-  for (const value of values) {
-    const pair = value.split(';', 1)[0]?.trim();
-    if (pair?.startsWith(prefix))
-      return decodeURIComponent(pair.slice(prefix.length));
-  }
-  throw new Error(`${name} cookie was not returned`);
 }
 
 function apiConfig(): ApiConfig {

@@ -1,3 +1,4 @@
+export * from './artifact-transfer.js';
 export {
   connectionsClientContract,
   connectionsOpenApiDocument,

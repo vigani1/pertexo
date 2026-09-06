@@ -15,6 +15,7 @@ describe('contracts package boundary', () => {
       'workspace:*',
     );
     expect(Object.keys(manifest.exports)).toEqual([
+      './artifacts',
       '.',
       './errors',
       './connections',

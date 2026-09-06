@@ -55,6 +55,7 @@ const parserScript = String.raw`
     serviceVersion: config.observability.serviceVersion,
   };
   if (role === 'api') {
+    result.hasArtifactStore = config.artifacts !== undefined;
     result.connectionKmsKeyReference = config.connections?.kmsKeyReference;
     result.connectionKmsRegion = config.connections?.region;
     result.trustedProxyCidrs = config.trustedProxyCidrs;
@@ -215,6 +216,7 @@ test('rendered API and worker definitions satisfy their public production parser
         ),
       );
       assert.equal(apiConfig.cohort, cohort);
+      assert.equal(apiConfig.hasArtifactStore, true);
       assert.equal(
         apiConfig.connectionKmsKeyReference,
         'alias/pertexo-connections',
