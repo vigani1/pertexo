@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('workspace deletion control projection migration contract', () => {
   it('adds only non-destructive, maintenance-owned lifecycle projection', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0078_workflow_lifecycle_revision.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain("'purging'");

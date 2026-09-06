@@ -35,6 +35,24 @@ export {
   FailureNotificationDestinationError,
   createFailureNotificationDestinationDatabase,
 } from './execution/failure-notification-destinations.js';
+export {
+  ARTIFACT_UPLOAD_PENDING_MS,
+  ARTIFACT_UPLOAD_PURPOSE,
+  ArtifactQuotaExceededError,
+  ArtifactUploadConflictError,
+  ArtifactUploadIdempotencyConflictError,
+  ArtifactUploadNotFoundError,
+  createArtifactUploadDatabase,
+} from './execution/artifact-upload.js';
+export type {
+  ArtifactUploadDatabase,
+  ArtifactUploadActor,
+  ArtifactUploadAuthorization,
+  ArtifactUploadIdentity,
+  ArtifactUploadResult,
+  BeginArtifactUploadInput,
+  FinalizeArtifactUploadInput,
+} from './execution/artifact-upload.js';
 export type { FailureNotificationDestinationDatabase } from './execution/failure-notification-destinations.js';
 export {
   IdentityConflictError,
