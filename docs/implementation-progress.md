@@ -8,7 +8,7 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Independent audit remediation — repository corrections verified
+## Independent audit remediation — follow-up corrections
 
 The independent review of commit
 `faed09c4543784c0f0e9bcaa0ed2a5335b411261` is recorded in
@@ -19,14 +19,33 @@ The historical completion statements below describe their original evidence;
 they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
-Current delivery is **not production-ready**. All named audit corrections have
-the repository regression evidence recorded below, including the artifact API
-and final cross-feature checks. The requirement-to-evidence matrix below maps
+Current delivery is **not production-ready**. A follow-up review reopened
+IWA-01's missing traversal bound and LC-002's missing CI coverage ratchet and
+identified artifact authorization-policy and contract-maintenance gaps. Prior
+regression evidence remains valid but does not close those requirements.
+The requirement-to-evidence matrix below maps
 canonical owners, tests and ADRs, and explicitly identifies four unallocated
 API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
 remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
+
+### Follow-up review — confirmed gaps
+
+- [ ] IWA-01: enforce finite, strictly progressing, bounded raw cron traversal
+      and fail closed on a broken iterator. The earlier DST regression fix
+      alone did not satisfy the audit's full required change.
+- [ ] LC-002: publish a lifecycle-command risk cohort in CI and reject
+      unreviewed new lifecycle branches. The real process/marker tests remain
+      valuable, but the original audit also explicitly required this ratchet.
+- [ ] Artifact authorization: use one canonical role-to-capability policy for
+      API checks and the locked database authorization recheck.
+- [ ] Artifact contracts: derive actor/authorization types from their Zod
+      schemas and remove unused upload request/trace propagation and unused
+      claim-result selection without removing the persisted result reference.
+- [ ] Four named API surfaces: obtain an explicit scope decision and implement
+      the resulting contracts, authorization, persistence and tests, or obtain
+      an approved plan deferral. Recording an allocation gap is not approval.
 
 ### Merge gate — runtime vendor security patch
 
@@ -54,7 +73,7 @@ startup evidence or qualify production deployment.
 
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
-| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
+| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Partial; DST regression corrected (16 recurrence cases, 8 real-PG cases), but explicit fail-closed traversal bound/progress assertion remains required |
 | IWA-02 | Rendered API/worker role configuration and startup contract | Fixed in repository; 15 deployment/parser tests and exact rendered-task image startup pass for both cohorts; deployed AWS evidence remains external |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
@@ -74,7 +93,7 @@ startup evidence or qualify production deployment.
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
 | IWA-19 | Worker process-test timeout and child cleanup | Fixed; startup and shutdown retain separate five-second limits within an eleven-second total budget; worker test forks are bounded under concurrent workspace runs; five compiled-process cases pass and failed cases terminate their child |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Fixed; only the exact active abort reason is suppressed; distinct operation failures and cleanup failures remain fatal; lifecycle suite passes 16 tests |
-| LC-002 | Lifecycle-command process/readiness cleanup assurance | Fixed; compiled bootstrap SIGINT/SIGTERM and partial-construction tests verify real isolated readiness-file removal and ordered cleanup; 4 files / 16 tests pass |
+| LC-002 | Lifecycle-command process/readiness cleanup assurance | Partial; real process/marker cleanup tests pass (4 files / 16 cases), but the original application risk-cohort CI ratchet remains required |
 
 Additional audit qualifications are part of the remediation review: truthful
 OBS-005/QUEUE-006 coverage scope and OBS-006 repository/external distinction;

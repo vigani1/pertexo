@@ -31,8 +31,8 @@ for (const [label, mutate, expected] of [
     (docs) => ({
       ...docs,
       status: docs.status.replace(
+        '#independent-audit-remediation--follow-up-corrections',
         '#independent-audit-remediation--repository-corrections-verified',
-        '#independent-audit-remediation--active',
       ),
     }),
     /current status: missing authoritative reference/u,
