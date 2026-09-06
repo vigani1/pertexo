@@ -13,6 +13,7 @@ import {
   checkDatabaseServingReadiness,
   type DatabaseReadiness,
 } from '../platform/readiness.js';
+import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import type { ArtifactRecord } from './artifacts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
@@ -77,10 +78,9 @@ async function requireWorkspaceAccess(
   actorId: string,
   access: 'upload' | 'read',
 ): Promise<void> {
-  const roles =
-    access === 'upload'
-      ? ['owner', 'admin', 'builder', 'operator']
-      : ['owner', 'admin', 'builder', 'operator', 'viewer'];
+  const roles = rolesForCapability(
+    access === 'upload' ? 'artifact:upload' : 'artifact:read',
+  );
   const result = await client.query(
     `select 1
        from app.workspace_memberships membership
@@ -91,7 +91,7 @@ async function requireWorkspaceAccess(
         and membership.role=any($3::text[])
         and actor.status='active' and workspace.status='active'
       for share of membership, actor, workspace`,
-    [workspaceId, actorId, roles],
+    [workspaceId, actorId, [...roles]],
   );
   if (result.rowCount !== 1) throw new ArtifactUploadNotFoundError();
 }
@@ -162,10 +162,9 @@ async function beginUpload(
       const claimResult = await client.query<{
         request_hash: string;
         resource_id: string;
-        result_ref: unknown;
         status: string;
       }>(
-        `select request_hash,resource_id,result_ref,status
+        `select request_hash,resource_id,status
            from app.idempotency_records
           where workspace_id=$1 and operation='artifact.upload'
             and scope=$2 and key_hash=$3

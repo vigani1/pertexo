@@ -1,12 +1,12 @@
-export const ROLES = Object.freeze([
-  'owner',
-  'admin',
-  'builder',
-  'operator',
-  'viewer',
-] as const);
+import {
+  AUTHORIZATION_CAPABILITIES,
+  ROLES,
+  type AuthorizationCapability,
+  type Role,
+} from '@pertexo/database/api';
 
-export type Role = (typeof ROLES)[number];
+export { AUTHORIZATION_CAPABILITIES, ROLES };
+export type { AuthorizationCapability, Role };
 
 export const MEMBERSHIP_STATUSES = Object.freeze([
   'active',
@@ -25,29 +25,6 @@ export const WORKSPACE_STATUSES = Object.freeze([
 ] as const);
 
 export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
-
-export const AUTHORIZATION_CAPABILITIES = Object.freeze([
-  'workspace:read',
-  'workspace:manage',
-  'artifact:read',
-  'artifact:upload',
-  'workflow:read',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:read',
-  'run:start',
-  'run:cancel',
-  'run:replay',
-  'connection:read',
-  'connection:use',
-  'connection:manage',
-  'member:read',
-  'member:manage',
-] as const);
-
-export type AuthorizationCapability =
-  (typeof AUTHORIZATION_CAPABILITIES)[number];
 
 export type WorkspaceId = string;
 

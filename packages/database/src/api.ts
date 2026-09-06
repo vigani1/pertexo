@@ -17,6 +17,17 @@ export type {
   ConnectionTestResult,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
+export {
+  AUTHORIZATION_CAPABILITIES,
+  ROLES,
+  capabilitiesForRole,
+  hasCapability,
+  rolesForCapability,
+} from './tenant-access/workspace-policy.js';
+export type {
+  AuthorizationCapability,
+  Role,
+} from './tenant-access/workspace-policy.js';
 export { createDatabaseRuntime } from './platform/database-runtime.js';
 export type {
   DatabaseRuntime,

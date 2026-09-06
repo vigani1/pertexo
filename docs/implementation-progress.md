@@ -20,10 +20,10 @@ they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
 Current delivery is **not production-ready**. Follow-up review identified
-incomplete audit requirements. IWA-01's traversal bound is now verified;
-LC-002's CI coverage ratchet and the artifact authorization-policy and
-contract-maintenance gaps remain open. Prior regression evidence remains valid
-but does not close those remaining requirements.
+incomplete audit requirements. IWA-01's traversal bound and the artifact
+authorization-policy/contract corrections are now verified. LC-002's CI
+coverage ratchet remains open. Prior regression evidence remains valid but
+does not close that remaining requirement.
 The requirement-to-evidence matrix below maps
 canonical owners, tests and ADRs, and explicitly identifies four unallocated
 API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
@@ -40,14 +40,39 @@ original verdict after each fix.
 - [ ] LC-002: publish a lifecycle-command risk cohort in CI and reject
       unreviewed new lifecycle branches. The real process/marker tests remain
       valuable, but the original audit also explicitly required this ratchet.
-- [ ] Artifact authorization: use one canonical role-to-capability policy for
-      API checks and the locked database authorization recheck.
-- [ ] Artifact contracts: derive actor/authorization types from their Zod
-      schemas and remove unused upload request/trace propagation and unused
-      claim-result selection without removing the persisted result reference.
+- [x] Artifact authorization: API and locked database rechecks now share the
+      pure workspace policy; direct tests cover every role/capability mapping,
+      with a real database read/upload role matrix. The policy remains in the
+      enforced coverage cohort at its new source owner.
+- [x] Artifact contracts: actor/authorization types now derive from Zod;
+      unused upload request/trace propagation and claim-result selection are
+      removed. Actor request context and the persisted result reference remain.
 - [ ] Four named API surfaces: obtain an explicit scope decision and implement
       the resulting contracts, authorization, persistence and tests, or obtain
       an approved plan deferral. Recording an allocation gap is not approval.
+
+### Follow-up artifact policy and contract verification
+
+The canonical policy is the framework-free
+[workspace policy](../packages/database/src/tenant-access/workspace-policy.ts).
+API capability checks and the database's locked active-membership/user/workspace
+recheck consume it; persistence never imports the API. Role permissions are
+unchanged. Direct tests verify every role/capability pair and inverse role list.
+The database coverage cohort now includes this owner, preserving measurement
+when the former API policy module becomes a re-export.
+
+Actor/authorization input types derive from the validating Zod schemas rather
+than parallel hand-maintained field lists. Removed request/trace copies were
+unused by upload persistence; the actor context still retains request/trace
+identity. Idempotency replay continues using `resource_id`, while writes retain
+`result_ref`; only the unused selected column and result type were removed.
+
+Primary verification: all 238 database unit cases and 475 API unit cases pass;
+both package typechecks pass. Twelve artifact database cases, including the
+role matrix and inactive/cross-workspace denials, pass on a fresh migrated
+database. Five authenticated HTTP/object-store cases also pass on a separately
+fresh migrated database. Database coverage passes unchanged thresholds with
+118/122 statements, 62/65 branches, 21/21 functions and 108/110 lines.
 
 ### Merge gate — runtime vendor security patch
 

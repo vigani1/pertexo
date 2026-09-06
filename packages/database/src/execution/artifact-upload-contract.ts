@@ -22,7 +22,6 @@ const idempotencyKeySchema = z
   .max(128)
   .regex(/^[\x21-\x7e]+$/u)
   .refine((value) => !value.includes(','));
-const requestIdentifierSchema = z.string().min(1).max(128);
 const actorInputSchema = z.looseObject({
   actorId: uuidSchema,
   workspaceId: uuidSchema,
@@ -41,9 +40,7 @@ const beginArtifactUploadSchema = z
     byteLength: byteLengthSchema,
     idempotencyKey: idempotencyKeySchema,
     mediaType: mediaTypeSchema,
-    requestId: requestIdentifierSchema,
     sha256: sha256Schema,
-    traceId: requestIdentifierSchema.optional(),
     workspaceId: uuidSchema,
   })
   .strict();
@@ -86,15 +83,11 @@ const artifactRowSchema = z
   })
   .strict();
 
-export type ArtifactUploadActor = Readonly<{
-  actorId: string;
-  workspaceId: string;
-}>;
+export type ArtifactUploadActor = Readonly<z.input<typeof actorInputSchema>>;
 export type ArtifactUploadIdentity = z.input<typeof artifactIdentitySchema>;
-export type ArtifactUploadAuthorization = Readonly<{
-  actor: ArtifactUploadActor;
-  identity: ArtifactUploadIdentity;
-}>;
+export type ArtifactUploadAuthorization = Readonly<
+  z.input<typeof artifactUploadIdentitySchema>
+>;
 export type BeginArtifactUploadInput = z.input<
   typeof beginArtifactUploadSchema
 >;
@@ -113,9 +106,7 @@ export type NormalizedBeginArtifactUploadInput = Readonly<{
   byteLength: number;
   idempotencyKey: string;
   mediaType: string;
-  requestId: string;
   sha256: string;
-  traceId?: string | undefined;
   workspaceId: string;
 }>;
 
@@ -211,9 +202,7 @@ export function normalizeBeginInput(
     byteLength: parsed.byteLength,
     idempotencyKey: parsed.idempotencyKey,
     mediaType: parsed.mediaType,
-    requestId: parsed.requestId,
     sha256: parsed.sha256,
-    ...(parsed.traceId === undefined ? {} : { traceId: parsed.traceId }),
     workspaceId: parsed.workspaceId,
   };
 }

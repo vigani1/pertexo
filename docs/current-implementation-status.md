@@ -5,8 +5,8 @@ Updated: 2026-09-06
 ## Delivery state
 
 The platform is **not production-ready**. The follow-up cron traversal bound
-is verified; lifecycle-command CI coverage and artifact policy/contract gaps
-remain open. Prior regression tests do not close these remaining requirements.
+and artifact policy/contract corrections are verified. Lifecycle-command CI
+coverage remains open; prior regression tests do not close that requirement.
 External production gates and four unallocated API
 scope decisions also remain open.
 The [implementation tracker](./implementation-progress.md#independent-audit-remediation--follow-up-corrections)

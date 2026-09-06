@@ -86,8 +86,6 @@ export class ArtifactService {
         ...metadata,
         actor: input.actor,
         idempotencyKey: input.idempotencyKey,
-        requestId: input.requestId,
-        ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
         workspaceId: authorization.workspaceId,
       });
     } catch (error: unknown) {

@@ -36,7 +36,5 @@ export type ArtifactServiceContext = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
-  requestId: string;
-  traceId?: string;
   signal?: AbortSignal;
 }>;
