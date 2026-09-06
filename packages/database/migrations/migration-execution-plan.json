@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0079_artifact_upload_capacity.sql",
+  "transactionalThrough": "0080_expired_artifact_upload_retention.sql",
   "migrations": {}
 }

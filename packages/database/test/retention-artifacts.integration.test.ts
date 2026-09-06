@@ -48,7 +48,260 @@ async function readCapacity(): Promise<{
   }
 }
 
+async function withOwnerTransaction<T>(
+  work: (client: typeof owner) => Promise<T>,
+): Promise<T> {
+  await owner.query('begin');
+  try {
+    await owner.query('set local role pertexo_owner');
+    await owner.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await work(owner);
+    await owner.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await owner.query('rollback').catch(() => undefined);
+    throw error;
+  }
+}
+
+async function insertExpiredPendingUserUpload(
+  artifactId: string,
+  digestCharacter: string,
+): Promise<void> {
+  await withOwnerTransaction(async (client) => {
+    await client.query(
+      `insert into app.artifacts
+         (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+          status,expires_at)
+       values($1,$2,'user-upload',$3,'application/octet-stream',10,$4,
+         'pending',clock_timestamp()-interval '1 hour')`,
+      [
+        artifactId,
+        workspaceId,
+        `workspaces/${workspaceId}/artifacts/${artifactId}`,
+        digestCharacter.repeat(64),
+      ],
+    );
+  });
+}
+
+async function readArtifactRetentionState(artifactId: string): Promise<{
+  status: string;
+  retryScheduled: boolean;
+}> {
+  return withOwnerTransaction(async (client) => {
+    const result = await client.query<{
+      status: string;
+      retry_scheduled: boolean | null;
+    }>(
+      `select status,retention_retry_at>clock_timestamp() as retry_scheduled
+         from app.artifacts where workspace_id=$1 and id=$2`,
+      [workspaceId, artifactId],
+    );
+    const row = result.rows[0];
+    if (row === undefined) throw new Error('artifact retention state missing');
+    return {
+      status: row.status,
+      retryScheduled: row.retry_scheduled === true,
+    };
+  });
+}
+
+async function setArtifactRetryAt(
+  artifactId: string,
+  value: 'past' | 'null',
+): Promise<void> {
+  await withOwnerTransaction(async (client) => {
+    await client.query(
+      value === 'past'
+        ? `update app.artifacts
+             set retention_retry_at=clock_timestamp()-interval '1 second'
+           where workspace_id=$1 and id=$2`
+        : `update app.artifacts
+             set retention_retry_at=null
+           where workspace_id=$1 and id=$2`,
+      [workspaceId, artifactId],
+    );
+  });
+}
+
+type ArtifactStoreInput = Readonly<{
+  artifactId: string;
+  signal?: AbortSignal;
+  workspaceId: string;
+}>;
+
 describe('retention artifact reclamation', () => {
+  it('deletes expired pending user uploads before releasing capacity', async () => {
+    const artifactId = randomUUID();
+    await insertExpiredPendingUserUpload(artifactId, 'd');
+
+    await expect(readCapacity()).resolves.toEqual({
+      chargedBytes: 10,
+      chargedCount: 1,
+    });
+    const ledger = {
+      append: vi.fn(),
+      reconcile: vi.fn(() =>
+        Promise.resolve({
+          hasMore: false,
+          pageEndHash: zeroHash,
+          pageEndSequence: 0,
+          reachedHighWater: true,
+          records: [],
+        }),
+      ),
+    } satisfies ControlLedger;
+    const artifacts = {
+      delete: vi.fn((input: ArtifactStoreInput) => {
+        void input;
+        return Promise.resolve();
+      }),
+      head: vi.fn((input: ArtifactStoreInput) => {
+        void input;
+        return Promise.resolve(null);
+      }),
+    };
+    const coordinator = createRunArtifactRetentionCoordinator(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+      ledger,
+      artifacts,
+    );
+    try {
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        artifactId,
+        status: 'completed',
+        workspaceId,
+      });
+    } finally {
+      await coordinator.close();
+    }
+
+    expect(artifacts.delete).toHaveBeenCalledOnce();
+    expect(artifacts.delete.mock.calls[0]?.[0]).toMatchObject({
+      artifactId,
+      workspaceId,
+    });
+    expect(artifacts.head).toHaveBeenCalledOnce();
+    expect(artifacts.head.mock.calls[0]?.[0]).toMatchObject({
+      artifactId,
+      workspaceId,
+    });
+    await expect(readCapacity()).resolves.toEqual({
+      chargedBytes: 0,
+      chargedCount: 0,
+    });
+  });
+
+  it('keeps an expired pending upload deleting and charged across a store failure', async () => {
+    const artifactId = randomUUID();
+    const before = await readCapacity();
+    await insertExpiredPendingUserUpload(artifactId, 'e');
+    await expect(readCapacity()).resolves.toEqual({
+      chargedBytes: before.chargedBytes + 10,
+      chargedCount: before.chargedCount + 1,
+    });
+
+    const ledger = {
+      append: vi.fn(),
+      reconcile: vi.fn(() =>
+        Promise.resolve({
+          hasMore: false,
+          pageEndHash: zeroHash,
+          pageEndSequence: 0,
+          reachedHighWater: true,
+          records: [],
+        }),
+      ),
+    } satisfies ControlLedger;
+    const artifacts = {
+      delete: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('artifact store unavailable'))
+        .mockResolvedValue(undefined),
+      head: vi
+        .fn()
+        .mockResolvedValueOnce({ stillPresent: true })
+        .mockResolvedValueOnce(null),
+    };
+    const createCoordinator = () =>
+      createRunArtifactRetentionCoordinator(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+        ledger,
+        artifacts,
+      );
+    const coordinator = createCoordinator();
+    try {
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'artifact store unavailable',
+      );
+      expect(artifacts.head).not.toHaveBeenCalled();
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+    } finally {
+      await coordinator.close();
+    }
+
+    const restartedAfterFailure = createCoordinator();
+    try {
+      await expect(restartedAfterFailure.processNext()).resolves.toEqual({
+        status: 'idle',
+      });
+      expect(await readArtifactRetentionState(artifactId)).toEqual({
+        status: 'deleting',
+        retryScheduled: true,
+      });
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+
+      await setArtifactRetryAt(artifactId, 'past');
+      await expect(restartedAfterFailure.processNext()).resolves.toMatchObject({
+        artifactId,
+        status: 'waiting',
+        workspaceId,
+      });
+      expect(await readArtifactRetentionState(artifactId)).toEqual({
+        status: 'deleting',
+        retryScheduled: true,
+      });
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+    } finally {
+      await restartedAfterFailure.close();
+    }
+
+    const restartedAfterWaiting = createCoordinator();
+    try {
+      await expect(restartedAfterWaiting.processNext()).resolves.toEqual({
+        status: 'idle',
+      });
+      expect(await readArtifactRetentionState(artifactId)).toEqual({
+        status: 'deleting',
+        retryScheduled: true,
+      });
+
+      await setArtifactRetryAt(artifactId, 'null');
+      await expect(restartedAfterWaiting.processNext()).resolves.toMatchObject({
+        artifactId,
+        status: 'completed',
+        workspaceId,
+      });
+    } finally {
+      await restartedAfterWaiting.close();
+    }
+    expect(artifacts.delete).toHaveBeenCalledTimes(3);
+    expect(artifacts.head).toHaveBeenCalledTimes(2);
+    await expect(readCapacity()).resolves.toEqual(before);
+  });
+
   it('retains referenced artifacts and deletes unreferenced bytes before metadata', async () => {
     const coordinatorApplication = `retention-artifacts-${workspaceId}`;
     const referencedArtifactId = '00000000-0000-4000-8000-000000000101';
@@ -303,10 +556,9 @@ describe('retention artifact reclamation', () => {
         await api.query(
           `insert into app.artifacts
              (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
-              status,expires_at,finalized_at)
+             status,expires_at)
            values($1,$2,'user-upload',$3,'application/octet-stream',10,$4,
-             'available',clock_timestamp()-interval '1 hour',
-             clock_timestamp()-interval '2 hours')`,
+             'pending',clock_timestamp()-interval '1 hour')`,
           [
             artifactId,
             workspaceId,
@@ -394,7 +646,7 @@ describe('retention artifact reclamation', () => {
             byte_length: '10',
             purpose: 'user-upload',
             retry_scheduled: true,
-            status: 'available',
+            status: 'pending',
           },
         ]);
         await owner.query('commit');

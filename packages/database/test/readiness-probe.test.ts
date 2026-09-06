@@ -15,6 +15,7 @@ const readyRow = Object.freeze({
   can_trigger: false,
   can_truncate: false,
   can_update: true,
+  artifact_capacity_compatible: true,
   coordinator_run_store_compatible: true,
   current_user: 'pertexo_api',
   due_node_wakeups_compatible: true,
@@ -22,7 +23,7 @@ const readyRow = Object.freeze({
   execution_admission_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
-  migration_head: '0079_artifact_upload_capacity.sql',
+  migration_head: '0080_expired_artifact_upload_retention.sql',
   oidc_capacity_compatible: true,
   oidc_grants_compatible: true,
   oidc_schema_compatible: true,
@@ -54,7 +55,7 @@ const readyRow = Object.freeze({
 }) satisfies ReadinessRow;
 
 const expected = Object.freeze({
-  migrationHead: '0079_artifact_upload_capacity.sql',
+  migrationHead: '0080_expired_artifact_upload_retention.sql',
   minimumPostgresMajor: 18,
   ownerRole: 'pertexo_owner',
 });
@@ -65,6 +66,7 @@ describe('database readiness capability probe', () => {
       'phase1_schema_compatible',
       'phase2_schema_compatible',
       'phase3_schema_compatible',
+      'artifact_capacity_compatible',
       'coordinator_run_store_compatible',
       'phase4_connections_compatible',
       'webhook_triggers_compatible',
@@ -86,6 +88,14 @@ describe('database readiness capability probe', () => {
         expected,
       );
     }).toThrow('Workflow authoring row-level security is incompatible');
+    expect(() => {
+      assertDatabaseReadinessRow(
+        { ...readyRow, artifact_capacity_compatible: false },
+        expected,
+      );
+    }).toThrow(
+      'Artifact capacity schema, row-level security, or runtime grants are incompatible',
+    );
     expect(() => {
       assertDatabaseReadinessRow(
         { ...readyRow, relforcerowsecurity: false },

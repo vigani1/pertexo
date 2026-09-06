@@ -16,7 +16,9 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0080_expired_artifact_upload_retention.sql',
+    );
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

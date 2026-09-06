@@ -240,6 +240,7 @@ describe('connection persistence', () => {
       '0077_replay_read_locks.sql',
       '0078_workflow_lifecycle_revision.sql',
       '0079_artifact_upload_capacity.sql',
+      '0080_expired_artifact_upload_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -252,7 +253,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0079_artifact_upload_capacity.sql',
+        migrationHead: '0080_expired_artifact_upload_retention.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -496,6 +497,7 @@ describe('connection persistence', () => {
       '0077_replay_read_locks.sql',
       '0078_workflow_lifecycle_revision.sql',
       '0079_artifact_upload_capacity.sql',
+      '0080_expired_artifact_upload_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -508,7 +510,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0079_artifact_upload_capacity.sql',
+        migrationHead: '0080_expired_artifact_upload_retention.sql',
       });
     } finally {
       await pool.end();

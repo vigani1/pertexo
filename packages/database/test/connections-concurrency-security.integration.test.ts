@@ -182,7 +182,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0079_artifact_upload_capacity.sql',
+        migrationHead: '0080_expired_artifact_upload_retention.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -190,7 +190,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0079_artifact_upload_capacity.sql',
+        migrationHead: '0080_expired_artifact_upload_retention.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

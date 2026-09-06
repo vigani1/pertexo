@@ -41,7 +41,7 @@ original verdict after each fix.
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Fixed in repository; 5 authenticated HTTP cases, 7 real-PG version-restore cases, 3 real-PG lifecycle cases and real dispatcher/BullMQ restart/redelivery proof pass; nonempty queued/running/waiting/completed history is preserved |
-| IWA-17 | Public artifact upload/finalize vertical slice | In progress; signed attachment downloads and PostgreSQL upload/capacity authority verified; final authenticated HTTP, cleanup and runtime integration checkpoint remains |
+| IWA-17 | Public artifact upload/finalize vertical slice | In progress; signed downloads, PostgreSQL upload/capacity authority, capacity readiness and pending-upload expiry cleanup verified; final HTTP/runtime checkpoint remains |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
@@ -439,6 +439,27 @@ cases pass with the two retention cases. An unused schema re-export caught by
 the dependency gate was removed; the capacity table remains in the typed
 schema registry. Full cross-feature verification continues at the API
 checkpoint rather than being inferred from these focused checks.
+
+Final review found and corrected two additional gaps. Capacity readiness now
+checks the seven-column table shape, constraints, ownership, forced RLS,
+policies, table/column privileges, function configuration and trigger wiring.
+Four fresh-PostgreSQL tests cover all three serving roles, reject controlled
+schema/security drift and verify readiness recovers after every restoration.
+
+Forward migration `0080_expired_artifact_upload_retention.sql` includes expired
+pending public uploads and retryable deleting artifacts in production retention
+discovery. Four composed PostgreSQL retention tests cover pending expiry,
+references, legal holds, object-store failure, durable retry across coordinator
+restarts and capacity release only after deletion confirmation. These use the
+production coordinator with a mock object store/control ledger; they do not
+claim real-S3 cleanup qualification. The full database integration suite passes
+383 tests across 74 files with this migration.
+
+- [x] Reject drift of the artifact capacity schema and runtime privileges at
+      readiness.
+- [x] Discover and clean expired pending public uploads through the production
+      retention path, preserving legal holds and capacity until durable
+      deletion completes.
 
 ### IWA-01 — DST recurrence correction
 
