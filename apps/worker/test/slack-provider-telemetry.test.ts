@@ -61,15 +61,6 @@ describe('Slack provider telemetry', () => {
       expect.any(Function),
     );
     expect(setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.OK });
-    expect(Object.keys(successAttributes)).not.toEqual(
-      expect.arrayContaining([
-        'bot_token',
-        'channel_id',
-        'connection_id',
-        'message_ts',
-        'text',
-      ]),
-    );
 
     const rateLimited = new SlackSendMessageExecutorError(
       {

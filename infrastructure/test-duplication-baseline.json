@@ -373,20 +373,6 @@
         },
         {
           "files": [
-            "apps/worker/test/worker-bootstrap.test.ts",
-            "apps/worker/test/worker-bootstrap.test.ts"
-          ],
-          "classification": "intentional-scenario-local",
-          "reason": "Node-attempt and preview-maintenance bootstrap scenarios name their distinct runtime owner, queue job, readiness call, and cleanup assertion directly.",
-          "clones": [
-            {
-              "hash": "a089c2de50fb59267a02f5487f244124594750112bfb06687af6fd0b4366e64f",
-              "maxLines": 33
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/worker/test/node-attempt-handler-part-2.test.ts",
             "apps/worker/test/node-attempt-handler-part-2.test.ts"
           ],

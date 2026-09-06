@@ -61,7 +61,8 @@ removal was established, not that the directory was skipped.
 
 ## Rejected removals
 
-- No test was proven behaviorally redundant, so no tests were deleted. Similar
+- In the initial pass, no test was proven behaviorally redundant and no tests
+  were deleted. Similar
   fixtures cover different authorization, lifecycle, provider or compatibility
   cases; textual duplication alone is insufficient evidence.
 - Inlining Redis `isClosed()` triggers `no-unnecessary-condition` after the
@@ -160,3 +161,20 @@ operator unit tests, test typecheck, changed-file lint and formatting pass.
 The full push gate additionally caught the obsolete clone review for the removed
 type repetition. That exact entry is removed; the source scan falls from 28
 groups / 563 lines to 27 groups / 512 lines, with no raised allowance.
+
+### Worker test-value checkpoint
+
+Two preview-maintenance bootstrap tests had identical 31-line callback bodies,
+confirmed by AST extraction and exact text comparison. The duplicate named
+`routes preview reconciliation through its maintenance consumer` is removed;
+`gates preview reconciliation dispatch on its maintenance consumer` retains all
+readiness and cleanup assertions. The obsolete bootstrap clone review is removed
+rather than retained under its inaccurate distinct-scenario explanation.
+
+The HTTP and Slack telemetry tests also asserted that their own literal expected
+objects lacked sensitive keys. Those two assertions cannot detect production
+regressions and are removed. Exact comparisons against emitted metric arguments
+remain, as do the HTTP span-attribute and all provider failure/lifecycle checks.
+All 277 worker unit tests, test typecheck, changed-file lint and formatting pass.
+Test duplication falls from five groups / 235 lines to four groups / 203 lines;
+source duplication remains at 27 groups / 512 lines. No coverage floor changes.

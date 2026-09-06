@@ -402,38 +402,6 @@ describe('worker application bootstrap', () => {
     expect(triggerRuntime.close).toHaveBeenCalledOnce();
   });
 
-  it('routes preview reconciliation through its maintenance consumer', async () => {
-    const selected = dependencies();
-    const consumer: QueueConsumer = {
-      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
-      isReady: vi.fn().mockReturnValue(true),
-      waitUntilReady: vi.fn().mockResolvedValue(undefined),
-    };
-    const previewMaintenanceRuntime: PreviewMaintenanceRuntime = {
-      consumer,
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const enabledConfig = {
-      ...workerConfig,
-      outboxDispatcher: {
-        ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
-      },
-    };
-    const app = await createWorkerApplication(enabledConfig, {
-      ...selected,
-      previewMaintenanceRuntime,
-    });
-
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
-    try {
-      expect(consumer.isReady).toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
-    expect(previewMaintenanceRuntime.close).toHaveBeenCalledOnce();
-  });
-
   it('fails startup and closes resources when database readiness fails', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const unavailableDatabase: WorkspaceDatabase = {
