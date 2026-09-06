@@ -35,7 +35,7 @@ original verdict after each fix.
 | IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
 | IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
-| IWA-07 | Canonical hostname/IP classification | Open; valid hostname blocked before DNS |
+| IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Open; measured synchronous work exceeds timeout |
 | IWA-09 | Surge-aware database connection capacity | Open; permitted rollout exceeds capacity contract |
 | IWA-10 | Authenticated replay vertical slice | Open; public route/use case absent |
@@ -106,6 +106,17 @@ connection-failure cleanup regression failed before their respective corrections
 and now pass. Three real-PostgreSQL execution-mode tests also pass, covering
 transactional, non-transactional and resumable execution. Database typecheck and
 focused ESLint pass. Existing successful-acquisition cleanup remains unchanged.
+
+### IWA-07 — DNS hostname classification
+
+The secure HTTP client now distinguishes syntactic IP literals using Node's
+IP parser, then applies public-address policy to literals or all resolved DNS
+answers as appropriate. Four hexadecimal-looking hostname cases failed before
+the correction. All 81 secure-HTTP tests now pass, including mixed-case and
+trailing-dot names, the normal-hostname control, alternate decimal/octal/hex
+loopback forms, IPv4-mapped IPv6, mixed DNS answers and redirect re-resolution.
+Integration package typecheck and focused ESLint pass. Tests use fake DNS and
+transport boundaries; no public endpoint request was needed.
 
 ## Prior review history
 
