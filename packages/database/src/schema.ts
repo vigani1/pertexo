@@ -77,7 +77,6 @@ export {
 } from './schema/foundation.js';
 export {
   artifacts,
-  workspaceArtifactCapacity,
   outboxEvents,
   inboxReceipts,
   transportSecurityAuditFacts,

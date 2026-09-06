@@ -427,6 +427,19 @@ artifact retention, preview artifact cleanup, restore inventory and workspace
 purge. Migration-head expectations advance to 0079 without editing historical
 migrations. The public API and contracts remain a separate checkpoint.
 
+The retention coordinator now has explicit capacity observations: referenced
+and waiting artifacts remain fully charged, blocked object deletion cannot
+release counters, and successful cleanup releases only the corresponding
+bytes/count. An expired user-upload under a projected legal hold returns
+`held` without invoking object-store HEAD or DELETE and preserves its charge.
+Both real-PostgreSQL retention-artifact cases pass. The broader integration
+run found a stale control-ledger upgrade fixture that omitted migrations 0074,
+0078 and 0079; its explicit cohort is corrected, and all seven coordinator
+cases pass with the two retention cases. An unused schema re-export caught by
+the dependency gate was removed; the capacity table remains in the typed
+schema registry. Full cross-feature verification continues at the API
+checkpoint rather than being inferred from these focused checks.
+
 ### IWA-01 — DST recurrence correction
 
 The new subprocess regression first failed against the audited implementation
