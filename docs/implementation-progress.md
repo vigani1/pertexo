@@ -46,6 +46,7 @@ original verdict after each fix.
 | IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
+| IWA-19 | Worker process-test timeout and child cleanup | Fixed; startup and shutdown retain separate five-second limits within an eleven-second total budget; five compiled-process cases pass and failed cases terminate their child |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Fixed; only the exact active abort reason is suppressed; distinct operation failures and cleanup failures remain fatal; lifecycle suite passes 16 tests |
 | LC-002 | Lifecycle-command process/readiness cleanup assurance | Fixed; compiled bootstrap SIGINT/SIGTERM and partial-construction tests verify real isolated readiness-file removal and ordered cleanup; 4 files / 16 tests pass |
 
@@ -238,6 +239,17 @@ five-second budgets. A partial-construction failure also proves cleanup.
 Primary verification: lifecycle typecheck, build and all 16 tests in four files
 pass. Obsolete duplication-baseline entries were removed, not reclassified or
 given larger ceilings. These corrections do not close any production phase.
+
+### IWA-19 — worker process-test lifecycle budget
+
+The full pre-push suite exposed a test-harness race: its implicit five-second
+test limit covered both a permitted five-second startup and five-second
+shutdown. The explicit eleven-second total budget now accommodates both while
+retaining the original five-second shutdown assertion. Exit waits remove their
+listeners and handle already-exited children; afterEach terminates and waits
+for any child left behind by a failed assertion. Primary verification: all five
+compiled-worker process cases, scoped ESLint and formatting pass. No runtime
+shutdown limit was relaxed.
 
 ## Prior review history
 
