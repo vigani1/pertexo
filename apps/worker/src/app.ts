@@ -2,49 +2,26 @@ import type { INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   createDatabaseRuntime,
-  type DatabaseRuntime,
-  type OutboxDispatcherDatabase,
   type WorkspaceDatabase,
 } from '@pertexo/database/execution';
-import type { QueueProducer } from '@pertexo/queue';
-import type {
-  StructuredLogger,
-  TelemetryLifecycle,
-} from '@pertexo/observability';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';
-import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
-import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
-import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
-import type { TriggerRuntime } from './triggers/trigger-runtime.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
 import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
-import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import {
   OUTBOX_DISPATCHER,
   TRANSPORT_METRICS,
 } from './transport/transport.module.js';
 import type { OutboxDispatcher } from './transport/outbox-dispatcher.js';
-import { WorkerModule } from './worker.module.js';
+import {
+  WorkerModule,
+  type WorkerModuleDependencies,
+} from './worker.module.js';
 
-export type WorkerApplicationDependencies = Readonly<{
-  coordinatorRuntime?: CoordinatorRuntime;
-  nodeAttemptRuntime?: NodeAttemptRuntime;
-  previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
-  triggerRuntime?: TriggerRuntime;
-  database?: WorkspaceDatabase;
-  databaseRuntime?: DatabaseRuntime;
-  dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
-  dispatcherDatabase?: OutboxDispatcherDatabase;
-  dispatcherDatabaseRuntime?: DatabaseRuntime;
-  queueProducer?: QueueProducer;
-  logger: StructuredLogger;
-  telemetry: TelemetryLifecycle;
-  transportMetrics?: TransportMetrics;
-}>;
+export type WorkerApplicationDependencies = WorkerModuleDependencies;
 
 export async function createWorkerApplication(
   config: WorkerConfig,
