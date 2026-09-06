@@ -45,6 +45,7 @@ original verdict after each fix.
 | IWA-11 | Typed/correct application deployment closure validation | Open; controlled-negative worker omission accepted |
 | IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
 | IWA-13 | Migration-option validation and connection ownership | Open; invalid options retain acquired connection |
+| IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Open; active abort is classified as fatal |
 | LC-002 | Lifecycle-command process/readiness cleanup assurance | Open; required process-level regression evidence missing |
 
@@ -82,6 +83,19 @@ PostgreSQL schedule suites pass eight cases against an isolated migrated
 database. Database build/typecheck and focused ESLint pass. Independent
 read-only review found no remaining defect in these recurrence changes.
 Production DST traffic is not claimed as exercised.
+
+### IWA-18 — documentation Git subprocess isolation
+
+A linked-worktree pre-push check exposed a new developer-tooling defect:
+documentation fixtures inherited Git hook repository overrides and could mutate
+the caller's repository metadata instead of their temporary fixture. Explicit
+repository Git subprocesses now remove inherited `GIT_*` overrides, including
+the publication-ancestry check. The regression runs the real six-test fixture
+suite under contaminated repository, worktree, index and configuration variables
+and verifies that a protected repository's HEAD, configuration and status remain
+unchanged. It failed before the correction and all seven documentation tests now
+pass. The failed verification worktree's fixture commits were not pushed; the
+working branch and its implementation changes were preserved.
 
 ## Prior review history
 

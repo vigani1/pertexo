@@ -7,11 +7,14 @@ import { promisify } from 'node:util';
 import test from 'node:test';
 
 import { validateDocumentationRepository } from './validate-documentation.mjs';
+import { isolatedGitEnvironment } from './git-environment.mjs';
 
 const execute = promisify(execFile);
 
 async function command(root, ...args) {
-  return execute('git', ['-C', root, ...args]);
+  return execute('git', ['-C', root, ...args], {
+    env: isolatedGitEnvironment(),
+  });
 }
 
 async function createRepository() {
