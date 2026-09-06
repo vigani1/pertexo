@@ -8,6 +8,21 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
+## Low-value code cleanup — active
+
+The follow-up audit inspects every application, package and major tooling
+directory for redundant tests, pass-through wrappers, unused abstractions,
+duplicate helpers and stale commentary. Only removals with caller/coverage
+evidence are accepted; runtime contracts and security checks are preserved.
+
+- [ ] Record inspection and disposition for all major directories.
+- [ ] Apply only confirmed minimal removals with safety evidence.
+- [ ] Run focused tests, lint and applicable repository gates.
+- [x] Remove an overwritten workflow-model lint selector and an unmatched
+      nested integrations workspace glob. Resolved lint configurations for
+      model/engine source and tests are byte-for-byte identical; pnpm still
+      discovers the same 18 workspaces, and frozen-lockfile validation passes.
+
 ## Repository modularity cleanup — complete
 
 The user authorized a repository-wide structure and readability cleanup on
