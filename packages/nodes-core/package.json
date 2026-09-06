@@ -30,6 +30,6 @@
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "cron-parser": "5.10.0",
-    "zod": "4.4.3"
+    "zod": "4.5.4"
   }
 }
