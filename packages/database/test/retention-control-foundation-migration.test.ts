@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('retention control foundation migration contract', () => {
   it('is a non-destructive, least-privilege control-plane migration', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0080_expired_artifact_upload_retention.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('workspace_control_ledger_projection');

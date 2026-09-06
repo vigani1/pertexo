@@ -1,3 +1,5 @@
+import { READINESS_ARTIFACT_CAPACITY_SQL } from './readiness-artifact-capacity.sql.js';
+
 export const READINESS_EXECUTION_SQL = `
       (
         exists (
@@ -192,7 +194,7 @@ export const READINESS_EXECUTION_SQL = `
           )
         )
       ) as execution_values_compatible,
-      (
+${READINESS_ARTIFACT_CAPACITY_SQL}      (
         has_table_privilege($2, 'app.workflow_runs', 'SELECT')
         and not exists (
           select 1 from (values

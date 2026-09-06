@@ -27,6 +27,7 @@ export interface ReadinessRow {
   phase4_integration_usage_compatible: boolean;
   phase4_preview_artifacts_compatible: boolean;
   phase4_preview_terminal_facts_compatible: boolean;
+  artifact_capacity_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
   durable_wait_compatible: boolean;
@@ -91,6 +92,10 @@ const CAPABILITY_FAILURES = Object.freeze([
   [
     'phase3_grants_compatible',
     'Published workflow execution grants are incompatible',
+  ],
+  [
+    'artifact_capacity_compatible',
+    'Artifact capacity schema, row-level security, or runtime grants are incompatible',
   ],
   [
     'execution_values_compatible',

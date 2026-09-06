@@ -6,7 +6,9 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 describe('webhook trigger migration contract', () => {
   it('forces tenant isolation and keeps endpoint credentials non-public', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0080_expired_artifact_upload_retention.sql',
+    );
     const migration = await readFile(
       new URL('../migrations/0039_webhook_triggers.sql', import.meta.url),
       'utf8',

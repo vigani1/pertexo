@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('replay lineage retention migration', () => {
   it('keeps summary deletion behind the replay-source lineage fence', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0080_expired_artifact_upload_retention.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

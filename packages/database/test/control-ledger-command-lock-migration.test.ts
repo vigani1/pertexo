@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('control ledger command lock migration contract', () => {
   it('exposes only narrow non-destructive maintenance functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0080_expired_artifact_upload_retention.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('lock_workspace_control_ledger');

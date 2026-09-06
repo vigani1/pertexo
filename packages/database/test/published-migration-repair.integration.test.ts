@@ -112,6 +112,7 @@ describe('published migration repair upgrade', () => {
       '0077_replay_read_locks.sql',
       '0078_workflow_lifecycle_revision.sql',
       '0079_artifact_upload_capacity.sql',
+      '0080_expired_artifact_upload_retention.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
