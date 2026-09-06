@@ -90,6 +90,7 @@ function resources(events: string[]) {
     return Promise.resolve(artifact);
   });
   const artifacts = {
+    beginDirectDownload: vi.fn(),
     beginDirectUpload: vi.fn(),
     checkReadiness: checkArtifactReadiness,
     close: closeArtifacts,
