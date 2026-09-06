@@ -11,6 +11,7 @@ import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
 
 import { isolatedGitEnvironment } from './git-environment.mjs';
+import { validateOperationalDocumentation } from './operational-documentation.mjs';
 
 const execute = promisify(execFile);
 const markdown = new MarkdownIt({ html: false, linkify: false });
@@ -230,6 +231,7 @@ export async function validateDocumentationRepository(rootDirectory) {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const rootDirectory = fileURLToPath(new URL('../', import.meta.url));
   const result = await validateDocumentationRepository(rootDirectory);
+  await validateOperationalDocumentation(rootDirectory);
   console.log(
     `Validated ${result.localLinksChecked} local documentation links across ${result.filesChecked} files at audited tree ${result.auditedTree.slice(0, 7)}.`,
   );
