@@ -7,9 +7,11 @@ import type { Job as BullMqJob, Processor } from 'bullmq';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 
-import { parseQueueJob, type QueueJob } from './contracts.js';
+import type { QueueJob } from './contracts.js';
+import { admitQueueDelivery } from './delivery-admission.js';
+export { InvalidQueueDeliveryError } from './delivery-admission.js';
 import { QUEUE_CLASS_DEFAULTS } from './defaults.js';
-import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from './names.js';
+import { QUEUE_NAME, type QueueName } from './names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
@@ -162,11 +164,6 @@ export class QueueConsumerNotReadyError extends Error {
   }
 }
 
-/** An invalid delivery cannot become valid through transport redelivery. */
-export class InvalidQueueDeliveryError extends UnrecoverableError {
-  public override readonly name = 'InvalidQueueDeliveryError';
-}
-
 export class QueueJobTimeoutError extends Error {
   public override readonly name = 'QueueJobTimeoutError';
 
@@ -290,14 +287,6 @@ function bounded<T>(
       },
     );
   });
-}
-
-function jobId(job: BullMqJob<unknown, unknown>): string {
-  if (typeof job.id !== 'string' || job.id.length === 0) {
-    throw new InvalidQueueDeliveryError('Queue delivery has no job ID');
-  }
-
-  return job.id;
 }
 
 export class BullMqQueueConsumer implements QueueConsumer {
@@ -450,26 +439,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       throw new QueueConsumerDrainError();
     }
 
-    let parsed: QueueJob;
-    try {
-      parsed = parseQueueJob({ name: job.name, data: job.data });
-    } catch (error: unknown) {
-      throw new InvalidQueueDeliveryError(
-        error instanceof Error ? error.message : 'Queue delivery is invalid',
-      );
-    }
-
-    if (QUEUE_FOR_JOB[parsed.name] !== queueName) {
-      throw new InvalidQueueDeliveryError(
-        `Job ${parsed.name} cannot be delivered by queue ${queueName}`,
-      );
-    }
-
-    const transportJobId = jobId(job);
-    if (transportJobId !== `outbox-${parsed.data.outboxEventId}`)
-      throw new InvalidQueueDeliveryError(
-        'Queue delivery job ID does not match its outbox event',
-      );
+    const { parsed, transportJobId } = admitQueueDelivery(queueName, job);
 
     const execution: ActiveExecution = {
       abortFailureClass: undefined,
