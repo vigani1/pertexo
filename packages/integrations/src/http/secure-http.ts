@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 import { z } from 'zod';
 
 import {
@@ -573,12 +575,13 @@ function parseSensitiveValues(values: readonly string[]): readonly string[] {
 }
 
 function literalAddressFamily(hostname: string): 4 | 6 | undefined {
+  // URL parsing canonicalizes alternate IPv4 spellings before this boundary.
+  // DNS labels may contain only hexadecimal letters without being IP literals.
+  if (isIP(hostname) === 0) return undefined;
   try {
     return assertPublicAddress(hostname);
   } catch {
-    if (/^[0-9a-f:.]+$/iu.test(hostname))
-      throw failure(SECURE_HTTP_ERROR_CODE.ssrfBlocked, false, false);
-    return undefined;
+    throw failure(SECURE_HTTP_ERROR_CODE.ssrfBlocked, false, false);
   }
 }
 

@@ -455,7 +455,12 @@ describe('secure HTTP client', () => {
     const client = new SecureHttpClient(resolver, transport);
     for (const url of [
       'http://127.0.0.1/',
+      'http://127.1/',
+      'http://2130706433/',
+      'http://0x7f000001/',
+      'http://0177.0.0.1/',
       'http://[::1]/',
+      'http://[::ffff:127.0.0.1]/',
       'https://private.example.test/',
       'https://mixed.example.test/',
       'https://mismatch.example.test/',
@@ -467,6 +472,30 @@ describe('secure HTTP client', () => {
     }
     expect(transport.requests).toEqual([]);
   });
+
+  it.each(['cafe.de', 'dead.be', 'CAFE.DE', 'cafe.de.', 'example.de'])(
+    'resolves the valid DNS hostname %s before applying address policy',
+    async (hostname) => {
+      const canonicalHostname = hostname.toLowerCase();
+      const resolver = new FakeResolver({
+        [canonicalHostname]: [{ address: '8.8.8.8', family: 4 }],
+      });
+      const fixture = transportResponse(204, {}, []);
+      const transport = new FakeTransport(() =>
+        Promise.resolve(fixture.response),
+      );
+      await expect(
+        new SecureHttpClient(resolver, transport).execute(
+          request({ url: `https://${hostname}/health` }),
+        ),
+      ).resolves.toMatchObject({ status: 204 });
+      expect(resolver.calls).toEqual([canonicalHostname]);
+      expect(transport.requests[0]?.address).toEqual({
+        address: '8.8.8.8',
+        family: 4,
+      });
+    },
+  );
 
   it('dispatches a public literal without consulting DNS', async () => {
     const resolver = new FakeResolver({});
