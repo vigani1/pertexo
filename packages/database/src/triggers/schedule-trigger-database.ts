@@ -1,0 +1,405 @@
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from '../platform/persisted-id.js';
+
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
+
+import type { DatabaseConfig } from '../config.js';
+import { ScheduleTriggerError } from './schedule-trigger-errors.js';
+import {
+  parseScheduleRecurrence,
+  resolveScheduleObservation,
+} from './schedule-recurrence.js';
+import { refreshWorkflowActivation } from './workflow-triggers.js';
+import { canManageWorkflowTrigger } from './trigger-management-access.js';
+import { withTenantScopedClient } from '../tenant-access/workspace.js';
+
+const uuidSchema = z.uuid();
+const scheduleTriggerSchema = z
+  .object({
+    id: z.uuid(),
+    workflowId: z.uuid(),
+    workflowVersionId: z.uuid(),
+    nodeId: z.string().min(1).max(256),
+    kind: z.literal('schedule'),
+    status: z.enum([
+      'desired',
+      'configuration_required',
+      'pending',
+      'active',
+      'degraded',
+      'disabled',
+      'error',
+    ]),
+    healthStatus: z.enum(['healthy', 'degraded', 'unhealthy', 'disabled']),
+    lastErrorCode: z.string().max(128).nullable(),
+    reconciledAt: z.date().nullable(),
+    recurrence: z.discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('cron'),
+        expression: z.string().min(1).max(256),
+        timezone: z.string().min(1).max(128),
+      }),
+      z.object({
+        kind: z.literal('interval'),
+        intervalMinutes: z.number().int().min(1).max(43_200),
+      }),
+    ]),
+    misfirePolicy: z.enum(['catch_up_once', 'skip']),
+    nextFireAt: z.date(),
+    lastFireAt: z.date().nullable(),
+  })
+  .strict();
+
+export type ScheduleTriggerRecord = Readonly<
+  z.output<typeof scheduleTriggerSchema>
+>;
+export type ScheduleTriggerCommandResult = Readonly<{
+  trigger: ScheduleTriggerRecord;
+  replayed: boolean;
+}>;
+
+export interface ScheduleTriggerDatabase {
+  list(
+    input: Readonly<{
+      workspaceId: string;
+      actorId: string;
+      workflowId: string;
+    }>,
+  ): Promise<readonly ScheduleTriggerRecord[]>;
+  setEnabled(
+    input: Readonly<{
+      workspaceId: string;
+      actorId: string;
+      workflowId: string;
+      triggerId: string;
+      enabled: boolean;
+      idempotencyKey: string;
+      requestHash: string;
+      requestId?: string;
+      traceId?: string;
+    }>,
+  ): Promise<ScheduleTriggerCommandResult>;
+  checkReadiness(): Promise<void>;
+  close(): Promise<void>;
+}
+
+export { ScheduleTriggerError } from './schedule-trigger-errors.js';
+
+async function authorizeScheduleReader(
+  client: PoolClient,
+  workspaceId: string,
+  actorId: string,
+  workflowId: string,
+): Promise<void> {
+  const result = await client.query(
+    `select 1 from app.workspace_memberships membership
+      join app.workspaces workspace on workspace.id=membership.workspace_id
+      join app.users actor on actor.id=membership.user_id
+      join app.workflows workflow on workflow.workspace_id=membership.workspace_id
+     where membership.workspace_id=$1 and membership.user_id=$2 and workflow.id=$3
+       and membership.status='active'
+       and membership.role in ('owner','admin','builder','operator','viewer')
+       and workspace.status='active' and actor.status='active'`,
+    [workspaceId, actorId, workflowId],
+  );
+  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
+}
+
+function mapScheduleTrigger(
+  row: Record<string, unknown>,
+): ScheduleTriggerRecord {
+  const kind = z.enum(['cron', 'interval']).parse(row.recurrence_kind);
+  return scheduleTriggerSchema.parse({
+    id: row.id,
+    workflowId: row.workflow_id,
+    workflowVersionId: row.workflow_version_id,
+    nodeId: row.node_id,
+    kind: 'schedule',
+    status: row.status,
+    healthStatus: row.health_status,
+    lastErrorCode: row.last_error_code,
+    reconciledAt: row.reconciled_at,
+    recurrence:
+      kind === 'cron'
+        ? {
+            kind,
+            expression: row.cron_expression,
+            timezone: row.timezone,
+          }
+        : { kind, intervalMinutes: row.interval_minutes },
+    misfirePolicy: row.misfire_policy,
+    nextFireAt: row.next_fire_at,
+    lastFireAt: row.last_fire_at,
+  });
+}
+
+function parseStoredScheduleTrigger(value: unknown): ScheduleTriggerRecord {
+  const stored = z.record(z.string(), z.unknown()).parse(value);
+  return scheduleTriggerSchema.parse({
+    ...stored,
+    reconciledAt:
+      stored.reconciledAt === null
+        ? null
+        : new Date(z.string().parse(stored.reconciledAt)),
+    nextFireAt: new Date(z.string().parse(stored.nextFireAt)),
+    lastFireAt:
+      stored.lastFireAt === null
+        ? null
+        : new Date(z.string().parse(stored.lastFireAt)),
+  });
+}
+
+const scheduleProjection = `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
+       trigger.node_id,trigger.status,schedule.health_status,schedule.last_error_code,
+       trigger.reconciled_at,schedule.recurrence_kind,schedule.cron_expression,
+       schedule.timezone,schedule.interval_minutes,schedule.misfire_policy,
+       schedule.next_fire_at,schedule.last_fire_at
+  from app.trigger_schedules schedule
+  join app.workflow_triggers trigger on trigger.workspace_id=schedule.workspace_id
+   and trigger.id=schedule.trigger_id`;
+
+async function readSchedule(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+): Promise<ScheduleTriggerRecord> {
+  const result = await client.query<Record<string, unknown>>(
+    `${scheduleProjection}
+      where schedule.workspace_id=$1 and trigger.workflow_id=$2 and trigger.id=$3
+        and trigger.kind='schedule'`,
+    [workspaceId, workflowId, triggerId],
+  );
+  const row = result.rows[0];
+  if (row === undefined) throw new ScheduleTriggerError('not_found');
+  return mapScheduleTrigger(row);
+}
+
+function idempotencyKeyHash(value: string): string {
+  return createHash('sha256')
+    .update(z.string().min(1).max(128).parse(value))
+    .digest('hex');
+}
+
+export function createScheduleTriggerDatabase(
+  config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
+): ScheduleTriggerDatabase {
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
+  return Object.freeze({
+    list: (input: Parameters<ScheduleTriggerDatabase['list']>[0]) =>
+      withTenantScopedClient(
+        pool,
+        {
+          workspaceId: uuidSchema.parse(input.workspaceId),
+          actorId: uuidSchema.parse(input.actorId),
+        },
+        async (client) => {
+          const workflowId = uuidSchema.parse(input.workflowId);
+          await authorizeScheduleReader(
+            client,
+            input.workspaceId,
+            input.actorId,
+            workflowId,
+          );
+          const result = await client.query<Record<string, unknown>>(
+            `${scheduleProjection}
+              where schedule.workspace_id=$1 and trigger.workflow_id=$2
+                and trigger.kind='schedule'
+                and trigger.workflow_version_id=(select published_version_id
+                  from app.workflows where workspace_id=$1 and id=$2)
+              order by trigger.node_id,trigger.id limit 1000`,
+            [input.workspaceId, workflowId],
+          );
+          return Object.freeze(result.rows.map(mapScheduleTrigger));
+        },
+      ),
+    setEnabled: async (
+      input: Parameters<ScheduleTriggerDatabase['setEnabled']>[0],
+    ) =>
+      withTenantScopedClient(
+        pool,
+        {
+          workspaceId: z.uuid().parse(input.workspaceId),
+          actorId: z.uuid().parse(input.actorId),
+        },
+        async (client) => {
+          if (!(await canManageWorkflowTrigger(client, input)))
+            throw new ScheduleTriggerError('not_found');
+          const triggerId = uuidSchema.parse(input.triggerId);
+          const workflowId = uuidSchema.parse(input.workflowId);
+          const requestHash = digestSchema.parse(input.requestHash);
+          const operation = 'schedule.trigger.setenabled';
+          const keyHash = idempotencyKeyHash(input.idempotencyKey);
+          const scope = `${input.actorId}:${triggerId}`;
+          await client.query(
+            `insert into app.idempotency_records
+              (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref,expires_at)
+             values($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb,
+               clock_timestamp()+interval '24 hours')
+             on conflict(workspace_id,operation,scope,key_hash) do nothing`,
+            [
+              generatePersistedId(),
+              input.workspaceId,
+              operation,
+              scope,
+              keyHash,
+              requestHash,
+              triggerId,
+            ],
+          );
+          const command = await client.query<{
+            request_hash: string;
+            status: string;
+            result_ref: unknown;
+          }>(
+            `select request_hash,status,result_ref from app.idempotency_records
+              where workspace_id=$1 and operation=$2 and scope=$3 and key_hash=$4
+              for update`,
+            [input.workspaceId, operation, scope, keyHash],
+          );
+          const claim = command.rows[0];
+          if (claim === undefined)
+            throw new Error('Schedule command claim is unavailable');
+          if (claim.request_hash !== requestHash)
+            throw new ScheduleTriggerError('idempotency_conflict');
+          if (claim.status === 'completed') {
+            const stored = z
+              .looseObject({ trigger: z.unknown() })
+              .parse(claim.result_ref);
+            return Object.freeze({
+              trigger: parseStoredScheduleTrigger(stored.trigger),
+              replayed: true,
+            });
+          }
+          const result = await client.query<{
+            workflow_id: string;
+            recurrence_kind: 'cron' | 'interval';
+            cron_expression: string | null;
+            timezone: string | null;
+            interval_minutes: number | null;
+            misfire_policy: 'catch_up_once' | 'skip';
+            anchor_at: Date;
+            next_fire_at: Date;
+          }>(
+            `select trigger.workflow_id,schedule.recurrence_kind,schedule.cron_expression,
+                    schedule.timezone,schedule.interval_minutes,schedule.misfire_policy,
+                    schedule.anchor_at,schedule.next_fire_at
+               from app.trigger_schedules schedule
+               join app.workflow_triggers trigger on trigger.id=schedule.trigger_id
+               where schedule.workspace_id=$1 and schedule.trigger_id=$2
+                 and trigger.workflow_id=$3
+                 and trigger.workflow_version_id=(select published_version_id
+                   from app.workflows where workspace_id=$1 and id=$3)
+                 and trigger.kind='schedule' for update of schedule,trigger`,
+            [input.workspaceId, triggerId, workflowId],
+          );
+          const row = result.rows[0];
+          if (row === undefined) throw new ScheduleTriggerError('not_found');
+          let nextFireAt = row.next_fire_at;
+          if (input.enabled && row.misfire_policy === 'skip') {
+            const observed = await client.query<{ observed_at: Date }>(
+              'select clock_timestamp() observed_at',
+            );
+            const observedAt = observed.rows[0]?.observed_at;
+            if (observedAt === undefined)
+              throw new Error('Schedule database observation is unavailable');
+            const recurrence = parseScheduleRecurrence(
+              row.recurrence_kind === 'cron'
+                ? {
+                    kind: 'cron',
+                    expression: row.cron_expression,
+                    timezone: row.timezone,
+                  }
+                : {
+                    kind: 'interval',
+                    intervalMinutes: row.interval_minutes,
+                  },
+            );
+            nextFireAt = resolveScheduleObservation(
+              recurrence,
+              row.anchor_at,
+              observedAt,
+            ).nextAt;
+          }
+          await client.query(
+            `update app.trigger_schedules set status=$3,health_status=$4,
+               next_fire_at=$5,lease_owner=null,lease_token=null,lease_acquired_at=null,
+               lease_expires_at=null,updated_at=clock_timestamp()
+              where workspace_id=$1 and trigger_id=$2`,
+            [
+              input.workspaceId,
+              triggerId,
+              input.enabled ? 'enabled' : 'disabled',
+              input.enabled ? 'healthy' : 'disabled',
+              nextFireAt,
+            ],
+          );
+          await client.query(
+            `update app.workflow_triggers set status=$3,health_status=$4,
+               updated_at=clock_timestamp() where workspace_id=$1 and id=$2`,
+            [
+              input.workspaceId,
+              triggerId,
+              input.enabled ? 'active' : 'disabled',
+              input.enabled ? 'healthy' : 'disabled',
+            ],
+          );
+          await refreshWorkflowActivation(
+            client,
+            input.workspaceId,
+            row.workflow_id,
+          );
+          await client.query(
+            `insert into app.audit_events
+              (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
+             values($1,$2,$3,$4,'schedule_trigger',$5,$6,$7,$8::jsonb)`,
+            [
+              generatePersistedId(),
+              input.workspaceId,
+              input.actorId,
+              input.enabled
+                ? 'schedule_trigger.enabled'
+                : 'schedule_trigger.disabled',
+              triggerId,
+              input.requestId ?? null,
+              input.traceId ?? null,
+              JSON.stringify({ workflowId }),
+            ],
+          );
+          const trigger = await readSchedule(
+            client,
+            input.workspaceId,
+            workflowId,
+            triggerId,
+          );
+          await client.query(
+            `update app.idempotency_records set status='completed',result_ref=$1::jsonb,
+               updated_at=clock_timestamp() where workspace_id=$2 and operation=$3
+               and scope=$4 and key_hash=$5`,
+            [
+              JSON.stringify({ schemaVersion: 1, trigger }),
+              input.workspaceId,
+              operation,
+              scope,
+              keyHash,
+            ],
+          );
+          return Object.freeze({
+            trigger,
+            replayed: false,
+          });
+        },
+      ),
+    checkReadiness: async () => {
+      await pool.query('select 1 from app.trigger_schedules limit 0');
+    },
+    close: () => lease.close(),
+  });
+}

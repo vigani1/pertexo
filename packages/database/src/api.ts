@@ -88,11 +88,11 @@ export type { PublishedWorkflowV2Projection } from './execution/published-workfl
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,
-} from './triggers/schedule-triggers.js';
+} from './triggers/schedule-trigger-database.js';
 export type {
   ScheduleTriggerDatabase,
   ScheduleTriggerRecord,
-} from './triggers/schedule-triggers.js';
+} from './triggers/schedule-trigger-database.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,

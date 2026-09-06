@@ -115,12 +115,12 @@ export type {
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
 } from './execution/published-workflow-reader.js';
-export { createScheduleTriggerScanner } from './triggers/schedule-triggers.js';
+export { createScheduleTriggerScanner } from './triggers/schedule-trigger-scanner.js';
 export type {
   ScanDueSchedulesResult,
   ScheduleCheckpointFactory,
   ScheduleTriggerScanner,
-} from './triggers/schedule-triggers.js';
+} from './triggers/schedule-trigger-scanner.js';
 export {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
