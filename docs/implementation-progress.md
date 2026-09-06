@@ -19,10 +19,11 @@ The historical completion statements below describe their original evidence;
 they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
-Current delivery is **not production-ready**. A follow-up review reopened
-IWA-01's missing traversal bound and LC-002's missing CI coverage ratchet and
-identified artifact authorization-policy and contract-maintenance gaps. Prior
-regression evidence remains valid but does not close those requirements.
+Current delivery is **not production-ready**. Follow-up review identified
+incomplete audit requirements. IWA-01's traversal bound is now verified;
+LC-002's CI coverage ratchet and the artifact authorization-policy and
+contract-maintenance gaps remain open. Prior regression evidence remains valid
+but does not close those remaining requirements.
 The requirement-to-evidence matrix below maps
 canonical owners, tests and ADRs, and explicitly identifies four unallocated
 API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
@@ -32,9 +33,10 @@ original verdict after each fix.
 
 ### Follow-up review — confirmed gaps
 
-- [ ] IWA-01: enforce finite, strictly progressing, bounded raw cron traversal
-      and fail closed on a broken iterator. The earlier DST regression fix
-      alone did not satisfy the audit's full required change.
+- [x] IWA-01: finite, strictly progressing raw cron traversal now fails closed
+      in both directions, with a 256-step limit. Eight cursor-fault regressions,
+      all 24 recurrence cases, and eight fresh-PostgreSQL schedule cases pass.
+      The earlier DST regression fix alone did not satisfy the full requirement.
 - [ ] LC-002: publish a lifecycle-command risk cohort in CI and reject
       unreviewed new lifecycle branches. The real process/marker tests remain
       valuable, but the original audit also explicitly required this ratchet.
@@ -73,7 +75,7 @@ startup evidence or qualify production deployment.
 
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
-| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Partial; DST regression corrected (16 recurrence cases, 8 real-PG cases), but explicit fail-closed traversal bound/progress assertion remains required |
+| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; finite/strict raw progress and a 256-step fail-closed bound in both directions; 24 recurrence cases including eight cursor-fault regressions and eight fresh-PG schedule cases pass |
 | IWA-02 | Rendered API/worker role configuration and startup contract | Fixed in repository; 15 deployment/parser tests and exact rendered-task image startup pass for both cohorts; deployed AWS evidence remains external |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
@@ -595,6 +597,18 @@ PostgreSQL schedule suites pass eight cases against an isolated migrated
 database. Database build/typecheck and focused ESLint pass. Independent
 read-only review found no remaining defect in these recurrence changes.
 Production DST traffic is not claimed as exercised.
+
+Follow-up verification closes the missing bound requirement: each forward and
+reverse cursor read must return a finite raw instant strictly beyond its prior
+raw position in the appropriate direction. Both traversals stop after at most
+256 reads, above the 180 minute slots in the existing three-hour overlap
+resolution window. Failure throws rather than spinning or accepting a stale
+occurrence. Eight deterministic subprocess cases exercise repeated, reversed,
+nonfinite, and bound-exhausting cursors in both directions. The stuck-cursor
+case timed out against the unguarded implementation; the final recurrence suite
+passes 24 cases and both fresh-PostgreSQL schedule suites pass eight cases.
+Build, typecheck and focused lint pass. This corrects the earlier premature
+closure without changing ADR 014 or the cron-parser version.
 
 ### IWA-18 — documentation Git subprocess isolation
 
