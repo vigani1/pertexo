@@ -96,6 +96,16 @@ with a test registry, not a claim of a real provider execution. All 273 engine
 tests, typecheck/build/lint, and two adjacent real-PG/Redis nested-Parallel worker
 restart/recovery cases pass. No IWA-04 concurrency behavior or limit was relaxed.
 
+The scheduler checkpoint's full static/unit/coverage run passes the unchanged
+package percentage thresholds. Its selected risk report now has 107 files,
+4,945 coverable lines, 474 reviewed uncovered branches and 12 explicitly
+unreviewed branches. Eleven unchanged scheduler decision fingerprints retain
+their reviews at current locations; removed or newly covered decisions no
+longer retain stale entries. Nine new scheduler locations (including three
+locationless V8 branches) remain unreviewed rather than inheriting a previous
+decision's classification. The other three unreviewed locations remain the
+address-policy and stream cancellation/deadline qualifications described above.
+
 ### IWA-15 — Executable Validate checkpoint
 
 `core.validate@1` implements ADR 032 through one browser-safe rule schema and
