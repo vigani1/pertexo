@@ -11,6 +11,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // The recursive workspace gate runs several suites concurrently. Bound
+    // worker-test forks so compiled lifecycle children can start on time.
+    maxWorkers: 4,
     exclude: ['dist/**', 'node_modules/**', '**/*.integration.test.ts'],
   },
 });
