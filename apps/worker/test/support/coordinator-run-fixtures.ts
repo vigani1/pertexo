@@ -20,6 +20,8 @@ import {
   engineVersion,
   forEachWorkflowId,
   forEachWorkflowVersionId,
+  nestedParallelWorkflowId,
+  nestedParallelWorkflowVersionId,
   parallelWorkflowId,
   parallelWorkflowVersionId,
   switchWorkflowId,
@@ -106,6 +108,14 @@ export function acceptForEachRun(): Promise<AcceptedRun> {
     iterationBudget: 1_000,
     workflowId: forEachWorkflowId,
     workflowVersionId: forEachWorkflowVersionId,
+  });
+}
+
+export function acceptNestedParallelRun(): Promise<AcceptedRun> {
+  return acceptFixtureRun({
+    iterationBudget: 2,
+    workflowId: nestedParallelWorkflowId,
+    workflowVersionId: nestedParallelWorkflowVersionId,
   });
 }
 

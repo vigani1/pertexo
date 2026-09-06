@@ -32,7 +32,7 @@ original verdict after each fix.
 | IWA-02 | Rendered API/worker role configuration and startup contract | In progress; required role injection corrected; 15 deployment/parser tests pass; isolated image smoke passes, exact rendered-task image smoke remains |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
-| IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
+| IWA-04 | Nested Parallel concurrency | Fixed; admission resolves nested Parallel owners and scopes caps to their enclosing iteration path; 10 engine regressions and 2 real-worker recovery cases pass |
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
 | IWA-06 | Replay-lineage-aware retention | Fixed; forward migration 0076 protects replay sources in destructive and dry-run summary selection; 5 lineage and 3 inventory real-PG cases pass, including active descendants, page boundaries, eventual expiry and legal holds |
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
@@ -76,6 +76,21 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-04 — Nested Parallel admission checkpoint
+
+Admission indexes structured-body nodes as well as root nodes. A nested
+Parallel cap belongs to its enclosing iteration and parent branch scope; a
+root Parallel still shares its cap across descendant loop iterations. Missing
+required iteration scope fails closed. Ten engine cases cover checkpoint
+versions, cap sizes, nested loops, outer caps and retry admission. Two
+PostgreSQL/Redis worker cases verify durable attempts, fresh workers, Redis-loss
+recovery, and independent capacity release in sibling iterations. A shared
+recovery harness preserves the existing settled-Merge recovery proof.
+
+The primary reviewer reran all ten engine cases and both real-worker cases.
+IWA-05 remains separate: this checkpoint does not change skipped-Merge
+semantics.
 
 ### IWA-16 — Truthful activation projection checkpoint
 

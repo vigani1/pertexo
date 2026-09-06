@@ -126,6 +126,8 @@ const parallelWorkflowId = randomUUID();
 const parallelWorkflowVersionId = randomUUID();
 const forEachWorkflowId = randomUUID();
 const forEachWorkflowVersionId = randomUUID();
+const nestedParallelWorkflowId = randomUUID();
+const nestedParallelWorkflowVersionId = randomUUID();
 const engineVersion = 'phase3-engine-v1';
 const ownerPool = new Pool({
   connectionString: databaseUrl(migrationUrl),
@@ -344,6 +346,10 @@ async function setupFixture(): Promise<void> {
       workflowId: forEachWorkflowId,
       workflowVersionId: forEachWorkflowVersionId,
     },
+    nestedParallel: {
+      workflowId: nestedParallelWorkflowId,
+      workflowVersionId: nestedParallelWorkflowVersionId,
+    },
     parallel: {
       workflowId: parallelWorkflowId,
       workflowVersionId: parallelWorkflowVersionId,
@@ -456,6 +462,8 @@ export {
   execFileAsync,
   forEachWorkflowId,
   forEachWorkflowVersionId,
+  nestedParallelWorkflowId,
+  nestedParallelWorkflowVersionId,
   invocationKey,
   migrateDatabase,
   migrationUrl,

@@ -1,34 +1,24 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '@pertexo/node-catalog';
 
 import {
-  JOB_NAME,
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  QUEUE_NAME,
-  Queue,
   cleanupFixture,
-  createCoordinatorRuntime,
-  createNodeAttemptRuntime,
-  createPlatformNodeRegistryForRelease,
-  createQueueProducer,
   databaseUrl,
   enabled,
   parseCheckpoint,
   parseDatabaseConfig,
-  randomUUID,
-  redisConnection,
-  redisUrl,
   restoreServices,
   setupFixture,
-  waitFor,
   workerQuery,
   workerUrl,
   workspaceId,
 } from './coordinator-consumer.fixtures.js';
 import {
+  acceptNestedParallelRun,
   acceptParallelRun,
-  waitForAttemptOutbox,
-  waitForCoordinatorOutbox,
 } from './support/coordinator-run-fixtures.js';
+import { createCoordinatorRecoveryHarness } from './support/coordinator-recovery-harness.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 
@@ -41,183 +31,35 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
 
   it('recovers bounded Parallel and settled Merge after Redis loss on fresh workers', async () => {
     const accepted = await acceptParallelRun();
-    const database = parseDatabaseConfig({
-      connectionString: databaseUrl(workerUrl),
-      max: 6,
-    });
-    const runtimeCapabilities = {
-      connections: () => ({
-        resolve: vi.fn(() => Promise.reject(new Error('not used'))),
+    const recovery = await createCoordinatorRecoveryHarness({
+      accepted,
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 6,
       }),
-      artifacts: () => ({
-        write: vi.fn(() => Promise.reject(new Error('not used'))),
-      }),
-    };
-    const startWorkers = async () => {
-      const coordinator = await createCoordinatorRuntime({
-        database,
-        maximumAdmissions: 10,
-        releaseCohort: 'for_each_activation',
-        redisUrl,
-      });
-      const attempts = await createNodeAttemptRuntime(
-        {
-          database,
-          heartbeatIntervalMillis: 1_000,
-          leaseDurationSeconds: 10,
-          releaseCohort: 'for_each_activation',
-          redisUrl,
-          workerId: `parallel-${randomUUID()}`,
-        },
-        {
-          registry: createPlatformNodeRegistryForRelease(
-            PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-          ),
-          runtimeCapabilities,
-        },
-      );
-      await Promise.all([
-        coordinator.consumer.waitUntilReady(5_000),
-        attempts.consumer.waitUntilReady(5_000),
-      ]);
-      return { attempts, coordinator };
-    };
-    const producer = createQueueProducer({ redisUrl });
-    const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-      connection: redisConnection(),
+      registryRelease: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+      runtimeCapabilities: {
+        connections: () => ({
+          resolve: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+        artifacts: () => ({
+          write: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+      },
+      workerIdPrefix: 'parallel',
     });
-    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-      connection: redisConnection(),
-    });
-    let workers = await startWorkers();
-    const attemptOutboxes: string[] = [];
-    const coordinatorOutboxes = [accepted.outboxEventId];
-    const publishCoordinator = async (
-      outboxEventId: string,
-      expectedRevision: number,
-    ) => {
-      const published = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId,
-        },
-      });
-      const result = await waitFor(
-        async () => {
-          const [rows, job] = await Promise.all([
-            workerQuery<{ revision: number }>(
-              `select revision from app.run_checkpoints
-                 where workspace_id=$1 and workflow_run_id=$2`,
-              [workspaceId, accepted.runId],
-            ),
-            coordinatorQueue.getJob(published.jobId),
-          ]);
-          return {
-            failedReason: job?.failedReason,
-            revision: rows[0]?.revision,
-            state: await job?.getState(),
-          };
-        },
-        ({ revision, state }) =>
-          revision === expectedRevision || state === 'failed',
-      );
-      if (result.revision !== expectedRevision)
-        throw new Error(
-          `Parallel coordinator failed: ${result.failedReason ?? 'unknown'}`,
-        );
-    };
-    const executeNext = async (expectedNodeId: string) => {
-      const attempt = await waitForAttemptOutbox(
-        accepted.runId,
-        attemptOutboxes,
-      );
-      attemptOutboxes.push(attempt.outboxEventId);
-      const published = await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: attempt.nodeRunId,
-          attemptId: attempt.attemptId,
-          outboxEventId: attempt.outboxEventId,
-        },
-      });
-      const result = await waitFor(
-        async () => {
-          const [rows, job] = await Promise.all([
-            workerQuery<{ node_id: string; status: string }>(
-              `select node_id,status from app.node_runs
-                 where workspace_id=$1 and id=$2`,
-              [workspaceId, attempt.nodeRunId],
-            ),
-            attemptQueue.getJob(published.jobId),
-          ]);
-          return {
-            failedReason: job?.failedReason,
-            rows,
-            state: await job?.getState(),
-          };
-        },
-        ({ rows, state }) =>
-          (rows[0]?.node_id === expectedNodeId &&
-            rows[0].status === 'succeeded') ||
-          state === 'failed',
-      );
-      if (result.rows[0]?.status !== 'succeeded')
-        throw new Error(
-          `Parallel attempt failed: ${result.failedReason ?? 'unknown'}`,
-        );
-      return attempt;
-    };
-    const continueAfter = async (expectedRevision: number) => {
-      const outboxEventId = await waitForCoordinatorOutbox(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(outboxEventId);
-      await publishCoordinator(outboxEventId, expectedRevision);
-      return outboxEventId;
-    };
 
     try {
-      await producer.waitUntilReady(5_000);
-      await publishCoordinator(accepted.outboxEventId, 1);
-      await executeNext('manual');
-      await continueAfter(2);
-      const parallelAttempt = await executeNext('parallel');
-      const parallelContinuation = await waitForCoordinatorOutbox(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(parallelContinuation);
+      await recovery.publishCoordinator(accepted.outboxEventId, 1);
+      await recovery.executeNext('manual');
+      await recovery.continueAfter(2);
+      const parallelAttempt = await recovery.executeNext('parallel');
+      const parallelContinuation = await recovery.nextCoordinatorOutbox();
+      await recovery.redeliverAttempt(parallelAttempt);
+      await recovery.restart({ obliterateQueues: true });
 
-      await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: parallelAttempt.nodeRunId,
-          attemptId: parallelAttempt.attemptId,
-          outboxEventId: parallelAttempt.outboxEventId,
-        },
-      });
-      await Promise.allSettled([
-        workers.attempts.close(),
-        workers.coordinator.close(),
-      ]);
-      await Promise.all([
-        coordinatorQueue.obliterate({ force: true }),
-        attemptQueue.obliterate({ force: true }),
-      ]);
-      workers = await startWorkers();
-
-      await publishCoordinator(parallelContinuation, 3);
-      await publishCoordinator(parallelContinuation, 3);
+      await recovery.publishCoordinator(parallelContinuation, 3);
+      await recovery.publishCoordinator(parallelContinuation, 3);
       const bounded = await workerQuery<{
         attempt_count: string;
         node_id: string;
@@ -238,14 +80,14 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
         { attempt_count: '1', node_id: 'right', status: 'ready' },
       ]);
 
-      await executeNext('left');
-      await continueAfter(4);
-      await executeNext('right');
-      await continueAfter(5);
-      await executeNext('merge');
-      await continueAfter(6);
-      await executeNext('terminate');
-      await continueAfter(7);
+      await recovery.executeNext('left');
+      await recovery.continueAfter(4);
+      await recovery.executeNext('right');
+      await recovery.continueAfter(5);
+      await recovery.executeNext('merge');
+      await recovery.continueAfter(6);
+      await recovery.executeNext('terminate');
+      await recovery.continueAfter(7);
 
       const terminal = await workerQuery<{
         attempts: string;
@@ -271,13 +113,112 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
         ],
       });
     } finally {
-      await Promise.allSettled([
-        workers.attempts.close(),
-        workers.coordinator.close(),
-        producer.close(),
-        coordinatorQueue.close(),
-        attemptQueue.close(),
+      await recovery.close();
+    }
+  }, 30_000);
+
+  it('persists nested Parallel caps independently per For Each iteration', async () => {
+    const accepted = await acceptNestedParallelRun();
+    const recovery = await createCoordinatorRecoveryHarness({
+      accepted,
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 6,
+      }),
+      registryRelease: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      runtimeCapabilities: {
+        connections: () => ({
+          resolve: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+        artifacts: () => ({
+          write: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+      },
+      workerIdPrefix: 'nested-parallel',
+    });
+
+    try {
+      await recovery.publishCoordinator(accepted.outboxEventId, 1);
+      await recovery.executeNext('manual');
+      await recovery.continueAfter(2);
+      await recovery.executeNext('loop');
+      await recovery.continueAfter(3);
+      await recovery.executeNext('parallel', 0);
+      await recovery.continueAfter(4);
+      await recovery.executeNext('parallel', 1);
+      const lastContinuation = await recovery.continueAfter(5);
+
+      await recovery.restart();
+
+      await recovery.publishCoordinator(lastContinuation, 5);
+      await recovery.publishCoordinator(lastContinuation, 5);
+
+      await recovery.executeNext('left', 0);
+      await recovery.continueAfter(6);
+
+      const branchRuns = await workerQuery<{
+        attempt_count: string;
+        node_id: string;
+        ordinal: number;
+        status: string;
+      }>(
+        `select node.node_id,
+                (node.branch_context->'iterationPath'->0->>'ordinal')::int ordinal,
+                node.status,
+                count(attempt.id)::text attempt_count
+           from app.node_runs node
+           left join app.node_attempts attempt
+             on attempt.workspace_id=node.workspace_id
+            and attempt.node_run_id=node.id
+          where node.workspace_id=$1 and node.workflow_run_id=$2
+            and node.node_id in ('left','right')
+          group by node.node_id,ordinal,node.status
+          order by ordinal,node.node_id`,
+        [workspaceId, accepted.runId],
+      );
+      expect(branchRuns).toEqual([
+        {
+          attempt_count: '1',
+          node_id: 'left',
+          ordinal: 0,
+          status: 'succeeded',
+        },
+        {
+          attempt_count: '1',
+          node_id: 'right',
+          ordinal: 0,
+          status: 'ready',
+        },
+        {
+          attempt_count: '1',
+          node_id: 'left',
+          ordinal: 1,
+          status: 'ready',
+        },
+        {
+          attempt_count: '0',
+          node_id: 'right',
+          ordinal: 1,
+          status: 'ready',
+        },
       ]);
+      const checkpoints = await workerQuery<{ scheduler_state: unknown }>(
+        `select scheduler_state from app.run_checkpoints
+           where workspace_id=$1 and workflow_run_id=$2`,
+        [workspaceId, accepted.runId],
+      );
+      expect(parseCheckpoint(checkpoints[0]?.scheduler_state)).toMatchObject({
+        remainingIterationBudget: 0,
+        loops: [
+          {
+            activeOrdinals: [0, 1],
+            nextOrdinal: 2,
+            terminalOrdinals: [],
+          },
+        ],
+      });
+    } finally {
+      await recovery.close();
     }
   }, 30_000);
 });
