@@ -9,6 +9,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 const fixturePath = fileURLToPath(
   new URL('./lifecycle-command-process.fixture.mjs', import.meta.url),
 );
+const entrypointPath = fileURLToPath(
+  new URL('../dist/main.js', import.meta.url),
+);
 const STARTUP_TIMEOUT_MILLIS = 5_000;
 const SHUTDOWN_TIMEOUT_MILLIS = 5_000;
 const PROCESS_TEST_TIMEOUT_MILLIS =
@@ -49,9 +52,17 @@ async function startFixture(mode: string): Promise<Fixture> {
     join(tmpdir(), 'pertexo-lifecycle-command-'),
   );
   const markerPath = join(markerDirectory, 'ready');
-  const child = spawn(process.execPath, [fixturePath, mode, markerPath], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const entrypoint = mode === 'entrypoint-failure';
+  const child = spawn(
+    process.execPath,
+    entrypoint ? [entrypointPath] : [fixturePath, mode, markerPath],
+    {
+      env: entrypoint
+        ? { ...process.env, LIFECYCLE_COMMAND_LEASE_OWNER: '' }
+        : undefined,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   const state: ChildState = { error: undefined, output: '' };
   const onError = (error: Error): void => {
     state.error = error;
@@ -240,6 +251,27 @@ describe('compiled lifecycle command process lifecycle', () => {
       expect(state.output).toContain('readiness.cleared');
       expect(state.output).toContain('ledger.closed');
       expect(state.output).toContain('telemetry.closed');
+    },
+    PROCESS_TEST_TIMEOUT_MILLIS,
+  );
+
+  it(
+    'runs the compiled entrypoint failure formatter with a sanitized exit',
+    async () => {
+      const { child, state } = await startFixture('entrypoint-failure');
+      const { code, signal } = await waitForExit(
+        child,
+        state,
+        STARTUP_TIMEOUT_MILLIS,
+      );
+
+      expect(signal).toBeNull();
+      expect(code).toBe(1);
+      expect(state.output).toContain(
+        '"event":"lifecycle_command.process_failed"',
+      );
+      expect(state.output).toContain('"errorType":"ZodError"');
+      expect(state.output).not.toContain('LIFECYCLE_COMMAND_LEASE_OWNER');
     },
     PROCESS_TEST_TIMEOUT_MILLIS,
   );

@@ -11,6 +11,46 @@ import {
   type LifecycleCommandBootstrapModules,
 } from '../src/main.js';
 
+vi.mock('@pertexo/artifact-store', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createDualRegionControlLedger: vi.fn(() => ({
+    append: vi.fn(),
+    checkReadiness: vi.fn(),
+    close: vi.fn(),
+    read: vi.fn(),
+    reconcile: vi.fn(),
+  })),
+}));
+vi.mock('@pertexo/database/lifecycle', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createWorkspaceLifecycleCommandCoordinator: vi.fn(() => ({
+    checkReadiness: vi.fn(),
+    close: vi.fn(),
+    processNext: vi.fn(),
+  })),
+}));
+vi.mock('@pertexo/observability', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createMaintenanceMetrics: vi.fn(() => ({
+    recordControlLedgerReconciliation: vi.fn(),
+    recordLifecycleCommand: vi.fn(),
+  })),
+}));
+vi.mock('@pertexo/observability/logging', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createStructuredLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  })),
+}));
+vi.mock('../src/run.js', () => ({
+  runLifecycleCommandWorker: vi.fn(() => Promise.resolve()),
+}));
+
 const config = parseLifecycleCommandConfig({
   CONTROL_LEDGER_ACCESS_KEY_ID: 'primary-key',
   CONTROL_LEDGER_BUCKET: 'pertexo-control-primary',
@@ -215,5 +255,116 @@ describe('lifecycle command bootstrap', () => {
     expect(readiness.clear).toHaveBeenCalledOnce();
     expect(telemetry.shutdown).toHaveBeenCalledOnce();
     expect(process.removeListener).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves worker-owned cleanup to the worker after an invoked worker fails', async () => {
+    const process = processDouble();
+    const telemetry = telemetryDouble();
+    const readiness = {
+      clear: vi.fn(() => Promise.resolve()),
+      mark: vi.fn(() => Promise.resolve()),
+    };
+    const workerError = new Error('worker failed');
+    const logger = modules().logging.createStructuredLogger(
+      config.observability,
+    );
+
+    await expect(
+      bootstrapLifecycleCommand({
+        config,
+        createReadinessMarker: () => readiness,
+        createTelemetryLifecycle: () => telemetry,
+        loadModules: () =>
+          Promise.resolve(
+            modules({
+              logger,
+              runWorker: () => Promise.reject(workerError),
+            }),
+          ),
+        process,
+      }),
+    ).rejects.toBe(workerError);
+
+    expect(telemetry.shutdown).not.toHaveBeenCalled();
+    expect(readiness.clear).not.toHaveBeenCalled();
+    expect(process.removeListener).toHaveBeenCalledTimes(2);
+  });
+
+  it('logs and rethrows non-Error worker failures without assuming a name', async () => {
+    const process = processDouble();
+    const telemetry = telemetryDouble();
+    const readiness = {
+      clear: vi.fn(() => Promise.resolve()),
+      mark: vi.fn(() => Promise.resolve()),
+    };
+    const logger = modules().logging.createStructuredLogger(
+      config.observability,
+    );
+    const failure = { reason: 'worker failed without an Error object' };
+    const runWorker = vi.fn<() => Promise<void>>();
+    runWorker.mockRejectedValueOnce(failure);
+
+    await expect(
+      bootstrapLifecycleCommand({
+        config,
+        createReadinessMarker: () => readiness,
+        createTelemetryLifecycle: () => telemetry,
+        loadModules: () => Promise.resolve(modules({ logger, runWorker })),
+        process,
+      }),
+    ).rejects.toBe(failure);
+    expect(Reflect.get(logger, 'fatal')).toHaveBeenCalledWith(
+      'lifecycle_command.bootstrap_failed',
+      { errorType: 'object' },
+      failure,
+    );
+  });
+
+  it('uses production defaults when dependency overrides are omitted', async () => {
+    const environment = {
+      CONTROL_LEDGER_ACCESS_KEY_ID: 'primary-key',
+      CONTROL_LEDGER_BUCKET: 'pertexo-control-primary',
+      CONTROL_LEDGER_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
+      CONTROL_LEDGER_MIN_RETENTION_DAYS: '30',
+      CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
+      CONTROL_LEDGER_RECOVERY_BUCKET: 'pertexo-control-recovery',
+      CONTROL_LEDGER_RECOVERY_ENDPOINT: 'https://s3.eu-west-1.amazonaws.com',
+      CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS: '30',
+      CONTROL_LEDGER_RECOVERY_REGION: 'eu-west-1',
+      CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
+      CONTROL_LEDGER_REGION: 'eu-central-1',
+      CONTROL_LEDGER_SECRET_ACCESS_KEY: 'primary-secret',
+      DATABASE_LIFECYCLE_COMMAND_URL:
+        'postgresql://lifecycle:secret@localhost:5432/pertexo',
+      LIFECYCLE_COMMAND_LEASE_OWNER: 'lifecycle:test-defaults',
+    };
+    for (const [name, value] of Object.entries(environment))
+      vi.stubEnv(name, value);
+
+    await expect(
+      bootstrapLifecycleCommand({
+        loadModules: () => Promise.resolve(modules()),
+      }),
+    ).resolves.toBeUndefined();
+
+    vi.unstubAllEnvs();
+  });
+
+  it('loads the runtime modules through the production dynamic-import path', async () => {
+    const process = processDouble();
+    const telemetry = telemetryDouble();
+    const readiness = {
+      clear: vi.fn(() => Promise.resolve()),
+      mark: vi.fn(() => Promise.resolve()),
+    };
+
+    await expect(
+      bootstrapLifecycleCommand({
+        config,
+        createReadinessMarker: () => readiness,
+        createTelemetryLifecycle: () => telemetry,
+        process,
+      }),
+    ).resolves.toBeUndefined();
   });
 });

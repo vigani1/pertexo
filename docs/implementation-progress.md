@@ -21,9 +21,8 @@ its correction and relevant regression verification are recorded here.
 
 Current delivery is **not production-ready**. Follow-up review identified
 incomplete audit requirements. IWA-01's traversal bound and the artifact
-authorization-policy/contract corrections are now verified. LC-002's CI
-coverage ratchet remains open. Prior regression evidence remains valid but
-does not close that remaining requirement.
+authorization-policy/contract corrections and LC-002's CI coverage ratchet
+are now verified locally. The four API scope decisions remain unresolved.
 The requirement-to-evidence matrix below maps
 canonical owners, tests and ADRs, and explicitly identifies four unallocated
 API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
@@ -37,9 +36,9 @@ original verdict after each fix.
       in both directions, with a 256-step limit. Eight cursor-fault regressions,
       all 24 recurrence cases, and eight fresh-PostgreSQL schedule cases pass.
       The earlier DST regression fix alone did not satisfy the full requirement.
-- [ ] LC-002: publish a lifecycle-command risk cohort in CI and reject
-      unreviewed new lifecycle branches. The real process/marker tests remain
-      valuable, but the original audit also explicitly required this ratchet.
+- [x] LC-002: the root CI coverage command now includes the four-file
+      lifecycle-command risk cohort, with percentage floors and a strict
+      missing-file/unreviewed-branch gate. All 25 application tests pass.
 - [x] Artifact authorization: API and locked database rechecks now share the
       pure workspace policy; direct tests cover every role/capability mapping,
       with a real database read/upload role matrix. The policy remains in the
@@ -50,6 +49,24 @@ original verdict after each fix.
 - [ ] Four named API surfaces: obtain an explicit scope decision and implement
       the resulting contracts, authorization, persistence and tests, or obtain
       an approved plan deferral. Recording an allocation gap is not approval.
+
+### Follow-up lifecycle-command coverage verification
+
+The root coverage command now runs the lifecycle-command coverage suite and
+publishes its exact `config.ts`, `main.ts`, `readiness-marker.ts`, and `run.ts`
+inventory. The risk report rejects missing cohorts, inventory drift, and any
+unreviewed lifecycle-command branch. Existing cohort thresholds are unchanged.
+
+Primary verification: 25 application tests and all 10 risk-report tests pass.
+Coverage is 77/84 statements, 43/46 branches, 14/19 functions and 77/81 lines,
+above the new 90/90/70/94 percent floors respectively. Three executable-only
+branch locations have explicit source-fingerprinted reviews; subprocess
+counters are not presented as unit coverage. The real compiled entrypoint's
+sanitized failure exit is tested, while its defensive non-Error formatter
+branch remains explicitly unexecuted. Existing SIGINT/SIGTERM and readiness
+cleanup process tests remain intact. The aggregate report records 470 reviewed
+and 22 pre-existing unreviewed branches outside this lifecycle gate, across
+116 selected files and 5,097 coverable lines; this is not whole-tree coverage.
 
 ### Follow-up artifact policy and contract verification
 
@@ -120,7 +137,7 @@ startup evidence or qualify production deployment.
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
 | IWA-19 | Worker process-test timeout and child cleanup | Fixed; startup and shutdown retain separate five-second limits within an eleven-second total budget; worker test forks are bounded under concurrent workspace runs; five compiled-process cases pass and failed cases terminate their child |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Fixed; only the exact active abort reason is suppressed; distinct operation failures and cleanup failures remain fatal; lifecycle suite passes 16 tests |
-| LC-002 | Lifecycle-command process/readiness cleanup assurance | Partial; real process/marker cleanup tests pass (4 files / 16 cases), but the original application risk-cohort CI ratchet remains required |
+| LC-002 | Lifecycle-command process/readiness cleanup assurance | Fixed locally: 25 tests; four-file CI risk cohort, exact denominator reporting, and missing-file/unreviewed-branch gate; three executable-only branches explicitly reviewed |
 
 Additional audit qualifications are part of the remediation review: truthful
 OBS-005/QUEUE-006 coverage scope and OBS-006 repository/external distinction;

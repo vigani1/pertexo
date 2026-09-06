@@ -46,4 +46,21 @@ describe('parseLifecycleCommandConfig', () => {
       }),
     ).toThrow('timeout budget must be shorter than the lease');
   });
+
+  it('requires exported telemetry in production', () => {
+    expect(() =>
+      parseLifecycleCommandConfig({
+        ...environment,
+        NODE_ENV: 'production',
+      }),
+    ).toThrow('requires OTLP telemetry export');
+
+    expect(
+      parseLifecycleCommandConfig({
+        ...environment,
+        NODE_ENV: 'production',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
+      }).observability.otlpHttpEndpoint,
+    ).toBe('https://otel.example.test');
+  });
 });

@@ -241,4 +241,25 @@ describe('runLifecycleCommandWorker', () => {
     expect(input.processNext).not.toHaveBeenCalled();
     expect(input.readiness.mark).not.toHaveBeenCalled();
   });
+
+  it('retains every cleanup failure in the aggregate error', async () => {
+    const input = resources([]);
+    const markerError = new Error('marker cleanup failed');
+    const coordinatorError = new Error('database cleanup failed');
+    const ledgerError = new Error('ledger cleanup failed');
+    const telemetryError = new Error('telemetry cleanup failed');
+    input.controller.abort(new Error('stop before cleanup'));
+    input.readiness.clear
+      .mockResolvedValueOnce()
+      .mockRejectedValueOnce(markerError);
+    input.coordinator.close.mockRejectedValueOnce(coordinatorError);
+    input.ledger.close.mockImplementationOnce(() => {
+      throw ledgerError;
+    });
+    input.telemetry.shutdown.mockRejectedValueOnce(telemetryError);
+
+    await expect(runLifecycleCommandWorker(input)).rejects.toMatchObject({
+      errors: [markerError, coordinatorError, ledgerError, telemetryError],
+    });
+  });
 });
