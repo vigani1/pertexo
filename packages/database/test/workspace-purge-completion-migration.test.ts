@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('workspace purge completion migration', () => {
   it('persists one fenced completion command and minimizes the tombstone', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0080_expired_artifact_upload_retention.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('CREATE TABLE app.workspace_purge_completions');

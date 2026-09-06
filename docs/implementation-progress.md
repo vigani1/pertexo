@@ -50,6 +50,37 @@ original verdict after each fix.
       the resulting contracts, authorization, persistence and tests, or obtain
       an approved plan deferral. Recording an allocation gap is not approval.
 
+### Merge gate — concurrent schedule claim correction
+
+PR #51 integration run `34032030363` failed in the worker's concurrent schedule
+scanner test with `ScheduleClaimLostError`. All other required checks passed;
+the failure was not bypassed or treated as a clean merge gate.
+
+The primary reproduction ran two real worker-role claim queries against one
+due schedule. Two pre-fix runs returned two claims where exactly one was
+required. The old ranked candidate snapshot could remain eligible while a
+competing scanner committed a lease; the locking selection did not recheck
+eligibility on that newer schedule tuple and could overwrite its lease token.
+
+The forward-only
+[claim concurrency migration](../packages/database/migrations/0081_schedule_claim_concurrency.sql)
+rechecks enabled/due state, admission backoff, lease expiry, and active trigger
+state in the locking selection. It retains one-per-workspace ranking, bounded
+leases, `SKIP LOCKED`, tenant security settings and worker-only execution.
+Earlier migrations and `ScheduleClaimLostError` handling remain unchanged.
+
+- [x] Reproduce the double-claim race before the correction.
+- [x] Pass six 1,000-round real PostgreSQL regression runs with exactly one
+      returned claim and the matching persisted live lease each round.
+- [x] Pass the original compiled worker schedule integration test.
+- [x] Verify the exact `0080` to `0081` upgrade, unchanged function security,
+      11 broader schedule/prior-head cases, 239 database unit cases, typechecks,
+      and unchanged duplication thresholds.
+
+Required CI gates remain mandatory before merge. Their latest run and merge
+outcome are recorded on [PR #51](https://github.com/vigani1/pertexo/pull/51);
+local verification above does not substitute for those gates.
+
 ### Follow-up lifecycle-command coverage verification
 
 The root coverage command now runs the lifecycle-command coverage suite and

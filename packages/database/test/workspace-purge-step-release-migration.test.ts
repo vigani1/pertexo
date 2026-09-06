@@ -13,9 +13,7 @@ describe('workspace purge step release migration', () => {
   it('adds a lease-fenced maintenance-only retry transition', async () => {
     const migration = await readFile(migrationUrl, 'utf8');
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0080_expired_artifact_upload_retention.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(migration).toContain(
       'CREATE FUNCTION app.release_workspace_purge_step',
     );

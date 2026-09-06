@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0080_expired_artifact_upload_retention.sql',
+          migrationHead: '0081_schedule_claim_concurrency.sql',
           role: expectedRole,
         });
       } finally {
