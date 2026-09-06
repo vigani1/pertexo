@@ -9,7 +9,9 @@ import { runLifecycleCommandWorker } from '../src/run.js';
 function resources(outcomes: ('completed' | 'idle' | 'released')[]) {
   const controller = new AbortController();
   const events: string[] = [];
-  const processNext = vi.fn(() => {
+  const processNext = vi.fn<
+    WorkspaceLifecycleCommandCoordinator['processNext']
+  >(() => {
     const outcome = outcomes.shift() ?? 'idle';
     events.push(`process:${outcome}`);
     if (outcome === 'completed') {
@@ -117,6 +119,17 @@ function resources(outcomes: ('completed' | 'idle' | 'released')[]) {
   };
 }
 
+function abortingProcessNext(input: ReturnType<typeof resources>): void {
+  const reason = new Error('stop while processing');
+  input.processNext.mockImplementationOnce(
+    () =>
+      new Promise((_, reject) => {
+        input.controller.abort(reason);
+        reject(reason);
+      }),
+  );
+}
+
 describe('runLifecycleCommandWorker', () => {
   it('proves readiness, drains completed work, and closes resources', async () => {
     const input = resources(['completed', 'idle']);
@@ -144,6 +157,57 @@ describe('runLifecycleCommandWorker', () => {
 
     await expect(runLifecycleCommandWorker(input)).resolves.toBeUndefined();
     expect(input.processNext).toHaveBeenCalledOnce();
+  });
+
+  it('treats the signal reason as an expected abort during readiness', async () => {
+    const input = resources([]);
+    const reason = new Error('stop before readiness');
+    input.controller.abort(reason);
+
+    await expect(runLifecycleCommandWorker(input)).resolves.toBeUndefined();
+    expect(input.coordinator.checkReadiness).not.toHaveBeenCalled();
+    expect(input.ledger.checkReadiness).not.toHaveBeenCalled();
+    expect(input.readiness.mark).not.toHaveBeenCalled();
+  });
+
+  it('treats the signal reason as an expected abort during processing', async () => {
+    const input = resources([]);
+    abortingProcessNext(input);
+
+    await expect(runLifecycleCommandWorker(input)).resolves.toBeUndefined();
+    expect(input.processNext).toHaveBeenCalledOnce();
+  });
+
+  it('stops cleanly when shutdown arrives during the polling delay', async () => {
+    const input = resources([]);
+    input.pollIntervalMs = 60_000;
+    input.processNext.mockImplementationOnce(() => {
+      const reason = new Error('stop during polling');
+      setTimeout(() => {
+        input.controller.abort(reason);
+      }, 1);
+      return Promise.resolve({ status: 'idle' } as const);
+    });
+
+    await expect(runLifecycleCommandWorker(input)).resolves.toBeUndefined();
+    expect(input.processNext).toHaveBeenCalledOnce();
+  });
+
+  it('preserves a distinct processing error even when shutdown is requested', async () => {
+    const input = resources([]);
+    const abortReason = new Error('shutdown');
+    const processingError = new Error('processing failed');
+    input.processNext.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          input.controller.abort(abortReason);
+          reject(processingError);
+        }),
+    );
+
+    await expect(runLifecycleCommandWorker(input)).rejects.toMatchObject({
+      errors: [processingError],
+    });
   });
 
   it('does not claim when ledger readiness fails and still cleans up', async () => {
