@@ -239,7 +239,6 @@ describe('node test application use case', () => {
     // One guard lookup plus the distinct connection:use check; the duplicate
     // workflow:update use-case lookup is gone.
     expect(access.findAccess).toHaveBeenCalledTimes(2);
-    expect(access.findAccess).toHaveBeenCalledTimes(2);
   });
 
   it.each(['http', 'validate'] as const)(

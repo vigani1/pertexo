@@ -20,7 +20,7 @@ describe('workflow authoring validation seam', () => {
     ).toThrow();
   });
 
-  it('reports cycles, dangling edges, and invalid bounded-loop concurrency', () => {
+  it('reports cycles and dangling edges', () => {
     const graph = parseWorkflowGraphDraft({
       schemaVersion: 1,
       nodes: [

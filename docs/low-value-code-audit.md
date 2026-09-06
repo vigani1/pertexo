@@ -219,3 +219,23 @@ return types continue to check the composed capability contracts. Runtime export
 checks remain. All 238 database unit tests and test typecheck pass. No production
 or migration SQL changes are included, so database integration suites are not
 rerun for this test-only checkpoint.
+
+### API test-value checkpoint
+
+The OIDC provider-failure test previously asserted only inside `catch`, so a
+resolved login could pass without assertions. It now requires rejection on one
+captured promise and checks its type, public classification and sanitized message.
+The encryption test helper also captures one invocation's failure, instead of
+calling the operation twice for separate checks.
+
+Remove an exact repeated authorization-count assertion and two assertions about
+sensitive literals never supplied to the code under test. Exact emitted metric
+arguments and safe public error details remain. Three graph/module test titles
+now describe only the cases they actually assert.
+
+The SSE pseudo-load test generated 1,000 identical 250-ms observations from a
+fixed clock, then asserted their p95 was under two seconds. It did not exercise
+streams or measure load. Delete it and cover its two path labels in the existing
+latency-calculation unit test. Deployed SSE latency/load evidence remains an open
+Phase 7 obligation, not a result of this test suite. All 476 API unit tests and
+test typecheck pass; this checkpoint changes no production code.

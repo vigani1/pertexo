@@ -30,7 +30,7 @@ const dependencies = {
 class FakeIdentityModule {}
 
 describe('workflow runs Nest module', () => {
-  it('registers the four behavior use cases and one thin controller', () => {
+  it('registers start and replay use cases and the run controller', () => {
     const dynamic = WorkflowRunsModule.register(dependencies, {
       module: FakeIdentityModule,
     });

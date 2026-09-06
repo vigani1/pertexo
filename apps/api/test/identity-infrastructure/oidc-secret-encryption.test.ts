@@ -13,14 +13,16 @@ const previousKey = randomBytes(32).toString('base64');
 const associatedData = 'pertexo/oidc-login/state-digest/code_verifier';
 
 function expectSealingError(operation: () => unknown): void {
-  expect(operation).toThrow(OidcSecretEncryptionError);
+  let failure: unknown;
   try {
     operation();
   } catch (error: unknown) {
-    expect(String(error)).not.toContain('verifier plaintext');
-    expect(String(error)).not.toContain(currentKey);
-    expect(String(error)).not.toContain(previousKey);
+    failure = error;
   }
+  expect(failure).toBeInstanceOf(OidcSecretEncryptionError);
+  expect(String(failure)).not.toContain('verifier plaintext');
+  expect(String(failure)).not.toContain(currentKey);
+  expect(String(failure)).not.toContain(previousKey);
 }
 
 describe('OIDC AES-256-GCM secret encryption', () => {
