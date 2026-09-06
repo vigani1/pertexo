@@ -122,6 +122,26 @@ const invalidCases: readonly [unknown, string][] = [
 ];
 
 describe('core.validate configuration contract', () => {
+  it.each([
+    'minimum',
+    'maximum',
+    'minLength',
+    'maxLength',
+    'minItems',
+    'maxItems',
+  ])('requires a compatible declared type for %s', (field) => {
+    const parsed = CORE_VALIDATE_RULE_SCHEMA.safeParse({
+      id: 'typed',
+      path: '$',
+      type: 'boolean',
+      [field]: 1,
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success)
+      expect(parsed.error.issues).toContainEqual(
+        expect.objectContaining({ path: [field] }),
+      );
+  });
   it('accepts exact rule and enum limits and rejects the next entry', () => {
     const rules = Array.from({ length: 64 }, (_, index) => ({
       id: `rule-${String(index)}`,
@@ -400,6 +420,31 @@ describe('core.validate deterministic evaluation', () => {
 });
 
 describe('core.validate registry execution', () => {
+  it('preserves cancellation and configuration errors at the executor ABI boundary', async () => {
+    const executor = CORE_NODE_EXECUTOR_REGISTRATIONS.find(
+      ({ executor }) => executor.key === CORE_VALIDATE_EXECUTOR.key,
+    );
+    if (executor === undefined)
+      throw new Error('Validate executor is not registered');
+    await expect(
+      executor.execute({
+        config: { rules: [] },
+        input: {},
+        connectionRefs: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(Error);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      executor.execute({
+        config: config([{ id: 'valid', path: '$' }]),
+        input: {},
+        connectionRefs: {},
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
+  });
   it('matches the pure preview result through the public runtime registry', async () => {
     const parsed = config([
       { id: 'name', path: '$.name', required: true, type: 'string' },
@@ -433,6 +478,13 @@ describe('core.validate registry execution', () => {
   });
 
   it('rejects inconsistent runtime output contracts', () => {
+    expect(
+      CORE_VALIDATE_OUTPUT_SCHEMA.safeParse({
+        valid: false,
+        issues: [],
+        truncated: true,
+      }).success,
+    ).toBe(false);
     expect(
       CORE_VALIDATE_OUTPUT_SCHEMA.safeParse({
         valid: true,

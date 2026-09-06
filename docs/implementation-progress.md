@@ -102,6 +102,13 @@ successful row as evidence. API/worker typechecks, nodes-core build, targeted
 lint and unchanged clone thresholds pass. These tests ran on disposable owned
 databases; no normal workspace data or retained release identity was modified.
 
+The full push gate then exposed insufficient new-node line/statement coverage
+under the unchanged 96% minimum. Additional contract cases now exercise every
+constraint/type incompatibility, invalid truncation output and the registered
+executor ABI's configuration-error and cancellation paths. All 96 nodes-core
+tests pass with 97.69% statements, 93.87% branches, 100% functions and 97.86%
+lines; no coverage threshold or source exclusion was changed.
+
 ### IWA-10 — Authenticated replay checkpoint
 
 The replay route preserves the existing `run:replay` capability instead of
