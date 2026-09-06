@@ -157,3 +157,6 @@ parsers now reuse one file-local schema, without adding defaults or coercion.
 Across ten command variants and eleven valid/invalid dry-run values, all 110
 before/after results or complete validation issues match exactly. All eight
 operator unit tests, test typecheck, changed-file lint and formatting pass.
+The full push gate additionally caught the obsolete clone review for the removed
+type repetition. That exact entry is removed; the source scan falls from 28
+groups / 563 lines to 27 groups / 512 lines, with no raised allowance.

@@ -226,20 +226,6 @@
         },
         {
           "files": [
-            "apps/operator-command/src/config.ts",
-            "apps/operator-command/src/run.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "The CLI input union and exhaustive command dispatcher necessarily mirror the same command vocabulary at parsing and execution boundaries.",
-          "clones": [
-            {
-              "hash": "181c8816c257de0dc7523aeb251e5c9ca1bbc70a4bea28ddc4004e6b0f8ce69d",
-              "maxLines": 52
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/src/platform/observability/observability.module.ts",
             "apps/worker/src/platform/observability/observability.module.ts"
           ],
