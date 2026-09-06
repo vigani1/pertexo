@@ -216,6 +216,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and (select pg_get_userbyid(relowner) = $1 from pg_class where oid = to_regclass('app.workflow_drafts'))
         and (select pg_get_userbyid(relowner) = $1 from pg_class where oid = to_regclass('app.workflow_versions'))
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflows') and conname = 'workflows_activation_status_valid' and pg_get_constraintdef(oid) like '%activation_status%inactive%')
+        and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflows') and conname = 'workflows_lifecycle_revision_positive' and pg_get_constraintdef(oid) like '%lifecycle_revision%>%0%')
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflows') and conname = 'workflows_created_at_millisecond_precision' and pg_get_constraintdef(oid) like '%date_trunc%milliseconds%created_at%')
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflow_drafts') and conname = 'workflow_drafts_revision_positive')
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflow_drafts') and conname = 'workflow_drafts_schema_version_supported' and pg_get_constraintdef(oid) like '%schema_version = 1%')
@@ -233,6 +234,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
             ('workflows','workspace_id','uuid',true),
             ('workflows','name','character varying(128)',true),
             ('workflows','lifecycle_status','character varying(32)',true),
+            ('workflows','lifecycle_revision','integer',true),
             ('workflows','activation_status','character varying(32)',true),
             ('workflows','published_version_id','uuid',false),
             ('workflows','created_by','uuid',true),
@@ -268,6 +270,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
           )
         )
         and exists (select 1 from pg_attrdef d join pg_attribute a on a.attrelid=d.adrelid and a.attnum=d.adnum where d.adrelid=to_regclass('app.workflows') and a.attname='activation_status' and pg_get_expr(d.adbin,d.adrelid) like '%inactive%')
+        and exists (select 1 from pg_attrdef d join pg_attribute a on a.attrelid=d.adrelid and a.attnum=d.adnum where d.adrelid=to_regclass('app.workflows') and a.attname='lifecycle_revision' and pg_get_expr(d.adbin,d.adrelid) = '1')
         and exists (select 1 from pg_attrdef d join pg_attribute a on a.attrelid=d.adrelid and a.attnum=d.adnum where d.adrelid=to_regclass('app.workflow_drafts') and a.attname='revision' and pg_get_expr(d.adbin,d.adrelid) = '1')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_versions') and conname='workflow_versions_workspace_identity_unique' and contype='u')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_versions') and conname='workflow_versions_number_unique' and contype='u')
@@ -276,7 +279,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_drafts') and conname='workflow_drafts_workflow_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflows') and confdeltype='c')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflow_versions') and conname='workflow_versions_workflow_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflows') and confdeltype='r')
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflows') and conname='workflows_published_version_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflow_versions') and confdeltype='r')
-        and (select count(*) = 9 from pg_attribute where attrelid = to_regclass('app.workflows') and attnum > 0 and not attisdropped)
+        and (select count(*) = 10 from pg_attribute where attrelid = to_regclass('app.workflows') and attnum > 0 and not attisdropped)
         and (select count(*) = 7 from pg_attribute where attrelid = to_regclass('app.workflow_drafts') and attnum > 0 and not attisdropped)
         and (select count(*) = 12 from pg_attribute where attrelid = to_regclass('app.workflow_versions') and attnum > 0 and not attisdropped)
         and exists (select 1 from pg_attribute where attrelid = to_regclass('app.workflows') and attname = 'published_version_id' and atttypid = 'uuid'::regtype and not attnotnull)
@@ -335,6 +338,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not has_table_privilege(current_user, 'app.workflows', 'DELETE')
         and has_column_privilege(current_user, 'app.workflows', 'name', 'UPDATE')
         and has_column_privilege(current_user, 'app.workflows', 'lifecycle_status', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workflows', 'lifecycle_revision', 'UPDATE')
         and has_column_privilege(current_user, 'app.workflows', 'activation_status', 'UPDATE')
         and has_column_privilege(current_user, 'app.workflows', 'published_version_id', 'UPDATE')
         and has_column_privilege(current_user, 'app.workflows', 'updated_at', 'UPDATE')

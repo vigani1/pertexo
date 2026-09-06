@@ -486,6 +486,7 @@
               "workspace.quota_exceeded",
               "workspace.conflict",
               "workflow.revision_conflict",
+              "workflow.lifecycle_conflict",
               "workflow.invalid",
               "workflow.not_published",
               "workflow.activation_failed",

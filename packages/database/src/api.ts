@@ -80,6 +80,7 @@ export type {
 export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
+  WorkflowLifecycleRevisionConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   createWorkflowAuthoringDatabase,
@@ -89,6 +90,9 @@ export type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
+  TransitionWorkflowLifecycleInput,
+  TransitionWorkflowLifecycleResult,
+  WorkflowLifecycleCommand,
 } from './authoring/workflow-authoring.js';
 export {
   WorkflowRunNotExecutableError,

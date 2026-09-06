@@ -41,6 +41,9 @@ function request(
 }
 
 function makeController() {
+  const transitionLifecycle = {
+    execute: vi.fn().mockResolvedValue({ workflow: {}, replayed: false }),
+  };
   const createWorkflow = {
     execute: vi.fn().mockResolvedValue({
       body: { workflow: {}, draft: body },
@@ -75,7 +78,9 @@ function makeController() {
       {
         execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
       } as never,
+      transitionLifecycle as never,
     ),
+    transitionLifecycle,
     createWorkflow,
     getDraft,
     saveDraft,
@@ -84,6 +89,34 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it.each(['archive', 'restore'] as const)(
+    'forwards one %s command and requires idempotency',
+    async (command) => {
+      const { controller, transitionLifecycle } = makeController();
+      expect(() =>
+        controller[command](
+          request(),
+          { workspaceId, workflowId },
+          { expectedLifecycleRevision: 1 },
+        ),
+      ).toThrow('Idempotency-Key must contain exactly one valid value');
+      expect(transitionLifecycle.execute).not.toHaveBeenCalled();
+      await controller[command](
+        request({ 'idempotency-key': 'key' }),
+        { workspaceId, workflowId },
+        { expectedLifecycleRevision: 1 },
+      );
+      expect(transitionLifecycle.execute).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          command,
+          workflowId,
+          routeWorkspaceId: workspaceId,
+          request: { expectedLifecycleRevision: 1 },
+          idempotencyKey: 'key',
+        }),
+      );
+    },
+  );
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
     const { controller } = makeController();
     const response = { header: vi.fn() };

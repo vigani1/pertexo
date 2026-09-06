@@ -363,7 +363,7 @@ async function finalizePublication(
 ): Promise<void> {
   await client.query(
     `update app.workflows set published_version_id=$1,
-       activation_status='inactive',updated_at=transaction_timestamp()
+       activation_status='activating',updated_at=transaction_timestamp()
      where workspace_id=$2 and id=$3`,
     [version.id, input.workspaceId, claim.workflowId],
   );

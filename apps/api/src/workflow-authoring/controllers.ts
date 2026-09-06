@@ -25,6 +25,7 @@ import {
   singleRequestHeader,
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowApplicationError } from './errors.js';
 import {
@@ -68,6 +69,7 @@ export class WorkflowAuthoringController {
     private readonly validateDraft: ValidateWorkflowDraftUseCase,
     private readonly publishWorkflow: PublishWorkflowUseCase,
     private readonly listVersions: ListWorkflowVersionsUseCase,
+    private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
   ) {}
 
   @Get()
@@ -207,6 +209,59 @@ export class WorkflowAuthoringController {
         requestHeaderValue(request.headers, 'idempotency-key'),
       ),
       ...requestIdentifiers(request),
+      ...traceparent(request),
+    });
+  }
+
+  @Post(':workflowId/archive')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(202)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowPublishGuard,
+    CsrfProtectionGuard,
+  )
+  public archive(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycleCommand('archive', request, params, body);
+  }
+
+  @Post(':workflowId/restore')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(202)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowPublishGuard,
+    CsrfProtectionGuard,
+  )
+  public restore(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycleCommand('restore', request, params, body);
+  }
+
+  private lifecycleCommand(
+    command: 'archive' | 'restore',
+    request: WorkflowAuthoringRequest,
+    params: unknown,
+    body: unknown,
+  ) {
+    const route = workflowParams(params);
+    return this.transitionLifecycle.execute({
+      command,
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      request: body,
+      idempotencyKey: parseIdempotencyKey(
+        requestHeaderValue(request.headers, 'idempotency-key'),
+      ),
       ...traceparent(request),
     });
   }

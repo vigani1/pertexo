@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WorkflowLifecycleRevisionConflictError } from '@pertexo/database/api';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
@@ -13,6 +14,17 @@ import {
 import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/use-cases.js';
 
 describe('workflow authoring error mapping', () => {
+  it('keeps lifecycle concurrency distinct from draft ETags', () => {
+    const problem = mapWorkflowAuthoringError(
+      new WorkflowLifecycleRevisionConflictError(4),
+    );
+    expect(problem).toMatchObject({
+      code: 'workflow.lifecycle_conflict',
+      details: { currentLifecycleRevision: 4 },
+    });
+    expect(problem.details).not.toHaveProperty('currentEtag');
+  });
+
   it('uses shared RFC problem codes and preserves safe revision details', () => {
     expect(
       mapWorkflowAuthoringError(new WorkflowNotFoundError()),

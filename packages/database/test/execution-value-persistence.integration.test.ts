@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0077_replay_read_locks.sql',
+          migrationHead: '0078_workflow_lifecycle_revision.sql',
           role: expectedRole,
         });
       } finally {

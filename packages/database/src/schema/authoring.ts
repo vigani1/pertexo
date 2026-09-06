@@ -23,6 +23,7 @@ export const workflows = appSchema.table(
     lifecycleStatus: varchar('lifecycle_status', { length: 32 })
       .default('active')
       .notNull(),
+    lifecycleRevision: integer('lifecycle_revision').default(1).notNull(),
     activationStatus: varchar('activation_status', { length: 32 })
       .default('inactive')
       .notNull(),

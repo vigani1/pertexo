@@ -51,6 +51,41 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  it('exposes the current lifecycle revision without a draft ETag or untrusted details', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      applicationError('workflow.lifecycle_conflict', {
+        details: { currentLifecycleRevision: 7, secret: 'not-public' },
+      }),
+      hostFor(
+        { url: '/v1/workspaces/workspace/workflows/workflow/archive' },
+        response,
+      ),
+    );
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.body).toMatchObject({
+      code: 'workflow.lifecycle_conflict',
+      currentLifecycleRevision: 7,
+    });
+    expect(response.body).not.toHaveProperty('secret');
+    expect(response.body).not.toHaveProperty('currentEtag');
+    expect(response.header).not.toHaveBeenCalledWith('etag', expect.anything());
+  });
+  it.each([undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1])(
+    'fails closed for invalid lifecycle conflict revision %j',
+    (currentLifecycleRevision) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError('workflow.lifecycle_conflict', {
+          details: { currentLifecycleRevision },
+        }),
+        hostFor({}, response),
+      );
+      expect(response.status).toHaveBeenCalledWith(500);
+      expect(response.body).toMatchObject({ code: 'internal.unexpected' });
+      expect(response.body).not.toHaveProperty('currentLifecycleRevision');
+    },
+  );
   it('rejects oversized safe details before they can reach the response boundary', () => {
     expect(() =>
       applicationError('request.invalid', { safeDetail: 'x'.repeat(2_001) }),

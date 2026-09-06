@@ -31,6 +31,7 @@ const validBusinessConflicts = new Set<string>([
   'webhook.idempotency_conflict',
   'workflow.not_published',
   'workflow.revision_conflict',
+  'workflow.lifecycle_conflict',
   'workspace.conflict',
 ]);
 const correctnessFailures = new Set<string>([

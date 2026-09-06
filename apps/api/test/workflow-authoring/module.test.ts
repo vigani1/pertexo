@@ -8,6 +8,8 @@ import {
 
 const dependencies = {
   persistence: {
+    transitionWorkflowLifecycle: () =>
+      Promise.reject(new Error('not exercised')),
     createWorkflow: () => Promise.reject(new Error('not exercised')),
     listWorkflows: () => Promise.resolve({ items: [] }),
     getDraft: () => Promise.resolve(null),
