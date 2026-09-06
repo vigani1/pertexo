@@ -3240,26 +3240,6 @@
           "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
         },
         {
-          "branchId": "46",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 316,
-          "column": 88,
-          "sourceFingerprint": "sha256:ae1a591e6f1642931fdcaa286297c179a460e59603b24d0ac2be9b9c760ed89a",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "47",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 316,
-          "column": 185,
-          "sourceFingerprint": "sha256:702e0cb28924b378f855443971f209e7a59ef64f70143240d1554ebc7ceee8cf",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
           "branchId": "43",
           "locationIndex": 1,
           "branchType": "cond-expr",
@@ -3276,26 +3256,6 @@
           "line": 320,
           "column": 43,
           "sourceFingerprint": "sha256:81c44fa7c5411911e3c10e2389f0520dab7cfe369da37691585183460acd46fa",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "51",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 320,
-          "column": 91,
-          "sourceFingerprint": "sha256:34e4bbedbf67293d1bf0a8deaf59803798ac71f8c53c7f976e051da1598764aa",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "52",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 320,
-          "column": 190,
-          "sourceFingerprint": "sha256:b49eb3d91fca66a45c58c70713783f0996d76d35c6a71024934b195a19bc48d4",
           "classification": "defensive",
           "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
         },
@@ -3350,26 +3310,6 @@
           "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
         },
         {
-          "branchId": "62",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 378,
-          "column": 73,
-          "sourceFingerprint": "sha256:6e248eef15ad8802d1d38aa947006aaca290f029bbdc0ce32021d775273eccb2",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "64",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 389,
-          "column": 16,
-          "sourceFingerprint": "sha256:062ad4585989ea1430540a06676c5585b88173cf088a2ff4bad4a8482969d771",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
           "branchId": "74",
           "locationIndex": 0,
           "branchType": "cond-expr",
@@ -3386,26 +3326,6 @@
           "line": 449,
           "column": 22,
           "sourceFingerprint": "sha256:8a8d8b0ed77e3e2b34fe4f31b14c1dc75867ed4111310a917762aa745151314c",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "77",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 451,
-          "column": 24,
-          "sourceFingerprint": "sha256:e5e7fa575e45738d03e200308cda86a3596102bae462f53a86fcfc9577d4816e",
-          "classification": "defensive",
-          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
-        },
-        {
-          "branchId": "79",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 465,
-          "column": 24,
-          "sourceFingerprint": "sha256:ed5435acf77fdcca7e040b8a048da07e8a64ffadc56a78509396bf8b2c503954",
           "classification": "defensive",
           "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
         }
@@ -4126,16 +4046,6 @@
           "line": 286,
           "column": 38,
           "sourceFingerprint": "sha256:ca87af5efa5905ffef47dc5318c393f49641e36692246fcffcc1b3b40224a9df",
-          "classification": "defensive",
-          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
-        },
-        {
-          "branchId": "52",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 296,
-          "column": 4,
-          "sourceFingerprint": "sha256:82070eeb127b898caa75f1bfd9fc899b19dee158e8e6f1da30c3b42781ad8799",
           "classification": "defensive",
           "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
         },
