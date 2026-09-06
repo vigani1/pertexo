@@ -68,6 +68,28 @@ const readinessMarkers = new Map([
   ['worker', '/tmp/pertexo-worker-ready'],
   ['lifecycle-command', '/tmp/pertexo-lifecycle-command-ready'],
 ]);
+const requiredServingConfiguration = new Map([
+  [
+    'api',
+    [
+      'CONNECTION_KMS_KEY_REFERENCE',
+      'CONNECTION_KMS_REGION',
+      'NODE_COMPATIBILITY_COHORT',
+      'SERVICE_VERSION',
+      'TRUST_PROXY_CIDRS',
+    ],
+  ],
+  [
+    'worker',
+    [
+      'CONNECTION_KMS_KEY_REFERENCE',
+      'CONNECTION_KMS_REGION',
+      'NODE_COMPATIBILITY_COHORT',
+      'OUTBOX_DISPATCH_JOB_NAMES',
+      'SERVICE_VERSION',
+    ],
+  ],
+]);
 const expectedExternalWorkloads = [...expectedCommands.keys()];
 const expectedTelemetryWorkloads = [...telemetryWorkloads];
 const expectedRegionalEndpoints = [
@@ -244,6 +266,10 @@ for (const [name, expectedEntry] of expectedCommands) {
     !workload.configuration.includes('OTEL_EXPORTER_OTLP_ENDPOINT')
   )
     throw new Error(`${name} must receive the production OTLP endpoint`);
+  for (const configuration of requiredServingConfiguration.get(name) ?? []) {
+    if (!workload.configuration.includes(configuration))
+      throw new Error(`${name} must receive ${configuration} configuration`);
+  }
 }
 
 for (const name of ['api', 'worker']) {

@@ -29,7 +29,7 @@ original verdict after each fix.
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
 | IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
-| IWA-02 | Rendered API/worker role configuration and startup contract | Open; missing API settings and disabled worker jobs reproduced |
+| IWA-02 | Rendered API/worker role configuration and startup contract | In progress; required role injection corrected; 15 deployment/parser tests pass; isolated image smoke passes, exact rendered-task image smoke remains |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Open; actual local spans contain synthetic OAuth query material |
 | IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
@@ -153,6 +153,27 @@ Evidence: 98 HTTP/Slack/email executor cases, three coordinator persistence
 cases and three worker integration cases pass. Integration, database and worker
 typechecks and scoped ESLint pass. Provider calls are controlled test transports;
 live credential-provider sandboxes remain an external obligation.
+
+### IWA-02 — role configuration contract
+
+The API manifest now injects KMS reference/region, trusted proxy CIDRs, explicit
+compatibility cohort and service version. The worker manifest injects KMS
+reference/region, explicit cohort/version and the complete active outbox-job
+configuration. The new renderer regression resolves synthetic configuration and
+secret references from the generated ECS task definitions, passes them through
+the real API/worker production parsers, and asserts the role capabilities for
+both `core` and `merge_v3_activation`. CI builds the parser dependencies before
+running deployment validation. All 15 deployment checks, formatting and scoped
+ESLint pass.
+
+Supplemental local smoke used image `pertexo-independent-audit:faed09c`
+(`sha256:59af8761fa9236e1e5b5e0e8da7f448c6382911d204e9d2e46be29773a64c147`):
+API readiness returned ready and the worker emitted `worker.started` against
+isolated PostgreSQL, Redis and HTTPS storage fixtures. That smoke supplied
+handwritten fixture environment values and disabled the telemetry SDK, so it
+does not yet prove startup from the exact rendered task environment. The
+merge-V3 image correctly rejected a database still pinned to epoch 1. Deployed
+SSM values, AWS KMS access and production telemetry are not claimed verified.
 
 ## Prior review history
 
