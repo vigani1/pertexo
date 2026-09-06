@@ -96,6 +96,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       start: vi
         .fn<WorkflowRunDatabase['start']>()
         .mockRejectedValue(new RegionalWriteAdmissionPausedError()),
+      replay: vi.fn<WorkflowRunDatabase['replay']>(),
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
@@ -119,6 +120,61 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     ).rejects.toMatchObject({
       code: 'platform.write_paused',
       details: { retryAfterSeconds: 5 },
+    });
+  });
+
+  it('forwards an accepted replay and publishes its durable wake-up hint', async () => {
+    const replay = vi.fn<WorkflowRunDatabase['replay']>().mockResolvedValue({
+      run: { ...run(), triggerType: 'replay' },
+      replayed: false,
+    });
+    const publish = vi.fn().mockResolvedValue({ receivers: 1 });
+    const database = {
+      start: vi.fn<WorkflowRunDatabase['start']>(),
+      replay,
+      get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
+      cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
+      close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
+    } satisfies WorkflowRunDatabase;
+    const adapter = createPostgresWorkflowRunPersistence(
+      parseDatabaseConfig({
+        connectionString: 'postgresql://unused.invalid/pertexo',
+      }),
+      database,
+      {
+        close: vi.fn().mockResolvedValue(undefined),
+        publish,
+        resync: vi.fn().mockResolvedValue({ receivers: 1 }),
+      },
+    );
+
+    await expect(
+      adapter.persistence.replay({
+        actorId,
+        workspaceId,
+        sourceRunId: runId,
+        workflowVersionId,
+        idempotencyKeyHash: 'a'.repeat(64),
+        requestHash: 'b'.repeat(64),
+        scope: `workflow:${runId}:replay`,
+        input: { customerId: 'customer-42' },
+      }),
+    ).resolves.toMatchObject({ run: { id: runId }, replayed: false });
+    const replayCall = replay.mock.calls[0]?.[0];
+    expect(replayCall).toBeDefined();
+    expect(replayCall).toMatchObject({
+      actorId,
+      workspaceId,
+      sourceRunId: runId,
+      workflowVersionId,
+      scope: `workflow:${runId}:replay`,
+      input: { customerId: 'customer-42' },
+    });
+    expect(typeof replayCall?.checkpointFactory).toBe('function');
+    expect(publish).toHaveBeenCalledWith({
+      workspaceId,
+      runId,
+      sequence: 1,
     });
   });
 
@@ -327,6 +383,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     const publish = vi.fn().mockResolvedValue({ receivers: 1 });
     const database = {
       start,
+      replay: vi.fn<WorkflowRunDatabase['replay']>(),
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
         run: run(),

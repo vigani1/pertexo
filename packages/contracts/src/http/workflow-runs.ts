@@ -50,6 +50,16 @@ export const workflowRunStartRequestSchema = z
   })
   .strict();
 
+export const workflowRunReplayRequestSchema = z
+  .object({
+    workflowVersionId: z.uuid(),
+    input: z
+      .unknown()
+      .refine((value) => value !== undefined, 'Replay input is required'),
+    deadlineAt: z.iso.datetime({ offset: true }).optional(),
+  })
+  .strict();
+
 export const workflowRunCancelRequestSchema = z
   .object({ reason: z.string().trim().min(1).max(500).optional() })
   .strict();
@@ -158,6 +168,9 @@ export type WorkflowNodeRunSummary = z.output<
 export type WorkflowRunEvent = z.output<typeof workflowRunEventSchema>;
 export type WorkflowRunStartResponse = z.output<
   typeof workflowRunStartResponseSchema
+>;
+export type WorkflowRunReplayRequest = z.output<
+  typeof workflowRunReplayRequestSchema
 >;
 export type WorkflowRunResponse = z.output<typeof workflowRunResponseSchema>;
 export type WorkflowRunCancelResponse = z.output<

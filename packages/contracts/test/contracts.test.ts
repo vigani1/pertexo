@@ -59,6 +59,7 @@ import {
 } from '../src/workflow-runs.js';
 import {
   workflowRunCancelRequestSchema,
+  workflowRunReplayRequestSchema,
   workflowRunStartRequestSchema,
 } from '../src/http/workflow-runs.js';
 
@@ -730,12 +731,24 @@ describe('public contracts package', () => {
       workflowRunCancelRequestSchema.safeParse({ reason: 'x'.repeat(501) })
         .success,
     ).toBe(false);
+    expect(
+      workflowRunReplayRequestSchema.safeParse({
+        workflowVersionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        input: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      workflowRunReplayRequestSchema.safeParse({
+        workflowVersionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      }).success,
+    ).toBe(false);
 
     expect(Object.keys(workflowRunsOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs',
       '/v1/workspaces/{workspaceId}/runs/{runId}',
       '/v1/workspaces/{workspaceId}/runs/{runId}/events',
       '/v1/workspaces/{workspaceId}/runs/{runId}/cancel',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/replay',
     ]);
     const start =
       workflowRunsOpenApiDocument.paths[

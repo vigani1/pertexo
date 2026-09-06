@@ -67,6 +67,21 @@ export type StartWorkflowRunCommand = Readonly<{
   traceparent?: string;
 }>;
 
+export type ReplayWorkflowRunCommand = Readonly<{
+  actorId: string;
+  workspaceId: string;
+  sourceRunId: string;
+  workflowVersionId: string;
+  idempotencyKeyHash: string;
+  requestHash: string;
+  scope: string;
+  input: unknown;
+  deadlineAt?: Date;
+  requestId?: string;
+  traceId?: string;
+  traceparent?: string;
+}>;
+
 export type CancelWorkflowRunCommand = Readonly<{
   actorId: string;
   workspaceId: string;
@@ -79,6 +94,12 @@ export type CancelWorkflowRunCommand = Readonly<{
 
 export interface WorkflowRunPersistence {
   start(input: StartWorkflowRunCommand): Promise<
+    Readonly<{
+      run: WorkflowRunRecord;
+      replayed: boolean;
+    }>
+  >;
+  replay(input: ReplayWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;
       replayed: boolean;

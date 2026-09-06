@@ -5,25 +5,38 @@ import {
   createCoordinatorRunStore,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { createWorkflowRunDatabase } from '@pertexo/database/api';
+import { platformRegistryReleaseSupport } from '@pertexo/node-catalog';
 import {
+  composeExecutableCompatibilityRelease,
   createCheckpoint,
   createCheckpointV2,
+  createExecutableCompatibilityReleaseSupport,
   invocationKey,
 } from '@pertexo/workflow-engine';
 import { expect } from 'vitest';
 
 import {
+  JOB_NAME,
+  QUEUE_NAME,
+  Queue,
   apiDatabase,
+  actorId,
   conditionWorkflowId,
   conditionWorkflowVersionId,
+  createCoordinatorRuntime,
+  createQueueProducer,
   databaseUrl,
   engineVersion,
   forEachWorkflowId,
   forEachWorkflowVersionId,
+  apiUrl,
   nestedParallelWorkflowId,
   nestedParallelWorkflowVersionId,
   parallelWorkflowId,
   parallelWorkflowVersionId,
+  redisConnection,
+  redisUrl,
   switchWorkflowId,
   switchWorkflowVersionId,
   waitFor,
@@ -37,6 +50,108 @@ import {
 export interface AcceptedRun {
   readonly outboxEventId: string;
   readonly runId: string;
+}
+
+export interface AcceptedReplayRun extends AcceptedRun {
+  readonly sourceRunId: string;
+}
+
+export interface CoordinatorRedeliveryHarness {
+  publishInitial(): Promise<void>;
+  redeliver(): Promise<void>;
+  close(): Promise<void>;
+}
+
+export async function createCoordinatorRedeliveryHarness(
+  accepted: AcceptedRun,
+): Promise<CoordinatorRedeliveryHarness> {
+  const runtime = await createCoordinatorRuntime({
+    database: parseDatabaseConfig({
+      connectionString: databaseUrl(workerUrl),
+      max: 4,
+    }),
+    maximumAdmissions: 1,
+    releaseCohort: 'for_each_activation',
+    redisUrl,
+  });
+  const producer = createQueueProducer({ redisUrl });
+  const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
+    connection: redisConnection(),
+  });
+  const job = {
+    name: JOB_NAME.advanceWorkflowRun,
+    data: {
+      schemaVersion: 1 as const,
+      workspaceId,
+      runId: accepted.runId,
+      outboxEventId: accepted.outboxEventId,
+    },
+  };
+  let published: Awaited<ReturnType<typeof producer.publish>> | undefined;
+
+  const close = async () => {
+    await Promise.allSettled([
+      producer.close(),
+      runtime.close(),
+      queue.close(),
+    ]);
+  };
+
+  const publishInitial = async () => {
+    await Promise.all([
+      runtime.consumer.waitUntilReady(5_000),
+      producer.waitUntilReady(5_000),
+    ]);
+    published = await producer.publish(job);
+    const firstTransition = await waitFor(
+      async () => {
+        const [rows, queuedJob] = await Promise.all([
+          workerQuery<{ revision: number }>(
+            `select revision from app.run_checkpoints
+               where workspace_id = $1 and workflow_run_id = $2`,
+            [workspaceId, accepted.runId],
+          ),
+          queue.getJob(published?.jobId ?? ''),
+        ]);
+        return {
+          revision: rows[0]?.revision,
+          failedReason: queuedJob?.failedReason,
+          state: await queuedJob?.getState(),
+        };
+      },
+      (value) => value.revision === 1 || value.state === 'failed',
+    );
+    if (firstTransition.revision !== 1)
+      throw new Error(
+        `Coordinator redelivery failed: ${firstTransition.failedReason ?? 'unknown'}`,
+      );
+  };
+
+  const redeliver = async () => {
+    if (published === undefined) throw new Error('initial job is missing');
+    const firstJob = await waitFor(
+      () => queue.getJob(published?.jobId ?? ''),
+      (value) => value !== undefined,
+    );
+    if (firstJob === undefined) throw new Error('initial job disappeared');
+    await waitFor(
+      () => firstJob.getState(),
+      (state) => state === 'completed',
+    );
+    await firstJob.remove();
+    await producer.publish(job);
+    const replay = await waitFor(
+      () => queue.getJob(published?.jobId ?? ''),
+      (value) => value !== undefined,
+    );
+    if (replay === undefined) throw new Error('redelivered job disappeared');
+    await waitFor(
+      () => replay.getState(),
+      (state) => state === 'completed',
+    );
+  };
+
+  return { publishInitial, redeliver, close };
 }
 
 async function acceptFixtureRun(
@@ -77,6 +192,60 @@ export function acceptRun(): Promise<AcceptedRun> {
     workflowId,
     workflowVersionId,
   });
+}
+
+export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
+  const source = await acceptRun();
+  const database = createWorkflowRunDatabase(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(apiUrl),
+      max: 2,
+    }),
+    createExecutableCompatibilityReleaseSupport(
+      platformRegistryReleaseSupport('for_each_activation').map(
+        composeExecutableCompatibilityRelease,
+      ),
+    ).descriptions,
+  );
+  try {
+    const accepted = await database.replay({
+      actorId,
+      workspaceId,
+      sourceRunId: source.runId,
+      workflowVersionId,
+      idempotencyKeyHash: createHash('sha256')
+        .update(randomUUID())
+        .digest('hex'),
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      scope: `workflow:${source.runId}:replay`,
+      input: { name: 'Replay' },
+      checkpointFactory: (projection) => ({
+        engineVersion,
+        checkpoint: createCheckpoint({
+          engineVersion,
+          workflowVersionId: projection.id,
+          iterationBudget: 0,
+          nextEventSequence: 2,
+        }),
+      }),
+    });
+    const outboxRows = await workerQuery<{ id: string }>(
+      `select id from app.outbox_events
+        where workspace_id=$1 and aggregate_id=$2
+          and job_name='advance-workflow-run'`,
+      [workspaceId, accepted.run.id],
+    );
+    const outboxEventId = outboxRows[0]?.id;
+    if (outboxEventId === undefined)
+      throw new Error('replay coordinator outbox missing');
+    return {
+      outboxEventId,
+      runId: accepted.run.id,
+      sourceRunId: source.runId,
+    };
+  } finally {
+    await database.close();
+  }
 }
 
 export function acceptConditionRun(): Promise<AcceptedRun> {

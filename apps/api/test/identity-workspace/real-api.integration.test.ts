@@ -18,6 +18,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
+import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
@@ -387,6 +388,143 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(startConflict, 409, 'request.idempotency_conflict');
 
     const runUrl = `/v1/workspaces/${workspace.id}/runs/${startedBody.run.id}`;
+
+    const replayHeaders = mutationHeaders(cookies, {
+      'idempotency-key': 'workflow-run-replay-proof',
+    });
+    const replayed = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/replay`,
+      headers: replayHeaders,
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'replay-customer-42' },
+      },
+    });
+    expect(replayed.statusCode, replayed.payload).toBe(202);
+    const replayedBody = replayed.json<
+      Readonly<{
+        run: Readonly<{
+          id: string;
+          status: string;
+          triggerType: string;
+          workflowVersionId: string;
+        }>;
+        replayed: boolean;
+      }>
+    >();
+    expect(replayedBody).toMatchObject({
+      run: {
+        status: 'queued',
+        triggerType: 'replay',
+        workflowVersionId: publishedBody.version.id,
+      },
+      replayed: false,
+    });
+    expect(replayedBody.run.id).not.toBe(startedBody.run.id);
+
+    const replayRetry = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/replay`,
+      headers: replayHeaders,
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'replay-customer-42' },
+      },
+    });
+    expect(replayRetry.statusCode).toBe(202);
+    expect(replayRetry.json()).toMatchObject({
+      run: { id: replayedBody.run.id },
+      replayed: true,
+    });
+    const replayConflict = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/replay`,
+      headers: replayHeaders,
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'different-replay-input' },
+      },
+    });
+    expectProblem(replayConflict, 409, 'request.idempotency_conflict');
+
+    for (const denial of [
+      {
+        statement:
+          'update app.workspace_memberships set role=$2 where workspace_id=$1',
+        denied: 'builder',
+        restored: 'owner',
+      },
+      {
+        statement: 'update app.workspaces set status=$2 where id=$1',
+        denied: 'suspended',
+        restored: 'active',
+      },
+    ]) {
+      await withOwnerWorkspace(workspace.id, (client) =>
+        client.query(denial.statement, [workspace.id, denial.denied]),
+      );
+      try {
+        const forbiddenReplay = await application.inject({
+          method: 'POST',
+          url: `${runUrl}/replay`,
+          headers: mutationHeaders(cookies, {
+            'idempotency-key': `replay-denied-${denial.denied}`,
+          }),
+          payload: {
+            workflowVersionId: publishedBody.version.id,
+            input: { customerId: 'denied' },
+          },
+        });
+        expectProblem(forbiddenReplay, 404, 'resource.not_found');
+      } finally {
+        await withOwnerWorkspace(workspace.id, (client) =>
+          client.query(denial.statement, [workspace.id, denial.restored]),
+        );
+      }
+    }
+
+    const missingReplayCsrf = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/replay`,
+      headers: {
+        cookie: cookies.cookieHeader,
+        'idempotency-key': 'workflow-run-replay-missing-csrf',
+      },
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'csrf-probe' },
+      },
+    });
+    expectProblem(missingReplayCsrf, 403, 'auth.forbidden');
+
+    const hiddenReplay = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${randomUUID()}/runs/${startedBody.run.id}/replay`,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': 'workflow-run-replay-hidden',
+      }),
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'hidden-probe' },
+      },
+    });
+    expectProblem(hiddenReplay, 404, 'resource.not_found');
+
+    await archiveWorkflow(workspace.id, createdBody.workflow.id);
+    const archivedReplay = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/replay`,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': 'workflow-run-replay-archived',
+      }),
+      payload: {
+        workflowVersionId: publishedBody.version.id,
+        input: { customerId: 'archived-probe' },
+      },
+    });
+    expectProblem(archivedReplay, 409, 'workflow.not_published');
+
     const readRun = await application.inject({
       method: 'GET',
       url: runUrl,
@@ -774,6 +912,51 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const request = provider.latestRequest;
     if (request === undefined) throw new Error('OIDC request was not captured');
     return request;
+  }
+
+  async function archiveWorkflow(
+    workspaceId: string,
+    workflowId: string,
+  ): Promise<void> {
+    await withOwnerWorkspace(workspaceId, (client) =>
+      client.query(
+        `update app.workflows set lifecycle_status='archived' where id=$1`,
+        [workflowId],
+      ),
+    );
+  }
+
+  async function withOwnerWorkspace(
+    workspaceId: string,
+    work: (client: PoolClient) => Promise<unknown>,
+  ): Promise<void> {
+    const pool = new Pool({
+      connectionString:
+        process.env.DATABASE_MIGRATION_URL ??
+        'postgresql://invalid:invalid@localhost/invalid',
+      max: 1,
+    });
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        await client.query(
+          `set local role "${ownerRole.replaceAll('"', '""')}"`,
+        );
+        await client.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        await work(client);
+        await client.query('commit');
+      } catch (error: unknown) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    } finally {
+      await pool.end();
+    }
   }
 });
 

@@ -20,7 +20,7 @@ they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
 Current delivery is **not production-ready**. Authoring/lifecycle, executable
-Validate, replay and artifact API scope are incomplete, and runtime,
+Validate and artifact API scope are incomplete, and runtime,
 deployment, privacy and retention defects require correction. Phase 7 and
 deployed evidence remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
@@ -38,7 +38,7 @@ original verdict after each fix.
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
-| IWA-10 | Authenticated replay vertical slice | In progress; ADR 031 fixes active-workspace authorization, explicit version/input and atomic tenant acceptance; implementation and recovery evidence remain |
+| IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | In progress; ADR 032 defines bounded static field rules, typed mismatch results and preview/runtime parity; implementation and persisted execution evidence remain |
 | IWA-16 | Workflow lifecycle/version restoration and activation | In progress; ADR 033 and canonical state schemas expose stored activation without rewriting it; 11 row-boundary cases, contract checks and a fresh-PG serving-role list proof pass; lifecycle/version-restoration operations and convergence remain |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
@@ -76,6 +76,34 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-10 — Authenticated replay checkpoint
+
+The replay route preserves the existing `run:replay` capability instead of
+granting replay to ordinary run starters. Session/CSRF, tenant, builder and
+suspended-workspace denial are verified through the real HTTP stack. The
+application also rejects pending-deletion workspaces. The required version and
+input are explicit; canonical idempotency binds request material to the actor,
+workspace and source. Exact concurrent requests produce one run, checkpoint,
+queued event, audit and outbox; conflicting requests and failed acceptance
+leave no partial writes. Replay command identities use the shared UUIDv7
+generator.
+
+Migration 0077 supplies owner-defined, tenant-bound locked reads without
+granting arbitrary run/version UPDATE authority. Fresh databases migrated from
+zero verify selected retained versions, source protection, tenant isolation,
+lock contention and rollback. The worker consumes serving-store-accepted replay
+through the ordinary coordinator and node-attempt path; exact redelivery does
+not duplicate facts, and a fresh worker after Redis loss reaches the expected
+terminal output with unchanged source history. No operator authority or row
+repair is used for replay acceptance or execution.
+
+Primary verification: 10 fresh-PG persistence cases, 6 real-HTTP cases,
+3 worker integration cases, 12 application use-case cases and 17 contract cases
+pass. Replay source extraction shares audit/acceptance persistence without
+changing normal start/cancel behavior. One obsolete test-clone review was
+removed after the scanner confirmed the clone no longer exists; thresholds
+remain unchanged.
 
 ### IWA-04 — Nested Parallel admission checkpoint
 

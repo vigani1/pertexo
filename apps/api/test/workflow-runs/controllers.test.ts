@@ -7,6 +7,7 @@ const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const workflowVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const runId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 
 function request(headers: Record<string, string> = {}) {
@@ -36,6 +37,9 @@ function controller() {
   const start = {
     execute: vi.fn().mockResolvedValue({ run: {}, replayed: false }),
   };
+  const replay = {
+    execute: vi.fn().mockResolvedValue({ run: {}, replayed: false }),
+  };
   const get = { execute: vi.fn().mockResolvedValue({ run: {}, nodes: [] }) };
   const cancel = {
     execute: vi.fn().mockResolvedValue({ run: {}, alreadyRequested: false }),
@@ -60,11 +64,13 @@ function controller() {
   return {
     instance: new WorkflowRunsController(
       start as never,
+      replay as never,
       get as never,
       stream as never,
       cancel as never,
     ),
     start,
+    replay,
     get,
     stream,
     cancel,
@@ -101,6 +107,36 @@ describe('workflow runs controller public seam', () => {
       fixture.instance.startRun(request(), { workspaceId, workflowId }, {}),
     ).rejects.toMatchObject({ code: 'request.precondition_required' });
     expect(fixture.start.execute).not.toHaveBeenCalled();
+  });
+
+  it('parses an explicit replay request and forwards the source and version', async () => {
+    const fixture = controller();
+    await fixture.instance.replayRun(
+      request({
+        'idempotency-key': 'run-replay-42',
+        'x-csrf-token': 'csrf-token-42',
+        traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
+      }),
+      { workspaceId, runId },
+      {
+        workflowVersionId,
+        input: { customerId: 'customer-42' },
+        deadlineAt: '2026-08-21T18:00:00.000Z',
+      },
+    );
+
+    expect(fixture.replay.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeWorkspaceId: workspaceId,
+        runId,
+        workflowVersionId,
+        input: { customerId: 'customer-42' },
+        deadlineAt: '2026-08-21T18:00:00.000Z',
+        idempotencyKey: 'run-replay-42',
+        requestId: 'request-42',
+        traceId: 'trace-42',
+      }),
+    );
   });
 
   it('parses Last-Event-ID and exposes each persisted event as an SSE message', async () => {
@@ -152,6 +188,7 @@ describe('workflow runs controller public seam', () => {
       }),
     };
     const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       stream as never,
