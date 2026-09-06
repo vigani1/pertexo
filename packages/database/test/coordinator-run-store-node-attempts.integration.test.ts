@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -21,6 +23,143 @@ import {
   workerBaseUrl,
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
+
+async function claimDispatchAttempt(nodeId: string) {
+  const runId = await insertRun({
+    inputRef: { schemaVersion: 1, kind: 'inline', value: { nodeId } },
+  });
+  const invocationKey = `${versionA}|${nodeId}|b:|i:`;
+  const committed = await store.commitAdvancePlan({
+    workspaceId: workspaceA,
+    runId,
+    workflowVersionId: versionA,
+    signal: new AbortController().signal,
+    plan: {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'running',
+        nextEventSequence: 4,
+        admittedInvocationKeys: [invocationKey],
+        invocations: [
+          {
+            invocationKey,
+            nodeId,
+            status: 'running',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+      events: [
+        {
+          schemaVersion: 1,
+          sequence: 2,
+          name: 'run.started',
+          occurredAt: '2026-08-21T00:00:00.000Z',
+        },
+        {
+          schemaVersion: 1,
+          sequence: 3,
+          name: 'node.ready',
+          occurredAt: '2026-08-21T00:00:00.000Z',
+          invocationKey,
+          nodeId,
+          attemptNumber: 0,
+        },
+      ],
+      nodeRunAdmissions: [{ invocationKey, nodeId, sideEffectClass: 'unsafe' }],
+      attempts: [
+        {
+          invocationKey,
+          nodeId,
+          attemptNumber: 1,
+          sideEffectClass: 'unsafe',
+        },
+      ],
+    },
+  });
+  if (committed.kind !== 'committed')
+    throw new Error('dispatch fixture did not commit');
+  const admission = committed.admittedAttempts[0];
+  if (admission === undefined) throw new Error('dispatch attempt missing');
+  const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query<{ id: string; payload_checksum: string }>(
+      `select id,payload_checksum from app.outbox_events
+         where workspace_id=$1 and aggregate_id=$2
+           and job_name='execute-node-attempt'`,
+      [workspaceA, admission.attemptId],
+    ),
+  );
+  const delivery = outbox.rows[0];
+  if (delivery === undefined) throw new Error('dispatch delivery missing');
+  const claimed = await nodeAttemptStore.claimDelivery({
+    workspaceId: workspaceA,
+    runId,
+    nodeRunId: admission.nodeRunId,
+    attemptId: admission.attemptId,
+    delivery: {
+      outboxEventId: delivery.id,
+      payloadChecksum: delivery.payload_checksum,
+    },
+    leaseDurationSeconds: 30,
+    workerId: `dispatch-worker-${nodeId}`,
+    signal: new AbortController().signal,
+  });
+  if (claimed.kind !== 'claimed')
+    throw new Error('dispatch attempt was not claimed');
+  return claimed.lease;
+}
+
+async function seedDispatchConnection(input: {
+  connectionId: string;
+  providerKey: 'http' | 'slack';
+  authType: 'http_headers' | 'slack_bot_token';
+  secretVersionId: string;
+}) {
+  await asOwner(workspaceA, async (client) => {
+    await client.query(
+      `insert into app.connections (
+           id,workspace_id,provider_key,name,auth_type,status,
+           current_secret_version_id,created_by
+         ) values ($1,$2,$3,$4,$5,'active',$6,$7)`,
+      [
+        input.connectionId,
+        workspaceA,
+        input.providerKey,
+        `Dispatch fence ${input.providerKey} ${input.connectionId}`,
+        input.authType,
+        input.secretVersionId,
+        actorId,
+      ],
+    );
+    await client.query(
+      `insert into app.connection_secret_versions (
+           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+         ) values ($1,$2,$3,1,'kms','a','a',$4,$5,$6)`,
+      [
+        input.secretVersionId,
+        workspaceA,
+        input.connectionId,
+        'a'.repeat(16),
+        'a'.repeat(22),
+        actorId,
+      ],
+    );
+  });
+}
+
+function dispatchBinding(
+  providerKey: 'http' | 'slack',
+  connectionId: string,
+  secretVersionId: string,
+) {
+  return `${providerKey}:v1:sha256:${createHash('sha256')
+    .update(`${providerKey}\0${connectionId}\0${secretVersionId}`)
+    .digest('hex')}`;
+}
 
 describe('Coordinator node-attempt persistence invariants', () => {
   it('claims one transport-bound ready attempt with a durable fence', async () => {
@@ -565,6 +704,135 @@ describe('Coordinator node-attempt persistence invariants', () => {
       ],
     });
   });
+
+  it('keeps HTTP and Slack dispatch markers fenced across credential rotation', async () => {
+    for (const target of [
+      { providerKey: 'http', authType: 'http_headers' },
+      { providerKey: 'slack', authType: 'slack_bot_token' },
+    ] as const) {
+      const lease = await claimDispatchAttempt(
+        `dispatch-${target.providerKey}`,
+      );
+      const connectionId = randomUUID();
+      const secretVersionId = randomUUID();
+      const rotatedSecretVersionId = randomUUID();
+      await seedDispatchConnection({
+        connectionId,
+        providerKey: target.providerKey,
+        authType: target.authType,
+        secretVersionId,
+      });
+      const connectionFence = {
+        connectionId,
+        expectedProviderKey: target.providerKey,
+        expectedAuthType: target.authType,
+        secretVersionId,
+      } as const;
+      const providerDispatchBinding = dispatchBinding(
+        target.providerKey,
+        connectionId,
+        secretVersionId,
+      );
+      const preflight = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ fence_current: boolean }>(
+          `select app.connection_dispatch_fence_current($1,$2,$3,$4,$5)
+             fence_current`,
+          [
+            workspaceA,
+            connectionId,
+            target.providerKey,
+            target.authType,
+            secretVersionId,
+          ],
+        ),
+      );
+      expect(preflight.rows[0]?.fence_current).toBe(true);
+
+      await asOwner(workspaceA, async (client) => {
+        await client.query(
+          `insert into app.connection_secret_versions (
+               id,workspace_id,connection_id,schema_version,kms_key_reference,
+               encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+             ) values ($1,$2,$3,1,'kms','b','b',$4,$5,$6)`,
+          [
+            rotatedSecretVersionId,
+            workspaceA,
+            connectionId,
+            'b'.repeat(16),
+            'b'.repeat(22),
+            actorId,
+          ],
+        );
+        await client.query(
+          `update app.connections set current_secret_version_id=$3
+             where workspace_id=$1 and id=$2`,
+          [workspaceA, connectionId, rotatedSecretVersionId],
+        );
+      });
+
+      await expect(
+        nodeAttemptStore.markDispatched({
+          lease,
+          connectionFence,
+          providerDispatchBinding,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(NodeAttemptConnectionFenceError);
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{
+            dispatch_marked_at: Date | null;
+            provider_dispatch_binding: string | null;
+          }>(
+            `select attempt.dispatch_marked_at,node.provider_dispatch_binding
+               from app.node_attempts attempt
+               join app.node_runs node on node.id=attempt.node_run_id
+              where attempt.workspace_id=$1 and attempt.id=$2`,
+            [workspaceA, lease.attemptId],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            dispatch_marked_at: null,
+            provider_dispatch_binding: null,
+          },
+        ],
+      });
+
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.connections set current_secret_version_id=$3
+             where workspace_id=$1 and id=$2`,
+          [workspaceA, connectionId, secretVersionId],
+        ),
+      );
+      const dispatched = await nodeAttemptStore.markDispatched({
+        lease,
+        connectionFence,
+        providerDispatchBinding,
+        signal: new AbortController().signal,
+      });
+      expect(dispatched.dispatchedAt).toBeInstanceOf(Date);
+      const verified = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{
+          dispatch_marked_at: Date | null;
+          provider_dispatch_binding: string | null;
+        }>(
+          `select attempt.dispatch_marked_at,node.provider_dispatch_binding
+             from app.node_attempts attempt
+             join app.node_runs node on node.id=attempt.node_run_id
+            where attempt.workspace_id=$1 and attempt.id=$2`,
+          [workspaceA, lease.attemptId],
+        ),
+      );
+      expect(verified.rows).toHaveLength(1);
+      expect(verified.rows[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+      expect(verified.rows[0]?.provider_dispatch_binding).toBe(
+        providerDispatchBinding,
+      );
+    }
+  }, 30_000);
 
   it('atomically suspends an attempt from database time without an early wakeup', async () => {
     const runId = await insertRun({

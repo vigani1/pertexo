@@ -4,6 +4,10 @@ import {
   createDualRegionArtifactStore,
   parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
+import {
+  createWorkerConnectionResolutionDatabase,
+  type WorkerConnectionResolutionDatabase,
+} from '@pertexo/database/execution';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   SecureHttpClient,
@@ -12,6 +16,7 @@ import {
 } from '@pertexo/integrations/server';
 import { PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
 import { Queue } from 'bullmq';
@@ -27,8 +32,19 @@ import {
   workerUrl,
 } from './http-node-attempt.fixture.js';
 
+type ConnectionAssertCurrentInput = Parameters<
+  NonNullable<NodeConnectionRuntime['assertCurrent']>
+>[0];
+
+export type HttpNodeAttemptProofRuntimeOptions = Readonly<{
+  afterConnectionAssertCurrent?: (
+    input: Omit<ConnectionAssertCurrentInput, 'signal'>,
+  ) => Promise<void>;
+}>;
+
 export async function createHttpNodeAttemptProofRuntime(
   encryption: ConnectionEnvelopeEncryption,
+  options: HttpNodeAttemptProofRuntimeOptions = {},
 ) {
   const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
   const artifactVerifier = createDualRegionArtifactStore(
@@ -163,17 +179,66 @@ export async function createHttpNodeAttemptProofRuntime(
       },
     },
   );
-  const capabilities = await createWorkerNodeRuntimeCapabilities(
-    {
-      artifactStore: artifactConfig,
-      database: parseDatabaseConfig({
+  let injectedConnectionDatabase:
+    WorkerConnectionResolutionDatabase | undefined;
+  if (options.afterConnectionAssertCurrent !== undefined) {
+    const baseConnectionDatabase = createWorkerConnectionResolutionDatabase(
+      parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
         max: 3,
       }),
-      redisUrl,
-    },
-    { connectionEncryption: encryption },
-  );
+    );
+    injectedConnectionDatabase = Object.freeze({
+      assertConnectionSecretCurrent: async (
+        input: Parameters<
+          WorkerConnectionResolutionDatabase['assertConnectionSecretCurrent']
+        >[0],
+      ): Promise<void> => {
+        await baseConnectionDatabase.assertConnectionSecretCurrent(input);
+        await options.afterConnectionAssertCurrent?.(input);
+      },
+      resolveConnectionSecret: baseConnectionDatabase.resolveConnectionSecret,
+      close: baseConnectionDatabase.close,
+    });
+  }
+  let capabilities: Awaited<
+    ReturnType<typeof createWorkerNodeRuntimeCapabilities>
+  >;
+  try {
+    capabilities = await createWorkerNodeRuntimeCapabilities(
+      {
+        artifactStore: artifactConfig,
+        database: parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+          max: 3,
+        }),
+        redisUrl,
+      },
+      {
+        connectionEncryption: encryption,
+        ...(injectedConnectionDatabase === undefined
+          ? {}
+          : { connectionDatabase: injectedConnectionDatabase }),
+      },
+    );
+  } catch (error: unknown) {
+    await injectedConnectionDatabase?.close().catch(() => undefined);
+    throw error;
+  }
+  if (injectedConnectionDatabase !== undefined) {
+    const closeCapabilities = capabilities.close;
+    capabilities = Object.freeze({
+      ...capabilities,
+      close: async (): Promise<void> => {
+        const results = await Promise.allSettled([
+          closeCapabilities(),
+          injectedConnectionDatabase.close(),
+        ]);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
+      },
+    });
+  }
   const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
     connection: redisConnection(),
   });
