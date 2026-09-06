@@ -8,7 +8,65 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-Current audit note: the whole-repository review at implementation tree
+## Independent audit remediation — active
+
+The independent review of commit
+`faed09c4543784c0f0e9bcaa0ed2a5335b411261` is recorded in
+[the independent audit](./independent-whole-repository-audit.md). It found 17 new
+repository-controlled findings (4 P1, 10 P2, 3 P3), plus two existing P2
+lifecycle-command findings. The user authorized remediation on 2026-09-06.
+The historical completion statements below describe their original evidence;
+they do not supersede these reopened requirements. No finding is closed until
+its correction and relevant regression verification are recorded here.
+
+Current delivery is **not production-ready**. Authoring/lifecycle, executable
+Validate, replay and artifact API scope are incomplete, and runtime,
+deployment, privacy and retention defects require correction. Phase 7 and
+deployed evidence remain open. Preserve the independent audit as baseline
+evidence; maintain mutable status in this tracker rather than rewriting the
+original verdict after each fix.
+
+| Finding | Required checkpoint | Status / concrete evidence |
+| --- | --- | --- |
+| IWA-01 | Monotonic DST recurrence and repeated-hour regression | Open; audit subprocess hangs at baseline |
+| IWA-02 | Rendered API/worker role configuration and startup contract | Open; missing API settings and disabled worker jobs reproduced |
+| IWA-03 | Atomic provider credential fence through dispatch | Open; HTTP/Slack fence argument dropped |
+| IWA-14 | Query-secret-free exported HTTP telemetry | Open; actual local spans contain synthetic OAuth query material |
+| IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
+| IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
+| IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
+| IWA-07 | Canonical hostname/IP classification | Open; valid hostname blocked before DNS |
+| IWA-08 | CPU-bounded streaming redaction | Open; measured synchronous work exceeds timeout |
+| IWA-09 | Surge-aware database connection capacity | Open; permitted rollout exceeds capacity contract |
+| IWA-10 | Authenticated replay vertical slice | Open; public route/use case absent |
+| IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
+| IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
+| IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
+| IWA-11 | Typed/correct application deployment closure validation | Open; controlled-negative worker omission accepted |
+| IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
+| IWA-13 | Migration-option validation and connection ownership | Open; invalid options retain acquired connection |
+| LC-001 | Expected active cancellation versus genuine shutdown failure | Open; active abort is classified as fatal |
+| LC-002 | Lifecycle-command process/readiness cleanup assurance | Open; required process-level regression evidence missing |
+
+Additional audit qualifications are part of the remediation review: truthful
+OBS-005/QUEUE-006 coverage scope and OBS-006 repository/external distinction;
+persisted Parallel-output assurance; multidimensional rate-limit integration
+coverage; precise maintenance cancellation semantics; and plan requirement →
+owner/code/test/evidence traceability. Code craft changes must improve a
+demonstrated responsibility, invariant, reuse or performance issue, not merely
+rename or split functions. New confirmed defects found while fixing these
+paths receive explicit entries and regression evidence rather than silent scope
+expansion or unverified closure.
+
+Verification for this initial checkpoint: independent audit inventory covers
+all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
+tests passed at baseline, with adversarial defects documented separately.
+Report formatting and six documentation-validator tests pass. No runtime fix
+has been made at this checkpoint.
+
+## Prior review history
+
+Prior audit note: the whole-repository review at implementation tree
 `d1b41b6e9b6122de9914298e486c4b4635742f28` is recorded in
 [the engineering audit](./whole-repository-audit.md). It does not change the
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
@@ -89,15 +147,15 @@ duplication remains within its ratchet at 6 groups, 267 lines, and 0.28%.
 | --- | --- | --- |
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
-| Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
+| Phase 0C — HTTP and observability foundation | Reopened — independent audit | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
+| Phase 0E — execution durability proofs and engine gate | Reopened — independent audit | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
+| Phase 2 — workflow authoring vertical slice | Reopened — independent audit | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
+| Phase 4 — first side-effecting integration slice | Reopened — independent audit | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
+| Phase 5 — orchestration slice | Reopened — independent audit | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
+| Phase 6 — V1 providers and triggers | Reopened — independent audit | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
 | Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; migration head `0074_retention_schedule_state_rls.sql`; 24-hour terminal request-idempotency expiry with legal-hold-aware bounded reaping and 30-day expired/revoked session metadata grace with lock-safe bounded reaping; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs including persisted-to-visible SSE latency, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, a two-process MinIO integration harness, distributed abuse limits, truthful partitioned CI, immutable service-image validation, critical-module coverage, and a strict external AWS platform evidence contract; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured deployed load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
