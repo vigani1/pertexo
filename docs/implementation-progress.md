@@ -44,7 +44,7 @@ original verdict after each fix.
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Open; controlled-negative worker omission accepted |
 | IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
-| IWA-13 | Migration-option validation and connection ownership | Open; invalid options retain acquired connection |
+| IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Open; active abort is classified as fatal |
 | LC-002 | Lifecycle-command process/readiness cleanup assurance | Open; required process-level regression evidence missing |
@@ -96,6 +96,16 @@ and verifies that a protected repository's HEAD, configuration and status remain
 unchanged. It failed before the correction and all seven documentation tests now
 pass. The failed verification worktree's fixture commits were not pushed; the
 working branch and its implementation changes were preserved.
+
+### IWA-13 — migration runner connection ownership
+
+Migration timeout options are validated before creating or acquiring database
+resources. If PostgreSQL connection acquisition fails, the runner closes its
+owned pool before propagating the error. Four invalid-option regressions and a
+connection-failure cleanup regression failed before their respective corrections
+and now pass. Three real-PostgreSQL execution-mode tests also pass, covering
+transactional, non-transactional and resumable execution. Database typecheck and
+focused ESLint pass. Existing successful-acquisition cleanup remains unchanged.
 
 ## Prior review history
 
