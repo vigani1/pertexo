@@ -22,6 +22,11 @@ data and historical evidence will be distinguished from executable source review
       redundant schema-test assertion wrapper. All 1,140 tracked TypeScript/MJS
       files retain identical resolved lint configurations; 52 threshold cases
       preserve exact acceptance/errors. The smoke helper body is unchanged.
+- [x] Require the body and cancellation signal already supplied by the only
+      private Slack send-helper caller. Remove its two obsolete unreachable
+      coverage reviews; all 223 integration-package tests, typecheck and lint
+      pass. The selected risk report retains 22 pre-existing unreviewed sites
+      and now has 463 reviewed sites, with no lowered coverage threshold.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 
