@@ -91,7 +91,7 @@ describeIntegration('preview dispatch crash boundaries', () => {
 
     try {
       for (const [index, selected] of cases.entries()) {
-        const delivery = await acceptDelivery(validTraceparent(index + 40), {
+        const delivery = await acceptDelivery(validTraceparent, {
           mayContactProvider: true,
           mayCauseExternalSideEffect: true,
           sideEffectClass: 'unsafe',

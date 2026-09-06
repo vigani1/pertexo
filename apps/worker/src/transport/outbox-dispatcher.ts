@@ -101,10 +101,6 @@ const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
 const MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES = 100;
 
-function transportJob(job: QueueJob): TransportJob {
-  return transportJobForName(job.name);
-}
-
 function transportJobName(jobName: string): TransportJob | undefined {
   const parsed = transportJobNameSchema.safeParse(jobName);
   return parsed.success ? transportJobForName(parsed.data) : undefined;
@@ -325,7 +321,7 @@ export class OutboxDispatcher {
     try {
       jobObservation = transportJobName(event.jobName);
       const job = toQueueJob(event);
-      const currentJob = transportJob(job);
+      const currentJob = transportJobForName(job.name);
       jobObservation = currentJob;
       const publication = await this.producer.publish(job);
       if (publication.outcome === 'outcome_unknown') {

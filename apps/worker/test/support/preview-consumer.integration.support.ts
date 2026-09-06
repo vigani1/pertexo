@@ -812,11 +812,5 @@ afterAll(async () => {
   }
 });
 
-export function deliveryJobData(delivery: AcceptedDelivery) {
-  return delivery.job.data;
-}
-
-export function validTraceparent(sequence: number): string {
-  void sequence;
-  return '00-' + 'c'.repeat(32) + '-' + 'd'.repeat(15) + '0-01';
-}
+export const validTraceparent =
+  '00-' + 'c'.repeat(32) + '-' + 'd'.repeat(15) + '0-01';

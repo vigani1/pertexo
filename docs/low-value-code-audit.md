@@ -178,3 +178,28 @@ remain, as do the HTTP span-attribute and all provider failure/lifecycle checks.
 All 277 worker unit tests, test typecheck, changed-file lint and formatting pass.
 Test duplication falls from five groups / 235 lines to four groups / 203 lines;
 source duplication remains at 27 groups / 512 lines. No coverage floor changes.
+
+### Worker indirection checkpoint
+
+The worker review now covers all 136 tracked files by full content, including
+integration tests and their support code. The completion-result wrapper and the
+single-call queue-job observation wrapper are inlined without changing their
+expressions. A no-op success-kind read and an already-used fixture variable's
+no-op read are removed. The compatibility test names its release constant
+directly, and the preview trace fixture becomes a constant: its old sequence
+argument was ignored at all eight call sites.
+
+The preview delivery test's checksum comparison hashed the same test-local
+payload twice, once through a shallow copy. It did not compare transport data
+with a persisted checksum, despite its comment. Remove that assertion and its
+now-unused field-access helper; retain execution, output, fence, inbox and exact
+redelivery assertions. The transaction and recovery fixtures remain because
+they expose distinct durable-state and process-crash scenarios.
+
+Verification: all 277 worker unit tests, test typecheck, changed-file lint and
+formatting pass. The preview delivery and Validate integration suites pass all
+three tests against disposable PostgreSQL databases and a separate temporary
+Redis instance; the temporary container is removed afterward. Existing Redis
+test data is untouched. The other service-loss and SIGKILL suites were reviewed
+but not rerun for these expression-preserving edits. Duplication remains at 27
+source groups / 512 lines and four test groups / 203 lines, with unchanged gates.

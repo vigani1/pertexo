@@ -40,7 +40,7 @@ describeIntegration('preview artifact retention transport', () => {
     async () => {
       const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
       const previewDeadline = new Date(Date.now() + 2_000);
-      const traceparent = validTraceparent(90);
+      const traceparent = validTraceparent;
       const accepted = await withTenantAccept(
         acceptanceInput(traceparent, {
           executionDeadlineAt: previewDeadline,

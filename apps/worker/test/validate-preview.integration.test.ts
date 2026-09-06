@@ -128,7 +128,7 @@ describeIntegration('core.validate persisted preview execution', () => {
       secret: runInput.secret,
     };
     const expected = evaluateCoreValidate(config, resolvedInput);
-    const traceparent = validTraceparent(15);
+    const traceparent = validTraceparent;
     const delivery = await acceptDelivery(traceparent, {
       definitionKey: 'core.validate',
       definitionVersion: 1,
@@ -208,7 +208,7 @@ describeIntegration('core.validate persisted preview execution', () => {
           profile: matchingInput.profile,
           secret: matchingInput.secret,
         });
-        const matchingDelivery = await acceptDelivery(validTraceparent(16), {
+        const matchingDelivery = await acceptDelivery(validTraceparent, {
           definitionKey: 'core.validate',
           definitionVersion: 1,
           executableNode: {
@@ -266,10 +266,7 @@ describeIntegration('core.validate persisted workflow execution', () => {
       CORE_VALIDATE_CONFIG_SCHEMA.parse(validateConfigInput),
       runInput,
     );
-    const delivery = await acceptWorkflowDelivery(
-      validTraceparent(17),
-      runInput,
-    );
+    const delivery = await acceptWorkflowDelivery(validTraceparent, runInput);
     const database = parseDatabaseConfig({
       connectionString: databaseUrl(workerUrl),
       max: 4,

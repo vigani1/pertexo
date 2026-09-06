@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  canonicalOutboxPayloadChecksum,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
@@ -16,7 +13,6 @@ import {
 import {
   acceptDelivery,
   databaseUrl,
-  deliveryJobData,
   previewState,
   redisUrl,
   validTraceparent,
@@ -33,7 +29,7 @@ const describeIntegration = workerTransportIntegrationEnabled
 
 describeIntegration('preview delivery transport', () => {
   it('executes an accepted preview through BullMQ once and duplicates safely', async () => {
-    const delivery = await acceptDelivery(validTraceparent(1));
+    const delivery = await acceptDelivery(validTraceparent);
     const previewStore = createDatabasePreviewAttemptRunStore(
       parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
     );
@@ -118,13 +114,5 @@ describeIntegration('preview delivery transport', () => {
     } finally {
       await runtime.close();
     }
-
-    // The checksum helper stays exercised so drift between transport bytes
-    // and the durable aggregate fails this suite loudly.
-    expect(
-      canonicalOutboxPayloadChecksum({
-        ...deliveryJobData(delivery),
-      }),
-    ).toBe(canonicalOutboxPayloadChecksum(deliveryJobData(delivery)));
   });
 });

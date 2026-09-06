@@ -48,6 +48,11 @@ data and historical evidence will be distinguished from executable source review
       callback is identical; exact emitted telemetry assertions remain. All 277
       worker unit tests, typecheck, lint and formatting pass. Remove the obsolete
       bootstrap clone review; test duplication falls to four groups / 203 lines.
+- [x] Finish the worker file-body review and remove two single-use forwarding
+      helpers, a no-op result read, a constant-returning release wrapper, and
+      preview fixture ceremony. Preserve all lease, dispatch, telemetry and
+      durable redelivery checks. All 277 unit tests and three preview integration
+      tests pass; the integration run uses a separate temporary Redis instance.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 

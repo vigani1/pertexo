@@ -85,7 +85,7 @@ describeIntegration('preview SIGKILL reconciliation', () => {
     ] as const;
     const fixtures = await Promise.all(
       cases.map(async (selected, index) => {
-        const traceparent = validTraceparent(index + 10);
+        const traceparent = validTraceparent;
         const accepted = await withTenantAccept(
           acceptanceInput(traceparent, selected.overrides),
         );
