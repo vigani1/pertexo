@@ -90,6 +90,7 @@ export type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
+  RestoreWorkflowVersionInput,
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,

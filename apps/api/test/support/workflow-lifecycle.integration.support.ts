@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import {
+  workflowRetainedExecutableChecksum,
+  parseWorkflowGraphDraft,
+} from '@pertexo/workflow-model/graph';
 
 import {
   createIdentityWorkspaceDatabase,
@@ -29,7 +33,7 @@ const migrationUrl =
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
-const issuer = 'https://workflow-lifecycle.integration.test';
+const issuer = `https://${randomUUID()}.workflow-lifecycle.integration.test`;
 const clientId = 'workflow-lifecycle-real-api';
 const encryptionKey = Buffer.alloc(32, 0x6b).toString('base64');
 
@@ -140,7 +144,7 @@ class FakeOidcProvider implements OidcProviderPort {
       subject,
       audience: clientId,
       nonce: request.nonce,
-      email: `${subject}@workflow-lifecycle.integration.test`,
+      email: `${subject}@${new URL(issuer).hostname}`,
       displayName: `Lifecycle ${subject}`,
       emailVerified: true,
     });
@@ -344,7 +348,7 @@ async function resolveIdentity(
   return database.resolveOrCreateIdentity({
     issuer,
     providerSubject: subject,
-    email: `${subject}@workflow-lifecycle.integration.test`,
+    email: `${subject}@${new URL(issuer).hostname}`,
     displayName: `Lifecycle ${subject}`,
   });
 }
@@ -452,7 +456,9 @@ async function seedWorkflowRows(
     edges: [],
     settings: {},
   });
-  const checksum = `wf:v1:sha256:${'1'.repeat(64)}`;
+  const checksum = workflowRetainedExecutableChecksum(
+    parseWorkflowGraphDraft(JSON.parse(graph)),
+  );
   await client.query(
     `insert into app.workflows
            (id,workspace_id,name,lifecycle_status,activation_status,

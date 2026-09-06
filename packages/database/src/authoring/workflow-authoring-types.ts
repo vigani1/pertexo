@@ -26,6 +26,10 @@ export type WorkflowAuthoringTestHooks = Readonly<{
   afterLifecycleStep?: (
     step: 'claim' | 'workflow' | 'outbox' | 'audit' | 'idempotency',
   ) => Promise<void>;
+  /** Integration-test synchronization/fault seam for version restoration. */
+  afterVersionRestoreStep?: (
+    step: 'source' | 'draft' | 'audit',
+  ) => Promise<void>;
 }>;
 
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{

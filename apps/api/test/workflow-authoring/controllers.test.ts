@@ -41,6 +41,9 @@ function request(
 }
 
 function makeController() {
+  const restoreVersion = {
+    execute: vi.fn().mockResolvedValue({ body, representationTag: tag }),
+  };
   const transitionLifecycle = {
     execute: vi.fn().mockResolvedValue({ workflow: {}, replayed: false }),
   };
@@ -79,8 +82,10 @@ function makeController() {
         execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
       } as never,
       transitionLifecycle as never,
+      restoreVersion as never,
     ),
     transitionLifecycle,
+    restoreVersion,
     createWorkflow,
     getDraft,
     saveDraft,
@@ -89,6 +94,36 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('requires If-Match for version restore and returns its fresh draft tag', async () => {
+    const { controller, restoreVersion } = makeController();
+    const route = {
+      workspaceId,
+      workflowId,
+      versionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    };
+    const response = { header: vi.fn() };
+    await expect(
+      controller.restoreVersion(request(), route, {}, response),
+    ).rejects.toMatchObject({ code: 'precondition_required' });
+    expect(restoreVersion.execute).not.toHaveBeenCalled();
+    expect(
+      await controller.restoreVersion(
+        request({ 'if-match': tag }),
+        route,
+        {},
+        response,
+      ),
+    ).toEqual(body);
+    expect(restoreVersion.execute).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        workflowId,
+        versionId: route.versionId,
+        representationTag: tag,
+        request: {},
+      }),
+    );
+    expect(response.header).toHaveBeenCalledWith('ETag', tag);
+  });
   it.each(['archive', 'restore'] as const)(
     'forwards one %s command and requires idempotency',
     async (command) => {

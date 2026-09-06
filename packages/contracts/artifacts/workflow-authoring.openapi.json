@@ -5,6 +5,130 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore": {
+      "post": {
+        "operationId": "restoreWorkflowVersion",
+        "description": "Copy an immutable version into the current draft with strong concurrency control. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "description": "Workflow identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowVersionRestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow draft restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Strong opaque validator for this draft representation",
+                "required": true,
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "428": {
+            "$ref": "#/components/responses/PreconditionRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive": {
       "post": {
         "operationId": "archiveWorkflow",
@@ -951,6 +1075,12 @@
           "code",
           "requestId"
         ],
+        "additionalProperties": false
+      },
+      "WorkflowVersionRestoreRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       },
       "WorkflowLifecycleRequest": {

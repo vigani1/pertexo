@@ -10,6 +10,7 @@ import {
   workflowLifecycleRequestSchema,
   workflowLifecycleResponseSchema,
   workflowLifecycleConflictProblemSchema,
+  workflowVersionRestoreRequestSchema,
   workflowPublishResponseSchema,
   workflowRevisionConflictProblemSchema,
   workflowSummarySchema,
@@ -39,6 +40,11 @@ function contractSchemas(target: 'client' | 'openapi') {
     projectContractSchema(name, schema, io, target);
   return Object.freeze({
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
+    WorkflowVersionRestoreRequest: project(
+      'WorkflowVersionRestoreRequest',
+      workflowVersionRestoreRequestSchema,
+      'input',
+    ),
     WorkflowLifecycleRequest: project(
       'WorkflowLifecycleRequest',
       workflowLifecycleRequestSchema,
@@ -225,6 +231,42 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore':
+      {
+        post: {
+          operationId: 'restoreWorkflowVersion',
+          description:
+            'Copy an immutable version into the current draft with strong concurrency control. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            ...workflowParameters,
+            {
+              name: 'versionId',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            csrfParameter,
+            etagParameter,
+          ],
+          requestBody: jsonRequest('WorkflowVersionRestoreRequest'),
+          responses: {
+            '200': jsonResponseWithHeaders(
+              'Workflow draft restored',
+              'WorkflowDraftResponse',
+              etagResponseHeader,
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '412': responseReference('PreconditionFailed'),
+            '422': responseReference('UnprocessableEntity'),
+            '428': responseReference('PreconditionRequired'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive': {
       post: lifecycleOperation('archiveWorkflow'),
     },
