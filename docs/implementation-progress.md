@@ -33,7 +33,7 @@ original verdict after each fix.
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
 | IWA-04 | Nested Parallel concurrency | Fixed; admission resolves nested Parallel owners and scopes caps to their enclosing iteration path; 10 engine regressions and 2 real-worker recovery cases pass |
-| IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
+| IWA-05 | Skipped Parallel/Merge semantics | Fixed; skipped Parallel regions emit scoped skips through their paired Merge and descendants, while active Parallel joins retain barrier authority; 6 focused cases, all 273 engine cases and 2 adjacent real-worker recovery cases pass |
 | IWA-06 | Replay-lineage-aware retention | Fixed; forward migration 0076 protects replay sources in destructive and dry-run summary selection; 5 lineage and 3 inventory real-PG cases pass, including active descendants, page boundaries, eventual expiry and legal holds |
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
@@ -76,6 +76,25 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-05 — Skipped Parallel/Merge checkpoint
+
+Generic readiness cannot admit a paired Merge without the successful Parallel's
+join. When the Parallel itself was skipped, the scheduler instead emits scoped
+skips for its branches, paired Merge and unreachable downstream nodes. It does
+not manufacture an empty join or execute a downstream mapping against missing
+Merge output. Topology indexing is a separate scheduler responsibility, keeping
+the file under the existing complexity limit without a baseline increase.
+
+Six regressions cover Condition and Switch bypasses, missing-join barriers,
+generic all-skipped predecessors and nested iteration isolation. The public
+engine proofs assert exact skip admissions and events, preserve existing
+invocations, reconstruct an executable and checkpoint while bypass work is still
+running, execute the bypass through the attempt boundary, reach terminal success
+and prove terminal replay is a no-op. These are engine/attempt-boundary proofs
+with a test registry, not a claim of a real provider execution. All 273 engine
+tests, typecheck/build/lint, and two adjacent real-PG/Redis nested-Parallel worker
+restart/recovery cases pass. No IWA-04 concurrency behavior or limit was relaxed.
 
 ### IWA-15 — Executable Validate checkpoint
 
