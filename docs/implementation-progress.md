@@ -8,6 +8,21 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
+## Repository modularity cleanup — active
+
+The user authorized a repository-wide structure and readability cleanup on
+2026-09-06. The [structure audit](./repository-structure-audit.md) tracks all
+six applications, twelve packages, and root tooling. This work preserves the
+existing plan and runtime invariants; it does not close the unresolved product
+or production-evidence requirements below.
+
+- [ ] Review and record a disposition for all 18 workspaces.
+- [x] Correct and verify dependency-aware TypeScript builds: all 18 projects
+      referenced, runtime dependency edges explicit, six graph regressions,
+      forced build and every workspace test typecheck pass.
+- [ ] Implement and verify the confirmed responsibility/ownership refactors.
+- [ ] Pass final static, unit, coverage and applicable integration gates.
+
 ## Independent audit remediation — follow-up corrections
 
 The independent review of commit
