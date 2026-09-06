@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 const migrationUrl = new URL(
   '../migrations/0075_workspace_purge_step_release.sql',
   import.meta.url,
@@ -13,7 +11,6 @@ describe('workspace purge step release migration', () => {
   it('adds a lease-fenced maintenance-only retry transition', async () => {
     const migration = await readFile(migrationUrl, 'utf8');
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(migration).toContain(
       'CREATE FUNCTION app.release_workspace_purge_step',
     );

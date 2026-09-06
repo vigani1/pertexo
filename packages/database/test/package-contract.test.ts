@@ -2,15 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import type {
-  ApiConnectionDatabase,
-  ConnectionManagementDatabase,
-  ConnectionTestDatabase,
-} from '../src/api.js';
-import type {
-  ConnectionResolutionDatabase,
-  WorkerConnectionResolutionDatabase,
-} from '../src/execution.js';
 import { createApiConnectionDatabase } from '../src/connections/connections.js';
 import { createWorkerConnectionResolutionDatabase } from '../src/connections/connections.js';
 
@@ -85,56 +76,6 @@ describe('@pertexo/database package contract', () => {
       'suspendNodeAttemptUntil',
     ])
       expect(testing).not.toContain(retiredExport);
-  });
-
-  it('publishes behavior-named connection capabilities instead of the broad store', () => {
-    const management: ConnectionManagementDatabase = {
-      createConnection: () => Promise.reject(new Error('not exercised')),
-      findConnectionCreateReplay: () => Promise.resolve(null),
-      findConnectionRotateReplay: () => Promise.resolve(null),
-      rotateConnectionSecret: () => Promise.reject(new Error('not exercised')),
-      revokeConnection: () => Promise.reject(new Error('not exercised')),
-    };
-    const testing: ConnectionTestDatabase = {
-      startConnectionTest: () => Promise.reject(new Error('not exercised')),
-      resolveConnectionTestSecret: () =>
-        Promise.reject(new Error('not exercised')),
-      markConnectionTestDispatched: () => Promise.resolve(undefined),
-      completeConnectionTest: () => Promise.reject(new Error('not exercised')),
-      abandonConnectionTest: () => Promise.resolve(undefined),
-    };
-    const api: ApiConnectionDatabase = {
-      ...management,
-      ...testing,
-      close: () => Promise.resolve(undefined),
-    };
-    const resolution: ConnectionResolutionDatabase = {
-      assertConnectionSecretCurrent: () => Promise.resolve(undefined),
-      resolveConnectionSecret: () => Promise.reject(new Error('not exercised')),
-    };
-    const worker: WorkerConnectionResolutionDatabase = {
-      ...resolution,
-      close: () => Promise.resolve(undefined),
-    };
-
-    expect(Object.keys(api).sort()).toEqual([
-      'abandonConnectionTest',
-      'close',
-      'completeConnectionTest',
-      'createConnection',
-      'findConnectionCreateReplay',
-      'findConnectionRotateReplay',
-      'markConnectionTestDispatched',
-      'resolveConnectionTestSecret',
-      'revokeConnection',
-      'rotateConnectionSecret',
-      'startConnectionTest',
-    ]);
-    expect(Object.keys(worker).sort()).toEqual([
-      'assertConnectionSecretCurrent',
-      'close',
-      'resolveConnectionSecret',
-    ]);
   });
 
   it('does not export role-inappropriate connection methods from source surfaces', async () => {

@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 const migrationUrl = new URL(
   '../migrations/0074_retention_schedule_state_rls.sql',
   import.meta.url,
@@ -13,7 +11,6 @@ describe('retention schedule state RLS migration', () => {
   it('forces RLS while keeping maintenance access function-only', async () => {
     const migration = await readFile(migrationUrl, 'utf8');
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(migration).toContain(
       'ALTER TABLE app.retention_schedule_state ENABLE ROW LEVEL SECURITY',
     );

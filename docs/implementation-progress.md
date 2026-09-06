@@ -55,6 +55,12 @@ data and historical evidence will be distinguished from executable source review
       tests pass; the integration run uses a separate temporary Redis instance.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
+- [x] Replace 30 identical migration-head constant assertions with one serving
+      readiness contract. Preserve each migration's SQL/security assertions and
+      every live readiness check. Remove the connection package test that only
+      checks fake objects' keys; retain the exact real-factory surface test and
+      explicit factory return types. All 238 database unit tests and test
+      typecheck pass.
 
 ## Initial low-value code cleanup — complete
 

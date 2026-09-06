@@ -203,3 +203,19 @@ Redis instance; the temporary container is removed afterward. Existing Redis
 test data is untouched. The other service-loss and SIGKILL suites were reviewed
 but not rerun for these expression-preserving edits. Duplication remains at 27
 source groups / 512 lines and four test groups / 203 lines, with unchanged gates.
+
+### Database test-value checkpoint
+
+Thirty historical migration tests repeated the same current migration-head
+constant comparison. Those comparisons did not exercise the migrations under
+test. One explicit serving-readiness test now pins that reviewed head; the
+migration-specific SQL, privilege, immutability and retention assertions remain,
+as do every integration test's actual readiness and applied-migration checks.
+
+The connection package test also built typed fake objects and asserted their
+own keys. Remove that test and its five type-only imports. The neighboring test
+asserts the same exact keys on the real role-specific factories, whose explicit
+return types continue to check the composed capability contracts. Runtime export
+checks remain. All 238 database unit tests and test typecheck pass. No production
+or migration SQL changes are included, so database integration suites are not
+rerun for this test-only checkpoint.

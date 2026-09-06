@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { reconcileWorkflowTriggersPayload } from '../src/authoring/workflow-authoring.js';
 
 const migrationUrl = new URL(
@@ -15,10 +14,6 @@ const integrationUsageMigrationUrl = new URL(
 );
 
 describe('workflow authoring migration contract', () => {
-  it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
-  });
-
   it('emits the identifier-only trigger-reconciliation payload', () => {
     const payload = reconcileWorkflowTriggersPayload({
       outboxEventId: '11111111-1111-4111-8111-111111111111',
