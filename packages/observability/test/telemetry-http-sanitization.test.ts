@@ -3,6 +3,8 @@ import { once } from 'node:events';
 import { createRequire } from 'node:module';
 
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { node } from '@opentelemetry/sdk-node';
 import { describe, expect, it } from 'vitest';
 
@@ -89,6 +91,94 @@ function spansFor(
 }
 
 describe('HTTP telemetry URL privacy', () => {
+  it.each(['', 'not a URL', 'ftp://user:secret@example.test'])(
+    'uses a safe fallback for an invalid Undici origin: %s',
+    (origin) => {
+      const instrumentation = createNodeInstrumentations().find(
+        (candidate) => candidate instanceof UndiciInstrumentation,
+      );
+      const hook = instrumentation?.getConfig().startSpanHook;
+      if (hook === undefined) {
+        throw new Error('Expected the configured Undici start span hook');
+      }
+      expect(
+        hook({
+          origin,
+          method: 'GET',
+          path: '/callback?code=secret#secret',
+          headers: '',
+          addHeader: () => undefined,
+          throwOnError: false,
+          completed: false,
+          aborted: false,
+          idempotent: true,
+          contentLength: null,
+          contentType: null,
+          body: null,
+        }),
+      ).toMatchObject({
+        'url.full': 'http://localhost/callback',
+        'url.path': '/callback',
+        'url.query': undefined,
+      });
+    },
+  );
+
+  it.each<{
+    readonly options: httpTypes.RequestOptions;
+    readonly expectedUrl: string;
+  }>([
+    { options: {}, expectedUrl: 'http://localhost/' },
+    {
+      options: { protocol: 'https:', hostname: 'example.test', port: 443 },
+      expectedUrl: 'https://example.test/',
+    },
+    {
+      options: {
+        protocol: 'https:',
+        host: 'user:secret@example.test:8443',
+        path: '/callback?code=secret#secret',
+      },
+      expectedUrl: 'https://example.test:8443/callback',
+    },
+    {
+      options: { host: '[invalid', path: 'http://[invalid', port: 1.5 },
+      expectedUrl: 'http://localhost/',
+    },
+    {
+      options: { hostname: '', port: 'secret' },
+      expectedUrl: 'http://localhost/',
+    },
+    {
+      options: { hostname: 'example.test', port: 65_536, path: '' },
+      expectedUrl: 'http://example.test/',
+    },
+    {
+      options: { hostname: 'example.test', port: '65535', path: '/ok' },
+      expectedUrl: 'http://example.test:65535/ok',
+    },
+  ])(
+    'exports a safe URL for boundary request options: $expectedUrl',
+    ({ options, expectedUrl }) => {
+      const instrumentation = createNodeInstrumentations().find(
+        (candidate) => candidate instanceof HttpInstrumentation,
+      );
+      const hook = instrumentation?.getConfig().startOutgoingSpanHook;
+      if (hook === undefined) {
+        throw new Error('Expected the configured HTTP outgoing span hook');
+      }
+
+      const attributes = hook(options);
+      expect(attributes).toMatchObject({
+        'http.target': undefined,
+        'http.url': undefined,
+        'url.query': undefined,
+        'url.full': expectedUrl,
+      });
+      expect(JSON.stringify(attributes)).not.toContain('secret');
+    },
+  );
+
   it('sanitizes exported HTTP and Undici spans while retaining safe request data', async () => {
     const exporter = new node.InMemorySpanExporter();
     const provider = new node.NodeTracerProvider({

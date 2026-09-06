@@ -31,7 +31,7 @@ original verdict after each fix.
 | IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
 | IWA-02 | Rendered API/worker role configuration and startup contract | In progress; required role injection corrected; 15 deployment/parser tests pass; isolated image smoke passes, exact rendered-task image smoke remains |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
-| IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 55 observability tests pass |
+| IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
 | IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
 | IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
@@ -219,8 +219,12 @@ classification remain observable.
 The regression uses the real instrumentation with local HTTP/fetch requests
 and an in-memory exporter, scanning span names, attributes, events, status,
 links, resources and scope for synthetic OAuth/credential sentinels. Primary
-verification: all 55 tests in 11 observability files, typecheck, scoped ESLint
-and formatting pass. This is repository-level privacy evidence, not proof of
+verification: all 65 tests in 11 observability files, typecheck, scoped ESLint
+and formatting pass. Configured instrumentation-hook boundary cases cover
+HTTPS/default and maximum ports, malformed authorities/paths and invalid
+Undici origins. Coverage is 90.51% statements, 85.42% branches, 91.81%
+functions and 91.64% lines; no threshold was lowered. This is
+repository-level privacy evidence, not proof of
 deployed collectors or production alert routing.
 
 ### LC-001 / LC-002 — cancellation and process cleanup
