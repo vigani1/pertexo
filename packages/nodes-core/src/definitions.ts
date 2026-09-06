@@ -67,6 +67,12 @@ import {
   CORE_TERMINATE_OUTPUT_SCHEMA,
 } from './terminate/index.js';
 import {
+  CORE_VALIDATE_CONFIG_SCHEMA,
+  CORE_VALIDATE_INPUT_SCHEMA,
+  CORE_VALIDATE_MANIFEST,
+  CORE_VALIDATE_OUTPUT_SCHEMA,
+} from './validate/index.js';
+import {
   CORE_WAIT_CONFIG_SCHEMA,
   CORE_WAIT_INPUT_SCHEMA,
   CORE_WAIT_MANIFEST,
@@ -182,5 +188,11 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       configSchema: CORE_TERMINATE_CONFIG_SCHEMA,
       inputSchema: CORE_TERMINATE_INPUT_SCHEMA,
       outputSchema: CORE_TERMINATE_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_VALIDATE_MANIFEST,
+      configSchema: CORE_VALIDATE_CONFIG_SCHEMA,
+      inputSchema: CORE_VALIDATE_INPUT_SCHEMA,
+      outputSchema: CORE_VALIDATE_OUTPUT_SCHEMA,
     }),
   ]);

@@ -36,4 +36,6 @@ export const PLATFORM_RELEASE_FINGERPRINT_GOLDEN = Object.freeze([
   'node-compat:v1:sha256:17a7e0bcd9ef2973111051fc47d903155713d4e21d37ecef7b35d474f5f017ca',
   'node-compat:v1:sha256:f9768908906ee5c65582fe8b680a2beb647a47900013946cc5bb3d32d80ed8fc',
   'node-compat:v1:sha256:7720f87468ec22e2e4e25299903d9f90fe254a80e010ae0093c561a036ef533c',
+  'node-compat:v1:sha256:0a32af96b14f3dd34350967047efa6802b7c4124176fdd7f7a83eff208f81a32',
+  'node-compat:v1:sha256:208014d9280b598067aa5bee159b92ffe0740d336bfbea60643da058c6e15d41',
 ]);

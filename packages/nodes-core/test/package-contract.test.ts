@@ -52,6 +52,7 @@ describe('@pertexo/nodes-core package contract', () => {
       'set',
       'switch',
       'terminate',
+      'validate',
       'wait',
       'webhook',
     ])

@@ -29,6 +29,7 @@ import { coreSwitchExecutor } from './switch/executor.js';
 import { coreTerminateExecutor } from './terminate/executor.js';
 import { coreWaitExecutor } from './wait/executor.js';
 import { coreWebhookExecutor } from './webhook/executor.js';
+import { coreValidateExecutor } from './validate/executor.js';
 
 interface CoreNodeRegistrationBundle {
   readonly definition: NodeDefinitionRegistration;
@@ -84,6 +85,7 @@ const CORE_NODE_EXECUTOR_IMPLEMENTATIONS = Object.freeze([
   coreTerminateExecutor,
   coreWaitExecutor,
   coreWebhookExecutor,
+  coreValidateExecutor,
 ] as const);
 
 const CORE_NODE_REGISTRATION_BUNDLES = createCoreNodeRegistrationBundles(

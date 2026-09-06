@@ -6,6 +6,9 @@ import type {
   ExpressionResult,
 } from './expressions.js';
 import type { ValueSource } from './graph.js';
+import { resolveJsonPath } from './json-path.js';
+
+export { resolveJsonPath } from './json-path.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }
@@ -18,70 +21,6 @@ export type ValueResolution =
     };
 export interface ValueResolutionContext extends ExpressionContextV1 {
   readonly structuredInputs?: Readonly<Record<string, JsonValue>>;
-}
-type Segment = string | number;
-function parsePath(path: string): Segment[] | undefined {
-  if (path === '$') return [];
-  if (!path.startsWith('$')) return undefined;
-  const result: Segment[] = [];
-  let offset = 1;
-  while (offset < path.length) {
-    if (path[offset] === '.') {
-      const match = /^\.([A-Za-z_][A-Za-z0-9_-]*)/u.exec(path.slice(offset));
-      if (!match) return undefined;
-      const name = match[1];
-      if (name === undefined) return undefined;
-      result.push(name);
-      offset += match[0].length;
-      continue;
-    }
-    const index = /^\[(0|[1-9][0-9]*)\]/u.exec(path.slice(offset));
-    if (index) {
-      result.push(Number(index[1]));
-      offset += index[0].length;
-      continue;
-    }
-    const property = /^\['((?:[^'\\]|\\['\\])*)'\]/u.exec(path.slice(offset));
-    if (property) {
-      const name = property[1];
-      if (name === undefined) return undefined;
-      result.push(name.replace(/\\(['\\])/gu, '$1'));
-      offset += property[0].length;
-      continue;
-    }
-    return undefined;
-  }
-  return result;
-}
-export function resolveJsonPath(
-  input: JsonValue,
-  path: string,
-): ValueResolution {
-  const segments = parsePath(path);
-  if (!segments)
-    return {
-      kind: 'error',
-      code: 'invalid_path',
-      message: `unsupported JSON path ${path}`,
-    };
-  let value: JsonValue | undefined = input;
-  for (const segment of segments) {
-    if (value === null || typeof value !== 'object') return { kind: 'missing' };
-    if (typeof segment === 'number') {
-      if (!Array.isArray(value) || segment >= value.length)
-        return { kind: 'missing' };
-      const next: JsonValue | undefined = (value as readonly JsonValue[])[
-        segment
-      ];
-      if (next === undefined) return { kind: 'missing' };
-      value = next;
-    } else {
-      if (Array.isArray(value) || !Object.hasOwn(value, segment))
-        return { kind: 'missing' };
-      value = (value as Readonly<Record<string, JsonValue>>)[segment];
-    }
-  }
-  return value === undefined ? { kind: 'missing' } : { kind: 'value', value };
 }
 export async function resolveValueSource(
   source: ValueSource,
