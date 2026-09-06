@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
 import type {
   SecureHttpClient,
@@ -75,8 +76,9 @@ export function createResendClient(
           if (response.status === 429)
             return Object.freeze({
               kind: 'rate_limited' as const,
-              retryAfterMillis: boundedRetryAfter(
+              retryAfterMillis: parseBoundedRetryAfterMillis(
                 response.headers['retry-after'],
+                EMAIL_SEND_NOTIFICATION_LIMITS.maxRetryAfterMillis,
               ),
             });
           let decoded: unknown;
@@ -115,12 +117,4 @@ export function createResendClient(
       }
     },
   });
-}
-
-function boundedRetryAfter(value: string | undefined): number {
-  if (value === undefined || !/^\d{1,9}$/u.test(value)) return 1_000;
-  return Math.min(
-    Math.max(Number(value) * 1_000, 1_000),
-    EMAIL_SEND_NOTIFICATION_LIMITS.maxRetryAfterMillis,
-  );
 }

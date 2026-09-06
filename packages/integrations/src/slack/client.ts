@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
 import type {
   SecureHttpClient,
@@ -92,7 +93,10 @@ export function createSlackClient(
       if (response.status === 429)
         return Object.freeze({
           kind: 'rate_limited',
-          retryAfterMillis: boundedRetryAfter(response.headers['retry-after']),
+          retryAfterMillis: parseBoundedRetryAfterMillis(
+            response.headers['retry-after'],
+            SLACK_SEND_MESSAGE_LIMITS.maxRetryAfterMillis,
+          ),
         });
       if (response.status < 200 || response.status > 299)
         return Object.freeze({ kind: 'http_failure', status: response.status });
@@ -161,8 +165,9 @@ export function createSlackClient(
         if (response.status === 429)
           return Object.freeze({
             kind: 'rate_limited' as const,
-            retryAfterMillis: boundedRetryAfter(
+            retryAfterMillis: parseBoundedRetryAfterMillis(
               response.headers['retry-after'],
+              SLACK_SEND_MESSAGE_LIMITS.maxRetryAfterMillis,
             ),
           });
         if (response.status < 200 || response.status > 299)
@@ -194,12 +199,4 @@ export function createSlackClient(
       }
     },
   });
-}
-
-function boundedRetryAfter(value: string | undefined): number {
-  if (value === undefined || !/^\d{1,9}$/u.test(value)) return 1_000;
-  return Math.min(
-    Math.max(Number(value) * 1_000, 1_000),
-    SLACK_SEND_MESSAGE_LIMITS.maxRetryAfterMillis,
-  );
 }
