@@ -10,6 +10,8 @@ import { fileURLToPath, pathToFileURL, URL } from 'node:url';
 import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
 
+import { isolatedGitEnvironment } from './git-environment.mjs';
+
 const execute = promisify(execFile);
 const markdown = new MarkdownIt({ html: false, linkify: false });
 
@@ -190,13 +192,11 @@ async function validateAuditTree(rootDirectory, contentsByFile) {
       'current-implementation-status.md audit tree must match whole-repository-audit.md',
     );
   }
-  const { stdout: ancestorTrees } = await execute('git', [
-    '-C',
-    rootDirectory,
-    'log',
-    '--format=%T',
-    'HEAD',
-  ]);
+  const { stdout: ancestorTrees } = await execute(
+    'git',
+    ['-C', rootDirectory, 'log', '--format=%T', 'HEAD'],
+    { env: isolatedGitEnvironment() },
+  );
   if (!ancestorTrees.split(/\r?\n/u).includes(auditedTree)) {
     throw new Error(
       'audited implementation tree must occur in the publication ancestry',
