@@ -8,7 +8,24 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Low-value code cleanup — complete
+## File-by-file low-value audit — in progress
+
+The initial directory-level cleanup below is complete, but it did not establish
+file-by-file review coverage. The user requested that broader pass on 2026-09-06.
+Every tracked path will receive an explicit disposition; generated dependency
+data and historical evidence will be distinguished from executable source review.
+
+- [ ] Complete and reconcile the tracked-file review inventory across all
+      applications, packages, infrastructure, configuration and documentation.
+- [x] Remove four verified tooling leftovers: an inactive deferred-web lint
+      block, unused smoke-harness argument, duplicate threshold predicate and
+      redundant schema-test assertion wrapper. All 1,140 tracked TypeScript/MJS
+      files retain identical resolved lint configurations; 52 threshold cases
+      preserve exact acceptance/errors. The smoke helper body is unchanged.
+- [ ] Verify remaining candidates, publish the reconciled inventory and record
+      the final checks without claiming an absence of all possible defects.
+
+## Initial low-value code cleanup — complete
 
 The follow-up audit inspects every application, package and major tooling
 directory for redundant tests, pass-through wrappers, unused abstractions,

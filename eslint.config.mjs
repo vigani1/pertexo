@@ -543,32 +543,6 @@ export default tseslint.config(
     },
   })),
   {
-    files: ['apps/web/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: [
-                '@pertexo/database',
-                '@pertexo/artifact-store',
-                '@pertexo/artifact-store/*',
-                '@pertexo/observability',
-                '@pertexo/observability/*',
-                '@pertexo/queue',
-                '@pertexo/queue/*',
-                '@pertexo/*/server',
-              ],
-              message:
-                'Browser code may import only browser-safe package exports.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
     files: ['**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },

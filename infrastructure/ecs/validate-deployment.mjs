@@ -323,7 +323,6 @@ for (const [name, expectedSignals] of expectedScalingSignals) {
         signal.statistic !== 'Sum' ||
         signal.normalization !==
           'metric/(runningTaskCount*configuredSlotsPerTask)' ||
-        signal.threshold <= 0 ||
         signal.threshold >= 1)
     ) {
       throw new Error(

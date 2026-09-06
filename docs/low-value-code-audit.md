@@ -23,6 +23,10 @@ against the updated file. No review classification or coverage floor changed.
 
 ## Major-directory inspection
 
+This original pass records directory-level coverage, not an exhaustive
+file-by-file certification. A broader tracked-file pass was requested afterward
+and is tracked separately in the implementation progress journal.
+
 Source, tests/support, manifests and meaningful import/caller relationships
 were inspected in every workspace. A retained row means no safe, worthwhile
 removal was established, not that the directory was skipped.
@@ -81,3 +85,26 @@ unreviewed and 465 reviewed uncovered branches. Full pre-push verification is
 run before publishing each completed checkpoint. No service-backed integration
 suite is required for these behavior-preserving removals; no local services
 were started, stopped or reconfigured for this audit.
+
+## File-by-file follow-up: tooling checkpoint
+
+The broader pass starts at `e4feb99d`. Its first completed cleanup removes:
+
+- The `apps/web` ESLint block: no tracked file matches it, and the authoritative
+  plan explicitly defers the web client outside this checkout. The resolved
+  configurations for all 1,140 tracked TypeScript/MJS files retain the same
+  aggregate SHA-256 (`72ad2c60190bfaa4c175966b6550fdc251ede32449f5ef2869a9adbe57d09183`).
+- The unused `task` argument of the rendered-startup negative-config helper.
+  AST inspection proves zero parameter reads, an unchanged function body and
+  one caller with identical remaining arguments. No runtime startup behavior
+  changes; the service-backed smoke exercise is not claimed as rerun.
+- The second `signal.threshold <= 0` predicate in deployment validation. The
+  preceding unconditional signal validation already rejects it. Fifty-two
+  before/after cases preserve exact acceptance and error messages, including
+  invalid types, non-finite values and boundary values across all four signals.
+- The outer `doesNotReject` callback around the schema-count equality assertion.
+  The async test still awaits validation and fails on rejection or mismatched
+  counts, preserving the same three schema ownership assertions.
+
+Changed-file lint, schema validation and deployment checks verify this checkpoint.
+Full review coverage and remaining findings are still in progress.
