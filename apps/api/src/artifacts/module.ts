@@ -1,15 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../identity/index.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../identity-workspace/guards.js';
-import { RequestContextStore } from '../platform/http/index.js';
 import { ArtifactsController } from './controllers.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import type { ArtifactDependencies } from './ports.js';
@@ -41,20 +32,6 @@ export class ArtifactsModule {
           authorization: ArtifactDependencies['authorization'],
         ) => new ArtifactService({ database, store, authorization }, options),
         inject: [ARTIFACT_DATABASE, ARTIFACT_STORE, ARTIFACT_AUTHORIZATION],
-      },
-      {
-        provide: SessionAuthenticationGuard,
-        useFactory: (
-          sessions: OpaqueSessionService,
-          contexts: RequestContextStore,
-        ) => new SessionAuthenticationGuard(sessions, contexts),
-        inject: [OpaqueSessionService, RequestContextStore],
-      },
-      {
-        provide: CsrfProtectionGuard,
-        useFactory: (csrf: DoubleSubmitCsrfPolicy) =>
-          new CsrfProtectionGuard(csrf),
-        inject: [DoubleSubmitCsrfPolicy],
       },
       ArtifactUploadGuard,
       ArtifactReadGuard,
