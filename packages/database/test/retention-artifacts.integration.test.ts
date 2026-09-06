@@ -9,12 +9,44 @@ import {
   migrationUrl,
   owner,
   parseDatabaseConfig,
+  randomUUID,
   runIds,
   waitForPostgresLock,
   withApplicationName,
   workspaceId,
   zeroHash,
 } from './support/retention.integration.support.js';
+
+async function readCapacity(): Promise<{
+  chargedBytes: number;
+  chargedCount: number;
+}> {
+  await owner.query('begin');
+  try {
+    await owner.query('set local role pertexo_owner');
+    await owner.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await owner.query<{
+      charged_bytes: number | string;
+      charged_count: number;
+    }>(
+      `select charged_bytes,charged_count
+         from app.workspace_artifact_capacity where workspace_id=$1`,
+      [workspaceId],
+    );
+    const row = result.rows[0];
+    if (row === undefined) throw new Error('artifact capacity row missing');
+    await owner.query('commit');
+    return {
+      chargedBytes: Number(row.charged_bytes),
+      chargedCount: row.charged_count,
+    };
+  } catch (error: unknown) {
+    await owner.query('rollback').catch(() => undefined);
+    throw error;
+  }
+}
 
 describe('retention artifact reclamation', () => {
   it('retains referenced artifacts and deletes unreferenced bytes before metadata', async () => {
@@ -73,6 +105,10 @@ describe('retention artifact reclamation', () => {
       await owner.query('rollback').catch(() => undefined);
       throw error;
     }
+    await expect(readCapacity()).resolves.toEqual({
+      chargedBytes: 30,
+      chargedCount: 3,
+    });
 
     const ledger = {
       append: vi.fn(),
@@ -121,9 +157,17 @@ describe('retention artifact reclamation', () => {
         artifactId: referencedArtifactId,
         status: 'referenced',
       });
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: 30,
+        chargedCount: 3,
+      });
       await expect(coordinator.processNext()).resolves.toMatchObject({
         artifactId: expiredArtifactId,
         status: 'waiting',
+      });
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: 30,
+        chargedCount: 3,
       });
       const writer = new Pool({ connectionString: migrationUrl, max: 1 });
       try {
@@ -152,6 +196,10 @@ describe('retention artifact reclamation', () => {
         expect(settled).toBe(false);
         await writer.query('rollback');
         await deleteStarted.promise;
+        await expect(readCapacity()).resolves.toEqual({
+          chargedBytes: 30,
+          chargedCount: 3,
+        });
         const monitor = new Pool({ connectionString: adminUrl, max: 1 });
         try {
           const transaction = await monitor.query<{ open: boolean }>(
@@ -169,6 +217,10 @@ describe('retention artifact reclamation', () => {
         await expect(following).resolves.toMatchObject({
           artifactId: followingArtifactId,
           status: 'completed',
+        });
+        await expect(readCapacity()).resolves.toEqual({
+          chargedBytes: 20,
+          chargedCount: 2,
         });
       } finally {
         await writer.query('rollback').catch(() => undefined);
@@ -193,6 +245,10 @@ describe('retention artifact reclamation', () => {
       await expect(coordinator.processNext()).resolves.toMatchObject({
         artifactId: expiredArtifactId,
         status: 'completed',
+      });
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: 10,
+        chargedCount: 1,
       });
       expect(artifacts.delete).toHaveBeenCalledTimes(3);
     } finally {
@@ -222,6 +278,133 @@ describe('retention artifact reclamation', () => {
     } catch (error: unknown) {
       await owner.query('rollback').catch(() => undefined);
       throw error;
+    }
+  });
+
+  it('holds an expired user-upload artifact before any object-store operation', async () => {
+    const artifactId = randomUUID();
+    const holdId = randomUUID();
+    const holdHash = 'b'.repeat(64);
+    const before = await readCapacity();
+    const apiUrl = new URL(
+      process.env.DATABASE_API_URL ??
+        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+    );
+    apiUrl.pathname = new URL(maintenanceUrl).pathname;
+    const api = new Pool({ connectionString: apiUrl.toString(), max: 1 });
+    const maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
+
+    try {
+      await api.query('begin');
+      try {
+        await api.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        await api.query(
+          `insert into app.artifacts
+             (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+              status,expires_at,finalized_at)
+           values($1,$2,'user-upload',$3,'application/octet-stream',10,$4,
+             'available',clock_timestamp()-interval '1 hour',
+             clock_timestamp()-interval '2 hours')`,
+          [
+            artifactId,
+            workspaceId,
+            `workspaces/${workspaceId}/artifacts/${artifactId}`,
+            'c'.repeat(64),
+          ],
+        );
+        await api.query('commit');
+      } catch (error: unknown) {
+        await api.query('rollback').catch(() => undefined);
+        throw error;
+      }
+
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+
+      await maintenance.query(
+        `select app.project_workspace_legal_hold(
+          $1,1,$2,'legal_hold_placed',$3,$4,$5,
+          'legal-admin','case-artifact-1','preserve user-upload',$6)`,
+        [
+          workspaceId,
+          randomUUID(),
+          holdId,
+          zeroHash,
+          holdHash,
+          '2026-08-21T00:00:00.000Z',
+        ],
+      );
+
+      const ledger = {
+        append: vi.fn(),
+        reconcile: vi.fn(() =>
+          Promise.resolve({
+            hasMore: false,
+            pageEndHash: holdHash,
+            pageEndSequence: 1,
+            reachedHighWater: true,
+            records: [],
+          }),
+        ),
+      } satisfies ControlLedger;
+      const artifacts = {
+        delete: vi.fn(() => Promise.resolve()),
+        head: vi.fn(() => Promise.resolve(null)),
+      };
+      const coordinator = createRunArtifactRetentionCoordinator(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+        ledger,
+        artifacts,
+      );
+      try {
+        await expect(coordinator.processNext()).resolves.toMatchObject({
+          artifactId,
+          status: 'held',
+          workspaceId,
+        });
+      } finally {
+        await coordinator.close();
+      }
+
+      expect(artifacts.delete).not.toHaveBeenCalled();
+      expect(artifacts.head).not.toHaveBeenCalled();
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        await owner.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        const proof = await owner.query(
+          `select status,purpose,byte_length::text as byte_length,
+                  retention_retry_at is not null as retry_scheduled
+             from app.artifacts where workspace_id=$1 and id=$2`,
+          [workspaceId, artifactId],
+        );
+        expect(proof.rows).toEqual([
+          {
+            byte_length: '10',
+            purpose: 'user-upload',
+            retry_scheduled: true,
+            status: 'available',
+          },
+        ]);
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback').catch(() => undefined);
+        throw error;
+      }
+    } finally {
+      await maintenance.end();
+      await api.end();
     }
   });
 });
