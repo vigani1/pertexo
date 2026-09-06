@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0078_workflow_lifecycle_revision.sql",
+  "transactionalThrough": "0079_artifact_upload_capacity.sql",
   "migrations": {}
 }

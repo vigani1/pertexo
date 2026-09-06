@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('regional write admission migration contract', () => {
   it('fails closed at five minutes behind a fresh monitored replica', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0078_workflow_lifecycle_revision.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('p_replay_lag_millis<300000');

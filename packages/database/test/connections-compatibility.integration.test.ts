@@ -239,6 +239,7 @@ describe('connection persistence', () => {
       '0076_replay_lineage_retention.sql',
       '0077_replay_read_locks.sql',
       '0078_workflow_lifecycle_revision.sql',
+      '0079_artifact_upload_capacity.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -251,7 +252,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0078_workflow_lifecycle_revision.sql',
+        migrationHead: '0079_artifact_upload_capacity.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -494,6 +495,7 @@ describe('connection persistence', () => {
       '0076_replay_lineage_retention.sql',
       '0077_replay_read_locks.sql',
       '0078_workflow_lifecycle_revision.sql',
+      '0079_artifact_upload_capacity.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -506,7 +508,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0078_workflow_lifecycle_revision.sql',
+        migrationHead: '0079_artifact_upload_capacity.sql',
       });
     } finally {
       await pool.end();

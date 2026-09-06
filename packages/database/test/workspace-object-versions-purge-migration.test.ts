@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('workspace object-version purge migration', () => {
   it('orders one fenced object step before tenant rows', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0078_workflow_lifecycle_revision.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0079_artifact_upload_capacity.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

@@ -6,6 +6,24 @@ export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
 } from './execution/artifacts.js';
+export {
+  ARTIFACT_UPLOAD_PENDING_MS,
+  ARTIFACT_UPLOAD_PURPOSE,
+  ArtifactQuotaExceededError,
+  ArtifactUploadConflictError,
+  ArtifactUploadIdempotencyConflictError,
+  ArtifactUploadNotFoundError,
+  createArtifactUploadDatabase,
+} from './execution/artifact-upload.js';
+export type {
+  ArtifactUploadDatabase,
+  ArtifactUploadActor,
+  ArtifactUploadAuthorization,
+  ArtifactUploadIdentity,
+  ArtifactUploadResult,
+  BeginArtifactUploadInput,
+  FinalizeArtifactUploadInput,
+} from './execution/artifact-upload.js';
 export type { ArtifactCapacityObservation } from './execution/artifacts.js';
 export {
   CONNECTION_AUTH_TYPE,

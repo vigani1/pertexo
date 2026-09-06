@@ -23,6 +23,7 @@ import {
 } from './schema/connections.js';
 import {
   artifacts,
+  workspaceArtifactCapacity,
   outboxEvents,
   inboxReceipts,
   transportSecurityAuditFacts,
@@ -76,6 +77,7 @@ export {
 } from './schema/foundation.js';
 export {
   artifacts,
+  workspaceArtifactCapacity,
   outboxEvents,
   inboxReceipts,
   transportSecurityAuditFacts,
@@ -116,6 +118,7 @@ export {
 
 export const databaseSchema = {
   artifacts,
+  workspaceArtifactCapacity,
   auditEvents,
   authIdentities,
   connectionEvents,

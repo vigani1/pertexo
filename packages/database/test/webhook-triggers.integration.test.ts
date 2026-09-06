@@ -791,7 +791,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0078_workflow_lifecycle_revision.sql',
+      migrationHead: '0079_artifact_upload_capacity.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

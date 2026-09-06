@@ -60,6 +60,26 @@ export const artifacts = appSchema.table(
       .where(sql`${table.status} = 'pending'`),
   ],
 );
+
+export const workspaceArtifactCapacity = appSchema.table(
+  'workspace_artifact_capacity',
+  {
+    workspaceId: uuid('workspace_id').primaryKey(),
+    byteLimit: bigint('byte_limit', { mode: 'number' }).notNull(),
+    artifactCountLimit: integer('artifact_count_limit').notNull(),
+    chargedBytes: bigint('charged_bytes', { mode: 'number' }).notNull(),
+    chargedCount: integer('charged_count').notNull(),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+  },
+  () => [],
+);
 export const outboxEvents = appSchema.table(
   'outbox_events',
   {

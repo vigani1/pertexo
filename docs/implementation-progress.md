@@ -19,10 +19,10 @@ The historical completion statements below describe their original evidence;
 they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
-Current delivery is **not production-ready**. Authoring/lifecycle and artifact
-API scope are incomplete, and runtime,
-deployment, privacy and retention defects require correction. Phase 7 and
-deployed evidence remain open. Preserve the independent audit as baseline
+Current delivery is **not production-ready**. The artifact API checkpoint and
+final cross-feature verification remain in progress; the other named audit
+corrections have the repository evidence recorded below. Phase 7 and deployed
+evidence remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
 
@@ -41,7 +41,7 @@ original verdict after each fix.
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Fixed in repository; 5 authenticated HTTP cases, 7 real-PG version-restore cases, 3 real-PG lifecycle cases and real dispatcher/BullMQ restart/redelivery proof pass; nonempty queued/running/waiting/completed history is preserved |
-| IWA-17 | Public artifact upload/finalize vertical slice | In progress; bounded signed attachment downloads implemented and verified at the storage seam; public routes, quota authority and integrated proofs remain |
+| IWA-17 | Public artifact upload/finalize vertical slice | In progress; signed attachment downloads and PostgreSQL upload/capacity authority verified; final authenticated HTTP, cleanup and runtime integration checkpoint remains |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
@@ -393,8 +393,39 @@ the unchanged complexity/duplication limits pass. Coverage is 881/969 statements
 Existing exact-source branch reviews were relocated to their new owners;
 six stale locationless V8 reviews were removed, not relabeled as covered.
 The artifact cohort currently has 109 reviewed and eight unreviewed uncovered
-branches across 14 files. Public authorization, upload/finalize and concurrent
-workspace capacity enforcement are still separate unfinished obligations.
+branches across 14 files. This storage-only checkpoint did not complete public
+authorization, upload/finalize or concurrent workspace capacity enforcement.
+
+### IWA-17 — PostgreSQL upload and capacity authority checkpoint
+
+- [x] Apply ADR 035 through forward migration 0079. Backfill charged bytes and
+      counts from non-deleted metadata; reserve every artifact writer through a
+      shared workspace row lock. Runtime roles may read scoped capacity but
+      cannot raise limits or reset counters.
+- [x] Claim upload idempotency and insert immutable pending metadata in one
+      tenant transaction. PostgreSQL chooses the 15-minute pending deadline;
+      the database computes the canonical request hash. Persist only the
+      artifact identity, never a signed capability.
+- [x] Recheck active user, membership, workspace and upload/read capability in
+      the repository. Lock authorization rows against concurrent revocation;
+      finalization locks metadata and checks declared values, lifecycle and
+      the database clock before making it available.
+- [x] Retain charges through expiry and deleting state. Release once on durable
+      deletion, reject metadata mutation/revival, and remove empty capacity
+      rows during the existing fenced workspace purge.
+- [ ] Finish and verify the public HTTP/storage/runtime checkpoint before
+      closing IWA-17. These database tests do not establish physical object
+      deletion, remote regional durability or production deployment.
+
+Evidence: `packages/database/test/artifact-upload.integration.test.ts` has
+11 real-PostgreSQL cases for idempotency, quota races and rollback, database
+deadlines, tenant/state denial, finalization conflicts, immutable metadata,
+counter privileges and exactly-once release. All 227 database unit tests,
+database build/typecheck and schema ownership validation pass (68 tables:
+49 typed and 19 raw SQL). Twelve additional fresh-PostgreSQL cases pass across
+artifact retention, preview artifact cleanup, restore inventory and workspace
+purge. Migration-head expectations advance to 0079 without editing historical
+migrations. The public API and contracts remain a separate checkpoint.
 
 ### IWA-01 — DST recurrence correction
 

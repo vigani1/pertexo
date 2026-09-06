@@ -88,6 +88,7 @@ describe('OIDC browser binding prior-head migration', () => {
         '0076_replay_lineage_retention.sql',
         '0077_replay_read_locks.sql',
         '0078_workflow_lifecycle_revision.sql',
+        '0079_artifact_upload_capacity.sql',
       ]);
 
       const verifier = new Pool({
