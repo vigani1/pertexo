@@ -2,86 +2,16 @@ import type {
   OperatorCommandDatabase,
   OperatorCommandRecord,
   OperatorCommandResult,
-  RedispatchFailedOutboxInput,
-  ReplayOperatorRunInput,
   GenericOperatorCommandResult,
 } from '@pertexo/database/operator';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
+import type { OperatorCommandConfig } from './config.js';
+
 export interface OperatorCommandResources {
   readonly cleanupTimeoutMs: number;
-  readonly command:
-    | (Omit<RedispatchFailedOutboxInput, 'signal'> & {
-        readonly type: 'outbox.redispatch';
-      })
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        reason: string;
-        type: 'operator.status';
-        workspaceId: string;
-      }>
-    | Readonly<{
-        action: 'outcome_unknown' | 'reclaim';
-        actorRef: string;
-        attemptId: string;
-        commandId: string;
-        dryRun: boolean;
-        expectedFenceToken: number;
-        reason: string;
-        type: 'attempt.reconcile';
-        workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        dryRun: boolean;
-        reason: string;
-        runId: string;
-        type: 'due-work.resume' | 'run.cancel';
-        workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        attemptId: string;
-        commandId: string;
-        evidenceKind: string;
-        evidenceRef: Readonly<Record<string, unknown>>;
-        reason: string;
-        type: 'unknown-outcome.record-evidence';
-        workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        dryRun: boolean;
-        reason: string;
-        type: 'trigger.reconcile';
-        workflowId: string;
-        workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        dryRun: boolean;
-        reason: string;
-        runInput: ReplayOperatorRunInput['runInput'];
-        sourceRunId: string;
-        type: 'run.replay';
-        workflowVersionId: string;
-        workspaceId: string;
-      }>
-    | Readonly<{
-        actorRef: string;
-        commandId: string;
-        dryRun: boolean;
-        reason: string;
-        targetId: string;
-        targetType: 'retention_batch' | 'workspace_purge_job';
-        type: 'purge.rerun' | 'retention.rerun';
-        workspaceId: string;
-      }>;
+  readonly command: OperatorCommandConfig['command'];
   readonly database: OperatorCommandDatabase;
   readonly logger: StructuredLogger;
   readonly signal: AbortSignal;

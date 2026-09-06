@@ -146,3 +146,14 @@ pinned audited list, preserving protection against silently dropping a file.
 The test-only constant export and intermediate assertion are removed; the test
 itself and the separate risk-report inventory remain. All 25 lifecycle unit
 tests, test typecheck, changed-file lint and formatting pass.
+
+### Operator command contract checkpoint
+
+The operator runner consumes the command type already owned by its configuration
+instead of repeating the union. Its sole production caller passes that parsed
+command; the type-only import introduces no runtime dependency, and emitted
+runner JavaScript is identical. Eight identical strict `OPERATOR_DRY_RUN`
+parsers now reuse one file-local schema, without adding defaults or coercion.
+Across ten command variants and eleven valid/invalid dry-run values, all 110
+before/after results or complete validation issues match exactly. All eight
+operator unit tests, test typecheck, changed-file lint and formatting pass.
