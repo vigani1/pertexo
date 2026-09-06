@@ -40,6 +40,9 @@ data and historical evidence will be distinguished from executable source review
       The emitted runner JavaScript is identical; 110 before/after parser
       cases preserve exact values/errors, and all eight operator tests,
       typecheck, lint and formatting pass.
+- [x] Remove the operator type clone's obsolete review caught by the full push
+      gate. Source duplication falls to 27 groups / 512 lines; the five test
+      groups / 235 lines and all detector thresholds remain unchanged.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 
