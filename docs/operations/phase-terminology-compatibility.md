@@ -20,8 +20,7 @@ rg -n -i 'phase[ _-]?3|phase three|PHASE3' \
 | Location | Classification and reason |
 | --- | --- |
 | `apps/api/src/executions/initial-workflow-checkpoint.ts` | Durable serialized engine identity. Existing checkpoints and runs store `phase3-engine-v1`; changing it would create a different engine contract. |
-| `apps/worker/src/execution/operator-run-replay-runtime.ts` | Durable serialized engine identity used to reconstruct retained runs. |
-| `apps/worker/src/triggers/trigger-runtime.ts` | Durable serialized engine identity written for trigger-accepted runs. |
+| `apps/worker/src/execution/core-definition-identities.ts` | Current shared checkpoint constructor owns the durable serialized engine identity used by worker replay and trigger acceptance. |
 | `packages/workflow-engine/src/executable-foundation.ts` | Deprecated public `PHASE3_RUNTIME_POLICIES_V1` compatibility alias; new implementation code uses `BASELINE_RUNTIME_POLICIES_V1`. |
 | `packages/workflow-engine/src/executable-workflow.ts` | Re-export of the deprecated public alias through the existing supported entry point. |
 | `packages/workflow-engine/src/index.ts` | Package-root re-export of the deprecated public alias. |

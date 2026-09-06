@@ -39,8 +39,7 @@ centralized merely to satisfy the detector.
 | 23 | 33 | API real identity graph ↔ workflow-run persistence graph | False positive across raw authoring and executable-compilation public seams; retained (currently 32 lines). |
 | 24–25 | 49/32 | API bootstrap ↔ connection HTTP stack | Shared setup; moved API configuration, readiness, and workflow-runtime construction to `apps/api/test/support/api-platform.fixture.ts`. |
 
-The current exact scan reports 6 occurrences/267 aggregate duplicated lines
-(0.28%) across the current test corpus. Their pair identities, fragment hashes,
+Run `pnpm duplication:check` for the current exact scan counts. Pair identities, fragment hashes,
 individual line ceilings, classifications, and narrow reasons are enforced by
 `infrastructure/test-duplication-baseline.json` through
 `pnpm duplication:check`. The source-side baseline is reviewed in the same
