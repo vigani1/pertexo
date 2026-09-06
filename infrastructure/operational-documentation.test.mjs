@@ -27,6 +27,17 @@ test('live operational guidance references executable policy and preserves histo
 
 for (const [label, mutate, expected] of [
   [
+    'superseded remediation anchor',
+    (docs) => ({
+      ...docs,
+      status: docs.status.replace(
+        '#independent-audit-remediation--repository-corrections-verified',
+        '#independent-audit-remediation--active',
+      ),
+    }),
+    /current status: missing authoritative reference/u,
+  ],
+  [
     'status link drift',
     (docs) => ({
       ...docs,

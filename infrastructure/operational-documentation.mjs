@@ -26,7 +26,7 @@ export function validateOperationalReferences({ status, inventory, security }) {
       'current status',
       currentStatus,
       [
-        './implementation-progress.md#independent-audit-remediation--active',
+        './implementation-progress.md#independent-audit-remediation--repository-corrections-verified',
         '../packages/database/src/platform/readiness.ts',
         '../packages/database/migrations/migration-execution-plan.json',
       ],
