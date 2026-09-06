@@ -102,6 +102,12 @@ live in a type-only record module consumed directly by the row parser and
 re-exported by the existing public authoring facade. This preserves public
 imports without increasing the hotspot limit or changing runtime behavior.
 
+ADR 034 defines the remaining archive/restore transaction and activation
+convergence contract, including a separate lifecycle revision, immediate
+admission gating, preserved run history, and no implicit re-enablement of
+disabled resources. This is an accepted implementation decision, not delivery
+evidence; its commands, migration and integration criteria remain unfinished.
+
 ### IWA-01 — DST recurrence correction
 
 The new subprocess regression first failed against the audited implementation
