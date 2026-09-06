@@ -42,7 +42,7 @@ original verdict after each fix.
 | IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
-| IWA-11 | Typed/correct application deployment closure validation | Open; controlled-negative worker omission accepted |
+| IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
@@ -189,6 +189,21 @@ deployed capacity evidence; the limit does not claim proven production load.
 Primary verification: eight budget tests include API-only, worker-only and
 simultaneous rollout overflow plus fractional-task rounding and administration
 headroom; full deployment validation passes, as do scoped ESLint/format checks.
+
+### IWA-11 — complete deployment runtime closure
+
+Runtime dependency traversal now uses the command Map's keys and fails on
+missing root workspaces. Its Map interfaces are statically checked, replacing
+the incorrect object-key traversal that silently omitted application roots.
+Controlled-negative tests remove each of the six application outputs, migration
+output and an application-only transitive dependency from the actual Dockerfile
+input and require validation to fail. The positive test independently checks
+that every role and the application-only catalog are included.
+
+Primary verification: `pnpm deployment:check` passes typed closure validation,
+29 tests, the complete deployment contract and deterministic digest-pinned
+rendering; scoped ESLint and formatting pass. Image execution and external
+platform evidence remain separate gates.
 
 ### IWA-14 — HTTP telemetry privacy
 
