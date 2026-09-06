@@ -46,8 +46,8 @@ original verdict after each fix.
 | IWA-12 | Current operational documentation consistency | Open; migration/security-policy drift verified |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
-| LC-001 | Expected active cancellation versus genuine shutdown failure | Open; active abort is classified as fatal |
-| LC-002 | Lifecycle-command process/readiness cleanup assurance | Open; required process-level regression evidence missing |
+| LC-001 | Expected active cancellation versus genuine shutdown failure | Fixed; only the exact active abort reason is suppressed; distinct operation failures and cleanup failures remain fatal; lifecycle suite passes 16 tests |
+| LC-002 | Lifecycle-command process/readiness cleanup assurance | Fixed; compiled bootstrap SIGINT/SIGTERM and partial-construction tests verify real isolated readiness-file removal and ordered cleanup; 4 files / 16 tests pass |
 
 Additional audit qualifications are part of the remediation review: truthful
 OBS-005/QUEUE-006 coverage scope and OBS-006 repository/external distinction;
@@ -174,6 +174,23 @@ handwritten fixture environment values and disabled the telemetry SDK, so it
 does not yet prove startup from the exact rendered task environment. The
 merge-V3 image correctly rejected a database still pinned to epoch 1. Deployed
 SSM values, AWS KMS access and production telemetry are not claimed verified.
+
+### LC-001 / LC-002 — cancellation and process cleanup
+
+The lifecycle-command runner treats only its aborted signal's exact reason as
+expected cancellation. Distinct errors, including a thrown `undefined`, remain
+failures; cleanup always attempts readiness, database, ledger and telemetry
+closure and reports all failures. Bootstrap composition is now testable without
+starting the executable on import and retains partial-construction cleanup.
+
+Compiled-process tests send both SIGINT and SIGTERM during active work and
+verify clean exit, production readiness-marker removal and resource cleanup.
+Each fixture owns a unique temporary directory; failure cleanup terminates its
+child before removing that directory. Startup and shutdown have separate
+five-second budgets. A partial-construction failure also proves cleanup.
+Primary verification: lifecycle typecheck, build and all 16 tests in four files
+pass. Obsolete duplication-baseline entries were removed, not reclassified or
+given larger ceilings. These corrections do not close any production phase.
 
 ## Prior review history
 

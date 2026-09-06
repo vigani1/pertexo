@@ -240,48 +240,6 @@
         },
         {
           "files": [
-            "apps/lifecycle-command/src/run.ts",
-            "apps/retention/src/run.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Lifecycle and retention runners close different ordered resource sets; keeping cleanup local preserves each command's authoritative failure and shutdown policy.",
-          "clones": [
-            {
-              "hash": "e2cb436adf369c8c8b0410d528504d8c21fe49531ef903d05ec036e83a2bfb40",
-              "maxLines": 14
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/lifecycle-command/src/main.ts",
-            "apps/recovery/src/main.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Independent executable entry points repeat bootstrap-failure cleanup while owning different runtime resources and recovery authority.",
-          "clones": [
-            {
-              "hash": "3c11b016d102aef5a0ec76825c0d73ec509e548ca3162e49b12f157e0c0121ac",
-              "maxLines": 17
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/lifecycle-command/src/main.ts",
-            "apps/retention/src/main.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Independent executable entry points keep local signal listener teardown so their process lifecycle remains explicit and dependency-free.",
-          "clones": [
-            {
-              "hash": "9a091b2201301762453d5bbb1937732c7fd610ad2187849c8a61223707624d17",
-              "maxLines": 14
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/src/platform/observability/observability.module.ts",
             "apps/worker/src/platform/observability/observability.module.ts"
           ],

@@ -24,6 +24,7 @@ export async function runLifecycleCommandWorker(
   resources: LifecycleCommandResources,
 ): Promise<void> {
   let operationError: unknown;
+  let operationFailed = false;
   try {
     resources.telemetry.start();
     await resources.readiness.clear();
@@ -75,7 +76,12 @@ export async function runLifecycleCommandWorker(
       }
     }
   } catch (error: unknown) {
-    operationError = error;
+    const expectedAbort =
+      resources.signal.aborted && error === resources.signal.reason;
+    if (!expectedAbort) {
+      operationError = error;
+      operationFailed = true;
+    }
   }
 
   const cleanupErrors: unknown[] = [];
@@ -91,10 +97,13 @@ export async function runLifecycleCommandWorker(
       .then(close)
       .catch((error: unknown) => cleanupErrors.push(error));
   }
-  if (operationError !== undefined || cleanupErrors.length > 0) {
+  const errors = [
+    ...(operationFailed ? [operationError] : []),
+    ...cleanupErrors,
+  ];
+  if (errors.length > 0)
     throw new AggregateError(
-      [operationError, ...cleanupErrors].filter((error) => error !== undefined),
+      errors,
       'Lifecycle command worker did not stop cleanly',
     );
-  }
 }
