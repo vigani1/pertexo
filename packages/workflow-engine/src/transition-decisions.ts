@@ -3,6 +3,7 @@ import {
   type SchedulerState,
 } from './graph-scheduler.js';
 import type { InvocationState, WorkflowCheckpoint } from './types.js';
+import { WorkflowEngineError } from './errors.js';
 
 export function boundedReadyAdmissions(input: {
   readonly invocations: readonly InvocationState[];
@@ -12,9 +13,17 @@ export function boundedReadyAdmissions(input: {
 }): readonly string[] {
   if (input.schedulerState === undefined)
     return input.readySet.slice(0, input.maximumAdmissions);
-  const nodeById = new Map(
-    input.schedulerState.nodes.map((node) => [node.id, node]),
-  );
+  const nodeById = new Map<
+    string,
+    {
+      readonly node: SchedulerState['nodes'][number];
+      readonly containingLoopId?: string;
+    }
+  >(input.schedulerState.nodes.map((node) => [node.id, { node }]));
+  for (const body of input.schedulerState.structuredBodies ?? []) {
+    for (const node of body.nodes)
+      nodeById.set(node.id, { node, containingLoopId: body.loopNodeId });
+  }
   const invocationByKey = new Map(
     input.invocations.map((invocation) => [
       invocation.invocationKey,
@@ -23,15 +32,33 @@ export function boundedReadyAdmissions(input: {
   );
   const constraints = (invocation: InvocationState) =>
     (invocation.branchPath ?? []).flatMap((part, index) => {
-      const limit = configuredParallelMaxConcurrency(
-        nodeById.get(part.nodeId) ?? {},
-      );
+      const owner = nodeById.get(part.nodeId);
+      const limit = configuredParallelMaxConcurrency(owner?.node ?? {});
       if (limit === undefined) return [];
-      const parentScope = (invocation.branchPath ?? [])
-        .slice(0, index)
-        .map(({ nodeId, outputPort }) => `${nodeId}:${outputPort}`)
-        .join('/');
-      return [{ key: `${parentScope}\u0000${part.nodeId}`, limit }];
+      const iterationPath = invocation.iterationPath ?? [];
+      const containingLoopIndex =
+        owner?.containingLoopId === undefined
+          ? -1
+          : iterationPath.findIndex(
+              ({ loopNodeId }) => loopNodeId === owner.containingLoopId,
+            );
+      if (owner?.containingLoopId !== undefined && containingLoopIndex < 0)
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          'Parallel invocation is missing its containing loop scope',
+        );
+      // A nested Parallel has a separate cap per enclosing iteration. A root
+      // Parallel still shares its cap across any descendant loop iterations.
+      const key = JSON.stringify([
+        part.nodeId,
+        (invocation.branchPath ?? [])
+          .slice(0, index)
+          .map(({ nodeId, outputPort }) => [nodeId, outputPort]),
+        iterationPath
+          .slice(0, containingLoopIndex + 1)
+          .map(({ loopNodeId, ordinal }) => [loopNodeId, ordinal]),
+      ]);
+      return [{ key, limit }];
     });
   const active = new Map<string, number>();
   for (const invocation of input.invocations) {
