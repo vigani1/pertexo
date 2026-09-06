@@ -371,5 +371,6 @@ calculateDatabaseConnectionBudget(
   databaseConnectionBudget,
   manifest,
   autoscaling,
+  externalPlatform,
 );
 process.stdout.write('ECS deployment contract is valid.\n');
