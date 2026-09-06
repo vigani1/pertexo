@@ -8,16 +8,22 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Low-value code cleanup — active
+## Low-value code cleanup — complete
 
 The follow-up audit inspects every application, package and major tooling
 directory for redundant tests, pass-through wrappers, unused abstractions,
 duplicate helpers and stale commentary. Only removals with caller/coverage
 evidence are accepted; runtime contracts and security checks are preserved.
 
-- [ ] Record inspection and disposition for all major directories.
-- [ ] Apply only confirmed minimal removals with safety evidence.
-- [ ] Run focused tests, lint and applicable repository gates.
+- [x] Record inspection and disposition for all major directories in the
+      [low-value code audit](./low-value-code-audit.md).
+- [x] Remove the exact duplicate ledger deadline helper, unused private
+      scheduler argument and dummy webhook mock implementation. Preserve tests,
+      public exports and justified lifecycle/validation helpers.
+- [x] Focused evidence: artifact-store 209, engine 285, webhook service eight,
+      infrastructure 110 tests pass, with changed-file lint, relevant typechecks
+      and architecture/complexity/duplication/risk gates. No coverage floor was
+      reduced; reviewed coverage entries were relocated with source evidence.
 - [x] Remove an overwritten workflow-model lint selector and an unmatched
       nested integrations workspace glob. Resolved lint configurations for
       model/engine source and tests are byte-for-byte identical; pnpm still

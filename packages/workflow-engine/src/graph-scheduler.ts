@@ -405,7 +405,6 @@ function isNodeReady(
 function readyNodeDecision(
   input: DeriveReadyNodesInput,
   node: SchedulerNode,
-  indexes: SchedulerIndexes,
   marks: SchedulerMarks,
 ): ReadyNodeDecision {
   const branchPath = marks.branchPathByNode.get(node.id) ?? input.branchPath;
@@ -447,5 +446,5 @@ export function deriveReadyNodes(
   return [...input.graph.nodes]
     .sort((left, right) => compareOrdinal(left.id, right.id))
     .filter((node) => isNodeReady(node, indexes, marks))
-    .map((node) => readyNodeDecision(input, node, indexes, marks));
+    .map((node) => readyNodeDecision(input, node, marks));
 }
