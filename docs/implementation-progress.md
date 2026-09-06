@@ -89,6 +89,11 @@ recovery, and independent capacity release in sibling iterations. A shared
 recovery harness preserves the existing settled-Merge recovery proof.
 
 The primary reviewer reran all ten engine cases and both real-worker cases.
+The full static/unit/coverage run covers nine previously reviewed residual
+branches in coordinator observation and scheduling. Their obsolete uncovered
+reviews were removed after checking positive hit counts in the fresh report;
+the selected risk cohort now has 490 reviewed and three unreviewed branches.
+No coverage or complexity threshold was relaxed.
 IWA-05 remains separate: this checkpoint does not change skipped-Merge
 semantics.
 
