@@ -27,7 +27,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "3.1111.0",
+    "@aws-sdk/client-kms": "3.1125.0",
     "@pertexo/node-sdk": "workspace:*",
     "@smithy/node-http-handler": "4.11.2",
     "zod": "4.4.3"
