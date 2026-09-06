@@ -1,7 +1,6 @@
 packages:
   - apps/*
   - packages/*
-  - packages/integrations/*
 
 overrides:
   fastify: 5.12.1

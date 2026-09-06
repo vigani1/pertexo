@@ -315,10 +315,7 @@ export default tseslint.config(
     },
   },
   {
-    files: [
-      'packages/workflow-model/**/*.ts',
-      'packages/workflow-engine/**/*.ts',
-    ],
+    files: ['packages/workflow-engine/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
