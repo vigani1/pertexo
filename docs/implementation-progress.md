@@ -36,7 +36,7 @@ original verdict after each fix.
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
 | IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
-| IWA-08 | CPU-bounded streaming redaction | Open; measured synchronous work exceeds timeout |
+| IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Open; permitted rollout exceeds capacity contract |
 | IWA-10 | Authenticated replay vertical slice | Open; public route/use case absent |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
@@ -117,6 +117,24 @@ trailing-dot names, the normal-hostname control, alternate decimal/octal/hex
 loopback forms, IPv4-mapped IPv6, mixed DNS answers and redirect re-resolution.
 Integration package typecheck and focused ESLint pass. Tests use fake DNS and
 transport boundaries; no public endpoint request was needed.
+
+### IWA-08 — cooperative redaction and elapsed deadlines
+
+Streaming response redaction now yields after at most 4,096 byte comparisons
+and between buffered chunks, checking both cancellation and the elapsed request
+deadline. The 64 KiB near-match regression originally returned success after
+exceeding its five-millisecond timeout; it now returns the bounded timeout error.
+A 256 KiB response with all 32 maximum-length sensitive values, caller
+cancellation, transport-chunk zeroization, and longest overlapping secrets
+across chunk boundaries are covered. The overlap case also failed before its
+correction. Output and raw-byte budgets remain enforced.
+
+Byte-stream ownership and matching now live in a dedicated redaction module;
+HTTP error identity/classification is shared without changing public exports.
+All 85 secure-HTTP cases and 207 integration-package cases pass, along with
+typecheck, focused ESLint and the unchanged complexity ratchet. Timed tests use
+a conservative 500 ms CI ceiling; they prove deadline rejection and event-loop
+progress, not production throughput or a hard real-time scheduling guarantee.
 
 ## Prior review history
 

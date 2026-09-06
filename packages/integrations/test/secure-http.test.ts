@@ -744,6 +744,96 @@ describe('secure HTTP client', () => {
     expect(invalid.close).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    { bytes: 65_536, sensitiveValues: ['a'.repeat(1_023) + 'b'] },
+    {
+      bytes: 262_144,
+      sensitiveValues: Array.from(
+        { length: 32 },
+        (_, index) => 'a'.repeat(8_190) + String(index).padStart(2, '0'),
+      ),
+    },
+  ])(
+    'honors the deadline while redacting a buffered near-match response: $bytes bytes',
+    async ({ bytes, sensitiveValues }) => {
+      const resolver = new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      });
+      const fixture = transportResponse(200, {}, ['a'.repeat(bytes)]);
+      const startedAt = performance.now();
+      await expectSecureFailure(
+        new SecureHttpClient(
+          resolver,
+          new FakeTransport(() => Promise.resolve(fixture.response)),
+        ).execute(
+          request({
+            timeoutMillis: 5,
+            maxResponseBytes: bytes,
+            sensitiveValues,
+          }),
+        ),
+        {
+          code: SECURE_HTTP_ERROR_CODE.timedOut,
+          possiblyDispatched: true,
+          classification: 'ambiguous',
+        },
+      );
+      expect(performance.now() - startedAt).toBeLessThan(500);
+      expect(fixture.close).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('lets caller cancellation interrupt CPU-bound redaction and clears the transport chunk', async () => {
+    const controller = new AbortController();
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const chunk = encoder.encode('a'.repeat(65_536));
+    const close = vi.fn();
+    const transport = new FakeTransport(() =>
+      Promise.resolve({
+        status: 200,
+        headers: {},
+        close,
+        body: {
+          async *[Symbol.asyncIterator]() {
+            setTimeout(() => {
+              controller.abort();
+            }, 1);
+            await Promise.resolve();
+            yield chunk;
+          },
+        },
+      }),
+    );
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, transport)
+        .execute(
+          request({
+            signal: controller.signal,
+            maxResponseBytes: 65_536,
+            sensitiveValues: ['a'.repeat(8_191) + 'b'],
+          }),
+        )
+        .then(() => 'unexpected successful response'),
+      { code: SECURE_HTTP_ERROR_CODE.canceled, possiblyDispatched: true },
+    );
+    expect(chunk.every((byte) => byte === 0)).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('chooses the longest overlapping secret across chunk boundaries', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const fixture = transportResponse(200, {}, ['ab', 'c']);
+    const response = await new SecureHttpClient(
+      resolver,
+      new FakeTransport(() => Promise.resolve(fixture.response)),
+    ).execute(request({ sensitiveValues: ['ab', 'abc'] }));
+    expect(decoder.decode(response.body)).toBe('[Redacted]');
+  });
+
   it('keeps body timeout and network failure ambiguous after provider-confirmed success', async () => {
     const resolver = new FakeResolver({
       'api.example.test': [{ address: '8.8.8.8', family: 4 }],
