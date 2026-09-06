@@ -8,7 +8,7 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Repository modularity cleanup — active
+## Repository modularity cleanup — complete
 
 The user authorized a repository-wide structure and readability cleanup on
 2026-09-06. The [structure audit](./repository-structure-audit.md) tracks all
@@ -16,12 +16,26 @@ six applications, twelve packages, and root tooling. This work preserves the
 existing plan and runtime invariants; it does not close the unresolved product
 or production-evidence requirements below.
 
-- [ ] Review and record a disposition for all 18 workspaces.
+- [x] Review and record a disposition for all 18 workspaces in the structure
+      audit and developer codebase map.
 - [x] Correct and verify dependency-aware TypeScript builds: all 18 projects
       referenced, runtime dependency edges explicit, six graph regressions,
       forced build and every workspace test typecheck pass.
-- [ ] Implement and verify the confirmed responsibility/ownership refactors.
-- [ ] Pass final static, unit, coverage and applicable integration gates.
+- [x] Implement and verify the confirmed responsibility/ownership refactors:
+      graph/expression owners, SDK schema documents, cycle-free executable
+      compilation, schedule/ledger ownership, storage and retry policies,
+      queue admission and application composition.
+- [x] Pass `pnpm prepush:check` (static, unit, coverage and reviewed risk
+      inventory), 15 architecture regressions and the full isolated integration
+      gate: 454 passed, four environment-specific skips. The final shared
+      lifecycle cancellation extraction additionally passed all 239 database
+      unit tests, typecheck and six PostgreSQL lifecycle intent cases.
+
+Evidence and deliberately retained structures are recorded in the
+[structure audit](./repository-structure-audit.md); source navigation and
+placement rules are in the [codebase map](./codebase-map.md). Package export
+maps and runtime semantics are preserved. Complexity budgets were tightened,
+not raised; source duplication is down to 28 reviewed groups / 563 lines.
 
 ## Independent audit remediation — follow-up corrections
 
