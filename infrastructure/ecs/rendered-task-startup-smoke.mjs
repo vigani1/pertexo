@@ -126,7 +126,6 @@ try {
     baseValues,
   );
   await assertRoleConfigurationNegative(
-    tasks.api,
     coreApiEnvironment,
     objectStoreBridge.caPath,
   );
@@ -374,7 +373,7 @@ function resolveTaskEnvironment(workloadName, workload, task, cohort, values) {
   return environment;
 }
 
-async function assertRoleConfigurationNegative(task, environment, caPath) {
+async function assertRoleConfigurationNegative(environment, caPath) {
   const invalid = { ...environment };
   delete invalid.CONNECTION_KMS_REGION;
   const args = dockerTaskArguments(
