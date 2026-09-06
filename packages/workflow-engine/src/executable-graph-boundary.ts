@@ -12,7 +12,7 @@ import {
   canonicalEdges,
   definitionManifest,
   executorManifest,
-} from './executable-compilation.js';
+} from './executable-graph-rules.js';
 import {
   type WorkflowExecutableGraphV2,
   type WorkflowExecutableNodeV2,

@@ -1,15 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import {
-  DoubleSubmitCsrfPolicy,
-  OpaqueSessionService,
-} from '../identity/index.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../identity-workspace/guards.js';
-import { RequestContextStore } from '../platform/http/index.js';
 import { ConnectionsController } from './controllers.js';
 import {
   FailureNotificationDestinationsController,
@@ -55,20 +46,6 @@ export class ConnectionsModule {
       ConnectionManageGuard,
       ConnectionUseGuard,
       FailureNotificationWorkflowEditGuard,
-      {
-        provide: SessionAuthenticationGuard,
-        useFactory: (
-          sessions: OpaqueSessionService,
-          contexts: RequestContextStore,
-        ) => new SessionAuthenticationGuard(sessions, contexts),
-        inject: [OpaqueSessionService, RequestContextStore],
-      },
-      {
-        provide: CsrfProtectionGuard,
-        useFactory: (csrf: DoubleSubmitCsrfPolicy) =>
-          new CsrfProtectionGuard(csrf),
-        inject: [DoubleSubmitCsrfPolicy],
-      },
       {
         provide: CreateConnectionUseCase,
         useValue: new CreateConnectionUseCase(

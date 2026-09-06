@@ -11,5 +11,10 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test"]
+  "exclude": ["dist", "test"],
+  "references": [
+    {
+      "path": "../node-sdk/tsconfig.json"
+    }
+  ]
 }

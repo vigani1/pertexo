@@ -10,6 +10,9 @@ This repository deliberately contains the backend platform only. A web client is
 deferred and is not part of this repository's current delivery scope; an empty
 `apps/web` workspace should not be created to satisfy an old diagram.
 
+For developer navigation and code placement, start with the
+[codebase map](./docs/codebase-map.md).
+
 ## What Is Implemented
 
 - Separate NestJS API and worker process roles in a TypeScript monorepo.
@@ -84,6 +87,7 @@ cp .env.example .env
 docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery
 docker compose run --rm control-ledger-primary-bootstrap
 docker compose run --rm control-ledger-recovery-bootstrap
+pnpm build
 pnpm db:migrate
 ```
 
@@ -91,6 +95,10 @@ The example environment is for local development only. Review `.env` before
 starting processes; do not commit credentials or production configuration.
 
 Common commands:
+
+Workspace packages resolve their compiled `dist` exports. After changing a
+shared package, run `pnpm build` and restart the affected development process.
+The API/worker source watchers do not replace the shared-package build step.
 
 ```bash
 pnpm dev:api

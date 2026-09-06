@@ -1,18 +1,32 @@
 import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import type { PoolClient, QueryConfig, QueryResult } from 'pg';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
-  EXPECTED_MIGRATION_HEAD,
-  MINIMUM_POSTGRES_MAJOR,
-} from '../platform/readiness.js';
+  acquirePoolClient,
+  cancelBackendQuery,
+  externalSignal,
+  query,
+  raceWithSignal,
+  throwIfAborted,
+  type MaintenancePool,
+} from './control-ledger-postgres.js';
+import {
+  ControlLedgerCommandConflictError,
+  ControlLedgerReconciliationBoundError,
+  ControlLedgerReconciliationError,
+} from './control-ledger-errors.js';
+import {
+  createControlLedgerReadSide,
+  type CommittedArtifactInventoryInput,
+  type CommittedArtifactInventoryPage,
+} from './control-ledger-read-side.js';
 
 const ZERO_HASH = '0'.repeat(64);
-const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
 const uuidSchema = z.uuid().transform((value) => value.toLowerCase());
 const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);
 const occurredAtSchema = z.iso
@@ -118,26 +132,6 @@ export interface ControlLedgerInventoryResult {
   readonly workspaceCount: number;
 }
 
-export interface CommittedArtifactInventoryRecord {
-  readonly artifactId: string;
-  readonly byteLength: number;
-  readonly mediaType: string;
-  readonly sha256: string;
-  readonly workspaceId: string;
-}
-
-export interface CommittedArtifactInventoryPage {
-  readonly artifacts: readonly CommittedArtifactInventoryRecord[];
-  readonly hasMore: boolean;
-}
-
-export interface CommittedArtifactInventoryInput {
-  readonly afterArtifactId?: string;
-  readonly afterWorkspaceId?: string;
-  readonly limit: number;
-  readonly signal?: AbortSignal;
-}
-
 export interface ControlLedgerCoordinator {
   checkRestoreReadiness(input: {
     readonly expectedMaintenanceRole: string;
@@ -160,31 +154,16 @@ export interface ControlLedgerCoordinator {
   ): Promise<LegalHoldCommandResult>;
 }
 
-export class ControlLedgerCommandConflictError extends Error {
-  public constructor() {
-    super('Control ledger command replay conflicts with the requested payload');
-    this.name = 'ControlLedgerCommandConflictError';
-  }
-}
-
-export class ControlLedgerReconciliationError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ControlLedgerReconciliationError';
-  }
-}
-
-export class ControlLedgerReconciliationBoundError extends ControlLedgerReconciliationError {
-  public constructor() {
-    super('Control ledger reconciliation invocation bound exceeded');
-    this.name = 'ControlLedgerReconciliationBoundError';
-  }
-}
-
-interface MaintenancePool {
-  connect(): Promise<PoolClient>;
-  end(): Promise<void>;
-}
+export {
+  ControlLedgerCommandConflictError,
+  ControlLedgerReconciliationBoundError,
+  ControlLedgerReconciliationError,
+} from './control-ledger-errors.js';
+export type {
+  CommittedArtifactInventoryInput,
+  CommittedArtifactInventoryPage,
+  CommittedArtifactInventoryRecord,
+} from './control-ledger-read-side.js';
 
 interface ProjectionRow {
   [key: string]: unknown;
@@ -247,137 +226,6 @@ function parseInput(input: LegalHoldCommandInput) {
     })
     .strict()
     .parse(input);
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  signal?.throwIfAborted();
-}
-
-async function query<
-  Row extends Record<string, unknown> = Record<string, unknown>,
->(
-  client: PoolClient,
-  text: string,
-  values: readonly unknown[] = [],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  throwIfAborted(signal);
-  let result: QueryResult<Row>;
-  try {
-    result = await client.query<Row>({
-      text,
-      values: [...values],
-      ...(signal === undefined ? {} : { signal }),
-    });
-  } catch (error: unknown) {
-    if (signal?.aborted === true) throw signal.reason;
-    throw error;
-  }
-  throwIfAborted(signal);
-  return result;
-}
-
-async function acquirePoolClient(
-  pool: MaintenancePool,
-  signal?: AbortSignal,
-): Promise<PoolClient> {
-  const connection = pool.connect();
-  if (signal === undefined) return connection;
-  let rejectAbort: ((reason?: unknown) => void) | undefined;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => rejectAbort?.(signal.reason);
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    signal.throwIfAborted();
-    return await Promise.race([connection, aborted]);
-  } catch (error: unknown) {
-    if (signal.aborted) {
-      void connection.then(
-        (client) => {
-          client.release();
-        },
-        () => undefined,
-      );
-      throw signal.reason;
-    }
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
-}
-
-function externalSignal(signal: AbortSignal | undefined, timeoutMs: number) {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
-}
-
-function raceWithSignal<T>(operation: Promise<T>, signal: AbortSignal) {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    const finish = (settle: () => void): void => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener('abort', onAbort);
-      settle();
-    };
-    const onAbort = (): void => {
-      finish(() => {
-        // AbortSignal reasons are intentionally preserved even when non-Error.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        reject(signal.reason);
-      });
-    };
-    operation.then(
-      (value) => {
-        finish(() => {
-          resolve(value);
-        });
-      },
-      (error: unknown) => {
-        finish(() => {
-          // Preserve the adapter's rejection value unchanged.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-          reject(error);
-        });
-      },
-    );
-    signal.addEventListener('abort', onAbort, { once: true });
-    if (signal.aborted) onAbort();
-  });
-}
-
-async function cancelBackendQuery(
-  config: DatabaseConfig,
-  processId: number,
-): Promise<void> {
-  const cancellationPool = createDatabasePool({
-    ...config,
-    connectionTimeoutMillis: Math.min(
-      config.connectionTimeoutMillis,
-      BACKEND_CANCELLATION_TIMEOUT_MS,
-    ),
-    max: 1,
-  });
-  const signal = AbortSignal.timeout(BACKEND_CANCELLATION_TIMEOUT_MS);
-  const cancellationQuery: QueryConfig<number[]> & {
-    readonly signal: AbortSignal;
-  } = {
-    text: 'select pg_cancel_backend($1)',
-    values: [processId],
-    signal,
-  };
-  try {
-    await raceWithSignal(cancellationPool.query(cancellationQuery), signal);
-  } catch {
-    // Backend cancellation is best effort; transaction rollback is authoritative.
-  } finally {
-    const endSignal = AbortSignal.timeout(BACKEND_CANCELLATION_TIMEOUT_MS);
-    await raceWithSignal(cancellationPool.end(), endSignal).catch(
-      () => undefined,
-    );
-  }
 }
 
 function numberSequence(value: string | number): number {
@@ -506,6 +354,7 @@ export function createControlLedgerCoordinator(
     throw new Error('Control ledger record bound cannot exceed page capacity');
   const pool = options.pool ?? createDatabasePool(config);
   const ownsPool = options.pool === undefined;
+  const readSide = createControlLedgerReadSide(config, pool);
 
   const transact = async <T>(
     workspaceId: string,
@@ -994,138 +843,9 @@ export function createControlLedgerCoordinator(
   };
 
   return Object.freeze({
-    checkRestoreReadiness: async (input: {
-      readonly expectedMaintenanceRole: string;
-      readonly signal?: AbortSignal;
-    }): Promise<void> => {
-      const parsedInput = z
-        .object({
-          expectedMaintenanceRole: z.string().regex(/^[a-z_][a-z0-9_]*$/u),
-          signal: z
-            .custom<AbortSignal>((value) => value instanceof AbortSignal)
-            .optional(),
-        })
-        .strict()
-        .parse(input);
-      const client = await acquirePoolClient(pool, parsedInput.signal);
-      try {
-        const result = await query<{
-          boundary_compatible: boolean;
-          current_user: string;
-          migration_head: string | null;
-          postgres_major: number;
-        }>(
-          client,
-          `select current_user,
-             current_setting('server_version_num')::integer / 10000 as postgres_major,
-             (select name from pertexo_internal.schema_migrations order by name desc limit 1) as migration_head,
-             not role.rolsuper
-               and not role.rolbypassrls
-               and not pg_has_role(current_user,$1::name,'MEMBER')
-               and has_function_privilege(current_user,'app.lock_workspace_control_ledger(uuid)','EXECUTE')
-               and has_function_privilege(current_user,'app.project_workspace_legal_hold(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone)','EXECUTE')
-               and has_function_privilege(current_user,'app.project_workspace_deletion(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone,interval)','EXECUTE')
-               and has_function_privilege(current_user,'app.enumerate_workspace_control_anchors(uuid,integer)','EXECUTE')
-               and has_function_privilege(current_user,'app.enumerate_committed_tenant_artifacts(uuid,uuid,integer)','EXECUTE')
-                and has_function_privilege(current_user,'app.find_due_workspace_purge()','EXECUTE')
-                and has_function_privilege(current_user,'app.workspace_purge_repair_command_id(uuid)','EXECUTE')
-                and has_function_privilege(current_user,'app.prepare_workspace_purge_job(uuid,bigint,character,character varying,interval)','EXECUTE')
-                and has_function_privilege(current_user,'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
-                and has_function_privilege(current_user,'app.find_due_workspace_purge_step()','EXECUTE')
-                and has_function_privilege(current_user,'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
-                and has_function_privilege(current_user,'app.checkpoint_workspace_object_versions_page(uuid,uuid,bigint,integer,boolean,bigint,character)','EXECUTE')
-                and has_function_privilege(current_user,'app.release_workspace_purge_step(uuid,uuid,bigint)','EXECUTE')
-                and has_function_privilege(current_user,'app.find_due_workspace_purge_completion()','EXECUTE')
-                and has_function_privilege(current_user,'app.prepare_workspace_purge_completion(uuid,bigint,character,character varying,interval)','EXECUTE')
-                and has_function_privilege(current_user,'app.authorize_workspace_purge_completion_append(uuid,uuid,bigint,bigint,character)','EXECUTE')
-                and has_function_privilege(current_user,'app.project_workspace_purge_completion(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
-               and not has_table_privilege(current_user,'app.workspaces','INSERT,UPDATE,DELETE,TRUNCATE')
-               and not has_table_privilege(current_user,'app.workspace_control_ledger_projection','INSERT,UPDATE,DELETE,TRUNCATE')
-               as boundary_compatible
-           from pg_roles role where role.rolname=current_user`,
-          [config.ownerRole],
-          parsedInput.signal,
-        );
-        const row = result.rows.at(0);
-        if (
-          result.rowCount !== 1 ||
-          row?.current_user !== parsedInput.expectedMaintenanceRole ||
-          row.postgres_major < MINIMUM_POSTGRES_MAJOR ||
-          row.migration_head !== EXPECTED_MIGRATION_HEAD ||
-          !row.boundary_compatible
-        )
-          throw new Error(
-            'Restore maintenance database boundary is incompatible',
-          );
-      } finally {
-        client.release();
-      }
-    },
+    ...readSide,
     close: async (): Promise<void> => {
       if (ownsPool) await pool.end();
-    },
-    listCommittedArtifacts: async (
-      input: CommittedArtifactInventoryInput,
-    ): Promise<CommittedArtifactInventoryPage> => {
-      const parsedInput = z
-        .object({
-          afterArtifactId: uuidSchema.optional(),
-          afterWorkspaceId: uuidSchema.optional(),
-          limit: z.number().int().min(1).max(999),
-          signal: z
-            .custom<AbortSignal>((value) => value instanceof AbortSignal)
-            .optional(),
-        })
-        .strict()
-        .superRefine((value, context) => {
-          if (
-            (value.afterArtifactId === undefined) !==
-            (value.afterWorkspaceId === undefined)
-          )
-            context.addIssue({
-              code: 'custom',
-              message: 'Artifact inventory cursor must be complete',
-            });
-        })
-        .parse(input);
-      const client = await acquirePoolClient(pool, parsedInput.signal);
-      try {
-        const result = await query<{
-          artifact_id: string;
-          byte_length: string | number;
-          media_type: string;
-          sha256: string;
-          workspace_id: string;
-        }>(
-          client,
-          `select workspace_id,artifact_id,byte_length,media_type,sha256
-             from app.enumerate_committed_tenant_artifacts($1,$2,$3)`,
-          [
-            parsedInput.afterWorkspaceId ?? null,
-            parsedInput.afterArtifactId ?? null,
-            parsedInput.limit + 1,
-          ],
-          parsedInput.signal,
-        );
-        const hasMore = result.rows.length > parsedInput.limit;
-        const artifacts = result.rows.slice(0, parsedInput.limit).map((row) => {
-          const byteLength = Number(row.byte_length);
-          if (!Number.isSafeInteger(byteLength) || byteLength < 0)
-            throw new ControlLedgerReconciliationError(
-              'Committed artifact inventory contains an invalid byte length',
-            );
-          return Object.freeze({
-            artifactId: uuidSchema.parse(row.artifact_id),
-            byteLength,
-            mediaType: boundedText(255).parse(row.media_type),
-            sha256: hashSchema.parse(row.sha256),
-            workspaceId: uuidSchema.parse(row.workspace_id),
-          });
-        });
-        return Object.freeze({ artifacts: Object.freeze(artifacts), hasMore });
-      } finally {
-        client.release();
-      }
     },
     placeLegalHold: (input: LegalHoldCommandInput) =>
       command('legal_hold_placed', input),

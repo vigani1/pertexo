@@ -6,6 +6,10 @@ import { sha256HexSchema as hashSchema } from '../validation/persisted-primitive
 
 import type { DatabaseConfig } from '../config.js';
 import {
+  acquirePoolClient,
+  raceWithSignal,
+} from './control-ledger-postgres.js';
+import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
 } from '../platform/readiness.js';
@@ -162,74 +166,6 @@ function verifyRecord(
     record.recordHash === record.previousHash
   )
     throw new Error('Lifecycle ledger record conflicts with durable operation');
-}
-
-function raceWithSignal<T>(operation: Promise<T>, signal: AbortSignal) {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    const finish = (settle: () => void): void => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener('abort', onAbort);
-      settle();
-    };
-    const onAbort = (): void => {
-      finish(() => {
-        // Preserve AbortSignal reasons, including non-Error reasons.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        reject(signal.reason);
-      });
-    };
-    operation.then(
-      (value) => {
-        finish(() => {
-          resolve(value);
-        });
-      },
-      (error: unknown) => {
-        finish(() => {
-          // Preserve adapter rejection values unchanged.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-          reject(error);
-        });
-      },
-    );
-    signal.addEventListener('abort', onAbort, { once: true });
-    if (signal.aborted) onAbort();
-  });
-}
-
-async function acquirePoolClient(
-  pool: Pool,
-  signal?: AbortSignal,
-): Promise<PoolClient> {
-  const connection = pool.connect();
-  if (signal === undefined) return connection;
-  let rejectAbort: ((reason?: unknown) => void) | undefined;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => {
-    rejectAbort?.(signal.reason);
-  };
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    signal.throwIfAborted();
-    return await Promise.race([connection, aborted]);
-  } catch (error: unknown) {
-    if (signal.aborted) {
-      void connection.then(
-        (client) => {
-          client.release();
-        },
-        () => undefined,
-      );
-      throw signal.reason;
-    }
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
 }
 
 async function query<
