@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
+import { withPlatformTransaction } from '../tenant-access/workspace.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 export type RetentionTransactionOptions = Readonly<{
@@ -36,7 +37,6 @@ export async function lockWorkspaceRetentionControl(
       retention_control_hash: string;
       retention_control_sequence: number | string;
     }>({
-      ...(signal === undefined ? {} : { signal }),
       text: 'select * from app.lock_workspace_control_ledger($1)',
       values: [workspaceId],
     });
@@ -52,25 +52,33 @@ export async function inRetentionTransaction<T>(
   signal: AbortSignal | undefined,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = await pool.connect();
-  let committed = false;
+  if (
+    !Number.isSafeInteger(options.lockTimeoutMs) ||
+    options.lockTimeoutMs < 1 ||
+    options.lockTimeoutMs > 2_147_483_647
+  ) {
+    throw new RangeError('Invalid PostgreSQL lock timeout');
+  }
   try {
-    signal?.throwIfAborted();
-    await client.query('begin');
-    await client.query({
-      ...(signal === undefined ? {} : { signal }),
-      text: `set local lock_timeout='${String(options.lockTimeoutMs)}ms';
-             set local statement_timeout='${String(options.statementTimeoutMs)}ms'`,
-    });
-    const result = await work(client);
-    signal?.throwIfAborted();
-    await client.query('commit');
-    committed = true;
-    return result;
+    return await withPlatformTransaction(
+      pool,
+      async (client) => {
+        await client.query("select set_config('lock_timeout', $1, true)", [
+          `${String(options.lockTimeoutMs)}ms`,
+        ]);
+        const result = await work(client);
+        signal?.throwIfAborted();
+        return result;
+      },
+      {
+        ...(signal === undefined ? {} : { signal }),
+        statementTimeoutMillis: options.statementTimeoutMs,
+      },
+    );
   } catch (error: unknown) {
-    if (!committed) await client.query('rollback').catch(() => undefined);
+    // Maintenance runners distinguish their exact lease-loss/shutdown reason.
+    // The shared guard owns wire cancellation and destroys the affected client.
+    signal?.throwIfAborted();
     throw error;
-  } finally {
-    client.release(!committed);
   }
 }
