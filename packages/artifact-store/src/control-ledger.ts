@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { z } from 'zod';
 import { inspectControlLedgerBucketPolicy } from './control-ledger/bucket-policy.js';
+import { requestSignal } from './artifact-request-lifecycle.js';
 
 import type { ControlLedgerConfig } from './control-ledger-config.js';
 import {
@@ -224,16 +225,6 @@ function hashMaterial(material: unknown): string {
 
 function recordKey(workspaceId: string, sequence: number): string {
   return `control-ledger/workspaces/${workspaceId}/records/${String(sequence).padStart(SEQUENCE_WIDTH, '0')}.json`;
-}
-
-function requestSignal(
-  timeoutMs: number,
-  externalSignal: AbortSignal | undefined,
-): AbortSignal {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  return externalSignal === undefined
-    ? timeoutSignal
-    : AbortSignal.any([externalSignal, timeoutSignal]);
 }
 
 function hasErrorName(error: unknown, name: string): boolean {

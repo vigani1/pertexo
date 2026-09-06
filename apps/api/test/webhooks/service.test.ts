@@ -123,10 +123,9 @@ describe('webhook management service', () => {
 
 function setup(original: boolean) {
   const rotateSecret = vi.fn().mockResolvedValue(health);
-  const provision = vi.fn().mockImplementation((input: unknown) => {
-    void input;
-    return Promise.resolve(health);
-  });
+  const provision = vi
+    .fn<WebhookTriggerDatabase['provision']>()
+    .mockResolvedValue(health);
   const database = {
     provision,
     rotateEndpoint: vi.fn().mockResolvedValue(health),
