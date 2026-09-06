@@ -535,6 +535,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build workspace artifacts for deployment validation
+        run: pnpm build
       - name: Validate dependencies, deployment, exercises, and image pins
         run: |
           set -o pipefail
