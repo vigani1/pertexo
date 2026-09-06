@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   type NodeConnectionRuntime,
   NodeDispatchEvidenceError,
@@ -48,7 +50,21 @@ export function createProviderBeforeDispatch(input: {
       );
     }
     try {
-      await input.runtime.beforeDispatch();
+      await input.runtime.beforeDispatch({
+        connectionFence: {
+          connectionId: input.connectionId,
+          expectedProviderKey: input.expectedProviderKey,
+          expectedAuthType: input.expectedAuthType,
+          secretVersionId: input.secretVersionId,
+        },
+        providerDispatchBinding: `${input.expectedProviderKey}:v1:sha256:${createHash(
+          'sha256',
+        )
+          .update(
+            `${input.expectedProviderKey}\0${input.connectionId}\0${input.secretVersionId}`,
+          )
+          .digest('hex')}`,
+      });
     } catch (error: unknown) {
       throw secureHttpPreDispatchError(dispatchEvidenceErrorCode(error));
     }

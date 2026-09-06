@@ -30,7 +30,7 @@ original verdict after each fix.
 | --- | --- | --- |
 | IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
 | IWA-02 | Rendered API/worker role configuration and startup contract | Open; missing API settings and disabled worker jobs reproduced |
-| IWA-03 | Atomic provider credential fence through dispatch | Open; HTTP/Slack fence argument dropped |
+| IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Open; actual local spans contain synthetic OAuth query material |
 | IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
@@ -135,6 +135,24 @@ All 85 secure-HTTP cases and 207 integration-package cases pass, along with
 typecheck, focused ESLint and the unchanged complexity ratchet. Timed tests use
 a conservative 500 ms CI ceiling; they prove deadline rejection and event-loop
 progress, not production throughput or a hard real-time scheduling guarantee.
+
+### IWA-03 — credential fence preserved through dispatch
+
+The shared provider callback now supplies both the exact connection-secret fence
+and provider dispatch binding to the durable marker operation. Email uses that
+same callback while retaining its required preflight assertion. HTTP and Slack
+regressions first failed without the forwarded arguments. A real-PostgreSQL
+regression verifies that rotating a resolved credential prevents marker
+persistence; the matching current credential permits it. Real worker tests use
+API credential rotation between the preflight check and marker commit, then
+assert authentication failure, no marker, no provider bytes and completed
+coordinator cleanup. Both provider tests also pass without the earlier happy-path
+test running.
+
+Evidence: 98 HTTP/Slack/email executor cases, three coordinator persistence
+cases and three worker integration cases pass. Integration, database and worker
+typechecks and scoped ESLint pass. Provider calls are controlled test transports;
+live credential-provider sandboxes remain an external obligation.
 
 ## Prior review history
 

@@ -4,6 +4,7 @@ import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeArtifactRuntime,
   type NodeConnectionRuntime,
+  NodeDispatchEvidenceError,
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type ResolvedNodeConnection,
@@ -68,7 +69,9 @@ function runtime(overrides: Partial<NodeExecutionRuntime> = {}) {
     secretVersionId,
     secret,
   };
-  const beforeDispatch = vi.fn(() => Promise.resolve());
+  const beforeDispatch = vi.fn<NodeExecutionRuntime['beforeDispatch']>(() =>
+    Promise.resolve(),
+  );
   const resolve = vi.fn(() => Promise.resolve(resolved));
   const assertCurrent = vi.fn<
     NonNullable<NodeConnectionRuntime['assertCurrent']>
@@ -290,6 +293,62 @@ describe('http.request@1 server executor', () => {
     expect(requestBody?.every((byte) => byte === 0)).toBe(true);
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
     expect(measure).toHaveBeenCalledOnce();
+  });
+
+  it('atomically forwards the resolved connection fence after a rotation race', async () => {
+    const state = runtime();
+    const rotatedSecretVersionId = '88888888-8888-4888-8888-888888888888';
+    let currentSecretVersionId = secretVersionId;
+    let providerBytesSent = false;
+    state.assertCurrent.mockImplementationOnce((input) => {
+      expect(input.secretVersionId).toBe(secretVersionId);
+      currentSecretVersionId = rotatedSecretVersionId;
+      return Promise.resolve();
+    });
+    state.beforeDispatch.mockImplementation((input) => {
+      // The old provider adapter omitted the fence, so this test double
+      // models a marker implementation that cannot reject a stale dispatch.
+      if (input?.connectionFence === undefined) return Promise.resolve();
+      if (
+        input.providerDispatchBinding !==
+        'http:v1:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847'
+      )
+        throw new NodeDispatchEvidenceError(
+          'provider_dispatch_binding_mismatch',
+        );
+      if (input.connectionFence.secretVersionId !== currentSecretVersionId)
+        throw new NodeDispatchEvidenceError('provider_connection_fence_failed');
+      return Promise.resolve();
+    });
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request) => {
+        await request.beforeDispatch();
+        providerBytesSent = true;
+        return response(new TextEncoder().encode('{"created":true}'));
+      }),
+    });
+
+    await expect(
+      registration.execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      decision: {
+        kind: 'failed',
+        errorKind: 'authentication',
+      },
+      possiblyDispatched: false,
+    });
+    expect(providerBytesSent).toBe(false);
+    expect(state.secret.every((byte) => byte === 0)).toBe(true);
+    expect(state.beforeDispatch).toHaveBeenCalledWith({
+      connectionFence: {
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        secretVersionId,
+      },
+      providerDispatchBinding:
+        'http:v1:sha256:23d10e242277ade1ff3b50b0a5bed60a0b4366a6af4ffd42dff3a17ba0c2e847',
+    });
   });
 
   it('writes large output through the artifact capability and returns only its reference', async () => {

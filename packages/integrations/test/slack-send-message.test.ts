@@ -1,6 +1,7 @@
 import {
   NodeDispatchEvidenceError,
   ProviderExecutionRateLimitError,
+  type NodeConnectionRuntime,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -16,6 +17,8 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SlackSendMessageExecutorError,
   SecureHttpError,
+  type SlackApiResult,
+  type SlackClient,
   type SecureHttpRequest,
   type SecureHttpResponse,
 } from '../src/server.js';
@@ -23,7 +26,7 @@ import {
 const connectionId = '22222222-2222-4222-8222-222222222222';
 const secretVersionId = '33333333-3333-4333-8333-333333333333';
 
-function runtime(clientResult: unknown) {
+function runtime(clientResult: SlackApiResult | Error | undefined) {
   const secret = new TextEncoder().encode(
     JSON.stringify({
       schemaVersion: 1,
@@ -31,8 +34,12 @@ function runtime(clientResult: unknown) {
       botToken: 'xoxb-123456789-secret',
     }),
   );
-  const beforeDispatch = vi.fn(() => Promise.resolve());
-  const assertCurrent = vi.fn(() => Promise.resolve());
+  const beforeDispatch = vi.fn<NodeExecutionRuntime['beforeDispatch']>(() =>
+    Promise.resolve(),
+  );
+  const assertCurrent = vi.fn<
+    NonNullable<NodeConnectionRuntime['assertCurrent']>
+  >(() => Promise.resolve());
   const value: NodeExecutionRuntime = {
     workspaceId: '11111111-1111-4111-8111-111111111111',
     runId: '44444444-4444-4444-8444-444444444444',
@@ -55,11 +62,13 @@ function runtime(clientResult: unknown) {
         }),
     },
   };
-  const sendMessage = vi.fn(
+  const sendMessage = vi.fn<SlackClient['sendMessage']>(
     async (input: { beforeDispatch(): Promise<void> }) => {
       await input.beforeDispatch();
       if (clientResult instanceof Error) throw clientResult;
-      return clientResult as never;
+      if (clientResult === undefined)
+        throw new Error('Slack test result was not provided');
+      return clientResult;
     },
   );
   return { assertCurrent, beforeDispatch, secret, sendMessage, value };
@@ -121,6 +130,68 @@ describe('slack.send_message@1', () => {
     );
     expect(state.beforeDispatch).toHaveBeenCalledOnce();
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it('atomically forwards the resolved connection fence after a rotation race', async () => {
+    const state = runtime({
+      kind: 'succeeded',
+      channelId: 'C123ABC',
+      messageTs: '1724412345.000100',
+    });
+    const rotatedSecretVersionId = '88888888-8888-4888-8888-888888888888';
+    let currentSecretVersionId = secretVersionId;
+    let providerBytesSent = false;
+    state.assertCurrent.mockImplementationOnce((input) => {
+      expect(input.secretVersionId).toBe(secretVersionId);
+      currentSecretVersionId = rotatedSecretVersionId;
+      return Promise.resolve();
+    });
+    state.beforeDispatch.mockImplementation((input) => {
+      // The old provider adapter omitted the fence, so this test double
+      // models a marker implementation that cannot reject a stale dispatch.
+      if (input?.connectionFence === undefined) return Promise.resolve();
+      if (
+        input.providerDispatchBinding !==
+        'slack:v1:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb'
+      )
+        throw new NodeDispatchEvidenceError(
+          'provider_dispatch_binding_mismatch',
+        );
+      if (input.connectionFence.secretVersionId !== currentSecretVersionId)
+        throw new NodeDispatchEvidenceError('provider_connection_fence_failed');
+      return Promise.resolve();
+    });
+    state.sendMessage.mockImplementation(async (input) => {
+      await input.beforeDispatch();
+      providerBytesSent = true;
+      return {
+        kind: 'succeeded',
+        channelId: 'C123ABC',
+        messageTs: '1724412345.000100',
+      };
+    });
+
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: state.sendMessage },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
+    });
+    expect(providerBytesSent).toBe(false);
+    expect(state.secret.every((byte) => byte === 0)).toBe(true);
+    expect(state.beforeDispatch).toHaveBeenCalledWith({
+      connectionFence: {
+        connectionId,
+        expectedProviderKey: 'slack',
+        expectedAuthType: 'slack_bot_token',
+        secretVersionId,
+      },
+      providerDispatchBinding:
+        'slack:v1:sha256:5a5537627ed92f258340d3ef1cf1f4ad8af19a67f1bc5a7bc91ab6c4154f4abb',
+    });
   });
 
   it('fails closed when durable dispatch evidence cannot be recorded', async () => {
@@ -413,14 +484,17 @@ describe('slack.send_message@1', () => {
         possiblyDispatched: true,
       },
     ],
-  ])('classifies provider result %j truthfully', async (result, expected) => {
-    const state = runtime(result);
-    await expect(
-      createSlackSendMessageExecutorRegistration({
-        client: { sendMessage: state.sendMessage },
-      }).execute(invocation(state.value)),
-    ).rejects.toMatchObject(expected);
-  });
+  ] as const)(
+    'classifies provider result %j truthfully',
+    async (result, expected) => {
+      const state = runtime(result);
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject(expected);
+    },
+  );
 
   it('retries definite pre-dispatch transport failure but never replays post-dispatch ambiguity', async () => {
     const definite = runtime(

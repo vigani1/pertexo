@@ -1,11 +1,8 @@
-import { createHash } from 'node:crypto';
-
 import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
-  NodeDispatchEvidenceError,
   NodeExecutorFailure,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -13,9 +10,9 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  secureHttpPreDispatchError,
 } from '../http/secure-http.js';
 import type { ResendApiResult, ResendClient } from './client.js';
+import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import {
   EMAIL_SEND_NOTIFICATION_DEFINITION,
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
@@ -146,6 +143,7 @@ async function execute(
     throw failure('failed', 'configuration', false);
   if (connections?.assertCurrent === undefined)
     throw credentialFailure(runtime);
+  const assertCurrent = connections.assertCurrent;
 
   let resolved;
   try {
@@ -194,48 +192,15 @@ async function execute(
         idempotencyKey: runtime.providerIdempotencyKey,
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
-        beforeDispatch: async () => {
-          try {
-            await connections.assertCurrent?.({
-              connectionId,
-              expectedProviderKey: 'email',
-              expectedAuthType: 'resend_api_key',
-              secretVersionId: resolved.secretVersionId,
-              signal: invocation.signal,
-            });
-          } catch {
-            throw secureHttpPreDispatchError(
-              SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
-            );
-          }
-          try {
-            await runtime.beforeDispatch({
-              connectionFence: {
-                connectionId,
-                expectedProviderKey: 'email',
-                expectedAuthType: 'resend_api_key',
-                secretVersionId: resolved.secretVersionId,
-              },
-              providerDispatchBinding: `email:v1:sha256:${createHash('sha256')
-                .update(`email\0${connectionId}\0${resolved.secretVersionId}`)
-                .digest('hex')}`,
-            });
-          } catch (error: unknown) {
-            if (error instanceof NodeDispatchEvidenceError) {
-              if (error.code === 'provider_dispatch_binding_mismatch')
-                throw secureHttpPreDispatchError(
-                  SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
-                );
-              if (error.code === 'provider_connection_fence_failed')
-                throw secureHttpPreDispatchError(
-                  SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
-                );
-            }
-            throw secureHttpPreDispatchError(
-              SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
-            );
-          }
-        },
+        beforeDispatch: createProviderBeforeDispatch({
+          assertCurrent,
+          connectionId,
+          expectedProviderKey: 'email',
+          expectedAuthType: 'resend_api_key',
+          secretVersionId: resolved.secretVersionId,
+          signal: invocation.signal,
+          runtime,
+        }),
       });
     } catch (error: unknown) {
       if (error instanceof EmailSendNotificationExecutorError) throw error;
