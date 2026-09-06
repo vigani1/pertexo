@@ -25,6 +25,7 @@ import {
   refreshWorkflowActivation,
   type WorkflowTriggerHealth,
 } from './workflow-triggers.js';
+import { canManageWorkflowTrigger } from './trigger-management-access.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
@@ -140,23 +141,6 @@ function keyHash(value: string): string {
   return createHash('sha256')
     .update(z.string().min(1).max(128).parse(value))
     .digest('hex');
-}
-
-async function authorizeManager(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=$2
-        and membership.status='active' and membership.role in ('owner','admin','builder')
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId],
-  );
-  if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
 }
 
 async function authorizeReader(
@@ -335,13 +319,15 @@ export function createWebhookTriggerDatabase(
         workspaceId: uuidSchema.parse(input.workspaceId),
         actorId: uuidSchema.parse(input.actorId),
       },
-      work,
+      async (client) => {
+        if (await canManageWorkflowTrigger(client, input)) return work(client);
+        throw new WebhookTriggerNotFoundError();
+      },
     );
 
   return Object.freeze({
     provision: (input: Parameters<WebhookTriggerDatabase['provision']>[0]) =>
       command(input, async (client) => {
-        await authorizeManager(client, input.workspaceId, input.actorId);
         const operation = 'webhook.trigger.provision';
         if (await claimCommand(client, input, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
@@ -383,7 +369,6 @@ export function createWebhookTriggerDatabase(
       input: Parameters<WebhookTriggerDatabase['rotateEndpoint']>[0],
     ) =>
       command(input, async (client) => {
-        await authorizeManager(client, input.workspaceId, input.actorId);
         const operation = 'webhook.trigger.endpoint.rotate';
         if (await claimCommand(client, input, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
@@ -404,7 +389,6 @@ export function createWebhookTriggerDatabase(
       input: Parameters<WebhookTriggerDatabase['rotateSecret']>[0],
     ) =>
       command(input, async (client) => {
-        await authorizeManager(client, input.workspaceId, input.actorId);
         const operation = 'webhook.trigger.secret.rotate';
         const keyedCommand = {
           ...input,

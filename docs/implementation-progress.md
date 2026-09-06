@@ -40,7 +40,7 @@ original verdict after each fix.
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | In progress; ADR 032 defines bounded static field rules, typed mismatch results and preview/runtime parity; implementation and persisted execution evidence remain |
-| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; ADR 033 and canonical state schemas expose stored activation without rewriting it; 11 row-boundary cases, contract checks and a fresh-PG serving-role list proof pass; lifecycle/version-restoration operations and convergence remain |
+| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; truthful state reads and current-state trigger reconciliation are implemented; 18 model cases and 10 fresh-PG webhook/reconciliation cases pass; public lifecycle/version-restoration commands and worker recovery evidence remain |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
@@ -155,6 +155,23 @@ convergence contract, including a separate lifecycle revision, immediate
 admission gating, preserved run history, and no implicit re-enablement of
 disabled resources. This is an accepted implementation decision, not delivery
 evidence; its commands, migration and integration criteria remain unfinished.
+
+The reconciliation checkpoint now applies the current locked workflow lifecycle,
+not event order. Archive disables effective trigger admission and clears schedule
+leases while preserving endpoint and schedule configuration. Restore converges
+usable resources without re-enabling explicitly disabled ones. Configuration
+writes require an active workflow and acquire its lock before trigger rows.
+The shared model computes activation; partial failures retain trustworthy active
+and disabled trigger facts instead of flattening all triggers to errors.
+
+Verification: 18 model cases and all 10 real PostgreSQL webhook/reconciliation
+cases pass on a fresh disposable database. The database proofs cover immediate
+webhook/schedule eligibility denial, archived configuration-write denial,
+active/disabled resource restoration, delayed archived-state event delivery,
+duplicate receipts, stale publication events, and partial/global/archive failure
+projection. These exercise the persistence consumer directly, not dispatcher
+restart recovery; command acceptance, nonempty run-history preservation, version
+restoration, and actual worker recovery remain required before IWA-16 closes.
 
 ### IWA-01 — DST recurrence correction
 

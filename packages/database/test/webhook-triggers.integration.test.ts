@@ -23,7 +23,14 @@ import {
   WebhookIngressRateLimitExceededError,
   WebhookTriggerNotFoundError,
 } from '../src/triggers/webhook-triggers.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../src/triggers/workflow-triggers.js';
+import {
+  createWorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerStalePublicationError,
+} from '../src/triggers/workflow-triggers.js';
+import {
+  createScheduleTriggerDatabase,
+  ScheduleTriggerError,
+} from '../src/triggers/schedule-triggers.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
@@ -90,6 +97,7 @@ const workerConfig = parseDatabaseConfig({
 const identity = createIdentityWorkspaceDatabase(apiConfig);
 const reconciliation =
   createWorkflowTriggerReconciliationDatabase(workerConfig);
+const schedules = createScheduleTriggerDatabase(apiConfig);
 const webhook = createWebhookTriggerDatabase(
   apiConfig,
   BASELINE_COMPATIBILITY_EXPECTATION,
@@ -100,6 +108,7 @@ const workerReadinessPool = new Pool({
   connectionString: url(workerBaseUrl),
   max: 1,
 });
+const workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
 const triggerCatalog = Object.freeze({
   schemaVersion: 1 as const,
   definitions: Object.freeze([
@@ -120,6 +129,27 @@ async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await client.query<Row>(statement, parameters);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
+  statement: string,
+  parameters: unknown[] = [],
+) {
+  const client = await workerPool.connect();
+  try {
+    await client.query('begin');
     await client.query("select set_config('app.workspace_id',$1,true)", [
       workspaceId,
     ]);
@@ -274,11 +304,13 @@ beforeAll(async () => {
 afterAll(async () => {
   await webhook.close();
   await reconciliation.close();
+  await schedules.close();
   await identity.close();
   await authoring.close();
   await owner.end();
   await readinessPool.end();
   await workerReadinessPool.end();
+  await workerPool.end();
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
@@ -288,15 +320,8 @@ afterAll(async () => {
 });
 
 describe('generic webhook database seam', () => {
-  it('rebuilds desired webhook and schedule rows inside publication', async () => {
-    const created = await authoring.createWorkflow({
-      actorId,
-      workspaceId,
-      name: 'Published trigger projection',
-      emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
-      idempotencyKey: 'create-trigger-projection',
-    });
-    const graph = {
+  function triggerGraph(intervalMinutes = 15) {
+    return {
       schemaVersion: 1,
       settings: {},
       nodes: [
@@ -316,7 +341,7 @@ describe('generic webhook database seam', () => {
           configVersion: 1,
           config: {
             kind: 'interval',
-            intervalMinutes: 15,
+            intervalMinutes,
             misfirePolicy: 'skip',
           },
           inputMappings: {},
@@ -325,6 +350,142 @@ describe('generic webhook database seam', () => {
       ],
       edges: [],
     };
+  }
+
+  async function workflowTriggerIds(workflowIdInput: string) {
+    const result = await ownerQuery<{
+      id: string;
+      kind: 'webhook' | 'schedule';
+      node_id: string;
+    }>(
+      `select id,kind,node_id from app.workflow_triggers
+         where workspace_id=$1 and workflow_id=$2
+           and workflow_version_id=(select published_version_id from app.workflows
+             where workspace_id=$1 and id=$2)
+         order by node_id`,
+      [workspaceId, workflowIdInput],
+    );
+    const webhookTrigger = result.rows.find(({ kind }) => kind === 'webhook');
+    const scheduleTrigger = result.rows.find(({ kind }) => kind === 'schedule');
+    if (webhookTrigger === undefined || scheduleTrigger === undefined)
+      throw new Error('Published trigger projection is incomplete');
+    return Object.freeze({
+      webhookId: webhookTrigger.id,
+      scheduleId: scheduleTrigger.id,
+    });
+  }
+
+  async function appendReconciliationEvent(
+    workflowIdInput: string,
+    versionIdInput: string,
+  ) {
+    const eventId = randomUUID();
+    const payload = {
+      schemaVersion: 1,
+      workspaceId,
+      outboxEventId: eventId,
+      workflowId: workflowIdInput,
+      publishedVersionId: versionIdInput,
+    };
+    const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
+    await ownerQuery(
+      `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+         aggregate_type,aggregate_id,payload,payload_checksum)
+       values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+      [
+        eventId,
+        workspaceId,
+        workflowIdInput,
+        JSON.stringify(payload),
+        payloadChecksum,
+      ],
+    );
+    return Object.freeze({ eventId, payloadChecksum });
+  }
+
+  async function deliverReconciliation(
+    workflowIdInput: string,
+    versionIdInput: string,
+    event: Readonly<{ eventId: string; payloadChecksum: string }>,
+  ) {
+    return reconciliation.reconcile({
+      workspaceId,
+      workflowId: workflowIdInput,
+      publishedVersionId: versionIdInput,
+      outboxEventId: event.eventId,
+      delivery: {
+        outboxEventId: event.eventId,
+        payloadChecksum: event.payloadChecksum,
+      },
+    });
+  }
+
+  async function setWorkflowLifecycle(
+    workflowIdInput: string,
+    lifecycleStatus: 'active' | 'archived',
+    activationStatus:
+      | 'inactive'
+      | 'activating'
+      | 'active'
+      | 'deactivating'
+      | 'degraded'
+      | 'error',
+  ): Promise<void> {
+    await ownerQuery(
+      `update app.workflows set lifecycle_status=$2,activation_status=$3,
+         updated_at=clock_timestamp() where workspace_id=$1 and id=$4`,
+      [workspaceId, lifecycleStatus, activationStatus, workflowIdInput],
+    );
+  }
+
+  async function immutableWorkflowHistory(workflowIdInput: string) {
+    const draft = await ownerQuery<{
+      graph_json: unknown;
+      revision: number;
+    }>(
+      `select revision,graph_json from app.workflow_drafts
+         where workspace_id=$1 and workflow_id=$2`,
+      [workspaceId, workflowIdInput],
+    );
+    const versions = await ownerQuery<{
+      checksum: string;
+      graph_json: unknown;
+      id: string;
+      version_number: number;
+    }>(
+      `select id,version_number,checksum,graph_json from app.workflow_versions
+         where workspace_id=$1 and workflow_id=$2 order by version_number`,
+      [workspaceId, workflowIdInput],
+    );
+    const runs = await ownerQuery<{
+      created_at: Date;
+      id: string;
+      status: string;
+      trigger_type: string;
+      updated_at: Date;
+      workflow_version_id: string;
+    }>(
+      `select id,status,trigger_type,workflow_version_id,created_at,updated_at
+         from app.workflow_runs where workspace_id=$1 and workflow_id=$2
+         order by id`,
+      [workspaceId, workflowIdInput],
+    );
+    return Object.freeze({
+      draft: draft.rows,
+      runs: runs.rows,
+      versions: versions.rows,
+    });
+  }
+
+  async function publishTriggerWorkflow() {
+    const created = await authoring.createWorkflow({
+      actorId,
+      workspaceId,
+      name: 'Published trigger projection',
+      emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
+      idempotencyKey: randomUUID(),
+    });
+    const graph = triggerGraph();
     const draft = await authoring.saveDraft({
       actorId,
       workspaceId,
@@ -346,15 +507,151 @@ describe('generic webhook database seam', () => {
       workspaceId,
       workflowId: created.workflowId,
       representationTag,
-      idempotencyKey: 'publish-trigger-projection',
+      idempotencyKey: randomUUID(),
       requestHash: hash('publish-trigger-projection'),
     });
     const event = await ownerQuery<{ id: string }>(
       `select id from app.outbox_events where aggregate_id=$1
-        and job_name='reconcile-workflow-triggers'`,
+      and job_name='reconcile-workflow-triggers'`,
       [created.workflowId],
     );
-    const eventId = String(event.rows[0]?.id);
+    const eventId = event.rows[0]?.id;
+    if (eventId === undefined) throw new Error('Reconciliation event missing');
+    return {
+      created,
+      eventChecksum: await ownerQuery<{ payload_checksum: string }>(
+        'select payload_checksum from app.outbox_events where id=$1',
+        [eventId],
+      ).then((result) => {
+        const checksum = result.rows[0]?.payload_checksum;
+        if (checksum === undefined)
+          throw new Error('Reconciliation checksum missing');
+        return checksum;
+      }),
+      eventId,
+      published,
+    };
+  }
+
+  async function publishNextTriggerWorkflowVersion(workflowIdInput: string) {
+    const currentDraft = await authoring.getDraft(
+      workspaceId,
+      workflowIdInput,
+      actorId,
+    );
+    if (currentDraft === null) throw new Error('Workflow draft is missing');
+    const draft = await authoring.saveDraft({
+      actorId,
+      workspaceId,
+      workflowId: workflowIdInput,
+      expectedRevision: currentDraft.revision,
+      graphJson: triggerGraph(30),
+    });
+    const representationTag = workflowDraftRepresentationTag({
+      workflowId: workflowIdInput,
+      revision: draft.revision,
+      graph: draft.graphJson,
+      compatibilityFingerprint: workflowCompatibilityReport(
+        draft.graphJson,
+        triggerCatalog,
+      ).fingerprint,
+    });
+    const published = await authoring.publishWorkflow({
+      actorId,
+      workspaceId,
+      workflowId: workflowIdInput,
+      representationTag,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    });
+    const event = await ownerQuery<{
+      id: string;
+      payload_checksum: string;
+    }>(
+      `select id,payload_checksum from app.outbox_events
+         where workspace_id=$1 and aggregate_id=$2
+           and job_name='reconcile-workflow-triggers'
+           and payload->>'publishedVersionId'=$3
+         order by created_at desc limit 1`,
+      [workspaceId, workflowIdInput, published.version.id],
+    );
+    const row = event.rows[0];
+    if (row === undefined)
+      throw new Error('Latest reconciliation event missing');
+    return Object.freeze({
+      eventChecksum: row.payload_checksum,
+      eventId: row.id,
+      published,
+    });
+  }
+
+  async function provisionWebhook(workflowIdInput: string) {
+    const ids = await workflowTriggerIds(workflowIdInput);
+    const endpointKeyHash = hash(`endpoint-${randomUUID()}`);
+    const endpointId = randomUUID();
+    const health = await webhook.provision({
+      workspaceId,
+      actorId,
+      triggerId: ids.webhookId,
+      endpointId,
+      endpointKeyHash,
+      secret: secret(),
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    });
+    return Object.freeze({ endpointId, endpointKeyHash, health, ...ids });
+  }
+
+  async function triggerFacts(workflowIdInput: string) {
+    const result = await ownerQuery<{
+      endpoint_status: 'active' | 'disabled' | null;
+      endpoint_ready: boolean;
+      endpoint_id: string | null;
+      health_status: string;
+      kind: string;
+      last_error_code: string | null;
+      node_id: string;
+      schedule_health_status: string | null;
+      schedule_status: 'enabled' | 'disabled' | null;
+      status: string;
+      trigger_id: string;
+    }>(
+      `select trigger.id trigger_id,trigger.node_id,trigger.kind,trigger.status,
+              trigger.health_status,trigger.last_error_code,
+              endpoint.id endpoint_id,endpoint.status endpoint_status,
+              (endpoint.id is not null and endpoint.status='active') endpoint_ready,
+              schedule.status schedule_status,schedule.health_status schedule_health_status
+         from app.workflow_triggers trigger
+         left join app.webhook_trigger_endpoints endpoint
+           on endpoint.workspace_id=trigger.workspace_id and endpoint.trigger_id=trigger.id
+         left join app.trigger_schedules schedule
+           on schedule.workspace_id=trigger.workspace_id and schedule.trigger_id=trigger.id
+        where trigger.workspace_id=$1 and trigger.workflow_id=$2
+          and trigger.workflow_version_id=(select published_version_id from app.workflows
+            where workspace_id=$1 and id=$2)
+        order by trigger.node_id`,
+      [workspaceId, workflowIdInput],
+    );
+    return result.rows;
+  }
+
+  async function workflowState(workflowIdInput: string) {
+    const result = await ownerQuery<{
+      activation_status: string;
+      lifecycle_status: string;
+      published_version_id: string | null;
+    }>(
+      `select lifecycle_status,activation_status,published_version_id
+         from app.workflows where workspace_id=$1 and id=$2`,
+      [workspaceId, workflowIdInput],
+    );
+    const state = result.rows[0];
+    if (state === undefined) throw new Error('Workflow state is missing');
+    return state;
+  }
+
+  it('rebuilds desired webhook and schedule rows inside publication', async () => {
+    const { created, published, eventId } = await publishTriggerWorkflow();
     await expect(
       reconciliation.reconcile({
         workspaceId,
@@ -366,6 +663,130 @@ describe('generic webhook database seam', () => {
       { nodeId: 'schedule', kind: 'schedule', status: 'active' },
       { nodeId: 'webhook', kind: 'webhook', status: 'configuration_required' },
     ]);
+  });
+
+  it('applies archive state at reconciliation and gates new trigger work', async () => {
+    const { created, published } = await publishTriggerWorkflow();
+    const event = await appendReconciliationEvent(
+      created.workflowId,
+      published.version.id,
+    );
+    await expect(
+      deliverReconciliation(created.workflowId, published.version.id, event),
+    ).resolves.toHaveLength(2);
+    const provisioned = await provisionWebhook(created.workflowId);
+    const verification = await webhook.resolveVerification(
+      provisioned.endpointKeyHash,
+    );
+    if (verification === null) throw new Error('Expected webhook verification');
+    const historyBeforeArchive = await immutableWorkflowHistory(
+      created.workflowId,
+    );
+    await ownerQuery(
+      `update app.trigger_schedules set next_fire_at=clock_timestamp()-interval '1 minute'
+         where workspace_id=$1 and trigger_id=$2`,
+      [workspaceId, provisioned.scheduleId],
+    );
+    await setWorkflowLifecycle(created.workflowId, 'archived', 'deactivating');
+    await expect(
+      webhook.resolveVerification(provisioned.endpointKeyHash),
+    ).resolves.toBeNull();
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        verification,
+        verifiedSecretVersionId: verification.currentSecret.id,
+        requestFingerprint: hash('archived-webhook-admission'),
+        payload: { archived: true },
+        checkpointFactory,
+      }),
+    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
+    const claimed = await workerQuery<{
+      lease_token: string;
+      trigger_id: string;
+    }>(
+      'select trigger_id,lease_token from app.claim_due_trigger_schedules($1,1,30)',
+      [`archive-gate-${randomUUID()}`],
+    );
+    expect(claimed.rows).toHaveLength(1);
+    const claim = claimed.rows[0];
+    if (claim === undefined) throw new Error('Archived schedule claim missing');
+    const eligible = await workerQuery<{ eligible: boolean }>(
+      'select app.schedule_claim_is_eligible($1,$2) eligible',
+      [claim.trigger_id, claim.lease_token],
+    );
+    expect(eligible.rows[0]?.eligible).toBe(false);
+    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
+      claim.trigger_id,
+      claim.lease_token,
+    ]);
+    await expect(
+      schedules.setEnabled({
+        workspaceId,
+        actorId,
+        workflowId: created.workflowId,
+        triggerId: provisioned.scheduleId,
+        enabled: true,
+        idempotencyKey: randomUUID(),
+        requestHash: hash(randomUUID()),
+      }),
+    ).rejects.toBeInstanceOf(ScheduleTriggerError);
+    await expect(
+      webhook.rotateEndpoint({
+        workspaceId,
+        actorId,
+        triggerId: provisioned.webhookId,
+        endpointKeyHash: hash(`archived-rotation-${randomUUID()}`),
+        idempotencyKey: randomUUID(),
+        requestHash: hash(randomUUID()),
+      }),
+    ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    const archiveEvent = await appendReconciliationEvent(
+      created.workflowId,
+      published.version.id,
+    );
+    await expect(
+      deliverReconciliation(
+        created.workflowId,
+        published.version.id,
+        archiveEvent,
+      ),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          healthStatus: 'disabled',
+          nodeId: 'schedule',
+          status: 'disabled',
+        }),
+        expect.objectContaining({
+          endpointReady: true,
+          healthStatus: 'disabled',
+          nodeId: 'webhook',
+          status: 'disabled',
+        }),
+      ]),
+    );
+    await expect(workflowState(created.workflowId)).resolves.toMatchObject({
+      activation_status: 'inactive',
+      lifecycle_status: 'archived',
+      published_version_id: published.version.id,
+    });
+    await expect(immutableWorkflowHistory(created.workflowId)).resolves.toEqual(
+      historyBeforeArchive,
+    );
+    await expect(triggerFacts(created.workflowId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endpoint_status: 'active',
+          kind: 'webhook',
+          status: 'disabled',
+        }),
+        expect.objectContaining({
+          kind: 'schedule',
+          schedule_status: 'enabled',
+          status: 'disabled',
+        }),
+      ]),
+    );
   });
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
@@ -408,6 +829,411 @@ describe('generic webhook database seam', () => {
         workflowId,
       }),
     ).rejects.toBeInstanceOf(Error);
+  });
+
+  it('restores active resources while preserving explicit disablement across worker events', async () => {
+    const disabledWorkflow = await publishTriggerWorkflow();
+    const disabledStart = await appendReconciliationEvent(
+      disabledWorkflow.created.workflowId,
+      disabledWorkflow.published.version.id,
+    );
+    await deliverReconciliation(
+      disabledWorkflow.created.workflowId,
+      disabledWorkflow.published.version.id,
+      disabledStart,
+    );
+    const disabledResources = await provisionWebhook(
+      disabledWorkflow.created.workflowId,
+    );
+    await schedules.setEnabled({
+      workspaceId,
+      actorId,
+      workflowId: disabledWorkflow.created.workflowId,
+      triggerId: disabledResources.scheduleId,
+      enabled: false,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    });
+    await workerQuery(
+      `update app.webhook_trigger_endpoints set status='disabled',updated_at=clock_timestamp()
+         where workspace_id=$1 and id=$2`,
+      [workspaceId, disabledResources.endpointId],
+    );
+    await expect(
+      triggerFacts(disabledWorkflow.created.workflowId),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endpoint_id: disabledResources.endpointId,
+          endpoint_status: 'disabled',
+          kind: 'webhook',
+        }),
+      ]),
+    );
+    await setWorkflowLifecycle(
+      disabledWorkflow.created.workflowId,
+      'archived',
+      'deactivating',
+    );
+    const archiveEvent = await appendReconciliationEvent(
+      disabledWorkflow.created.workflowId,
+      disabledWorkflow.published.version.id,
+    );
+    await expect(
+      deliverReconciliation(
+        disabledWorkflow.created.workflowId,
+        disabledWorkflow.published.version.id,
+        archiveEvent,
+      ),
+    ).resolves.toHaveLength(2);
+    // Persist while archived, but delay delivery until after restore converges.
+    const lateEvent = await appendReconciliationEvent(
+      disabledWorkflow.created.workflowId,
+      disabledWorkflow.published.version.id,
+    );
+    await setWorkflowLifecycle(
+      disabledWorkflow.created.workflowId,
+      'active',
+      'activating',
+    );
+    const restoreEvent = await appendReconciliationEvent(
+      disabledWorkflow.created.workflowId,
+      disabledWorkflow.published.version.id,
+    );
+    await expect(
+      deliverReconciliation(
+        disabledWorkflow.created.workflowId,
+        disabledWorkflow.published.version.id,
+        restoreEvent,
+      ),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'schedule', status: 'disabled' }),
+        expect.objectContaining({ nodeId: 'webhook', status: 'disabled' }),
+      ]),
+    );
+    await expect(
+      deliverReconciliation(
+        disabledWorkflow.created.workflowId,
+        disabledWorkflow.published.version.id,
+        lateEvent,
+      ),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'schedule', status: 'disabled' }),
+        expect.objectContaining({ nodeId: 'webhook', status: 'disabled' }),
+      ]),
+    );
+    await expect(
+      deliverReconciliation(
+        disabledWorkflow.created.workflowId,
+        disabledWorkflow.published.version.id,
+        restoreEvent,
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      workflowState(disabledWorkflow.created.workflowId),
+    ).resolves.toMatchObject({
+      activation_status: 'inactive',
+      lifecycle_status: 'active',
+    });
+    await expect(
+      triggerFacts(disabledWorkflow.created.workflowId),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endpoint_status: 'disabled',
+          kind: 'webhook',
+          status: 'disabled',
+        }),
+        expect.objectContaining({
+          kind: 'schedule',
+          schedule_status: 'disabled',
+          status: 'disabled',
+        }),
+      ]),
+    );
+
+    const activeWorkflow = await publishTriggerWorkflow();
+    const activeStart = await appendReconciliationEvent(
+      activeWorkflow.created.workflowId,
+      activeWorkflow.published.version.id,
+    );
+    await deliverReconciliation(
+      activeWorkflow.created.workflowId,
+      activeWorkflow.published.version.id,
+      activeStart,
+    );
+    await provisionWebhook(activeWorkflow.created.workflowId);
+    await setWorkflowLifecycle(
+      activeWorkflow.created.workflowId,
+      'archived',
+      'deactivating',
+    );
+    const activeArchive = await appendReconciliationEvent(
+      activeWorkflow.created.workflowId,
+      activeWorkflow.published.version.id,
+    );
+    await deliverReconciliation(
+      activeWorkflow.created.workflowId,
+      activeWorkflow.published.version.id,
+      activeArchive,
+    );
+    await setWorkflowLifecycle(
+      activeWorkflow.created.workflowId,
+      'active',
+      'activating',
+    );
+    const activeRestore = await appendReconciliationEvent(
+      activeWorkflow.created.workflowId,
+      activeWorkflow.published.version.id,
+    );
+    await expect(
+      deliverReconciliation(
+        activeWorkflow.created.workflowId,
+        activeWorkflow.published.version.id,
+        activeRestore,
+      ),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'schedule', status: 'active' }),
+        expect.objectContaining({
+          endpointReady: true,
+          nodeId: 'webhook',
+          status: 'active',
+        }),
+      ]),
+    );
+    await expect(
+      workflowState(activeWorkflow.created.workflowId),
+    ).resolves.toMatchObject({
+      activation_status: 'active',
+      lifecycle_status: 'active',
+    });
+    await expect(
+      triggerFacts(activeWorkflow.created.workflowId),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endpoint_status: 'active',
+          kind: 'webhook',
+          status: 'active',
+        }),
+        expect.objectContaining({
+          kind: 'schedule',
+          schedule_status: 'enabled',
+          status: 'active',
+        }),
+      ]),
+    );
+  });
+
+  it('projects partial, global, and archived failures without overwriting trigger facts', async () => {
+    const { created, published } = await publishTriggerWorkflow();
+    const start = await appendReconciliationEvent(
+      created.workflowId,
+      published.version.id,
+    );
+    await deliverReconciliation(
+      created.workflowId,
+      published.version.id,
+      start,
+    );
+    const resources = await provisionWebhook(created.workflowId);
+
+    await ownerQuery(
+      `update app.workflow_triggers set status='configuration_required',
+         health_status='pending',last_error_code=null
+         where workspace_id=$1 and id=$2`,
+      [workspaceId, resources.scheduleId],
+    );
+    await reconciliation.recordFailure({
+      workspaceId,
+      workflowId: created.workflowId,
+      publishedVersionId: published.version.id,
+      reason: 'provider_partial_failure',
+    });
+    await expect(triggerFacts(created.workflowId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          health_status: 'healthy',
+          kind: 'webhook',
+          last_error_code: null,
+          status: 'active',
+        }),
+        expect.objectContaining({
+          health_status: 'unhealthy',
+          kind: 'schedule',
+          last_error_code: 'provider_partial_failure',
+          status: 'error',
+        }),
+      ]),
+    );
+    await expect(workflowState(created.workflowId)).resolves.toMatchObject({
+      activation_status: 'degraded',
+      lifecycle_status: 'active',
+    });
+
+    await ownerQuery(
+      `update app.trigger_schedules set status='disabled',health_status='disabled',
+         last_error_code=null where workspace_id=$1 and trigger_id=$2`,
+      [workspaceId, resources.scheduleId],
+    );
+    await ownerQuery(
+      `update app.workflow_triggers set status='disabled',health_status='disabled',
+         last_error_code=null where workspace_id=$1 and id=$2`,
+      [workspaceId, resources.scheduleId],
+    );
+    await reconciliation.recordFailure({
+      workspaceId,
+      workflowId: created.workflowId,
+      publishedVersionId: published.version.id,
+      reason: 'provider_disabled_resource',
+    });
+    await expect(triggerFacts(created.workflowId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          health_status: 'healthy',
+          kind: 'webhook',
+          last_error_code: null,
+          status: 'active',
+        }),
+        expect.objectContaining({
+          health_status: 'disabled',
+          kind: 'schedule',
+          last_error_code: null,
+          schedule_health_status: 'disabled',
+          schedule_status: 'disabled',
+          status: 'disabled',
+        }),
+      ]),
+    );
+    await expect(workflowState(created.workflowId)).resolves.toMatchObject({
+      activation_status: 'degraded',
+    });
+
+    await ownerQuery(
+      `update app.workflow_triggers set status='pending',health_status='pending'
+         where workspace_id=$1 and id=$2`,
+      [workspaceId, resources.webhookId],
+    );
+    await reconciliation.recordFailure({
+      workspaceId,
+      workflowId: created.workflowId,
+      publishedVersionId: published.version.id,
+      reason: 'provider_global_failure',
+    });
+    await expect(triggerFacts(created.workflowId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          health_status: 'unhealthy',
+          kind: 'webhook',
+          last_error_code: 'provider_global_failure',
+          status: 'error',
+        }),
+        expect.objectContaining({
+          health_status: 'disabled',
+          kind: 'schedule',
+          last_error_code: null,
+          status: 'disabled',
+        }),
+      ]),
+    );
+    await expect(workflowState(created.workflowId)).resolves.toMatchObject({
+      activation_status: 'error',
+    });
+
+    await setWorkflowLifecycle(created.workflowId, 'archived', 'deactivating');
+    const archiveEvent = await appendReconciliationEvent(
+      created.workflowId,
+      published.version.id,
+    );
+    await deliverReconciliation(
+      created.workflowId,
+      published.version.id,
+      archiveEvent,
+    );
+    await reconciliation.recordFailure({
+      workspaceId,
+      workflowId: created.workflowId,
+      publishedVersionId: published.version.id,
+      reason: 'provider_archived_failure',
+    });
+    await expect(triggerFacts(created.workflowId)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          health_status: 'disabled',
+          kind: 'schedule',
+          last_error_code: null,
+          status: 'disabled',
+        }),
+        expect.objectContaining({
+          endpoint_status: 'active',
+          health_status: 'disabled',
+          kind: 'webhook',
+          last_error_code: null,
+          status: 'disabled',
+        }),
+      ]),
+    );
+    await expect(workflowState(created.workflowId)).resolves.toMatchObject({
+      activation_status: 'error',
+      lifecycle_status: 'archived',
+    });
+  });
+
+  it('rejects an old-version event without rewriting current health or history', async () => {
+    const first = await publishTriggerWorkflow();
+    await reconciliation.reconcile({
+      workspaceId,
+      workflowId: first.created.workflowId,
+      publishedVersionId: first.published.version.id,
+      outboxEventId: first.eventId,
+    });
+    const firstResources = await provisionWebhook(first.created.workflowId);
+    await expect(
+      webhook.resolveVerification(firstResources.endpointKeyHash),
+    ).resolves.not.toBeNull();
+    const second = await publishNextTriggerWorkflowVersion(
+      first.created.workflowId,
+    );
+    const latestHealth = await reconciliation.reconcile({
+      workspaceId,
+      workflowId: first.created.workflowId,
+      publishedVersionId: second.published.version.id,
+      outboxEventId: second.eventId,
+    });
+    const historyBeforeStaleDelivery = await immutableWorkflowHistory(
+      first.created.workflowId,
+    );
+    await expect(
+      reconciliation.reconcile({
+        workspaceId,
+        workflowId: first.created.workflowId,
+        publishedVersionId: first.published.version.id,
+        outboxEventId: first.eventId,
+        delivery: {
+          outboxEventId: first.eventId,
+          payloadChecksum: first.eventChecksum,
+        },
+      }),
+    ).rejects.toBeInstanceOf(WorkflowTriggerStalePublicationError);
+    await expect(
+      webhook.getHealth({
+        workspaceId,
+        actorId,
+        workflowId: first.created.workflowId,
+      }),
+    ).resolves.toEqual(latestHealth);
+    await expect(
+      immutableWorkflowHistory(first.created.workflowId),
+    ).resolves.toEqual(historyBeforeStaleDelivery);
+    await expect(
+      workflowState(first.created.workflowId),
+    ).resolves.toMatchObject({
+      lifecycle_status: 'active',
+      published_version_id: second.published.version.id,
+    });
   });
 
   it('resolves eligible sealed references and atomically deduplicates concurrent delivery', async () => {
