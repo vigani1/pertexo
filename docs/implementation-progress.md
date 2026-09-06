@@ -35,6 +35,11 @@ data and historical evidence will be distinguished from executable source review
       actual configuration against the independent audited file list. Remove
       the test-only export and intermediary assertion, not the regression test.
       All 25 lifecycle unit tests, test typecheck, lint and formatting pass.
+- [x] Reuse the operator configuration's command type in its sole production
+      runner and one file-local strict dry-run schema across eight variants.
+      The emitted runner JavaScript is identical; 110 before/after parser
+      cases preserve exact values/errors, and all eight operator tests,
+      typecheck, lint and formatting pass.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 

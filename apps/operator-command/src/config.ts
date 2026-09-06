@@ -8,6 +8,10 @@ import {
 } from '@pertexo/observability/config';
 import { z } from 'zod';
 
+const dryRunSchema = z
+  .enum(['true', 'false'])
+  .transform((value) => value === 'true');
+
 const baseEnvironmentSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -48,9 +52,7 @@ const environmentSchema = z
   .discriminatedUnion('OPERATOR_COMMAND_TYPE', [
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_OUTBOX_EVENT_ID: z.uuid(),
     }),
     baseEnvironmentSchema.extend({
@@ -60,16 +62,12 @@ const environmentSchema = z
       OPERATOR_ATTEMPT_ACTION: z.enum(['reclaim', 'outcome_unknown']),
       OPERATOR_ATTEMPT_ID: z.uuid(),
       OPERATOR_COMMAND_TYPE: z.literal('attempt.reconcile'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_EXPECTED_FENCE_TOKEN: z.coerce.number().int().positive(),
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('due-work.resume'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_RUN_ID: z.uuid(),
     }),
     baseEnvironmentSchema.extend({
@@ -91,16 +89,12 @@ const environmentSchema = z
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('run.cancel'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_RUN_ID: z.uuid(),
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('run.replay'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_RUN_INPUT: z.string().transform((value, context) => {
         try {
           const parsed = z.json().parse(JSON.parse(value));
@@ -120,23 +114,17 @@ const environmentSchema = z
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('trigger.reconcile'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_WORKFLOW_ID: z.uuid(),
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('retention.rerun'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_RETENTION_BATCH_ID: z.uuid(),
     }),
     baseEnvironmentSchema.extend({
       OPERATOR_COMMAND_TYPE: z.literal('purge.rerun'),
-      OPERATOR_DRY_RUN: z
-        .enum(['true', 'false'])
-        .transform((value) => value === 'true'),
+      OPERATOR_DRY_RUN: dryRunSchema,
       OPERATOR_PURGE_JOB_ID: z.uuid(),
     }),
   ])
