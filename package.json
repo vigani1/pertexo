@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "tsc --build --pretty false",
-    "architecture:check": "node --test infrastructure/validate-project-references.test.mjs && node infrastructure/validate-project-references.mjs",
+    "architecture:check": "node --test infrastructure/validate-project-references.test.mjs infrastructure/validate-module-imports.test.mjs && node infrastructure/validate-project-references.mjs && node infrastructure/validate-module-imports.mjs",
     "check": "pnpm format:check && pnpm docs:check && pnpm runtime:check && pnpm architecture:check && pnpm dependencies:check && pnpm database:schema:check && pnpm build && pnpm lint && pnpm complexity:check && pnpm duplication:check && pnpm contracts:check && pnpm typecheck && pnpm test",
     "complexity:check": "node infrastructure/validate-complexity.mjs && node --test infrastructure/validate-complexity.test.mjs",
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
