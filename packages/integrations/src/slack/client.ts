@@ -67,9 +67,9 @@ export function createSlackClient(
   const execute = async (
     endpoint: string,
     token: string,
-    body: Uint8Array | undefined,
+    body: Uint8Array,
     timeoutMillis: number,
-    signal: AbortSignal | undefined,
+    signal: AbortSignal,
     beforeDispatch: () => Promise<void>,
   ): Promise<SlackApiResult> => {
     const request: SecureHttpRequest = {
@@ -80,12 +80,12 @@ export function createSlackClient(
         authorization: `Bearer ${token}`,
         'content-type': 'application/json; charset=utf-8',
       }),
-      ...(body === undefined ? {} : { body }),
+      body,
       timeoutMillis,
       maxRedirects: 0,
       maxResponseBytes: SLACK_SEND_MESSAGE_LIMITS.maxResponseBytes,
       sensitiveValues: [token],
-      ...(signal === undefined ? {} : { signal }),
+      signal,
       beforeDispatch,
     };
     const response = await httpClient.execute(request);

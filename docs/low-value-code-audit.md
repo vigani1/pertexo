@@ -108,3 +108,18 @@ The broader pass starts at `e4feb99d`. Its first completed cleanup removes:
 
 Changed-file lint, schema validation and deployment checks verify this checkpoint.
 Full review coverage and remaining findings are still in progress.
+
+### Private Slack send-helper checkpoint
+
+The private `execute` helper in `packages/integrations/src/slack/client.ts`
+has one caller, `sendMessage`, which always supplies an encoded body and its
+required `AbortSignal`. Its unused undefined alternatives and conditional
+spreads are removed. The public `authTest` path still accepts an optional
+signal and has separate response semantics; neither public contract changes.
+The two exact unreachable reviews for the removed branches are deleted from
+the risk manifest, rather than left stale or reassigned to other sites.
+
+All 223 integration-package tests, its typecheck, changed-file lint and risk
+report checks pass. The report has 22 pre-existing unreviewed and 463 reviewed
+uncovered sites; coverage floors are unchanged. Source/test duplication gates
+remain green at 28/5 groups and 563/235 aggregate lines respectively.

@@ -1839,32 +1839,6 @@
     },
     {
       "cohort": "integrations",
-      "file": "packages/integrations/src/slack/client.ts",
-      "reviews": [
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 83,
-          "column": 31,
-          "sourceFingerprint": "sha256:6403b425353beff87ab7393b957649053cf0c70c6c76a290a8b8075f2831cc38",
-          "classification": "unreachable",
-          "justification": "The private Slack send helper is called only by sendMessage, which always constructs a bounded body; authTest has a separate bodyless path."
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 88,
-          "column": 33,
-          "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
-          "classification": "unreachable",
-          "justification": "The private Slack send helper is called only by sendMessage, whose contract requires and always forwards an AbortSignal."
-        }
-      ]
-    },
-    {
-      "cohort": "integrations",
       "file": "packages/integrations/src/slack/executor.ts",
       "reviews": [
         {
