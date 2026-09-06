@@ -22,7 +22,7 @@ const readyRow = Object.freeze({
   execution_admission_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
-  migration_head: '0075_workspace_purge_step_release.sql',
+  migration_head: '0076_replay_lineage_retention.sql',
   oidc_capacity_compatible: true,
   oidc_grants_compatible: true,
   oidc_schema_compatible: true,
@@ -54,7 +54,7 @@ const readyRow = Object.freeze({
 }) satisfies ReadinessRow;
 
 const expected = Object.freeze({
-  migrationHead: '0075_workspace_purge_step_release.sql',
+  migrationHead: '0076_replay_lineage_retention.sql',
   minimumPostgresMajor: 18,
   ownerRole: 'pertexo_owner',
 });

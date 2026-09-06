@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0075_workspace_purge_step_release.sql',
+          migrationHead: '0076_replay_lineage_retention.sql',
           role: expectedRole,
         });
       } finally {

@@ -15,9 +15,7 @@ const workerAdmissionMigrationUrl = new URL(
 
 describe('execution admission migration contract', () => {
   it('owns immutable entitlement history, reconciled slots, and durable fairness', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0075_workspace_purge_step_release.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0076_replay_lineage_retention.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

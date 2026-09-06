@@ -18,13 +18,13 @@ const database = {
     mode === 'bootstrap-failure'
       ? Promise.reject(new Error('fixture bootstrap failure'))
       : Promise.resolve({
-          migrationHead: '0075_workspace_purge_step_release.sql',
+          migrationHead: '0076_replay_lineage_retention.sql',
           postgresMajor: 18,
           role: 'pertexo_worker',
         }),
   checkReadiness: () =>
     Promise.resolve({
-      migrationHead: '0075_workspace_purge_step_release.sql',
+      migrationHead: '0076_replay_lineage_retention.sql',
       postgresMajor: 18,
       role: 'pertexo_worker',
     }),
