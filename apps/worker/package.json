@@ -34,7 +34,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "8.21.0",
+    "@types/pg": "8.23.1",
     "bullmq": "6.1.2",
     "drizzle-orm": "0.45.2",
     "ioredis": "6.0.0",
