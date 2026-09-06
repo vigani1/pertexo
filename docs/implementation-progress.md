@@ -77,6 +77,22 @@ tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
 
+### Additional qualification — multidimensional rate-limit atomicity
+
+- [x] Exercise actual Redis admission with all five dimensions: client address,
+      origin, actor, workspace, and connection. Each dimension independently
+      reaches its limit, rejects 40 concurrent combined requests, and leaves
+      every other counter uncharged. Retry delays remain within the window.
+- [x] Prove 40 concurrent combined requests admit exactly four at the tightest
+      limit and charge all five counters exactly four times. Subsequent
+      individual probes verify the remaining capacity independently.
+
+Evidence: `apps/api/test/rate-limit/multidimensional-rate-limiter.integration.test.ts`;
+the dedicated real-Redis run passes all six cases. Scoped ESLint passes. Keys
+use unique identifiers and expire after 60 seconds; this proof neither flushes
+Redis nor kills clients belonging to concurrent tests. Existing Lua admission
+already satisfies the invariant, so no runtime implementation changed.
+
 ### IWA-05 — Skipped Parallel/Merge checkpoint
 
 Generic readiness cannot admit a paired Merge without the successful Parallel's
