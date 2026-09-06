@@ -23,6 +23,10 @@ import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import {
+  createWorkflowVersionRestoreStore,
+  type WorkflowVersionRestoreContext,
+} from './workflow-authoring-version-restore.js';
+import {
   createWorkflowAuthoringLifecycleStore,
   type TransitionWorkflowLifecycleInput,
   type TransitionWorkflowLifecycleResult,
@@ -124,6 +128,16 @@ export type SaveWorkflowDraftInput = Readonly<{
   traceId?: string;
 }>;
 
+export type RestoreWorkflowVersionInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  versionId: string;
+  actorId: string;
+  representationTag: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+
 export type PublishWorkflowInput = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -196,6 +210,9 @@ export type WorkflowAuthoringDatabase = Readonly<{
   ): Promise<WorkflowVersionRecord | null>;
   listVersions(input: ListWorkflowVersionsInput): Promise<WorkflowVersionPage>;
   saveDraft(input: SaveWorkflowDraftInput): Promise<WorkflowDraftRecord>;
+  restoreWorkflowVersion(
+    input: RestoreWorkflowVersionInput,
+  ): Promise<WorkflowDraftRecord>;
   publishWorkflow(input: PublishWorkflowInput): Promise<PublishWorkflowResult>;
   transitionWorkflowLifecycle(
     input: TransitionWorkflowLifecycleInput,
@@ -534,6 +551,19 @@ export function createWorkflowAuthoringDatabase(
   // Runtime import is kept here so the public package remains straightforward to test.
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
+  const authoringContext: WorkflowVersionRestoreContext = {
+    mapDraft,
+    mapVersion,
+    mapWorkflow,
+    requireAuthor: requireWorkspaceAuthor,
+    requirePlaceable: requirePlaceableDefinitionAdditions,
+    selectCatalogs: selectCompatibilityVariant,
+    ...(options.testHooks === undefined
+      ? {}
+      : { testHooks: options.testHooks }),
+    transact: (workspaceId, actorId, operation) =>
+      withAuthorTransaction(pool, workspaceId, actorId, operation),
+  };
   const publishWorkflow = createWorkflowPublisher({
     durableResult: durablePublishResult,
     keyDigest,
@@ -555,16 +585,10 @@ export function createWorkflowAuthoringDatabase(
         readPreviewRun(transaction, input),
       ),
     ...createWorkflowAuthoringDraftStore({
+      ...authoringContext,
       keyDigest,
-      requireAuthor: requireWorkspaceAuthor,
-      requirePlaceable: requirePlaceableDefinitionAdditions,
-      selectCatalogs: selectCompatibilityVariant,
-      ...(options.testHooks === undefined
-        ? {}
-        : { testHooks: options.testHooks }),
-      transact: (workspaceId, actorId, operation) =>
-        withAuthorTransaction(pool, workspaceId, actorId, operation),
     }),
+    ...createWorkflowVersionRestoreStore(authoringContext),
     ...createWorkflowAuthoringReadStore({
       requireReader: requireWorkspaceReader,
       selectDefinitionCatalog: async (client) =>
@@ -574,14 +598,8 @@ export function createWorkflowAuthoringDatabase(
     }),
     publishWorkflow,
     ...createWorkflowAuthoringLifecycleStore({
+      ...authoringContext,
       keyDigest,
-      mapWorkflow,
-      requireAuthor: requireWorkspaceAuthor,
-      ...(options.testHooks === undefined
-        ? {}
-        : { testHooks: options.testHooks }),
-      transact: (workspaceId, actorId, operation) =>
-        withAuthorTransaction(pool, workspaceId, actorId, operation),
     }),
     close: () => lease.close(),
   });

@@ -40,7 +40,7 @@ original verdict after each fix.
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
-| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; archive/restore commands, truthful state reads and current-state reconciliation implemented; 3 authenticated HTTP cases and 3 real-PG lifecycle cases pass, plus prior model/reconciliation proofs; version restoration and real-worker recovery remain |
+| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; archive/restore and guarded version restoration implemented; 5 authenticated HTTP cases, 7 real-PG version-restore cases and 3 real-PG lifecycle cases pass; real-worker recovery proof is under review |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; ADR 035 defines direct upload/finalize/download and shared capacity authority; routes/use cases and enforcement remain absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
@@ -257,8 +257,28 @@ active/disabled resource restoration, delayed archived-state event delivery,
 duplicate receipts, stale publication events, and partial/global/archive failure
 projection. These exercise the persistence consumer directly, not dispatcher
 restart recovery. Command acceptance and completed-run preservation are now
-verified above; version restoration and actual worker recovery remain required
-before IWA-16 closes.
+verified above; actual worker recovery remains required before IWA-16 closes.
+
+Version restoration now follows ADR 011's clarified draft-only contract:
+strict empty request, active update authority and a strong `If-Match` validator.
+The database locks the current compatibility selection, workflow and draft,
+checks the full representation tag, resolves the immutable source under the
+workspace/workflow identity and applies placeability before copying its graph.
+It advances the draft revision and records source identity in the same audit
+transaction. It never publishes, unarchives or changes run history. Even an
+identical graph receives a fresh revision/tag; retrying the old tag returns 412.
+
+Primary-agent verification: all 449 API unit cases pass; 32 shared-contract
+cases passed before the separate artifact-contract work began; five real
+authenticated HTTP lifecycle/version cases pass together on a fresh database.
+The reused fixture now computes its real retained checksum and uses isolated
+OIDC identities, avoiding placeholder data and cross-suite session revocation.
+Seven real PostgreSQL version cases cover source scope, current-catalog/tag
+conflicts, placeability, archive denial, rollback at all three mutation steps
+and both deterministic save/restore lock orders. Run preservation is asserted
+against a nonempty row read through the API role rather than a FORCE-RLS-hidden
+owner query. Source/build/typecheck, scoped ESLint and unchanged complexity
+limits pass for the authoring change.
 
 ### IWA-01 — DST recurrence correction
 

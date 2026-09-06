@@ -28,6 +28,14 @@ export const workflowLifecycleRevisionSchema = z
 export const workflowIdParamSchema = z
   .object({ workspaceId: z.uuid(), workflowId: workflowIdentifierSchema })
   .strict();
+export const workflowVersionRestoreParamsSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    workflowId: workflowIdentifierSchema,
+    versionId: workflowIdentifierSchema,
+  })
+  .strict();
+export const workflowVersionRestoreRequestSchema = z.object({}).strict();
 export const workflowNodeIdParamSchema = z
   .object({
     workspaceId: z.uuid(),

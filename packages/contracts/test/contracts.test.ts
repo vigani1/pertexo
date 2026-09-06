@@ -606,6 +606,7 @@ describe('public contracts package', () => {
   it('documents all Phase 2 routes, headers, and reusable RFC 9457 problems', () => {
     const paths = workflowAuthoringOpenApiDocument.paths;
     expect(Object.keys(paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore',
       '/v1/workspaces/{workspaceId}/workflows',

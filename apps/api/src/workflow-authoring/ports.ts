@@ -18,6 +18,7 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'saveDraft'
   | 'publishWorkflow'
   | 'transitionWorkflowLifecycle'
+  | 'restoreWorkflowVersion'
 >;
 
 export type WorkflowAuthoringDependencies = Readonly<{

@@ -1,5 +1,6 @@
 export * from './controllers.js';
 export * from './lifecycle-use-case.js';
+export * from './restore-version-use-case.js';
 export * from './errors.js';
 export * from './etag.js';
 export * from './guards.js';

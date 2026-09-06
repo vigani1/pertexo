@@ -26,6 +26,8 @@ import {
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
+import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
+import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowApplicationError } from './errors.js';
 import {
@@ -70,6 +72,7 @@ export class WorkflowAuthoringController {
     private readonly publishWorkflow: PublishWorkflowUseCase,
     private readonly listVersions: ListWorkflowVersionsUseCase,
     private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
+    private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
   ) {}
 
   @Get()
@@ -211,6 +214,36 @@ export class WorkflowAuthoringController {
       ...requestIdentifiers(request),
       ...traceparent(request),
     });
+  }
+
+  @Post(':workflowId/versions/:versionId/restore')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public async restoreVersion(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: WorkflowResponse,
+  ) {
+    const route = workflowVersionRestoreParamsSchema.parse(params);
+    const result = await this.restoreWorkflowVersion.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      versionId: route.versionId,
+      representationTag: parseStrongIfMatch(
+        requestHeaderValue(request.headers, 'if-match'),
+      ),
+      request: body,
+    });
+    response.header('ETag', result.representationTag);
+    return result.body;
   }
 
   @Post(':workflowId/archive')

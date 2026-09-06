@@ -23,6 +23,7 @@ import type {
 } from '@pertexo/database/testing';
 import { WorkflowRevisionConflictError } from '@pertexo/database/testing';
 import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
+import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -104,6 +105,7 @@ function authorization() {
 
 function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
   return {
+    restoreWorkflowVersion: vi.fn().mockResolvedValue(draft({ revision: 2 })),
     transitionWorkflowLifecycle: vi
       .fn()
       .mockResolvedValue({ workflow: workflow(), replayed: false }),
@@ -127,6 +129,69 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
 }
 
 describe('workflow authoring application seams', () => {
+  it('restores a version through one atomic command preserving the original tag', async () => {
+    const store = persistence();
+    const representationTag = createDraftRepresentationTag({
+      workflowId,
+      revision: 1,
+      schemaVersion: 1,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    });
+    const result = await new RestoreWorkflowVersionUseCase(
+      store,
+      authorization(),
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      versionId: version().id,
+      representationTag,
+      request: {},
+    });
+    expect(store.restoreWorkflowVersion).toHaveBeenCalledExactlyOnceWith({
+      workspaceId,
+      workflowId,
+      versionId: version().id,
+      actorId,
+      representationTag,
+      requestId: actor.requestId,
+    });
+    expect(result.body.revision).toBe(2);
+    expect(result.representationTag).not.toBe(representationTag);
+    expect(store.getVersion).not.toHaveBeenCalled();
+    expect(store.getDraft).not.toHaveBeenCalled();
+    expect(store.publishWorkflow).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    [null, [], { graph }, { expectedRevision: 1 }].map((request) => ({
+      request,
+    })),
+  )(
+    'rejects malformed version restore body %j before persistence',
+    async ({ request }) => {
+      const store = persistence();
+      await expect(
+        new RestoreWorkflowVersionUseCase(store, authorization()).execute({
+          actor,
+          routeWorkspaceId: workspaceId,
+          workflowId,
+          versionId: version().id,
+          representationTag: createDraftRepresentationTag({
+            workflowId,
+            revision: 1,
+            schemaVersion: 1,
+            graph,
+            compatibilityFingerprint: fingerprint,
+          }),
+          request,
+        }),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      expect(store.restoreWorkflowVersion).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['archive', 'restore'] as const)(
     'accepts %s using publication authority and serializes the durable response',
     async (command) => {

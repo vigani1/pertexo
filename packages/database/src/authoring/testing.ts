@@ -13,6 +13,7 @@ export type {
   ListWorkflowsInput,
   PublishWorkflowInput,
   PublishWorkflowResult,
+  RestoreWorkflowVersionInput,
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
   WorkflowAuthoringDatabaseOptions,

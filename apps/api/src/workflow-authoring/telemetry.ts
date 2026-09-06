@@ -7,6 +7,7 @@ export const WORKFLOW_AUTHORING_OPERATION = Object.freeze({
   publish: 'workflow.publish',
   archive: 'workflow.archive',
   restore: 'workflow.restore',
+  versionRestore: 'workflow.version.restore',
   versionsList: 'workflow.versions.list',
 } as const);
 

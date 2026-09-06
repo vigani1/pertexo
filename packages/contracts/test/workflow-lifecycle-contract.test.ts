@@ -5,9 +5,27 @@ import {
   workflowLifecycleRequestSchema,
   workflowLifecycleRevisionSchema,
   workflowSummarySchema,
+  workflowVersionRestoreRequestSchema,
 } from '../src/workflow-authoring.js';
 
 describe('workflow lifecycle public contract', () => {
+  it('restores a version with an empty body and draft precondition, without idempotency', () => {
+    expect(workflowVersionRestoreRequestSchema.parse({})).toEqual({});
+    expect(
+      workflowVersionRestoreRequestSchema.safeParse({ publish: true }).success,
+    ).toBe(false);
+    const operation =
+      workflowAuthoringOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore'
+      ].post;
+    const names = operation.parameters.map(({ name }) => name);
+    expect(names).toContain('If-Match');
+    expect(names).not.toContain('Idempotency-Key');
+    expect(operation.security).toEqual([{ cookieSession: [] }]);
+    expect(operation.responses).toHaveProperty('200');
+    expect(operation.responses).toHaveProperty('412');
+    expect(operation.responses).toHaveProperty('428');
+  });
   it('uses one safe revision contract in summaries and commands', () => {
     expect(workflowSummarySchema.shape.lifecycleRevision).toBe(
       workflowLifecycleRevisionSchema,

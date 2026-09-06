@@ -120,6 +120,7 @@ function workflowAuthoringDatabase(
     listVersions: () => Promise.resolve({ items: [] }),
     saveDraft: () => Promise.reject(new Error('not used')),
     publishWorkflow: () => Promise.reject(new Error('not used')),
+    restoreWorkflowVersion: () => Promise.reject(new Error('not used')),
     transitionWorkflowLifecycle: () => Promise.reject(new Error('not used')),
     close,
   };
