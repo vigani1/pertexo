@@ -77,7 +77,6 @@ export class ScheduleClaimLostError extends Error {
   public override readonly name = 'ScheduleClaimLostError';
 }
 
-export { ScheduleTriggerError } from './schedule-trigger-errors.js';
 export function createScheduleTriggerScanner(
   claimConfig: DatabaseConfig,
   compatibilityReleaseInput:
