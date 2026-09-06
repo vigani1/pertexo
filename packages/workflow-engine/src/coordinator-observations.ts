@@ -40,7 +40,8 @@ export function branchSelectionObservations(
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
-  return completedItems.flatMap((item): WorkflowObservation[] => {
+  const verifiedParallelOutputs = new Set<string>();
+  const observations = completedItems.flatMap((item): WorkflowObservation[] => {
     const material = record(item, 'observation_invalid', 'completed output');
     exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
     if (
@@ -65,9 +66,8 @@ export function branchSelectionObservations(
       return [];
     }
     seen.set(identity, canonicalMaterial);
-    const correspondingOutcome = successfulOutcomes.get(
-      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
-    );
+    const outcomeIdentity = `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`;
+    const correspondingOutcome = successfulOutcomes.get(outcomeIdentity);
     if (
       correspondingOutcome === undefined ||
       completedOutputReference(correspondingOutcome, attemptId) === undefined
@@ -81,6 +81,14 @@ export function branchSelectionObservations(
     if (node === undefined) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
+      if (
+        completedOutputReference(correspondingOutcome, attemptId)?.kind !==
+        'inline'
+      )
+        operationError(
+          'observation_invalid',
+          'Parallel output reference is invalid',
+        );
       if (material.value === undefined)
         operationError('observation_invalid', 'Parallel output is missing');
       const completedValue = record(
@@ -97,6 +105,7 @@ export function branchSelectionObservations(
         )
       )
         operationError('observation_invalid', 'Parallel output is invalid');
+      verifiedParallelOutputs.add(outcomeIdentity);
       return [];
     }
     const outputPorts = configuredBranchOutputPorts(node);
@@ -125,6 +134,22 @@ export function branchSelectionObservations(
       },
     ];
   });
+  // Only fresh successful facts need material. Previously verified checkpoint
+  // successes retain their scoped branch/join authority across recovery.
+  for (const [identity, outcome] of successfulOutcomes) {
+    const invocation =
+      typeof outcome.invocationKey === 'string'
+        ? invocations.get(outcome.invocationKey)
+        : undefined;
+    const node = nodes.get(invocation?.nodeId ?? '');
+    if (
+      node !== undefined &&
+      configuredParallelOutputPorts(node) !== undefined &&
+      !verifiedParallelOutputs.has(identity)
+    )
+      operationError('observation_invalid', 'Parallel output is missing');
+  }
+  return observations;
 }
 
 export function forEachCoordinatorObservations(
