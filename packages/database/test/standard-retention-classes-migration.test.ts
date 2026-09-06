@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 const migrationUrl = new URL(
   '../migrations/0055_standard_retention_classes.sql',
   import.meta.url,
@@ -11,7 +9,6 @@ const migrationUrl = new URL(
 
 describe('standard retention classes migration', () => {
   it('keeps all destructive retention behind bounded maintenance functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain("'execution_detail'");

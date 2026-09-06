@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 describe('transient data retention migration', () => {
   it('defines bounded maintenance-only cleanup with safe claim and hold guards', async () => {
     const migration = await readFile(
@@ -14,7 +12,6 @@ describe('transient data retention migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(migration).toContain("interval '24 hours'");
     expect(migration).toContain("interval '30 days'");
     expect(migration).toContain("record.status = 'completed'");

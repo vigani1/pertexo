@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 describe('OIDC browser binding migration', () => {
   it('invalidates old transactions and requires a fixed-width binding digest', async () => {
     const sql = await readFile(
@@ -11,7 +9,6 @@ describe('OIDC browser binding migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(sql).toContain('ADD COLUMN browser_binding_digest char(64)');
     expect(sql).toContain("browser_binding_digest = repeat('0', 64)");
     expect(sql).toContain(

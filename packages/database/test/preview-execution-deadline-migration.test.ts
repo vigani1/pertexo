@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 
 describe('preview execution deadline migration', () => {
@@ -15,7 +14,6 @@ describe('preview execution deadline migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(MIGRATIONS_DIRECTORY).toContain('migrations');
     expect(sql).toContain('ADD COLUMN execution_deadline_at timestamptz');
     expect(sql).toContain(

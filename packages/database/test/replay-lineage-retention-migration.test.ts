@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 const migrationUrl = new URL(
   '../migrations/0076_replay_lineage_retention.sql',
   import.meta.url,
@@ -11,7 +9,6 @@ const migrationUrl = new URL(
 
 describe('replay lineage retention migration', () => {
   it('keeps summary deletion behind the replay-source lineage fence', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

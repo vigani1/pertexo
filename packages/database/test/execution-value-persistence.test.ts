@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 } from '../src/execution/stored-execution-value.js';
 
 const migrationUrl = new URL(
@@ -12,7 +11,6 @@ const migrationUrl = new URL(
 
 describe('execution value persistence migration contract', () => {
   it('adds a nullable run input without a partial checkpoint identity invariant', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     const sql = await readFile(migrationUrl, 'utf8');
     expect(sql).toContain('ADD COLUMN input_ref jsonb');
     expect(sql).not.toContain('ADD COLUMN workflow_version_id');

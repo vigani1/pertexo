@@ -2,8 +2,6 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 describe('regional replica identity migration', () => {
   it('persists bounded identity cardinality and replaces the unsafe lookup', async () => {
     const sql = await readFile(
@@ -14,7 +12,6 @@ describe('regional replica identity migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(sql).toContain('replica_identity_status');
     expect(sql).toContain('replica_session_count');
     expect(sql).toContain("'missing'");

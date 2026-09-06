@@ -7,6 +7,10 @@ import {
 } from '../src/platform/readiness.js';
 
 describe('steady database serving readiness', () => {
+  it('pins the reviewed migration head', () => {
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
+  });
+
   it('checks only bounded live compatibility state', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [

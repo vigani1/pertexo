@@ -2,8 +2,6 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
-
 describe('operator outbox redispatch migration', () => {
   it('keeps the operator on narrow functions with durable replay and audit', () => {
     const migration = readFileSync(
@@ -14,7 +12,6 @@ describe('operator outbox redispatch migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(migration).toContain('CREATE TABLE app.operator_commands');
     expect(migration).toContain('pg_advisory_xact_lock');
     expect(migration).toContain("ELSE 'conflict' END");
