@@ -60,6 +60,17 @@ rename or split functions. New confirmed defects found while fixing these
 paths receive explicit entries and regression evidence rather than silent scope
 expansion or unverified closure.
 
+The remediation coverage run at the worker-concurrency checkpoint measures
+107 selected risk-report files and 4,941 coverable lines. After reviewing the
+provider fence and moving unchanged redaction branch records to their new
+source owners, 499 uncovered branches have current reviews and three remain
+explicitly unreviewed (one V8 locationless address-policy branch and two
+stream cancellation/deadline branches). These are not claimed covered by
+adjacent tests. Observability and queue package coverage gates run separately;
+they are not included in that selected risk-report denominator. All package
+percentage thresholds pass unchanged. The risk manifest rejects stale
+fingerprints; it does not require zero unreviewed branches.
+
 Verification for this initial checkpoint: independent audit inventory covers
 all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
@@ -297,7 +308,7 @@ cases and all 278 worker tests passed alone, but two startup waits failed
 under the root gate. Worker test forks are now capped at four; the full
 recursive unit suite and worker coverage run pass with the original startup
 and shutdown deadlines unchanged. A stale development probe was also stopped
-after the successful unit comparison; it is not part of the test harness.
+during verification; it is not part of the test harness.
 
 ## Prior review history
 
