@@ -33,7 +33,18 @@ import type {
 } from './object-store-telemetry.js';
 import { sendS3 } from './s3-client-contract.js';
 import type { ObjectStoreS3Client } from './s3-client-contract.js';
-
+import {
+  awaitWithSignal,
+  requestSignal,
+} from './artifact-request-lifecycle.js';
+import {
+  createArtifactDownloadPresigner,
+  signArtifactDownload,
+  type ArtifactDownloadCapability,
+  type BeginDirectDownloadRequest,
+  type DirectDownload,
+  type GetObjectPresigner,
+} from './artifact-download.js';
 export type S3ClientLike = ObjectStoreS3Client;
 
 export interface ArtifactIdentity {
@@ -198,48 +209,6 @@ function storageKey(identity: ArtifactIdentity): string {
 
 function workspacePrefix(workspaceId: string): string {
   return `workspaces/${workspaceId}/`;
-}
-
-function requestSignal(
-  timeoutMs: number,
-  externalSignal: AbortSignal | undefined,
-): AbortSignal {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  return externalSignal === undefined
-    ? timeoutSignal
-    : AbortSignal.any([externalSignal, timeoutSignal]);
-}
-
-function awaitWithSignal<T>(
-  operation: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> {
-  signal.throwIfAborted();
-  return new Promise<T>((resolve, reject) => {
-    const aborted = () => {
-      const reason: unknown = signal.reason;
-      reject(
-        reason instanceof Error
-          ? reason
-          : new Error('Artifact operation aborted', { cause: reason }),
-      );
-    };
-    signal.addEventListener('abort', aborted, { once: true });
-    void operation.then(
-      (value) => {
-        signal.removeEventListener('abort', aborted);
-        resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener('abort', aborted);
-        reject(
-          error instanceof Error
-            ? error
-            : new Error('Artifact operation failed', { cause: error }),
-        );
-      },
-    );
-  });
 }
 
 function isNotFound(error: unknown): boolean {
@@ -431,13 +400,19 @@ function isDestroyable(value: unknown): value is Destroyable {
   return typeof candidate.destroy === 'function';
 }
 
-class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
+class AwsArtifactStore
+  implements
+    ArtifactStore,
+    ArtifactDownloadCapability,
+    WorkspaceObjectPurgeStore
+{
   private closed = false;
 
   public constructor(
     private readonly config: ArtifactStoreConfig,
     private readonly client: S3ClientLike,
     private readonly presignPutObject: PutObjectPresigner,
+    private readonly presignGetObject: GetObjectPresigner,
     private readonly ownsClient: boolean,
   ) {}
 
@@ -493,6 +468,13 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       method: 'PUT' as const,
       url,
     });
+  }
+
+  public async beginDirectDownload(
+    request: BeginDirectDownloadRequest,
+  ): Promise<DirectDownload> {
+    this.assertOpen();
+    return signArtifactDownload(this.config, this.presignGetObject, request);
   }
 
   public async checkReadiness(
@@ -857,10 +839,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
 }
 
 class ObservedArtifactStore
-  implements ArtifactStore, WorkspaceObjectPurgeStore
+  implements
+    ArtifactStore,
+    ArtifactDownloadCapability,
+    WorkspaceObjectPurgeStore
 {
   public constructor(
-    private readonly store: ArtifactStore & WorkspaceObjectPurgeStore,
+    private readonly store: ArtifactStore &
+      ArtifactDownloadCapability &
+      WorkspaceObjectPurgeStore,
     private readonly observer: ObjectStoreObserver,
     private readonly regionRole: ObjectStoreRegionRole,
   ) {}
@@ -869,6 +856,12 @@ class ObservedArtifactStore
     request: BeginDirectUploadRequest,
   ): Promise<DirectUpload> {
     return this.observe(() => this.store.beginDirectUpload(request));
+  }
+
+  public beginDirectDownload(
+    request: BeginDirectDownloadRequest,
+  ): Promise<DirectDownload> {
+    return this.observe(() => this.store.beginDirectDownload(request));
   }
 
   public checkReadiness(signal?: AbortSignal): Promise<ArtifactStoreReadiness> {
@@ -940,10 +933,11 @@ export function createArtifactStore(
     client?: S3ClientLike;
     clientOwnership?: 'borrowed' | 'owned';
     observer?: ObjectStoreObserver;
+    presignGetObject?: GetObjectPresigner;
     presignPutObject?: PutObjectPresigner;
     regionRole?: ObjectStoreRegionRole;
   }> = {},
-): ArtifactStore & WorkspaceObjectPurgeStore {
+): ArtifactStore & ArtifactDownloadCapability & WorkspaceObjectPurgeStore {
   const observer = options.observer ?? createProductionObjectStoreObserver();
   const rawClient =
     options.client ??
@@ -979,6 +973,12 @@ export function createArtifactStore(
     config,
     client,
     presignPutObject,
+    createArtifactDownloadPresigner(
+      rawClient as S3Client,
+      observer,
+      regionRole,
+      options.presignGetObject,
+    ),
     ownsClient,
   );
   return new ObservedArtifactStore(store, observer, regionRole);

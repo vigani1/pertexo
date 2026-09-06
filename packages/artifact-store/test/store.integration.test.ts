@@ -139,6 +139,20 @@ integrationDescribe('ArtifactStore S3 integration', () => {
       await expect(
         store.validateDirectUpload({ ...metadata, sha256: '0'.repeat(64) }),
       ).rejects.toBeDefined();
+
+      const download = await store.beginDirectDownload({
+        artifactId: metadata.artifactId,
+        expiresInSeconds: 300,
+        workspaceId: metadata.workspaceId,
+      });
+      expect(
+        new URL(download.url).searchParams.get('response-content-disposition'),
+      ).toBe('attachment');
+      const downloadResponse = await fetch(download.url, {
+        method: download.method,
+      });
+      expect(downloadResponse.ok).toBe(true);
+      expect(Buffer.from(await downloadResponse.arrayBuffer())).toEqual(body);
     } finally {
       await store.delete(metadata).catch(() => undefined);
       store.close();

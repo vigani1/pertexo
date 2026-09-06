@@ -22,6 +22,7 @@ export type ObjectStoreOperation =
   | 'head_object'
   | 'list_objects_v2'
   | 'list_object_versions'
+  | 'presign_get_object'
   | 'presign_put_object'
   | 'put_object'
   | 'unknown';
@@ -256,6 +257,7 @@ export async function observePresign<T>(
   observer: ObjectStoreObserver | undefined,
   regionRole: ObjectStoreRegionRole,
   presign: () => Promise<T>,
+  operation: 'presign_get_object' | 'presign_put_object' = 'presign_put_object',
 ): Promise<T> {
   const startedAt = performance.now();
   try {
@@ -263,7 +265,7 @@ export async function observePresign<T>(
     safelyObserveRequest(observer, {
       durationSeconds: (performance.now() - startedAt) / 1_000,
       errorClass: 'none',
-      operation: 'presign_put_object',
+      operation,
       outcome: 'success',
       regionRole,
       surface: 'artifact',
@@ -273,7 +275,7 @@ export async function observePresign<T>(
     safelyObserveRequest(observer, {
       durationSeconds: (performance.now() - startedAt) / 1_000,
       errorClass: errorClass(error),
-      operation: 'presign_put_object',
+      operation,
       outcome: 'error',
       regionRole,
       surface: 'artifact',
