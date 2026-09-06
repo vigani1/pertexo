@@ -77,6 +77,34 @@ tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
 
+### Additional qualification — retention transaction cancellation
+
+- [x] Replace the retention wrapper's ignored query `signal` option with the
+      existing shared platform transaction guard. Cancellation interrupts pool
+      acquisition or destroys the checked-out connection, preserves the exact
+      maintenance abort reason, and prevents reuse of a cancellation-targeted
+      client. Parameterized transaction-local lock and statement timeouts remain
+      independent server-side bounds.
+- [x] Prove cancellation against actual PostgreSQL using the maintenance role:
+      insert then block on a real advisory lock, abort before its 10-second
+      lock timeout, observe rollback and eventual backend exit, and commit a
+      subsequent transaction on a distinct clean client. A second case aborts
+      checkout while the single-client pool is occupied.
+
+Evidence: `packages/database/src/lifecycle/retention-transaction.ts`;
+`packages/database/test/retention-transaction-cancellation.integration.test.ts`
+(2 real-PG cases); `packages/database/test/retention-transaction.test.ts` and
+the shared transaction suite (30 unit cases); five adjacent retention suites
+(12 real-PG cases). Package build and scoped ESLint pass. The pre-fix blocked
+query reached its SQL timeout instead of returning the abort reason, and pool
+acquisition did not settle while occupied; both regressions now pass.
+
+This is client-side interruption plus eventual server rollback, not a claim
+that PostgreSQL acknowledges cancellation synchronously. Nontransactional
+maintenance queries and the separate lifecycle/operator wrappers retain their
+documented SQL timeout bounds; this checkpoint does not claim that their
+query-level `signal` properties interrupt an already-running statement.
+
 ### Additional qualification — multidimensional rate-limit atomicity
 
 - [x] Exercise actual Redis admission with all five dimensions: client address,
