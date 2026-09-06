@@ -4,10 +4,12 @@ Updated: 2026-09-06
 
 ## Delivery state
 
-The platform is **not production-ready**. The independent audit's named
-repository-controlled corrections now have regression evidence, while external
-production gates and four unallocated API scope decisions remain open.
-The [implementation tracker](./implementation-progress.md#independent-audit-remediation--repository-corrections-verified)
+The platform is **not production-ready**. Follow-up review reopened the cron
+traversal bound and lifecycle-command CI coverage requirements and identified
+artifact policy/contract gaps. Prior regression tests do not close these
+remaining requirements. External production gates and four unallocated API
+scope decisions also remain open.
+The [implementation tracker](./implementation-progress.md#independent-audit-remediation--follow-up-corrections)
 is the single mutable checkpoint/status inventory; its summary and individual
 finding evidence take precedence over the historical verification below.
 
