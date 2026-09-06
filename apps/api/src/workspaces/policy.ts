@@ -1,5 +1,1 @@
-export {
-  capabilitiesForRole,
-  hasCapability,
-  rolesForCapability,
-} from '@pertexo/database/api';
+export { capabilitiesForRole, hasCapability } from '@pertexo/database/api';

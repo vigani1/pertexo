@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/api';
 
 export { AUTHORIZATION_CAPABILITIES, ROLES };
-export type { AuthorizationCapability, Role };
+export type { AuthorizationCapability };
 
 export const MEMBERSHIP_STATUSES = Object.freeze([
   'active',
