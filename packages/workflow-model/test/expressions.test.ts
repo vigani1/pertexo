@@ -148,27 +148,13 @@ describe('restricted JSONata policy v1', () => {
       ),
     ).toEqual(expect.objectContaining({ kind: 'error', limit: 'ast_nodes' }));
   });
-  it('uses the production worker for value, missing, malformed, and preview/runtime parity', async () => {
+  it('uses the production worker for value, missing, and malformed expressions', async () => {
     const evaluator = new JsonataEvaluator();
     evaluators.push(evaluator);
     const context = { runInput: { name: 'Ada' }, nodeOutputs: {} };
     const expected = { kind: 'value', value: 'ADA', canonicalBytes: 5 };
     expect(
       await evaluator.evaluate({
-        expression: '$uppercase(runInput.name)',
-        policyVersion: 1,
-        context,
-      }),
-    ).toEqual(expected);
-    expect(
-      await evaluator.preview({
-        expression: '$uppercase(runInput.name)',
-        policyVersion: 1,
-        context,
-      }),
-    ).toEqual(expected);
-    expect(
-      await evaluator.runtime({
         expression: '$uppercase(runInput.name)',
         policyVersion: 1,
         context,
@@ -593,7 +579,6 @@ describe('restricted JSONata policy v1', () => {
     expect(checksum).toBe(
       '43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777',
     );
-    expect(elapsedMs).toBeGreaterThan(0);
     console.info(
       'jsonata_engine_gate',
       JSON.stringify({

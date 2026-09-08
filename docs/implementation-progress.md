@@ -73,6 +73,11 @@ data and historical evidence will be distinguished from executable source review
       the identical request-ID parser. All 476 API unit tests and test typecheck
       pass; public problem values, retry details and cancellation scope remain.
 
+- [x] Remove two test-only evaluator aliases, the duplicated branch-disposition
+      predicate, a repeated export assertion and a positive elapsed-time
+      assertion. All 91 model and 285 engine tests and test typechecks pass;
+      real worker, timeout and hostile-input checks remain intact.
+
 ## Initial low-value code cleanup — complete
 
 The follow-up audit inspects every application, package and major tooling
