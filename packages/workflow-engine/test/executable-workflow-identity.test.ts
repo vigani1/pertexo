@@ -530,9 +530,12 @@ describe('workflow executable V2 identity', () => {
         },
       ],
     } as const;
-    expect(
-      buildWorkflowExecutableV2({ graph: repeated, release }).checksum,
-    ).toMatch(/^wf:v2:sha256:[a-f0-9]{64}$/u);
+    const original = buildWorkflowExecutableV2({ graph: base, release });
+    const compiled = buildWorkflowExecutableV2({ graph: repeated, release });
+    expect(compiled.envelope.compatibilitySelectionFingerprint).toBe(
+      original.envelope.compatibilitySelectionFingerprint,
+    );
+    expect(compiled.checksum).not.toBe(original.checksum);
   });
 
   it('recursively pins, orders, checksums, parses, and verifies For Each bodies', () => {
