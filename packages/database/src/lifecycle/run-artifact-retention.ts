@@ -9,6 +9,7 @@ import type { ControlLedger } from './control-ledger-coordinator.js';
 import {
   inRetentionTransaction,
   lockWorkspaceRetentionControl,
+  withWorkspaceDestructiveOperationLock,
 } from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
@@ -85,6 +86,10 @@ export function createRunArtifactRetentionCoordinator(
   inputOptions: RunArtifactRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
 ): RunArtifactRetentionCoordinator {
+  if (config.max < 2)
+    throw new RangeError(
+      'Run artifact retention coordination requires a database pool of at least 2 connections',
+    );
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -140,114 +145,121 @@ export function createRunArtifactRetentionCoordinator(
           status: 'released' as const,
           workspaceId,
         });
-      const outcome = await inRetentionTransaction(
+      return withWorkspaceDestructiveOperationLock(
         pool,
-        transactionOptions,
-        signal,
-        async (client) => {
-          await query(
-            client,
-            "select set_config('app.workspace_id',$1,true)",
-            [workspaceId],
-            signal,
-          );
-          const prepared = await query<{ outcome: string }>(
-            client,
-            'select app.prepare_run_artifact_retention($1,$2,$3,$4) outcome',
-            [workspaceId, artifactId, highWater.sequence, highWater.hash],
-            signal,
-          );
-          return z
-            .enum(['artifact', 'held', 'referenced', 'stale'])
-            .parse(prepared.rows[0]?.outcome);
-        },
-      );
-      if (outcome !== 'artifact')
-        return Object.freeze({ artifactId, status: outcome, workspaceId });
-      const defer = async (): Promise<boolean> =>
-        inRetentionTransaction(
-          pool,
-          transactionOptions,
-          signal,
-          async (client) => {
-            await query(
-              client,
-              "select set_config('app.workspace_id',$1,true)",
-              [workspaceId],
-              signal,
-            );
-            const deferred = await query<{ deferred: boolean }>(
-              client,
-              'select app.defer_run_artifact_retention($1,$2,$3,$4) deferred',
-              [workspaceId, artifactId, highWater.sequence, highWater.hash],
-              signal,
-            );
-            return deferred.rows[0]?.deferred === true;
-          },
-        );
-
-      let remaining: object | null;
-      try {
-        await artifacts.delete({
-          artifactId,
-          signal: externalSignal,
-          workspaceId,
-        });
-        remaining = await artifacts.head({
-          artifactId,
-          signal: externalSignal,
-          workspaceId,
-        });
-      } catch (error: unknown) {
-        signal?.throwIfAborted();
-        try {
-          if (!(await defer()))
-            throw new Error('Run artifact retention deferral was lost');
-        } catch (deferError: unknown) {
-          throw new AggregateError(
-            [error, deferError],
-            'Run artifact retention failure and deferral both failed',
-          );
-        }
-        throw error;
-      }
-      if (remaining !== null) {
-        if (!(await defer()))
-          throw new Error('Run artifact retention deferral was lost');
-        return Object.freeze({
-          artifactId,
-          status: 'waiting' as const,
-          workspaceId,
-        });
-      }
-
-      const completed = await inRetentionTransaction(
-        pool,
-        transactionOptions,
-        signal,
-        async (client) => {
-          await query(
-            client,
-            "select set_config('app.workspace_id',$1,true)",
-            [workspaceId],
-            signal,
-          );
-          const completed = await query<{ completed: boolean }>(
-            client,
-            'select app.complete_run_artifact_retention($1,$2,$3,$4) completed',
-            [workspaceId, artifactId, highWater.sequence, highWater.hash],
-            signal,
-          );
-          return completed.rows[0]?.completed === true;
-        },
-      );
-      if (!completed)
-        throw new Error('Run artifact retention completion was lost');
-      return Object.freeze({
-        artifactId,
-        status: 'completed' as const,
         workspaceId,
-      });
+        signal,
+        async () => {
+          const outcome = await inRetentionTransaction(
+            pool,
+            transactionOptions,
+            signal,
+            async (client) => {
+              await query(
+                client,
+                "select set_config('app.workspace_id',$1,true)",
+                [workspaceId],
+                signal,
+              );
+              const prepared = await query<{ outcome: string }>(
+                client,
+                'select app.prepare_run_artifact_retention($1,$2,$3,$4) outcome',
+                [workspaceId, artifactId, highWater.sequence, highWater.hash],
+                signal,
+              );
+              return z
+                .enum(['artifact', 'held', 'referenced', 'stale'])
+                .parse(prepared.rows[0]?.outcome);
+            },
+          );
+          if (outcome !== 'artifact')
+            return Object.freeze({ artifactId, status: outcome, workspaceId });
+          const defer = async (): Promise<boolean> =>
+            inRetentionTransaction(
+              pool,
+              transactionOptions,
+              signal,
+              async (client) => {
+                await query(
+                  client,
+                  "select set_config('app.workspace_id',$1,true)",
+                  [workspaceId],
+                  signal,
+                );
+                const deferred = await query<{ deferred: boolean }>(
+                  client,
+                  'select app.defer_run_artifact_retention($1,$2,$3,$4) deferred',
+                  [workspaceId, artifactId, highWater.sequence, highWater.hash],
+                  signal,
+                );
+                return deferred.rows[0]?.deferred === true;
+              },
+            );
+
+          let remaining: object | null;
+          try {
+            await artifacts.delete({
+              artifactId,
+              signal: externalSignal,
+              workspaceId,
+            });
+            remaining = await artifacts.head({
+              artifactId,
+              signal: externalSignal,
+              workspaceId,
+            });
+          } catch (error: unknown) {
+            signal?.throwIfAborted();
+            try {
+              if (!(await defer()))
+                throw new Error('Run artifact retention deferral was lost');
+            } catch (deferError: unknown) {
+              throw new AggregateError(
+                [error, deferError],
+                'Run artifact retention failure and deferral both failed',
+              );
+            }
+            throw error;
+          }
+          if (remaining !== null) {
+            if (!(await defer()))
+              throw new Error('Run artifact retention deferral was lost');
+            return Object.freeze({
+              artifactId,
+              status: 'waiting' as const,
+              workspaceId,
+            });
+          }
+
+          const completed = await inRetentionTransaction(
+            pool,
+            transactionOptions,
+            signal,
+            async (client) => {
+              await query(
+                client,
+                "select set_config('app.workspace_id',$1,true)",
+                [workspaceId],
+                signal,
+              );
+              const completed = await query<{ completed: boolean }>(
+                client,
+                'select app.complete_run_artifact_retention($1,$2,$3,$4) completed',
+                [workspaceId, artifactId, highWater.sequence, highWater.hash],
+                signal,
+              );
+              return completed.rows[0]?.completed === true;
+            },
+          );
+          if (!completed)
+            throw new Error('Run artifact retention completion was lost');
+          return Object.freeze({
+            artifactId,
+            status: 'completed' as const,
+            workspaceId,
+          });
+        },
+      );
     },
   });
 }

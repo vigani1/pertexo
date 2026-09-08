@@ -21,6 +21,10 @@ import {
   ControlLedgerReconciliationError,
 } from './control-ledger-errors.js';
 import {
+  acquireWorkspaceDestructiveOperationLock,
+  releaseWorkspaceDestructiveOperationLock,
+} from './retention-transaction.js';
+import {
   createControlLedgerReadSide,
   type CommittedArtifactInventoryInput,
   type CommittedArtifactInventoryPage,
@@ -371,7 +375,14 @@ export function createControlLedgerCoordinator(
         void cancelBackendQuery(config, processId).catch(() => undefined);
     };
     signal?.addEventListener('abort', cancelForAbort, { once: true });
+    let destructiveLockAcquired = false;
     try {
+      await acquireWorkspaceDestructiveOperationLock(
+        client,
+        workspaceId,
+        signal,
+      );
+      destructiveLockAcquired = true;
       await query(client, 'begin', [], signal);
       await query(
         client,
@@ -404,6 +415,8 @@ export function createControlLedgerCoordinator(
       });
       throwIfAborted(signal);
       await query(client, 'commit', [], signal);
+      await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
+      destructiveLockAcquired = false;
       signal?.removeEventListener('abort', cancelForAbort);
       client.release(
         cancellation.requested
@@ -417,6 +430,13 @@ export function createControlLedgerCoordinator(
         await client.query({ text: 'rollback' });
       } catch (caught: unknown) {
         rollbackError = caught;
+      }
+      if (destructiveLockAcquired) {
+        try {
+          await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
+        } catch (caught: unknown) {
+          rollbackError ??= caught;
+        }
       }
       signal?.removeEventListener('abort', cancelForAbort);
       client.release(

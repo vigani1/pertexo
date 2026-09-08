@@ -32,7 +32,8 @@ function requiresStructuredCheckpoint(definition: DefinitionIdentity): boolean {
   return (
     (definition.version === 1 &&
       (definition.key === 'core.condition' ||
-        definition.key === 'core.switch')) ||
+        definition.key === 'core.switch' ||
+        definition.key === 'core.foreach')) ||
     isWorkerCoreParallelDefinition(definition)
   );
 }

@@ -152,12 +152,13 @@ describe('migrated schema shape contract', () => {
       grantee: string;
       table_name: string;
     }>(
-      `select distinct class.relname table_name,role.rolname grantee
+      `select distinct class.relname table_name,
+              case when acl.grantee=0 then 'PUBLIC'
+                   else pg_get_userbyid(acl.grantee) end grantee
          from pg_class class
          join pg_namespace namespace on namespace.oid=class.relnamespace
          cross join lateral aclexplode(
            coalesce(class.relacl,acldefault('r',class.relowner))) acl
-         join pg_roles role on role.oid=acl.grantee
         where namespace.nspname='app' and class.relkind='r'`,
     );
     const grantsByTable = Map.groupBy(
@@ -188,6 +189,26 @@ describe('migrated schema shape contract', () => {
         expect(allowedGrantees, `${contract.name}:${grantee}`).toContain(
           grantee,
         );
+    }
+  });
+
+  it('keeps PUBLIC visible when probing table ACL grantees', async () => {
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await owner.query('grant select on app.artifacts to public');
+      const result = await owner.query<{ grantee: string }>(
+        `select distinct case when acl.grantee=0 then 'PUBLIC'
+                              else pg_get_userbyid(acl.grantee) end grantee
+           from pg_class class
+           join pg_namespace namespace on namespace.oid=class.relnamespace
+           cross join lateral aclexplode(
+             coalesce(class.relacl,acldefault('r',class.relowner))) acl
+          where namespace.nspname='app' and class.relname='artifacts'`,
+      );
+      expect(result.rows.map(({ grantee }) => grantee)).toContain('PUBLIC');
+    } finally {
+      await owner.query('rollback');
     }
   });
 });

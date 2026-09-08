@@ -93,10 +93,13 @@ export interface RetentionDatabaseOptions {
 }
 
 export interface RetentionScheduleResult {
+  readonly capacityLimited: boolean;
   readonly cutoffAt: Date;
   readonly scannedCount: number;
   readonly scheduledCount: number;
 }
+
+const RETENTION_SCHEDULE_BATCH_SIZE = 25;
 
 export type RegionalReplicaLagObservation = Readonly<{
   replayLagMillis: number | null;
@@ -569,26 +572,29 @@ export function createRetentionDatabase(
         scheduled_count: number | string;
       }>(
         pool,
-        'select * from app.schedule_workflow_run_input_retention(25)',
-        [],
+        'select * from app.schedule_workflow_run_input_retention($1)',
+        [RETENTION_SCHEDULE_BATCH_SIZE],
         signal,
       );
       const row = result.rows[0];
       if (row === undefined)
         throw new Error('Retention schedule result was not returned');
       return Object.freeze({
+        capacityLimited:
+          z.coerce.number().int().parse(row.scanned_count) ===
+          RETENTION_SCHEDULE_BATCH_SIZE,
         cutoffAt: z.coerce.date().parse(row.cutoff_at),
         scannedCount: z.coerce
           .number()
           .int()
           .min(0)
-          .max(25)
+          .max(RETENTION_SCHEDULE_BATCH_SIZE)
           .parse(row.scanned_count),
         scheduledCount: z.coerce
           .number()
           .int()
           .min(0)
-          .max(25)
+          .max(RETENTION_SCHEDULE_BATCH_SIZE)
           .parse(row.scheduled_count),
       });
     },

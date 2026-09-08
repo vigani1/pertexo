@@ -266,6 +266,63 @@ describe('API bootstrap', () => {
       ).rejects.toThrow(selected.message);
   });
 
+  it('closes already-created runtimes when a later runtime factory fails', async () => {
+    const identityClose = vi.fn().mockResolvedValue(undefined);
+    const workflowClose = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentity = identityRuntime(identityClose);
+    const selectedWorkflow = createStubApiWorkflowRuntime(
+      selectedIdentity.dependencies.authorization,
+      workflowClose,
+    );
+    const constructionFailure = new Error('connection construction failed');
+    const connectionOverrides = Object.defineProperty({}, 'database', {
+      enumerable: true,
+      get: () => {
+        throw constructionFailure;
+      },
+    });
+
+    await expect(
+      createApiApplication(
+        {
+          ...config,
+          connections: { kmsKeyReference: 'test-key', region: 'test-region' },
+        },
+        {
+          ...dependencies(),
+          connectionOverrides,
+          identityRuntime: selectedIdentity,
+          workflowRuntime: selectedWorkflow,
+        },
+      ),
+    ).rejects.toBe(constructionFailure);
+    expect(identityClose).toHaveBeenCalledOnce();
+    expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('preserves readiness and cleanup failures when application close rejects', async () => {
+    const startupFailure = new Error('database compatibility failed');
+    const cleanupFailure = new Error('identity cleanup failed');
+    const selectedDatabase: WorkspaceDatabase = {
+      ...database,
+      checkCompatibility: vi.fn().mockRejectedValue(startupFailure),
+    };
+    const selectedIdentity = identityRuntime(
+      vi.fn().mockRejectedValue(cleanupFailure),
+    );
+
+    const failure = await createApiApplication(config, {
+      ...dependencies(selectedDatabase),
+      identityRuntime: selectedIdentity,
+    }).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      startupFailure,
+      cleanupFailure,
+    ]);
+  });
+
   it('serves a stable bounded liveness response without dependency claims', async () => {
     application = await createApiApplication(config, dependencies());
     await application.init();

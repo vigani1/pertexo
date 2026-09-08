@@ -17,6 +17,7 @@ import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import type { ArtifactRecord } from './artifacts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { withWorkspaceDestructiveOperationLock } from '../lifecycle/retention-transaction.js';
 
 import {
   ArtifactQuotaExceededError,
@@ -237,6 +238,7 @@ async function readUploadArtifact(
   pool: Pool,
   input: ArtifactUploadAuthorization,
   access: 'upload' | 'read',
+  statuses: readonly ArtifactRecord['status'][] = ['pending', 'available'],
 ): Promise<ArtifactRecord | null> {
   const parsed = normalizeIdentity(input);
   return withTenantScopedClient(
@@ -254,7 +256,7 @@ async function readUploadArtifact(
           client,
           parsed.workspaceId,
           parsed.artifactId,
-          ['pending', 'available'],
+          statuses,
         );
       } catch (error: unknown) {
         if (error instanceof ArtifactUploadNotFoundError) return null;
@@ -264,7 +266,7 @@ async function readUploadArtifact(
   );
 }
 
-async function finalizeUpload(
+async function completeUploadFinalization(
   pool: Pool,
   input: FinalizeArtifactUploadInput,
 ): Promise<ArtifactRecord> {
@@ -306,6 +308,7 @@ async function finalizeUpload(
       const finalized = await client.query<Record<string, unknown>>(
         `update app.artifacts
             set status='available',finalized_at=clock_timestamp(),
+                expires_at=clock_timestamp()+interval '30 days',
                 updated_at=clock_timestamp()
           where workspace_id=$1 and id=$2 and status='pending'
             and expires_at>clock_timestamp()
@@ -322,10 +325,51 @@ async function finalizeUpload(
   );
 }
 
+async function finalizeUpload(
+  pool: Pool,
+  input: FinalizeArtifactUploadInput,
+): Promise<ArtifactRecord> {
+  const parsed = normalizeFinalizeInput(input);
+  return withWorkspaceDestructiveOperationLock(
+    pool,
+    parsed.workspaceId,
+    input.signal,
+    async () => {
+      const artifact = await readUploadArtifact(
+        pool,
+        { actor: input.actor, identity: input.identity },
+        'upload',
+        ['pending', 'available', 'deleting', 'deleted'],
+      );
+      if (artifact === null) throw new ArtifactUploadNotFoundError();
+      const expected = parsed.expectedMetadata;
+      if (
+        artifact.byteLength !== expected.byteLength ||
+        artifact.mediaType !== expected.mediaType ||
+        artifact.sha256 !== expected.sha256
+      )
+        throw new ArtifactUploadConflictError(
+          'Artifact upload metadata does not match the declared object',
+        );
+      if (artifact.status === 'available') return artifact;
+      if (artifact.status !== 'pending')
+        throw new ArtifactUploadConflictError('Artifact upload is not pending');
+      if (artifact.expiresAt.getTime() <= Date.now())
+        throw new ArtifactUploadConflictError('Artifact upload has expired');
+      await input.verifyUpload?.();
+      return completeUploadFinalization(pool, input);
+    },
+  );
+}
+
 export function createArtifactUploadDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): ArtifactUploadDatabase {
+  if (config.max < 2)
+    throw new RangeError(
+      'Artifact upload coordination requires a database pool of at least 2 connections',
+    );
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const readinessOptions = {

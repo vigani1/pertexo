@@ -5,13 +5,12 @@
     "functionLines": 200
   },
   "fileHotspots": {
-    "apps/api/src/connections/use-cases.ts": 575,
     "apps/api/src/identity-infrastructure/oidc-adapter.ts": 507,
     "apps/worker/src/execution/failure-notification-delivery.ts": 508,
     "apps/worker/src/execution/node-runtime-capabilities.ts": 515,
-    "apps/worker/src/execution/preview-attempt-handler.ts": 526,
-    "apps/worker/src/transport/outbox-dispatcher.ts": 538,
-    "packages/artifact-store/src/control-ledger.ts": 919,
+    "apps/worker/src/execution/preview-attempt-handler.ts": 520,
+    "apps/worker/src/transport/outbox-dispatcher.ts": 534,
+    "packages/artifact-store/src/control-ledger.ts": 910,
     "packages/artifact-store/src/store.ts": 986,
     "packages/database/src/authoring/workflow-authoring.ts": 607,
     "packages/database/src/connections/connection-persistence.ts": 651,
@@ -20,11 +19,11 @@
     "packages/database/src/execution/execution-acceptance.ts": 546,
     "packages/database/src/execution/failure-notification-destinations.ts": 637,
     "packages/database/src/execution/preview-execution-acceptance.ts": 563,
-    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 906,
+    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 926,
     "packages/database/src/lifecycle/preview-cleanup.ts": 548,
-    "packages/database/src/lifecycle/retention.ts": 792,
+    "packages/database/src/lifecycle/retention.ts": 798,
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 522,
-    "packages/database/src/lifecycle/workspace-purge.ts": 854,
+    "packages/database/src/lifecycle/workspace-purge.ts": 873,
     "packages/database/src/platform/postgres-telemetry.ts": 606,
     "packages/database/src/tenant-access/identity-workspace.ts": 594,
     "packages/database/src/triggers/webhook-triggers.ts": 653,
@@ -120,11 +119,11 @@
     },
     "packages/database/src/lifecycle/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
       "branches": 4,
-      "lines": 580
+      "lines": 596
     },
     "packages/database/src/lifecycle/retention.ts#createRetentionDatabase": {
       "branches": 0,
-      "lines": 373
+      "lines": 376
     },
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
       "branches": 0,
@@ -132,11 +131,11 @@
     },
     "packages/database/src/lifecycle/workspace-purge.ts#createWorkspacePurgeCoordinator": {
       "branches": 5,
-      "lines": 619
+      "lines": 636
     },
     "packages/database/src/lifecycle/workspace-purge.ts#processNext": {
-      "branches": 46,
-      "lines": 513
+      "branches": 45,
+      "lines": 530
     },
     "packages/database/src/operator/operator-commands.ts#createOperatorCommandDatabase": {
       "branches": 0,
@@ -161,14 +160,6 @@
     "packages/observability/src/transport-metrics.ts#createTransportMetrics": {
       "branches": 1,
       "lines": 216
-    },
-    "packages/workflow-engine/src/checkpoint-v1-join.ts#parseJoin": {
-      "branches": 41,
-      "lines": 201
-    },
-    "packages/workflow-engine/src/checkpoint-v1-loop.ts#parseLoop": {
-      "branches": 25,
-      "lines": 222
     },
     "packages/workflow-engine/src/checkpoint-v1.ts#parseCheckpointV1Boundary": {
       "branches": 37,

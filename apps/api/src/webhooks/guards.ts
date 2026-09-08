@@ -3,8 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { WorkspaceCapabilityGuard } from '../identity-workspace/guards.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import { RequestContextStore } from '../platform/http/index.js';
-
-export const WEBHOOK_AUTHORIZATION = Symbol('WEBHOOK_AUTHORIZATION');
+import { WEBHOOK_AUTHORIZATION } from './tokens.js';
 
 @Injectable()
 export class WebhookReadGuard extends WorkspaceCapabilityGuard {

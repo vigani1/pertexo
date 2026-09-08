@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  ArtifactUploadConflictError,
+  createArtifactUploadDatabase,
+} from '../src/execution/artifact-upload.js';
+import {
+  acquireWorkspaceDestructiveOperationLock,
+  releaseWorkspaceDestructiveOperationLock,
+  withWorkspaceDestructiveOperationLock,
+} from '../src/lifecycle/retention-transaction.js';
+
+import {
   type ControlLedger,
   Pool,
   adminUrl,
@@ -14,6 +24,7 @@ import {
   waitForPostgresLock,
   withApplicationName,
   workspaceId,
+  userId,
   zeroHash,
 } from './support/retention.integration.support.js';
 
@@ -534,10 +545,349 @@ describe('retention artifact reclamation', () => {
     }
   });
 
+  it('serializes late upload verification with expiry cleanup', async () => {
+    const applicationName = `retention-finalize-${randomUUID()}`;
+    const apiUrl = new URL(
+      process.env.DATABASE_API_URL ??
+        'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
+    );
+    apiUrl.pathname = new URL(maintenanceUrl).pathname;
+    const uploadDatabase = createArtifactUploadDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl.toString(), max: 2 }),
+    );
+    await withOwnerTransaction(async (client) => {
+      await client.query(
+        `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+         values($1,$2,'owner','active') on conflict do nothing`,
+        [workspaceId, userId],
+      );
+    });
+    const actor = {
+      actorId: userId,
+      kind: 'user' as const,
+      requestId: 'retention-finalization-race',
+      sessionId: randomUUID(),
+      workspaceId,
+    };
+    const metadata = {
+      byteLength: 17,
+      mediaType: 'application/octet-stream',
+      sha256: 'f'.repeat(64),
+    } as const;
+    const capacityBefore = await readCapacity();
+    const created = await uploadDatabase.beginUpload({
+      actor,
+      ...metadata,
+      idempotencyKey: `retention-finalization-${randomUUID()}`,
+      workspaceId,
+    });
+    const verificationStarted = Promise.withResolvers<undefined>();
+    const releaseVerification = Promise.withResolvers<undefined>();
+    let replicaBytesPresent = false;
+
+    const finalization = uploadDatabase
+      .finalizeUpload({
+        actor,
+        expectedMetadata: metadata,
+        identity: { artifactId: created.artifact.id, workspaceId },
+        verifyUpload: async () => {
+          verificationStarted.resolve(undefined);
+          await releaseVerification.promise;
+          replicaBytesPresent = true;
+        },
+      })
+      .catch((error: unknown) => error);
+    await verificationStarted.promise;
+    await withOwnerTransaction(async (client) => {
+      await client.query(
+        `update app.artifacts set expires_at=clock_timestamp()-interval '1 second'
+          where workspace_id=$1 and id=$2`,
+        [workspaceId, created.artifact.id],
+      );
+    });
+
+    const ledger = {
+      append: vi.fn(),
+      reconcile: vi.fn(() =>
+        Promise.resolve({
+          hasMore: false,
+          pageEndHash: zeroHash,
+          pageEndSequence: 0,
+          reachedHighWater: true,
+          records: [],
+        }),
+      ),
+    } satisfies ControlLedger;
+    const artifacts = {
+      delete: vi.fn(() => {
+        replicaBytesPresent = false;
+        return Promise.resolve();
+      }),
+      head: vi.fn(() => Promise.resolve(null)),
+    };
+    const coordinator = createRunArtifactRetentionCoordinator(
+      parseDatabaseConfig({
+        connectionString: withApplicationName(maintenanceUrl, applicationName),
+        max: 2,
+      }),
+      ledger,
+      artifacts,
+    );
+    try {
+      let retentionSettled = false;
+      const retentionResult = coordinator.processNext().then((result) => {
+        retentionSettled = true;
+        return result;
+      });
+      await waitForPostgresLock(applicationName);
+      expect(retentionSettled).toBe(false);
+      expect(artifacts.delete).not.toHaveBeenCalled();
+
+      releaseVerification.resolve(undefined);
+      await expect(finalization).resolves.toBeInstanceOf(
+        ArtifactUploadConflictError,
+      );
+      expect(replicaBytesPresent).toBe(true);
+      await expect(retentionResult).resolves.toMatchObject({
+        artifactId: created.artifact.id,
+        status: 'completed',
+        workspaceId,
+      });
+      expect(replicaBytesPresent).toBe(false);
+      expect(artifacts.delete).toHaveBeenCalledOnce();
+      await expect(readCapacity()).resolves.toEqual(capacityBefore);
+    } finally {
+      releaseVerification.resolve(undefined);
+      await coordinator.close();
+      await uploadDatabase.close();
+    }
+  });
+
+  it('cancels a PostgreSQL lock wait and returns its connection promptly', async () => {
+    const applicationName = `retention-cancel-${randomUUID()}`;
+    const holderPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
+    const waiterPool = new Pool({
+      connectionString: withApplicationName(maintenanceUrl, applicationName),
+      max: 2,
+    });
+    const holder = await holderPool.connect();
+    let holderLocked = false;
+    let settledOperation: Promise<void> | undefined;
+    const work = vi.fn(() => Promise.resolve());
+    try {
+      await acquireWorkspaceDestructiveOperationLock(holder, workspaceId);
+      holderLocked = true;
+      const controller = new AbortController();
+      const operation = withWorkspaceDestructiveOperationLock(
+        waiterPool,
+        workspaceId,
+        controller.signal,
+        work,
+      );
+      const unsettled = Symbol('unsettled');
+      let outcome: unknown = unsettled;
+      settledOperation = operation.then(
+        () => {
+          outcome = undefined;
+        },
+        (error: unknown) => {
+          outcome = error;
+        },
+      );
+      await waitForPostgresLock(applicationName);
+
+      const cancellation = new Error(
+        'cancelled while waiting for lifecycle lock',
+      );
+      controller.abort(cancellation);
+      await vi.waitFor(
+        () => {
+          expect(outcome).toBe(cancellation);
+        },
+        {
+          timeout: 1_000,
+        },
+      );
+      expect(waiterPool.totalCount).toBe(0);
+      expect(work).not.toHaveBeenCalled();
+
+      await releaseWorkspaceDestructiveOperationLock(holder, workspaceId);
+      holderLocked = false;
+      await expect(
+        withWorkspaceDestructiveOperationLock(
+          waiterPool,
+          workspaceId,
+          undefined,
+          () => Promise.resolve('lock-released'),
+        ),
+      ).resolves.toBe('lock-released');
+    } finally {
+      if (holderLocked)
+        await releaseWorkspaceDestructiveOperationLock(holder, workspaceId);
+      await settledOperation;
+      holder.release();
+      await holderPool.end();
+      await waiterPool.end();
+    }
+  });
+
+  it('does not acquire or leak a workspace lock after cancellation while waiting for a pool connection', async () => {
+    const queuedPool = new Pool({ connectionString: maintenanceUrl, max: 2 });
+    const verifierPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
+    const blockers = await Promise.all([
+      queuedPool.connect(),
+      queuedPool.connect(),
+    ]);
+    let firstBlockerReleased = false;
+    let verifierLocked = false;
+    const controller = new AbortController();
+    const cancellation = new Error(
+      'cancelled while waiting for a database connection',
+    );
+    const work = vi.fn(() => Promise.resolve());
+    const operation = withWorkspaceDestructiveOperationLock(
+      queuedPool,
+      workspaceId,
+      controller.signal,
+      work,
+    );
+    try {
+      await vi.waitFor(() => {
+        expect(queuedPool.waitingCount).toBe(1);
+      });
+      controller.abort(cancellation);
+      blockers[0].release();
+      firstBlockerReleased = true;
+
+      await expect(operation).rejects.toBe(cancellation);
+      await vi.waitFor(() => {
+        expect(queuedPool.waitingCount).toBe(0);
+      });
+      expect(work).not.toHaveBeenCalled();
+
+      const lock = await verifierPool.query<{ acquired: boolean }>(
+        `select pg_try_advisory_lock(
+           hashtextextended($1,1934781127)
+         ) acquired`,
+        [workspaceId],
+      );
+      verifierLocked = lock.rows[0]?.acquired === true;
+      expect(verifierLocked).toBe(true);
+    } finally {
+      if (verifierLocked)
+        await verifierPool.query(
+          `select pg_advisory_unlock(
+             hashtextextended($1,1934781127)
+           )`,
+          [workspaceId],
+        );
+      if (!firstBlockerReleased) blockers[0].release();
+      blockers[1].release();
+      await operation.catch(() => undefined);
+      await queuedPool.end();
+      await verifierPool.end();
+    }
+  });
+
+  it('does not acknowledge a legal hold while physical deletion is in flight', async () => {
+    const artifactId = randomUUID();
+    const holdApplicationName = `retention-hold-${randomUUID()}`;
+    const before = await readCapacity();
+    await insertExpiredPendingUserUpload(artifactId, '9');
+    const deleteStarted = Promise.withResolvers<undefined>();
+    const releaseDelete = Promise.withResolvers<undefined>();
+    const ledger = {
+      append: vi.fn(),
+      reconcile: vi.fn(() =>
+        Promise.resolve({
+          hasMore: false,
+          pageEndHash: zeroHash,
+          pageEndSequence: 0,
+          reachedHighWater: true,
+          records: [],
+        }),
+      ),
+    } satisfies ControlLedger;
+    const artifacts = {
+      delete: vi.fn(async () => {
+        deleteStarted.resolve(undefined);
+        await releaseDelete.promise;
+      }),
+      head: vi.fn(() => Promise.resolve(null)),
+    };
+    const coordinator = createRunArtifactRetentionCoordinator(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+      ledger,
+      artifacts,
+    );
+    const hold = new Pool({
+      connectionString: withApplicationName(
+        maintenanceUrl,
+        holdApplicationName,
+      ),
+      max: 1,
+    });
+    try {
+      const retentionResult = coordinator.processNext();
+      await deleteStarted.promise;
+      let holdAcknowledged = false;
+      const holdResult = hold
+        .query(
+          `select app.project_workspace_legal_hold(
+             $1,1,$2,'legal_hold_placed',$3,$4,$5,
+             'legal-admin','case-inflight-delete','serialize hold',$6)`,
+          [
+            workspaceId,
+            randomUUID(),
+            randomUUID(),
+            zeroHash,
+            '8'.repeat(64),
+            '2026-09-08T00:00:00.000Z',
+          ],
+        )
+        .then((result) => {
+          holdAcknowledged = true;
+          return result;
+        });
+      await waitForPostgresLock(holdApplicationName);
+      expect(holdAcknowledged).toBe(false);
+
+      releaseDelete.resolve(undefined);
+      await expect(retentionResult).resolves.toMatchObject({
+        artifactId,
+        status: 'completed',
+        workspaceId,
+      });
+      await expect(holdResult).resolves.toMatchObject({ rowCount: 1 });
+      expect(holdAcknowledged).toBe(true);
+      await expect(readCapacity()).resolves.toEqual(before);
+    } finally {
+      releaseDelete.resolve(undefined);
+      await coordinator.close();
+      await hold.end();
+    }
+  });
+
   it('holds an expired user-upload artifact before any object-store operation', async () => {
     const artifactId = randomUUID();
     const holdId = randomUUID();
     const holdHash = 'b'.repeat(64);
+    const control = await withOwnerTransaction(async (client) => {
+      const result = await client.query<{
+        retention_control_hash: string;
+        retention_control_sequence: number | string;
+      }>(
+        `select retention_control_hash,retention_control_sequence
+           from app.workspaces where id=$1`,
+        [workspaceId],
+      );
+      const row = result.rows[0];
+      if (row === undefined) throw new Error('workspace control state missing');
+      return {
+        hash: row.retention_control_hash,
+        sequence: Number(row.retention_control_sequence),
+      };
+    });
     const before = await readCapacity();
     const apiUrl = new URL(
       process.env.DATABASE_API_URL ??
@@ -579,13 +929,14 @@ describe('retention artifact reclamation', () => {
 
       await maintenance.query(
         `select app.project_workspace_legal_hold(
-          $1,1,$2,'legal_hold_placed',$3,$4,$5,
-          'legal-admin','case-artifact-1','preserve user-upload',$6)`,
+          $1,$2,$3,'legal_hold_placed',$4,$5,$6,
+          'legal-admin','case-artifact-1','preserve user-upload',$7)`,
         [
           workspaceId,
+          control.sequence + 1,
           randomUUID(),
           holdId,
-          zeroHash,
+          control.hash,
           holdHash,
           '2026-08-21T00:00:00.000Z',
         ],
@@ -597,7 +948,7 @@ describe('retention artifact reclamation', () => {
           Promise.resolve({
             hasMore: false,
             pageEndHash: holdHash,
-            pageEndSequence: 1,
+            pageEndSequence: control.sequence + 1,
             reachedHighWater: true,
             records: [],
           }),

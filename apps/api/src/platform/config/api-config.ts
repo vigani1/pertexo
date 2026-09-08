@@ -109,9 +109,12 @@ const apiEnvironmentSchema = z
     REDIS_URL: z
       .url()
       .refine((value) => {
-        const protocol = new URL(value).protocol;
-        return protocol === 'redis:' || protocol === 'rediss:';
-      }, 'REDIS_URL must use redis:// or rediss://')
+        const parsed = new URL(value);
+        return (
+          (parsed.protocol === 'redis:' || parsed.protocol === 'rediss:') &&
+          parsed.hostname.length > 0
+        );
+      }, 'REDIS_URL must use redis:// or rediss:// with a hostname')
       .optional(),
     SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     SESSION_COOKIE_SECURE: z

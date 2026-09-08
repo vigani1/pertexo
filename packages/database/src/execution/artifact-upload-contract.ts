@@ -93,7 +93,12 @@ export type BeginArtifactUploadInput = z.input<
 >;
 export type FinalizeArtifactUploadInput = z.input<
   typeof finalizeArtifactUploadSchema
->;
+> &
+  Readonly<{
+    /** Runs while expiry cleanup is excluded by the workspace lifecycle lock. */
+    signal?: AbortSignal;
+    verifyUpload?: () => Promise<void>;
+  }>;
 
 export type NormalizedArtifactIdentity = Readonly<{
   actorId: string;
@@ -223,7 +228,11 @@ export function normalizeIdentity(
 export function normalizeFinalizeInput(
   input: FinalizeArtifactUploadInput,
 ): NormalizedFinalizeArtifactUploadInput {
-  const parsed = finalizeArtifactUploadSchema.parse(input);
+  const parsed = finalizeArtifactUploadSchema.parse({
+    actor: input.actor,
+    expectedMetadata: input.expectedMetadata,
+    identity: input.identity,
+  });
   if (parsed.actor.workspaceId !== parsed.identity.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {

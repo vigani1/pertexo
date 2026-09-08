@@ -11,6 +11,7 @@ import {
 } from '@pertexo/workflow-engine';
 import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
@@ -70,6 +71,108 @@ function executable(nodeRelease: unknown = CORE_REGISTRY_RELEASE) {
       ],
     },
   });
+}
+
+function forEachExecutable() {
+  const release = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  );
+  const setNode = (id: string, inputMappings: Record<string, unknown>) => ({
+    id,
+    definition: { key: 'core.set', version: 1 },
+    position: { x: 0, y: 0 },
+    configVersion: 1,
+    config: {},
+    inputMappings,
+    connectionRefs: {},
+  });
+  return {
+    release,
+    compiled: buildWorkflowExecutableV2({
+      release,
+      graph: {
+        schemaVersion: 1,
+        settings: { maxRunDurationMs: 60_000 },
+        nodes: [
+          {
+            id: 'manual',
+            definition: { key: 'core.manual', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+          {
+            id: 'loop',
+            definition: { key: 'core.foreach', version: 1 },
+            position: { x: 10, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: { items: { kind: 'literal', value: [1, 2] } },
+            connectionRefs: {},
+            structured: {
+              kind: 'for_each',
+              maxIterations: 2,
+              maxConcurrency: 1,
+              body: {
+                schemaVersion: 1,
+                settings: {},
+                inputPorts: ['item', 'ordinal'],
+                outputPorts: ['result'],
+                nodes: [
+                  setNode('body-first', {
+                    value: {
+                      kind: 'structured_input',
+                      port: 'item',
+                      path: '$',
+                    },
+                  }),
+                  setNode('body-sink', {
+                    value: {
+                      kind: 'node_output',
+                      nodeId: 'body-first',
+                      path: '$',
+                    },
+                  }),
+                ],
+                edges: [
+                  {
+                    id: 'body-edge',
+                    source: { nodeId: 'body-first', port: 'out' },
+                    target: { nodeId: 'body-sink', port: 'in' },
+                  },
+                ],
+              },
+            },
+          },
+          {
+            id: 'terminate',
+            definition: { key: 'core.terminate', version: 1 },
+            position: { x: 20, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {
+              result: { kind: 'node_output', nodeId: 'loop', path: '$' },
+            },
+            connectionRefs: {},
+          },
+        ],
+        edges: [
+          {
+            id: 'manual-loop',
+            source: { nodeId: 'manual', port: 'out' },
+            target: { nodeId: 'loop', port: 'in' },
+          },
+          {
+            id: 'loop-terminate',
+            source: { nodeId: 'loop', port: 'out' },
+            target: { nodeId: 'terminate', port: 'in' },
+          },
+        ],
+      },
+    }),
+  };
 }
 
 function run() {
@@ -312,6 +415,30 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         ],
       },
     });
+    const checkpoint = createInitialWorkflowCheckpoint(
+      {
+        id: workflowVersionId,
+        workspaceId,
+        workflowId,
+        versionNumber: 1,
+        schemaVersion: 1,
+        checksum: compiled.checksum,
+        executableSchemaVersion: 2,
+        executableJson: compiled.envelope,
+        compatibilityReleaseEpoch: release.epoch,
+      },
+      createExecutableCompatibilityReleaseHistory([release]),
+      describeExecutableCompatibilityRelease(release),
+    );
+
+    expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [],
+    });
+  });
+
+  it('initializes checkpoint V2 for a verified For Each executable', () => {
+    const { compiled, release } = forEachExecutable();
     const checkpoint = createInitialWorkflowCheckpoint(
       {
         id: workflowVersionId,

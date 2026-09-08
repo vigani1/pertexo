@@ -137,26 +137,27 @@ export class ArtifactService {
 
     const expected = declaredMetadata(artifact);
     try {
-      await this.dependencies.store.validateDirectUpload({
-        artifactId: identity.artifactId,
-        byteLength: expected.byteLength,
-        mediaType: expected.mediaType,
-        sha256: expected.sha256,
-        workspaceId: identity.workspaceId,
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-      });
-    } catch (error: unknown) {
-      throw mapStoreError(error);
-    }
-
-    // The external verification above may take long enough for membership or
-    // lifecycle state to change. Re-authorize before the short CAS transaction.
-    await this.authorize(input, 'artifact:upload', undefined);
-    try {
       const finalized = await this.dependencies.database.finalizeUpload({
         actor: input.actor,
         expectedMetadata: expected,
         identity,
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        verifyUpload: async () => {
+          try {
+            await this.dependencies.store.validateDirectUpload({
+              artifactId: identity.artifactId,
+              byteLength: expected.byteLength,
+              mediaType: expected.mediaType,
+              sha256: expected.sha256,
+              workspaceId: identity.workspaceId,
+              ...(input.signal === undefined ? {} : { signal: input.signal }),
+            });
+          } catch (error: unknown) {
+            throw mapStoreError(error);
+          }
+          // Verification may take long enough for membership to change.
+          await this.authorize(input, 'artifact:upload', undefined);
+        },
       });
       return publicMetadata(finalized);
     } catch (error: unknown) {
