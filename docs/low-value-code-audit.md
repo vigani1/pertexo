@@ -374,3 +374,19 @@ selected risk report still has 22 pre-existing unreviewed uncovered branches;
 463 reviewed sites remain, and no coverage floor or detector threshold was
 lowered. Passing these checks does not certify an absence of defects or close
 the backend plan's remaining delivery requirements.
+
+## Deferred-improvement implementation
+
+The user requested implementation of the deferred candidates on 2026-09-08.
+The checkpoints below supersede their earlier deferred dispositions as they
+complete; intentionally retained safeguards remain in place.
+
+### Repeated-definition selection evidence
+
+The engine identity test now compares compatibility selection fingerprints for
+a graph and the same graph extended by another node of an already-selected
+definition. It requires identical selections but different executable checksums,
+making the subset-versus-graph distinction explicit. The old test already
+implicitly required successful deduplication because the SDK rejects duplicate
+selected identities; its checksum-format assertion did not explain that proof.
+All 24 identity tests pass, along with the engine test typecheck and scoped lint.

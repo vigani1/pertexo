@@ -8,6 +8,27 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
+## Deferred audit improvements — in progress
+
+The user requested implementation of the remaining audit candidates on
+2026-09-08. This follow-up preserves the plan's validation, ownership and
+compatibility requirements; intentionally retained safeguards are not deletion
+targets.
+
+- [x] Strengthen repeated-definition selection evidence: adding an instance of
+      an already-selected definition preserves the compatibility selection but
+      changes the executable checksum. All 24 identity tests, engine test
+      typecheck and scoped lint pass.
+- [ ] Correct the missing trigger-event diagnostic, with relevant regressions.
+- [ ] Consolidate Validate issue metadata without changing public contracts.
+- [ ] Resolve graph reparsing and engine checkpoint/tree-lookup consolidation
+      with preserved hostile-input checks and persisted identities.
+- [ ] Consolidate genuinely redundant catalog tests while preserving retained
+      release behavior and compatibility evidence.
+- [ ] Run relevant checks, update the audit dispositions and push each coherent
+      checkpoint. Do not mark these improvements complete while required work
+      remains.
+
 ## File-by-file low-value audit — complete within recorded scope
 
 The initial directory-level cleanup below is complete, but it did not establish
