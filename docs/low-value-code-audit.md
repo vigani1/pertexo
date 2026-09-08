@@ -405,3 +405,13 @@ exact absence of inbox receipts. All 12 webhook integration tests pass against
 the existing fixture's disposable PostgreSQL database; its teardown removes the
 database without touching application data. All 238 database unit tests, test
 typecheck and scoped lint also pass. No migration or SQL-policy changes.
+
+### Validate issue metadata
+
+One browser-safe internal table now owns semantic keys, wire codes and fixed
+messages. Public exports, ordered enum values and schema behavior remain intact;
+the schema and evaluator derive their lookup maps from the same owner. All 96
+core tests pass, including independently pinned values, frozen exports and
+acceptance/rejection checks for all nine code/message pairs. Build, test
+typecheck and scoped lint pass; the retained catalog fingerprint goldens pass
+unchanged.

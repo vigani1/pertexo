@@ -1,9 +1,9 @@
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import { resolveJsonPath } from '@pertexo/workflow-model/json-path';
 
+import { coreValidateIssueMessageByCode } from './issue-metadata.js';
 import {
   CORE_VALIDATE_ISSUE_CODES,
-  CORE_VALIDATE_ISSUE_MESSAGES,
   CORE_VALIDATE_MAX_ISSUES,
   type CoreValidateConfig,
   type CoreValidateInput,
@@ -35,30 +35,15 @@ function sameScalar(left: unknown, right: unknown): boolean {
   return typeof left === typeof right && left === right;
 }
 
-const issueMessageKeys: Readonly<
-  Record<CoreValidateIssue['code'], keyof typeof CORE_VALIDATE_ISSUE_MESSAGES>
-> = Object.freeze({
-  required: 'required',
-  type: 'type',
-  enum: 'enum',
-  minimum: 'minimum',
-  maximum: 'maximum',
-  min_length: 'minLength',
-  max_length: 'maxLength',
-  min_items: 'minItems',
-  max_items: 'maxItems',
-});
-
 function issue(
   rule: CoreValidateRule,
   code: CoreValidateIssue['code'],
 ): CoreValidateIssue {
-  const messageKey = issueMessageKeys[code];
   return {
     ruleId: rule.id,
     path: rule.path,
     code,
-    message: CORE_VALIDATE_ISSUE_MESSAGES[messageKey],
+    message: coreValidateIssueMessageByCode[code],
   };
 }
 
