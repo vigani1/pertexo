@@ -25,7 +25,10 @@ targets.
       the mismatch error class and create no inbox receipt. All 12 webhook
       integration tests, 238 database unit tests, test typecheck and scoped
       lint pass; the disposable test database is removed by the fixture.
-- [ ] Consolidate Validate issue metadata without changing public contracts.
+- [x] Consolidate Validate issue metadata without changing public contracts.
+      One internal table owns codes, messages and schema mappings. All 96 core
+      tests pass; ordered values, frozen exports and all nine message/code
+      pairs are independently pinned. Build, typecheck and scoped lint pass.
 - [ ] Resolve graph reparsing and engine checkpoint/tree-lookup consolidation
       with preserved hostile-input checks and persisted identities.
 - [ ] Consolidate genuinely redundant catalog tests while preserving retained

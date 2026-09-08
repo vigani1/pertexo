@@ -2,6 +2,13 @@ import { boundedNodeJsonSchema } from '@pertexo/node-sdk';
 import { parseJsonPath } from '@pertexo/workflow-model/json-path';
 import { z } from 'zod';
 
+import {
+  coreValidateIssueCodeValues,
+  coreValidateIssueCodes,
+  coreValidateIssueMessageByCode,
+  coreValidateIssueMessages,
+} from './issue-metadata.js';
+
 export const CORE_VALIDATE_MAX_RULES = 64;
 export const CORE_VALIDATE_MAX_ISSUES = 16;
 export const CORE_VALIDATE_MAX_PATH_BYTES = 512;
@@ -22,43 +29,13 @@ export const CORE_VALIDATE_VALUE_TYPE_SCHEMA = z.enum(
   CORE_VALIDATE_VALUE_TYPES,
 );
 
-export const CORE_VALIDATE_ISSUE_CODES = Object.freeze({
-  required: 'required',
-  type: 'type',
-  enum: 'enum',
-  minimum: 'minimum',
-  maximum: 'maximum',
-  minLength: 'min_length',
-  maxLength: 'max_length',
-  minItems: 'min_items',
-  maxItems: 'max_items',
-} as const);
-export const CORE_VALIDATE_ISSUE_CODE_VALUES = Object.freeze([
-  'required',
-  'type',
-  'enum',
-  'minimum',
-  'maximum',
-  'min_length',
-  'max_length',
-  'min_items',
-  'max_items',
-] as const);
+export const CORE_VALIDATE_ISSUE_CODES = coreValidateIssueCodes;
+export const CORE_VALIDATE_ISSUE_CODE_VALUES = coreValidateIssueCodeValues;
 export const CORE_VALIDATE_ISSUE_CODE_SCHEMA = z.enum(
   CORE_VALIDATE_ISSUE_CODE_VALUES,
 );
 
-export const CORE_VALIDATE_ISSUE_MESSAGES = Object.freeze({
-  required: 'Required value is missing.',
-  type: 'Value has an unexpected type.',
-  enum: 'Value is not an allowed enum member.',
-  minimum: 'Number is below the minimum.',
-  maximum: 'Number is above the maximum.',
-  minLength: 'String is shorter than the minimum length.',
-  maxLength: 'String is longer than the maximum length.',
-  minItems: 'Array has fewer than the minimum items.',
-  maxItems: 'Array has more than the maximum items.',
-} as const);
+export const CORE_VALIDATE_ISSUE_MESSAGES = coreValidateIssueMessages;
 
 export const CORE_VALIDATE_PATH_SCHEMA = z
   .string()
@@ -250,23 +227,6 @@ const issueMessageSchema = z
     'Validate issue messages must be at most 128 UTF-8 bytes',
   );
 
-const issueMessageByCode: Readonly<
-  Record<
-    (typeof CORE_VALIDATE_ISSUE_CODE_VALUES)[number],
-    (typeof CORE_VALIDATE_ISSUE_MESSAGES)[keyof typeof CORE_VALIDATE_ISSUE_MESSAGES]
-  >
-> = Object.freeze({
-  required: CORE_VALIDATE_ISSUE_MESSAGES.required,
-  type: CORE_VALIDATE_ISSUE_MESSAGES.type,
-  enum: CORE_VALIDATE_ISSUE_MESSAGES.enum,
-  minimum: CORE_VALIDATE_ISSUE_MESSAGES.minimum,
-  maximum: CORE_VALIDATE_ISSUE_MESSAGES.maximum,
-  min_length: CORE_VALIDATE_ISSUE_MESSAGES.minLength,
-  max_length: CORE_VALIDATE_ISSUE_MESSAGES.maxLength,
-  min_items: CORE_VALIDATE_ISSUE_MESSAGES.minItems,
-  max_items: CORE_VALIDATE_ISSUE_MESSAGES.maxItems,
-});
-
 export const CORE_VALIDATE_ISSUE_SCHEMA = z
   .object({
     ruleId: ruleIdSchema,
@@ -276,7 +236,7 @@ export const CORE_VALIDATE_ISSUE_SCHEMA = z
   })
   .strict()
   .superRefine((issue, context) => {
-    if (issue.message !== issueMessageByCode[issue.code])
+    if (issue.message !== coreValidateIssueMessageByCode[issue.code])
       context.addIssue({
         code: 'custom',
         path: ['message'],

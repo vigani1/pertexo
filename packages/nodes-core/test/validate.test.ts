@@ -13,6 +13,7 @@ import {
   CORE_VALIDATE_DEFINITION,
   CORE_VALIDATE_EXECUTOR,
   CORE_VALIDATE_ISSUE_CODES,
+  CORE_VALIDATE_ISSUE_CODE_VALUES,
   CORE_VALIDATE_ISSUE_MESSAGES,
   CORE_VALIDATE_ISSUE_SCHEMA,
   CORE_VALIDATE_MAX_ISSUES,
@@ -120,6 +121,18 @@ const invalidCases: readonly [unknown, string][] = [
     'enum strings are bounded in UTF-8 bytes',
   ],
 ];
+
+const fixedIssueMetadata = [
+  { code: 'required', message: 'Required value is missing.' },
+  { code: 'type', message: 'Value has an unexpected type.' },
+  { code: 'enum', message: 'Value is not an allowed enum member.' },
+  { code: 'minimum', message: 'Number is below the minimum.' },
+  { code: 'maximum', message: 'Number is above the maximum.' },
+  { code: 'min_length', message: 'String is shorter than the minimum length.' },
+  { code: 'max_length', message: 'String is longer than the maximum length.' },
+  { code: 'min_items', message: 'Array has fewer than the minimum items.' },
+  { code: 'max_items', message: 'Array has more than the maximum items.' },
+] as const;
 
 describe('core.validate configuration contract', () => {
   it.each([
@@ -255,22 +268,37 @@ describe('core.validate configuration contract', () => {
       minItems: 'Array has fewer than the minimum items.',
       maxItems: 'Array has more than the maximum items.',
     });
-    expect(
-      CORE_VALIDATE_ISSUE_SCHEMA.safeParse({
+    expect(CORE_VALIDATE_ISSUE_CODE_VALUES).toEqual(
+      fixedIssueMetadata.map(({ code }) => code),
+    );
+    expect(Object.isFrozen(CORE_VALIDATE_ISSUE_CODES)).toBe(true);
+    expect(Object.isFrozen(CORE_VALIDATE_ISSUE_CODE_VALUES)).toBe(true);
+    expect(Object.isFrozen(CORE_VALIDATE_ISSUE_MESSAGES)).toBe(true);
+    for (const [index, expected] of fixedIssueMetadata.entries()) {
+      expect(
+        CORE_VALIDATE_ISSUE_SCHEMA.safeParse({
+          ruleId: 'value',
+          path: '$.value',
+          ...expected,
+        }).success,
+      ).toBe(true);
+      const wrong = fixedIssueMetadata[(index + 1) % fixedIssueMetadata.length];
+      if (wrong === undefined)
+        throw new Error('Missing Validate issue metadata');
+      const rejected = CORE_VALIDATE_ISSUE_SCHEMA.safeParse({
         ruleId: 'value',
         path: '$.value',
-        code: 'required',
-        message: CORE_VALIDATE_ISSUE_MESSAGES.required,
-      }).success,
-    ).toBe(true);
-    expect(
-      CORE_VALIDATE_ISSUE_SCHEMA.safeParse({
-        ruleId: 'value',
-        path: '$.value',
-        code: 'required',
-        message: CORE_VALIDATE_ISSUE_MESSAGES.type,
-      }).success,
-    ).toBe(false);
+        code: expected.code,
+        message: wrong.message,
+      });
+      expect(rejected.success).toBe(false);
+      if (rejected.success) throw new Error('Wrong Validate message accepted');
+      expect(rejected.error.issues).toContainEqual({
+        code: 'custom',
+        path: ['message'],
+        message: 'Validate issue message does not match its code',
+      });
+    }
   });
 });
 
