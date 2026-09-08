@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
+import { withWorkspaceDestructiveOperationLock } from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
 
@@ -78,6 +79,7 @@ export interface WorkspacePurgeObjectStore {
 interface MaintenancePool {
   connect(): Promise<PoolClient>;
   end(): Promise<void>;
+  readonly options: Readonly<{ max: number }>;
   query<Row extends Record<string, unknown>>(
     text: string,
     values?: unknown[],
@@ -352,111 +354,128 @@ export function createWorkspacePurgeCoordinator(
             lockAnchor(client, stepWorkspaceId, signal),
           );
           await assertExactHighWater(stepWorkspaceId, preparedAnchor, signal);
-          stepClaim = await transaction(signal, async (client) => {
-            const anchor = await lockAnchor(client, stepWorkspaceId, signal);
-            if (
-              anchor.sequence !== preparedAnchor.sequence ||
-              anchor.hash !== preparedAnchor.hash
-            )
-              return undefined;
-            const claimed = await query<{
-              lease_fence: number | string;
-              lease_token: string;
-              step_name: string;
-            }>(
-              client,
-              `select * from app.claim_workspace_purge_step(
+          stepClaim = await withWorkspaceDestructiveOperationLock(
+            pool,
+            stepWorkspaceId,
+            signal,
+            async () => {
+              const claimedStep = await transaction(signal, async (client) => {
+                const anchor = await lockAnchor(
+                  client,
+                  stepWorkspaceId,
+                  signal,
+                );
+                if (
+                  anchor.sequence !== preparedAnchor.sequence ||
+                  anchor.hash !== preparedAnchor.hash
+                )
+                  return undefined;
+                const claimed = await query<{
+                  lease_fence: number | string;
+                  lease_token: string;
+                  step_name: string;
+                }>(
+                  client,
+                  `select * from app.claim_workspace_purge_step(
                 $1,$2,$3,$4,make_interval(secs=>$5)
               )`,
-              [
-                stepJobId,
-                anchor.sequence,
-                anchor.hash,
-                options.leaseOwner,
-                options.leaseSeconds,
-              ],
-              signal,
-            );
-            const row = claimed.rows[0];
-            if (row === undefined) return undefined;
-            const stepName = z
-              .enum(['object_versions', 'tenant_rows'])
-              .parse(row.step_name);
-            const leaseToken = uuidSchema.parse(row.lease_token);
-            const leaseFence = sequence(row.lease_fence);
-            if (stepName === 'object_versions')
-              return Object.freeze({
-                anchor,
-                leaseFence,
-                leaseToken,
-                stepName,
-              } satisfies PurgeStepClaim);
-            await query(
-              client,
-              "select set_config('app.workspace_id',$1,true)",
-              [stepWorkspaceId],
-              signal,
-            );
-            await query<{
-              affected_count: number | string;
-              completed: boolean;
-              surface: string;
-            }>(
-              client,
-              `select * from app.execute_workspace_tenant_rows_page(
+                  [
+                    stepJobId,
+                    anchor.sequence,
+                    anchor.hash,
+                    options.leaseOwner,
+                    options.leaseSeconds,
+                  ],
+                  signal,
+                );
+                const row = claimed.rows[0];
+                if (row === undefined) return undefined;
+                const stepName = z
+                  .enum(['object_versions', 'tenant_rows'])
+                  .parse(row.step_name);
+                const leaseToken = uuidSchema.parse(row.lease_token);
+                const leaseFence = sequence(row.lease_fence);
+                if (stepName === 'object_versions')
+                  return Object.freeze({
+                    anchor,
+                    leaseFence,
+                    leaseToken,
+                    stepName,
+                  } satisfies PurgeStepClaim);
+                await query(
+                  client,
+                  "select set_config('app.workspace_id',$1,true)",
+                  [stepWorkspaceId],
+                  signal,
+                );
+                await query<{
+                  affected_count: number | string;
+                  completed: boolean;
+                  surface: string;
+                }>(
+                  client,
+                  `select * from app.execute_workspace_tenant_rows_page(
                 $1,$2,$3,$4,$5,$6
               )`,
-              [
-                stepJobId,
-                leaseToken,
-                leaseFence,
-                500,
-                anchor.sequence,
-                anchor.hash,
-              ],
-              signal,
-            );
-            return Object.freeze({
-              anchor,
-              leaseFence,
-              leaseToken,
-              stepName,
-            } satisfies PurgeStepClaim);
-          });
+                  [
+                    stepJobId,
+                    leaseToken,
+                    leaseFence,
+                    500,
+                    anchor.sequence,
+                    anchor.hash,
+                  ],
+                  signal,
+                );
+                return Object.freeze({
+                  anchor,
+                  leaseFence,
+                  leaseToken,
+                  stepName,
+                } satisfies PurgeStepClaim);
+              });
+              stepClaim = claimedStep;
+              if (claimedStep?.stepName === 'object_versions') {
+                const objectPage = objectPageSchema.parse(
+                  await objectStore.purgeWorkspacePage({
+                    maxObjects: 500,
+                    signal: operationSignal(signal),
+                    workspaceId: stepWorkspaceId,
+                  }),
+                );
+                await transaction(signal, async (client) => {
+                  const anchor = await lockAnchor(
+                    client,
+                    stepWorkspaceId,
+                    signal,
+                  );
+                  if (
+                    anchor.sequence !== claimedStep.anchor.sequence ||
+                    anchor.hash !== claimedStep.anchor.hash
+                  )
+                    throw new Error('Workspace purge control fence changed');
+                  await query(
+                    client,
+                    `select app.checkpoint_workspace_object_versions_page(
+                      $1,$2,$3,$4,$5,$6,$7
+                    )`,
+                    [
+                      stepJobId,
+                      claimedStep.leaseToken,
+                      claimedStep.leaseFence,
+                      objectPage.deletedCount,
+                      objectPage.completed,
+                      anchor.sequence,
+                      anchor.hash,
+                    ],
+                    signal,
+                  );
+                });
+              }
+              return claimedStep;
+            },
+          );
           if (stepClaim === undefined) return { status: 'idle' as const };
-          if (stepClaim.stepName === 'object_versions') {
-            const objectPage = objectPageSchema.parse(
-              await objectStore.purgeWorkspacePage({
-                maxObjects: 500,
-                signal: operationSignal(signal),
-                workspaceId: stepWorkspaceId,
-              }),
-            );
-            await transaction(signal, async (client) => {
-              const anchor = await lockAnchor(client, stepWorkspaceId, signal);
-              if (
-                anchor.sequence !== stepClaim?.anchor.sequence ||
-                anchor.hash !== stepClaim.anchor.hash
-              )
-                throw new Error('Workspace purge control fence changed');
-              await query(
-                client,
-                `select app.checkpoint_workspace_object_versions_page(
-                  $1,$2,$3,$4,$5,$6,$7
-                )`,
-                [
-                  stepJobId,
-                  stepClaim.leaseToken,
-                  stepClaim.leaseFence,
-                  objectPage.deletedCount,
-                  objectPage.completed,
-                  anchor.sequence,
-                  anchor.hash,
-                ],
-                signal,
-              );
-            });
-          }
           return {
             jobId: stepJobId,
             status: 'progressed' as const,

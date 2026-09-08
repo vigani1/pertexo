@@ -63,7 +63,16 @@ function dependencies(
       .fn()
       .mockResolvedValue({ artifact: record(), replayed: false }),
     getForUpload: vi.fn().mockResolvedValue(record()),
-    finalizeUpload: vi.fn().mockResolvedValue(record({ status: 'available' })),
+    finalizeUpload: vi.fn(
+      async (
+        input: Parameters<
+          ArtifactDependencies['database']['finalizeUpload']
+        >[0],
+      ) => {
+        await input.verifyUpload?.();
+        return record({ status: 'available' });
+      },
+    ),
     getMetadata: vi.fn().mockResolvedValue(record()),
     ...databaseOverrides,
   };
@@ -221,7 +230,7 @@ describe('ArtifactService', () => {
       }),
     ).rejects.toThrow();
     expect(deps.store.validateDirectUpload).toHaveBeenCalledOnce();
-    expect(deps.database.finalizeUpload).not.toHaveBeenCalled();
+    expect(deps.database.finalizeUpload).toHaveBeenCalledOnce();
   });
 
   it('returns an available artifact without revalidating the object', async () => {

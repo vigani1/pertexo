@@ -136,6 +136,45 @@ describe('schedule claim migration upgrade', () => {
 
     const inspection = new Pool({ connectionString: databaseUrl, max: 1 });
     try {
+      const userId = randomUUID();
+      const workspaceId = randomUUID();
+      const artifactId = randomUUID();
+      const finalizedAt = new Date('2026-09-01T00:00:00.000Z');
+      const legacyExpiry = new Date(finalizedAt.getTime() + 15 * 60_000);
+      await inspection.query('begin');
+      await inspection.query('set local role pertexo_owner');
+      await inspection.query(
+        `insert into app.users(id,email,display_name)
+         values($1,$2,'Legacy artifact owner')`,
+        [userId, `${userId}@example.test`],
+      );
+      await inspection.query(
+        `insert into app.workspaces(id,name,slug,created_by)
+         values($1,'Legacy artifact',$2,$3)`,
+        [workspaceId, `legacy-artifact-${workspaceId}`, userId],
+      );
+      await inspection.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await inspection.query(
+        `insert into app.artifacts(
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at,created_at,updated_at
+         ) values(
+           $1,$2,'user-upload',$3,'application/octet-stream',17,$4,
+           'available',$5,$6,$6,$6
+         )`,
+        [
+          artifactId,
+          workspaceId,
+          `workspaces/${workspaceId}/artifacts/${artifactId}`,
+          'f'.repeat(64),
+          legacyExpiry,
+          finalizedAt,
+        ],
+      );
+      await inspection.query('commit');
+
       const claimBefore = await readFunctionMetadata(inspection, [
         'claim_due_trigger_schedules',
       ]);
@@ -145,6 +184,8 @@ describe('schedule claim migration upgrade', () => {
       );
       await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
         '0081_schedule_claim_concurrency.sql',
+        '0082_legal_hold_destruction_serialization.sql',
+        '0083_artifact_finalization_retention_deadline.sql',
       ]);
       const claimAfter = await readFunctionMetadata(inspection, [
         'claim_due_trigger_schedules',
@@ -175,6 +216,21 @@ describe('schedule claim migration upgrade', () => {
       expect(claim.privileges).toContain('pertexo_worker:EXECUTE');
       expect(claim.privileges).not.toContain('PUBLIC:EXECUTE');
       expect(claim.privileges).not.toContain('pertexo_api:EXECUTE');
+
+      await inspection.query('begin');
+      await inspection.query('set local role pertexo_owner');
+      await inspection.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      const backfilled = await inspection.query<{ expires_at: Date }>(
+        `select expires_at from app.artifacts
+          where workspace_id=$1 and id=$2`,
+        [workspaceId, artifactId],
+      );
+      await inspection.query('rollback');
+      expect(backfilled.rows[0]?.expires_at.getTime()).toBe(
+        finalizedAt.getTime() + 30 * 24 * 60 * 60_000,
+      );
 
       expect(definition).toMatch(/ranked\s+as/iu);
       expect(dueCte).toMatch(/schedule\.status\s*=\s*'enabled'/iu);

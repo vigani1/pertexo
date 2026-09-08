@@ -49,6 +49,16 @@ describe('parseApiConfig', () => {
     expect(Object.isFrozen(config)).toBe(true);
   });
 
+  it('rejects Redis URLs without a network host before runtime allocation', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis:///0',
+      }),
+    ).toThrow('REDIS_URL must use redis:// or rediss:// with a hostname');
+  });
+
   it('parses valid environment values into the typed public config', () => {
     const config = parseApiConfig({
       DATABASE_API_URL:

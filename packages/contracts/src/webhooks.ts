@@ -1,8 +1,20 @@
 export * from './http/webhooks.js';
 
+import { apiProblemSchema } from './errors/api-problem.js';
 import {
-  manifestProblemResponse as problem,
+  webhookIngressResponseSchema,
+  webhookManagementCommandResponseSchema,
+  webhookRotateSecretRequestSchema,
+  webhookTriggerListResponseSchema,
+} from './http/webhooks.js';
+import {
+  authenticatedComponents,
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
   pathParameter as openApiPathParameter,
+  problemResponse,
+  responseReference,
 } from './openapi-primitives.js';
 
 function pathParameter(name: string, pattern?: string) {
@@ -15,11 +27,55 @@ function pathParameter(name: string, pattern?: string) {
 const workspaceParameter = pathParameter('workspaceId');
 const workflowParameter = pathParameter('workflowId');
 const triggerParameter = pathParameter('triggerId');
+const idempotencyParameter = {
+  name: 'Idempotency-Key',
+  in: 'header',
+  required: true,
+  schema: { type: 'string', minLength: 1, maxLength: 128 },
+} as const;
+const csrfParameter = {
+  name: 'X-CSRF-Token',
+  in: 'header',
+  required: true,
+  schema: { type: 'string', minLength: 1, maxLength: 256 },
+} as const;
 const managementParameters = [
   workspaceParameter,
   workflowParameter,
   triggerParameter,
+  idempotencyParameter,
+  csrfParameter,
 ] as const;
+const security = [{ cookieSession: [] }] as const;
+
+const schemas = Object.freeze({
+  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
+  WebhookIngressResponse: jsonSchema(webhookIngressResponseSchema, 'output'),
+  WebhookManagementCommandResponse: jsonSchema(
+    webhookManagementCommandResponseSchema,
+    'output',
+  ),
+  WebhookRotateSecretRequest: jsonSchema(
+    webhookRotateSecretRequestSchema,
+    'input',
+  ),
+  WebhookTriggerListResponse: jsonSchema(
+    webhookTriggerListResponseSchema,
+    'output',
+  ),
+});
+const responses = Object.freeze({
+  BadRequest: problemResponse('Invalid request'),
+  Unauthenticated: problemResponse('Authentication required'),
+  Forbidden: problemResponse('Forbidden'),
+  NotFound: problemResponse('Resource not found'),
+  Conflict: problemResponse('Request conflict'),
+  PayloadTooLarge: problemResponse('Payload too large'),
+  UnsupportedMediaType: problemResponse('Unsupported media type'),
+  RateLimited: problemResponse('Rate limited'),
+  Unavailable: problemResponse('Service unavailable'),
+  Unexpected: problemResponse('Unexpected server error'),
+});
 
 export const webhooksClientContract = Object.freeze({
   schemaVersion: 1,
@@ -58,48 +114,49 @@ export const webhooksClientContract = Object.freeze({
 
 const managementPath = {
   post: {
+    security,
     parameters: managementParameters,
     responses: {
-      '200': { description: 'Webhook trigger command completed' },
-      '400': problem(400, 'request.invalid'),
-      '401': problem(401, 'auth.unauthenticated'),
-      '404': problem(404, 'resource.not_found'),
-      '409': problem(409, 'request.idempotency_conflict'),
+      '200': jsonResponse(
+        'Webhook trigger command completed',
+        'WebhookManagementCommandResponse',
+      ),
+      '400': responseReference('BadRequest'),
+      '401': responseReference('Unauthenticated'),
+      '403': responseReference('Forbidden'),
+      '404': responseReference('NotFound'),
+      '409': responseReference('Conflict'),
+      '500': responseReference('Unexpected'),
     },
   },
-};
+} as const;
 const rotateSecretPath = {
   post: {
     ...managementPath.post,
-    requestBody: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['endpointKey'],
-            properties: {
-              endpointKey: {
-                type: 'string',
-                pattern: '^[A-Za-z0-9_-]{43}$',
-              },
-            },
-          },
-        },
-      },
-    },
+    requestBody: jsonRequest('WebhookRotateSecretRequest'),
   },
-};
+} as const;
 
 export const webhooksOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Webhooks API', version: '1.0.0' },
+  components: authenticatedComponents(schemas, responses),
   paths: {
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers': {
       get: {
+        operationId: 'listWebhookTriggers',
+        security,
         parameters: [workspaceParameter, workflowParameter],
-        responses: { '200': { description: 'Published trigger health' } },
+        responses: {
+          '200': jsonResponse(
+            'Published trigger health',
+            'WebhookTriggerListResponse',
+          ),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
       },
     },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/provision':
@@ -110,19 +167,45 @@ export const webhooksOpenApiDocument = Object.freeze({
       rotateSecretPath,
     '/hooks/{endpointKey}': {
       post: {
-        parameters: [pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$')],
+        operationId: 'acceptWebhook',
+        parameters: [
+          pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$'),
+          {
+            name: 'Content-Type',
+            in: 'header',
+            required: true,
+            schema: { type: 'string', pattern: '^application/json' },
+          },
+          {
+            name: 'X-Pertexo-Timestamp',
+            in: 'header',
+            required: true,
+            schema: { type: 'string', pattern: '^\\d{1,16}$' },
+          },
+          {
+            name: 'X-Pertexo-Signature',
+            in: 'header',
+            required: true,
+            schema: { type: 'string', pattern: '^v1=[0-9a-f]{64}$' },
+          },
+        ],
         requestBody: {
           required: true,
           content: { 'application/json': { schema: {} } },
         },
         responses: {
-          '202': { description: 'Workflow run accepted' },
-          '400': problem(400, 'webhook.invalid_json'),
-          '401': problem(401, 'webhook.authentication_failed'),
-          '409': problem(409, 'webhook.idempotency_conflict'),
-          '413': problem(413, 'webhook.payload_too_large'),
-          '415': problem(415, 'webhook.unsupported_media_type'),
-          '429': problem(429, 'webhook.rate_limited'),
+          '202': jsonResponse(
+            'Workflow run accepted',
+            'WebhookIngressResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '409': responseReference('Conflict'),
+          '413': responseReference('PayloadTooLarge'),
+          '415': responseReference('UnsupportedMediaType'),
+          '429': responseReference('RateLimited'),
+          '503': responseReference('Unavailable'),
+          '500': responseReference('Unexpected'),
         },
       },
     },

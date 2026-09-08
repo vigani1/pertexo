@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0081_schedule_claim_concurrency.sql",
+  "transactionalThrough": "0083_artifact_finalization_retention_deadline.sql",
   "migrations": {}
 }

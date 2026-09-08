@@ -72,6 +72,14 @@ describe('retention enforcement scheduling', () => {
     expect(
       concurrent.reduce((sum, result) => sum + result.scheduledCount, 0),
     ).toBe(26);
+    expect(concurrent.some(({ capacityLimited }) => capacityLimited)).toBe(
+      true,
+    );
+    expect(concurrent.some(({ capacityLimited }) => !capacityLimited)).toBe(
+      true,
+    );
+    for (const result of concurrent)
+      expect(result.capacityLimited).toBe(result.scannedCount === 25);
     expect(concurrent.every(({ cutoffAt }) => cutoffAt <= new Date())).toBe(
       true,
     );
@@ -101,6 +109,16 @@ describe('retention enforcement scheduling', () => {
     expect(
       restarted.reduce((sum, result) => sum + result.scheduledCount, 0),
     ).toBe(0);
+    expect(restarted.every(({ capacityLimited }) => !capacityLimited)).toBe(
+      true,
+    );
+    expect(restarted.every(({ scannedCount }) => scannedCount > 0)).toBe(true);
+
+    await expect(retention.scheduleEnforcement()).resolves.toMatchObject({
+      capacityLimited: false,
+      scannedCount: 0,
+      scheduledCount: 0,
+    });
 
     await owner.query('begin');
     try {

@@ -14,6 +14,13 @@ import { PLATFORM_REGISTRY_RELEASE_HISTORY } from './registry.js';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
 
+export const PLATFORM_NODE_DEFINITION_REGISTRATIONS = Object.freeze([
+  ...CORE_NODE_DEFINITION_REGISTRATIONS,
+  HTTP_REQUEST_DEFINITION_REGISTRATION,
+  SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
+  EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
+] as const satisfies readonly NodeDefinitionRegistration[]);
+
 export function platformIdentityToken(
   identity: Readonly<{ key: string; version: number }>,
 ): string {
@@ -45,12 +52,7 @@ export function resolvePlatformNodeDefinitionForRelease(
       candidate.definition.key === definition.key &&
       candidate.definition.version === definition.version,
   );
-  const registration = [
-    ...CORE_NODE_DEFINITION_REGISTRATIONS,
-    HTTP_REQUEST_DEFINITION_REGISTRATION,
-    SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
-    EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
-  ].find(
+  const registration = PLATFORM_NODE_DEFINITION_REGISTRATIONS.find(
     (candidate) =>
       candidate.manifest.definition.key === definition.key &&
       candidate.manifest.definition.version === definition.version,

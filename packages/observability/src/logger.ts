@@ -211,7 +211,7 @@ function sanitizeError(
       cause === undefined
         ? new Error(redactLogText(error.message))
         : new Error(redactLogText(error.message), { cause });
-    sanitized.name = error.name;
+    sanitized.name = redactLogText(error.name);
     if (error.stack !== undefined) {
       sanitized.stack = redactLogText(error.stack);
     }

@@ -113,8 +113,12 @@
           "reason": "Preview and durable run-artifact retention share bounded configuration and abort-aware query plumbing but enforce different eligibility, ownership, and deletion policies.",
           "clones": [
             {
-              "hash": "eb99cfb009d7fed09fbbe046eb65e32c6b2ccd4fdcf37a6740eae301ca742410",
-              "maxLines": 31
+              "hash": "23e9caf87265a3d4c9f32a76f125008b8f5d0b8f211b6fcea40a7eb64310fdfc",
+              "maxLines": 17
+            },
+            {
+              "hash": "d9abb6925273187972e8673b3c5fcdffe5185f7da3999575123ac7aa6da5b678",
+              "maxLines": 15
             }
           ]
         },
@@ -300,19 +304,43 @@
         },
         {
           "files": [
+            "apps/api/src/connections/connection-testing.ts",
+            "apps/api/src/connections/connection-testing.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Slack and Resend outcome mappings keep their exhaustive provider result unions explicit because rejection semantics and result types differ.",
+          "clones": [
+            {
+              "hash": "a06266996ec85100f0dac1716cf714545143e986467b0e58103a3513e7837b01",
+              "maxLines": 23
+            }
+          ]
+        },
+        {
+          "files": [
             "apps/api/src/connections/use-cases.ts",
             "apps/api/src/connections/use-cases.ts"
           ],
           "classification": "intentional-scenario-local",
-          "reason": "Create, rotate, and test connection cases keep explicit request construction and outcome mapping beside distinct idempotency and credential transitions.",
+          "reason": "Create and rotate commands keep explicit request hashing, encryption, cancellation and plaintext cleanup beside their distinct persistence transitions.",
           "clones": [
             {
               "hash": "5b98c8a68dc65caee8d2b2c1e6a445f9fce39340c9a070453c3fcac34bc7616c",
               "maxLines": 18
-            },
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/contracts/src/schedules.ts",
+            "packages/contracts/src/webhooks.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "The independently generated schedule and webhook OpenAPI documents intentionally spell out the same management security headers and standard error responses at each contract boundary.",
+          "clones": [
             {
-              "hash": "a06266996ec85100f0dac1716cf714545143e986467b0e58103a3513e7837b01",
-              "maxLines": 23
+              "hash": "0abf10fd32ba05bc6808f9600c3b4634cf45966860fef875d49fa783b47d3725",
+              "maxLines": 30
             }
           ]
         },

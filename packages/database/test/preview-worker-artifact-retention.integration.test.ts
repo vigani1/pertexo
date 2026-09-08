@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -32,6 +33,23 @@ import {
   workerPool,
   workspaceId,
 } from './support/preview-worker-fixture.js';
+
+async function waitForApplicationLock(applicationName: string): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const result = await withAdmin((admin) =>
+      admin.query<{ blocked: boolean }>(
+        `select exists (
+           select 1 from pg_stat_activity
+            where application_name=$1 and wait_event_type='Lock'
+         ) blocked`,
+        [applicationName],
+      ),
+    );
+    if (result.rows[0]?.blocked === true) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  throw new Error(`PostgreSQL application ${applicationName} did not block`);
+}
 
 describe('preview artifact retention lifecycle', () => {
   it('binds preview artifacts to their owner and enforces inherited retention', async () => {
@@ -247,10 +265,16 @@ describe('preview artifact retention lifecycle', () => {
           deleteStarted.resolve(undefined);
         }),
     );
+    const coordinatorApplicationName = `preview-retention-${randomUUID()}`;
+    const coordinatorUrl = new URL(databaseUrl(maintenanceBaseUrl));
+    coordinatorUrl.searchParams.set(
+      'application_name',
+      coordinatorApplicationName,
+    );
     const coordinator = createPreviewRetentionCoordinator(
       parseDatabaseConfig({
-        connectionString: databaseUrl(maintenanceBaseUrl),
-        max: 1,
+        connectionString: coordinatorUrl.toString(),
+        max: 2,
       }),
       ledger,
       { delete: remove, head: () => Promise.resolve(null) },
@@ -267,6 +291,8 @@ describe('preview artifact retention lifecycle', () => {
       }
       throw new Error('Target preview cleanup was not discovered');
     };
+    let holdPool: Pool | undefined;
+    let completion: ReturnType<typeof processTarget> | undefined;
     try {
       await expect(processTarget()).resolves.toMatchObject({
         previewRunId: accepted.previewRunId,
@@ -287,14 +313,53 @@ describe('preview artifact retention lifecycle', () => {
           [workspaceId, artifactId],
         );
       });
-      const completion = processTarget();
+      completion = processTarget();
       await deleteStarted.promise;
+      const control = await withOwnerRole((client) =>
+        client.query<{
+          retention_control_hash: string;
+          retention_control_sequence: number | string;
+        }>(
+          `select retention_control_hash,retention_control_sequence
+             from app.workspaces where id=$1`,
+          [workspaceId],
+        ),
+      );
+      const anchor = control.rows[0];
+      if (anchor === undefined) throw new Error('Control anchor missing');
+      const holdApplicationName = `preview-hold-${randomUUID()}`;
+      const holdUrl = new URL(databaseUrl(maintenanceBaseUrl));
+      holdUrl.searchParams.set('application_name', holdApplicationName);
+      holdPool = new Pool({ connectionString: holdUrl.toString(), max: 1 });
+      let holdAcknowledged = false;
+      const hold = holdPool
+        .query(
+          `select app.project_workspace_legal_hold(
+             $1,$2,$3,'legal_hold_placed',$4,$5,$6,
+             'legal-admin','preview-inflight','preserve preview',$7)`,
+          [
+            workspaceId,
+            Number(anchor.retention_control_sequence) + 1,
+            randomUUID(),
+            randomUUID(),
+            anchor.retention_control_hash,
+            '8'.repeat(64),
+            '2026-09-08T00:00:00.000Z',
+          ],
+        )
+        .then((result) => {
+          holdAcknowledged = true;
+          return result;
+        });
+      await waitForApplicationLock(holdApplicationName);
+      expect(holdAcknowledged).toBe(false);
       const openTransactions = await withAdmin((admin) =>
         admin.query<{ count: string }>(
           `select count(*)::text count from pg_stat_activity
             where datname=current_database()
-              and usename='pertexo_maintenance'
+              and application_name=$1
               and xact_start is not null`,
+          [coordinatorApplicationName],
         ),
       );
       expect(openTransactions.rows[0]).toEqual({ count: '0' });
@@ -305,6 +370,7 @@ describe('preview artifact retention lifecycle', () => {
         status: 'completed',
         workspaceId,
       });
+      await expect(hold).resolves.toMatchObject({ rowCount: 1 });
       expect(remove).toHaveBeenCalledOnce();
       const removed = await scopedQuery<{ artifacts: string; runs: string }>(
         `select
@@ -315,7 +381,9 @@ describe('preview artifact retention lifecycle', () => {
       expect(removed.rows[0]).toEqual({ artifacts: '0', runs: '0' });
     } finally {
       releaseDelete?.();
+      await completion?.catch(() => undefined);
       await coordinator.close();
+      await holdPool?.end();
     }
   });
 });

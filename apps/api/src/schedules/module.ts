@@ -2,11 +2,8 @@ import { Module, type DynamicModule } from '@nestjs/common';
 
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import { ScheduleManagementController } from './controllers.js';
-import {
-  SCHEDULE_AUTHORIZATION,
-  ScheduleReadGuard,
-  ScheduleUpdateGuard,
-} from './guards.js';
+import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
+import { SCHEDULE_AUTHORIZATION } from './tokens.js';
 import { ScheduleManagementService } from './service.js';
 
 @Module({})

@@ -91,6 +91,8 @@ describe('OIDC browser binding prior-head migration', () => {
         '0079_artifact_upload_capacity.sql',
         '0080_expired_artifact_upload_retention.sql',
         '0081_schedule_claim_concurrency.sql',
+        '0082_legal_hold_destruction_serialization.sql',
+        '0083_artifact_finalization_retention_deadline.sql',
       ]);
 
       const verifier = new Pool({

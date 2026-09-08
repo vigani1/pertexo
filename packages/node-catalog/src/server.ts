@@ -20,19 +20,18 @@ import {
   type EmailSendNotificationExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import {
+  PLATFORM_NODE_DEFINITION_REGISTRATIONS,
   parseSupportedPlatformRelease,
   platformIdentityToken,
   resolvePlatformNodeDefinitionForRelease,
 } from './definition-resolution.js';
 import {
   createNodeRegistry,
-  type NodeDefinitionRegistration,
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeExecutorRegistration,
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
-import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 
 export { resolvePlatformNodeDefinitionForRelease };
@@ -59,14 +58,8 @@ export function createPlatformNodeRegistryForRelease(
 ): PlatformNodeRegistry {
   const release = parseSupportedPlatformRelease(releaseInput);
 
-  const definitionRegistrations: readonly NodeDefinitionRegistration[] = [
-    ...CORE_NODE_DEFINITION_REGISTRATIONS,
-    HTTP_REQUEST_DEFINITION_REGISTRATION,
-    SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
-    EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
-  ];
   const definitionsByIdentity = new Map(
-    definitionRegistrations.map((registration) => [
+    PLATFORM_NODE_DEFINITION_REGISTRATIONS.map((registration) => [
       platformIdentityToken(registration.manifest.definition),
       registration,
     ]),

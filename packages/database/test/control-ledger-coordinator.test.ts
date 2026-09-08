@@ -187,7 +187,11 @@ function fakeDatabase(
           : (queryInput.values ?? []);
       if (typeof queryInput !== 'string') queryInput.signal?.throwIfAborted();
       const normalized = text.trim().toLowerCase();
-      if (normalized === 'begin') {
+      if (normalized.includes('pg_advisory_lock')) {
+        return { rowCount: 1, rows: [{ pg_advisory_lock: null }] };
+      } else if (normalized.includes('pg_advisory_unlock')) {
+        return { rowCount: 1, rows: [{ unlocked: true }] };
+      } else if (normalized === 'begin') {
         events.push('BEGIN');
         transactionProjectionSnapshot = new Map(projections);
         transactionHighWater = { ...highWater };

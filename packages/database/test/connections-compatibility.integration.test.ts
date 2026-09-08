@@ -242,6 +242,8 @@ describe('connection persistence', () => {
       '0079_artifact_upload_capacity.sql',
       '0080_expired_artifact_upload_retention.sql',
       '0081_schedule_claim_concurrency.sql',
+      '0082_legal_hold_destruction_serialization.sql',
+      '0083_artifact_finalization_retention_deadline.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -254,7 +256,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0081_schedule_claim_concurrency.sql',
+        migrationHead: '0083_artifact_finalization_retention_deadline.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -500,6 +502,8 @@ describe('connection persistence', () => {
       '0079_artifact_upload_capacity.sql',
       '0080_expired_artifact_upload_retention.sql',
       '0081_schedule_claim_concurrency.sql',
+      '0082_legal_hold_destruction_serialization.sql',
+      '0083_artifact_finalization_retention_deadline.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -512,7 +516,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0081_schedule_claim_concurrency.sql',
+        migrationHead: '0083_artifact_finalization_retention_deadline.sql',
       });
     } finally {
       await pool.end();

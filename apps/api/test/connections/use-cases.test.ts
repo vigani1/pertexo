@@ -18,6 +18,7 @@ import {
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
+  type TestConnectionCommand,
 } from '../../src/connections/use-cases.js';
 import {
   authorizeWorkspace,
@@ -168,19 +169,20 @@ describe('connection application use cases', () => {
     ).rejects.toMatchObject({ name: 'ZodError' });
     expect(encryption.seal).not.toHaveBeenCalled();
 
+    const testCommand: TestConnectionCommand = {
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-invalid',
+      request: { url: 'http://provider.example.test/health' },
+    };
     await expect(
       new TestConnectionUseCase(
         testPersistence(),
         authorization(),
         { open: vi.fn(), seal: vi.fn() },
         { execute: vi.fn() },
-      ).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-        connectionId,
-        idempotencyKey: 'test-invalid',
-        request: { url: 'http://provider.example.test/health' },
-      }),
+      ).execute(testCommand),
     ).rejects.toMatchObject({ name: 'ZodError' });
   });
 

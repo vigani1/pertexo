@@ -149,7 +149,7 @@ async function runScheduleLoop(
         (performance.now() - startedAt) / 1_000,
       );
       recordRecovery(resources, 'schedule', state);
-      if (result.scannedCount < 25)
+      if (!result.capacityLimited)
         await waitForAbortableDelay(resources.pollIntervalMs, signal);
     } catch (error: unknown) {
       if (error === signal.reason) return;

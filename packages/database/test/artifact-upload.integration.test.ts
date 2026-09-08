@@ -581,6 +581,9 @@ describe('artifact upload database authority', () => {
       },
     });
     expect(finalized.status).toBe('available');
+    expect(finalized.expiresAt.getTime()).toBeGreaterThan(
+      Date.now() + 29 * 24 * 60 * 60_000,
+    );
     expect(finalized.finalizedAt).toBeInstanceOf(Date);
     expect(replay).toEqual(finalized);
     await expect(database.getMetadata(identity)).resolves.toEqual(finalized);

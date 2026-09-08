@@ -20,7 +20,8 @@ function requiresStructuredCheckpoint(definition: {
   return (
     (definition.version === 1 &&
       (definition.key === 'core.condition' ||
-        definition.key === 'core.switch')) ||
+        definition.key === 'core.switch' ||
+        definition.key === 'core.foreach')) ||
     (definition.key === 'core.parallel' &&
       (definition.version === 1 ||
         definition.version === 2 ||

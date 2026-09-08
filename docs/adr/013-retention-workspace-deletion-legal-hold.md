@@ -95,6 +95,25 @@ pauses destruction; a release resumes only after its ordered ledger record is
 projected. This can conservatively retain data during uncertainty but cannot
 serve or destroy data from a stale restored projection.
 
+Physical workspace, run-artifact, and preview-artifact deletion is serialized
+with legal-hold projection by a workspace-keyed PostgreSQL advisory lock. A
+maintenance runner holds one session-level lock across its short prepare
+transaction, external object-store operation, and short checkpoint transaction;
+it does not keep a database transaction open during network I/O. Control-ledger
+projection takes the same lock before its transaction and workspace-row lock.
+Direct legal-hold projection functions also take the transaction-level form of
+that lock, so a hold cannot be acknowledged while physical deletion remains in
+flight. The lock order is advisory lock, then workspace lifecycle row. Runtime
+coordination reserves one connection per pool for the short transactions,
+preventing concurrent session-lock owners from exhausting the pool while they
+wait to checkpoint. Cancellation while queued for a pool client rejects
+immediately; if the pool later delivers that pristine client, it is released
+without sending the advisory-lock query. Cancellation while the lock query is
+blocked destroys the checked-out connection, terminating its PostgreSQL backend
+and promptly returning the pool capacity. Cancellation is also checked again
+after an awaited lock grant, before destructive work starts, because
+cancellation and PostgreSQL lock acquisition may complete concurrently.
+
 ## Consequences
 
 Retention and deletion are explicit, recoverable workflows across every storage

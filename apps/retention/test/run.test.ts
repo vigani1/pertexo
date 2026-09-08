@@ -61,6 +61,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     ),
     scheduleEnforcement: vi.fn(() =>
       Promise.resolve({
+        capacityLimited: false,
         cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
         scannedCount: 0,
         scheduledCount: 0,
@@ -223,6 +224,7 @@ describe('retention worker', () => {
     input.database.processOperatorRerun = vi.fn(() => advance(null));
     input.database.scheduleEnforcement = vi.fn(() =>
       advance({
+        capacityLimited: false,
         cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
         scannedCount: 0,
         scheduledCount: 0,
@@ -284,6 +286,38 @@ describe('retention worker', () => {
       expect.any(Object),
       expect.any(Number),
     );
+  });
+
+  it('drains another schedule batch immediately when capacity was reached', async () => {
+    const input = resources([]);
+    input.pollIntervalMs = 10_000;
+    input.database.processNext = vi.fn(
+      (signal?: AbortSignal) =>
+        new Promise((resolve) => {
+          signal?.addEventListener(
+            'abort',
+            () => {
+              resolve({ status: 'idle' as const });
+            },
+            { once: true },
+          );
+        }),
+    );
+    let calls = 0;
+    input.database.scheduleEnforcement = vi.fn(() => {
+      calls += 1;
+      if (calls === 2) input.controller.abort(new Error('schedule drained'));
+      return Promise.resolve({
+        capacityLimited: calls === 1,
+        cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+        scannedCount: calls === 1 ? 25 : 3,
+        scheduledCount: calls === 1 ? 25 : 3,
+      });
+    });
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.database.scheduleEnforcement).toHaveBeenCalledTimes(2);
   });
 
   it('backs off persistent failure without starving unrelated maintenance', async () => {

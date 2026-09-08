@@ -46,6 +46,19 @@ expired or concurrently deleting objects never become available. External
 verification can be retried after process loss without changing artifact
 identity or trusting client claims.
 
+Finalization holds the workspace destructive-operation advisory lock while it
+performs recovery-copy verification outside a database transaction and then
+completes the short compare-and-set transaction. Expired-upload retention uses
+the same lock across physical deletion. This prevents cleanup from completing
+before a late recovery copy becomes visible; if the pending deadline passes
+during verification, finalization fails and retention removes the verified
+bytes before releasing capacity. Available user uploads receive the standard
+30-day retention deadline instead of retaining the 15-minute pending deadline.
+The forward migration also backfills an earlier available user upload to 30
+days from its recorded finalization time when its stored deadline is shorter.
+Artifact-upload runtimes require at least two database connections because one
+session owns the advisory lock while short scoped transactions use another.
+
 `GET /v1/workspaces/:workspaceId/artifacts/:artifactId` returns safe metadata
 without a storage key or credentials. The sibling `/download` read issues a
 short-lived GET capability only for an authorized available artifact. Signing

@@ -37,6 +37,7 @@
         "object-storage",
         "otel",
         "postgresql",
+        "provider-api",
         "redis",
         "secrets-manager"
       ],

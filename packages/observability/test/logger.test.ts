@@ -256,6 +256,24 @@ describe('createStructuredLogger', () => {
     expect(serialized.length).toBeLessThan(40_000);
   });
 
+  it('redacts and bounds error names at every cause depth', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const cause = new Error('nested failure');
+    cause.name = `NestedError token=nested-name-secret ${'x'.repeat(20_000)}`;
+    const error = new Error('provider failure', { cause });
+    error.name = 'ProviderError token=top-level-name-secret';
+
+    logger.error('provider.failed', {}, error);
+
+    const serialized = JSON.stringify(capture.records[0]);
+    expect(serialized).not.toContain('top-level-name-secret');
+    expect(serialized).not.toContain('nested-name-secret');
+    expect(serialized).toContain('[Redacted]');
+    expect(serialized).toContain('[Truncated]');
+    expect(serialized.length).toBeLessThan(40_000);
+  });
+
   it('correlates records with the active valid span', () => {
     const manager = new AsyncLocalStorageContextManager().enable();
     expect(context.setGlobalContextManager(manager)).toBe(true);
