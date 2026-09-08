@@ -275,3 +275,11 @@ executed by the immediately preceding loop. All 91 workflow-model and 285 engine
 tests, coverage floors and their test typechecks pass. Changed-file lint initially
 exceeded the default Node heap; it passes with the repository lint script's
 8-GiB heap setting. Formatting passes; no coverage threshold changes.
+
+The full push gate caught one generated empty-location V8 branch review whose
+fingerprint includes the whole checkpoint source file. Its owning artifact
+output decision at lines 277-285 is unchanged, and its second branch location
+still has empty start/end coordinates. Refresh only that fingerprint; preserve
+the generated classification and justification. The other source-backed review
+fingerprint is identical. The risk report still has 22 unreviewed and 463 reviewed
+sites; the failed push did not update the remote.
