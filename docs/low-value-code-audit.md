@@ -444,3 +444,31 @@ whose owning decisions were checked unchanged. The report has 458 reviewed and
 lookup is included in both engine coverage cohorts, preserving the stronger
 ratchet after the move. Build, typechecks, scoped lint, generated
 contracts, complexity and duplication pass without lowering thresholds.
+
+### Retained catalog tests
+
+One file-local independent expectation table covers all 37 release cohorts;
+another pins 18 staged/active executor lifecycle and ABI pairs. Assertions
+retain useful cohort/executor diagnostics and verify coverage of the exported
+cohort list. The independent retained fingerprint/epoch goldens are unchanged.
+
+Remove repeated core Webhook, Schedule V1, Wait, For Each and Switch execution
+checks already covered in the core package. Keep platform release resolution,
+strict configuration, unsupported identity rejection, generic executor wiring,
+provider credential wiring, unique Condition/Merge/Parallel cases and additive
+successor executions. No catalog production behavior changes. All 17 catalog
+tests, its coverage gate, test typecheck, scoped lint and formatting pass.
+
+### Completion and verification scope
+
+The requested deferred improvements are implemented. The full repository
+pre-push gate passes: formatting, documentation, architecture, runtime,
+dependencies, database schema, build, lint, complexity, duplication, generated
+contracts, test typechecks, unit tests and coverage. Source/test duplication
+remains at 27/4 groups and 512/203 lines, with no relaxed thresholds.
+
+The trigger diagnostic additionally passes all 12 real PostgreSQL webhook
+integration cases. The entire integration matrix, deployed load tests and
+external-platform readiness exercises were not rerun. The 22 pre-existing
+unreviewed risk sites and the backend plan's unfinished obligations remain open.
+An unrelated user edit to `AGENTS.md` is preserved outside these commits.
