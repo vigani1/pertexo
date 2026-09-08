@@ -258,3 +258,20 @@ secret zeroing and problem status validation remain separate and unchanged.
 The authorization error test now checks type and code on one rejected promise,
 removing a second identical call and its conditional assertions. All 476 API
 unit tests, test typecheck and changed-file lint pass.
+
+### Domain indirection checkpoint
+
+Remove the expression evaluator's `preview` and `runtime` aliases: both only
+forwarded to `evaluate`, their only callers were parity assertions, and the
+shared evaluator interface already exposes `evaluate` alone. Keep real worker
+value/missing/error, cancellation, resource-limit and timeout tests. Remove the
+positive elapsed-time assertion while retaining timing diagnostics and the
+separate timeout-ceiling regression.
+
+Checkpoint ledger parsing now uses its existing six-value disposition guard
+without rebuilding and checking the same six-value array again. Exact-key and
+hostile-input checks remain. Remove the scheduler export assertion already
+executed by the immediately preceding loop. All 91 workflow-model and 285 engine
+tests, coverage floors and their test typechecks pass. Changed-file lint initially
+exceeded the default Node heap; it passes with the repository lint script's
+8-GiB heap setting. Formatting passes; no coverage threshold changes.

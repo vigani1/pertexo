@@ -148,12 +148,6 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       this.#drain();
     });
   }
-  preview(request: ExpressionRequest): Promise<ExpressionResult> {
-    return this.evaluate(request);
-  }
-  runtime(request: ExpressionRequest): Promise<ExpressionResult> {
-    return this.evaluate(request);
-  }
   async shutdown(): Promise<void> {
     this.#closed = true;
     for (const pending of this.#queue.splice(0)) {

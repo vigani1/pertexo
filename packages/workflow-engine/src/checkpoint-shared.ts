@@ -416,14 +416,6 @@ export function parseV2Invocations(
 
 export function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
   assertCheckpoint(Array.isArray(value), 'join ledger must be an array');
-  const allowed: readonly BranchLedgerEntry['disposition'][] = [
-    'pending',
-    'arrived',
-    'skipped',
-    'missing',
-    'failed',
-    'canceled',
-  ];
   const ledger = value.map((entry): BranchLedgerEntry => {
     assertCheckpoint(isRecord(entry), 'branch ledger entry must be an object');
     assertExactKeys(entry, ['branchId', 'disposition'], ['output']);
@@ -432,8 +424,7 @@ export function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
       'branchId is required',
     );
     assertCheckpoint(
-      isBranchDisposition(entry.disposition) &&
-        allowed.some((candidate) => candidate === entry.disposition),
+      isBranchDisposition(entry.disposition),
       'branch disposition is invalid',
     );
     const output =

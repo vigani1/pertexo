@@ -420,7 +420,6 @@ describe('For Each production operations', () => {
       expect(productionEngine).not.toHaveProperty(internalName);
       expect(testingEngine).toHaveProperty(internalName);
     }
-    expect(testingEngine).toHaveProperty('deriveReadyNodes');
     expect(testingEngine.advanceWorkflow).not.toBe(
       productionEngine.advanceWorkflow,
     );
