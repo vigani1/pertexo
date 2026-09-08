@@ -25,6 +25,7 @@ import {
 } from '../src/triggers/webhook-triggers.js';
 import {
   createWorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from '../src/triggers/workflow-triggers.js';
 import {
@@ -320,6 +321,49 @@ afterAll(async () => {
 });
 
 describe('generic webhook database seam', () => {
+  it.each([
+    {
+      eventExists: false,
+      message: 'Reconciliation outbox event is unavailable',
+    },
+    {
+      eventExists: true,
+      message: 'Reconciliation outbox payload is invalid',
+    },
+  ])(
+    'rejects invalid reconciliation input: $message',
+    async ({ eventExists, message }) => {
+      const eventId = randomUUID();
+      const payloadChecksum = canonicalOutboxPayloadChecksum({});
+      if (eventExists) {
+        await ownerQuery(
+          `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+           aggregate_type,aggregate_id,payload,payload_checksum)
+         values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,'{}'::jsonb,$4)`,
+          [eventId, workspaceId, workflowId, payloadChecksum],
+        );
+      }
+      const failure = reconciliation.reconcile({
+        workspaceId,
+        workflowId,
+        publishedVersionId: versionId,
+        outboxEventId: eventId,
+        delivery: { outboxEventId: eventId, payloadChecksum },
+      });
+      await expect(failure).rejects.toBeInstanceOf(
+        WorkflowTriggerReconciliationMismatchError,
+      );
+      await expect(failure).rejects.toHaveProperty('message', message);
+      const receipts = await ownerQuery<{ count: number }>(
+        `select count(*)::int count from app.inbox_receipts
+         where consumer_name='trigger-runtime.reconciliation.v1'
+           and message_id=$1 and workspace_id=$2`,
+        [eventId, workspaceId],
+      );
+      expect(receipts.rows).toEqual([{ count: 0 }]);
+    },
+  );
+
   function triggerGraph(intervalMinutes = 15) {
     return {
       schemaVersion: 1,

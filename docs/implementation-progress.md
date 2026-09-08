@@ -19,7 +19,12 @@ targets.
       an already-selected definition preserves the compatibility selection but
       changes the executable checksum. All 24 identity tests, engine test
       typecheck and scoped lint pass.
-- [ ] Correct the missing trigger-event diagnostic, with relevant regressions.
+- [x] Correct the missing trigger-event diagnostic before payload parsing.
+      A real PostgreSQL regression first reproduces the wrong message, then
+      passes for missing events and malformed existing payloads. Both retain
+      the mismatch error class and create no inbox receipt. All 12 webhook
+      integration tests, 238 database unit tests, test typecheck and scoped
+      lint pass; the disposable test database is removed by the fixture.
 - [ ] Consolidate Validate issue metadata without changing public contracts.
 - [ ] Resolve graph reparsing and engine checkpoint/tree-lookup consolidation
       with preserved hostile-input checks and persisted identities.

@@ -112,18 +112,18 @@ export function createWorkflowTriggerReconciliationDatabase(
             [input.workspaceId, outboxEventId],
           );
           const eventRow = event.rows[0];
+          if (eventRow === undefined)
+            throw new WorkflowTriggerReconciliationMismatchError(
+              'Reconciliation outbox event is unavailable',
+            );
           let payload: z.output<typeof reconciliationPayloadSchema>;
           try {
-            payload = reconciliationPayloadSchema.parse(eventRow?.payload);
+            payload = reconciliationPayloadSchema.parse(eventRow.payload);
           } catch {
             throw new WorkflowTriggerReconciliationMismatchError(
               'Reconciliation outbox payload is invalid',
             );
           }
-          if (eventRow === undefined)
-            throw new WorkflowTriggerReconciliationMismatchError(
-              'Reconciliation outbox event is unavailable',
-            );
           const deliveryChecksum = input.delivery?.payloadChecksum;
           if (
             eventRow.aggregate_id !== workflowId ||
