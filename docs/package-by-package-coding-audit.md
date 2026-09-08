@@ -1082,10 +1082,12 @@ above; it does not claim every infrastructure tool received a new line-by-line
 audit. The build, architecture, deployment, dependency and documentation gates
 provide the additional repository-level evidence listed earlier.
 
-Full database integration, Redis transport/outage, compatibility rollout, real
-restore and AWS policy/Object Lock suites were not rerun. Shared-service tests
-can truncate fixtures, obliterate queues or stop PostgreSQL/Redis, so the fresh
-integration selection used disposable local PostgreSQL fixtures instead. No
+The initial implementation pass did not rerun the full database integration,
+Redis transport/outage or compatibility-rollout cohorts. Shared-service tests
+can truncate fixtures, obliterate queues or stop PostgreSQL/Redis, so its fresh
+integration selection used disposable local PostgreSQL fixtures instead. The
+local verification closeout below supersedes that execution gap. Real AWS
+policy, Object Lock and regional restore qualification remain external; no
 production environment, external provider, grant or cloud configuration was
 modified.
 
@@ -1113,9 +1115,50 @@ Fresh post-implementation checks on 2026-09-08:
 | `pnpm complexity:check` | Passed after refreshing the reviewed hotspot inventory; CQ01 removed the former 575-line connection use-case hotspot, while the lifecycle lock protocol deliberately extends existing database hotspots |
 | `pnpm duplication:check` | Passed; 29 source groups / 527 lines and 4 test groups / 203 lines, with the lifecycle locking, separate trigger contracts, and provider outcome unions explicitly reviewed |
 
-The selected PostgreSQL suites use disposable databases. The full shared-service
-integration matrix and live AWS/provider behavior remain outside this run; no
-production environment or external provider was modified.
+### Local integration and migration closeout
+
+Fresh local verification on 2026-09-08 used Compose project
+`pertexo-local-verify-20260908` with new disposable volumes and non-default host
+ports: PostgreSQL 18 on `25432`, Redis 8.2.8 on `26379`, S3Mock 5.1 on `29090`,
+and independent primary/recovery MinIO processes on `29091`/`29092`. The worker
+tests' intentional PostgreSQL/Redis stops and BullMQ obliteration therefore
+targeted only this project. The fixture project and its volumes were removed
+after verification; the default development project was not used.
+
+| Check | Result |
+| --- | --- |
+| `pnpm build` | Passed before the real-service matrix |
+| `pnpm --filter @pertexo/database typecheck` | Passed with the new prior-head test |
+| `pnpm exec eslint packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts` | Passed |
+| Focused `vitest.integration.config.ts` run of `artifact-finalization-retention-deadline-migration.integration.test.ts` | Passed; 1 file / 1 test. The real migration runner upgraded a populated exact-`0082` database. Two short available user uploads in different workspaces became `finalized_at + 30 days`; a longer deadline, a pending upload and an unrelated available artifact retained their deadlines and update timestamps. The test first proved `app.artifacts` had enabled and forced RLS and that `pertexo_owner` had no `BYPASSRLS`, then read each workspace through the scoped API role. |
+| `pnpm test:integration` with every local service gate enabled, including compatibility rollout | Passed; artifact-store 2 files / 5 passed / 3 skipped, queue 1 / 1, database 77 / 394, worker 20 / 30, API 9 / 33: **109 files / 463 passing tests**, with no unexpected skip or todo |
+
+The first full-matrix invocation omitted the four local MinIO administrator
+variables. Its artifact-store stage therefore stopped with
+`Control ledger integration admin credentials are required` after 3 S3Mock
+tests passed and 5 ledger tests were skipped. After matching the repository's
+existing CI environment contract, the complete command passed with the counts
+above. This was a local harness invocation error, not a product-code failure.
+
+The three remaining skips are the AWS-only control-ledger cases: the exact
+dual-service append/replay/conflict/repair path and immutable conditional-create
+policy enforcement in each of the primary and recovery regions. MinIO explicitly
+cannot implement the required `s3:if-none-match` bucket-policy condition. These
+skips are not counted as passes and neither S3Mock nor MinIO is treated as AWS,
+Object Lock, regional-isolation or restore evidence. No paid or live resource
+was created or changed.
+
+An independent rerun on 2026-09-08 reproduced all **463 passes across 109
+files** and the same **3 AWS-only skips**. It used a separate Compose project,
+`pertexo-independent-verify-20260908`, with fresh volumes and ports `35432`,
+`36379`, `39090`, `39091` and `39092`. The environment followed the checked-in
+CI contract with local endpoints and compatibility-rollout and SSE-resilience
+gates enabled. `pnpm build`, database test typecheck, focused test ESLint and
+Prettier checks, and `pnpm docs:check` also passed. The database cohort included
+the populated `0082` to `0083` regression. The independent fixture containers,
+network and volumes were removed afterward without changing the default
+development project. This confirms local execution evidence only; the live
+Phase 7 qualifications above remain deferred.
 
 ## Source inventory baseline
 

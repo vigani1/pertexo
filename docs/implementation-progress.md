@@ -4462,6 +4462,18 @@ Release exercises and completion gates:
 
 Current evidence:
 
+- A 2026-09-08 local verification closeout used a new disposable Compose project
+  with PostgreSQL 18, Redis 8.2.8, S3Mock 5.1 and separate primary/recovery MinIO
+  processes on non-default host ports. The full configured local integration
+  command passed 109 files / 463 tests: artifact-store 5 with 3 AWS-only skips,
+  queue 1, database 394, worker 30 and API 33. A new exact-`0082` populated
+  migration proof runs the real runner through `0083` under forced RLS and the
+  actual no-`BYPASSRLS` owner role: short available user-upload deadlines in two
+  workspaces become 30 days from finalization, while a longer deadline, pending
+  upload and unrelated artifact remain unchanged. This closes the identified
+  local execution-evidence gaps only. The three AWS policy cases remain skipped
+  rather than passed; live AWS, Object Lock, regional restore and other deployed
+  qualification below remain open, and Phase 7 stays **In progress**.
 - Accepted ADR 015 fixes AWS `eu-central-1` as the multi-AZ primary region,
   `eu-west-1` as the warm regional-recovery target, RDS PostgreSQL Multi-AZ plus
   an encrypted cross-region replica, synchronous immutable dual-region control
