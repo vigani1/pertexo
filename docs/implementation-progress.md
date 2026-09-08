@@ -8,7 +8,7 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Deferred audit improvements — in progress
+## Deferred audit improvements — complete within requested scope
 
 The user requested implementation of the remaining audit candidates on
 2026-09-08. This follow-up preserves the plan's validation, ownership and
@@ -36,11 +36,17 @@ targets.
       errors. Generated contracts, build, typechecks, lint, complexity and
       duplication checks pass. Risk reviews retain 22 pre-existing unreviewed
       sites and 458 reviewed sites; no threshold was lowered.
-- [ ] Consolidate genuinely redundant catalog tests while preserving retained
-      release behavior and compatibility evidence.
-- [ ] Run relevant checks, update the audit dispositions and push each coherent
-      checkpoint. Do not mark these improvements complete while required work
-      remains.
+- [x] Consolidate genuinely redundant catalog tests while preserving retained
+      release behavior and compatibility evidence. Independent tables pin all
+      37 release cohorts and 18 staged/active executor pairs. Golden retained
+      identities, platform wiring and unique behavior tests remain; only core
+      execution repetitions covered by their owning package are removed.
+      All 17 catalog tests, coverage, typecheck and scoped lint pass.
+- [x] Run relevant checks and update the audit dispositions. The full repository
+      static, unit and coverage gate passes. Checkpoints are committed and
+      pushed through the configured gate; unrelated user changes are preserved.
+      This completes the requested audit improvements, not production readiness
+      or the backend plan's remaining delivery obligations.
 
 ## File-by-file low-value audit — complete within recorded scope
 
