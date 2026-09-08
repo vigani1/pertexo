@@ -77,6 +77,9 @@ data and historical evidence will be distinguished from executable source review
       predicate, a repeated export assertion and a positive elapsed-time
       assertion. All 91 model and 285 engine tests and test typechecks pass;
       real worker, timeout and hostile-input checks remain intact.
+- [x] Reconcile the generated empty-location checkpoint coverage fingerprint
+      caught by the full push gate. Its real owning decision is unchanged;
+      preserve classification, justification and all coverage thresholds.
 
 ## Initial low-value code cleanup — complete
 

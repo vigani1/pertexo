@@ -168,7 +168,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:19f93095341af20b92480fe3af0aafe4b9839477b212b102fa3ec3b556be324b",
+          "sourceFingerprint": "sha256:fc0052c683031d1c6acb7709ae9d6c79626c8ddd3ce7d199d69785d3185880c8",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
