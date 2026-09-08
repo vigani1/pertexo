@@ -390,3 +390,18 @@ making the subset-versus-graph distinction explicit. The old test already
 implicitly required successful deduplication because the SDK rejects duplicate
 selected identities; its checksum-format assertion did not explain that proof.
 All 24 identity tests pass, along with the engine test typecheck and scoped lint.
+
+### Missing trigger-event diagnostic
+
+Check whether the tenant-scoped outbox query returned an event before parsing
+its payload. A missing event now uses the already-defined unavailable-event
+diagnostic; a present malformed payload keeps the invalid-payload diagnostic.
+Both retain `WorkflowTriggerReconciliationMismatchError`, fail before receipt
+admission and leave durable verification and authorization unchanged.
+
+The new missing-event case first fails against the old implementation with the
+wrong message. After the fix, it and the malformed-payload case pass, including
+exact absence of inbox receipts. All 12 webhook integration tests pass against
+the existing fixture's disposable PostgreSQL database; its teardown removes the
+database without touching application data. All 238 database unit tests, test
+typecheck and scoped lint also pass. No migration or SQL-policy changes.
