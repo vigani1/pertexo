@@ -108,7 +108,7 @@ The broader pass starts at `e4feb99d`. Its first completed cleanup removes:
   counts, preserving the same three schema ownership assertions.
 
 Changed-file lint, schema validation and deployment checks verify this checkpoint.
-Full review coverage and remaining findings are still in progress.
+Full review coverage and remaining dispositions are recorded in the conclusion.
 
 ### Private Slack send-helper checkpoint
 
@@ -283,3 +283,94 @@ still has empty start/end coordinates. Refresh only that fingerprint; preserve
 the generated classification and justification. The other source-backed review
 fingerprint is identical. The risk report still has 22 unreviewed and 463 reviewed
 sites; the failed push did not update the remote.
+
+## File-by-file conclusion
+
+Completed 2026-09-08. The follow-up baseline is `e4feb99d`; the
+[per-file ledger](./audits/low-value-code-file-ledger.tsv) contains exactly its
+1,430 tracked paths, with no duplicate or missing rows. Its comparison tree is
+`ef410ea5` (1,429 paths): the removed SSE pseudo-load test has an empty current
+blob and `deleted` status. The subsequent domain checkpoint `e2fb4ccd` changes
+four reviewed source/test files and these two journals; `e2ac7a0e` reconciles
+one coverage fingerprint. Neither changes path membership. The ledger itself is
+a new documentation artifact, not an omitted baseline source file.
+
+| Disposition | Baseline files | What was established |
+| --- | ---: | --- |
+| Full-body review | 1,330 | Source, tests, configuration, tooling and prose read in full across the review team; candidates checked against callers and ownership. |
+| Generated validation | 17 | Sixteen contract artifacts checked against deterministic generation; the lockfile structurally checked and frozen-lockfile validation passed. Not manual source review. |
+| Coverage-policy data review | 1 | All risk-review groups structurally inspected; changed locations and obsolete entries checked by the risk gate. Not a fresh semantic reclassification of every historical justification. |
+| Historical migration inventory | 82 | Each migration recorded by path, size and identity, with immutable-checksum and schema-gate evidence. No claim of a fresh statement-by-statement migration/security certification. |
+
+The ledger's `primary`, `apps`, `domain` and `adapter` labels identify review
+assignments. Thirty-seven primary/adapter overlaps are intentionally deduplicated
+into single rows. The later full-content domain pass supersedes its earlier
+structural-only inventory; all 255 nongenerated domain files received full-body
+review. Blob columns prove tree membership and identity, not review quality.
+This is a pinned audit record, not a CI allowlist or a promise about future files.
+
+### Retained and deferred candidates
+
+The module-design review favors fewer methods and shared implementations where
+caller behavior is proven equivalent. It does not treat every small file or
+repeated-looking check as waste. No additional directory reshuffle was justified
+by this pass; process authority, domain ownership, browser/server entrypoints and
+versioned node-family organization remain meaningful.
+
+- Keep role-specific persistence factories, transaction/recovery fixtures,
+  independently versioned provider/release matrices and public package aliases.
+  Similar shape is not equivalent authority, failure behavior or compatibility.
+- Keep lexical migration gates alongside integration tests: they provide fast,
+  independent regression checks. Do not merge preview claim/cleanup receipt
+  helpers whose error classes and lifecycle contracts differ.
+- Keep hostile-input validation at public and persisted seams. Consolidating
+  graph reparsing, checkpoint scope parsers or repeated executable-tree lookups
+  remains a possible focused redesign, not a proved behavior-preserving deletion.
+- Keep tiny local test utilities when sharing them would introduce cross-package
+  coupling, and keep mutation/export-layout checks that enforce a documented
+  contract. Some single-caller mapping helpers still provide useful naming.
+- Do not replace trigger projection canonicalization with the general canonical
+  JSON helper: their sorting differs and the projection fingerprint is persisted.
+  Any unification needs an explicit compatibility decision and regression proof.
+- A missing trigger event is currently rejected while parsing its payload before
+  the explicit missing-row branch. Improving that diagnostic remains deferred;
+  changing its order would change observable error behavior, not just remove code.
+- Validate issue-metadata consolidation and broader retained-catalog test
+  deduplication remain possible follow-ups. This pass does not claim they were
+  implemented or that every remaining line is indispensable. The engine test
+  named for repeated-definition deduplication currently proves build success and
+  checksum shape, not the selected-definition set; stronger behavioral evidence
+  for that assertion also remains a follow-up.
+
+### Final verification and limits
+
+Implementation checkpoints created by this follow-up, in order:
+
+| Commit | Purpose |
+| --- | --- |
+| `afa5a7ac` | Remove verified tooling leftovers. |
+| `b36570a1` | Remove unused private Slack send alternatives. |
+| `c2e9f5d1` | Distinguish live guidance from historical audit evidence. |
+| `8ebc2b0e` | Simplify lifecycle coverage configuration. |
+| `a5e4f2bd` | Reuse operator command contracts. |
+| `5aa6739f` | Remove the obsolete operator clone review. |
+| `bb2e1351` | Remove redundant worker assertions and an exact duplicate test. |
+| `3701a62a` | Remove shallow worker indirection. |
+| `7b970d4d` | Consolidate database contract assertions. |
+| `b32267a4` | Remove vacuous API assertions and the pseudo-load test. |
+| `ef410ea5` | Remove shallow API indirection. |
+| `e2fb4ccd` | Remove redundant domain indirection. |
+| `e2ac7a0e` | Reconcile the checkpoint coverage fingerprint. |
+
+The domain checkpoint passes the full repository pre-push gate: formatting,
+documentation, runtime/architecture/dependency/schema checks, build, lint,
+complexity, duplication, generated contracts, all unit suites, typechecks and
+all configured coverage gates. Earlier checkpoint sections record their narrow
+proofs and the three disposable-service preview integration tests.
+
+The entire integration matrix, service-loss/SIGKILL exercises, deployed load/SLO
+tests and external-platform readiness were not rerun for this cleanup. The
+selected risk report still has 22 pre-existing unreviewed uncovered branches;
+463 reviewed sites remain, and no coverage floor or detector threshold was
+lowered. Passing these checks does not certify an absence of defects or close
+the backend plan's remaining delivery requirements.
