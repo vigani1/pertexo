@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-06
+Last updated: 2026-09-08
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -8,14 +8,18 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## File-by-file low-value audit — in progress
+## File-by-file low-value audit — complete within recorded scope
 
 The initial directory-level cleanup below is complete, but it did not establish
 file-by-file review coverage. The user requested that broader pass on 2026-09-06.
-Every tracked path will receive an explicit disposition; generated dependency
-data and historical evidence will be distinguished from executable source review.
+All 1,430 baseline paths have an explicit disposition in the
+[file ledger](./audits/low-value-code-file-ledger.tsv): 1,330 full-body reviews,
+17 generated-file validations, one coverage-policy data review and 82 historical
+migration inventories. The [audit conclusion](./low-value-code-audit.md#file-by-file-conclusion)
+records retained candidates, limitations and verification. This completes the
+low-value audit, not the backend plan or production-readiness obligations.
 
-- [ ] Complete and reconcile the tracked-file review inventory across all
+- [x] Complete and reconcile the tracked-file review inventory across all
       applications, packages, infrastructure, configuration and documentation.
 - [x] Remove four verified tooling leftovers: an inactive deferred-web lint
       block, unused smoke-harness argument, duplicate threshold predicate and
@@ -53,7 +57,7 @@ data and historical evidence will be distinguished from executable source review
       preview fixture ceremony. Preserve all lease, dispatch, telemetry and
       durable redelivery checks. All 277 unit tests and three preview integration
       tests pass; the integration run uses a separate temporary Redis instance.
-- [ ] Verify remaining candidates, publish the reconciled inventory and record
+- [x] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 - [x] Replace 30 identical migration-head constant assertions with one serving
       readiness contract. Preserve each migration's SQL/security assertions and
