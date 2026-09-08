@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { hasBoundedGraphAggregateUnsafe } from './graph/aggregate.js';
+
 export type JsonValue =
   | null
   | boolean
@@ -180,8 +182,9 @@ const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
 
 /**
  * Structurally representable projection for contract generators. Runtime
- * callers must continue to use workflowGraphSchema, which adds hostile-input
- * and aggregate preflight before this parser executes.
+ * browser/public callers use workflowGraphSchema, which adds hostile-input
+ * and aggregate preflight; the server parser applies equivalent guards before
+ * calling this structural parser.
  */
 export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
   () =>
@@ -274,69 +277,11 @@ function preflightWorkflowGraphUnsafe(input: unknown): boolean {
   return true;
 }
 
-function hasBoundedGraphAggregateUnsafe(input: unknown): boolean {
-  const pending: readonly [unknown, number][] = [[input, 0]];
-  const graphs = [...pending];
-  let nodes = 0;
-  let edges = 0;
-  while (graphs.length > 0) {
-    const entry = graphs.pop();
-    if (entry === undefined) continue;
-    const [value, depth] = entry;
-    if (depth > WORKFLOW_GRAPH_CONTRACT_LIMITS.structuredDepth) return false;
-    if (value === null || typeof value !== 'object' || Array.isArray(value))
-      continue;
-    const nodeDescriptor = Object.getOwnPropertyDescriptor(value, 'nodes');
-    const edgeDescriptor = Object.getOwnPropertyDescriptor(value, 'edges');
-    if (!nodeDescriptor || !('value' in nodeDescriptor)) continue;
-    if (!edgeDescriptor || !('value' in edgeDescriptor)) continue;
-    const graphNodes = nodeDescriptor.value as unknown;
-    const graphEdges = edgeDescriptor.value as unknown;
-    if (!Array.isArray(graphNodes) || !Array.isArray(graphEdges)) continue;
-    nodes += graphNodes.length;
-    edges += graphEdges.length;
-    if (
-      nodes > WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes ||
-      edges > WORKFLOW_GRAPH_CONTRACT_LIMITS.edges
-    )
-      return false;
-    for (let index = graphNodes.length - 1; index >= 0; index -= 1) {
-      const nodeDescriptor = Object.getOwnPropertyDescriptor(
-        graphNodes,
-        String(index),
-      );
-      if (!nodeDescriptor || !('value' in nodeDescriptor)) continue;
-      const node = nodeDescriptor.value as unknown;
-      if (node === null || typeof node !== 'object' || Array.isArray(node))
-        continue;
-      const structuredDescriptor = Object.getOwnPropertyDescriptor(
-        node,
-        'structured',
-      );
-      if (!structuredDescriptor || !('value' in structuredDescriptor)) continue;
-      const structured = structuredDescriptor.value as unknown;
-      if (
-        structured === null ||
-        typeof structured !== 'object' ||
-        Array.isArray(structured)
-      )
-        continue;
-      const bodyDescriptor = Object.getOwnPropertyDescriptor(
-        structured,
-        'body',
-      );
-      if (bodyDescriptor && 'value' in bodyDescriptor)
-        graphs.push([bodyDescriptor.value, depth + 1]);
-    }
-  }
-  return true;
-}
-
 function preflightWorkflowGraph(input: unknown): boolean {
   try {
     return (
       preflightWorkflowGraphUnsafe(input) &&
-      hasBoundedGraphAggregateUnsafe(input)
+      hasBoundedGraphAggregateUnsafe(input, WORKFLOW_GRAPH_CONTRACT_LIMITS)
     );
   } catch {
     return false;

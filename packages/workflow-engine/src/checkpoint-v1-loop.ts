@@ -6,6 +6,8 @@ import {
   isInteger,
   isRecord,
   parseOutputReference,
+  parseBranchPath,
+  parseIterationPath,
   sortedUnique,
 } from './checkpoint-shared.js';
 
@@ -54,45 +56,8 @@ export function parseLoop(
     controlInvocationKey.length > 0,
     'loop control key is required',
   );
-  assertCheckpoint(
-    value.branchPath === undefined || Array.isArray(value.branchPath),
-    'loop branch scope must be an array',
-  );
-  const branchPath = Array.isArray(value.branchPath)
-    ? value.branchPath.map((part) => {
-        assertCheckpoint(isRecord(part), 'loop branch scope must be an object');
-        assertExactKeys(part, ['nodeId', 'outputPort']);
-        assertCheckpoint(
-          typeof part.nodeId === 'string' &&
-            part.nodeId.length > 0 &&
-            typeof part.outputPort === 'string' &&
-            part.outputPort.length > 0,
-          'loop branch scope is invalid',
-        );
-        return { nodeId: part.nodeId, outputPort: part.outputPort };
-      })
-    : [];
-  assertCheckpoint(
-    value.iterationPath === undefined || Array.isArray(value.iterationPath),
-    'loop iteration scope must be an array',
-  );
-  const iterationPath = Array.isArray(value.iterationPath)
-    ? value.iterationPath.map((part) => {
-        assertCheckpoint(
-          isRecord(part),
-          'loop iteration scope must be an object',
-        );
-        assertExactKeys(part, ['loopNodeId', 'ordinal']);
-        assertCheckpoint(
-          typeof part.loopNodeId === 'string' &&
-            part.loopNodeId.length > 0 &&
-            isInteger(part.ordinal) &&
-            part.ordinal >= 0,
-          'loop iteration scope is invalid',
-        );
-        return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
-      })
-    : [];
+  const branchPath = parseBranchPath(value.branchPath, 'loop');
+  const iterationPath = parseIterationPath(value.iterationPath, 'loop');
   assertCheckpoint(
     value.bodyRootNodeIds === undefined || Array.isArray(value.bodyRootNodeIds),
     'loop body roots must be an array',

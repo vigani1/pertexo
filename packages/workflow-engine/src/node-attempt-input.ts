@@ -5,7 +5,7 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model/canonical-json';
 
-import { executableNodes } from './executable-graph.js';
+import { findExecutableNodeContext } from './executable-graph.js';
 import {
   normalizeBoundedEngineJson,
   type WorkflowExecutableGraphV2,
@@ -23,46 +23,12 @@ export type PreparedNodeAttemptInput = Readonly<{
   structuredInputs?: Readonly<Record<string, JsonValue>>;
 }>;
 
-function graphContainingNode(
-  graph: WorkflowExecutableGraphV2,
-  nodeId: string,
-): WorkflowExecutableGraphV2 | undefined {
-  if (graph.nodes.some(({ id }) => id === nodeId)) return graph;
-  for (const node of graph.nodes) {
-    if (node.structured === undefined) continue;
-    const found = graphContainingNode(node.structured.body, nodeId);
-    if (found !== undefined) return found;
-  }
-  return undefined;
-}
-
-export function structuredAncestors(
-  graph: WorkflowExecutableGraphV2,
-  nodeId: string,
-  ancestors: readonly string[] = [],
-): readonly string[] | undefined {
-  if (graph.nodes.some(({ id }) => id === nodeId)) return ancestors;
-  for (const node of graph.nodes) {
-    if (node.structured === undefined) continue;
-    const found = structuredAncestors(node.structured.body, nodeId, [
-      ...ancestors,
-      node.id,
-    ]);
-    if (found !== undefined) return found;
-  }
-  return undefined;
-}
-
 function assertStructuredScope(
   input: ExecuteNodeAttemptInput,
-  node: WorkflowExecutableNodeV2,
+  ancestors: readonly string[],
 ): void {
-  const ancestors = structuredAncestors(
-    input.executable.envelope.graph,
-    node.id,
-  );
   if (
-    ancestors?.length !== (input.iterationPath?.length ?? 0) ||
+    ancestors.length !== (input.iterationPath?.length ?? 0) ||
     ancestors.some(
       (loopNodeId, index) =>
         input.iterationPath?.[index]?.loopNodeId !== loopNodeId,
@@ -247,25 +213,20 @@ export function prepareNodeAttemptInput(
       error instanceof Error ? error.message : 'attempt input is invalid',
     );
   }
-  const node = executableNodes(input.executable.envelope.graph).find(
-    ({ id }) => id === input.nodeId,
+  const context = findExecutableNodeContext(
+    input.executable.envelope.graph,
+    input.nodeId,
   );
-  if (node === undefined || node.disabled) {
+  if (context === undefined || context.node.disabled) {
     operationError('attempt_invalid', 'node is not executable');
   }
-  assertStructuredScope(input, node);
+  const { node, graph: containingGraph, ancestors } = context;
+  assertStructuredScope(input, ancestors);
   if (input.invocationKey !== expectedInvocationKey(input, node.id)) {
     operationError(
       'attempt_invalid',
       'node invocation identity does not match',
     );
-  }
-  const containingGraph = graphContainingNode(
-    input.executable.envelope.graph,
-    node.id,
-  );
-  if (containingGraph === undefined) {
-    operationError('attempt_invalid', 'node graph is missing');
   }
   const directUpstream = new Set(
     containingGraph.edges

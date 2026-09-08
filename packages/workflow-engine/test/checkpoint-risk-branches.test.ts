@@ -72,6 +72,50 @@ const emptyLoop = {
 };
 
 describe('checkpoint risk branches', () => {
+  it.each([
+    ['invocation', 'branchPath', 'invocation branchPath must be an array'],
+    [
+      'invocation',
+      'iterationPath',
+      'invocation iterationPath must be an array',
+    ],
+    ['join', 'branchPath', 'join branch scope must be an array'],
+    ['join', 'iterationPath', 'join iteration scope must be an array'],
+    ['loop', 'branchPath', 'loop branch scope must be an array'],
+    ['loop', 'iterationPath', 'loop iteration scope must be an array'],
+  ] as const)('preserves the %s %s diagnostic', (subject, field, message) => {
+    const scope = { [field]: null };
+    const input =
+      subject === 'invocation'
+        ? {
+            ...createCheckpointV2({
+              engineVersion: 'engine-v2',
+              workflowVersionId,
+              iterationBudget: 100,
+            }),
+            invocations: [
+              {
+                invocationKey: rootKey('node'),
+                nodeId: 'node',
+                status: 'pending',
+                attemptNumber: 0,
+                ...scope,
+              },
+            ],
+          }
+        : subject === 'join'
+          ? pendingJoin({
+              joinId: 'join',
+              policy: { kind: 'all' },
+              ledger: [{ branchId: 'a', disposition: 'pending' }],
+              ...scope,
+            })
+          : loopCheckpoint({ ...emptyLoop, ...scope }, 'succeeded');
+    expect(() => parseCheckpoint(input)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid', message }),
+    );
+  });
+
   it.each(['\u001f', '\u007f', '\u07ff', '\u0800', '\ud800', '\udc00', '-0'])(
     'rejects a persistence-invalid engine version containing %j',
     (engineVersion) => {

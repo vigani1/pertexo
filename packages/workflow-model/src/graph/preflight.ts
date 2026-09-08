@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { workflowGraphSchema, type WorkflowGraph } from '../graph-contract.js';
+import {
+  workflowGraphStructuralSchemaV1,
+  type WorkflowGraph,
+} from '../graph-contract.js';
+import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
 import {
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
@@ -261,6 +265,19 @@ function preflightWorkflowGraph(input: unknown): void {
   }
 }
 
+const workflowGraphAggregateAdmissionSchema = z.custom<unknown>(
+  (input) => {
+    try {
+      return hasBoundedGraphAggregateUnsafe(input, WORKFLOW_GRAPH_LIMITS);
+    } catch {
+      return false;
+    }
+  },
+  {
+    message: 'workflow graph exceeds the bounded JSON contract',
+  },
+);
+
 export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
   const bytes = preflightJsonDocument(input);
   if (bytes > WORKFLOW_GRAPH_LIMITS.graphBytes)
@@ -270,7 +287,8 @@ export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
       'graph bytes exceed the graph limit',
     );
   preflightWorkflowGraph(input);
-  return workflowGraphSchema.parse(input);
+  workflowGraphAggregateAdmissionSchema.parse(input);
+  return workflowGraphStructuralSchemaV1.parse(input);
 }
 
 export type WorkflowGraphDraftParseResult =

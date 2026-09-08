@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
   WorkflowGraphContractError,
   safeParseWorkflowGraphDraft,
@@ -183,7 +184,97 @@ describe('workflow-model package contract', () => {
 
     expect(workflowGraphSchema.safeParse(exact).success).toBe(true);
     expect(safeParseWorkflowGraphDraft(exact).success).toBe(true);
-    expect(workflowGraphSchema.safeParse(over).success).toBe(false);
-    expect(safeParseWorkflowGraphDraft(over).success).toBe(false);
+    const browserResult = workflowGraphSchema.safeParse(over);
+    expect(browserResult.success).toBe(false);
+    if (browserResult.success) throw new Error('expected browser rejection');
+    expect(browserResult.error.issues).toEqual([
+      {
+        code: 'custom',
+        path: [],
+        message: 'workflow graph exceeds the bounded JSON contract',
+      },
+    ]);
+    const serverResult = safeParseWorkflowGraphDraft(over);
+    expect(serverResult.success).toBe(false);
+    if (serverResult.success) throw new Error('expected server rejection');
+    expect(serverResult.error).toBeInstanceOf(z.ZodError);
+    expect(serverResult.error).toEqual(browserResult.error);
+  });
+
+  it('preserves distinct browser and server diagnostics for non-finite numbers', () => {
+    const graph = {
+      schemaVersion: 1,
+      nodes: [
+        {
+          id: 'non-finite',
+          definition: { key: 'core.set', version: 1 },
+          position: { x: Number.NaN, y: 0 },
+          configVersion: 1,
+          config: {},
+          inputMappings: {},
+          connectionRefs: {},
+        },
+      ],
+      edges: [],
+      settings: {},
+    };
+    const browserResult = workflowGraphSchema.safeParse(graph);
+    expect(browserResult.success).toBe(false);
+    if (browserResult.success) throw new Error('expected browser rejection');
+    expect(browserResult.error.issues[0]).toMatchObject({
+      code: 'invalid_type',
+      path: ['nodes', 0, 'position', 'x'],
+    });
+
+    const serverResult = safeParseWorkflowGraphDraft(graph);
+    expect(serverResult.success).toBe(false);
+    if (serverResult.success) throw new Error('expected server rejection');
+    expect(serverResult.error).toBeInstanceOf(WorkflowGraphContractError);
+    expect(serverResult.error).toMatchObject({
+      code: 'invalid_json',
+      path: '$.nodes[0].position.x',
+    });
+  });
+
+  it('converts aggregate descriptor traps into the browser contract issue', () => {
+    const graph = {
+      schemaVersion: 1,
+      nodes: [],
+      edges: [],
+      settings: {},
+    };
+    let nodeDescriptorReads = 0;
+    const hostile = new Proxy(graph, {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === 'nodes' && ++nodeDescriptorReads > 2)
+          throw new Error('aggregate descriptor trap');
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+    const result = workflowGraphSchema.safeParse(hostile);
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error('expected browser rejection');
+    expect(result.error.issues).toEqual([
+      {
+        code: 'custom',
+        path: [],
+        message: 'workflow graph exceeds the bounded JSON contract',
+      },
+    ]);
+
+    let serverNodeDescriptorReads = 0;
+    const serverHostile = new Proxy(graph, {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === 'nodes' && ++serverNodeDescriptorReads > 3)
+          throw new Error('aggregate descriptor trap');
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+    const serverResult = safeParseWorkflowGraphDraft(serverHostile);
+    expect(serverResult.success).toBe(false);
+    if (serverResult.success) throw new Error('expected server rejection');
+    if (!(serverResult.error instanceof z.ZodError))
+      throw new Error('expected aggregate Zod rejection');
+    expect(serverResult.error.issues).toEqual(result.error.issues);
   });
 });

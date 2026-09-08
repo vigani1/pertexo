@@ -6,6 +6,8 @@ import {
   RUN_STATUSES,
   type BranchLedgerEntry,
   type OutputReference,
+  type BranchScopePart,
+  type IterationScopePart,
 } from './types.js';
 import { types as nodeTypes } from 'node:util';
 import { invocationKey } from './scheduling.js';
@@ -335,6 +337,74 @@ export function parseInvocation(value: unknown): InvocationState {
   };
 }
 
+export function parseBranchPath(
+  value: unknown,
+  subject: 'invocation' | 'join' | 'loop',
+): readonly BranchScopePart[] {
+  const invocation = subject === 'invocation';
+  const label = invocation ? 'branch scope' : `${subject} branch scope`;
+  assertCheckpoint(
+    value === undefined || Array.isArray(value),
+    invocation
+      ? 'invocation branchPath must be an array'
+      : `${label} must be an array`,
+  );
+  return (value ?? []).map((part) => {
+    assertCheckpoint(
+      isRecord(part),
+      invocation
+        ? 'branch scope part must be an object'
+        : `${label} must be an object`,
+    );
+    assertExactKeys(part, ['nodeId', 'outputPort']);
+    assertCheckpoint(
+      typeof part.nodeId === 'string' && part.nodeId.length > 0,
+      invocation ? 'branch scope nodeId is required' : `${label} is invalid`,
+    );
+    assertCheckpoint(
+      typeof part.outputPort === 'string' && part.outputPort.length > 0,
+      invocation
+        ? 'branch scope outputPort is required'
+        : `${label} is invalid`,
+    );
+    return { nodeId: part.nodeId, outputPort: part.outputPort };
+  });
+}
+
+export function parseIterationPath(
+  value: unknown,
+  subject: 'invocation' | 'join' | 'loop',
+): readonly IterationScopePart[] {
+  const invocation = subject === 'invocation';
+  const label = invocation ? 'iteration scope' : `${subject} iteration scope`;
+  assertCheckpoint(
+    value === undefined || Array.isArray(value),
+    invocation
+      ? 'invocation iterationPath must be an array'
+      : `${label} must be an array`,
+  );
+  return (value ?? []).map((part) => {
+    assertCheckpoint(
+      isRecord(part),
+      invocation
+        ? 'iteration scope part must be an object'
+        : `${label} must be an object`,
+    );
+    assertExactKeys(part, ['loopNodeId', 'ordinal']);
+    assertCheckpoint(
+      typeof part.loopNodeId === 'string' && part.loopNodeId.length > 0,
+      invocation
+        ? 'iteration scope loopNodeId is required'
+        : `${label} is invalid`,
+    );
+    assertCheckpoint(
+      isInteger(part.ordinal) && part.ordinal >= 0,
+      invocation ? 'iteration scope ordinal is invalid' : `${label} is invalid`,
+    );
+    return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
+  });
+}
+
 export function parseV2Invocations(
   value: unknown,
   workflowVersionId: string,
@@ -353,43 +423,8 @@ export function parseV2Invocations(
       ...base
     } = item;
     const invocation = parseInvocation(base);
-    assertCheckpoint(
-      rawBranchPath === undefined || Array.isArray(rawBranchPath),
-      'invocation branchPath must be an array',
-    );
-    const branchPath = (rawBranchPath ?? []).map((part) => {
-      assertCheckpoint(isRecord(part), 'branch scope part must be an object');
-      assertExactKeys(part, ['nodeId', 'outputPort']);
-      assertCheckpoint(
-        typeof part.nodeId === 'string' && part.nodeId.length > 0,
-        'branch scope nodeId is required',
-      );
-      assertCheckpoint(
-        typeof part.outputPort === 'string' && part.outputPort.length > 0,
-        'branch scope outputPort is required',
-      );
-      return { nodeId: part.nodeId, outputPort: part.outputPort };
-    });
-    assertCheckpoint(
-      rawIterationPath === undefined || Array.isArray(rawIterationPath),
-      'invocation iterationPath must be an array',
-    );
-    const iterationPath = (rawIterationPath ?? []).map((part) => {
-      assertCheckpoint(
-        isRecord(part),
-        'iteration scope part must be an object',
-      );
-      assertExactKeys(part, ['loopNodeId', 'ordinal']);
-      assertCheckpoint(
-        typeof part.loopNodeId === 'string' && part.loopNodeId.length > 0,
-        'iteration scope loopNodeId is required',
-      );
-      assertCheckpoint(
-        isInteger(part.ordinal) && part.ordinal >= 0,
-        'iteration scope ordinal is invalid',
-      );
-      return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
-    });
+    const branchPath = parseBranchPath(rawBranchPath, 'invocation');
+    const iterationPath = parseIterationPath(rawIterationPath, 'invocation');
     assertCheckpoint(
       new Set(branchPath.map(({ nodeId }) => nodeId)).size ===
         branchPath.length,

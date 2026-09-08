@@ -358,8 +358,16 @@ describe('workflow graph V1 public contract', () => {
         },
       ],
     };
-    expect(contractError(overStructured).code).toBe('structured_depth');
-    expect(contractError(overConfig).code).toBe('json_value_depth');
+    const structuredError = contractError(overStructured);
+    expect(structuredError).toMatchObject({ code: 'structured_depth' });
+    expect(structuredError.path).toBe(
+      `$${'.nodes[0].structured.body'.repeat(
+        WORKFLOW_GRAPH_LIMITS.structuredDepth + 1,
+      )}`,
+    );
+    const configError = contractError(overConfig);
+    expect(configError).toMatchObject({ code: 'json_value_depth' });
+    expect(configError.path).toMatch(/^\$\.nodes\[0\]\.config(?:\.child)+$/u);
     for (const input of [
       overStructured,
       nestedStructuredGraph(500),
