@@ -5,6 +5,8 @@ import {
   isInteger,
   isRecord,
   parseLedger,
+  parseBranchPath,
+  parseIterationPath,
   sortedUnique,
 } from './checkpoint-shared.js';
 
@@ -32,45 +34,8 @@ export function parseJoin(value: unknown): JoinState {
     'join invocation key is invalid',
   );
   const joinInvocationKey = value.joinInvocationKey ?? value.joinId;
-  assertCheckpoint(
-    value.branchPath === undefined || Array.isArray(value.branchPath),
-    'join branch scope must be an array',
-  );
-  const branchPath = Array.isArray(value.branchPath)
-    ? value.branchPath.map((part) => {
-        assertCheckpoint(isRecord(part), 'join branch scope must be an object');
-        assertExactKeys(part, ['nodeId', 'outputPort']);
-        assertCheckpoint(
-          typeof part.nodeId === 'string' &&
-            part.nodeId.length > 0 &&
-            typeof part.outputPort === 'string' &&
-            part.outputPort.length > 0,
-          'join branch scope is invalid',
-        );
-        return { nodeId: part.nodeId, outputPort: part.outputPort };
-      })
-    : [];
-  assertCheckpoint(
-    value.iterationPath === undefined || Array.isArray(value.iterationPath),
-    'join iteration scope must be an array',
-  );
-  const iterationPath = Array.isArray(value.iterationPath)
-    ? value.iterationPath.map((part) => {
-        assertCheckpoint(
-          isRecord(part),
-          'join iteration scope must be an object',
-        );
-        assertExactKeys(part, ['loopNodeId', 'ordinal']);
-        assertCheckpoint(
-          typeof part.loopNodeId === 'string' &&
-            part.loopNodeId.length > 0 &&
-            isInteger(part.ordinal) &&
-            part.ordinal >= 0,
-          'join iteration scope is invalid',
-        );
-        return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
-      })
-    : [];
+  const branchPath = parseBranchPath(value.branchPath, 'join');
+  const iterationPath = parseIterationPath(value.iterationPath, 'join');
   assertCheckpoint(isRecord(value.policy), 'join policy is required');
   assertExactKeys(
     value.policy,

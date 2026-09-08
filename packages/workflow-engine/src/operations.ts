@@ -26,7 +26,10 @@ import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,
 } from './coordinator-output.js';
-import { executableNodes } from './executable-graph.js';
+import {
+  executableNodes,
+  findExecutableNodeContext,
+} from './executable-graph.js';
 import {
   assertAuthenticExecutableIdentity,
   normalizeBoundedEngineJson,
@@ -47,10 +50,7 @@ import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './persisted-observations.js';
 import { providerIdempotencyKey } from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import {
-  prepareNodeAttemptInput,
-  structuredAncestors,
-} from './node-attempt-input.js';
+import { prepareNodeAttemptInput } from './node-attempt-input.js';
 import type {
   BranchScopePart,
   IterationScopePart,
@@ -196,10 +196,10 @@ function assertCheckpointMatchesExecutable(
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     const branchPath = invocation.branchPath ?? [];
-    const ancestors = structuredAncestors(
+    const ancestors = findExecutableNodeContext(
       executable.envelope.graph,
       invocation.nodeId,
-    );
+    )?.ancestors;
     if (
       !nodeIds.has(invocation.nodeId) ||
       ancestors?.length !== (invocation.iterationPath?.length ?? 0) ||

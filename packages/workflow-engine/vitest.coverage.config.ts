@@ -10,7 +10,7 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/workflow-engine',
       include: [
-        'src/{advance-workflow,checkpoint,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,coordinator-failures,coordinator-observations,coordinator-output,executable-compatibility,executable-graph-boundary,executable-validation,graph-scheduler,node-attempt-input,operations,persisted-observation-parser,persisted-observations,retries,scheduling,transitions,workflow-transition-derived,workflow-transition-observations,workflow-transition-plan,workflow-transition-state,workflow-transition-stops}.ts',
+        'src/{advance-workflow,checkpoint,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,coordinator-failures,coordinator-observations,coordinator-output,executable-compatibility,executable-graph,executable-graph-boundary,executable-validation,graph-scheduler,node-attempt-input,operations,persisted-observation-parser,persisted-observations,retries,scheduling,transitions,workflow-transition-derived,workflow-transition-observations,workflow-transition-plan,workflow-transition-state,workflow-transition-stops}.ts',
       ],
       thresholds: {
         branches: 85,
@@ -18,7 +18,7 @@ export default defineConfig({
         lines: 91,
         statements: 90,
         // Preserve the stronger pre-expansion ratchet for its original cohort.
-        'src/{advance-workflow,checkpoint,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,node-attempt-input,operations,retries,transitions,workflow-transition-observations,workflow-transition-state}.ts':
+        'src/{advance-workflow,checkpoint,checkpoint-shared,checkpoint-v1,checkpoint-v1-join,checkpoint-v1-loop,checkpoint-v2,executable-graph,node-attempt-input,operations,retries,transitions,workflow-transition-observations,workflow-transition-state}.ts':
           {
             branches: 91,
             functions: 93.5,

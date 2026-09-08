@@ -74,4 +74,13 @@ describe('retained workflow V1 compatibility', () => {
       }),
     ).toThrow();
   });
+
+  it('owns the parsed graph instead of retaining the envelope graph reference', async () => {
+    const input = (await retainedFixture()) as {
+      graphJson: { settings: Record<string, unknown> };
+    };
+    const retained = parseRetainedWorkflowVersionV1(input);
+    input.graphJson.settings.maxRunDurationMs = 1;
+    expect(retained.graph.settings).toEqual({});
+  });
 });

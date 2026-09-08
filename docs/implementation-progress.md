@@ -29,8 +29,13 @@ targets.
       One internal table owns codes, messages and schema mappings. All 96 core
       tests pass; ordered values, frozen exports and all nine message/code
       pairs are independently pinned. Build, typecheck and scoped lint pass.
-- [ ] Resolve graph reparsing and engine checkpoint/tree-lookup consolidation
-      with preserved hostile-input checks and persisted identities.
+- [x] Resolve graph reparsing and engine checkpoint/tree-lookup consolidation
+      with preserved hostile-input checks and persisted identities. All 94
+      model and 294 engine tests and their coverage gates pass. A 285-case
+      before/after checkpoint comparison preserves exact parsed values and
+      errors. Generated contracts, build, typechecks, lint, complexity and
+      duplication checks pass. Risk reviews retain 22 pre-existing unreviewed
+      sites and 458 reviewed sites; no threshold was lowered.
 - [ ] Consolidate genuinely redundant catalog tests while preserving retained
       release behavior and compatibility evidence.
 - [ ] Run relevant checks, update the audit dispositions and push each coherent

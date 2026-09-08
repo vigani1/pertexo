@@ -168,7 +168,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:fc0052c683031d1c6acb7709ae9d6c79626c8ddd3ce7d199d69785d3185880c8",
+          "sourceFingerprint": "sha256:4fd3f959ac7e680d841bd0359cdf2f5144b495d5bc39c93137b27185eb496d95",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -176,7 +176,7 @@
           "branchId": "20",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 135,
+          "line": 137,
           "column": 4,
           "sourceFingerprint": "sha256:25001e2c3b16a98d3d11b37482f97f38e7775d119f9e05de3b1a2f2aa4e1ba7c",
           "classification": "unreachable",
@@ -189,30 +189,30 @@
       "file": "packages/workflow-engine/src/checkpoint-v1-join.ts",
       "reviews": [
         {
-          "branchId": "14",
+          "branchId": "8",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 95,
+          "line": 60,
           "column": 32,
           "sourceFingerprint": "sha256:b199718f29dd88ea28850f264b3a0c4a15c11fce90499a43363344193921c76b",
           "classification": "unreachable",
           "justification": "Positive integer count-policy validation has already established that count is present."
         },
         {
-          "branchId": "24",
+          "branchId": "18",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 154,
+          "line": 119,
           "column": 14,
           "sourceFingerprint": "sha256:603dad40bbed7f327ebe9e1a1bf608cbfc80799f92f3a064fdb86f5b80201840",
           "classification": "unreachable",
           "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
         },
         {
-          "branchId": "37",
+          "branchId": "31",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 193,
+          "line": 158,
           "column": 22,
           "sourceFingerprint": "sha256:732e056337436bfbd775a457f711fa34d256b8662fb6088b3a6412eaa6caf876",
           "classification": "unreachable",
@@ -389,124 +389,74 @@
       "file": "packages/workflow-engine/src/node-attempt-input.ts",
       "reviews": [
         {
-          "branchId": "2",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:aadb3b6ea1675724e099a7594e7e954e93b3cf6dad28098aa8883d6fe2c70c82",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "6",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:aadb3b6ea1675724e099a7594e7e954e93b3cf6dad28098aa8883d6fe2c70c82",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "1",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 32,
-          "column": 4,
-          "sourceFingerprint": "sha256:ec9a120d4a9fa99f7a785b7c101deba22ceb567562a9b273ca39d5f0c9ba24ec",
-          "classification": "defensive",
-          "justification": "Graph traversal skips nodes without a structured body; nested lookup success and not-found behavior are covered without manufacturing a body for leaf nodes."
-        },
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 64,
-          "column": 2,
-          "sourceFingerprint": "sha256:a69a835e3092ef6d452afc185cf352ec0661158d4f5acd79307fd14522ab5625",
-          "classification": "defensive",
-          "justification": "This rejects an attempt whose iteration ancestry length or node ids differ from the executable graph ancestry before any input is resolved."
-        },
-        {
-          "branchId": "15",
+          "branchId": "8",
           "locationIndex": 2,
           "branchType": "binary-expr",
-          "line": 122,
+          "line": 88,
           "column": 4,
           "sourceFingerprint": "sha256:14a41b3890be9a747c18ce255d4937acd7fbf49a68eac8a699800bf81e803a9a",
           "classification": "defensive",
           "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
         },
         {
-          "branchId": "14",
+          "branchId": "7",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 123,
+          "line": 89,
           "column": 8,
           "sourceFingerprint": "sha256:0b8bc3d13326802e05f5e2fd27eb95ad5e8c188c546c3299999d775f78ac15fe",
           "classification": "defensive",
           "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
         },
         {
-          "branchId": "20",
+          "branchId": "13",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 151,
+          "line": 117,
           "column": 2,
           "sourceFingerprint": "sha256:8b0d456e48d96a3b1a9991873d1350fa59596cf7531cdcaf9ac48c195cba1e82",
           "classification": "unreachable",
           "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
         },
         {
-          "branchId": "22",
+          "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 178,
+          "line": 144,
           "column": 2,
           "sourceFingerprint": "sha256:7935cc245440e0a9f4f3aecc63e8879602f4ea27a5b95c25a91b017135054ce3",
           "classification": "defensive",
           "justification": "Iteration-scoped attempts cannot fall back to the root input object when no explicit descriptor resolves, preventing cross-iteration input leakage."
         },
         {
-          "branchId": "31",
+          "branchId": "24",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 230,
+          "line": 196,
           "column": 2,
           "sourceFingerprint": "sha256:d9793db0f6bb75a0969c54880bd8e4e119ae119fac2285c9abaf9ba25139eb54",
           "classification": "unreachable",
           "justification": "Normalized JSON arrays are dense and the preceding proof bounds the ordinal below array length."
         },
         {
-          "branchId": "32",
+          "branchId": "25",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 247,
+          "line": 213,
           "column": 31,
           "sourceFingerprint": "sha256:6701f4175666dae6e37149c11bdb590bc2292be46521ebe5e4027be2e970903e",
           "classification": "defensive",
           "justification": "An Error thrown while validating attempt input contributes its sanitized message to the stable attempt_invalid operation error."
         },
         {
-          "branchId": "32",
+          "branchId": "25",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 247,
+          "line": 213,
           "column": 47,
           "sourceFingerprint": "sha256:f004286ec297d19aec64fe45df560f4ed7a51704539ce3b80796225dd901532f",
           "classification": "defensive",
           "justification": "A non-Error thrown while validating attempt input is converted to the stable attempt input is invalid fallback instead of escaping."
-        },
-        {
-          "branchId": "36",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 267,
-          "column": 2,
-          "sourceFingerprint": "sha256:b80a64cf232bf066997f85fbe2944d9315bb521322ee386d0ea0050f3cf95f5c",
-          "classification": "unreachable",
-          "justification": "The node was obtained from executableNodes over the same recursively traversed graph immediately beforehand."
         }
       ]
     },
@@ -520,7 +470,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:857e95f2d3c7b7125a91fdb69d26d42fa8e386546a894d3c8c362207b283c0f0",
+          "sourceFingerprint": "sha256:c2cb952052954e2d2ea8ef035d703b726cc8fa47a04cd9daa96ff6e28bdf43df",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },

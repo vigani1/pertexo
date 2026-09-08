@@ -415,3 +415,32 @@ core tests pass, including independently pinned values, frozen exports and
 acceptance/rejection checks for all nine code/message pairs. Build, test
 typecheck and scoped lint pass; the retained catalog fingerprint goldens pass
 unchanged.
+
+### Graph admission and engine scope ownership
+
+The retained-V1 parser computes its checksum from its already-parsed graph.
+Browser and server admission share the descriptor-safe aggregate walk; the
+server keeps its richer hostile-input, byte, configuration and depth checks and
+then uses the structural schema without repeating the browser hostile walk.
+Token comparison verifies the aggregate body is unchanged except for its limits
+parameter; the browser hostile-guard body is unchanged. Regressions preserve
+aggregate rejection, distinct non-finite diagnostics, descriptor-trap handling,
+depth paths and retained graph ownership. All 94 model tests and coverage pass.
+
+Checkpoint invocation, join and loop scope parsing now shares two private-package
+helpers while preserving each boundary's diagnostics. A node-context traversal
+returns the node, containing graph and loop ancestors together, replacing
+repeated node-attempt walks. Public regression tests cover malformed scope
+arrays and missing/reversed nested ancestry before executor dispatch. All 294
+engine tests and coverage pass; 285 before/after checkpoint inputs produce
+identical parsed values or exact error names, codes and messages.
+
+Coverage reviews were reconciled against fresh source locations and unchanged
+source fingerprints. Four obsolete reviews for removed traversal branches and
+one now-covered ancestry rejection are removed; remaining classifications and
+justifications are preserved, including two regenerated empty-location hashes
+whose owning decisions were checked unchanged. The report has 458 reviewed and
+22 pre-existing unreviewed sites across 119 selected files. The shared graph
+lookup is included in both engine coverage cohorts, preserving the stronger
+ratchet after the move. Build, typechecks, scoped lint, generated
+contracts, complexity and duplication pass without lowering thresholds.

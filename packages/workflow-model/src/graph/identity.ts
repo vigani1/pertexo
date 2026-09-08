@@ -295,7 +295,10 @@ function checksumExecutableProjection(projection: JsonValue): string {
  * Structural and graph-semantic corruption still fails closed.
  */
 export function workflowRetainedExecutableChecksum(input: unknown): string {
-  const graph = parseWorkflowGraphDraft(input);
+  return checksumRetainedGraph(parseWorkflowGraphDraft(input));
+}
+
+function checksumRetainedGraph(graph: WorkflowGraph): string {
   const validation = validateWorkflowGraph(graph);
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   return checksumExecutableProjection(executableGraphProjection(graph));
@@ -337,7 +340,7 @@ export function parseRetainedWorkflowVersionV1(
 ): RetainedWorkflowVersionV1 {
   const retained = retainedWorkflowVersionV1Schema.parse(input);
   const graph = parseWorkflowGraphDraft(retained.graphJson);
-  const checksum = workflowRetainedExecutableChecksum(graph);
+  const checksum = checksumRetainedGraph(graph);
   if (checksum !== retained.checksum)
     throw new Error('retained workflow V1 checksum does not match its graph');
   return Object.freeze({
