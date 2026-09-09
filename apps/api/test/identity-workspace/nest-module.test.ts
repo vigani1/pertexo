@@ -42,6 +42,8 @@ const dependencies: IdentityWorkspaceDependencies = {
     create: () => Promise.resolve(),
     findByDigest: () => Promise.resolve(undefined),
     revokeByDigest: () => Promise.resolve(false),
+    findUserById: () => Promise.resolve(null),
+    listWorkspaceMembers: () => Promise.resolve({ items: [] }),
     resolveOrCreateIdentity: () =>
       Promise.resolve({
         userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

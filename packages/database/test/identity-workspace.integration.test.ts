@@ -12,6 +12,7 @@ import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
   IdentityNotFoundError,
+  WorkspaceAccessDeniedError,
   OidcTransactionCapacityError,
   parseDatabaseConfig,
   auditEvents,
@@ -332,6 +333,102 @@ describe('identity/workspace persistence', () => {
     await expect(
       identityDatabase.findWorkspaceAccess(ownerUserId, randomUUID()),
     ).resolves.toBeNull();
+  });
+
+  it('lists active workspace members with bounded tuple pagination and rechecks member-read authorization', async () => {
+    const memberA = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'List Member A',
+    });
+    const memberB = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'List Member B',
+    });
+    await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
+      await db.insert(workspaceMemberships).values([
+        { workspaceId, userId: memberA.id, role: 'viewer', status: 'active' },
+        { workspaceId, userId: memberB.id, role: 'viewer', status: 'active' },
+      ]);
+    });
+    const first = await identityDatabase.listWorkspaceMembers(
+      workspaceId,
+      ownerUserId,
+      { limit: 1 },
+    );
+    expect(first.items).toHaveLength(1);
+    expect(first.nextCursor?.createdAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u,
+    );
+    const second = await identityDatabase.listWorkspaceMembers(
+      workspaceId,
+      ownerUserId,
+      {
+        limit: 1,
+        ...(first.nextCursor === undefined ? {} : { after: first.nextCursor }),
+      },
+    );
+    expect(second.items).toHaveLength(1);
+    expect(second.items[0]?.userId).not.toBe(first.items[0]?.userId);
+
+    await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
+      await db
+        .update(workspaceMemberships)
+        .set({ role: 'viewer' })
+        .where(eq(workspaceMemberships.userId, ownerUserId));
+    });
+    try {
+      await expect(
+        identityDatabase.listWorkspaceMembers(workspaceId, ownerUserId),
+      ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+    } finally {
+      await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
+        await db
+          .update(workspaceMemberships)
+          .set({ role: 'owner' })
+          .where(eq(workspaceMemberships.userId, ownerUserId));
+      });
+    }
+  });
+
+  it.each([
+    '2026-99-99T99:99:99.000000Z',
+    '2026-02-30T12:00:00.000000Z',
+    '0000-01-01T00:00:00.000000Z',
+  ])(
+    'rejects malformed member cursor timestamp %s before SQL',
+    async (createdAt) => {
+      await expect(
+        identityDatabase.listWorkspaceMembers(workspaceId, ownerUserId, {
+          after: { createdAt, userId: ownerUserId },
+        }),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+    },
+  );
+
+  it('provides a valid ordered index for non-removed member discovery', async () => {
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const result = await pool.query<{
+        valid: boolean;
+        definition: string;
+        predicate: string;
+      }>(
+        `select i.indisvalid as valid, pg_get_indexdef(i.indexrelid) as definition,
+                pg_get_expr(i.indpred, i.indrelid) as predicate
+         from pg_index i
+         where i.indexrelid = 'app.workspace_memberships_workspace_created_idx'::regclass`,
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0]?.valid).toBe(true);
+      expect(result.rows[0]?.definition).toContain(
+        '(workspace_id, created_at, user_id)',
+      );
+      expect(result.rows[0]?.predicate).toContain('active');
+      expect(result.rows[0]?.predicate).toContain('suspended');
+      expect(result.rows[0]?.predicate).not.toContain('removed');
+    } finally {
+      await pool.end();
+    }
   });
 
   it('keeps worker identity access least-privilege while allowing workspace status reads', async () => {

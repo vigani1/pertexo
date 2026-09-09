@@ -7,9 +7,14 @@ export {
   workspaceIdParamSchema,
   workspaceLifecycleOperationParamsSchema,
   workspaceLifecycleOperationResponseSchema,
+  workspaceMembersQuerySchema,
+  workspaceMembersResponseSchema,
+  userProfileResponseSchema,
   workspaceResponseSchema,
   type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
+  type UserProfileResponse,
+  type WorkspaceMembersResponse,
 } from '@pertexo/contracts/identity-workspace';
 import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
@@ -24,6 +29,7 @@ export interface IdentityWorkspaceRequest {
   requestId?: string;
   traceId?: string;
   params?: unknown;
+  query?: unknown;
   identitySession?: AuthenticatedRequestSession;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
 }

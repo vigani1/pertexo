@@ -57,6 +57,39 @@ export const workspaceResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
+export const userProfileResponseSchema = z
+  .object({
+    id: z.uuid(),
+    email: z.string().trim().min(3).max(320),
+    displayName: z.string().trim().min(1).max(256),
+    status: z.enum(['active', 'suspended', 'deleted']),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+export const workspaceMemberSchema = z
+  .object({
+    userId: z.uuid(),
+    email: z.string().trim().min(3).max(320),
+    displayName: z.string().trim().min(1).max(256),
+    role: z.enum(['owner', 'admin', 'builder', 'operator', 'viewer']),
+    membershipStatus: z.enum(['active', 'suspended']),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+export const workspaceMembersResponseSchema = z
+  .object({
+    items: z.array(workspaceMemberSchema).max(100),
+    nextCursor: z.string().min(1).max(512).nullable(),
+  })
+  .strict();
+export const workspaceMembersQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    after: z.string().min(1).max(512).optional(),
+  })
+  .strict();
 export const workspaceLifecycleOperationResponseSchema = z
   .object({
     id: workspaceLifecycleOperationIdentifierSchema,
@@ -78,6 +111,11 @@ export const workspaceLifecycleOperationResponseSchema = z
   .strict();
 
 export type WorkspaceResponse = z.output<typeof workspaceResponseSchema>;
+export type UserProfileResponse = z.output<typeof userProfileResponseSchema>;
+export type WorkspaceMember = z.output<typeof workspaceMemberSchema>;
+export type WorkspaceMembersResponse = z.output<
+  typeof workspaceMembersResponseSchema
+>;
 export type WorkspaceLifecycleOperationResponse = z.output<
   typeof workspaceLifecycleOperationResponseSchema
 >;

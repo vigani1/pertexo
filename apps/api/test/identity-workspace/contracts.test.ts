@@ -10,6 +10,8 @@ import {
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
   workspaceLifecycleOperationResponseSchema,
+  workspaceMembersResponseSchema,
+  userProfileResponseSchema,
   workspaceResponseSchema,
 } from '../../src/identity-workspace/index.js';
 
@@ -34,19 +36,26 @@ describe('identity/workspace generated contracts', () => {
           'output',
         ),
         WorkspaceResponse: generated(workspaceResponseSchema, 'output'),
+        UserProfileResponse: generated(userProfileResponseSchema, 'output'),
+        WorkspaceMembersResponse: generated(
+          workspaceMembersResponseSchema,
+          'output',
+        ),
       },
     });
   });
 
-  it('documents all six public route templates and their request/response schemas', () => {
+  it('documents all public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
+      '/v1/users/me',
       '/v1/auth/oidc/start',
       '/v1/auth/oidc/callback',
       '/v1/auth/logout',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
       '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}',
+      '/v1/workspaces/{workspaceId}/members',
     ]);
     expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(
       identityWorkspaceClientContract.schemas,

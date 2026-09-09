@@ -1,4 +1,5 @@
 export * from './artifact-transfer.js';
+export * from './catalog.js';
 export {
   connectionsClientContract,
   connectionsOpenApiDocument,

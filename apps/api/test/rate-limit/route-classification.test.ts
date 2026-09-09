@@ -2,10 +2,13 @@ import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
 import { ConnectionsController } from '../../src/connections/controllers.js';
+import { CatalogController } from '../../src/catalog/controllers.js';
 import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.js';
 import {
   OidcController,
   SessionController,
+  UserController,
+  WorkspaceMembersController,
   WorkspaceController,
 } from '../../src/identity-workspace/controllers.js';
 import { NodeTestingController } from '../../src/node-testing/controller.js';
@@ -32,6 +35,10 @@ const routes: readonly (readonly [
   [OidcController, 'start', 'identity_start'],
   [OidcController, 'callback', 'identity_callback'],
   [SessionController, 'logout', 'actor_mutation'],
+  [UserController, 'me', 'authenticated_read'],
+  [CatalogController, 'listNodeDefinitions', 'authenticated_read'],
+  [CatalogController, 'listIntegrations', 'authenticated_read'],
+  [WorkspaceMembersController, 'list', 'authenticated_read'],
   [WorkspaceController, 'create', 'actor_mutation'],
   [WorkspaceController, 'requestDeletion', 'ordinary_mutation'],
   [WorkspaceController, 'restore', 'ordinary_mutation'],

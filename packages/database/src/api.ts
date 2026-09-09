@@ -67,12 +67,16 @@ export type {
 export type { FailureNotificationDestinationDatabase } from './execution/failure-notification-destinations.js';
 export {
   IdentityConflictError,
+  WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   createIdentityWorkspaceDatabase,
 } from './tenant-access/identity-workspace.js';
 export type {
   IdentityWorkspaceDatabase,
   SessionRecord,
+  UserRecord,
+  WorkspaceMemberRecord,
+  WorkspaceMembersPage,
 } from './tenant-access/identity-workspace.js';
 export { createOidcLoginTransactionStore } from './tenant-access/oidc-login-transactions.js';
 export type {

@@ -824,6 +824,75 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(restore, 409, 'workspace.conflict');
   });
 
+  it('serves a private current-user projection and bounded authorized member pages', async () => {
+    const cookies = await login();
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+    });
+    expectProblem(unauthenticated, 401, 'auth.unauthenticated');
+    const profile = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.headers['cache-control']).toBe('private, no-store');
+    expect(profile.json()).toMatchObject({
+      email: 'phase1-real-stack@example.test',
+      displayName: 'Phase One Real Stack',
+      status: 'active',
+    });
+    expect(profile.json()).not.toHaveProperty('profileMetadata');
+
+    const memberA = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Member A',
+    });
+    const memberB = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Member B',
+    });
+    await withOwnerWorkspace(primaryWorkspaceId, (client) =>
+      client.query(
+        `insert into app.workspace_memberships (workspace_id, user_id, role, status)
+         values ($1, $2, 'viewer', 'active'), ($1, $3, 'viewer', 'active')`,
+        [primaryWorkspaceId, memberA.id, memberB.id],
+      ),
+    );
+
+    const first = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${primaryWorkspaceId}/members?limit=1`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.headers['cache-control']).toBe('private, no-store');
+    const firstBody = first.json<{
+      items: unknown[];
+      nextCursor: string | null;
+    }>();
+    expect(firstBody.items).toHaveLength(1);
+    expect(firstBody.nextCursor).toBeTruthy();
+    const second = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${primaryWorkspaceId}/members?limit=1&after=${encodeURIComponent(firstBody.nextCursor ?? '')}`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json<{ items: unknown[] }>().items).toHaveLength(1);
+    expect(
+      second.json<{ items: { userId: string }[] }>().items[0]?.userId,
+    ).not.toBe((firstBody.items[0] as { userId: string }).userId);
+
+    const crossTenant = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${randomUUID()}/members`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expectProblem(crossTenant, 403, 'auth.forbidden');
+  });
+
   it('rejects explicitly revoked and expired sessions without exposing cookie values', async () => {
     const logoutCookies = await login();
     const logout = await application.inject({

@@ -66,6 +66,16 @@ function identityRuntime(
       consume: () => Promise.resolve({ status: 'missing' }),
     },
     persistence: {
+      findUserById: (userId) =>
+        Promise.resolve({
+          id: userId,
+          email: 'current-user@example.test',
+          displayName: 'Current User',
+          status: 'active',
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        }),
+      listWorkspaceMembers: () => Promise.resolve({ items: [] }),
       create: () => Promise.resolve(),
       findByDigest: () =>
         Promise.resolve(
@@ -485,6 +495,117 @@ describe('API bootstrap', () => {
     await application.close();
     application = undefined;
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])(
+    'registers all discovery routes with authentication=%s',
+    async (authenticated) => {
+      application = await createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: identityRuntime(undefined, authenticated),
+      });
+      await application.init();
+
+      const routes = [
+        '/v1/users/me',
+        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members',
+        '/v1/node-definitions',
+        '/v1/integrations',
+      ];
+      for (const url of routes) {
+        const response = await application.inject({
+          method: 'GET',
+          url,
+          ...(authenticated
+            ? { headers: { cookie: `pertexo_session=${'s'.repeat(43)}` } }
+            : {}),
+        });
+        expect(response.statusCode, url).toBe(authenticated ? 200 : 401);
+      }
+    },
+  );
+
+  it.each(['core', 'http_activation'] as const)(
+    'uses the configured %s cohort for integration discovery',
+    async (nodeCompatibilityCohort) => {
+      application = await createApiApplication(
+        { ...config, nodeCompatibilityCohort },
+        {
+          ...dependencies(),
+          identityRuntime: identityRuntime(undefined, true),
+        },
+      );
+      await application.init();
+
+      const response = await application.inject({
+        method: 'GET',
+        url: '/v1/integrations',
+        headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        items:
+          nodeCompatibilityCohort === 'core'
+            ? []
+            : [
+                {
+                  providerKey: 'http',
+                  operationKey: 'request',
+                  available: true,
+                  publishable: true,
+                },
+              ],
+      });
+    },
+  );
+
+  it('rejects unsupported catalog query fields with problem details', async () => {
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(undefined, true),
+    });
+    await application.init();
+    for (const route of ['node-definitions', 'integrations']) {
+      const response = await application.inject({
+        method: 'GET',
+        url: `/v1/${route}?arbitrary=value`,
+        headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.headers['content-type']).toContain(
+        'application/problem+json',
+      );
+      expect(response.json()).toMatchObject({ code: 'request.invalid' });
+    }
+  });
+
+  it('maps a user removed after authentication to safe profile problem details', async () => {
+    const selectedIdentityRuntime = identityRuntime(undefined, true);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: {
+        ...selectedIdentityRuntime,
+        dependencies: {
+          ...selectedIdentityRuntime.dependencies,
+          persistence: {
+            ...selectedIdentityRuntime.dependencies.persistence,
+            findUserById: () => Promise.resolve(null),
+          },
+        },
+      },
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+      headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.json()).toMatchObject({ code: 'auth.unauthenticated' });
   });
 
   it('registers workflow routes and closes identity and workflow runtimes together', async () => {

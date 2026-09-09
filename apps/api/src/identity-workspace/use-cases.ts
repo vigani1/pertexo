@@ -16,9 +16,18 @@ import {
   workspaceCreateRequestSchema,
   workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
+  userProfileResponseSchema,
+  workspaceMembersResponseSchema,
+  type UserProfileResponse,
+  type WorkspaceMembersResponse,
   type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from './types.js';
+import {
+  decodeWorkspaceMemberCursor,
+  InvalidWorkspaceMemberCursorError,
+  encodeWorkspaceMemberCursor,
+} from './cursor.js';
 import type {
   IdentityWorkspacePersistence,
   WorkspaceAuthorizationSource,
@@ -55,6 +64,108 @@ export interface SessionIssuePort {
     input: Readonly<{ userId: string }>,
     cookieBoundary: SessionCookieBoundary,
   ): Promise<SessionIssueResult>;
+}
+
+export class GetCurrentUserUseCase {
+  public constructor(
+    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  ) {}
+
+  public async execute(userId: string): Promise<UserProfileResponse> {
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.userProfileRead,
+      async () => {
+        const user = await this.persistence.findUserById(userId);
+        if (user?.status !== 'active') {
+          throw new AuthorizationError(
+            'auth.unauthenticated',
+            'The current user is no longer available',
+          );
+        }
+        return userProfileResponseSchema.parse({
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          status: user.status,
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString(),
+        });
+      },
+    );
+  }
+}
+
+export type ListWorkspaceMembersInput = Readonly<{
+  actor: ActorContext;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
+  routeWorkspaceId: string;
+  limit?: number;
+  after?: string;
+}>;
+
+export class ListWorkspaceMembersUseCase {
+  public constructor(
+    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  ) {}
+
+  public async execute(
+    input: ListWorkspaceMembersInput,
+  ): Promise<WorkspaceMembersResponse> {
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceMembersList,
+      async () => {
+        await authorizeWorkspaceOperation({
+          actor: input.actor,
+          routeWorkspaceId: input.routeWorkspaceId,
+          capability: 'member:read',
+          access: this.authorization,
+          disclosure: 'forbidden',
+          ...(input.authorizedWorkspace === undefined
+            ? {}
+            : { authorizedWorkspace: input.authorizedWorkspace }),
+        });
+        let after: Readonly<{ createdAt: string; userId: string }> | undefined;
+        if (input.after !== undefined) {
+          try {
+            after = decodeWorkspaceMemberCursor(input.after);
+          } catch (error: unknown) {
+            if (error instanceof InvalidWorkspaceMemberCursorError)
+              throw new AuthorizationError(
+                'request.invalid',
+                'workspace member cursor is invalid',
+              );
+            throw error;
+          }
+        }
+        const page = await this.persistence.listWorkspaceMembers(
+          input.routeWorkspaceId,
+          input.actor.actorId,
+          {
+            ...(input.limit === undefined ? {} : { limit: input.limit }),
+            ...(after === undefined ? {} : { after }),
+          },
+        );
+        return workspaceMembersResponseSchema.parse({
+          items: page.items.map((member) => ({
+            userId: member.userId,
+            email: member.email,
+            displayName: member.displayName,
+            role: member.role,
+            membershipStatus: member.membershipStatus,
+            createdAt: member.createdAt.toISOString(),
+            updatedAt: member.updatedAt.toISOString(),
+          })),
+          nextCursor:
+            page.nextCursor === undefined
+              ? null
+              : encodeWorkspaceMemberCursor(page.nextCursor),
+        });
+      },
+    );
+  }
 }
 
 export class OidcApplicationService {

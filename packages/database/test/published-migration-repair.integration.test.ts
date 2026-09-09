@@ -116,6 +116,7 @@ describe('published migration repair upgrade', () => {
       '0081_schedule_claim_concurrency.sql',
       '0082_legal_hold_destruction_serialization.sql',
       '0083_artifact_finalization_retention_deadline.sql',
+      '0084_workspace_member_discovery_index.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

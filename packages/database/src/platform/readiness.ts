@@ -19,7 +19,7 @@ import {
 // docs/operations/database-function-readiness.md.
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0083_artifact_finalization_retention_deadline.sql';
+  '0084_workspace_member_discovery_index.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

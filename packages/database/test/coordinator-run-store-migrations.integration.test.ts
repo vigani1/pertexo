@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0083_artifact_finalization_retention_deadline.sql',
+          migrationHead: '0084_workspace_member_discovery_index.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -165,6 +165,7 @@ describe('Coordinator migration and identity invariants', () => {
         '0081_schedule_claim_concurrency.sql',
         '0082_legal_hold_destruction_serialization.sql',
         '0083_artifact_finalization_retention_deadline.sql',
+        '0084_workspace_member_discovery_index.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -180,7 +181,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0083_artifact_finalization_retention_deadline.sql',
+          migrationHead: '0084_workspace_member_discovery_index.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -247,7 +248,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0083_artifact_finalization_retention_deadline.sql',
+        migrationHead: '0084_workspace_member_discovery_index.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -486,7 +487,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0083_artifact_finalization_retention_deadline.sql',
+        migrationHead: '0084_workspace_member_discovery_index.sql',
       });
     } finally {
       await readinessPool.end();

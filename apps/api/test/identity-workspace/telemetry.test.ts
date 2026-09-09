@@ -89,12 +89,14 @@ describe('identity/workspace telemetry', () => {
     expect(fixture.span.end).toHaveBeenCalledOnce();
   });
 
-  it('exposes only the six reviewed operation label values', () => {
+  it('exposes only the reviewed operation label values', () => {
     expect(Object.values(IDENTITY_WORKSPACE_OPERATION)).toEqual([
       'oidc.start',
       'oidc.callback',
       'session.logout',
+      'user.profile_read',
       'workspace.create',
+      'workspace.members_list',
       'workspace.request_deletion',
       'workspace.restore',
     ]);
@@ -185,6 +187,8 @@ function workspacePersistence(): IdentityWorkspacePersistence {
     create: vi.fn(),
     findByDigest: vi.fn(),
     revokeByDigest: vi.fn(),
+    findUserById: vi.fn(),
+    listWorkspaceMembers: vi.fn(),
     resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue({
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

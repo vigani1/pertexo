@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-08
+Last updated: 2026-09-09
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -189,10 +189,10 @@ its correction and relevant regression verification are recorded here.
 Current delivery is **not production-ready**. Follow-up review identified
 incomplete audit requirements. IWA-01's traversal bound and the artifact
 authorization-policy/contract corrections and LC-002's CI coverage ratchet
-are now verified locally. The four API scope decisions remain unresolved.
+are now verified locally. All four API discovery surfaces are implemented and
+verified locally; evidence is tracked in the API discovery section below.
 The requirement-to-evidence matrix below maps
-canonical owners, tests and ADRs, and explicitly identifies four unallocated
-API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
+canonical owners, tests and ADRs. Phase 7 and deployed evidence
 remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
@@ -213,9 +213,10 @@ original verdict after each fix.
 - [x] Artifact contracts: actor/authorization types now derive from Zod;
       unused upload request/trace propagation and claim-result selection are
       removed. Actor request context and the persisted result reference remain.
-- [ ] Four named API surfaces: obtain an explicit scope decision and implement
-      the resulting contracts, authorization, persistence and tests, or obtain
-      an approved plan deferral. Recording an allocation gap is not approval.
+- [x] Four named API surfaces: current-user, workspace-member, node-definition,
+      and integration reads are implemented with contracts, authorization and
+      regression tests. Full-tree checks and 469 isolated-service integration
+      tests pass, with three AWS-only tests explicitly skipped.
 
 ### Merge gate — concurrent schedule claim correction
 
@@ -710,8 +711,10 @@ authorization, upload/finalize or concurrent workspace capacity enforcement.
 - [x] Retain charges through expiry and deleting state. Release once on durable
       deletion, reject metadata mutation/revival, and remove empty capacity
       rows during the existing fenced workspace purge.
-- [ ] Finish and verify the public HTTP/storage/runtime checkpoint before
-      closing IWA-17. These database tests do not establish physical object
+- [x] Finish and verify the public HTTP/storage/runtime checkpoint before
+      closing IWA-17; completed by the
+      [subsequent authenticated transfer checkpoint](./implementation-progress.md#iwa-17--authenticated-artifact-transfer-and-runtime-checkpoint).
+      The database-only evidence here does not establish physical object
       deletion, remote regional durability or production deployment.
 
 Evidence: `packages/database/test/artifact-upload.integration.test.ts` has
@@ -1159,15 +1162,15 @@ duplication remains within its ratchet at 6 groups, 267 lines, and 0.28%.
 | --- | --- | --- |
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
-| Phase 0C — HTTP and observability foundation | Reopened — independent audit | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
+| Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | Reopened — independent audit | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
+| Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | Reopened — independent audit | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
+| Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | Reopened — independent audit | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | Reopened — independent audit | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | Reopened — independent audit | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
+| Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
+| Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
+| Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
 | Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; current migration head follows [the executable readiness contract](../packages/database/src/platform/readiness.ts); 24-hour terminal request-idempotency expiry with legal-hold-aware bounded reaping and 30-day expired/revoked session metadata grace with lock-safe bounded reaping; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs including persisted-to-visible SSE latency, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, a two-process MinIO integration harness, distributed abuse limits, truthful partitioned CI, immutable service-image validation, critical-module coverage, and a strict external AWS platform evidence contract; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured deployed load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -6401,20 +6404,53 @@ completion.
 | Retention/deletion, production SLO/recovery, lifecycle dispatch, ECS, operator, autoscaling | [013](./adr/013-retention-workspace-deletion-legal-hold.md), [015](./adr/015-production-slo-region-and-recovery.md), [027](./adr/027-workspace-lifecycle-command-dispatch.md), [028](./adr/028-ecs-deployment-manifest.md), [029](./adr/029-operator-command-execution-boundary.md), [030](./adr/030-autoscaling-input-contract.md) |
 | Authenticated replay, Validate, activation projection, archive/restore, artifact capacity | [031](./adr/031-authenticated-user-run-replay.md), [032](./adr/032-validate-node-semantics.md), [033](./adr/033-truthful-workflow-activation-projection.md), [034](./adr/034-workflow-archive-restore-and-activation.md), [035](./adr/035-public-artifact-upload-and-capacity.md) |
 
-## Unallocated API surface (not silently deferred or complete)
+## API discovery gap closure
 
-The [API Surface](./workflow-platform-backend-plan.md#api-surface) lists these
-four routes, but the [endpoint-to-use-case map](./workflow-platform-backend-plan.md#endpoint-to-use-case-map)
-does not map them and the current controller/contract inventory has no matching
-public surface. None is being called complete or silently deferred; each needs
-an explicit product/plan disposition.
+The user requested implementation of all four previously unallocated surfaces.
+The [API Surface](./workflow-platform-backend-plan.md#api-surface) and
+[endpoint-to-use-case map](./workflow-platform-backend-plan.md#endpoint-to-use-case-map)
+now allocate current-user/member reads to Phase 1, node discovery to Phase 3,
+and integration discovery to Phase 4 with Phase 5–6 catalog additions.
+These are read endpoints, not profile administration, invitations, membership
+mutation, or a second connection resource.
 
-| Route | Current evidence | Disposition gap |
+| Route | Implementation evidence | Contract and authorization |
 | --- | --- | --- |
-| `/v1/users/*` | Phase 1 maps OIDC identities to internal users; [identity/workspace API](../apps/api/src/identity-workspace/controllers.ts) and [identity persistence](../packages/database/src/tenant-access/identity-workspace.ts) exist, but no users controller/contract exists. | Decide whether current-user/profile is required; allocate use case, phase, contract, and tests or amend the plan. ADR 004’s service-account/API-key deferral does not answer this route. |
-| `/v1/workspaces/:workspaceId/members` | Phase 1 creates/authorizes owner membership; [identity persistence](../packages/database/src/tenant-access/identity-workspace.ts) exists, but no members controller/contract exists. | Clarify read/list versus role-management scope and allocate it. Deferred invitations do not resolve the whole route. |
-| `/v1/node-definitions` | Server catalog/registry exists in [catalog server](../packages/node-catalog/src/server.ts) and [definition resolution](../packages/node-catalog/src/definition-resolution.ts); no public catalog controller/contract exists. | Decide whether a public catalog projection is required and assign it to a phase/use case, or record an explicit plan disposition. |
-| `/v1/integrations` | HTTP/Slack/email definitions exist, e.g. [Slack definition](../packages/integrations/src/slack/definition.ts); no public integrations controller/contract exists. | Decide whether this is a catalog projection or separate resource and assign/disposition it explicitly. |
+| `GET /v1/users/me` | `GetCurrentUserUseCase` in [identity use cases](../apps/api/src/identity-workspace/use-cases.ts), backed by [identity persistence](../packages/database/src/tenant-access/identity-workspace.ts). | Session-authenticated active-user profile only, with `private, no-store`; no OIDC subject or session material. |
+| `GET /v1/workspaces/:workspaceId/members` | `ListWorkspaceMembersUseCase`, [member store](../packages/database/src/tenant-access/identity-workspace-member-store.ts), and [cursor validation](../apps/api/src/identity-workspace/cursor.ts). | Owner/admin `member:read`; workspace RLS plus locked active actor/membership/workspace recheck; maximum 100, opaque microsecond-precision `(created_at, user_id)` cursor; `private, no-store`. |
+| `GET /v1/node-definitions` | [Catalog API](../apps/api/src/catalog/controllers.ts) and [browser-safe projection](../packages/node-catalog/src/definition-resolution.ts). | Session-authenticated configured-release projection, deterministically ordered and bounded by that release; no executor loading, runtime policy identifiers, or connection secrets. |
+| `GET /v1/integrations` | `ListIntegrationsUseCase` in [catalog use cases](../apps/api/src/catalog/use-cases.ts), derived from the same node catalog. | Session-authenticated provider/operation discovery, versioned node identities and availability; no connection instance or credential disclosure. |
+
+All four routes use the existing authenticated-read rate-limit policy. Strict
+[identity contracts](../packages/contracts/src/identity-workspace.ts) and
+[catalog contracts](../packages/contracts/src/catalog.ts) generate OpenAPI and
+client artifacts; unsupported catalog query parameters fail with 400. Catalog
+`available` means eligible for new placement and `publishable` means compatible
+with publication, still subject to full workflow validation.
+
+[Migration 0084](../packages/database/migrations/0084_workspace_member_discovery_index.sql)
+adds the matching partial membership keyset index without changing data or
+permissions. The readiness contract, typed schema and current-head migration
+regressions advance together; historical prior-head fixtures remain intact.
+
+Local verification on 2026-09-09 passes `pnpm check` and `pnpm test:coverage`;
+the additional catalog-boundary regression passes all 41 contracts tests,
+contracts typecheck and focused lint. The fresh isolated `pnpm test:integration`
+run passes 469 tests: 399 database, 30 worker, 34 API, five object-store and one
+queue. All local service cohorts, compatibility rollout and SSE resilience are
+enabled; only three AWS-only object-store cases skip. Migration 0084 applies
+successfully. An isolated `EXPLAIN` with sequential scans disabled confirms the
+membership keyset can use the new index without a sort; this is an index-shape
+check, not a production-scale performance benchmark. Disposable services and
+volumes are removed after verification; existing local services are untouched.
+The coverage report contains 23 unreviewed branches in unchanged source files,
+and none in this change's selected source files; this is not a claim of
+repository-wide exhaustive coverage or a strict zero-unreviewed gate pass.
+Regression owners include [API bootstrap](../apps/api/test/api-bootstrap.test.ts),
+[real identity HTTP](../apps/api/test/identity-workspace/real-api.integration.test.ts),
+[database identity](../packages/database/test/identity-workspace.integration.test.ts),
+[catalog module](../apps/api/test/catalog/module.test.ts), and
+[browser projection](../packages/node-catalog/test/browser-projection.test.ts).
 
 ## External and deferred criteria
 

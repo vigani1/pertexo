@@ -2,7 +2,9 @@ export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   oidcStart: 'oidc.start',
   oidcCallback: 'oidc.callback',
   sessionLogout: 'session.logout',
+  userProfileRead: 'user.profile_read',
   workspaceCreate: 'workspace.create',
+  workspaceMembersList: 'workspace.members_list',
   workspaceRequestDeletion: 'workspace.request_deletion',
   workspaceRestore: 'workspace.restore',
 } as const);

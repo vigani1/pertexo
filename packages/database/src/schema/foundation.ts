@@ -181,6 +181,9 @@ export const workspaceMemberships = appSchema.table(
       table.userId,
     ),
     index('workspace_memberships_user_idx').on(table.userId, table.workspaceId),
+    index('workspace_memberships_workspace_created_idx')
+      .on(table.workspaceId, table.createdAt, table.userId)
+      .where(sql`${table.status} in ('active', 'suspended')`),
   ],
 );
 export const auditEvents = appSchema.table(

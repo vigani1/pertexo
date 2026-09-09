@@ -1,6 +1,6 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-06
+Updated: 2026-09-09
 
 ## Delivery state
 
@@ -9,17 +9,19 @@ artifact policy/contract corrections, and lifecycle-command CI coverage
 ratchet are verified locally.
 The merge gate also exposed a concurrent schedule-claim race; its forward
 migration passes local race, worker, and exact prior-head upgrade regressions.
-Required CI remains the merge authority; PR #51 records the live gate outcome.
-External production gates and four unallocated API
-scope decisions also remain open.
+Required CI remains the merge authority; PR #51 records that historical gate
+outcome. All four previously unallocated API discovery surfaces are now
+implemented and verified locally, including 469 isolated-service integration
+tests (three AWS-only cases skipped). External production gates
+remain open.
 The [implementation tracker](./implementation-progress.md#independent-audit-remediation--follow-up-corrections)
 is the single mutable checkpoint/status inventory; its summary and individual
 finding evidence take precedence over the historical verification below.
 
 The [requirement-to-evidence matrix](./implementation-progress.md#backend-requirement-traceability)
 links canonical owners, tests and ADRs. Its
-[unallocated API surface](./implementation-progress.md#unallocated-api-surface-not-silently-deferred-or-complete)
-section distinguishes unresolved plan scope from verified audit corrections;
+[API discovery gap closure](./implementation-progress.md#api-discovery-gap-closure)
+section records the allocated scope, implementation and verification;
 neither the matrix nor local tests declare the complete blueprint delivered.
 
 The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the

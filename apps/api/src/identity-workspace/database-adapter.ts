@@ -6,6 +6,8 @@ import type {
 import type { SessionRecord } from '../identity/index.js';
 import type {
   IdentityWorkspacePersistence,
+  UserProfilePersistenceRecord,
+  WorkspaceMemberPersistenceRecord,
   WorkspaceAuthorizationReader,
 } from './ports.js';
 import type { WorkspaceAccess } from '../workspaces/index.js';
@@ -26,6 +28,22 @@ export class DatabaseIdentityWorkspaceAdapter
     });
   }
 
+  public async findUserById(
+    userId: string,
+  ): Promise<UserProfilePersistenceRecord | null> {
+    const user = await this.database.findUserById(userId);
+    return user === null
+      ? null
+      : Object.freeze({
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          status: user.status,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        });
+  }
+
   public async createWorkspaceWithOwner(
     input: Parameters<IdentityWorkspaceDatabase['createWorkspaceWithOwner']>[0],
   ) {
@@ -42,6 +60,22 @@ export class DatabaseIdentityWorkspaceAdapter
       query.workspaceId,
     );
     return result ?? undefined;
+  }
+
+  public async listWorkspaceMembers(
+    workspaceId: string,
+    actorId: string,
+    input?: Readonly<{
+      limit?: number;
+      after?: Readonly<{ createdAt: string; userId: string }>;
+    }>,
+  ): Promise<
+    Readonly<{
+      items: readonly WorkspaceMemberPersistenceRecord[];
+      nextCursor?: Readonly<{ createdAt: string; userId: string }>;
+    }>
+  > {
+    return this.database.listWorkspaceMembers(workspaceId, actorId, input);
   }
 
   public requestWorkspaceLifecycleOperation(

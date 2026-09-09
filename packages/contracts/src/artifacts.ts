@@ -2,6 +2,7 @@ import {
   connectionsClientContract,
   connectionsOpenApiDocument,
 } from './connections.js';
+import { catalogClientContract, catalogOpenApiDocument } from './catalog.js';
 import {
   artifactTransferClientContract,
   artifactTransferOpenApiDocument,
@@ -29,6 +30,7 @@ import {
 } from './schedules.js';
 
 const CONTRACT_DOMAINS = Object.freeze([
+  ['catalog', catalogClientContract, catalogOpenApiDocument],
   [
     'artifacts',
     artifactTransferClientContract,

@@ -20,6 +20,9 @@ import {
   workspaceIdentifierSchema,
   workspaceLifecycleOperationIdentifierSchema,
   workspaceLifecycleOperationResponseSchema,
+  workspaceMembersQuerySchema,
+  workspaceMembersResponseSchema,
+  userProfileResponseSchema,
   workspaceResponseSchema,
 } from './http/identity-workspace.js';
 
@@ -35,7 +38,12 @@ const schemas = Object.freeze({
     workspaceLifecycleOperationResponseSchema,
     'output',
   ),
+  UserProfileResponse: jsonSchema(userProfileResponseSchema, 'output'),
   WorkspaceResponse: jsonSchema(workspaceResponseSchema, 'output'),
+  WorkspaceMembersResponse: jsonSchema(
+    workspaceMembersResponseSchema,
+    'output',
+  ),
 });
 
 export const identityWorkspaceClientContract = Object.freeze({
@@ -49,6 +57,7 @@ const problemResponses = Object.freeze({
   Forbidden: problemResponse('Forbidden'),
   Conflict: problemResponse('Request conflict'),
   ServiceUnavailable: problemResponse('Upstream service unavailable'),
+  RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
 
@@ -59,6 +68,18 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
+    '/v1/users/me': {
+      get: {
+        operationId: 'getCurrentUserProfile',
+        security: [{ cookieSession: [] }],
+        responses: {
+          '200': jsonResponse('Current user profile', 'UserProfileResponse'),
+          '401': responseReference('Unauthenticated'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/auth/oidc/start': {
       get: {
         operationId: 'startOidcLogin',
@@ -168,15 +189,37 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/members': {
+      get: {
+        operationId: 'listWorkspaceMembers',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          queryParameter('limit', workspaceMembersQuerySchema.shape.limit),
+          queryParameter('after', workspaceMembersQuerySchema.shape.after),
+        ],
+        responses: {
+          '200': jsonResponse('Workspace members', 'WorkspaceMembersResponse'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
   },
   components: authenticatedComponents(schemas, problemResponses),
 });
 
-function queryParameter(name: 'code' | 'state', schema: z.ZodType) {
+function queryParameter(
+  name: 'code' | 'state' | 'limit' | 'after',
+  schema: z.ZodType,
+) {
   return {
     name,
     in: 'query',
-    required: true,
+    required: name === 'code' || name === 'state',
     schema: jsonSchema(schema, 'input'),
   } as const;
 }
