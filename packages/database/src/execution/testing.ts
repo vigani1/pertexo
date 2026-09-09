@@ -158,7 +158,11 @@ export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
 } from './inbox.js';
-export type { InboxConsumeResult, InboxMessage } from './inbox.js';
+export type {
+  InboxConsumeOptions,
+  InboxConsumeResult,
+  InboxMessage,
+} from './inbox.js';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

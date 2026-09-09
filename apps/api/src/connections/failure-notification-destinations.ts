@@ -291,6 +291,7 @@ export class FailureNotificationDestinationsController {
     });
   }
   @Post('failure-notification-destinations/:destinationId/versions')
+  @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,
     ConnectionManageGuard,

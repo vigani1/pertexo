@@ -36,6 +36,7 @@ export class AuthorizationError extends Error {
 export type WorkspaceAccessQuery = Readonly<{
   actorId: string;
   workspaceId: string;
+  signal?: AbortSignal;
 }>;
 
 export interface WorkspaceAuthorizationPort {
@@ -56,6 +57,7 @@ export type AuthorizeWorkspaceInput = Readonly<{
   access: WorkspaceAuthorizationSource;
   disclosure?: DisclosurePolicy;
   allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
+  signal?: AbortSignal;
 }>;
 
 export type AssertAuthorizedWorkspaceContextInput = Readonly<{
@@ -139,10 +141,13 @@ export async function authorizeWorkspace(
     );
   }
 
+  input.signal?.throwIfAborted();
   const record = await findAccess(input.access, {
     actorId: actor.actorId,
     workspaceId: input.routeWorkspaceId,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
   });
+  input.signal?.throwIfAborted();
   if (record === undefined) {
     throw denied(disclosure, 'actor is not a member of this workspace');
   }

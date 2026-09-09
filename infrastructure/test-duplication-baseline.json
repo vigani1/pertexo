@@ -78,20 +78,6 @@
         },
         {
           "files": [
-            "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
-            "packages/database/src/lifecycle/workspace-purge.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Lifecycle command admission and purge execution use similar transaction prologues but deliberately own different locks, roles, rollback semantics, and state machines.",
-          "clones": [
-            {
-              "hash": "1a9a8e285038f5d88fe0a816a002737ef2b80e8fc6a57e4e86788e92ca344856",
-              "maxLines": 20
-            }
-          ]
-        },
-        {
-          "files": [
             "packages/database/src/execution/stored-execution-value.ts",
             "packages/workflow-engine/src/executable-validation.ts"
           ],

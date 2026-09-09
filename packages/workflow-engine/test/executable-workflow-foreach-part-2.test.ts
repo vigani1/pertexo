@@ -8,6 +8,7 @@ import {
   composeExecutableCompatibilityRelease,
   createCheckpointV2,
   executeNodeAttempt,
+  verifyWorkflowExecutableV2,
   invocationKey,
   createHash,
   nodeRelease,
@@ -462,6 +463,131 @@ describe('For Each production operations', () => {
       output: { value: 'inner-nearest' },
     });
   });
+
+  it.each(['__proto__', 'constructor', 'toString'])(
+    'preserves reserved node and mapping IDs through compiled scoped execution: %s',
+    async (reservedId) => {
+      const graph = structuredClone(forEachGraph());
+      const loop = graph.nodes.find(({ id }) => id === 'loop');
+      if (loop === undefined || !('structured' in loop))
+        throw new Error('For Each node missing');
+      const source = loop.structured.body.nodes.find(
+        ({ id }) => id === 'body-first',
+      );
+      const sink = loop.structured.body.nodes.find(
+        ({ id }) => id === 'body-sink',
+      );
+      if (source === undefined || sink === undefined)
+        throw new Error('body nodes missing');
+      const edge = loop.structured.body.edges[0];
+      if (edge === undefined) throw new Error('body edge missing');
+      source.id = reservedId;
+      edge.source.nodeId = reservedId;
+      sink.inputMappings = {
+        value: { kind: 'node_output', nodeId: reservedId, path: '$' },
+      };
+
+      const release = composeExecutableCompatibilityRelease(
+        nodeRelease({ forEach: true }),
+      );
+      const compiled = buildWorkflowExecutableV2({ graph, release });
+      const compiledSink = compiled.envelope.graph.nodes
+        .find(({ id }) => id === 'loop')
+        ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
+      expect(compiledSink?.inputMappings).toHaveProperty('value');
+      const recovered = verifyWorkflowExecutableV2({
+        envelope: JSON.parse(JSON.stringify(compiled.envelope)),
+        checksum: compiled.checksum,
+        admissionRelease: release,
+      });
+      const recoveredSink = recovered.envelope.graph.nodes
+        .find(({ id }) => id === 'loop')
+        ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
+      expect(recoveredSink?.inputMappings).toHaveProperty('value');
+      const workflowVersionId = '00000000-0000-4000-8000-000000000001';
+      const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }] as const;
+      const collection = [{ name: 'nearest' }] as const;
+      let received: unknown;
+
+      await executeNodeAttempt({
+        runId: 'run-reserved-ids',
+        nodeRunId: 'node-run-reserved-ids',
+        attemptId: 'attempt-reserved-ids',
+        executable: recovered,
+        workflowVersionId,
+        invocationKey: invocationKey({
+          workflowVersionId,
+          nodeId: 'body-sink',
+          iterationPath,
+        }),
+        nodeId: 'body-sink',
+        iterationPath,
+        structuredCollection: {
+          loopNodeId: 'loop',
+          ordinal: 0,
+          collection,
+          collectionSize: 1,
+          declaredCollectionChecksum: createHash('sha256')
+            .update(JSON.stringify(collection))
+            .digest('hex'),
+        },
+        runInput: {},
+        completedNodeOutputs: [
+          {
+            invocationKey: invocationKey({
+              workflowVersionId,
+              nodeId: reservedId,
+              iterationPath,
+            }),
+            nodeId: reservedId,
+            value: { exact: reservedId },
+          },
+        ],
+        registry: {
+          execute: (request) => {
+            received = request.input;
+            return Promise.resolve({ kind: 'succeeded', output: {} });
+          },
+        },
+        signal: new AbortController().signal,
+      });
+
+      expect(Object.hasOwn(received as object, 'value')).toBe(true);
+      expect((received as Record<string, unknown>).value).toEqual({
+        exact: reservedId,
+      });
+    },
+  );
+
+  it.each(['__proto__', 'constructor', 'toString'])(
+    'rejects a reserved own mapping key instead of silently dropping it: %s',
+    (reservedKey) => {
+      const graph = structuredClone(forEachGraph());
+      const loop = graph.nodes.find(({ id }) => id === 'loop');
+      if (loop === undefined || !('structured' in loop))
+        throw new Error('For Each node missing');
+      const sink = loop.structured.body.nodes.find(
+        ({ id }) => id === 'body-sink',
+      );
+      if (sink === undefined) throw new Error('body sink missing');
+      const mappings = Object.create(null) as Record<string, unknown>;
+      mappings[reservedKey] = {
+        kind: 'node_output',
+        nodeId: 'body-first',
+        path: '$',
+      };
+      sink.inputMappings = mappings as never;
+
+      expect(() =>
+        buildWorkflowExecutableV2({
+          graph,
+          release: composeExecutableCompatibilityRelease(
+            nodeRelease({ forEach: true }),
+          ),
+        }),
+      ).toThrow(/reserved input mapping key is not supported/u);
+    },
+  );
 
   it('keeps the generic scheduler graph seam on the server-only testing entry', () => {
     for (const internalName of [

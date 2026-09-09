@@ -235,6 +235,16 @@ function preflightWorkflowGraph(input: unknown): void {
       if (mappings !== null && typeof mappings === 'object') {
         for (const key of Object.keys(mappings)) {
           const mappingPath = `${nodePath}.inputMappings.${key}`;
+          if (
+            key === '__proto__' ||
+            key === 'constructor' ||
+            key === 'toString'
+          )
+            throw new WorkflowGraphContractError(
+              'invalid_json',
+              mappingPath,
+              'reserved input mapping key is not supported',
+            );
           const mapping = ownDataValue(mappings, key, mappingPath);
           if (mapping !== null && typeof mapping === 'object') {
             const kind = ownDataValue(mapping, 'kind', `${mappingPath}.kind`);

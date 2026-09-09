@@ -17,6 +17,7 @@ const inboxMessageSchema = z
   .strict();
 
 export type InboxMessage = Readonly<z.input<typeof inboxMessageSchema>>;
+export type InboxConsumeOptions = Readonly<{ signal?: AbortSignal }>;
 export type InboxConsumeResult<T> =
   | Readonly<{ status: 'processed'; value: T }>
   | Readonly<{ status: 'duplicate' }>;
@@ -42,6 +43,7 @@ export async function consumeInboxMessage<T>(
   workspaceId: string,
   message: InboxMessage,
   operation: (transaction: WorkspaceTransaction) => Promise<T>,
+  options: InboxConsumeOptions = {},
 ): Promise<InboxConsumeResult<T>> {
   const parsed = inboxMessageSchema.parse(message);
   const result = await database.withWorkspace(
@@ -100,6 +102,7 @@ export async function consumeInboxMessage<T>(
       }
       return Object.freeze({ status: 'processed' as const, value });
     },
+    options,
   );
 
   if (result !== CHECKSUM_MISMATCH) return result;
@@ -109,14 +112,18 @@ export async function consumeInboxMessage<T>(
   // transaction would roll an audit insert back with it. The business
   // operation is never entered, and rejection is surfaced only after the
   // audit fact commits successfully.
-  await database.withWorkspace(workspaceId, async (transaction) => {
-    await transaction.db.insert(transportSecurityAuditFacts).values({
-      id: generatePersistedId(),
-      workspaceId: transaction.workspaceId,
-      factType: 'inbox_checksum_mismatch',
-      consumerName: parsed.consumerName,
-      messageId: parsed.messageId,
-    });
-  });
+  await database.withWorkspace(
+    workspaceId,
+    async (transaction) => {
+      await transaction.db.insert(transportSecurityAuditFacts).values({
+        id: generatePersistedId(),
+        workspaceId: transaction.workspaceId,
+        factType: 'inbox_checksum_mismatch',
+        consumerName: parsed.consumerName,
+        messageId: parsed.messageId,
+      });
+    },
+    options,
+  );
   throw new InboxChecksumMismatchError();
 }

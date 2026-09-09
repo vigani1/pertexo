@@ -72,11 +72,12 @@ export class WebhookManagementService {
     try {
       const base = {
         workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
         actorId: input.actorId,
         triggerId: input.triggerId,
         idempotencyKey: input.idempotencyKey,
         requestHash: sha256(
-          `${operation}\0${input.workspaceId}\0${input.triggerId}\0${
+          `${operation}\0${input.workspaceId}\0${input.workflowId}\0${input.triggerId}\0${
             operation === 'rotateSecret' ? (endpointHash ?? '') : ''
           }`,
         ),
@@ -159,6 +160,7 @@ export class WebhookManagementService {
 type Operation = 'provision' | 'rotateEndpoint' | 'rotateSecret';
 type CommandInput = Readonly<{
   workspaceId: string;
+  workflowId: string;
   actorId: string;
   triggerId: string;
   idempotencyKey: string;

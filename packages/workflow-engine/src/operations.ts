@@ -508,7 +508,7 @@ async function resolveMappedNodeInput(
   structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
   if (isTriggerSourceDefinition(node.definition)) return runInput;
-  const mapped: Record<string, JsonValue> = {};
+  const mapped = Object.create(null) as Record<string, JsonValue>;
   for (const key of Object.keys(node.inputMappings).sort()) {
     assertNotAborted(signal);
     const source = node.inputMappings[key];

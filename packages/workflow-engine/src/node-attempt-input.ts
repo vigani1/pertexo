@@ -128,7 +128,7 @@ function parseCompletedOutputs(
   directUpstream: ReadonlySet<string>,
 ): Readonly<Record<string, JsonValue>> {
   if (Array.isArray(completed)) {
-    const outputs: Record<string, JsonValue> = {};
+    const outputs = Object.create(null) as Record<string, JsonValue>;
     for (const candidate of completed as readonly JsonValue[]) {
       const [nodeId, value] = parseCompletedDescriptor(
         candidate,

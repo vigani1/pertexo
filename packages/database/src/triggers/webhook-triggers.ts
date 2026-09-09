@@ -53,6 +53,7 @@ export type WebhookCheckpointFactory = (
 
 type Command = Readonly<{
   workspaceId: string;
+  workflowId: string;
   actorId: string;
   triggerId: string;
   idempotencyKey: string;
@@ -136,7 +137,6 @@ export class WebhookIngressRateLimitExceededError extends Error {
     super('webhook.rate_limited');
   }
 }
-
 function keyHash(value: string): string {
   return createHash('sha256')
     .update(z.string().min(1).max(128).parse(value))
@@ -177,7 +177,7 @@ async function claimCommand(
       generatePersistedId(),
       input.workspaceId,
       operation,
-      `${input.actorId}:${input.triggerId}`,
+      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
       digest,
       requestHash,
       input.triggerId,
@@ -189,7 +189,7 @@ async function claimCommand(
     [
       input.workspaceId,
       operation,
-      `${input.actorId}:${input.triggerId}`,
+      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
       digest,
     ],
   );
@@ -214,7 +214,7 @@ async function completeCommand(
       JSON.stringify({ schemaVersion: 1, triggerId: input.triggerId }),
       input.workspaceId,
       operation,
-      `${input.actorId}:${input.triggerId}`,
+      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
       keyHash(input.idempotencyKey),
     ],
   );

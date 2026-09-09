@@ -8,9 +8,8 @@ import {
   Post,
   Optional,
   Req,
-  Sse,
+  Res,
   UseGuards,
-  type MessageEvent,
 } from '@nestjs/common';
 import {
   lastRunEventIdHeaderSchema,
@@ -22,7 +21,7 @@ import {
   workflowRunStartRequestSchema,
 } from '@pertexo/contracts/workflow-runs';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
-import { Observable } from 'rxjs';
+import type { FastifyReply } from 'fastify';
 
 import {
   requestHeaderValue,
@@ -37,6 +36,7 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
+import { ApiDrainState } from '../platform/health/drain-state.js';
 import {
   createSseVisibilityMetrics,
   SSE_VISIBILITY_METRICS,
@@ -74,6 +74,14 @@ export type WorkflowRunsRequest = Readonly<{
     expiresAt: Date;
     clientMetadata: Readonly<Record<string, string>>;
   }>;
+  reauthorizeIdentitySession?: (signal: AbortSignal) => Promise<
+    Readonly<{
+      userId: string;
+      sessionId: string;
+      expiresAt: Date;
+      clientMetadata: Readonly<Record<string, string>>;
+    }>
+  >;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
   raw?: Readonly<{
     once(event: 'close', listener: () => void): unknown;
@@ -93,6 +101,8 @@ export class WorkflowRunsController {
     @Optional()
     @Inject(SSE_VISIBILITY_METRICS)
     private readonly visibilityMetrics: SseVisibilityMetrics = createSseVisibilityMetrics(),
+    @Optional()
+    private readonly drainState: ApiDrainState = new ApiDrainState(),
   ) {}
 
   @Post('workflows/:workflowId/runs')
@@ -171,17 +181,19 @@ export class WorkflowRunsController {
     });
   }
 
-  @Sse('runs/:runId/events')
+  @Get('runs/:runId/events')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
   public async streamRunEvents(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
-  ): Promise<Observable<MessageEvent>> {
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     const controller = new AbortController();
     const onClose = (): void => {
       controller.abort();
     };
     request.raw?.once('close', onClose);
+    const releaseDrainRegistration = this.drainState.registerStream(controller);
     try {
       const route = workflowRunParamsSchema.parse(params);
       const requestedLastEventId = lastEventId(request);
@@ -191,23 +203,31 @@ export class WorkflowRunsController {
         ...guardAuthorization(request),
         runId: route.runId,
         lastEventId: requestedLastEventId,
+        sessionExpiresAt: authenticatedSession(request).expiresAt,
+        reauthorizeSession: sessionReauthorization(request),
+        abortStream: (reason?: unknown) => {
+          controller.abort(reason);
+        },
         signal: controller.signal,
       });
-      return frameObservable(
+      prepareSseResponse(reply);
+      await writeSseFrames(
         frames,
+        reply.raw,
         controller,
-        () => {
-          request.raw?.off('close', onClose);
-        },
         this.visibilityMetrics,
         routeLastEventPath(requestedLastEventId),
       );
     } catch (error: unknown) {
-      request.raw?.off('close', onClose);
       controller.abort();
-      // The cleanup is controller-owned; HTTP translation belongs to the
-      // global problem-details filter after the listener is detached.
+      if (reply.raw.headersSent) {
+        reply.raw.destroy();
+        return;
+      }
       throw error;
+    } finally {
+      request.raw?.off('close', onClose);
+      releaseDrainRegistration();
     }
   }
 
@@ -246,55 +266,124 @@ function guardAuthorization(
     : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
-function frameObservable(
+interface SseDestination {
+  readonly destroyed: boolean;
+  write(chunk: string): boolean;
+  end(): void;
+  destroy(error?: Error): void;
+  once(
+    event: 'close' | 'drain' | 'error',
+    listener: (...args: unknown[]) => void,
+  ): unknown;
+  off(
+    event: 'close' | 'drain' | 'error',
+    listener: (...args: unknown[]) => void,
+  ): unknown;
+}
+
+export async function writeSseFrames(
   frames: AsyncIterable<WorkflowRunEventFrame>,
+  destination: SseDestination,
   controller: AbortController,
-  detach: () => unknown,
   visibilityMetrics: SseVisibilityMetrics,
   fallbackPath: SseVisibilityPath,
-): Observable<MessageEvent> {
-  return new Observable<MessageEvent>((subscriber) => {
-    const iterator = frames[Symbol.asyncIterator]();
-    const emittedSequences = new Set<number>();
-    void (async (): Promise<void> => {
-      try {
-        while (!controller.signal.aborted) {
-          const next = await iterator.next();
-          if (next.done === true) break;
-          const event = workflowRunEventSchema.parse(
-            JSON.parse(next.value.data),
-          );
-          if (subscriber.closed) break;
-          subscriber.next({
-            id: String(next.value.id),
-            type: next.value.event,
-            data: event,
-          });
-          if (!emittedSequences.has(event.sequence)) {
-            emittedSequences.add(event.sequence);
-            visibilityMetrics.recordFirstEligibleFrame({
-              createdAt: new Date(event.createdAt),
-              path: next.value.visibilityPath ?? fallbackPath,
-            });
-          }
-        }
-        subscriber.complete();
-      } catch (error: unknown) {
-        subscriber.error(error);
-      } finally {
-        detach();
+): Promise<void> {
+  const iterator = frames[Symbol.asyncIterator]();
+  let lastRecordedSequence: number | undefined;
+  try {
+    while (!controller.signal.aborted && !destination.destroyed) {
+      const next = await iterator.next();
+      if (next.done === true) break;
+      const event = workflowRunEventSchema.parse(JSON.parse(next.value.data));
+      const accepted = destination.write(
+        encodeSseFrame(String(next.value.id), next.value.event, event),
+      );
+      if (!accepted) {
+        const drained = await waitForDrain(destination, controller.signal);
+        if (!drained) break;
       }
-    })();
-    return () => {
-      controller.abort();
-      detach();
-      void iterator.return?.();
+      if (lastRecordedSequence !== event.sequence) {
+        lastRecordedSequence = event.sequence;
+        visibilityMetrics.recordFirstEligibleFrame({
+          createdAt: new Date(event.createdAt),
+          path: next.value.visibilityPath ?? fallbackPath,
+        });
+      }
+    }
+  } finally {
+    controller.abort();
+    await iterator.return?.();
+    if (!destination.destroyed) destination.end();
+  }
+}
+
+function prepareSseResponse(reply: FastifyReply): void {
+  reply.raw.statusCode = 200;
+  reply.raw.setHeader('Content-Type', 'text/event-stream');
+  reply.raw.setHeader('Connection', 'keep-alive');
+  reply.raw.setHeader(
+    'Cache-Control',
+    'private, no-cache, no-store, must-revalidate, max-age=0',
+  );
+  reply.raw.setHeader('X-Accel-Buffering', 'no');
+  reply.hijack();
+  reply.raw.flushHeaders();
+}
+
+function encodeSseFrame(id: string, event: string, data: unknown): string {
+  return `id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+function waitForDrain(
+  destination: SseDestination,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (signal.aborted || destination.destroyed) return Promise.resolve(false);
+  return new Promise<boolean>((resolve, reject) => {
+    const cleanup = (): void => {
+      destination.off('drain', onDrain);
+      destination.off('close', onClose);
+      destination.off('error', onError);
+      signal.removeEventListener('abort', onAbort);
     };
+    const finish = (value: boolean): void => {
+      cleanup();
+      resolve(value);
+    };
+    const onDrain = (): void => {
+      finish(true);
+    };
+    const onClose = (): void => {
+      finish(false);
+    };
+    const onAbort = (): void => {
+      finish(false);
+    };
+    const onError = (...args: unknown[]): void => {
+      cleanup();
+      const error = args[0];
+      reject(
+        error instanceof Error ? error : new Error('SSE transport failed'),
+      );
+    };
+    destination.once('drain', onDrain);
+    destination.once('close', onClose);
+    destination.once('error', onError);
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
 function routeLastEventPath(lastEventId: number): SseVisibilityPath {
   return lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
+}
+
+function sessionReauthorization(
+  request: WorkflowRunsRequest,
+): NonNullable<WorkflowRunsRequest['reauthorizeIdentitySession']> {
+  if (request.reauthorizeIdentitySession === undefined) {
+    return throwWorkflowRunError(applicationError('auth.unauthenticated'));
+  }
+  return request.reauthorizeIdentitySession;
 }
 
 function requiredIdempotencyKey(request: WorkflowRunsRequest): string {

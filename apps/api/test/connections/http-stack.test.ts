@@ -1,4 +1,7 @@
-import type { ConnectionRecord } from '@pertexo/database/testing';
+import type {
+  ConnectionRecord,
+  FailureNotificationDestinationDatabase,
+} from '@pertexo/database/testing';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +20,7 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const rawSession = 's'.repeat(43);
 const csrf = 'c'.repeat(32);
 const credentialValue = 'Bearer http-stack-secret';
+const destinationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
 const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0021_workflow_integration_usage.sql');
@@ -135,6 +139,33 @@ function connectionRuntime(
     ),
   };
   const markConnectionTestDispatched = vi.fn(() => Promise.resolve());
+  const destinationRecord = {
+    id: destinationId,
+    workspaceId,
+    kind: 'slack' as const,
+    status: 'enabled' as const,
+    currentVersion: 2,
+    config: {
+      kind: 'slack' as const,
+      connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      channelId: 'C67890',
+    },
+    createdAt: new Date('2026-08-22T12:00:00.000Z'),
+    updatedAt: new Date('2026-08-22T12:01:00.000Z'),
+  };
+  const appendDestinationVersion = vi
+    .fn<FailureNotificationDestinationDatabase['appendVersion']>()
+    .mockResolvedValue(destinationRecord);
+  const destinationPersistence: FailureNotificationDestinationDatabase = {
+    create: () => Promise.reject(new Error('not used')),
+    get: () => Promise.resolve(destinationRecord),
+    list: () => Promise.resolve([destinationRecord]),
+    appendVersion: appendDestinationVersion,
+    setStatus: () => Promise.reject(new Error('not used')),
+    setWorkflowPolicy: () => Promise.reject(new Error('not used')),
+    clearWorkflowPolicy: () => Promise.reject(new Error('not used')),
+    close: () => Promise.resolve(),
+  };
   const executeHttp = vi.fn<ConnectionDependencies['httpClient']['execute']>(
     async (input) => {
       expect(input.headers).toEqual({ authorization: credentialValue });
@@ -212,6 +243,7 @@ function connectionRuntime(
         },
         abandonConnectionTest: () => Promise.resolve(),
       },
+      destinationPersistence,
     },
     close: () => Promise.resolve(),
   });
@@ -221,6 +253,7 @@ function connectionRuntime(
     encryption,
     executeHttp,
     markConnectionTestDispatched,
+    appendDestinationVersion,
   };
 }
 
@@ -326,5 +359,25 @@ describe('connections real Nest HTTP stack', () => {
     expect(connection.executeHttp).toHaveBeenCalledOnce();
     expect(connection.encryption.open).toHaveBeenCalledOnce();
     expect(connection.markConnectionTestDispatched).toHaveBeenCalledOnce();
+
+    const appended = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
+      headers: { ...headers, 'idempotency-key': 'destination-append-wire' },
+      payload: {
+        expectedVersion: 1,
+        config: {
+          kind: 'slack',
+          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          channelId: 'C67890',
+        },
+      },
+    });
+    expect(appended.statusCode).toBe(200);
+    expect(appended.json()).toMatchObject({
+      id: destinationId,
+      currentVersion: 2,
+    });
+    expect(connection.appendDestinationVersion).toHaveBeenCalledOnce();
   });
 });

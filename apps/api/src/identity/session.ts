@@ -137,12 +137,18 @@ export class OpaqueSessionService {
     });
   }
 
-  async authenticate(rawToken: string): Promise<AuthenticatedSession> {
+  async authenticate(
+    rawToken: string,
+    options: Readonly<{ signal?: AbortSignal }> = {},
+  ): Promise<AuthenticatedSession> {
     const digest = this.parseTokenDigest(rawToken);
     let record;
     try {
-      record = await this.store.findByDigest(digest);
+      options.signal?.throwIfAborted();
+      record = await this.store.findByDigest(digest, options);
+      options.signal?.throwIfAborted();
     } catch {
+      options.signal?.throwIfAborted();
       throw new IdentityError('identity.session_invalid');
     }
     if (record === undefined) {

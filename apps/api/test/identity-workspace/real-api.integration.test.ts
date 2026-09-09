@@ -599,6 +599,16 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       routeWorkspaceId: workspace.id,
       runId: startedBody.run.id,
       lastEventId: 1,
+      sessionExpiresAt: storedSession.expiresAt,
+      reauthorizeSession: () =>
+        Promise.resolve({
+          userId: storedSession.userId,
+          sessionId: storedSession.id,
+          expiresAt: storedSession.expiresAt,
+        }),
+      abortStream: (reason?: unknown) => {
+        streamAbort.abort(reason);
+      },
       signal: streamAbort.signal,
     });
     const event = await frames[Symbol.asyncIterator]().next();

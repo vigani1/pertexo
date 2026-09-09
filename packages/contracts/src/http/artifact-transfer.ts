@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isSupportedHttpFieldValue } from './http-field-value.js';
+
 const artifactByteLengthSchema = z
   .number()
   .int()
@@ -10,7 +12,10 @@ const artifactMediaTypeSchema = z
   .trim()
   .min(3)
   .max(255)
-  .regex(/^[^\s/;]+\/[^\r\n]+$/u);
+  .regex(/^[^\s/;]+\/[^\r\n]+$/u)
+  .refine(isSupportedHttpFieldValue, {
+    message: 'Media type contains an unsupported HTTP field value',
+  });
 const artifactSha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
 
 export const artifactUploadRequestSchema = z

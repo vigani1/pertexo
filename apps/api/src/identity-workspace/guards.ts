@@ -46,6 +46,8 @@ export class SessionAuthenticationGuard implements CanActivate {
     try {
       const session = await this.sessions.authenticate(rawToken);
       request.identitySession = session;
+      request.reauthorizeIdentitySession = (signal) =>
+        this.sessions.authenticate(rawToken, { signal });
       this.contexts.setActor({
         actorId: session.userId,
         kind: 'user',

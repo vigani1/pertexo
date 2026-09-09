@@ -9,12 +9,14 @@ export const ARTIFACT_UPLOAD_PURPOSE = 'user-upload';
 const MAX_ARTIFACT_BYTES = 5 * 1024 * 1024 * 1024;
 const uuidSchema = z.uuid();
 const byteLengthSchema = z.number().int().min(0).max(MAX_ARTIFACT_BYTES);
+const HTTP_FIELD_VALUE = /^[\t\x20-\x7e\x80-\xff]+$/u;
 const mediaTypeSchema = z
   .string()
   .trim()
   .min(3)
   .max(255)
-  .regex(/^[^\s/;]+\/[^\r\n]+$/u);
+  .regex(/^[^\s/;]+\/[^\r\n]+$/u)
+  .regex(HTTP_FIELD_VALUE);
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
 const idempotencyKeySchema = z
   .string()
@@ -70,7 +72,7 @@ const artifactRowSchema = z
     workspace_id: uuidSchema,
     purpose: z.string().min(1).max(64),
     storage_key: z.string().min(1).max(512),
-    media_type: z.string().min(3).max(255),
+    media_type: mediaTypeSchema,
     byte_length: z.union([z.number(), z.string()]),
     sha256: sha256Schema,
     status: z.enum(['pending', 'available', 'deleting', 'deleted']),

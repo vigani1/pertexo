@@ -74,16 +74,18 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
     },
     findActiveSessionByDigest: async (
       tokenDigestInput: string,
+      options: Readonly<{ signal?: AbortSignal }> = {},
     ): Promise<SessionRecord | null> => {
-      const result = await pool.query(
-        `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
+      const result = await pool.query({
+        text: `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
                 s.user_agent, s.ip_address, s.created_at
          from app.sessions s
          join app.users u on u.id = s.user_id and u.status = 'active'
          where s.token_digest = $1 and s.revoked_at is null
            and s.expires_at > clock_timestamp()`,
-        [digestSchema.parse(tokenDigestInput)],
-      );
+        values: [digestSchema.parse(tokenDigestInput)],
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      });
       const row = result.rows[0] as Record<string, unknown> | undefined;
       return row === undefined ? null : mapSession(row);
     },

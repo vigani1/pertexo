@@ -205,6 +205,7 @@ export function createOperatorRunReplayStore(
           `);
           return accepted.runId;
         },
+        parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
       return consumed.status === 'duplicate'
         ? Object.freeze({ kind: 'duplicate' as const })

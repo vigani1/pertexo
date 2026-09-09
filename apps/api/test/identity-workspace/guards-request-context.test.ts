@@ -72,10 +72,18 @@ function authorizationReader() {
 describe('identity/workspace guard request correlation', () => {
   it('sets an immutable validated actor/session only after authentication', async () => {
     const contexts = new RequestContextStore();
-    const guard = new SessionAuthenticationGuard(
-      authenticatedSessions(),
-      contexts,
+    const authenticateSession = vi.fn().mockResolvedValue(
+      Object.freeze({
+        userId: actorId,
+        sessionId,
+        expiresAt: new Date('2030-01-01T00:00:00.000Z'),
+        clientMetadata: Object.freeze({}),
+      }),
     );
+    const sessionService = {
+      authenticate: authenticateSession,
+    } as unknown as OpaqueSessionService;
+    const guard = new SessionAuthenticationGuard(sessionService, contexts);
     const httpRequest = request();
     let beforeActor: unknown;
     let afterContext: ReturnType<RequestContextStore['get']> | undefined;
@@ -96,6 +104,17 @@ describe('identity/workspace guard request correlation', () => {
     expect(Object.isFrozen(afterContext)).toBe(true);
     expect(Object.isFrozen(afterContext?.actor)).toBe(true);
     expect(afterContext?.workspaceId).toBeUndefined();
+    const reauthorizationController = new AbortController();
+    await expect(
+      httpRequest.reauthorizeIdentitySession?.(
+        reauthorizationController.signal,
+      ),
+    ).resolves.toMatchObject({ userId: actorId, sessionId });
+    expect(authenticateSession).toHaveBeenLastCalledWith(
+      'opaque-session-token',
+      { signal: reauthorizationController.signal },
+    );
+    expect(authenticateSession).toHaveBeenCalledTimes(2);
     expect(() => contexts.get()).toThrow('request context is unavailable');
   });
 

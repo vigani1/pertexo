@@ -635,6 +635,7 @@ describe('generic webhook database seam', () => {
     const endpointId = randomUUID();
     const health = await webhook.provision({
       workspaceId,
+      workflowId: workflowIdInput,
       actorId,
       triggerId: ids.webhookId,
       endpointId,
@@ -709,6 +710,104 @@ describe('generic webhook database seam', () => {
     ]);
   });
 
+  it('binds every webhook mutation and replay to its workflow parent', async () => {
+    const target = await publishTriggerWorkflow();
+    const other = await publishTriggerWorkflow();
+    await expect(
+      reconciliation.reconcile({
+        workspaceId,
+        workflowId: target.created.workflowId,
+        publishedVersionId: target.published.version.id,
+        outboxEventId: target.eventId,
+        delivery: {
+          outboxEventId: target.eventId,
+          payloadChecksum: target.eventChecksum,
+        },
+      }),
+    ).resolves.toHaveLength(2);
+    const ids = await workflowTriggerIds(target.created.workflowId);
+    const missingWorkflowId = randomUUID();
+    const wrongWorkspaceId = randomUUID();
+    const provision = {
+      workspaceId,
+      workflowId: target.created.workflowId,
+      actorId,
+      triggerId: ids.webhookId,
+      endpointId: randomUUID(),
+      endpointKeyHash: hash(randomUUID()),
+      secret: secret(),
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    };
+    for (const invalid of [
+      { workflowId: other.created.workflowId },
+      { workflowId: missingWorkflowId },
+      { workspaceId: wrongWorkspaceId },
+    ]) {
+      await expect(
+        webhook.provision({ ...provision, ...invalid }),
+      ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    }
+    await expect(webhook.provision(provision)).resolves.toMatchObject({
+      id: ids.webhookId,
+    });
+    await expect(webhook.provision(provision)).resolves.toMatchObject({
+      id: ids.webhookId,
+    });
+
+    const endpointKeyHash = hash(randomUUID());
+    const rotateEndpoint = {
+      workspaceId,
+      workflowId: target.created.workflowId,
+      actorId,
+      triggerId: ids.webhookId,
+      endpointKeyHash,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    };
+    for (const invalid of [
+      { workflowId: other.created.workflowId },
+      { workflowId: missingWorkflowId },
+      { workspaceId: wrongWorkspaceId },
+    ]) {
+      await expect(
+        webhook.rotateEndpoint({ ...rotateEndpoint, ...invalid }),
+      ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    }
+    await expect(webhook.rotateEndpoint(rotateEndpoint)).resolves.toMatchObject(
+      { id: ids.webhookId },
+    );
+    await expect(webhook.rotateEndpoint(rotateEndpoint)).resolves.toMatchObject(
+      { id: ids.webhookId },
+    );
+
+    const rotateSecret = {
+      workspaceId,
+      workflowId: target.created.workflowId,
+      actorId,
+      triggerId: ids.webhookId,
+      endpointKeyHash,
+      secret: secret(),
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    };
+    for (const invalid of [
+      { workflowId: other.created.workflowId },
+      { workflowId: missingWorkflowId },
+      { workspaceId: wrongWorkspaceId },
+    ]) {
+      await expect(
+        webhook.rotateSecret({ ...rotateSecret, ...invalid }),
+      ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    }
+    await expect(webhook.rotateSecret(rotateSecret)).resolves.toMatchObject({
+      id: ids.webhookId,
+    });
+    await expect(webhook.rotateSecret(rotateSecret)).resolves.toMatchObject({
+      id: ids.webhookId,
+    });
+  });
+
   it('applies archive state at reconciliation and gates new trigger work', async () => {
     const { created, published } = await publishTriggerWorkflow();
     const event = await appendReconciliationEvent(
@@ -777,6 +876,7 @@ describe('generic webhook database seam', () => {
     await expect(
       webhook.rotateEndpoint({
         workspaceId,
+        workflowId: created.workflowId,
         actorId,
         triggerId: provisioned.webhookId,
         endpointKeyHash: hash(`archived-rotation-${randomUUID()}`),
@@ -835,7 +935,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0084_workspace_member_discovery_index.sql',
+      migrationHead: '0085_artifact_media_type_http_safety.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -854,6 +954,7 @@ describe('generic webhook database seam', () => {
     ]);
     const health = await webhook.provision({
       workspaceId,
+      workflowId,
       actorId,
       triggerId,
       endpointId,
@@ -1369,6 +1470,7 @@ describe('generic webhook database seam', () => {
     const nextEndpointHash = hash('endpoint-two');
     await webhook.rotateEndpoint({
       workspaceId,
+      workflowId,
       actorId,
       triggerId,
       endpointKeyHash: nextEndpointHash,
@@ -1401,6 +1503,7 @@ describe('generic webhook database seam', () => {
     await expect(
       webhook.rotateSecret({
         workspaceId,
+        workflowId,
         actorId,
         triggerId,
         endpointKeyHash: hash('wrong-endpoint'),
@@ -1419,6 +1522,7 @@ describe('generic webhook database seam', () => {
     expect(afterWrongKey.rows).toEqual(beforeWrongKey.rows);
     await webhook.rotateSecret({
       workspaceId,
+      workflowId,
       actorId,
       triggerId,
       endpointKeyHash: nextEndpointHash,

@@ -9,6 +9,8 @@ import {
 } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 
+const HTTP_FIELD_VALUE = /^[\t\x20-\x7e\x80-\xff]+$/u;
+
 export const ARTIFACT_STATUS = {
   available: 'available',
   deleted: 'deleted',
@@ -42,7 +44,8 @@ const metadataSchema = z.object({
     .trim()
     .min(3)
     .max(255)
-    .regex(/^[^\s/;]+\/[^\r\n]+$/u),
+    .regex(/^[^\s/;]+\/[^\r\n]+$/u)
+    .regex(HTTP_FIELD_VALUE),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
   storageKey: z.string().min(1).max(512),
 });

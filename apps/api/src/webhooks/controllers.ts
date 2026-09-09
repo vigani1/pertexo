@@ -105,6 +105,7 @@ export class WebhookManagementController {
     return withRequestOperationSignal(request, (signal) =>
       this.service[operation]({
         workspaceId: route.workspaceId,
+        workflowId: route.workflowId,
         triggerId: route.triggerId,
         actorId: authenticatedSession(request).userId,
         idempotencyKey: parseIdempotencyKey(

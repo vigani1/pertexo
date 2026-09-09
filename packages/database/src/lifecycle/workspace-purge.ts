@@ -1,11 +1,14 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { PoolClient, QueryResult } from 'pg';
+import type { Pool, PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { withWorkspaceDestructiveOperationLock } from './retention-transaction.js';
+import {
+  inRetentionTransaction,
+  withWorkspaceDestructiveOperationLock,
+} from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
 
@@ -256,32 +259,14 @@ export function createWorkspacePurgeCoordinator(
   const transaction = async <T>(
     signal: AbortSignal | undefined,
     work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => {
-    const client = await pool.connect();
-    try {
-      await query(client, 'begin', [], signal);
-      await query(
-        client,
-        "select set_config('lock_timeout',$1,true)",
-        [`${String(options.lockTimeoutMs)}ms`],
-        signal,
-      );
-      await query(
-        client,
-        "select set_config('statement_timeout',$1,true)",
-        [`${String(options.statementTimeoutMs)}ms`],
-        signal,
-      );
-      const result = await work(client);
-      await query(client, 'commit', [], signal);
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<T> => inRetentionTransaction(pool as Pool, options, signal, work);
+
+  const platformQuery = <Row extends Record<string, unknown>>(
+    text: string,
+    values: readonly unknown[] = [],
+    signal?: AbortSignal,
+  ): Promise<QueryResult<Row>> =>
+    transaction(signal, (client) => query<Row>(client, text, values, signal));
 
   const lockAnchor = async (
     client: PoolClient,
@@ -336,14 +321,30 @@ export function createWorkspacePurgeCoordinator(
       );
   };
 
+  const findDueStep = (signal?: AbortSignal) =>
+    platformQuery<{ job_id: string; workspace_id: string }>(
+      'select * from app.find_due_workspace_purge_step()',
+      [],
+      signal,
+    );
+  const findDueCompletion = (signal?: AbortSignal) =>
+    platformQuery<{ job_id: string; workspace_id: string }>(
+      'select * from app.find_due_workspace_purge_completion()',
+      [],
+      signal,
+    );
+  const findDuePurge = (signal?: AbortSignal) =>
+    platformQuery<{ workspace_id: string }>(
+      'select * from app.find_due_workspace_purge()',
+      [],
+      signal,
+    );
+
   return Object.freeze({
     close: () => lease?.close() ?? Promise.resolve(),
     processNext: async (signal?: AbortSignal) => {
       signal?.throwIfAborted();
-      const dueStep = await pool.query<{
-        job_id: string;
-        workspace_id: string;
-      }>('select * from app.find_due_workspace_purge_step()');
+      const dueStep = await findDueStep(signal);
       const stepCandidate = dueStep.rows[0];
       if (stepCandidate !== undefined) {
         const stepJobId = uuidSchema.parse(stepCandidate.job_id);
@@ -484,19 +485,17 @@ export function createWorkspacePurgeCoordinator(
         } catch (error: unknown) {
           if (signal?.aborted === true) throw signal.reason;
           if (stepClaim !== undefined)
-            await pool.query(
+            await platformQuery(
               'select app.release_workspace_purge_step($1,$2,$3)',
               [stepJobId, stepClaim.leaseToken, stepClaim.leaseFence],
+              signal,
             );
           if (isLegalHold(error) || isClaimRace(error) || isFenceChanged(error))
             return { status: 'idle' as const };
           throw error;
         }
       }
-      const dueCompletion = await pool.query<{
-        job_id: string;
-        workspace_id: string;
-      }>('select * from app.find_due_workspace_purge_completion()');
+      const dueCompletion = await findDueCompletion(signal);
       const completionCandidate = dueCompletion.rows[0];
       if (completionCandidate !== undefined) {
         const completionJobId = uuidSchema.parse(completionCandidate.job_id);
@@ -683,13 +682,14 @@ export function createWorkspacePurgeCoordinator(
               return { status: 'idle' as const };
             throw error;
           }
-          const released = await pool.query<{ changed: boolean }>(
+          const released = await platformQuery<{ changed: boolean }>(
             'select app.release_workspace_purge_completion($1,$2,$3) changed',
             [
               completionJobId,
               completion.lease_token,
               sequence(completion.lease_fence),
             ],
+            signal,
           );
           return {
             jobId: completionJobId,
@@ -701,9 +701,7 @@ export function createWorkspacePurgeCoordinator(
           };
         }
       }
-      const due = await pool.query<{ workspace_id: string }>(
-        'select * from app.find_due_workspace_purge()',
-      );
+      const due = await findDuePurge(signal);
       const candidate = due.rows[0];
       if (candidate === undefined) return { status: 'idle' as const };
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
@@ -854,9 +852,10 @@ export function createWorkspacePurgeCoordinator(
             return { status: 'idle' as const };
           throw error;
         }
-        const released = await pool.query<{ changed: boolean }>(
+        const released = await platformQuery<{ changed: boolean }>(
           'select app.release_workspace_purge_job($1,$2,$3) changed',
           [job.job_id, job.lease_token, sequence(job.lease_fence)],
+          signal,
         );
         return {
           jobId: job.job_id,

@@ -124,6 +124,7 @@ export async function reconcileUnknownOutcomeEvidence(
       if (evidence.rows[0]?.status !== 'outcome_unknown')
         throw new UnknownOutcomeReconciliationStateError();
     },
+    parsed.signal === undefined ? {} : { signal: parsed.signal },
   );
   return Object.freeze({ kind: consumed.status });
 }

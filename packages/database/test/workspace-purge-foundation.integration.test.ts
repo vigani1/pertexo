@@ -698,4 +698,66 @@ describe('workspace purge foundation', () => {
       await coordinator.close();
     }
   });
+
+  it('cancels a discovery query blocked inside PostgreSQL before follow-on purge work', async () => {
+    if (owner === undefined) throw new Error('Owner pool unavailable');
+    const blocker = await owner.connect();
+    const observer = new Pool({ connectionString: adminUrl, max: 1 });
+    const objectStore = new MemoryObjectPurgeStore();
+    const ledger = new MemoryPurgeLedger();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 5_000,
+        leaseOwner: 'purge-discovery-cancellation',
+        leaseSeconds: 30,
+        lockTimeoutMs: 5_000,
+        statementTimeoutMs: 5_000,
+      },
+    );
+    const controller = new AbortController();
+    const reason = new Error('cancel blocked purge discovery');
+    try {
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query(
+        'lock table app.workspace_purge_steps in access exclusive mode',
+      );
+      const processing = coordinator.processNext(controller.signal);
+      const rejection = expect(processing).rejects.toBe(reason);
+      await expect
+        .poll(async () => {
+          const activity = await observer.query<{ waiting: boolean }>(
+            `select exists(
+               select 1 from pg_stat_activity
+               where datname=$1 and usename='pertexo_maintenance'
+                 and query like '%find_due_workspace_purge_step%'
+                 and wait_event_type='Lock'
+             ) waiting`,
+            [databaseName],
+          );
+          return activity.rows[0]?.waiting;
+        })
+        .toBe(true);
+
+      controller.abort(reason);
+      await rejection;
+      expect(objectStore.calls).toBe(0);
+      expect(ledger.appendCalls).toBe(0);
+    } finally {
+      await blocker.query('rollback').catch(() => undefined);
+      blocker.release();
+      await observer.end();
+      await coordinator.close();
+    }
+  });
 });
