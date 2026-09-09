@@ -10,12 +10,76 @@ import type { OidcLoginService } from '../../src/identity/index.js';
 import {
   OidcController,
   SessionController,
+  UserController,
+  WorkspaceMembersController,
   WorkspaceController,
   type CookieResponse,
 } from '../../src/identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace controllers', () => {
+  it('returns the current profile with private cache policy', async () => {
+    const response: CookieResponse = { header: vi.fn() };
+    const controller = new UserController({
+      execute: vi.fn().mockResolvedValue({ id: 'user' }),
+    } as never);
+    const request = {
+      identitySession: {
+        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        expiresAt: new Date(),
+        clientMetadata: {},
+      },
+    } satisfies IdentityWorkspaceRequest;
+    await expect(controller.me(request, response)).resolves.toEqual({
+      id: 'user',
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store',
+    );
+  });
+
+  it('parses bounded member pagination and applies private cache policy', async () => {
+    const response: CookieResponse = { header: vi.fn() };
+    const execute = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
+    const controller = new WorkspaceMembersController({ execute } as never);
+    const request = {
+      identitySession: {
+        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        expiresAt: new Date(),
+        clientMetadata: {},
+      },
+    } satisfies IdentityWorkspaceRequest;
+    await controller.list(
+      request,
+      { workspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+      { limit: '2' },
+      response,
+    );
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeWorkspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        limit: 2,
+      }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store',
+    );
+    await expect(
+      controller.list(
+        request,
+        { workspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+        { limit: '101' },
+        response,
+      ),
+    ).rejects.toThrow();
+  });
+
   it('sets a narrow HttpOnly OIDC binding cookie without exposing its value in the body', async () => {
     const oidc = {
       startLogin: vi.fn().mockResolvedValue({

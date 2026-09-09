@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0083_artifact_finalization_retention_deadline.sql",
+  "transactionalThrough": "0084_workspace_member_discovery_index.sql",
   "migrations": {}
 }

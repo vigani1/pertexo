@@ -138,6 +138,19 @@ export class WorkspaceManageGuard extends WorkspaceCapabilityGuard {
   }
 }
 
+/** Fixed-capability guard for the workspace member read endpoint. */
+@Injectable()
+export class WorkspaceMemberReadGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKSPACE_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    @Inject(RequestContextStore)
+    contexts: RequestContextStore,
+  ) {
+    super('member:read', authorization, contexts, 'forbidden', ['active']);
+  }
+}
+
 function requestFrom(context: ExecutionContext): IdentityWorkspaceRequest {
   return context.switchToHttp().getRequest<IdentityWorkspaceRequest>();
 }

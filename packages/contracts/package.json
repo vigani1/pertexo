@@ -21,6 +21,10 @@
       "types": "./dist/connections.d.ts",
       "default": "./dist/connections.js"
     },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "default": "./dist/catalog.js"
+    },
     "./identity-workspace": {
       "types": "./dist/identity-workspace.d.ts",
       "default": "./dist/identity-workspace.js"

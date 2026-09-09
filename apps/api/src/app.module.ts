@@ -9,6 +9,7 @@ import type {
 } from '@pertexo/observability';
 
 import type { ApiConfig } from './platform/config/api-config.js';
+import { CatalogModule } from './catalog/index.js';
 
 import { DatabaseModule } from './platform/database/database.module.js';
 import { LiveController } from './platform/health/live.controller.js';
@@ -135,6 +136,10 @@ export class AppModule {
       identityModule === undefined
         ? []
         : [
+            CatalogModule.register(
+              { cohort: config.nodeCompatibilityCohort },
+              identityModule,
+            ),
             ...(dependencies.workflowRuntime === undefined
               ? [identityModule]
               : [

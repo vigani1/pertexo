@@ -1,6 +1,7 @@
 import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
+  WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
 } from '@pertexo/database/testing';
 import { describe, expect, it } from 'vitest';
@@ -10,6 +11,16 @@ import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace conflict mapping', () => {
+  it('maps a stale member-read authorization to safe forbidden', () => {
+    const error = mapIdentityWorkspaceError(
+      new WorkspaceAccessDeniedError('unsafe membership detail'),
+    );
+    expect(error).toEqual({
+      code: 'auth.forbidden',
+      safeDetail: 'The actor is no longer authorized for this workspace.',
+    });
+  });
+
   it('maps identity provider outages to the stable safe 503 catalog code', () => {
     const error = mapIdentityWorkspaceError(
       new IdentityError('identity.provider_unavailable'),

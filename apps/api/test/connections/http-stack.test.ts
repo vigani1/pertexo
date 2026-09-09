@@ -52,6 +52,8 @@ function identityRuntime(): ApiIdentityRuntime {
           clientMetadata: {},
         }),
       revokeByDigest: () => Promise.resolve(false),
+      findUserById: () => Promise.resolve(null),
+      listWorkspaceMembers: () => Promise.resolve({ items: [] }),
       resolveOrCreateIdentity: () => Promise.resolve({ userId: actorId }),
       createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
       requestWorkspaceLifecycleOperation: () =>

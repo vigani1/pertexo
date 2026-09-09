@@ -3,10 +3,13 @@ import { WorkspaceLifecycleConflictError } from '@pertexo/database/testing';
 
 import {
   CreateWorkspaceUseCase,
+  GetCurrentUserUseCase,
+  ListWorkspaceMembersUseCase,
   OidcApplicationService,
   WorkspaceLifecycleUseCase,
   workspaceCreateRequestSchema,
 } from '../../src/identity-workspace/index.js';
+import { encodeWorkspaceMemberCursor } from '../../src/identity-workspace/index.js';
 import {
   authorizeWorkspace,
   createActorContext,
@@ -48,11 +51,24 @@ function operation(
   };
 }
 
+function user() {
+  return {
+    id: actorId,
+    email: 'person@example.test',
+    displayName: 'Person',
+    status: 'active' as const,
+    createdAt: new Date('2026-08-20T12:00:00.000Z'),
+    updatedAt: new Date('2026-08-20T12:00:00.000Z'),
+  };
+}
+
 function persistence() {
   return {
     create: vi.fn(),
     findByDigest: vi.fn(),
     revokeByDigest: vi.fn(),
+    findUserById: vi.fn(),
+    listWorkspaceMembers: vi.fn().mockResolvedValue({ items: [] }),
     resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue(workspace()),
     requestWorkspaceLifecycleOperation: vi
@@ -89,6 +105,91 @@ function actor() {
 }
 
 describe('identity/workspace application use cases', () => {
+  it('returns only the allowlisted current-user profile fields', async () => {
+    const store = persistence();
+    vi.mocked(store.findUserById).mockResolvedValue(user());
+    const result = await new GetCurrentUserUseCase(store).execute(actorId);
+    expect(result).toEqual({
+      id: actorId,
+      email: 'person@example.test',
+      displayName: 'Person',
+      status: 'active',
+      createdAt: '2026-08-20T12:00:00.000Z',
+      updatedAt: '2026-08-20T12:00:00.000Z',
+    });
+  });
+
+  it('authorizes and passes an opaque member cursor to the bounded persistence page', async () => {
+    const store = persistence();
+    const member = {
+      userId: actorId,
+      email: 'person@example.test',
+      displayName: 'Person',
+      role: 'admin' as const,
+      membershipStatus: 'active' as const,
+      createdAt: new Date('2026-08-20T12:00:00.000Z'),
+      updatedAt: new Date('2026-08-20T12:00:00.000Z'),
+    };
+    const cursor = encodeWorkspaceMemberCursor({
+      createdAt: '2026-08-20T12:00:00.123456Z',
+      userId: actorId,
+    });
+    vi.mocked(store.listWorkspaceMembers).mockResolvedValue({
+      items: [member],
+      nextCursor: { createdAt: '2026-08-20T12:00:00.654321Z', userId: actorId },
+    });
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess('owner')),
+    };
+    const result = await new ListWorkspaceMembersUseCase(
+      store,
+      authorization,
+    ).execute({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      limit: 1,
+      after: cursor,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.nextCursor).toBeTruthy();
+    expect(store.listWorkspaceMembers).toHaveBeenCalledWith(
+      workspaceId,
+      actorId,
+      {
+        limit: 1,
+        after: { createdAt: '2026-08-20T12:00:00.123456Z', userId: actorId },
+      },
+    );
+  });
+
+  it.each([
+    'not-a-time',
+    '2026-02-30T12:00:00.123456Z',
+    '2026-08-20T25:00:00.123456Z',
+    '0000-08-20T12:00:00.123456Z',
+  ])(
+    'rejects invalid member cursor timestamp %s before touching persistence',
+    async (createdAt) => {
+      const store = persistence();
+      const authorization: WorkspaceAuthorizationReader = {
+        findAccess: vi.fn().mockResolvedValue(activeAccess('owner')),
+      };
+      await expect(
+        new ListWorkspaceMembersUseCase(store, authorization).execute({
+          actor: actor(),
+          routeWorkspaceId: workspaceId,
+          after: Buffer.from(
+            JSON.stringify({
+              kind: 'workspace_members',
+              createdAt,
+              userId: actorId,
+            }),
+          ).toString('base64url'),
+        }),
+      ).rejects.toMatchObject({ code: 'request.invalid' });
+      expect(store.listWorkspaceMembers).not.toHaveBeenCalled();
+    },
+  );
   it('reuses guard authorization for lifecycle operations', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {

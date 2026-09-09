@@ -2,6 +2,8 @@ export { IdentityWorkspaceModule } from './module.js';
 export {
   OidcController,
   SessionController,
+  UserController,
+  WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
 export {
@@ -13,6 +15,8 @@ export {
 } from './guards.js';
 export {
   CreateWorkspaceUseCase,
+  GetCurrentUserUseCase,
+  ListWorkspaceMembersUseCase,
   OidcApplicationService,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
@@ -22,6 +26,7 @@ export * from './ports.js';
 export * from './tokens.js';
 export * from './types.js';
 export { requestIdentifier, traceIdentifier } from './request-identifiers.js';
+export { encodeWorkspaceMemberCursor } from './cursor.js';
 export {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,

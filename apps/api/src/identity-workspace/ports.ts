@@ -29,6 +29,7 @@ export type IdentityWorkspaceConfig = Readonly<{
 }>;
 
 export interface IdentityWorkspacePersistence extends SessionStorePort {
+  findUserById(userId: string): Promise<UserProfilePersistenceRecord | null>;
   resolveOrCreateIdentity(
     input: Readonly<{
       issuer: string;
@@ -49,6 +50,19 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
       metadata?: Record<string, unknown>;
     }>,
   ): Promise<WorkspacePersistenceRecord>;
+  listWorkspaceMembers(
+    workspaceId: string,
+    actorId: string,
+    input?: Readonly<{
+      limit?: number;
+      after?: Readonly<{ createdAt: string; userId: string }>;
+    }>,
+  ): Promise<
+    Readonly<{
+      items: readonly WorkspaceMemberPersistenceRecord[];
+      nextCursor?: Readonly<{ createdAt: string; userId: string }>;
+    }>
+  >;
   requestWorkspaceLifecycleOperation(input: {
     workspaceId: WorkspaceId;
     actorUserId: string;
@@ -62,6 +76,25 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
     actorUserId: string,
   ): Promise<WorkspaceLifecycleOperationRecord | null>;
 }
+
+export type UserProfilePersistenceRecord = Readonly<{
+  id: string;
+  email: string;
+  displayName: string;
+  status: 'active' | 'suspended' | 'deleted';
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type WorkspaceMemberPersistenceRecord = Readonly<{
+  userId: string;
+  email: string;
+  displayName: string;
+  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
+  membershipStatus: 'active' | 'suspended';
+  createdAt: Date;
+  updatedAt: Date;
+}>;
 
 export type WorkspacePersistenceRecord = Readonly<{
   id: string;

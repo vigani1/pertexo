@@ -19,6 +19,7 @@ describe('contracts package boundary', () => {
       '.',
       './errors',
       './connections',
+      './catalog',
       './identity-workspace',
       './node-testing',
       './workflow-authoring',

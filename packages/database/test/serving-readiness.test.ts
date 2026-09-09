@@ -9,7 +9,7 @@ import {
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0083_artifact_finalization_retention_deadline.sql',
+      '0084_workspace_member_discovery_index.sql',
     );
   });
 

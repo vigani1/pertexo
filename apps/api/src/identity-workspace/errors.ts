@@ -1,6 +1,7 @@
 import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
+  WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
 } from '@pertexo/database/api';
 import {
@@ -56,6 +57,11 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
   if (error instanceof IdempotencyRequestConflictError) {
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
+    });
+  }
+  if (error instanceof WorkspaceAccessDeniedError) {
+    return applicationError('auth.forbidden', {
+      safeDetail: 'The actor is no longer authorized for this workspace.',
     });
   }
   return applicationError('internal.unexpected', { cause: error });

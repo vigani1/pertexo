@@ -1933,7 +1933,7 @@ release checklist rather than a one-time review.
 
 ```txt
 /v1/auth/*
-/v1/users/*
+/v1/users/me
 /v1/workspaces/*
 /v1/workspaces/:workspaceId/deletion
 /v1/workspaces/:workspaceId/members
@@ -2053,6 +2053,10 @@ and response mapping only.
 
 | Endpoint                                                                  | Application use case       | Transaction/side effect                                     |
 | ------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- |
+| `GET /v1/users/me` | `GetCurrentUser` | authenticated current-user profile projection; no identity-provider secrets |
+| `GET /v1/workspaces/:workspaceId/members` | `ListWorkspaceMembers` | authorized, workspace-scoped cursor query |
+| `GET /v1/node-definitions` | `ListNodeDefinitions` | browser-safe definition projection from the configured release cohort |
+| `GET /v1/integrations` | `ListIntegrations` | integration discovery derived from that same release catalog |
 | `POST /v1/workspaces`                                                     | `CreateWorkspace`          | user, workspace, owner membership, audit in one transaction |
 | `POST /v1/workspaces/:workspaceId/deletion`                               | `RequestWorkspaceDeletion` | revoke access/triggers and start recovery window atomically |
 | `DELETE /v1/workspaces/:workspaceId/deletion`                             | `RestoreWorkspace`         | cancel pending deletion; leave integrations disabled        |
@@ -2075,9 +2079,20 @@ and response mapping only.
 | `POST /v1/workspaces/:workspaceId/artifacts/:id/finalize`                 | `FinalizeArtifactUpload`   | verify object and make available                            |
 | `POST /hooks/:endpointKey`                                                | `AcceptTriggerDelivery`    | verify, dedupe, persist delivery/run/outbox                 |
 
-List endpoints use opaque cursor pagination and deterministic `(created_at,
-id)` ordering. Limits have global maxima. Filtering and sorting use explicit
+Persisted list endpoints use opaque cursor pagination and deterministic `(created_at,
+id)` ordering (memberships use their `user_id` key as the tie-breaker). Limits have global maxima. Filtering and sorting use explicit
 allowlists per endpoint, never arbitrary column names from the request.
+
+The four discovery routes above close the previously unallocated API surface:
+current-user and member reads belong to Phase 1; node discovery belongs to
+Phase 3, and integration discovery belongs to Phase 4, including the definitions
+added by Phases 5–6. `/v1/users/me` is self-profile read access, not user administration.
+The members route permits owner/admin reads of existing memberships under
+`member:read`; it does not introduce invitations
+or role-management writes. Integrations are a catalog projection, not a second
+connection resource. Static catalog lists are bounded by the configured release
+and use deterministic definition identity ordering rather than database cursors.
+Discovery must not instantiate executors or expose connection secrets.
 
 ### Internal application interfaces
 
@@ -2215,6 +2230,7 @@ building a custom engine merely because some infrastructure already exists.
 - Managed OIDC login -> internal user -> workspace membership -> authorized
   request -> audit event.
 - Workspace creation and deletion-request/restore foundation.
+- Authenticated current-user profile and authorized paginated member reads.
 - RLS integration tests use real runtime roles from Phase 0.
 - Add service accounts/API keys only when the first external API use case needs
   them; do not build invitations or enterprise identity features first.
@@ -2232,6 +2248,7 @@ building a custom engine merely because some infrastructure already exists.
 
 - Add Manual trigger, Set/Map, and Terminate definitions with versioned schemas,
   JSONata mapping, validation, executor registration, and compatibility tests.
+- Expose authenticated, browser-safe discovery of the configured node catalog.
 - Add run/idempotency/event/checkpoint persistence, outbox dispatch,
   coordinator jobs, separate node-attempt jobs, SSE reconstruction, and
   cancellation for this small graph only.
@@ -2241,6 +2258,7 @@ building a custom engine merely because some infrastructure already exists.
 ### Phase 4: first side-effecting integration slice
 
 - Add connections/envelope encryption and generic HTTP Request.
+- Expose authenticated integration discovery derived from the configured catalog.
 - Complete SSRF, redaction, timeout, retry-class, provider idempotency, and
   `outcome_unknown` behavior before HTTP becomes publishable.
 - Add validate/test-execute preview semantics and bounded artifacts.

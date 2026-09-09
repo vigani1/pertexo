@@ -12,15 +12,20 @@ import { RequestContextStore } from '../platform/http/index.js';
 import {
   OidcController,
   SessionController,
+  UserController,
+  WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
+  WorkspaceMemberReadGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
+  GetCurrentUserUseCase,
+  ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 import type {
@@ -165,6 +170,7 @@ export class IdentityWorkspaceModule {
           IDENTITY_WORKSPACE_TELEMETRY,
         ],
       },
+      ...identityReadProviders(),
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -180,6 +186,7 @@ export class IdentityWorkspaceModule {
         inject: [CSRF_POLICY],
       },
       WorkspaceManageGuard,
+      WorkspaceMemberReadGuard,
       {
         provide: OidcController,
         useFactory: (
@@ -213,7 +220,13 @@ export class IdentityWorkspaceModule {
     ];
     return {
       module: IdentityWorkspaceModule,
-      controllers: [OidcController, SessionController, WorkspaceController],
+      controllers: [
+        OidcController,
+        SessionController,
+        UserController,
+        WorkspaceMembersController,
+        WorkspaceController,
+      ],
       providers,
       exports: [
         OidcLoginService,
@@ -222,10 +235,46 @@ export class IdentityWorkspaceModule {
         DoubleSubmitCsrfPolicy,
         CreateWorkspaceUseCase,
         WorkspaceLifecycleUseCase,
+        GetCurrentUserUseCase,
+        ListWorkspaceMembersUseCase,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
         WorkspaceManageGuard,
+        WorkspaceMemberReadGuard,
       ],
     };
   }
+}
+
+function identityReadProviders(): Provider[] {
+  return [
+    {
+      provide: GetCurrentUserUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) => new GetCurrentUserUseCase(persistence, telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: ListWorkspaceMembersUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        authorization: IdentityWorkspaceDependencies['authorization'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) =>
+        new ListWorkspaceMembersUseCase(persistence, authorization, telemetry),
+      inject: [
+        IDENTITY_WORKSPACE_PERSISTENCE,
+        WORKSPACE_AUTHORIZATION,
+        IDENTITY_WORKSPACE_TELEMETRY,
+      ],
+    },
+    {
+      provide: UserController,
+      useFactory: (currentUser: GetCurrentUserUseCase) =>
+        new UserController(currentUser),
+      inject: [GetCurrentUserUseCase],
+    },
+  ];
 }

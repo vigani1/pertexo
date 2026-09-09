@@ -250,6 +250,7 @@ describe('artifact finalization retention deadline prior-head migration', () => 
 
       await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
         '0083_artifact_finalization_retention_deadline.sql',
+        '0084_workspace_member_discovery_index.sql',
       ]);
 
       const api = new Pool({

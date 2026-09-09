@@ -17,6 +17,11 @@ export class IdentityNotFoundError extends Error {
   public override readonly name = 'IdentityNotFoundError';
 }
 
+/** Raised when a tenant read loses its actor authorization before execution. */
+export class WorkspaceAccessDeniedError extends Error {
+  public override readonly name = 'WorkspaceAccessDeniedError';
+}
+
 export type WorkspaceLifecycleConflictReason =
   'actor_inactive' | 'invalid_state';
 

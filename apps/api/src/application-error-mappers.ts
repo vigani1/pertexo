@@ -39,7 +39,7 @@ const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
     map: mapWorkflowAuthoringError,
   },
   {
-    route: /^\/v1\/(?:auth|workspaces)(?:\/|$)/u,
+    route: /^\/v1\/(?:auth|users|workspaces)(?:\/|$)/u,
     map: mapIdentityWorkspaceError,
   },
 ]);

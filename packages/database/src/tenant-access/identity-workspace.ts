@@ -11,6 +11,7 @@ import type { DatabaseConfig } from '../config.js';
 export {
   IdentityConflictError,
   IdentityNotFoundError,
+  WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   type IdentityConflictReason,
   type WorkspaceLifecycleConflictReason,
@@ -34,6 +35,7 @@ import {
   throwWorkspaceLifecycleError as workspaceLifecycleOperationError,
 } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
+import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
 
 const idempotencyKeySchema = z
   .string()
@@ -148,6 +150,21 @@ export type WorkspaceAccessRecord = Readonly<{
   workspaceStatus: WorkspaceStatus;
 }>;
 
+export type WorkspaceMemberRecord = Readonly<{
+  userId: string;
+  email: string;
+  displayName: string;
+  role: MembershipRole;
+  membershipStatus: 'active' | 'suspended';
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type WorkspaceMembersPage = Readonly<{
+  items: readonly WorkspaceMemberRecord[];
+  nextCursor?: Readonly<{ createdAt: string; userId: string }>;
+}>;
+
 export type CreateSessionInput = Readonly<{
   id?: string;
   userId: string;
@@ -203,6 +220,14 @@ export type IdentityWorkspaceDatabase = Readonly<{
     actorId: string,
     workspaceId: string,
   ): Promise<WorkspaceAccessRecord | null>;
+  listWorkspaceMembers(
+    workspaceId: string,
+    actorId: string,
+    input?: Readonly<{
+      limit?: number;
+      after?: Readonly<{ createdAt: string; userId: string }>;
+    }>,
+  ): Promise<WorkspaceMembersPage>;
   findAuthIdentity(
     issuer: string,
     providerSubject: string,
@@ -389,42 +414,7 @@ export function createIdentityWorkspaceDatabase(
 
   const database = {
     ...createIdentityWorkspaceIdentityStore(pool),
-
-    findWorkspaceAccess: async (
-      actorIdInput: string,
-      workspaceIdInput: string,
-    ): Promise<WorkspaceAccessRecord | null> => {
-      const actorId = parseUuid(actorIdInput);
-      const workspaceId = parseUuid(workspaceIdInput);
-      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const result = await client.query<{
-          actor_id: string;
-          workspace_id: string;
-          role: MembershipRole;
-          membership_status: 'active' | 'suspended' | 'removed';
-          workspace_status: WorkspaceStatus;
-        }>(
-          `select m.user_id as actor_id, m.workspace_id,
-                  m.role, m.status as membership_status,
-                  w.status as workspace_status
-           from app.workspace_memberships m
-           join app.workspaces w on w.id = m.workspace_id
-           join app.users u on u.id = m.user_id and u.status = 'active'
-           where m.workspace_id = $1 and m.user_id = $2`,
-          [workspaceId, actorId],
-        );
-        const row = result.rows[0];
-        return row === undefined
-          ? null
-          : Object.freeze({
-              actorId: row.actor_id,
-              workspaceId: row.workspace_id,
-              role: row.role,
-              membershipStatus: row.membership_status,
-              workspaceStatus: row.workspace_status,
-            });
-      });
-    },
+    ...createIdentityWorkspaceMemberStore(pool),
 
     ...createIdentityWorkspaceSessionStore(pool),
 
