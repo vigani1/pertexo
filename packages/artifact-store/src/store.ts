@@ -46,7 +46,6 @@ import {
   type GetObjectPresigner,
 } from './artifact-download.js';
 export type S3ClientLike = ObjectStoreS3Client;
-
 export interface ArtifactIdentity {
   readonly artifactId: string;
   readonly workspaceId: string;
@@ -176,7 +175,8 @@ const metadataSchema = identitySchema.extend({
     .trim()
     .min(3)
     .max(255)
-    .regex(/^[^\s/;]+\/[^\r\n]+$/u),
+    .regex(/^[^\s/;]+\/[^\r\n]+$/u)
+    .regex(/^[\t\x20-\x7e\x80-\xff]+$/u),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
 });
 

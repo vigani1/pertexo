@@ -6,6 +6,7 @@ import {
 } from 'jose';
 import { z } from 'zod';
 
+import { abandonResponse, cancelBounded } from './oidc-response-cleanup.js';
 import {
   IdentityError,
   isIdentityError,
@@ -96,10 +97,8 @@ export type GenericOidcAdapterConfiguration = Readonly<
 type ParsedGenericOidcAdapterConfiguration = z.output<
   typeof adapterConfigurationSchema
 >;
-
 type FetchLike = typeof fetch;
 type VerificationKey = KeyInput | ReturnType<typeof createRemoteJWKSet>;
-
 type GenericOidcAdapterOptions = Readonly<{
   fetch?: FetchLike;
   verificationKey?: KeyInput;
@@ -234,10 +233,12 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
       throw new IdentityError('identity.provider_unavailable');
     }
     if (hasCrossOriginRedirect(response, this.configuration.tokenEndpoint)) {
+      await abandonResponse(response, controller);
       clearTimeout(timeout);
       throw new IdentityError('identity.provider_rejected');
     }
     if (!response.ok) {
+      await abandonResponse(response, controller);
       clearTimeout(timeout);
       throw new IdentityError(
         response.status === 408 ||
@@ -340,9 +341,11 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
         redirect: 'manual',
       });
       if (hasCrossOriginRedirect(response, this.configuration.jwksUri)) {
+        await abandonResponse(response, controller);
         throw new Error('cross-origin JWKS redirect');
       }
       if (!response.ok) {
+        await abandonResponse(response, controller);
         throw new Error('JWKS endpoint unavailable');
       }
       const bytes = await readBoundedResponse(
@@ -414,28 +417,28 @@ async function readBoundedResponse(
   maxBytes: number,
   signal: AbortSignal,
 ): Promise<Uint8Array> {
-  const contentLength = response.headers.get('content-length');
-  if (contentLength !== null) {
-    if (!/^\d+$/u.test(contentLength)) {
-      throw new Error('invalid content length');
-    }
-    const parsedLength = Number(contentLength);
-    if (
-      !Number.isFinite(parsedLength) ||
-      parsedLength < 0 ||
-      parsedLength > maxBytes
-    ) {
-      throw new Error('response too large');
-    }
-  }
   const reader =
     response.body === null
       ? undefined
       : (response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>);
-  if (reader === undefined) return new Uint8Array();
   const chunks: Uint8Array[] = [];
   let total = 0;
   try {
+    const contentLength = response.headers.get('content-length');
+    if (contentLength !== null) {
+      if (!/^\d+$/u.test(contentLength)) {
+        throw new Error('invalid content length');
+      }
+      const parsedLength = Number(contentLength);
+      if (
+        !Number.isFinite(parsedLength) ||
+        parsedLength < 0 ||
+        parsedLength > maxBytes
+      ) {
+        throw new Error('response too large');
+      }
+    }
+    if (reader === undefined) return new Uint8Array();
     for (;;) {
       if (signal.aborted) throw new Error('response aborted');
       const result: unknown = await readChunk(reader, signal);
@@ -454,15 +457,12 @@ async function readBoundedResponse(
       const chunk = result.value;
       total += chunk.byteLength;
       if (total > maxBytes) {
-        await reader.cancel();
         throw new Error('response too large');
       }
       chunks.push(chunk);
     }
   } catch (error) {
-    await reader.cancel().catch(() => {
-      /* already cancelled */
-    });
+    if (reader !== undefined) await cancelBounded(() => reader.cancel());
     throw error;
   }
   const output = new Uint8Array(total);

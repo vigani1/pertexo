@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0084_workspace_member_discovery_index.sql',
+          migrationHead: '0085_artifact_media_type_http_safety.sql',
           role: expectedRole,
         });
       } finally {

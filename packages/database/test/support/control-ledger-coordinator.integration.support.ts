@@ -53,6 +53,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0082_legal_hold_destruction_serialization.sql',
   '0083_artifact_finalization_retention_deadline.sql',
   '0084_workspace_member_discovery_index.sql',
+  '0085_artifact_media_type_http_safety.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

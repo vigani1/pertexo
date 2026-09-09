@@ -64,7 +64,10 @@ export interface InternalIdentityMapperPort {
 
 export interface SessionStorePort {
   create(record: SessionRecord): Promise<void>;
-  findByDigest(tokenDigest: string): Promise<SessionRecord | undefined>;
+  findByDigest(
+    tokenDigest: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ): Promise<SessionRecord | undefined>;
   revokeByDigest(tokenDigest: string, revokedAt: Date): Promise<boolean>;
 }
 

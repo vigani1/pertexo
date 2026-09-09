@@ -219,6 +219,7 @@ export type IdentityWorkspaceDatabase = Readonly<{
   findWorkspaceAccess(
     actorId: string,
     workspaceId: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
   ): Promise<WorkspaceAccessRecord | null>;
   listWorkspaceMembers(
     workspaceId: string,
@@ -233,7 +234,10 @@ export type IdentityWorkspaceDatabase = Readonly<{
     providerSubject: string,
   ): Promise<AuthIdentityRecord | null>;
   createSession(input: CreateSessionInput): Promise<SessionRecord>;
-  findActiveSessionByDigest(tokenDigest: string): Promise<SessionRecord | null>;
+  findActiveSessionByDigest(
+    tokenDigest: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ): Promise<SessionRecord | null>;
   revokeSession(sessionId: string): Promise<boolean>;
   revokeSessionByDigest(tokenDigest: string): Promise<boolean>;
   createWorkspaceWithOwner(

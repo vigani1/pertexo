@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0084_workspace_member_discovery_index.sql",
+  "transactionalThrough": "0085_artifact_media_type_http_safety.sql",
   "migrations": {}
 }

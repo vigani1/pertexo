@@ -17,7 +17,7 @@ import {
   API_RUNTIME_READINESS,
   ReadyController,
 } from './platform/health/ready.controller.js';
-import { ApiDrainState } from './platform/health/drain-state.js';
+import { ApiLifecycleModule } from './platform/health/drain-state.js';
 import { HttpPlatformModule } from './platform/http/http.module.js';
 import type {
   HttpErrorLogEntry,
@@ -65,7 +65,7 @@ export type ApiModuleDependencies = Readonly<{
 
 @Module({
   controllers: [LiveController, ReadyController],
-  providers: [ApiDrainState],
+  imports: [ApiLifecycleModule],
 })
 // Nest requires a class as the root module passed to the application factory.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -192,6 +192,7 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
+        ApiLifecycleModule,
         DatabaseModule.register(config.database, databaseOptions),
         ...featureModules,
         ObservabilityModule.register(
@@ -206,7 +207,6 @@ export class AppModule {
       ],
       controllers: [LiveController, ReadyController],
       providers: [
-        ApiDrainState,
         ...(webhookRuntime === undefined
           ? []
           : [

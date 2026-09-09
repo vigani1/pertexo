@@ -24,6 +24,10 @@ import type {
   WorkflowRunReadModel,
   WorkflowRunRecord,
 } from './ports.js';
+import {
+  createStreamAuthorizationLifetime,
+  type StreamAuthorizationLifetime,
+} from './sse-authorization-lifetime.js';
 
 export class WorkflowRunNotFoundError extends Error {
   public override readonly name = 'WorkflowRunNotFoundError';
@@ -66,8 +70,20 @@ export type CancelWorkflowRunInput = GetWorkflowRunInput &
 export type StreamRunEventsInput = GetWorkflowRunInput &
   Readonly<{
     lastEventId: number;
+    sessionExpiresAt: Date;
+    reauthorizeSession: (signal: AbortSignal) => Promise<
+      Readonly<{
+        userId: string;
+        sessionId: string;
+        expiresAt: Date;
+      }>
+    >;
+    abortStream(reason?: unknown): void;
     signal: AbortSignal;
   }>;
+
+/** Maximum time an open stream may rely on a previously verified access fact. */
+const SSE_REAUTHORIZATION_INTERVAL_MS = 5_000;
 
 export class StartWorkflowRunUseCase {
   public constructor(
@@ -209,12 +225,63 @@ export class StreamRunEventsUseCase {
       runId: input.runId,
     });
     if (run === undefined) throw new WorkflowRunNotFoundError();
-    return this.streamer.stream({
+    const lifetimeController = new AbortController();
+    const lifetimeSignal = AbortSignal.any([
+      input.signal,
+      lifetimeController.signal,
+    ]);
+    const frames = this.streamer.stream({
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       lastEventId: input.lastEventId,
-      signal: input.signal,
+      signal: lifetimeSignal,
     });
+    const authorizationLifetime = createStreamAuthorizationLifetime(
+      { ...input, signal: lifetimeSignal },
+      this.authorization,
+      SSE_REAUTHORIZATION_INTERVAL_MS,
+      lifetimeController,
+    );
+    return authorizedStreamFrames(
+      frames,
+      { ...input, signal: lifetimeSignal },
+      lifetimeController,
+      authorizationLifetime,
+    );
+  }
+}
+
+async function* authorizedStreamFrames(
+  frames: AsyncIterable<WorkflowRunEventFrame>,
+  input: StreamRunEventsInput,
+  lifetimeController: AbortController,
+  authorizationLifetime: StreamAuthorizationLifetime,
+): AsyncGenerator<WorkflowRunEventFrame> {
+  const iterator = frames[Symbol.asyncIterator]();
+  try {
+    while (!input.signal.aborted) {
+      const outcome = await Promise.race([
+        iterator.next().then((result) => ({
+          kind: 'frame' as const,
+          result,
+        })),
+        authorizationLifetime.authorizationLost.then(({ error }) => ({
+          kind: 'authorization_lost' as const,
+          error,
+        })),
+      ]);
+      if (outcome.kind === 'authorization_lost') throw outcome.error;
+      if (outcome.result.done === true) return;
+      await authorizationLifetime.reauthorize();
+      yield outcome.result.value;
+    }
+  } finally {
+    // Authorization loss must cancel a pending producer read before awaiting
+    // iterator cleanup. Otherwise an idle Redis/database read can keep the
+    // authorization failure—and therefore the HTTP close—pending forever.
+    lifetimeController.abort();
+    await authorizationLifetime.stop();
+    await iterator.return?.();
   }
 }
 

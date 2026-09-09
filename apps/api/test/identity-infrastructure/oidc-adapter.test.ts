@@ -1,5 +1,8 @@
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+
 import { generateKeyPair, SignJWT, type KeyInput } from 'jose';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   digestBase64Url,
@@ -270,6 +273,111 @@ describe('generic OIDC provider adapter', () => {
     });
   });
 
+  it.each([
+    {
+      name: 'streaming provider error',
+      status: 503,
+      headers: {},
+      code: 'identity.provider_unavailable',
+    },
+    {
+      name: 'redirect',
+      status: 302,
+      headers: { location: 'https://evil.example.test/token' },
+      code: 'identity.provider_rejected',
+    },
+    {
+      name: 'oversized declared response',
+      status: 200,
+      headers: { 'content-length': '2048' },
+      code: 'identity.provider_rejected',
+    },
+    {
+      name: 'invalid declared response length',
+      status: 200,
+      headers: { 'content-length': 'not-a-number' },
+      code: 'identity.provider_rejected',
+    },
+  ])('cancels the token response transport for $name', async (scenario) => {
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const token = await signedToken(privateKey);
+    const cancelled = vi.fn();
+    const fetchImpl: typeof fetch = () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('{'));
+            },
+            cancel: cancelled,
+          }),
+          {
+            status: scenario.status,
+            headers: scenario.headers,
+          },
+        ),
+      );
+    const { adapter } = adapterWithToken(token, publicKey, fetchImpl);
+
+    await expect(
+      adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      }),
+    ).rejects.toMatchObject({ code: scenario.code });
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it('cancels a token response whose body stalls until the request timeout', async () => {
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const token = await signedToken(privateKey);
+    const cancelled = vi.fn();
+    const fetchImpl: typeof fetch = () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull: () => new Promise<void>(() => undefined),
+            cancel: cancelled,
+          }),
+          { status: 200 },
+        ),
+      );
+    const { adapter } = adapterWithToken(token, publicKey, fetchImpl);
+    await expect(
+      adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      }),
+    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it('classifies token body read failures as provider transport failures', async () => {
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const token = await signedToken(privateKey);
+    const fetchImpl: typeof fetch = () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              controller.error(new Error('provider body failed'));
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+    const { adapter } = adapterWithToken(token, publicKey, fetchImpl);
+    await expect(
+      adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      }),
+    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
+  });
+
   it('keeps invalid token responses and redirects as rejected callbacks', async () => {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const token = await signedToken(privateKey);
@@ -330,6 +438,7 @@ describe('generic OIDC provider adapter', () => {
   it('classifies remote JWKS endpoint failures as unavailable', async () => {
     const { privateKey } = await generateKeyPair('RS256');
     const token = await signedToken(privateKey);
+    const cancelled = vi.fn();
     const fetchImpl: typeof fetch = (input) => {
       const url = input instanceof Request ? input.url : input.toString();
       if (url === configuration.tokenEndpoint) {
@@ -338,7 +447,17 @@ describe('generic OIDC provider adapter', () => {
         );
       }
       return Promise.resolve(
-        new Response('provider-jwks-secret', { status: 503 }),
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode('provider-jwks-secret'),
+              );
+            },
+            cancel: cancelled,
+          }),
+          { status: 503 },
+        ),
       );
     };
     const adapter = new GenericOidcProviderAdapter(configuration, {
@@ -358,6 +477,63 @@ describe('generic OIDC provider adapter', () => {
         status: 503,
       });
       expect(String(error)).not.toContain('provider-jwks-secret');
+    }
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it('closes a real streaming provider error response', async () => {
+    const { publicKey } = await generateKeyPair('RS256');
+    let responseClosed: (() => void) | undefined;
+    const closed = new Promise<void>((resolve) => {
+      responseClosed = resolve;
+    });
+    const server = createServer((_incoming, outgoing) => {
+      outgoing.on('close', () => responseClosed?.());
+      outgoing.writeHead(503, { 'content-type': 'text/plain' });
+      outgoing.write('provider is unavailable');
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (address === null || typeof address === 'string')
+      throw new Error('OIDC test server did not bind a TCP port');
+    const endpoint = `http://127.0.0.1:${String(address.port)}`;
+    const adapter = new GenericOidcProviderAdapter(
+      {
+        ...configuration,
+        issuer: endpoint,
+        authorizationEndpoint: `${endpoint}/authorize`,
+        tokenEndpoint: `${endpoint}/token`,
+        jwksUri: `${endpoint}/jwks`,
+        allowInsecureHttpForTests: true,
+      },
+      { verificationKey: publicKey },
+    );
+    try {
+      await expect(
+        adapter.exchangeCode({
+          code: 'one-time-code',
+          codeVerifier: 'a'.repeat(43),
+          redirectUri: request.redirectUri,
+        }),
+      ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
+      await expect(
+        Promise.race([
+          closed.then(() => 'closed'),
+          new Promise<string>((resolve) => {
+            setTimeout(() => {
+              resolve('timed-out');
+            }, 500);
+          }),
+        ]),
+      ).resolves.toBe('closed');
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) =>
+        server.close(() => {
+          resolve();
+        }),
+      );
     }
   });
 

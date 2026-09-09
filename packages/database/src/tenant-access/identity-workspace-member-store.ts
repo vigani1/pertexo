@@ -29,37 +29,43 @@ export function createIdentityWorkspaceMemberStore(pool: Pool): MemberStore {
     findWorkspaceAccess: async (
       actorIdInput: string,
       workspaceIdInput: string,
+      options: Readonly<{ signal?: AbortSignal }> = {},
     ): Promise<WorkspaceAccessRecord | null> => {
       const actorId = parseIdentityUuid(actorIdInput);
       const workspaceId = parseIdentityUuid(workspaceIdInput);
-      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const result = await client.query<{
-          actor_id: string;
-          workspace_id: string;
-          role: MembershipRole;
-          membership_status: 'active' | 'suspended' | 'removed';
-          workspace_status: WorkspaceStatus;
-        }>(
-          `select m.user_id as actor_id, m.workspace_id,
+      return withTenantScopedClient(
+        pool,
+        { workspaceId },
+        async (client) => {
+          const result = await client.query<{
+            actor_id: string;
+            workspace_id: string;
+            role: MembershipRole;
+            membership_status: 'active' | 'suspended' | 'removed';
+            workspace_status: WorkspaceStatus;
+          }>(
+            `select m.user_id as actor_id, m.workspace_id,
                   m.role, m.status as membership_status,
                   w.status as workspace_status
            from app.workspace_memberships m
            join app.workspaces w on w.id = m.workspace_id
            join app.users u on u.id = m.user_id and u.status = 'active'
            where m.workspace_id = $1 and m.user_id = $2`,
-          [workspaceId, actorId],
-        );
-        const row = result.rows[0];
-        return row === undefined
-          ? null
-          : Object.freeze({
-              actorId: row.actor_id,
-              workspaceId: row.workspace_id,
-              role: row.role,
-              membershipStatus: row.membership_status,
-              workspaceStatus: row.workspace_status,
-            });
-      });
+            [workspaceId, actorId],
+          );
+          const row = result.rows[0];
+          return row === undefined
+            ? null
+            : Object.freeze({
+                actorId: row.actor_id,
+                workspaceId: row.workspace_id,
+                role: row.role,
+                membershipStatus: row.membership_status,
+                workspaceStatus: row.workspace_status,
+              });
+        },
+        options,
+      );
     },
 
     listWorkspaceMembers: async (

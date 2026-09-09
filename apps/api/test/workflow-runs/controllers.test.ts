@@ -1,4 +1,5 @@
-import { firstValueFrom, take } from 'rxjs';
+import { EventEmitter } from 'node:events';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowRunsController } from '../../src/workflow-runs/controllers.js';
@@ -22,6 +23,13 @@ function request(headers: Record<string, string> = {}) {
       expiresAt: new Date('2026-08-21T20:00:00.000Z'),
       clientMetadata: {},
     },
+    reauthorizeIdentitySession: () =>
+      Promise.resolve({
+        userId: actorId,
+        sessionId,
+        expiresAt: new Date('2026-08-21T20:00:00.000Z'),
+        clientMetadata: {},
+      }),
     raw: {
       once: (_event: 'close', listener: () => void) => {
         closeListeners.add(listener);
@@ -31,6 +39,37 @@ function request(headers: Record<string, string> = {}) {
       },
     },
   } as const;
+}
+
+function sseReply() {
+  const raw = new EventEmitter() as EventEmitter & {
+    statusCode: number;
+    headersSent: boolean;
+    destroyed: boolean;
+    chunks: string[];
+    setHeader(name: string, value: string): void;
+    flushHeaders(): void;
+    write(chunk: string): boolean;
+    end(): void;
+    destroy(): void;
+  };
+  raw.statusCode = 0;
+  raw.headersSent = false;
+  raw.destroyed = false;
+  raw.chunks = [];
+  raw.setHeader = vi.fn();
+  raw.flushHeaders = () => {
+    raw.headersSent = true;
+  };
+  raw.write = (chunk) => {
+    raw.chunks.push(chunk);
+    return true;
+  };
+  raw.end = vi.fn();
+  raw.destroy = () => {
+    raw.destroyed = true;
+  };
+  return { raw, hijack: vi.fn() };
 }
 
 function controller() {
@@ -141,11 +180,12 @@ describe('workflow runs controller public seam', () => {
 
   it('parses Last-Event-ID and exposes each persisted event as an SSE message', async () => {
     const fixture = controller();
-    const observable = await fixture.instance.streamRunEvents(
+    const reply = sseReply();
+    await fixture.instance.streamRunEvents(
       request({ 'last-event-id': '1' }),
       { workspaceId, runId },
+      reply as never,
     );
-    const message = await firstValueFrom(observable.pipe(take(1)));
 
     expect(fixture.stream.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -154,16 +194,9 @@ describe('workflow runs controller public seam', () => {
         lastEventId: 1,
       }),
     );
-    expect(message).toEqual({
-      id: '2',
-      type: 'run.started',
-      data: {
-        sequence: 2,
-        type: 'run.started',
-        createdAt: '2026-08-21T12:00:00.000Z',
-        payload: { schemaVersion: 1 },
-      },
-    });
+    expect(reply.raw.chunks).toEqual([
+      'id: 2\nevent: run.started\ndata: {"sequence":2,"type":"run.started","createdAt":"2026-08-21T12:00:00.000Z","payload":{"schemaVersion":1}}\n\n',
+    ]);
   });
 
   it('records visibility only after the first successful emission for a sequence', async () => {
@@ -196,21 +229,14 @@ describe('workflow runs controller public seam', () => {
       visibilityMetrics,
     );
 
-    const observable = await instance.streamRunEvents(request(), {
-      workspaceId,
-      runId,
-    });
-    const messages: unknown[] = [];
-    await new Promise<void>((resolve, reject) => {
-      const subscription = observable.subscribe({
-        next: (value) => messages.push(value),
-        error: reject,
-        complete: resolve,
-      });
-      void subscription;
-    });
+    const reply = sseReply();
+    await instance.streamRunEvents(
+      request(),
+      { workspaceId, runId },
+      reply as never,
+    );
 
-    expect(messages).toHaveLength(2);
+    expect(reply.raw.chunks).toHaveLength(2);
     expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledTimes(1);
     expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledWith({
       createdAt: new Date('2026-08-21T12:00:00.000Z'),

@@ -7,6 +7,7 @@ import {
   type SseVisibilityMetrics,
 } from '../platform/observability/sse-visibility-metrics.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
+import { ApiLifecycleModule } from '../platform/health/drain-state.js';
 import { WorkflowRunsController } from './controllers.js';
 import {
   WorkflowRunCancelGuard,
@@ -95,7 +96,7 @@ export class WorkflowRunsModule {
     ];
     return {
       module: WorkflowRunsModule,
-      imports: [identityModule],
+      imports: [ApiLifecycleModule, identityModule],
       controllers: [WorkflowRunsController],
       providers,
       exports: [

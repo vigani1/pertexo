@@ -276,6 +276,30 @@ async function readAll(body: Readable): Promise<Buffer> {
 }
 
 describe('ArtifactStore', () => {
+  it.each([
+    'application/js\u000bon',
+    'application/js\u001fon',
+    'application/js\u007fon',
+    'application/js\u0100on',
+  ])(
+    'rejects an HTTP-unsafe artifact media type before signing %#',
+    async (mediaType) => {
+      const fixture = createStore();
+
+      await expect(
+        fixture.store.beginDirectUpload({
+          artifactId: ARTIFACT_ID,
+          byteLength: 5,
+          expiresInSeconds: 300,
+          mediaType,
+          sha256: HELLO_SHA256,
+          workspaceId: WORKSPACE_ID,
+        }),
+      ).rejects.toThrow();
+      expect(fixture.presignRequest).toBeUndefined();
+    },
+  );
+
   it('stores and streams a workspace artifact with verified metadata', async () => {
     const { store } = createStore();
     const stored = await store.put({

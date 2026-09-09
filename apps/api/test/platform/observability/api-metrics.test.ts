@@ -1,4 +1,5 @@
 import type { Meter } from '@opentelemetry/api';
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -131,6 +132,47 @@ describe('API metrics', () => {
       outcome: 'eligible_success',
       route: '/v1/workspaces/:workspaceId/workflows/:workflowId',
     });
+
+    const artifactOutageRequest = {
+      method: 'GET',
+      routeOptions: {
+        url: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
+      },
+    };
+    const artifactOutageReply = { statusCode: 503 };
+    hooks.get('onSend')?.(
+      artifactOutageRequest,
+      artifactOutageReply,
+      JSON.stringify({ code: 'artifact.unavailable' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(
+      artifactOutageRequest,
+      artifactOutageReply,
+      vi.fn(),
+    );
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'eligible_failure',
+      route: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
+    });
+    for (const [code, manifest] of Object.entries(API_PROBLEM_MANIFEST)) {
+      if (manifest.status < 500) continue;
+      hooks.get('onSend')?.(
+        artifactOutageRequest,
+        { statusCode: manifest.status },
+        JSON.stringify({ code }),
+        vi.fn(),
+      );
+      hooks.get('onResponse')?.(
+        artifactOutageRequest,
+        { statusCode: manifest.status },
+        vi.fn(),
+      );
+      expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+        outcome: 'eligible_failure',
+        route: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
+      });
+    }
 
     const correctnessFailureRequest = {
       method: 'POST',

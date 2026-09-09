@@ -351,6 +351,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       throw new Error('Webhook trigger is unavailable');
     const provisioned = await service.provision({
       workspaceId,
+      workflowId: created.workflowId,
       actorId,
       triggerId: trigger.id,
       idempotencyKey: 'direct-webhook-provision',
@@ -366,6 +367,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     await expect(
       service.provision({
         workspaceId,
+        workflowId: created.workflowId,
         actorId,
         triggerId: trigger.id,
         idempotencyKey: 'direct-webhook-provision',
@@ -473,6 +475,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
 
     const rotated = await service.rotateSecret({
       workspaceId,
+      workflowId: created.workflowId,
       actorId,
       triggerId: trigger.id,
       endpointKey,
@@ -589,6 +592,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
 
     const endpointRotation = {
       workspaceId,
+      workflowId: created.workflowId,
       actorId,
       triggerId: trigger.id,
       idempotencyKey: 'direct-webhook-rotate-endpoint',

@@ -52,6 +52,40 @@ class CookieSink {
 }
 
 describe('opaque browser sessions', () => {
+  it('propagates cancellation through a stalled session lookup', async () => {
+    const controller = new AbortController();
+    let observedSignal: AbortSignal | undefined;
+    const store = {
+      create: () => Promise.resolve(),
+      findByDigest: (
+        _tokenDigest: string,
+        options: Readonly<{ signal?: AbortSignal }> = {},
+      ) => {
+        observedSignal = options.signal;
+        return new Promise<SessionRecord | undefined>((_resolve, reject) => {
+          options.signal?.addEventListener(
+            'abort',
+            () => {
+              reject(options.signal?.reason as Error);
+            },
+            { once: true },
+          );
+        });
+      },
+      revokeByDigest: () => Promise.resolve(false),
+    } satisfies SessionStorePort;
+    const authentication = new OpaqueSessionService(store).authenticate(
+      'a'.repeat(43),
+      { signal: controller.signal },
+    );
+    const reason = new DOMException('stream closed', 'AbortError');
+
+    controller.abort(reason);
+
+    await expect(authentication).rejects.toBe(reason);
+    expect(observedSignal).toBe(controller.signal);
+  });
+
   it('persists only a digest and hands the raw token once to the cookie boundary', async () => {
     const store = new FakeSessions();
     const sink = new CookieSink();

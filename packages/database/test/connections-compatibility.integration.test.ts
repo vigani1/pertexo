@@ -245,6 +245,7 @@ describe('connection persistence', () => {
       '0082_legal_hold_destruction_serialization.sql',
       '0083_artifact_finalization_retention_deadline.sql',
       '0084_workspace_member_discovery_index.sql',
+      '0085_artifact_media_type_http_safety.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -257,7 +258,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0084_workspace_member_discovery_index.sql',
+        migrationHead: '0085_artifact_media_type_http_safety.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -506,6 +507,7 @@ describe('connection persistence', () => {
       '0082_legal_hold_destruction_serialization.sql',
       '0083_artifact_finalization_retention_deadline.sql',
       '0084_workspace_member_discovery_index.sql',
+      '0085_artifact_media_type_http_safety.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -518,7 +520,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0084_workspace_member_discovery_index.sql',
+        migrationHead: '0085_artifact_media_type_http_safety.sql',
       });
     } finally {
       await pool.end();

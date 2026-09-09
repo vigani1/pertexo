@@ -14,9 +14,11 @@ describe('identity/workspace database adapter', () => {
       membershipStatus: 'active' as const,
       workspaceStatus: 'active' as const,
     });
+    const findActiveSessionByDigest = vi.fn().mockResolvedValue(null);
     const database = {
       revokeSessionByDigest,
       findWorkspaceAccess,
+      findActiveSessionByDigest,
     } as unknown as IdentityWorkspaceDatabase;
     const adapter = new DatabaseIdentityWorkspaceAdapter(database);
 
@@ -24,11 +26,24 @@ describe('identity/workspace database adapter', () => {
       adapter.revokeByDigest('a'.repeat(64), new Date()),
     ).resolves.toBe(true);
     expect(revokeSessionByDigest).toHaveBeenCalledWith('a'.repeat(64));
+    const controller = new AbortController();
     await expect(
       adapter.findAccess({
         actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        signal: controller.signal,
       }),
     ).resolves.toMatchObject({ role: 'owner' });
+    expect(findWorkspaceAccess).toHaveBeenCalledWith(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      { signal: controller.signal },
+    );
+    await expect(
+      adapter.findByDigest('b'.repeat(64), { signal: controller.signal }),
+    ).resolves.toBeUndefined();
+    expect(findActiveSessionByDigest).toHaveBeenCalledWith('b'.repeat(64), {
+      signal: controller.signal,
+    });
   });
 });

@@ -1,3 +1,5 @@
+import { request as httpRequest } from 'node:http';
+
 import type {
   WorkflowAuthoringDatabase,
   WorkspaceDatabase,
@@ -16,6 +18,7 @@ import {
 } from '../src/node-testing/use-case.js';
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
+import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
 import type { ApiConnectionRuntime } from '../src/platform/connections/connection-runtime.module.js';
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/service.js';
@@ -437,6 +440,130 @@ describe('API bootstrap', () => {
     });
 
     expect(response.statusCode).toBe(503);
+  });
+
+  it('aborts application-owned streams when drain begins', () => {
+    const drain = new ApiDrainState();
+    const stream = new AbortController();
+    const release = drain.registerStream(stream);
+
+    drain.beginDrain();
+
+    expect(stream.signal.aborted).toBe(true);
+    expect(drain.activeStreamCount()).toBe(1);
+    release();
+    expect(drain.activeStreamCount()).toBe(0);
+  });
+
+  it('closes a real open SSE request without client cooperation', async () => {
+    const selectedIdentityRuntime = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
+    );
+    const baseRuntime = createStubApiWorkflowRuntime(
+      selectedIdentityRuntime.dependencies.authorization,
+    );
+    let producerClosed = false;
+    const selectedWorkflowRuntime: ApiWorkflowRuntime = {
+      ...baseRuntime,
+      runDependencies: {
+        ...baseRuntime.runDependencies,
+        persistence: {
+          ...baseRuntime.runDependencies.persistence,
+          get: () =>
+            Promise.resolve({
+              run: {
+                id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                status: 'running' as const,
+                triggerType: 'manual' as const,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                startedAt: new Date(),
+                completedAt: null,
+                deadlineAt: null,
+                cancelRequestedAt: null,
+              },
+              nodes: [],
+            }),
+        },
+        streamer: {
+          stream: ({ signal }) => ({
+            async *[Symbol.asyncIterator]() {
+              try {
+                yield {
+                  id: 1,
+                  event: 'run.started',
+                  data: JSON.stringify({
+                    sequence: 1,
+                    type: 'run.started',
+                    createdAt: new Date().toISOString(),
+                    payload: { schemaVersion: 1 },
+                  }),
+                };
+                await new Promise<void>((resolve) => {
+                  if (signal.aborted) resolve();
+                  else
+                    signal.addEventListener(
+                      'abort',
+                      () => {
+                        resolve();
+                      },
+                      { once: true },
+                    );
+                });
+              } finally {
+                producerClosed = true;
+              }
+            },
+          }),
+        },
+      },
+    };
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowRuntime: selectedWorkflowRuntime,
+    });
+    await application.listen(0, '127.0.0.1');
+    const address = application.getHttpServer().address() as {
+      port: number;
+    };
+    const responseStarted = Promise.withResolvers<undefined>();
+    const client = httpRequest({
+      host: '127.0.0.1',
+      port: address.port,
+      path: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/events',
+      headers: { cookie: `pertexo_session=${'x'.repeat(40)}` },
+    });
+    client.on('response', (response) => {
+      response.once('data', () => {
+        responseStarted.resolve(undefined);
+      });
+      response.resume();
+    });
+    client.end();
+    await responseStarted.promise;
+    const drainState = application.get(ApiDrainState);
+
+    await expect(
+      Promise.race([
+        application.close().then(() => 'closed' as const),
+        new Promise<'timeout'>((resolve) => {
+          setTimeout(() => {
+            resolve('timeout');
+          }, 1_000);
+        }),
+      ]),
+    ).resolves.toBe('closed');
+    application = undefined;
+
+    expect(producerClosed).toBe(true);
+    expect(drainState.activeStreamCount()).toBe(0);
+    expect(selectedWorkflowRuntime.close).toHaveBeenCalledOnce();
+    client.destroy();
   });
 
   it('enters drain state before shutdown resources close', async () => {

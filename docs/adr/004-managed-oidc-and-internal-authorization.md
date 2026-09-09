@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-08-20
+- **Amended:** 2026-09-09 (bounded authorization lifetime for long-lived SSE)
 
 ## Context
 
@@ -119,6 +120,23 @@ explicitly to application use cases. Workers carry workspace scope in job
 payloads and verify the referenced run/resource before acting; they do not
 inherit a user session.
 
+Long-lived authenticated responses do not turn that request-time decision into
+an indefinite authorization snapshot. A workflow-run SSE connection validates
+the opaque local session and fresh workspace access immediately before every
+event is made visible, and at least once every five seconds while idle. The
+idle deadline is shortened to the authenticated session's exact expiry. A
+revoked or expired session, removed or suspended membership, loss of the named
+capability, or a workspace lifecycle outside the operation's allowed states
+aborts the stream and releases its database and Redis work. The bounded
+authorization watchdog runs independently of producer iteration and transport
+backpressure so that a blocked delivery cannot suspend revocation. Refresh I/O
+starts before the authorization deadline, receives the stream cancellation
+signal, and cannot extend either the five-second authorization lifetime or the
+session's exact expiry. Stream cleanup is bounded even when a dependency does
+not cooperate with cancellation. Clients reconnect from the last successfully
+delivered durable event cursor and must pass the ordinary authentication and
+authorization guards again.
+
 ### Authorization and RLS are separate checks
 
 Authorization happens before a request opens a workspace-scoped database
@@ -195,6 +213,10 @@ Costs and obligations:
   does not provide these product controls.
 - Each tenant use case carries explicit actor and workspace context and must
   pass both authorization and RLS integration tests.
+- Long-lived authenticated streams add bounded authorization reads. Their
+  five-second idle interval is an upper bound on revocation propagation, not a
+  cache lifetime for events; every event still receives a fresh check before
+  delivery.
 - Vendor selection and any provider-specific logout, claims, or enterprise
   features remain procurement/product decisions and must not leak into core
   domain packages.

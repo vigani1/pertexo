@@ -5,6 +5,7 @@ import {
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
+import { WebhookManagementController } from '../../src/webhooks/controllers.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
 
 const health = {
@@ -23,10 +24,41 @@ const input = {
   workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   triggerId: health.id,
+  workflowId: health.workflowId,
   idempotencyKey: 'command-1',
 };
 
 describe('webhook management service', () => {
+  it('passes the workflow route parent from the controller to the command', async () => {
+    const provision = vi.fn().mockResolvedValue({ ok: true });
+    const controller = new WebhookManagementController({
+      provision,
+    } as unknown as WebhookManagementService);
+    await controller.provision(
+      {
+        headers: { 'idempotency-key': input.idempotencyKey },
+        identitySession: {
+          userId: input.actorId,
+          sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          expiresAt: new Date(Date.now() + 60_000),
+          clientMetadata: {},
+        },
+      },
+      {
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        triggerId: input.triggerId,
+      },
+    );
+    expect(provision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        triggerId: input.triggerId,
+      }),
+    );
+  });
+
   it('passes only hashes and sealed secrets to persistence and discloses original credentials', async () => {
     const { service, database } = setup(true);
     const result = await service.provision(input);
@@ -108,6 +140,28 @@ describe('webhook management service', () => {
       { requestHash: string } | undefined;
     expect(provisionRequests[0]).not.toBe(endpointRotation?.requestHash);
     expect(provisionRequests[0]).not.toBe(provisionRequests[1]);
+  });
+
+  it('threads the URL parent through every mutation and its idempotency identity', async () => {
+    const { service, database } = setup(true);
+    await service.provision(input);
+    await service.rotateEndpoint(input);
+    await service.rotateSecret({ ...input, endpointKey: 'a'.repeat(43) });
+    for (const operation of [
+      database.provision,
+      database.rotateEndpoint,
+      database.rotateSecret,
+    ]) {
+      expect(operation).toHaveBeenCalledWith(
+        expect.objectContaining({ workflowId: health.workflowId }),
+      );
+    }
+
+    await service.provision({ ...input, workflowId: health.workflowVersionId });
+    const requests = database.provision.mock.calls.map(
+      ([request]) => (request as { requestHash: string }).requestHash,
+    );
+    expect(requests[0]).not.toBe(requests[1]);
   });
 
   it('maps management command idempotency conflicts to the stable public code', async () => {

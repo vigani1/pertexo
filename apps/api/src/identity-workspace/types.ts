@@ -31,6 +31,9 @@ export interface IdentityWorkspaceRequest {
   params?: unknown;
   query?: unknown;
   identitySession?: AuthenticatedRequestSession;
+  reauthorizeIdentitySession?: (
+    signal: AbortSignal,
+  ) => Promise<AuthenticatedRequestSession>;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
 }
 

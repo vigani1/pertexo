@@ -211,6 +211,31 @@ afterAll(async () => {
 });
 
 describe('artifact upload database authority', () => {
+  it.each([
+    'application/js\u000bon',
+    'application/js\u001fon',
+    'application/js\u007fon',
+    'application/js\u0100on',
+  ])(
+    'rejects an HTTP-unsafe media type before reserving capacity %#',
+    async (mediaType) => {
+      await expect(
+        database.beginUpload({
+          actor: actor(),
+          byteLength: 17,
+          idempotencyKey: 'artifact-upload-invalid-media-type',
+          mediaType,
+          sha256: 'a'.repeat(64),
+          workspaceId,
+        }),
+      ).rejects.toThrow();
+      await expect(readCapacity()).resolves.toEqual({
+        chargedBytes: 0,
+        chargedCount: 0,
+      });
+    },
+  );
+
   it('atomically claims idempotency, creates scoped metadata and replays exact retries', async () => {
     const input = {
       actor: actor(),

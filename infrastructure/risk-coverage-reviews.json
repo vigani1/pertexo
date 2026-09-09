@@ -470,7 +470,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:c2cb952052954e2d2ea8ef035d703b726cc8fa47a04cd9daa96ff6e28bdf43df",
+          "sourceFingerprint": "sha256:b2c8556a55fda2bb19c34586400f3cc9af48feae48caee3beed5fd310eb8aeb6",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -3510,16 +3510,6 @@
           "line": 120,
           "column": 4,
           "sourceFingerprint": "sha256:9ffeb769eaaa3bca37db8d2c104cc7127b536fa9c37e5e47ab9261d8cc6f609b",
-          "classification": "defensive",
-          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
-        },
-        {
-          "branchId": "31",
-          "locationIndex": 2,
-          "branchType": "binary-expr",
-          "line": 120,
-          "column": 54,
-          "sourceFingerprint": "sha256:48f52b169e5668c0a57a3796978298a4c7b7a68523772409a81eb55db3f4f9ae",
           "classification": "defensive",
           "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
         },

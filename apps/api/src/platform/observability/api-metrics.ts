@@ -33,7 +33,6 @@ const validBusinessConflicts = new Set<string>([
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
   'artifact.conflict',
-  'artifact.unavailable',
   'workspace.conflict',
 ]);
 const correctnessFailures = new Set<string>([
@@ -76,15 +75,12 @@ function eligible(route: string): boolean {
 }
 
 function availabilityOutcome(statusCode: number, problem: string): string {
+  if (statusCode >= 500) return 'eligible_failure';
   if (excludedClientProblems.has(problem)) return 'excluded_client';
   if (excludedQuotaProblems.has(problem)) return 'excluded_tenant_quota';
   if (statusCode >= 200 && statusCode < 300) return 'eligible_success';
   if (validBusinessConflicts.has(problem)) return 'eligible_success';
-  if (
-    correctnessFailures.has(problem) ||
-    statusCode >= 500 ||
-    statusCode === 429
-  )
+  if (correctnessFailures.has(problem) || statusCode === 429)
     return 'eligible_failure';
   return 'excluded_client';
 }

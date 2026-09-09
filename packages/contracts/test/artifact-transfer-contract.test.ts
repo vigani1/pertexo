@@ -25,6 +25,38 @@ const request = {
 };
 
 describe('artifact transfer public contract', () => {
+  it.each([
+    'application/js\u000bon',
+    'application/js\u007fon',
+    'application/js\u001fon',
+    'application/js\u0100on',
+  ])(
+    'rejects a media type that cannot be used as an HTTP field value %#',
+    (mediaType) => {
+      expect(
+        artifactUploadRequestSchema.safeParse({ ...request, mediaType })
+          .success,
+      ).toBe(false);
+      expect(
+        artifactMetadataResponseSchema.safeParse({ ...metadata, mediaType })
+          .success,
+      ).toBe(false);
+    },
+  );
+
+  it.each([
+    ['text/plain', 'text/plain'],
+    [' application/json; charset=utf-8 ', 'application/json; charset=utf-8'],
+    [
+      'application/vnd.pertexo+json;version=1',
+      'application/vnd.pertexo+json;version=1',
+    ],
+  ])('normalizes a supported media type %#', (mediaType, expected) => {
+    expect(
+      artifactUploadRequestSchema.parse({ ...request, mediaType }).mediaType,
+    ).toBe(expected);
+  });
+
   it('accepts only declared immutable upload metadata and a strict empty finalize request', () => {
     expect(artifactUploadRequestSchema.parse(request)).toEqual(request);
     for (const extra of [

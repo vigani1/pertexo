@@ -54,10 +54,12 @@ export class DatabaseIdentityWorkspaceAdapter
   public async findAccess(query: {
     actorId: string;
     workspaceId: string;
+    signal?: AbortSignal;
   }): Promise<WorkspaceAccess | undefined> {
     const result = await this.database.findWorkspaceAccess(
       query.actorId,
       query.workspaceId,
+      query.signal === undefined ? {} : { signal: query.signal },
     );
     return result ?? undefined;
   }
@@ -107,8 +109,12 @@ export class DatabaseIdentityWorkspaceAdapter
 
   public async findByDigest(
     tokenDigest: string,
+    options: Readonly<{ signal?: AbortSignal }> = {},
   ): Promise<SessionRecord | undefined> {
-    const record = await this.database.findActiveSessionByDigest(tokenDigest);
+    const record = await this.database.findActiveSessionByDigest(
+      tokenDigest,
+      options,
+    );
     return record === null ? undefined : mapSession(record);
   }
 
