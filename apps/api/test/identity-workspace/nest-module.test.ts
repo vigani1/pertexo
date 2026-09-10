@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateWorkspaceUseCase,
   IdentityWorkspaceModule,
+  OidcController,
+  SessionController,
+  UserController,
   WorkspaceManageGuard,
   type IdentityWorkspaceDependencies,
 } from '../../src/identity-workspace/index.js';
@@ -79,6 +82,23 @@ const identityWorkspaceTestModule = {
 };
 
 describe('identity/workspace Nest module', () => {
+  it('constructs controllers only through the Nest controller registry', () => {
+    const dynamic = IdentityWorkspaceModule.register(dependencies);
+    const providers = dynamic.providers ?? [];
+    for (const controller of [
+      OidcController,
+      SessionController,
+      UserController,
+    ]) {
+      expect(providers).not.toContain(controller);
+      expect(providers).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ provide: controller }),
+        ]),
+      );
+    }
+  });
+
   it('resolves explicit service providers through a real Nest application context', async () => {
     const context = await NestFactory.createApplicationContext(
       identityWorkspaceTestModule,

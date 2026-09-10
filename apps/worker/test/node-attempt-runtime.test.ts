@@ -14,6 +14,7 @@ import {
   type RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { FactoryProvider } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
@@ -22,9 +23,15 @@ import {
   createNodeAttemptRuntime,
   type NodeAttemptExecutionEngine,
   type NodeAttemptRuntime,
+  type NodeAttemptRuntimeOptions,
   type PreparedNodeAttempt,
   type PreviewAttemptRunStore,
 } from '../src/testing.js';
+import {
+  nodeAttemptActivation,
+  nodeAttemptRuntimeProvider,
+} from '../src/transport/node-attempt-runtime-provider.js';
+import type { WorkerConfig } from '../src/config/worker-config.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
@@ -42,6 +49,26 @@ const database = {
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
+
+function activationConfig(enabledJobNames: readonly string[]): WorkerConfig {
+  return {
+    database,
+    nodeAttempt: {
+      heartbeatIntervalMillis: 10,
+      leaseDurationSeconds: 30,
+      workerId: 'worker-1',
+    },
+    nodeCompatibilityCohort: 'core',
+    outboxDispatcher: { enabledJobNames },
+    redisUrl: 'redis://localhost:6379/0',
+  } as unknown as WorkerConfig;
+}
+
+function providerFactory(provider: FactoryProvider) {
+  return provider.useFactory as (
+    observer: QueueConsumerOptions['observer'],
+  ) => Promise<NodeAttemptRuntime | undefined>;
+}
 
 function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
   return {
@@ -145,6 +172,380 @@ async function capturedHandler(
 }
 
 describe('node-attempt runtime', () => {
+  it.each([
+    { jobs: [], expected: { preview: false, production: false } },
+    {
+      jobs: [JOB_NAME.executeNodeAttempt],
+      expected: { preview: false, production: true },
+    },
+    {
+      jobs: [JOB_NAME.executePreviewAttempt],
+      expected: { preview: true, production: false },
+    },
+    {
+      jobs: [JOB_NAME.executeNodeAttempt, JOB_NAME.executePreviewAttempt],
+      expected: { preview: true, production: true },
+    },
+  ])(
+    'describes the four node-attempt activation modes',
+    ({ jobs, expected }) => {
+      expect(nodeAttemptActivation(jobs)).toEqual(expected);
+    },
+  );
+
+  it.each([
+    {
+      jobs: [JOB_NAME.executeNodeAttempt],
+      productionEnabled: true,
+      preview: false,
+    },
+    {
+      jobs: [JOB_NAME.executePreviewAttempt],
+      productionEnabled: false,
+      preview: true,
+    },
+    {
+      jobs: [JOB_NAME.executeNodeAttempt, JOB_NAME.executePreviewAttempt],
+      productionEnabled: true,
+      preview: true,
+    },
+  ])(
+    'composes enabled modes through one shared runtime and transfers preview ownership',
+    async ({ jobs, productionEnabled, preview }) => {
+      const closePreview = vi.fn().mockResolvedValue(undefined);
+      const createRuntime = vi.fn().mockResolvedValue({
+        consumer: {},
+        close: vi.fn(),
+      });
+      const provider = nodeAttemptRuntimeProvider(
+        activationConfig(jobs),
+        {},
+        {
+          createPreviewInvoker: vi.fn().mockReturnValue({
+            close: vi.fn(),
+            invoke: vi.fn(),
+          }),
+          createPreviewRunStore: vi.fn().mockReturnValue({
+            claim: vi.fn(),
+            close: closePreview,
+            complete: vi.fn(),
+            heartbeat: vi.fn(),
+            markDispatched: vi.fn(),
+          }),
+          createRuntime,
+        },
+      ) as FactoryProvider;
+
+      await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
+      expect(createRuntime).toHaveBeenCalledOnce();
+      const [runtimeOptions] = createRuntime.mock.lastCall as unknown as [
+        NodeAttemptRuntimeOptions,
+      ];
+      expect(runtimeOptions.productionEnabled).toBe(productionEnabled);
+      expect(runtimeOptions.preview !== undefined).toBe(preview);
+      expect(closePreview).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns no runtime for disabled mode or an external dispatch registry', async () => {
+    const createRuntime = vi.fn();
+    const factories = {
+      createPreviewInvoker: vi.fn(),
+      createPreviewRunStore: vi.fn(),
+      createRuntime,
+    } as never;
+    const disabled = nodeAttemptRuntimeProvider(
+      activationConfig([]),
+      {},
+      factories,
+    ) as FactoryProvider;
+    await expect(providerFactory(disabled)(undefined)).resolves.toBeUndefined();
+    const external = nodeAttemptRuntimeProvider(
+      activationConfig([JOB_NAME.executeNodeAttempt]),
+      { dispatchConsumerCapabilities: {} as never },
+      factories,
+    ) as FactoryProvider;
+    await expect(providerFactory(external)(undefined)).resolves.toBeUndefined();
+    expect(createRuntime).not.toHaveBeenCalled();
+  });
+
+  it('closes a preview store created before invoker failure and preserves cleanup failure', async () => {
+    const primary = new Error('preview invoker failed');
+    const cleanup = new Error('preview store close failed');
+    const provider = nodeAttemptRuntimeProvider(
+      activationConfig([JOB_NAME.executePreviewAttempt]),
+      {},
+      {
+        createPreviewInvoker: () => {
+          throw primary;
+        },
+        createPreviewRunStore: () =>
+          ({ close: vi.fn().mockRejectedValue(cleanup) }) as never,
+        createRuntime: vi.fn(),
+      },
+    ) as FactoryProvider;
+
+    const result = await providerFactory(provider)(undefined).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(result).toBeInstanceOf(AggregateError);
+    expect((result as AggregateError).errors).toEqual([primary, cleanup]);
+  });
+
+  it('preview-only HTTP-cohort activation acquires no production dispatch resources', async () => {
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const previewClose = vi.fn().mockResolvedValue(undefined);
+    const invokerClose = vi.fn().mockResolvedValue(undefined);
+    const productionClose = vi.fn().mockResolvedValue(undefined);
+    const runtime = await createNodeAttemptRuntime(
+      {
+        database,
+        heartbeatIntervalMillis: 10,
+        leaseDurationSeconds: 30,
+        preview: {
+          invoker: { close: invokerClose, invoke: vi.fn() },
+          runStore: {
+            claim: vi.fn(),
+            close: previewClose,
+            complete: vi.fn(),
+            heartbeat: vi.fn(),
+            markDispatched: vi.fn(),
+          },
+        },
+        productionEnabled: false,
+        releaseCohort: 'http_activation',
+        redisUrl: 'redis://localhost:6379/0',
+        workerId: 'worker-1',
+      },
+      {
+        consumerFactory: () => consumer,
+        engine: { prepare: vi.fn() },
+        notifications: {
+          close: productionClose,
+          publish: vi.fn(),
+          resync: vi.fn(),
+        },
+        reader: {
+          close: productionClose,
+          readForExecution: vi.fn(),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi.fn(),
+          close: productionClose,
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn(),
+          markDispatched: vi.fn(),
+        },
+      },
+    );
+
+    await runtime.close();
+    expect(consumer.close).toHaveBeenCalledOnce();
+    expect(previewClose).toHaveBeenCalledOnce();
+    expect(invokerClose).toHaveBeenCalledOnce();
+    expect(productionClose).not.toHaveBeenCalled();
+  });
+
+  it.each(['fallback', 'override'] as const)(
+    'keeps the explicit preview capability %s contract',
+    async (selection) => {
+      const fallback = { artifacts: vi.fn() };
+      const override = { artifacts: vi.fn() };
+      let selectedCapabilities: unknown;
+      const runtime = await createNodeAttemptRuntime(
+        {
+          database,
+          heartbeatIntervalMillis: 10,
+          leaseDurationSeconds: 30,
+          preview: {
+            invoker: { invoke: vi.fn() },
+            runStore: {
+              claim: vi.fn(),
+              complete: vi.fn(),
+              heartbeat: vi.fn(),
+              markDispatched: vi.fn(),
+            },
+            ...(selection === 'override'
+              ? { runtimeCapabilities: override }
+              : {}),
+          },
+          productionEnabled: false,
+          redisUrl: 'redis://localhost:6379/0',
+          workerId: 'worker-1',
+        },
+        {
+          consumerFactory: () => ({
+            close: vi.fn().mockResolvedValue({
+              abortedJobs: 0,
+              forced: false,
+            }),
+            isReady: vi.fn().mockReturnValue(true),
+            waitUntilReady: vi.fn().mockResolvedValue(undefined),
+          }),
+          previewHandlerFactory: (input) => {
+            selectedCapabilities = input.runtimeCapabilities;
+            return { handle: vi.fn().mockResolvedValue({ kind: 'duplicate' }) };
+          },
+          runtimeCapabilities: fallback,
+        },
+      );
+      try {
+        expect(selectedCapabilities).toBe(
+          selection === 'override' ? override : fallback,
+        );
+      } finally {
+        await runtime.close();
+      }
+    },
+  );
+
+  it('cleans every transferred resource when capability construction fails and preserves cleanup errors', async () => {
+    const primary = new Error('capability construction failed');
+    const cleanup = new Error('reader close failed');
+    const closePreview = vi.fn().mockResolvedValue(undefined);
+    const closeInvoker = vi.fn().mockResolvedValue(undefined);
+    const closeRunStore = vi.fn().mockResolvedValue(undefined);
+    const closeReader = vi.fn().mockRejectedValue(cleanup);
+    const closeNotifications = vi.fn().mockResolvedValue(undefined);
+
+    const result = await createNodeAttemptRuntime(
+      {
+        artifactStore: {} as never,
+        connectionEncryption: {} as never,
+        database,
+        heartbeatIntervalMillis: 10,
+        leaseDurationSeconds: 30,
+        preview: {
+          invoker: { close: closeInvoker, invoke: vi.fn() },
+          runStore: {
+            claim: vi.fn(),
+            close: closePreview,
+            complete: vi.fn(),
+            heartbeat: vi.fn(),
+            markDispatched: vi.fn(),
+          },
+        },
+        redisUrl: 'redis://localhost:6379/0',
+        workerId: 'worker-1',
+      },
+      {
+        capabilityFactory: vi.fn().mockRejectedValue(primary),
+        engine: { prepare: vi.fn() },
+        notifications: {
+          close: closeNotifications,
+          publish: vi.fn(),
+          resync: vi.fn(),
+        },
+        reader: {
+          close: closeReader,
+          readForExecution: vi.fn(),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi.fn(),
+          close: closeRunStore,
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn(),
+          markDispatched: vi.fn(),
+        },
+      },
+    ).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(result).toBeInstanceOf(AggregateError);
+    expect((result as AggregateError).errors).toEqual([primary, cleanup]);
+    for (const close of [
+      closePreview,
+      closeInvoker,
+      closeRunStore,
+      closeReader,
+      closeNotifications,
+    ])
+      expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('drains the shared consumer first, aggregates close failures, and closes only once', async () => {
+    const order: string[] = [];
+    const consumerFailure = new Error('consumer close failed');
+    const storeFailure = new Error('store close failed');
+    let rejectConsumer: ((error: Error) => void) | undefined;
+    const consumerDrain = new Promise<never>((_resolve, reject) => {
+      rejectConsumer = reject;
+    });
+    const consumerClose = vi.fn(() => {
+      order.push('consumer');
+      return consumerDrain;
+    });
+    const storeClose = vi.fn(() => {
+      order.push('store');
+      return Promise.reject(storeFailure);
+    });
+    const runtime = await createNodeAttemptRuntime(
+      {
+        database,
+        heartbeatIntervalMillis: 10,
+        leaseDurationSeconds: 30,
+        redisUrl: 'redis://localhost:6379/0',
+        workerId: 'worker-1',
+      },
+      {
+        consumerFactory: () => ({
+          close: consumerClose,
+          isReady: vi.fn().mockReturnValue(true),
+          waitUntilReady: vi.fn().mockResolvedValue(undefined),
+        }),
+        engine: { prepare: vi.fn() },
+        notifications: {
+          close: vi.fn().mockResolvedValue(undefined),
+          publish: vi.fn(),
+          resync: vi.fn(),
+        },
+        reader: {
+          close: vi.fn().mockResolvedValue(undefined),
+          readForExecution: vi.fn(),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi.fn(),
+          close: storeClose,
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn(),
+          markDispatched: vi.fn(),
+        },
+      },
+    );
+
+    const first = runtime.close();
+    const second = runtime.close();
+    expect(second).toBe(first);
+    expect(order).toEqual(['consumer']);
+    expect(storeClose).not.toHaveBeenCalled();
+    rejectConsumer?.(consumerFailure);
+    const result = await first.then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(order[0]).toBe('consumer');
+    expect(result).toBeInstanceOf(AggregateError);
+    expect((result as AggregateError).errors).toEqual([
+      consumerFailure,
+      storeFailure,
+    ]);
+    expect(consumerClose).toHaveBeenCalledOnce();
+    expect(storeClose).toHaveBeenCalledOnce();
+  });
+
   it('fails closed when a heartbeat abort omits its durable reason', async () => {
     vi.useFakeTimers();
     const runStore: NodeAttemptRunStore = {

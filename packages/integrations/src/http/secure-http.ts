@@ -16,7 +16,6 @@ export {
   SecureHttpError,
   type SecureHttpErrorCode,
 } from './secure-http-error.js';
-
 import {
   assertPublicAddress,
   normalizeUrlHostname,
@@ -680,6 +679,7 @@ function raceWithSignal<T>(
   possiblyDispatched: boolean,
   ambiguous: boolean,
 ): Promise<T> {
+  if (signal.aborted) void work.catch(() => undefined);
   if (signal.aborted)
     return Promise.reject(abortFailure(signal, possiblyDispatched, ambiguous));
   return new Promise<T>((resolve, reject) => {

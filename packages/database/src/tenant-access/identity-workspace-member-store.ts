@@ -11,7 +11,7 @@ import type {
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
-} from './identity-workspace.js';
+} from './identity-workspace-contracts.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceDatabase,

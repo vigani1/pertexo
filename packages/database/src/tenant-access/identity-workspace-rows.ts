@@ -7,7 +7,7 @@ import type {
   UserRecord,
   WorkspaceLifecycleOperation,
   WorkspaceRecord,
-} from './identity-workspace.js';
+} from './identity-workspace-contracts.js';
 
 const uuidSchema = z.uuid();
 const metadataSchema = z

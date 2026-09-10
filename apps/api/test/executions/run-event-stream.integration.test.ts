@@ -39,6 +39,14 @@ const databaseConfig = (connectionString: string) =>
 const digest = (value: string): string =>
   createHash('sha256').update(value).digest('hex');
 
+function recordBenchmarkOperation(startedAt: number): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'event-live-visibility', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'live event publication through SSE visibility observation' })}\n`,
+  );
+}
+
 function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
   return {
     schemaVersion: 1,
@@ -179,6 +187,7 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
       value: { id: 3, event: 'node.ready' },
     });
 
+    const operationStartedAt = performance.now();
     const fourthSequence = await workerDatabase.withWorkspace(
       workspaceId,
       async (transaction) =>
@@ -195,6 +204,7 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
     await expect(iterator.next()).resolves.toMatchObject({
       value: { id: 4, event: 'node.started' },
     });
+    recordBenchmarkOperation(operationStartedAt);
 
     abort.abort();
     await expect(iterator.next()).resolves.toEqual({

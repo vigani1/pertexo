@@ -24,6 +24,14 @@ import {
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
 
+function recordBenchmarkOperation(name: string, startedAt: number): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: name === 'workflow-create' ? 'createWorkflow call through durable returned result' : 'publishWorkflow call with precomputed representation tag through durable returned result' })}\n`,
+  );
+}
+
 describe('workflow publication projections', () => {
   it('uses canonical executable identity rather than JSON or presentation identity', async () => {
     const catalogAuthoring = createWorkflowAuthoringDatabase(
@@ -41,6 +49,7 @@ describe('workflow publication projections', () => {
           },
         ],
       };
+      let operationStartedAt = performance.now();
       const created = await catalogAuthoring.createWorkflow({
         actorId,
         emptyGraph: baseGraph,
@@ -48,20 +57,24 @@ describe('workflow publication projections', () => {
         name: 'Canonical proof',
         workspaceId,
       });
+      recordBenchmarkOperation('workflow-create', operationStartedAt);
+      const initialRepresentationTag = await currentRepresentationTag(
+        catalogAuthoring,
+        workspaceId,
+        created.workflowId,
+        actorId,
+        testDefinitionCatalog,
+      );
+      operationStartedAt = performance.now();
       const first = await catalogAuthoring.publishWorkflow({
         actorId,
-        representationTag: await currentRepresentationTag(
-          catalogAuthoring,
-          workspaceId,
-          created.workflowId,
-          actorId,
-          testDefinitionCatalog,
-        ),
+        representationTag: initialRepresentationTag,
         idempotencyKey: 'publish-canonical-first',
         requestHash: '1'.repeat(64),
         workflowId: created.workflowId,
         workspaceId,
       });
+      recordBenchmarkOperation('workflow-publish-initial', operationStartedAt);
       await expect(
         authoring.getVersion(
           workspaceId,
@@ -118,20 +131,23 @@ describe('workflow publication projections', () => {
         workflowId: created.workflowId,
         workspaceId,
       });
+      const executableRepresentationTag = await currentRepresentationTag(
+        catalogAuthoring,
+        workspaceId,
+        created.workflowId,
+        actorId,
+        testDefinitionCatalog,
+      );
+      operationStartedAt = performance.now();
       const executableChange = await catalogAuthoring.publishWorkflow({
         actorId,
-        representationTag: await currentRepresentationTag(
-          catalogAuthoring,
-          workspaceId,
-          created.workflowId,
-          actorId,
-          testDefinitionCatalog,
-        ),
+        representationTag: executableRepresentationTag,
         idempotencyKey: 'publish-canonical-executable',
         requestHash: '3'.repeat(64),
         workflowId: created.workflowId,
         workspaceId,
       });
+      recordBenchmarkOperation('workflow-publish-change', operationStartedAt);
       expect(executableChange.reused).toBe(false);
       expect(executableChange.version.id).not.toBe(first.version.id);
       expect(executableChange.version.checksum).not.toBe(

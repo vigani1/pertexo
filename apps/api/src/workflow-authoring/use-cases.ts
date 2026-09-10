@@ -85,9 +85,12 @@ export { InvalidWorkflowCursorError };
 
 const ACTIVE_WORKFLOW_CAPABILITY = 'workflow:read' as const;
 
+type AuthoringPersistence<Method extends keyof WorkflowAuthoringPersistence> =
+  Pick<WorkflowAuthoringPersistence, Method>;
+
 export class ListWorkflowsUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'listWorkflows'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -122,7 +125,7 @@ export type WorkflowListResult = Readonly<{
 
 export class CreateWorkflowUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'createWorkflow'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -152,7 +155,7 @@ export class CreateWorkflowUseCase {
 
 export class GetWorkflowDraftUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'getDraft'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -177,7 +180,9 @@ export class GetWorkflowDraftUseCase {
 
 export class SaveWorkflowDraftUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<
+      'saveDraft' | 'getDraft'
+    >,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -224,7 +229,7 @@ export class SaveWorkflowDraftUseCase {
 
 export class ValidateWorkflowDraftUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'getDraft'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -253,7 +258,7 @@ export class ValidateWorkflowDraftUseCase {
 
 export class PublishWorkflowUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'publishWorkflow'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
@@ -291,7 +296,7 @@ export class PublishWorkflowUseCase {
 
 export class ListWorkflowVersionsUseCase {
   public constructor(
-    private readonly persistence: WorkflowAuthoringPersistence,
+    private readonly persistence: AuthoringPersistence<'listVersions'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}

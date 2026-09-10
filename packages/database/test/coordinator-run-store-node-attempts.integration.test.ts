@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { describe, it, expect } from 'vitest';
 
+import { NodeAttemptReconciliationRequiredError } from '../src/testing.js';
+
 import {
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,
@@ -162,6 +164,51 @@ function dispatchBinding(
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
+  it('rejects completion when only the durable attempt fence is stale', async () => {
+    const lease = await claimDispatchAttempt(
+      `stale-completion-${randomUUID()}`,
+    );
+    await asAdmin((client) =>
+      client.query(
+        `update app.node_attempts
+            set fence_token=fence_token+1
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, lease.attemptId],
+      ),
+    );
+
+    await expect(
+      nodeAttemptStore.complete({
+        lease,
+        outcome: { status: 'succeeded', output: { accepted: false } },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptReconciliationRequiredError);
+
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{
+          completed_at: Date | null;
+          fence_token: string;
+          status: string;
+        }>(
+          `select status,fence_token::text,completed_at
+             from app.node_attempts
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, lease.attemptId],
+        ),
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          completed_at: null,
+          fence_token: String(lease.fenceToken + 1),
+          status: 'running',
+        },
+      ],
+    });
+  });
+
   it('claims one transport-bound ready attempt with a durable fence', async () => {
     const runId = await insertRun({
       inputRef: {

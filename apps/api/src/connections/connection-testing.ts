@@ -91,9 +91,11 @@ export class TestConnectionUseCase {
         expectedProviderKey,
       });
       if (started.kind === 'replay') return toTestResponse(started.result);
+      const requestSignal = encryptionSignal(input);
 
       let plaintext: Uint8Array | undefined;
       try {
+        requestSignal.throwIfAborted();
         await reauthorizeConnectionSecretAccess(input, this.authorization);
         const resolved = await this.persistence.resolveConnectionTestSecret({
           ...common,
@@ -106,8 +108,9 @@ export class TestConnectionUseCase {
             connectionId: input.connectionId,
             secretVersionId: resolved.secretVersionId,
           },
-          encryptionSignal(input),
+          requestSignal,
         );
+        requestSignal.throwIfAborted();
         const credential = decodeCredential(plaintext);
         try {
           if (expectedProviderKey === 'email') {
@@ -127,6 +130,7 @@ export class TestConnectionUseCase {
                 input.idempotencyKey,
               ),
               timeoutMillis: 15_000,
+              signal: requestSignal,
               beforeDispatch: () =>
                 this.persistence.markConnectionTestDispatched({
                   ...common,
@@ -150,6 +154,7 @@ export class TestConnectionUseCase {
             const result = await this.slackClient.authTest({
               botToken: credential.botToken,
               timeoutMillis: 15_000,
+              signal: requestSignal,
               beforeDispatch: () =>
                 this.persistence.markConnectionTestDispatched({
                   ...common,
@@ -174,6 +179,7 @@ export class TestConnectionUseCase {
             maxRedirects: 3,
             maxResponseBytes: 65_536,
             sensitiveValues: Object.values(credential.headers),
+            signal: requestSignal,
             beforeDispatch: () =>
               this.persistence.markConnectionTestDispatched({
                 ...common,

@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   Body,
   Controller,
@@ -21,7 +19,6 @@ import {
   type FailureNotificationDestinationResponse,
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts/connections';
-import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import {
   generatePersistedId,
   type FailureNotificationDestinationDatabase,
@@ -32,11 +29,12 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
-  readHeader,
   requestIdentifier,
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { parseIdempotencyKey } from '../platform/http/index.js';
+import { createActorContext } from '../workspaces/index.js';
 import {
   ConnectionManageGuard,
   FailureNotificationWorkflowEditGuard,
@@ -47,6 +45,10 @@ import {
   type ConnectionTelemetry,
 } from './telemetry.js';
 import type { ConnectionRequest } from './types.js';
+import {
+  hashRequest,
+  type ConnectionCommandInput,
+} from './use-case-support.js';
 
 const workspaceParamsShape = { workspaceId: z.uuid() };
 const workspaceParamsSchema = z
@@ -62,29 +64,50 @@ const workflowPolicyParamsSchema = z
   .strict()
   .readonly();
 
-function command(request: ConnectionRequest, workspaceId: string) {
+function requestCommand(
+  request: ConnectionRequest,
+  routeWorkspaceId: string,
+): ConnectionCommandInput {
   const traceId = traceIdentifier(request);
+  const session = authenticatedSession(request);
+  const requestId = requestIdentifier(request);
   return {
-    workspaceId,
-    actorId: authenticatedSession(request).userId,
-    requestId: requestIdentifier(request),
+    actor:
+      request.authorizedWorkspace?.actor ??
+      createActorContext({
+        actorId: session.userId,
+        workspaceId: routeWorkspaceId,
+        sessionId: session.sessionId,
+        requestId,
+        ...(traceId === undefined ? {} : { traceId }),
+      }),
+    routeWorkspaceId,
+    requestId,
     ...(traceId === undefined ? {} : { traceId }),
   };
 }
 
-function idempotentCommand(
-  request: ConnectionRequest,
-  workspaceId: string,
-  value: unknown,
-) {
+function databaseCommand(input: DestinationCommandInput) {
   return {
-    ...command(request, workspaceId),
-    idempotencyKey: idempotencyKeySchema.parse(
-      readHeader(request, 'idempotency-key'),
-    ),
-    requestHash: createHash('sha256')
-      .update(JSON.stringify(value))
-      .digest('hex'),
+    workspaceId: input.routeWorkspaceId,
+    actorId: input.actor.actorId,
+    ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+  };
+}
+
+function requestIdempotencyKey(request: ConnectionRequest): string {
+  const header = Object.entries(request.headers ?? {}).find(
+    ([name]) => name.toLowerCase() === 'idempotency-key',
+  )?.[1];
+  return parseIdempotencyKey(header);
+}
+
+function idempotentCommand(input: DestinationMutationInput, value: unknown) {
+  return {
+    ...databaseCommand(input),
+    idempotencyKey: input.idempotencyKey,
+    requestHash: hashRequest(value),
   };
 }
 
@@ -98,20 +121,23 @@ function response(
   };
 }
 
-type DestinationRequestInput = Readonly<{
-  request: ConnectionRequest;
-  workspaceId: string;
-}>;
+type DestinationCommandInput = Pick<
+  ConnectionCommandInput,
+  'actor' | 'routeWorkspaceId' | 'requestId' | 'traceId'
+>;
+type DestinationMutationInput = DestinationCommandInput &
+  Readonly<{ idempotencyKey: string }>;
 export type CreateFailureNotificationDestinationInput =
-  DestinationRequestInput &
+  DestinationMutationInput &
     Readonly<{
       body: z.output<typeof failureNotificationDestinationCreateRequestSchema>;
     }>;
-export type ListFailureNotificationDestinationsInput = DestinationRequestInput;
-export type GetFailureNotificationDestinationInput = DestinationRequestInput &
+export type ListFailureNotificationDestinationsInput = DestinationCommandInput;
+export type GetFailureNotificationDestinationInput = DestinationCommandInput &
   Readonly<{ destinationId: string }>;
 export type AppendFailureNotificationDestinationVersionInput =
   GetFailureNotificationDestinationInput &
+    DestinationMutationInput &
     Readonly<{
       body: z.output<
         typeof failureNotificationDestinationAppendVersionRequestSchema
@@ -119,17 +145,18 @@ export type AppendFailureNotificationDestinationVersionInput =
     }>;
 export type SetFailureNotificationDestinationStatusInput =
   GetFailureNotificationDestinationInput &
+    DestinationMutationInput &
     Readonly<{
       body: z.output<typeof failureNotificationDestinationStatusRequestSchema>;
     }>;
 export type SetWorkflowFailureNotificationPolicyInput =
-  DestinationRequestInput &
+  DestinationMutationInput &
     Readonly<{
       workflowId: string;
       body: z.output<typeof workflowFailureNotificationPolicyRequestSchema>;
     }>;
 export type ClearWorkflowFailureNotificationPolicyInput =
-  DestinationRequestInput & Readonly<{ workflowId: string }>;
+  DestinationMutationInput & Readonly<{ workflowId: string }>;
 
 @Injectable()
 export class FailureNotificationDestinationUseCases {
@@ -146,7 +173,7 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.create({
-            ...idempotentCommand(input.request, input.workspaceId, input.body),
+            ...idempotentCommand(input, input.body),
             destinationId: generatePersistedId(),
             config: input.body,
           }),
@@ -158,9 +185,7 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<
     z.output<typeof failureNotificationDestinationListResponseSchema>
   > {
-    const records = await this.database.list(
-      command(input.request, input.workspaceId),
-    );
+    const records = await this.database.list(databaseCommand(input));
     return { items: records.map(response) };
   }
   public async get(
@@ -168,7 +193,7 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<FailureNotificationDestinationResponse> {
     return response(
       await this.database.get({
-        ...command(input.request, input.workspaceId),
+        ...databaseCommand(input),
         destinationId: input.destinationId,
       }),
     );
@@ -181,7 +206,7 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.appendVersion({
-            ...idempotentCommand(input.request, input.workspaceId, {
+            ...idempotentCommand(input, {
               destinationId: input.destinationId,
               ...input.body,
             }),
@@ -200,7 +225,7 @@ export class FailureNotificationDestinationUseCases {
       async () =>
         response(
           await this.database.setStatus({
-            ...idempotentCommand(input.request, input.workspaceId, {
+            ...idempotentCommand(input, {
               destinationId: input.destinationId,
               ...input.body,
             }),
@@ -215,7 +240,7 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policySet, () =>
       this.database.setWorkflowPolicy({
-        ...idempotentCommand(input.request, input.workspaceId, {
+        ...idempotentCommand(input, {
           workflowId: input.workflowId,
           ...input.body,
         }),
@@ -229,7 +254,7 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policyClear, () =>
       this.database.clearWorkflowPolicy({
-        ...idempotentCommand(input.request, input.workspaceId, {
+        ...idempotentCommand(input, {
           workflowId: input.workflowId,
         }),
         workflowId: input.workflowId,
@@ -259,8 +284,8 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = workspaceParamsSchema.parse(params);
     return this.useCases.create({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
+      idempotencyKey: requestIdempotencyKey(request),
       body: failureNotificationDestinationCreateRequestSchema.parse(body),
     });
   }
@@ -272,8 +297,10 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
   ) {
     return this.useCases.list({
-      request,
-      workspaceId: workspaceParamsSchema.parse(params).workspaceId,
+      ...requestCommand(
+        request,
+        workspaceParamsSchema.parse(params).workspaceId,
+      ),
     });
   }
   @Get('failure-notification-destinations/:destinationId')
@@ -285,8 +312,7 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = destinationParamsSchema.parse(params);
     return this.useCases.get({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
       destinationId: route.destinationId,
     });
   }
@@ -304,8 +330,8 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = destinationParamsSchema.parse(params);
     return this.useCases.append({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
+      idempotencyKey: requestIdempotencyKey(request),
       destinationId: route.destinationId,
       body: failureNotificationDestinationAppendVersionRequestSchema.parse(
         body,
@@ -325,8 +351,8 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = destinationParamsSchema.parse(params);
     return this.useCases.status({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
+      idempotencyKey: requestIdempotencyKey(request),
       destinationId: route.destinationId,
       body: failureNotificationDestinationStatusRequestSchema.parse(body),
     });
@@ -345,8 +371,8 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.setPolicy({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
+      idempotencyKey: requestIdempotencyKey(request),
       workflowId: route.workflowId,
       body: workflowFailureNotificationPolicyRequestSchema.parse(body),
     });
@@ -364,8 +390,8 @@ export class FailureNotificationDestinationsController {
   ) {
     const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.clearPolicy({
-      request,
-      workspaceId: route.workspaceId,
+      ...requestCommand(request, route.workspaceId),
+      idempotencyKey: requestIdempotencyKey(request),
       workflowId: route.workflowId,
     });
   }

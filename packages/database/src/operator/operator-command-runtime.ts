@@ -6,7 +6,7 @@ import { OperatorCommandConflictError } from './operator-command-errors.js';
 import type {
   GenericOperatorCommandResult,
   OperatorCommandDatabaseOptions,
-} from './operator-commands.js';
+} from './operator-command-contracts.js';
 import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import {
   EXPECTED_MIGRATION_HEAD,

@@ -33,12 +33,15 @@ describe('workflow authoring HTTP preconditions', () => {
   it('parses printable idempotency keys as one header value', () => {
     expect(parseIdempotencyKey('create-42')).toBe('create-42');
     expect(parseIdempotencyKey(['publish-42'])).toBe('publish-42');
+    expect(parseIdempotencyKey('x'.repeat(128))).toBe('x'.repeat(128));
     for (const candidate of [
       undefined,
       [],
       ['one', 'two'],
       'one,two',
       'contains\nnewline',
+      'contains space',
+      'x'.repeat(129),
     ]) {
       expect(() => parseIdempotencyKey(candidate)).toThrow();
     }

@@ -43,6 +43,14 @@ import { WebhookManagementService } from '../../src/webhooks/service.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 
+function recordBenchmarkOperation(startedAt: number): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'webhook-admit', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'authenticated webhook request through durable admission response' })}\n`,
+  );
+}
+
 const adminBaseUrl = process.env.DATABASE_ADMIN_URL;
 const migrationBaseUrl = process.env.DATABASE_MIGRATION_URL;
 const apiBaseUrl = process.env.DATABASE_API_URL;
@@ -63,7 +71,14 @@ if (requested)
     '[integration-gate] direct webhook HTTP integration requested and configured; executing the required HTTP assertion',
   );
 const enabled = requested;
-const databaseName = `pertexo_test_api_webhook_${randomUUID().replaceAll('-', '')}`;
+const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
+const databaseName = (() => {
+  if (!runnerOwnsDatabase)
+    return `pertexo_test_api_webhook_${randomUUID().replaceAll('-', '')}`;
+  const value = process.env.PERTEXO_Q11_DATABASE_NAME;
+  if (!value) throw new Error('Q11 runner-owned database name is required');
+  return value;
+})();
 const databaseUrl = (base: string): string => {
   const url = new URL(base);
   url.pathname = `/${databaseName}`;
@@ -226,11 +241,13 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   let workspaceId = '';
 
   beforeAll(async () => {
-    await admin.query(`create database "${databaseName}" owner ${ownerRole}`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to ${migrationRole},${apiRole},${workerRole},${dispatcherRole}`,
-    );
+    if (!runnerOwnsDatabase) {
+      await admin.query(`create database "${databaseName}" owner ${ownerRole}`);
+      await admin.query(`revoke all on database "${databaseName}" from public`);
+      await admin.query(
+        `grant connect on database "${databaseName}" to ${migrationRole},${apiRole},${workerRole},${dispatcherRole}`,
+      );
+    }
     await migrateDatabase({
       connectionString: configuredDatabaseUrl(migrationBaseUrl),
       ownerRole,
@@ -256,7 +273,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       apiPool.end(),
     ]);
     try {
-      await dropDisconnectedDatabase(admin, databaseName);
+      if (!runnerOwnsDatabase)
+        await dropDisconnectedDatabase(admin, databaseName);
     } finally {
       await admin.end();
     }
@@ -420,7 +438,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       'utf8',
     );
     const key = 'sender-delivery-key';
+    const operationStartedAt = performance.now();
     const first = await sendWebhook(endpointKey, originalSecret, rawBody, key);
+    recordBenchmarkOperation(operationStartedAt);
     expect(first.status).toBe(202);
     expect(first.json).toMatchObject({ replayed: false });
     const runId = String(first.json.runId);
@@ -607,6 +627,21 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
 
   async function activateWebhookRelease(): Promise<void> {
     const descriptions = releaseHistory.descriptions;
+    const currentResult = await apiPool.query<{
+      epoch: number;
+      fingerprint: string;
+    }>(
+      `select epoch,fingerprint
+         from app.node_compatibility_current
+        where singleton=true`,
+    );
+    const current = currentResult.rows[0];
+    const currentIndex = descriptions.findIndex(
+      ({ epoch, fingerprint }) =>
+        epoch === current?.epoch && fingerprint === current.fingerprint,
+    );
+    if (currentIndex === -1)
+      throw new Error('Current webhook compatibility release is unsupported');
     const maintenance = createCompatibilityReleaseMaintenance(
       parseDatabaseConfig({
         connectionString: configuredDatabaseUrl(migrationBaseUrl),
@@ -616,7 +651,11 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       }),
     );
     try {
-      for (let index = 1; index < descriptions.length; index += 1) {
+      for (
+        let index = currentIndex + 1;
+        index < descriptions.length;
+        index += 1
+      ) {
         const predecessor = descriptions[index - 1];
         const target = descriptions[index];
         if (predecessor === undefined || target === undefined)

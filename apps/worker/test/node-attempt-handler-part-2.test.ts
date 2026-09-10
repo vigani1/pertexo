@@ -7,7 +7,10 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
 } from '@pertexo/database/testing';
-import { HttpRequestExecutorError } from '@pertexo/integrations/server';
+import {
+  createHttpRequestExecutorRegistration,
+  HttpRequestExecutorError,
+} from '@pertexo/integrations/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
@@ -24,7 +27,52 @@ import {
   executionStore,
   lease,
   projection,
+  registryPreparedAttempt,
 } from './support/node-attempt-handler.fixture.js';
+
+function heartbeatCancellationHandler(
+  runStore: NodeAttemptRunStore,
+  executorControlsDispatch = false,
+) {
+  return createNodeAttemptHandler({
+    engine: {
+      prepare: vi.fn().mockReturnValue(registryPreparedAttempt()),
+    },
+    heartbeatIntervalMillis: 10,
+    leaseDurationSeconds: 1,
+    reader: {
+      close: vi.fn().mockResolvedValue(undefined),
+      readForExecution: vi.fn().mockResolvedValue({
+        kind: 'v2_projection',
+        workflowVersion: projection(),
+      }),
+    },
+    registry: {
+      ...(executorControlsDispatch
+        ? { dispatchMode: () => 'executor_controlled' as const }
+        : {}),
+      execute: vi.fn(
+        (input: { signal: AbortSignal }): Promise<never> =>
+          new Promise((_resolve, reject) => {
+            input.signal.addEventListener(
+              'abort',
+              () => {
+                reject(
+                  new WorkflowEngineError(
+                    'attempt_aborted',
+                    'durable cancellation',
+                  ),
+                );
+              },
+              { once: true },
+            );
+          }),
+      ),
+    },
+    runStore,
+    workerId: 'worker-1',
+  });
+}
 
 describe('NodeAttemptHandler', () => {
   it.each([
@@ -76,6 +124,47 @@ describe('NodeAttemptHandler', () => {
       );
     },
   );
+
+  it('preserves prior dispatch uncertainty when cancellation arrives before redispatch', async () => {
+    const attemptLease = {
+      ...lease(),
+      sideEffectClass: 'idempotent_with_key' as const,
+      providerIdempotencyKey: 'stable-provider-key',
+      providerDispatchUnresolved: true as const,
+    };
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const markDispatched = vi.fn<NodeAttemptRunStore['markDispatched']>();
+    const runStore = executionStore({
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+      complete,
+      loadInputs: vi.fn().mockResolvedValue({
+        abortRequested: true,
+        abortReason: 'canceled',
+        completedNodeOutputs: {},
+        runInput: null,
+      }),
+      markDispatched,
+    });
+
+    await expect(
+      executionHandler(runStore).handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: {
+          status: 'outcome_unknown',
+          safeErrorCode: 'execution.outcome_unknown',
+        },
+      }),
+    );
+    expect(markDispatched).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['canceled', 'execution.canceled'],
@@ -137,6 +226,53 @@ describe('NodeAttemptHandler', () => {
         outcome: { status: abortReason, safeErrorCode },
       });
       expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
+    },
+  );
+
+  it.each(['canceled', 'timed_out'] as const)(
+    'preserves prior dispatch uncertainty when heartbeat reports %s before redispatch',
+    async (abortReason) => {
+      const attemptLease = {
+        ...lease(),
+        sideEffectClass: 'idempotent_with_key' as const,
+        providerIdempotencyKey: 'stable-provider-key',
+        providerDispatchUnresolved: true as const,
+      };
+      const complete = vi
+        .fn<NodeAttemptRunStore['complete']>()
+        .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+      const heartbeat = vi
+        .fn<NodeAttemptRunStore['heartbeat']>()
+        .mockResolvedValue({
+          leaseExpiresAt: new Date('2026-08-21T00:02:00.000Z'),
+          abortRequested: true,
+          abortReason,
+        });
+      const markDispatched = vi.fn<NodeAttemptRunStore['markDispatched']>();
+      const store = executionStore({
+        claimDelivery: vi
+          .fn()
+          .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+        complete,
+        heartbeat,
+        markDispatched,
+      });
+      const handler = heartbeatCancellationHandler(store, true);
+
+      await expect(
+        handler.handle(delivery(), { signal: new AbortController().signal }),
+      ).resolves.toEqual({ kind: 'committed' });
+      expect(heartbeat).toHaveBeenCalledOnce();
+      expect(markDispatched).not.toHaveBeenCalled();
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lease: attemptLease,
+          outcome: {
+            status: 'outcome_unknown',
+            safeErrorCode: 'execution.outcome_unknown',
+          },
+        }),
+      );
     },
   );
 
@@ -335,6 +471,115 @@ describe('NodeAttemptHandler', () => {
     );
   });
 
+  it('persists a real HTTP credential-resolution outage as a durable retry', async () => {
+    const attemptLease = { ...lease(), sideEffectClass: 'unsafe' as const };
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const markDispatched = vi
+      .fn<NodeAttemptRunStore['markDispatched']>()
+      .mockResolvedValue({ dispatchedAt: new Date() });
+    const store = executionStore({
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+      complete,
+      markDispatched,
+    });
+    const providerIo = vi.fn();
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: { executeStreaming: providerIo },
+    });
+    const resolveFailure = new Error('temporary connection-store outage');
+    const resolve = vi.fn().mockRejectedValue(resolveFailure);
+    const execute: PreparedNodeAttempt['execute'] = async ({
+      registry,
+      signal,
+    }) => {
+      const result = await registry.execute({
+        definition: { key: 'http.request', version: 1 },
+        executor: { key: 'http.request', version: 1 },
+        config: {
+          method: 'POST',
+          url: 'https://provider.example.test/v1/items',
+          headers: {},
+          timeoutMillis: 10_000,
+          maxRedirects: 0,
+          maxResponseBytes: 1_048_576,
+          inlineResponseBytes: 65_536,
+        },
+        input: {},
+        connectionRefs: {
+          http_headers: '88888888-8888-4888-8888-888888888888',
+        },
+        signal,
+      });
+      return {
+        runId: attemptLease.runId,
+        nodeRunId: attemptLease.nodeRunId,
+        attemptId: attemptLease.attemptId,
+        invocationKey: attemptLease.invocationKey,
+        nodeId: attemptLease.nodeId,
+        kind: result.kind,
+        output: result.output,
+      };
+    };
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({
+          upstreamNodeOutputs: [],
+          execute,
+        }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn().mockResolvedValue(undefined),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: {
+        dispatchMode: () => 'executor_controlled',
+        execute: async (request) => {
+          await registration.execute({
+            ...request,
+            connectionRefs: request.connectionRefs ?? {},
+          });
+          return { kind: 'succeeded', output: null };
+        },
+      },
+      runStore: store,
+      runtimeCapabilities: {
+        connections: () => ({
+          assertCurrent: vi.fn().mockResolvedValue(undefined),
+          resolve,
+        }),
+      },
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(resolve).toHaveBeenCalledOnce();
+    expect(providerIo).not.toHaveBeenCalled();
+    expect(markDispatched).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lease: attemptLease,
+        outcome: {
+          status: 'executor_failure',
+          failureKind: 'retry',
+          errorKind: 'provider',
+          possiblyDispatched: false,
+          safeErrorCode: 'execution.provider',
+        },
+      }),
+    );
+  });
+
   it.each([
     ['canceled', 'unsafe', 'outcome_unknown', 'execution.outcome_unknown'],
     ['timed_out', 'unsafe', 'outcome_unknown', 'execution.outcome_unknown'],
@@ -385,56 +630,7 @@ describe('NodeAttemptHandler', () => {
         }),
         markDispatched: vi.fn(),
       } satisfies NodeAttemptRunStore;
-      const reader = {
-        close: vi.fn().mockResolvedValue(undefined),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
-        }),
-      } satisfies PublishedWorkflowReader;
-      const registryExecute = vi.fn(
-        (input: { signal: AbortSignal }): Promise<never> =>
-          new Promise((_resolve, reject) => {
-            input.signal.addEventListener(
-              'abort',
-              () => {
-                reject(
-                  new WorkflowEngineError(
-                    'attempt_aborted',
-                    'durable cancellation',
-                  ),
-                );
-              },
-              { once: true },
-            );
-          }),
-      );
-      const execute = vi.fn(
-        async ({
-          registry,
-          signal,
-        }: Parameters<PreparedNodeAttempt['execute']>[0]) =>
-          registry.execute({
-            definition: { key: 'core.manual', version: 1 },
-            executor: { key: 'core.manual', version: 1 },
-            config: {},
-            input: null,
-            signal,
-          }),
-      );
-      const handler = createNodeAttemptHandler({
-        engine: {
-          prepare: vi
-            .fn()
-            .mockReturnValue({ upstreamNodeOutputs: [], execute }),
-        },
-        heartbeatIntervalMillis: 10,
-        leaseDurationSeconds: 1,
-        reader,
-        registry: { execute: registryExecute },
-        runStore: store,
-        workerId: 'worker-1',
-      });
+      const handler = heartbeatCancellationHandler(store);
 
       await expect(
         handler.handle(delivery(), { signal: new AbortController().signal }),

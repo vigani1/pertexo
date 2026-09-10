@@ -1,12 +1,15 @@
 import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 import * as browserEntry from '../src/index.js';
 import * as releaseEntry from '../src/release.js';
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const execFileAsync = promisify(execFile);
 
 describe('@pertexo/node-sdk package contract', () => {
   it('publishes only browser-safe default/release exports and an explicit server subpath', async () => {
@@ -34,19 +37,19 @@ describe('@pertexo/node-sdk package contract', () => {
     );
   });
 
-  it('keeps browser entry transitive source imports free of Node/server modules', async () => {
-    const indexSource = await readFile(
-      resolve(packageDirectory, 'src/index.ts'),
-      'utf8',
-    );
-    const releaseSource = await readFile(
-      resolve(packageDirectory, 'src/release.ts'),
-      'utf8',
-    );
-    expect(`${indexSource}\n${releaseSource}`).not.toMatch(/node:/u);
-    expect(`${indexSource}\n${releaseSource}`).not.toMatch(
-      /\.\/server(?:\.js|['"])/u,
-    );
+  it('keeps browser entries transitively free of Node/server modules', async () => {
+    await expect(
+      execFileAsync(process.execPath, [
+        resolve(
+          packageDirectory,
+          '../../infrastructure/browser-entry-dependencies.mjs',
+        ),
+        '--root',
+        resolve(packageDirectory, '../..'),
+        'packages/node-sdk/src/index.ts',
+        'packages/node-sdk/src/release.ts',
+      ]),
+    ).resolves.toMatchObject({ stderr: '' });
   });
 
   it('guards the server subpath before loading implementation code', async () => {

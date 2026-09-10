@@ -44,6 +44,23 @@ const LIFECYCLE_VISIBLE_STATUSES = [
   'pending_deletion',
 ] as const satisfies readonly WorkspaceStatus[];
 
+type CurrentUserPersistence = Pick<
+  IdentityWorkspacePersistence,
+  'findUserById'
+>;
+type WorkspaceMembersPersistence = Pick<
+  IdentityWorkspacePersistence,
+  'listWorkspaceMembers'
+>;
+type WorkspaceCreationPersistence = Pick<
+  IdentityWorkspacePersistence,
+  'createWorkspaceWithOwner'
+>;
+type WorkspaceLifecyclePersistence = Pick<
+  IdentityWorkspacePersistence,
+  'requestWorkspaceLifecycleOperation' | 'readWorkspaceLifecycleOperation'
+>;
+
 export interface OidcLoginPort {
   startLogin(): Promise<
     Readonly<{
@@ -68,7 +85,7 @@ export interface SessionIssuePort {
 
 export class GetCurrentUserUseCase {
   public constructor(
-    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly persistence: CurrentUserPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
@@ -106,7 +123,7 @@ export type ListWorkspaceMembersInput = Readonly<{
 
 export class ListWorkspaceMembersUseCase {
   public constructor(
-    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly persistence: WorkspaceMembersPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
@@ -222,7 +239,7 @@ export type CreateWorkspaceInput = Readonly<{
 
 export class CreateWorkspaceUseCase {
   public constructor(
-    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly persistence: WorkspaceCreationPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
@@ -272,7 +289,7 @@ export type ReadWorkspaceLifecycleOperationInput = Readonly<{
 
 export class WorkspaceLifecycleUseCase {
   public constructor(
-    private readonly persistence: IdentityWorkspacePersistence,
+    private readonly persistence: WorkspaceLifecyclePersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}

@@ -237,6 +237,30 @@ describe('dual-region artifact store', () => {
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
 
+  it('keeps successful delete, purge, and owned close paths symmetric', async () => {
+    const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
+    const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
+    primary.purgeResult = { completed: true, deletedCount: 2 };
+    recovery.purgeResult = { completed: true, deletedCount: 2 };
+    const store = createDualRegionArtifactStore(primary, recovery, {
+      artifactOwnership: 'owned',
+    });
+
+    await expect(store.delete(metadata)).resolves.toBeUndefined();
+    await expect(
+      store.purgeWorkspacePage({
+        maxObjects: 10,
+        workspaceId: metadata.workspaceId,
+      }),
+    ).resolves.toEqual({ completed: true, deletedCount: 2 });
+    store.close();
+
+    expect(primary.deleteCalls).toBe(1);
+    expect(recovery.deleteCalls).toBe(1);
+    expect(primary.closeCalls).toBe(1);
+    expect(recovery.closeCalls).toBe(1);
+  });
+
   it.each([
     ['primary', true, false],
     ['recovery', false, true],
@@ -334,6 +358,25 @@ describe('dual-region artifact store', () => {
     expect(() => createDualRegionArtifactStore(primary, recovery)).toThrow(
       'explicit ownership',
     );
+  });
+
+  it('rejects direct download when the primary omits that capability', () => {
+    const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
+    const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
+    Object.defineProperty(primary, 'beginDirectDownload', {
+      value: undefined,
+    });
+    const store = createDualRegionArtifactStore(primary, recovery, {
+      artifactOwnership: 'borrowed',
+    });
+
+    expect(() =>
+      store.beginDirectDownload({
+        artifactId: metadata.artifactId,
+        expiresInSeconds: 300,
+        workspaceId: metadata.workspaceId,
+      }),
+    ).toThrow('must support direct downloads');
   });
 
   it('attempts both owned closes and aggregates their failures once', () => {

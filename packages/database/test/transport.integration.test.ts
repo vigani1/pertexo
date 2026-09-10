@@ -5,18 +5,27 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
+import { createWorkspaceDatabase } from '../src/database.js';
 import { createOutboxDispatcherDatabase } from '../src/execution/dispatcher.js';
+import { consumeInboxMessage } from '../src/execution/testing.js';
 import { OperatorCommandConflictError } from '../src/operator/operator-commands.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../src/execution/outbox.js';
 import { auditEvents, outboxEvents } from '../src/schema.js';
+import { createPostgresCommitAckProxy } from './support/postgres-commit-ack-proxy.js';
 import { createTransportTestEnvironment } from './support/transport.integration.support.js';
+import {
+  readQ11DatabaseIdentity,
+  recordQ11Operation,
+  waitForQ11OverlapBarrier,
+} from './support/q11-benchmark.js';
 
 const transport = createTransportTestEnvironment();
 const {
   apiDatabase,
+  apiUrl,
   checksumA,
   checksumB,
   dispatcher,
@@ -98,18 +107,22 @@ describe('transactional outbox persistence', () => {
   it('commits and rolls back domain acceptance with its outbox event', async () => {
     const acceptanceId = randomUUID();
     const eventInput = outboxInput();
-    const accept = async (shouldFail: boolean): Promise<void> =>
+    const accept = async (
+      shouldFail: boolean,
+      acceptedId = acceptanceId,
+      acceptedEvent = eventInput,
+    ): Promise<void> =>
       apiDatabase.withWorkspace(workspaceA, async (transaction) => {
-        await insertOutboxEvent(transaction, eventInput);
+        await insertOutboxEvent(transaction, acceptedEvent);
         await transaction.db.execute(sql`
           insert into app.queue_duplicate_probe_acceptances
             (id, workspace_id, acceptance_key, request_hash, outbox_event_id)
           values (
-            ${acceptanceId},
+            ${acceptedId},
             ${transaction.workspaceId},
-            ${`accept:${acceptanceId}`},
+            ${`accept:${acceptedId}`},
             ${checksumA},
-            ${eventInput.id}
+            ${acceptedEvent.id}
           )
         `);
         if (shouldFail) throw new Error('injected acceptance failure');
@@ -128,7 +141,27 @@ describe('transactional outbox persistence', () => {
       expect(outboxCount).toEqual([{ count: 0 }]);
     });
 
-    await expect(accept(false)).resolves.toBeUndefined();
+    await waitForQ11OverlapBarrier();
+    const databaseIdentity = await readQ11DatabaseIdentity(apiUrl);
+    const operationPopulation =
+      process.env.PERTEXO_Q11_OPERATION_TIMING === '1' ? 32 : 1;
+    const operationStartedAt = performance.now();
+    await expect(
+      Promise.all(
+        Array.from({ length: operationPopulation }, (_, index) =>
+          index === 0
+            ? accept(false)
+            : accept(false, randomUUID(), outboxInput()),
+        ),
+      ),
+    ).resolves.toHaveLength(operationPopulation);
+    recordQ11Operation(
+      'foreground-acceptance',
+      operationStartedAt,
+      operationPopulation,
+      'concurrent real-role acceptance transactions through durable commit',
+      databaseIdentity,
+    );
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
       const acceptanceCount = await db.execute(sql`
         select count(*)::integer as count
@@ -137,9 +170,149 @@ describe('transactional outbox persistence', () => {
       const outboxCount = await db
         .select({ count: count() })
         .from(outboxEvents);
-      expect(acceptanceCount.rows[0]).toEqual({ count: 1 });
-      expect(outboxCount).toEqual([{ count: 1 }]);
+      expect(acceptanceCount.rows[0]).toEqual({ count: operationPopulation });
+      expect(outboxCount).toEqual([{ count: operationPopulation }]);
     });
+  });
+
+  it('recovers an atomic inbox outcome after the COMMIT acknowledgement is lost', async () => {
+    const proxy = await createPostgresCommitAckProxy(apiUrl);
+    const proxiedDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: proxy.url, max: 1 }),
+    );
+    const consumerName = 'commit-ack-proof';
+    const normalMessageId = randomUUID();
+    const rollbackMessageId = randomUUID();
+    const lostAckMessageId = randomUUID();
+    const normalAcceptanceId = randomUUID();
+    const rollbackAcceptanceId = randomUUID();
+    const lostAckAcceptanceId = randomUUID();
+    const normalOutbox = outboxInput();
+    const rollbackOutbox = outboxInput();
+    const lostAckOutbox = outboxInput();
+    let lostAckWorkCalls = 0;
+
+    const consume = (
+      messageId: string,
+      acceptanceId: string,
+      event: ReturnType<typeof outboxInput>,
+      failBeforeCommit = false,
+    ) =>
+      consumeInboxMessage(
+        proxiedDatabase,
+        workspaceA,
+        { consumerName, messageId, payloadChecksum: checksumA },
+        async (transaction) => {
+          if (messageId === lostAckMessageId) lostAckWorkCalls += 1;
+          await insertOutboxEvent(transaction, event);
+          await transaction.db.execute(sql`
+            insert into app.queue_duplicate_probe_acceptances
+              (id, workspace_id, acceptance_key, request_hash, outbox_event_id)
+            values (
+              ${acceptanceId},
+              ${transaction.workspaceId},
+              ${`commit-ack:${acceptanceId}`},
+              ${checksumA},
+              ${event.id}
+            )
+          `);
+          if (failBeforeCommit) throw new Error('pre-commit control failure');
+          return event.id;
+        },
+      );
+
+    const inspect = async (
+      acceptanceId: string,
+      messageId: string,
+      outboxId: string,
+    ) =>
+      apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+        const durable = await db.execute(sql`
+          select
+            (select count(*)::integer
+               from app.queue_duplicate_probe_acceptances
+              where id = ${acceptanceId}) acceptance_count,
+            (select count(*)::integer
+               from app.inbox_receipts
+              where consumer_name = ${consumerName}
+                and message_id = ${messageId}
+                and completed_at is not null) completed_receipt_count,
+            (select count(*)::integer
+               from app.outbox_events
+              where id = ${outboxId}) outbox_count
+        `);
+        return durable.rows[0];
+      });
+
+    try {
+      await expect(
+        consume(normalMessageId, normalAcceptanceId, normalOutbox),
+      ).resolves.toEqual({ status: 'processed', value: normalOutbox.id });
+      await expect(
+        inspect(normalAcceptanceId, normalMessageId, normalOutbox.id),
+      ).resolves.toEqual({
+        acceptance_count: 1,
+        completed_receipt_count: 1,
+        outbox_count: 1,
+      });
+
+      await expect(
+        consume(rollbackMessageId, rollbackAcceptanceId, rollbackOutbox, true),
+      ).rejects.toThrow('pre-commit control failure');
+      await expect(
+        inspect(rollbackAcceptanceId, rollbackMessageId, rollbackOutbox.id),
+      ).resolves.toEqual({
+        acceptance_count: 0,
+        completed_receipt_count: 0,
+        outbox_count: 0,
+      });
+      await expect(
+        consume(rollbackMessageId, rollbackAcceptanceId, rollbackOutbox),
+      ).resolves.toEqual({ status: 'processed', value: rollbackOutbox.id });
+      await expect(
+        inspect(rollbackAcceptanceId, rollbackMessageId, rollbackOutbox.id),
+      ).resolves.toEqual({
+        acceptance_count: 1,
+        completed_receipt_count: 1,
+        outbox_count: 1,
+      });
+
+      const acknowledgementDropped = proxy.dropNextCommitAcknowledgement();
+      const uncertain = consume(
+        lostAckMessageId,
+        lostAckAcceptanceId,
+        lostAckOutbox,
+      );
+      await acknowledgementDropped;
+      await expect(uncertain).rejects.toThrow();
+      await expect(
+        inspect(lostAckAcceptanceId, lostAckMessageId, lostAckOutbox.id),
+      ).resolves.toEqual({
+        acceptance_count: 1,
+        completed_receipt_count: 1,
+        outbox_count: 1,
+      });
+
+      await expect(
+        consume(lostAckMessageId, lostAckAcceptanceId, lostAckOutbox),
+      ).resolves.toEqual({ status: 'duplicate' });
+      expect(lostAckWorkCalls).toBe(1);
+      expect(proxy.droppedConnectionCount()).toBe(1);
+      expect(proxy.connectionCount()).toBeGreaterThanOrEqual(2);
+      await expect(
+        inspect(lostAckAcceptanceId, lostAckMessageId, lostAckOutbox.id),
+      ).resolves.toEqual({
+        acceptance_count: 1,
+        completed_receipt_count: 1,
+        outbox_count: 1,
+      });
+      await proxiedDatabase.close();
+      await proxy.close();
+      expect(proxy.activeSocketCount()).toBe(0);
+    } finally {
+      await proxiedDatabase.close();
+      await proxy.close();
+    }
   });
 
   it('returns an existing acceptance for the same request hash and rejects key reuse', async () => {

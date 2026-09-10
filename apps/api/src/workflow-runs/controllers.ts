@@ -35,6 +35,7 @@ import {
   requestIdentifier,
   traceIdentifier,
 } from '../identity-workspace/index.js';
+import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { applicationError } from '../platform/http/index.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
 import {
@@ -45,7 +46,6 @@ import {
 } from '../platform/observability/sse-visibility-metrics.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
-import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
   WorkflowRunCancelGuard,
@@ -62,32 +62,24 @@ import {
   StreamRunEventsUseCase,
 } from './use-cases.js';
 
-export type WorkflowRunsRequest = Readonly<{
-  method?: string;
-  headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
-  cookies?: Readonly<Record<string, string | undefined>>;
-  requestId?: string;
-  traceId?: string;
-  identitySession?: Readonly<{
-    userId: string;
-    sessionId: string;
-    expiresAt: Date;
-    clientMetadata: Readonly<Record<string, string>>;
-  }>;
-  reauthorizeIdentitySession?: (signal: AbortSignal) => Promise<
-    Readonly<{
-      userId: string;
-      sessionId: string;
-      expiresAt: Date;
-      clientMetadata: Readonly<Record<string, string>>;
-    }>
-  >;
-  authorizedWorkspace?: AuthorizedWorkspaceContext;
-  raw?: Readonly<{
-    once(event: 'close', listener: () => void): unknown;
-    off(event: 'close', listener: () => void): unknown;
-  }>;
-}>;
+export type WorkflowRunsRequest = Readonly<
+  Pick<
+    IdentityWorkspaceRequest,
+    | 'authorizedWorkspace'
+    | 'cookies'
+    | 'headers'
+    | 'identitySession'
+    | 'method'
+    | 'reauthorizeIdentitySession'
+    | 'requestId'
+    | 'traceId'
+  > & {
+    raw?: Readonly<{
+      once(event: 'close', listener: () => void): unknown;
+      off(event: 'close', listener: () => void): unknown;
+    }>;
+  }
+>;
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')

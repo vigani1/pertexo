@@ -14,6 +14,21 @@ describe('value sources', () => {
       expect.objectContaining({ kind: 'error', code: 'invalid_path' }),
     );
   });
+  it('does not resolve inherited object properties', () => {
+    const value = Object.create({ inherited: 'not-json-data' }) as Record<
+      string,
+      unknown
+    >;
+    value.owned = 'json-data';
+
+    expect(resolveJsonPath(value as never, '$.owned')).toEqual({
+      kind: 'value',
+      value: 'json-data',
+    });
+    expect(resolveJsonPath(value as never, '$.inherited')).toEqual({
+      kind: 'missing',
+    });
+  });
   it('resolves literal, run, node, and structured input through one seam', async () => {
     const context = {
       runInput: { name: 'Ada' },

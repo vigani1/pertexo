@@ -11,6 +11,7 @@ export type {
 export {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
+  type NodeAttemptRuntimeOptions,
 } from './execution/node-attempt-runtime.js';
 export { createWorkerNodeRuntimeCapabilities } from './execution/node-runtime-capabilities.js';
 export {

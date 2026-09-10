@@ -15,6 +15,30 @@ const policy = {
 } as const;
 
 describe('retry policy mutation canary', () => {
+  it('keeps transient provider failures inside the immutable engine policy', () => {
+    const decision = (errorKind: 'internal' | 'provider') =>
+      decideRetry({
+        sideEffectClass: 'safe',
+        currentAttemptNumber: 1,
+        policy: ENGINE_RETRY_POLICY_V1,
+        observation: {
+          kind: 'executor_failure',
+          recommendation: 'retry',
+          errorKind,
+          possiblyDispatched: false,
+        },
+      });
+
+    expect(decision('provider')).toMatchObject({
+      kind: 'retry',
+      attemptNumber: 2,
+    });
+    expect(decision('internal')).toEqual({
+      kind: 'failed',
+      reasonCode: 'internal',
+    });
+  });
+
   it('pins every high-consequence retry decision class', () => {
     const cases = [
       [{ kind: 'success' as const }, 'unsafe', 'succeeded'],

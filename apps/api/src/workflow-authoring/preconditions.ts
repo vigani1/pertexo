@@ -1,5 +1,6 @@
+import { idempotencyKeySchema } from '@pertexo/contracts/transport';
+
 const strongDraftTagPattern = /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u;
-const printableHeaderPattern = /^[\x21-\x7e]+$/u;
 
 export class WorkflowHeaderError extends Error {
   public override readonly name = 'WorkflowHeaderError';
@@ -42,13 +43,8 @@ export function parseStrongIfMatch(value: unknown): string {
 /** Parse the single idempotency key accepted by command endpoints. */
 export function parseIdempotencyKey(value: unknown): string {
   const candidate = oneHeaderValue(value, 'Idempotency-Key');
-  if (
-    candidate === undefined ||
-    candidate.length < 1 ||
-    candidate.length > 128 ||
-    candidate.includes(',') ||
-    !printableHeaderPattern.test(candidate)
-  )
+  const parsed = idempotencyKeySchema.safeParse(candidate);
+  if (!parsed.success)
     throw new WorkflowHeaderError('invalid', 'Idempotency-Key');
-  return candidate;
+  return parsed.data;
 }

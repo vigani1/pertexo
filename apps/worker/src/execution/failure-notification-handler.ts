@@ -31,6 +31,12 @@ export interface FailureNotificationDeliveryCapability {
   ): Promise<FailureNotificationDeliveryResultV1>;
 }
 
+function deliveryFailureCode(
+  signal: AbortSignal,
+): 'delivery.provider_failure' | 'delivery.timeout' {
+  return signal.aborted ? 'delivery.timeout' : 'delivery.provider_failure';
+}
+
 export function createFailureNotificationHandler(
   dependencies: Readonly<{
     store: FailureNotificationStore;
@@ -45,71 +51,73 @@ export function createFailureNotificationHandler(
       delivery: Delivery,
       queueContext: QueueHandlerContext,
     ): Promise<void> => {
-      const claim = await dependencies.store.claimDelivery({
-        workspaceId: delivery.data.workspaceId,
-        intentId: delivery.data.notificationIntentId,
-        delivery: {
-          outboxEventId: delivery.data.outboxEventId,
-          payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
-        },
-        recoverySeconds: Math.max(
-          1,
-          Math.ceil(dependencies.timeoutMillis / 1_000) + 1,
-        ),
-        maxAttempts: dependencies.maxAttempts,
-      });
-      if (claim.kind !== 'ready') return;
       const controller = new AbortController();
       const onQueueAbort = (): void => {
         controller.abort(queueContext.signal.reason);
       };
+      if (queueContext.signal.aborted) return;
       queueContext.signal.addEventListener('abort', onQueueAbort, {
         once: true,
       });
-      const timeout = setTimeout(() => {
-        controller.abort(new Error('failure notification delivery timeout'));
-      }, dependencies.timeoutMillis);
-      let result: FailureNotificationDeliveryResultV1;
       try {
-        result = FailureNotificationDeliveryResultV1Schema.parse(
-          await dependencies.delivery.deliver({
-            context: claim.context,
-            workspaceId: delivery.data.workspaceId,
-            intentId: delivery.data.notificationIntentId,
-            attemptNumber: claim.attemptNumber,
-            destinationId: claim.destinationId,
-            destinationConfigVersion: claim.destinationConfigVersion,
-            idempotencyKey: claim.idempotencyKey,
-            sideEffectClass: claim.sideEffectClass,
-            connectionSecretVersionId: claim.connectionSecretVersionId,
-            deliveryUnresolved: claim.deliveryUnresolved,
-            ...(claim.deliveryBinding === undefined
-              ? {}
-              : { deliveryBinding: claim.deliveryBinding }),
-            signal: controller.signal,
-          }),
-        );
-      } catch {
-        result = {
-          schemaVersion: 1,
-          kind: 'retry',
-          safeErrorCode: controller.signal.aborted
-            ? 'delivery.timeout'
-            : 'delivery.provider_failure',
-          possiblyDispatched: true,
-        };
+        const claim = await dependencies.store.claimDelivery({
+          workspaceId: delivery.data.workspaceId,
+          intentId: delivery.data.notificationIntentId,
+          delivery: {
+            outboxEventId: delivery.data.outboxEventId,
+            payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+          },
+          recoverySeconds: Math.max(
+            1,
+            Math.ceil(dependencies.timeoutMillis / 1_000) + 1,
+          ),
+          maxAttempts: dependencies.maxAttempts,
+        });
+        if (claim.kind !== 'ready' || controller.signal.aborted) return;
+        const timeout = setTimeout(() => {
+          controller.abort(new Error('failure notification delivery timeout'));
+        }, dependencies.timeoutMillis);
+        let result: FailureNotificationDeliveryResultV1;
+        try {
+          result = FailureNotificationDeliveryResultV1Schema.parse(
+            await dependencies.delivery.deliver({
+              context: claim.context,
+              workspaceId: delivery.data.workspaceId,
+              intentId: delivery.data.notificationIntentId,
+              attemptNumber: claim.attemptNumber,
+              destinationId: claim.destinationId,
+              destinationConfigVersion: claim.destinationConfigVersion,
+              idempotencyKey: claim.idempotencyKey,
+              sideEffectClass: claim.sideEffectClass,
+              connectionSecretVersionId: claim.connectionSecretVersionId,
+              deliveryUnresolved: claim.deliveryUnresolved,
+              ...(claim.deliveryBinding === undefined
+                ? {}
+                : { deliveryBinding: claim.deliveryBinding }),
+              signal: controller.signal,
+            }),
+          );
+        } catch {
+          result = {
+            schemaVersion: 1,
+            kind: 'retry',
+            safeErrorCode: deliveryFailureCode(controller.signal),
+            possiblyDispatched: true,
+          };
+        } finally {
+          clearTimeout(timeout);
+        }
+        await dependencies.store.completeDelivery({
+          workspaceId: delivery.data.workspaceId,
+          intentId: delivery.data.notificationIntentId,
+          attemptNumber: claim.attemptNumber,
+          maxAttempts: dependencies.maxAttempts,
+          retryDelaySeconds: dependencies.retryDelaySeconds,
+          result,
+        });
       } finally {
-        clearTimeout(timeout);
         queueContext.signal.removeEventListener('abort', onQueueAbort);
       }
-      await dependencies.store.completeDelivery({
-        workspaceId: delivery.data.workspaceId,
-        intentId: delivery.data.notificationIntentId,
-        attemptNumber: claim.attemptNumber,
-        maxAttempts: dependencies.maxAttempts,
-        retryDelaySeconds: dependencies.retryDelaySeconds,
-        result,
-      });
     },
   });
 }

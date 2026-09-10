@@ -1,6 +1,8 @@
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -15,7 +17,6 @@ import {
   artifactUploadRequestSchema,
   artifactUploadResponseSchema,
 } from './http/artifact-transfer.js';
-import { idempotencyKeySchema } from './http/identity-workspace.js';
 
 export * from './http/artifact-transfer.js';
 
@@ -51,18 +52,8 @@ const responses = Object.freeze({
 });
 const workspace = uuidPathParameter('workspaceId');
 const artifact = uuidPathParameter('artifactId');
-const csrf = {
-  name: 'x-csrf-token',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 1 },
-} as const;
-const idempotency = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(idempotencyKeySchema, 'input'),
-} as const;
+const csrf = csrfHeaderParameter();
+const idempotency = idempotencyHeaderParameter();
 const security = [{ cookieSession: [] }] as const;
 const errors = {
   '400': responseReference('BadRequest'),

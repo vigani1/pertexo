@@ -5,6 +5,7 @@ import {
   WorkflowAuthoringModule,
   type WorkflowAuthoringDependencies,
 } from '../../src/workflow-authoring/index.js';
+import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../src/workflow-authoring/tokens.js';
 
 const dependencies = {
   persistence: {
@@ -14,7 +15,6 @@ const dependencies = {
     createWorkflow: () => Promise.reject(new Error('not exercised')),
     listWorkflows: () => Promise.resolve({ items: [] }),
     getDraft: () => Promise.resolve(null),
-    getVersion: () => Promise.resolve(null),
     listVersions: () => Promise.resolve({ items: [] }),
     saveDraft: () => Promise.reject(new Error('not exercised')),
     publishWorkflow: () => Promise.reject(new Error('not exercised')),
@@ -38,5 +38,10 @@ describe('workflow authoring Nest module', () => {
       ]),
     );
     expect(dynamic.controllers).toContain(WorkflowAuthoringController);
+    expect(providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provide: WORKFLOW_AUTHORING_AUTHORIZATION }),
+      ]),
+    );
   });
 });

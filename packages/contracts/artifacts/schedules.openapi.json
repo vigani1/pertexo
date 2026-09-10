@@ -653,9 +653,11 @@
             "in": "header",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
-              "maxLength": 128
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
             }
           },
           {
@@ -663,8 +665,9 @@
             "in": "header",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "minLength": 1,
+              "minLength": 16,
               "maxLength": 256
             }
           }
@@ -754,9 +757,11 @@
             "in": "header",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
-              "maxLength": 128
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
             }
           },
           {
@@ -764,8 +769,9 @@
             "in": "header",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "minLength": 1,
+              "minLength": 16,
               "maxLength": 256
             }
           }

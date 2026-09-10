@@ -3,6 +3,8 @@ import type { z } from 'zod';
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -10,7 +12,6 @@ import {
   responseReference,
 } from './openapi-primitives.js';
 import {
-  idempotencyKeySchema,
   oidcAuthorizationCodeSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
@@ -239,24 +240,6 @@ function lifecycleOperationPathParameter() {
     in: 'path',
     required: true,
     schema: jsonSchema(workspaceLifecycleOperationIdentifierSchema, 'input'),
-  } as const;
-}
-
-function csrfHeaderParameter() {
-  return {
-    name: 'x-csrf-token',
-    in: 'header',
-    required: true,
-    schema: { type: 'string', minLength: 16, maxLength: 256 },
-  } as const;
-}
-
-function idempotencyHeaderParameter() {
-  return {
-    name: 'Idempotency-Key',
-    in: 'header',
-    required: true,
-    schema: jsonSchema(idempotencyKeySchema, 'input'),
   } as const;
 }
 

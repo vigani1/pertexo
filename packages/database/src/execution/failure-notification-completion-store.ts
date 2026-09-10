@@ -7,7 +7,7 @@ import {
   failureNotificationIdentitySchema,
   insertFailureNotificationDeliveryOutbox,
 } from './failure-notification-store-support.js';
-import type { FailureNotificationStore } from './failure-notifications.js';
+import type { FailureNotificationStore } from './failure-notification-contracts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;

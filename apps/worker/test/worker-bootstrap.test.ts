@@ -50,6 +50,7 @@ const workerConfig = {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
+    runTimeoutFailureContextEnabled: false,
   },
   nodeAttempt: {
     heartbeatIntervalMillis: 10_000,

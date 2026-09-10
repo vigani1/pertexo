@@ -1,4 +1,4 @@
-const printableHeaderPattern = /^[\x21-\x7e]+$/u;
+import { idempotencyKeySchema } from '@pertexo/contracts/transport';
 
 export class InvalidIdempotencyKeyError extends Error {
   public override readonly name = 'InvalidIdempotencyKeyError';
@@ -10,15 +10,9 @@ export class InvalidIdempotencyKeyError extends Error {
 /** Parse the single printable idempotency key accepted by command endpoints. */
 export function parseIdempotencyKey(value: unknown): string {
   const candidate = oneHeaderValue(value);
-  if (
-    candidate === undefined ||
-    candidate.length < 1 ||
-    candidate.length > 128 ||
-    candidate.includes(',') ||
-    !printableHeaderPattern.test(candidate)
-  )
-    throw new InvalidIdempotencyKeyError();
-  return candidate;
+  const parsed = idempotencyKeySchema.safeParse(candidate);
+  if (!parsed.success) throw new InvalidIdempotencyKeyError();
+  return parsed.data;
 }
 
 function oneHeaderValue(value: unknown): string | undefined {

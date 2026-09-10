@@ -9,7 +9,7 @@ import {
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0085_artifact_media_type_http_safety.sql',
+      '0086_operator_attempt_reclaim_state.sql',
     );
   });
 

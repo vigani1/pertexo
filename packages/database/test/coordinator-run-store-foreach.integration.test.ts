@@ -22,8 +22,20 @@ import {
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
 
+function recordBenchmarkOperation(name: string, startedAt: number): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 128, boundary: `For Each ${name} database call through returned durable result` })}\n`,
+  );
+}
+
 describe('Coordinator For Each persistence invariants', () => {
   it('atomically persists and reloads a scoped For Each barrier and first body admission', async () => {
+    const loopItems = Array.from(
+      { length: 128 },
+      (_, index) => `item-${String(index).padStart(3, '0')}`,
+    );
     const controlKey = `${versionA}|loop|b:|i:`;
     const bodyKey = `${versionA}|body|b:|i:loop%3A0`;
     const controlNodeRunId = randomUUID();
@@ -45,8 +57,8 @@ describe('Coordinator For Each persistence invariants', () => {
       }),
       schemaVersion: 2,
       branchSelections: [],
-      initialIterationBudget: 2,
-      remainingIterationBudget: 2,
+      initialIterationBudget: 128,
+      remainingIterationBudget: 128,
     } as const;
     const runId = await insertRun({
       schedulerState: current,
@@ -55,7 +67,7 @@ describe('Coordinator For Each persistence invariants', () => {
     const storedOutput = {
       schemaVersion: 1,
       kind: 'inline',
-      value: { items: ['first', 'second'], iterationCount: 2 },
+      value: { items: loopItems, iterationCount: loopItems.length },
     };
     await asRuntime(workerBaseUrl, workspaceA, async (client) => {
       await client.query(
@@ -100,18 +112,20 @@ describe('Coordinator For Each persistence invariants', () => {
       );
     });
 
+    let operationStartedAt = performance.now();
     const loaded = await store.loadAdvanceState({
       workspaceId: workspaceA,
       runId,
       signal: new AbortController().signal,
     });
+    recordBenchmarkOperation('loop-state-load', operationStartedAt);
     expect(loaded).toMatchObject({
       kind: 'ready',
       state: {
         completedOutputs: [
           {
             invocationKey: controlKey,
-            value: { items: ['first', 'second'], iterationCount: 2 },
+            value: { items: loopItems, iterationCount: loopItems.length },
           },
         ],
       },
@@ -152,9 +166,9 @@ describe('Coordinator For Each persistence invariants', () => {
           bodySinkNodeId: 'body',
           collection: { kind: 'inline', attemptId: controlAttemptId },
           collectionChecksum: 'c'.repeat(64),
-          collectionSize: 2,
+          collectionSize: loopItems.length,
           maxConcurrency: 1,
-          maxIterations: 2,
+          maxIterations: loopItems.length,
           nextOrdinal: 1,
           activeOrdinals: [0],
           terminalOrdinals: [],
@@ -198,6 +212,7 @@ describe('Coordinator For Each persistence invariants', () => {
       ],
     } as const;
     const delivery = await testDelivery(workspaceA, runId, 0);
+    operationStartedAt = performance.now();
     await expect(
       rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
@@ -208,6 +223,7 @@ describe('Coordinator For Each persistence invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
+    recordBenchmarkOperation('loop-plan-commit', operationStartedAt);
     await expect(
       rawStore.commitAdvancePlan({
         workspaceId: workspaceA,

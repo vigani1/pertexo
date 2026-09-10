@@ -70,7 +70,6 @@ function localFailure(
   }
   throw error;
 }
-
 function settleUnresolvedDelivery(
   result: FailureNotificationDeliveryResultV1,
   deliveryUnresolved: boolean,
@@ -83,12 +82,12 @@ function settleUnresolvedDelivery(
     possiblyDispatched: true,
   };
 }
-
 function render(context: FailureNotificationContextV1): Readonly<{
   subject: string;
   text: string;
 }> {
   const subject = `Workflow run ${context.terminalStatus}`;
+  const primaryFailure = context.primaryFailure;
   const text = [
     subject,
     `Run: ${context.runId}`,
@@ -96,13 +95,14 @@ function render(context: FailureNotificationContextV1): Readonly<{
     `Version: ${context.workflowVersionId}`,
     `Trigger: ${context.triggerType}`,
     `Completed: ${context.completedAt}`,
-    `Failure: ${context.primaryFailure.safeErrorCode}`,
-    `Node: ${context.primaryFailure.nodeId}`,
+    `Failure: ${primaryFailure.safeErrorCode}`,
+    ...('source' in primaryFailure
+      ? [`Scope: run (${primaryFailure.runStatus})`]
+      : [`Node: ${primaryFailure.nodeId}`]),
     `Failures: ${String(context.totalFailureCount)}`,
   ].join('\n');
   return Object.freeze({ subject, text: text.slice(0, 4_000) });
 }
-
 function slackResult(
   result: SlackApiResult,
 ): FailureNotificationDeliveryResultV1 {

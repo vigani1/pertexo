@@ -13,7 +13,6 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'createWorkflow'
   | 'listWorkflows'
   | 'getDraft'
-  | 'getVersion'
   | 'listVersions'
   | 'saveDraft'
   | 'publishWorkflow'
@@ -24,10 +23,6 @@ export type WorkflowAuthoringPersistence = Pick<
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
   authorization: WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
-  definitionCatalog?: Readonly<{
-    schemaVersion: 1;
-    definitions: readonly Readonly<{ key: string; version: number }>[];
-  }>;
   telemetry?: WorkflowAuthoringTelemetry;
 }>;
 

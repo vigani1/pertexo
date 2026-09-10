@@ -13,12 +13,7 @@ import {
 } from './guards.js';
 import type { ConnectionDependencies } from './ports.js';
 import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
-import {
-  CONNECTION_AUTHORIZATION,
-  CONNECTION_ENCRYPTION,
-  CONNECTION_PERSISTENCE,
-  CONNECTION_TELEMETRY,
-} from './tokens.js';
+import { CONNECTION_AUTHORIZATION } from './tokens.js';
 import {
   CreateConnectionUseCase,
   RevokeConnectionUseCase,
@@ -36,13 +31,10 @@ export class ConnectionsModule {
   ): DynamicModule {
     const telemetry = dependencies.telemetry ?? NOOP_CONNECTION_TELEMETRY;
     const providers: Provider[] = [
-      { provide: CONNECTION_PERSISTENCE, useValue: dependencies.persistence },
       {
         provide: CONNECTION_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
-      { provide: CONNECTION_ENCRYPTION, useValue: dependencies.encryption },
-      { provide: CONNECTION_TELEMETRY, useValue: telemetry },
       ConnectionManageGuard,
       ConnectionUseGuard,
       FailureNotificationWorkflowEditGuard,

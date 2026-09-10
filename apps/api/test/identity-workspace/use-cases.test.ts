@@ -64,12 +64,8 @@ function user() {
 
 function persistence() {
   return {
-    create: vi.fn(),
-    findByDigest: vi.fn(),
-    revokeByDigest: vi.fn(),
     findUserById: vi.fn(),
     listWorkspaceMembers: vi.fn().mockResolvedValue({ items: [] }),
-    resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue(workspace()),
     requestWorkspaceLifecycleOperation: vi
       .fn()

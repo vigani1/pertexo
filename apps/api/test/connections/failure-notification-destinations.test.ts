@@ -8,6 +8,8 @@ import {
   FailureNotificationDestinationsController,
   FailureNotificationDestinationUseCases,
 } from '../../src/connections/failure-notification-destinations.js';
+import { createActorContext } from '../../src/workspaces/index.js';
+import { hashRequest } from '../../src/connections/use-case-support.js';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- assertions target injected Vitest spies */
 
@@ -28,7 +30,7 @@ const record = {
   updatedAt: new Date('2026-08-25T10:00:00.000Z'),
 };
 
-function request(headers: Record<string, string> = {}) {
+function request(headers: Record<string, string | readonly string[]> = {}) {
   return {
     requestId: 'request-42',
     traceId: 'trace-42',
@@ -41,6 +43,19 @@ function request(headers: Record<string, string> = {}) {
     },
   } as const;
 }
+
+const command = {
+  actor: createActorContext({
+    actorId,
+    workspaceId,
+    sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    requestId: 'request-42',
+    traceId: 'trace-42',
+  }),
+  routeWorkspaceId: workspaceId,
+  requestId: 'request-42',
+  traceId: 'trace-42',
+};
 
 function persistence(): FailureNotificationDestinationDatabase {
   return {
@@ -56,6 +71,85 @@ function persistence(): FailureNotificationDestinationDatabase {
 }
 
 describe('failure notification destination API seams', () => {
+  it('accepts typed application commands for all seven operations', async () => {
+    const database = persistence();
+    const useCases = new FailureNotificationDestinationUseCases(database);
+    const mutation = { ...command, idempotencyKey: 'typed-command-42' };
+
+    await useCases.create({ ...mutation, body: record.config });
+    await useCases.list(command);
+    await useCases.get({ ...command, destinationId });
+    await useCases.append({
+      ...mutation,
+      destinationId,
+      body: { expectedVersion: 1, config: record.config },
+    });
+    await useCases.status({
+      ...mutation,
+      destinationId,
+      body: { status: 'disabled' },
+    });
+    await useCases.setPolicy({
+      ...mutation,
+      workflowId,
+      body: { destinationId },
+    });
+    await useCases.clearPolicy({ ...mutation, workflowId });
+
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId,
+        workspaceId,
+        requestId: 'request-42',
+        requestHash: hashRequest(record.config),
+      }),
+    );
+    expect(database.appendVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({
+          destinationId,
+          expectedVersion: 1,
+          config: record.config,
+        }),
+      }),
+    );
+    expect(database.setStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({ destinationId, status: 'disabled' }),
+      }),
+    );
+    expect(database.setWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestHash: hashRequest({ workflowId, destinationId }),
+      }),
+    );
+    expect(database.clearWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId,
+        workspaceId,
+        idempotencyKey: 'typed-command-42',
+        requestHash: hashRequest({ workflowId }),
+      }),
+    );
+  });
+
+  it.each([[['duplicate-one', 'duplicate-two']], ['contains,comma'], ['']])(
+    'rejects invalid or duplicate idempotency header values %j',
+    async (value) => {
+      const controller = new FailureNotificationDestinationsController(
+        new FailureNotificationDestinationUseCases(persistence()),
+      );
+
+      await expect(
+        controller.create(
+          request({ 'idempotency-key': value }),
+          { workspaceId },
+          record.config,
+        ),
+      ).rejects.toThrow(/Idempotency-Key/u);
+    },
+  );
+
   it('parses a command, requires idempotency, and forwards canonical metadata', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
@@ -85,7 +179,7 @@ describe('failure notification destination API seams', () => {
 
     await expect(
       controller.create(request(), { workspaceId }, record.config),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
   });
 
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {
@@ -98,10 +192,10 @@ describe('failure notification destination API seams', () => {
       },
     });
 
-    await useCases.list({ request: request(), workspaceId });
+    await useCases.list(command);
     await useCases.status({
-      request: request({ 'idempotency-key': 'destination-status-42' }),
-      workspaceId,
+      ...command,
+      idempotencyKey: 'destination-status-42',
       destinationId,
       body: { status: 'disabled' },
     });

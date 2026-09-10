@@ -39,9 +39,18 @@ import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createTriggerRuntime } from '../src/triggers/trigger-runtime.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
+
+function recordBenchmarkOperation(startedAt: number): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'schedule-to-run-start', startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population: 1, boundary: 'release verified due schedule to scanner through durable run.started observation (25ms polling)' })}\n`,
+  );
+}
 
 const enabled = process.env.WORKER_TRIGGER_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
@@ -67,7 +76,14 @@ const redisUrl = (() => {
   parsed.pathname = '/13';
   return parsed.toString();
 })();
-const databaseName = `pertexo_test_worker_schedule_${randomUUID().replaceAll('-', '')}`;
+const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
+const databaseName = (() => {
+  if (!runnerOwnsDatabase)
+    return `pertexo_test_worker_schedule_${randomUUID().replaceAll('-', '')}`;
+  const value = process.env.PERTEXO_Q11_DATABASE_NAME;
+  if (!value) throw new Error('Q11 runner-owned database name is required');
+  return value;
+})();
 const databaseUrl = (base: string): string => {
   const parsed = new URL(base);
   parsed.pathname = `/${databaseName}`;
@@ -209,6 +225,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
     connectionString: databaseUrl(migrationBaseUrl),
     max: 2,
   });
+  const apiEvidence = new Pool({
+    connectionString: databaseUrl(apiBaseUrl),
+    max: 1,
+  });
   const workerEvidence = new Pool({
     connectionString: databaseUrl(workerBaseUrl),
     max: 1,
@@ -253,6 +273,27 @@ describeIntegration('direct Schedule worker integration gate', () => {
     parameters: unknown[] = [],
   ) {
     const client = await workerEvidence.connect();
+    try {
+      await client.query('begin');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      const result = await client.query<Row>(statement, parameters);
+      await client.query('commit');
+      return result;
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
+    statement: string,
+    parameters: unknown[] = [],
+  ) {
+    const client = await apiEvidence.connect();
     try {
       await client.query('begin');
       await client.query("select set_config('app.workspace_id',$1,true)", [
@@ -361,17 +402,21 @@ describeIntegration('direct Schedule worker integration gate', () => {
   }
 
   beforeAll(async () => {
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await admin.query(
-        `create database "${databaseName}" owner pertexo_owner`,
-      );
-      await admin.query(`revoke all on database "${databaseName}" from public`);
-      await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
-      );
-    } finally {
-      await admin.end();
+    if (!runnerOwnsDatabase) {
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      try {
+        await admin.query(
+          `create database "${databaseName}" owner pertexo_owner`,
+        );
+        await admin.query(
+          `revoke all on database "${databaseName}" from public`,
+        );
+        await admin.query(
+          `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
+        );
+      } finally {
+        await admin.end();
+      }
     }
     await migrateDatabase({
       connectionString: databaseUrl(migrationBaseUrl),
@@ -383,7 +428,26 @@ describeIntegration('direct Schedule worker integration gate', () => {
       lifecycleCommandRole: 'pertexo_lifecycle_command',
       operatorRole: 'pertexo_operator',
     });
-    for (const release of platformExecutableRegistryHistory(releaseCohort))
+    const releases = platformExecutableRegistryHistory(releaseCohort);
+    const currentResult = await ownerQuery<{
+      epoch: number;
+      fingerprint: string;
+    }>(
+      `select epoch,fingerprint
+         from app.node_compatibility_current
+        where singleton=true`,
+    );
+    const current = currentResult.rows[0];
+    const currentIndex = releases.findIndex((release) => {
+      const composed = composeExecutableCompatibilityRelease(release);
+      return (
+        composed.epoch === current?.epoch &&
+        composed.fingerprint === current.fingerprint
+      );
+    });
+    if (currentIndex === -1)
+      throw new Error('Current schedule compatibility release is unsupported');
+    for (const release of releases.slice(currentIndex))
       await activateRelease(release);
     await queue.obliterate({ force: true });
   }, 60_000);
@@ -395,10 +459,11 @@ describeIntegration('direct Schedule worker integration gate', () => {
     await Promise.allSettled([
       queue.obliterate({ force: true }),
       owner.end(),
+      apiEvidence.end(),
       workerEvidence.end(),
     ]);
     await queue.close();
-    await dropDatabase();
+    if (!runnerOwnsDatabase) await dropDatabase();
   }, 60_000);
 
   it('keeps PostgreSQL authoritative through reconciliation, contention, saturation, recovery, and drain', async () => {
@@ -503,6 +568,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
       scheduleCompatibility,
       workerConfig,
     );
+    const benchmarkScanRelease = Promise.withResolvers<undefined>();
+    let benchmarkScanReleased =
+      process.env.PERTEXO_Q11_OPERATION_TIMING !== '1';
+    if (benchmarkScanReleased) benchmarkScanRelease.resolve(undefined);
     let runtime = await createTriggerRuntime(
       {
         batchSize: 10,
@@ -516,8 +585,12 @@ describeIntegration('direct Schedule worker integration gate', () => {
       {
         logger,
         scanner: {
-          close: () => runtimeScanner.close(),
+          close: () => {
+            benchmarkScanRelease.resolve(undefined);
+            return runtimeScanner.close();
+          },
           scanDue: async (input) => {
+            await benchmarkScanRelease.promise;
             const result = await runtimeScanner.scanDue(input);
             scanResults.push(result);
             return result;
@@ -527,6 +600,14 @@ describeIntegration('direct Schedule worker integration gate', () => {
     );
     resources.push(runtime);
     await runtime.consumer.waitUntilReady(5_000);
+    const coordinator = await createCoordinatorRuntime({
+      database: workerConfig,
+      maximumAdmissions: 10,
+      redisUrl,
+      releaseCohort,
+    });
+    resources.push(coordinator);
+    await coordinator.consumer.waitUntilReady(5_000);
     const drain = new WorkerDrainState();
     const dispatcher = new OutboxDispatcher(
       createOutboxDispatcherDatabase(dispatcherConfig),
@@ -534,7 +615,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
       drain,
       {
         batchSize: 10,
-        enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+        enabledJobNames: [
+          JOB_NAME.reconcileWorkflowTriggers,
+          JOB_NAME.advanceWorkflowRun,
+        ],
         leaseDurationMillis: 1_000,
         leaseOwner: 'schedule-publication-dispatcher',
         maxAttempts: 3,
@@ -546,6 +630,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
         {
           jobName: JOB_NAME.reconcileWorkflowTriggers,
           consumer: runtime.consumer,
+        },
+        {
+          jobName: JOB_NAME.advanceWorkflowRun,
+          consumer: coordinator.consumer,
         },
       ]),
     );
@@ -565,7 +653,6 @@ describeIntegration('direct Schedule worker integration gate', () => {
       },
       { timeout: 5_000, interval: 25 },
     );
-
     await queue.remove(jobIdForOutboxEvent(event.id));
     const duplicateProducer = createQueueProducer({ redisUrl });
     await duplicateProducer.waitUntilReady(5_000);
@@ -638,6 +725,11 @@ describeIntegration('direct Schedule worker integration gate', () => {
       status: 'enabled',
       trigger_status: 'active',
     });
+    const operationStartedAt = performance.now();
+    if (!benchmarkScanReleased) {
+      benchmarkScanReleased = true;
+      benchmarkScanRelease.resolve(undefined);
+    }
     await vi.waitFor(
       async () => {
         const occurrences = await ownerQuery<{ count: string }>(
@@ -662,6 +754,30 @@ describeIntegration('direct Schedule worker integration gate', () => {
     const firstOccurrence = first.rows[0];
     if (firstOccurrence === undefined)
       throw new Error('First schedule occurrence is missing');
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      published: 1,
+    });
+    await vi.waitFor(
+      async () => {
+        const started = await ownerQuery<{
+          event_count: string;
+          status: string;
+        }>(
+          `select run.status,
+                  count(*) filter (where event.type='run.started')::text event_count
+             from app.workflow_runs run
+             join app.run_events event
+               on event.workspace_id=run.workspace_id
+              and event.workflow_run_id=run.id
+            where run.id=$1
+            group by run.status`,
+          [firstOccurrence.workflow_run_id],
+        );
+        expect(started.rows[0]?.event_count).toBe('1');
+      },
+      { timeout: 5_000, interval: 25 },
+    );
+    recordBenchmarkOperation(operationStartedAt);
 
     await runtime.close();
     resources.splice(resources.indexOf(runtime), 1);
@@ -720,7 +836,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
     );
     expect(uniqueFacts.rows[0]).toEqual({
       runs: '1',
-      events: '1',
+      events: '3',
       checkpoints: '1',
       outbox: '1',
     });
@@ -890,6 +1006,14 @@ describeIntegration('direct Schedule worker integration gate', () => {
         where workspace_id=$1`,
       [workspaceId],
     );
+    const quotaOccupantRunId = randomUUID();
+    await apiQuery(
+      `insert into app.workflow_runs
+         (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
+       select $2,workspace_id,workflow_id,workflow_version_id,'manual','queued'
+         from app.workflow_runs where id=$1`,
+      [firstOccurrence.workflow_run_id, quotaOccupantRunId],
+    );
     const crashedClaim = await ownerQuery(
       'select * from app.claim_due_trigger_schedules($1,1,30)',
       ['expired-runtime'],
@@ -944,7 +1068,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
     );
     await ownerQuery(
       "update app.workflow_runs set status='succeeded' where id=$1",
-      [firstOccurrence.workflow_run_id],
+      [quotaOccupantRunId],
     );
     await ownerQuery(
       `update app.trigger_schedules set admission_deferred_until=null

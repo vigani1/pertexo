@@ -15,11 +15,14 @@ import { z } from 'zod';
 
 import {
   applicationError,
+  InvalidIdempotencyKeyError,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
 
 export function mapConnectionError(error: unknown): ApplicationError {
+  if (error instanceof InvalidIdempotencyKeyError)
+    return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof z.ZodError)
     return applicationError('request.invalid', {
       safeDetail: 'The connection request is invalid.',

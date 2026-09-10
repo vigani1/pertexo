@@ -7,6 +7,7 @@ import {
 
 const ENVIRONMENT = {
   ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+  ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
   CONTROL_LEDGER_ACCESS_KEY_ID: 'ledger-access',
   CONTROL_LEDGER_BUCKET: 'pertexo-control-ledger',
   CONTROL_LEDGER_ENDPOINT: 'http://localhost:9090',
@@ -116,4 +117,37 @@ describe('parseDualRegionControlLedgerConfig', () => {
       parseDualRegionControlLedgerConfig({ ...ENVIRONMENT, ...override }),
     ).toThrow('must be distinct');
   });
+
+  it.each([
+    [
+      'primary ledger / primary artifact',
+      'CONTROL_LEDGER_BUCKET',
+      'ARTIFACT_STORE_BUCKET',
+    ],
+    [
+      'primary ledger / recovery artifact',
+      'CONTROL_LEDGER_BUCKET',
+      'ARTIFACT_STORE_RECOVERY_BUCKET',
+    ],
+    [
+      'recovery ledger / primary artifact',
+      'CONTROL_LEDGER_RECOVERY_BUCKET',
+      'ARTIFACT_STORE_BUCKET',
+    ],
+    [
+      'recovery ledger / recovery artifact',
+      'CONTROL_LEDGER_RECOVERY_BUCKET',
+      'ARTIFACT_STORE_RECOVERY_BUCKET',
+    ],
+  ] as const)(
+    'rejects the %s bucket collision',
+    (_name, ledgerKey, artifactKey) => {
+      expect(() =>
+        parseDualRegionControlLedgerConfig({
+          ...ENVIRONMENT,
+          [ledgerKey]: ENVIRONMENT[artifactKey],
+        }),
+      ).toThrow('must be distinct');
+    },
+  );
 });

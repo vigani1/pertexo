@@ -18,6 +18,7 @@ describe('parseWorkerConfig', () => {
         dueWakeupBatchSize: 25,
         dueWakeupPollIntervalMillis: 250,
         maximumAdmissions: 32,
+        runTimeoutFailureContextEnabled: false,
       },
       database: {
         connectionString:
@@ -96,6 +97,7 @@ describe('parseWorkerConfig', () => {
         dueWakeupBatchSize: 25,
         dueWakeupPollIntervalMillis: 250,
         maximumAdmissions: 32,
+        runTimeoutFailureContextEnabled: false,
       },
       database: {
         connectionString:
@@ -271,6 +273,35 @@ describe('parseWorkerConfig', () => {
             'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
           REDIS_URL: 'redis://:secret@localhost:6379/0',
           WORKFLOW_COORDINATOR_MAX_ADMISSIONS: maximumAdmissions,
+        }),
+      ).toThrow(/invalid worker configuration/i);
+    },
+  );
+
+  it('enables run-timeout failure context production only explicitly', () => {
+    const config = parseWorkerConfig({
+      DATABASE_DISPATCHER_URL:
+        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+      DATABASE_WORKER_URL:
+        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://:secret@localhost:6379/0',
+      FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: 'true',
+    });
+
+    expect(config.coordinator.runTimeoutFailureContextEnabled).toBe(true);
+  });
+
+  it.each(['TRUE', '1', 'yes', 'enabled'])(
+    'rejects an ambiguous run-timeout context activation value (%s)',
+    (value) => {
+      expect(() =>
+        parseWorkerConfig({
+          DATABASE_DISPATCHER_URL:
+            'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+          DATABASE_WORKER_URL:
+            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          REDIS_URL: 'redis://:secret@localhost:6379/0',
+          FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: value,
         }),
       ).toThrow(/invalid worker configuration/i);
     },

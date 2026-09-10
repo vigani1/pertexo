@@ -2,26 +2,47 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { JOB_NAME } from '@pertexo/queue';
 import type { QueueProducer } from '@pertexo/queue';
+import {
+  canonicalOutboxPayloadChecksum,
+  createNodeAttemptRunStore,
+  type NodeAttemptLease,
+} from '@pertexo/database/execution';
+import {
+  createOperatorCommandDatabase,
+  parseOperatorDatabaseConfig,
+} from '@pertexo/database/operator';
+import {
+  NodeAttemptReconciliationRequiredError,
+  parseDatabaseConfig,
+} from '@pertexo/database/testing';
 import type { Queue } from 'bullmq';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 import { createHttpNodeAttemptProofRuntime } from './support/http-node-attempt.runtime.js';
+import { createDatabaseOperatorRunReplayStore } from '../src/execution/operator-run-replay-runtime.js';
 
 import {
   acceptRun,
+  acceptProviderScenarioRun,
   actorId,
   attemptDelivery,
   connectionDatabase,
   connectionId,
   continuation,
+  cancelProviderScenarioRun,
+  databaseUrl,
   emailConnectionId,
   emailRecipient,
   emailSecretVersionId,
   emailSubject,
   emailText,
+  expireProviderScenarioRun,
   installHttpNodeAttemptFixture,
   httpNodeAttemptIntegrationEnabled,
   plaintextSecret,
+  operatorUrl,
+  reclaimProviderScenarioAttempt,
   resendApiKey,
   responseBytes,
   rotatedEmailSecretVersionId,
@@ -33,6 +54,7 @@ import {
   waitFor,
   withOwner,
   workerQuery,
+  workerUrl,
   workspaceId,
 } from './support/http-node-attempt.fixture.js';
 
@@ -45,6 +67,9 @@ const describeIntegration = httpNodeAttemptIntegrationEnabled
 let fixtureEncryption: Awaited<ReturnType<typeof seedFixture>> | undefined;
 
 type PersistedQueueJob = NonNullable<Awaited<ReturnType<Queue['getJob']>>>;
+type ProofRuntime = Awaited<
+  ReturnType<typeof createHttpNodeAttemptProofRuntime>
+>;
 
 async function publishAndWaitForCompletion(
   producer: QueueProducer,
@@ -63,8 +88,166 @@ async function publishAndWaitForCompletion(
     () => persisted.getState(),
     (state) => state === 'completed' || state === 'failed',
   );
-  expect(await persisted.getState(), `${label} job failed`).toBe('completed');
+  const state = await persisted.getState();
+  if (state !== 'completed') {
+    const refreshed = await queue.getJob(published.jobId);
+    throw new Error(
+      `${label} job ${state}: ${refreshed?.failedReason ?? 'unknown reason'}`,
+    );
+  }
   return persisted;
+}
+
+function attemptJob(
+  runId: string,
+  attempt: Awaited<ReturnType<typeof attemptDelivery>>,
+) {
+  return {
+    name: JOB_NAME.executeNodeAttempt,
+    data: {
+      schemaVersion: 1 as const,
+      workspaceId,
+      runId,
+      nodeRunId: attempt.node_run_id,
+      attemptId: attempt.attempt_id,
+      outboxEventId: attempt.outbox_id,
+    },
+  };
+}
+
+async function admitProviderScenario(
+  runtime: ProofRuntime,
+  provider: 'email' | 'http' | 'slack',
+) {
+  const accepted = await acceptProviderScenarioRun(provider);
+  const coordinatorOutboxes = [accepted.outboxEventId];
+  await Promise.all([
+    runtime.coordinator.consumer.waitUntilReady(5_000),
+    runtime.attempts.consumer.waitUntilReady(5_000),
+    runtime.producer.waitUntilReady(5_000),
+  ]);
+  await publishAndWaitForCompletion(
+    runtime.producer,
+    runtime.coordinatorQueue,
+    {
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        schemaVersion: 1,
+        workspaceId,
+        runId: accepted.runId,
+        outboxEventId: accepted.outboxEventId,
+      },
+    },
+    `${provider} scenario initial coordinator`,
+  );
+  const manual = await attemptDelivery(accepted.runId, 'manual');
+  await publishAndWaitForCompletion(
+    runtime.producer,
+    runtime.attemptQueue,
+    attemptJob(accepted.runId, manual),
+    `${provider} scenario manual attempt`,
+  );
+  const admissionOutbox = await continuation(
+    accepted.runId,
+    coordinatorOutboxes,
+  );
+  coordinatorOutboxes.push(admissionOutbox);
+  await publishAndWaitForCompletion(
+    runtime.producer,
+    runtime.coordinatorQueue,
+    {
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        schemaVersion: 1,
+        workspaceId,
+        runId: accepted.runId,
+        outboxEventId: admissionOutbox,
+      },
+    },
+    `${provider} scenario provider admission`,
+  );
+  return {
+    accepted,
+    attempt: await attemptDelivery(accepted.runId, 'provider'),
+    coordinatorOutboxes,
+  };
+}
+
+async function advanceScenario(
+  runtime: ProofRuntime,
+  runId: string,
+  coordinatorOutboxes: string[],
+  label: string,
+): Promise<void> {
+  const outboxEventId = await continuation(runId, coordinatorOutboxes);
+  coordinatorOutboxes.push(outboxEventId);
+  await publishAndWaitForCompletion(
+    runtime.producer,
+    runtime.coordinatorQueue,
+    {
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        schemaVersion: 1,
+        workspaceId,
+        runId,
+        outboxEventId,
+      },
+    },
+    label,
+  );
+}
+
+async function prepareAmbiguousEmailRetry(runtime: ProofRuntime) {
+  const scenario = await admitProviderScenario(runtime, 'email');
+  await publishAndWaitForCompletion(
+    runtime.producer,
+    runtime.attemptQueue,
+    attemptJob(scenario.accepted.runId, scenario.attempt),
+    'Initial ambiguous email attempt',
+  );
+  await advanceScenario(
+    runtime,
+    scenario.accepted.runId,
+    scenario.coordinatorOutboxes,
+    'Ambiguous email retry decision',
+  );
+  const retryDue = await waitFor(
+    () =>
+      workerQuery<{ retry_due_at: Date | null }>(
+        `select retry_due_at from app.node_runs
+           where workspace_id=$1 and workflow_run_id=$2 and node_id='provider'`,
+        [workspaceId, scenario.accepted.runId],
+      ),
+    (rows) => rows[0]?.retry_due_at instanceof Date,
+  );
+  const retryDueAt = retryDue[0]?.retry_due_at;
+  if (retryDueAt === null || retryDueAt === undefined)
+    throw new Error('Ambiguous email retry due time missing');
+  const delayMillis = retryDueAt.getTime() - Date.now();
+  if (delayMillis > 0)
+    await new Promise<void>((resolve) => setTimeout(resolve, delayMillis + 25));
+  await advanceScenario(
+    runtime,
+    scenario.accepted.runId,
+    scenario.coordinatorOutboxes,
+    'Ambiguous email retry due admission',
+  );
+  return {
+    ...scenario,
+    retry: await attemptDelivery(scenario.accepted.runId, 'provider', 2),
+  };
+}
+
+async function closeProofRuntime(runtime: ProofRuntime): Promise<void> {
+  await Promise.allSettled([
+    runtime.attempts.close(),
+    runtime.coordinator.close(),
+    runtime.producer.close(),
+    runtime.attemptQueue.close(),
+    runtime.coordinatorQueue.close(),
+    runtime.capabilities.close(),
+  ]);
+  runtime.artifactVerifier.close();
 }
 
 beforeAll(async () => {
@@ -1201,6 +1384,39 @@ describeIntegration('active HTTP node attempt', () => {
           },
           'Terminal coordinator',
         );
+        const finalized = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_count: string;
+              node_status: string;
+              retry_decision: string | null;
+              run_status: string;
+            }>(
+              `select attempt.retry_decision,node.status node_status,
+                      run.status run_status,
+                      (select count(*)::text from app.node_attempts counted
+                        where counted.workspace_id=node.workspace_id
+                          and counted.node_run_id=node.id) attempt_count
+                 from app.node_attempts attempt
+                 join app.node_runs node
+                   on node.workspace_id=attempt.workspace_id
+                  and node.id=attempt.node_run_id
+                 join app.workflow_runs run
+                   on run.workspace_id=node.workspace_id
+                  and run.id=node.workflow_run_id
+                where attempt.workspace_id=$1 and attempt.id=$2`,
+              [workspaceId, targetAttempt.attempt_id],
+            ),
+          (rows) => rows[0]?.run_status === 'failed',
+        );
+        expect(finalized).toEqual([
+          {
+            attempt_count: '1',
+            node_status: 'failed',
+            retry_decision: 'failed',
+            run_status: 'failed',
+          },
+        ]);
         expect(rotated).toBe(true);
         expect(transportRequests).toHaveLength(target === 'http' ? 0 : 1);
         expect(slackRequests).toHaveLength(0);
@@ -1218,4 +1434,1173 @@ describeIntegration('active HTTP node attempt', () => {
     },
     30_000,
   );
+
+  it('persists a transient HTTP credential-resolution failure and lets the pinned coordinator schedule exactly one retry', async () => {
+    const encryption = fixtureEncryption;
+    if (encryption === undefined)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    let httpResolutions = 0;
+    const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+      beforeConnectionResolve: (input) => {
+        if (input.expectedProviderKey === 'http') {
+          httpResolutions += 1;
+          if (httpResolutions === 1)
+            throw new Error('transient connection-store outage');
+        }
+        return Promise.resolve();
+      },
+    });
+    try {
+      const scenario = await admitProviderScenario(runtime, 'http');
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, scenario.attempt),
+        'Transient HTTP attempt',
+      );
+      const failed = await workerQuery<{
+        attempt_status: string;
+        continuation_count: string;
+        dispatch_marked_at: Date | null;
+        executor_error_kind: string | null;
+        executor_failure_kind: string | null;
+        executor_possibly_dispatched: boolean | null;
+        inbox_completed: string;
+        node_status: string;
+        retry_decision: string | null;
+      }>(
+        `select attempt.status attempt_status,attempt.dispatch_marked_at,
+                attempt.executor_error_kind,attempt.executor_failure_kind,
+                attempt.executor_possibly_dispatched,attempt.retry_decision,
+                node.status node_status,
+                (select count(*)::text from app.inbox_receipts receipt
+                  where receipt.workspace_id=attempt.workspace_id
+                    and receipt.message_id=$3 and receipt.completed_at is not null)
+                  inbox_completed,
+                (select count(*)::text from app.outbox_events outbox
+                  where outbox.workspace_id=attempt.workspace_id
+                    and outbox.aggregate_id=$4
+                    and outbox.job_name='advance-workflow-run') continuation_count
+           from app.node_attempts attempt
+           join app.node_runs node
+             on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+           where attempt.workspace_id=$1 and attempt.id=$2`,
+        [
+          workspaceId,
+          scenario.attempt.attempt_id,
+          scenario.attempt.outbox_id,
+          scenario.accepted.runId,
+        ],
+      );
+      expect(failed[0]).toEqual({
+        attempt_status: 'failed',
+        continuation_count: '3',
+        dispatch_marked_at: null,
+        executor_error_kind: 'provider',
+        executor_failure_kind: 'retry',
+        executor_possibly_dispatched: false,
+        inbox_completed: '1',
+        node_status: 'running',
+        retry_decision: 'pending',
+      });
+      expect(runtime.transportRequests).toHaveLength(0);
+
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Transient HTTP retry decision',
+      );
+      const decision = await waitFor(
+        () =>
+          workerQuery<{
+            retry_decision: string | null;
+            retry_due_at: Date | null;
+          }>(
+            `select attempt.retry_decision,node.retry_due_at
+               from app.node_attempts attempt
+               join app.node_runs node
+                 on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+               where attempt.workspace_id=$1 and attempt.id=$2`,
+            [workspaceId, scenario.attempt.attempt_id],
+          ),
+        (rows) => rows[0]?.retry_decision === 'retry',
+      );
+      expect(decision[0]?.retry_due_at).toBeInstanceOf(Date);
+      const retryDueAt = decision[0]?.retry_due_at;
+      if (retryDueAt === null || retryDueAt === undefined)
+        throw new Error('Transient HTTP retry due time missing');
+      const delayMillis = retryDueAt.getTime() - Date.now();
+      if (delayMillis > 0)
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, delayMillis + 25),
+        );
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Transient HTTP retry due admission',
+      );
+      const retry = await attemptDelivery(
+        scenario.accepted.runId,
+        'provider',
+        2,
+      );
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, retry),
+        'Recovered HTTP attempt',
+      );
+      const recovered = await workerQuery<{
+        attempt_count: string;
+        attempt_numbers: number[];
+        provider_keys: (string | null)[];
+        statuses: string[];
+      }>(
+        `select count(*)::text attempt_count,
+                array_agg(attempt.attempt_number order by attempt.attempt_number) attempt_numbers,
+                array_agg(attempt.provider_idempotency_key order by attempt.attempt_number) provider_keys,
+                array_agg(attempt.status order by attempt.attempt_number) statuses
+           from app.node_attempts attempt
+           join app.node_runs node
+             on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+           where attempt.workspace_id=$1 and node.workflow_run_id=$2
+             and node.node_id='provider'`,
+        [workspaceId, scenario.accepted.runId],
+      );
+      expect(recovered[0]).toEqual({
+        attempt_count: '2',
+        attempt_numbers: [1, 2],
+        provider_keys: [null, null],
+        statuses: ['failed', 'succeeded'],
+      });
+      expect(runtime.transportRequests).toHaveLength(1);
+      expect(httpResolutions).toBe(2);
+    } finally {
+      await closeProofRuntime(runtime);
+    }
+  }, 30_000);
+
+  it('keeps an internal HTTP dispatch-evidence failure non-retryable through persisted coordinator policy', async () => {
+    const encryption = fixtureEncryption;
+    if (encryption === undefined)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+      beforeRegistryExecute: (request) => {
+        if (request.definition.key === 'http.request')
+          throw new NodeExecutorFailure({
+            kind: 'failed',
+            errorKind: 'internal',
+            possiblyDispatched: false,
+          });
+        return Promise.resolve();
+      },
+    });
+    try {
+      const scenario = await admitProviderScenario(runtime, 'http');
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, scenario.attempt),
+        'Internal HTTP attempt',
+      );
+      const failed = await workerQuery<{
+        dispatch_marked_at: Date | null;
+        executor_error_kind: string | null;
+        executor_failure_kind: string | null;
+        executor_possibly_dispatched: boolean | null;
+        retry_decision: string | null;
+      }>(
+        `select dispatch_marked_at,executor_error_kind,executor_failure_kind,
+                executor_possibly_dispatched,retry_decision
+           from app.node_attempts where workspace_id=$1 and id=$2`,
+        [workspaceId, scenario.attempt.attempt_id],
+      );
+      expect(failed[0]).toEqual({
+        dispatch_marked_at: null,
+        executor_error_kind: 'internal',
+        executor_failure_kind: 'failed',
+        executor_possibly_dispatched: false,
+        retry_decision: 'pending',
+      });
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Internal HTTP terminal decision',
+      );
+      const terminal = await waitFor(
+        () =>
+          workerQuery<{
+            attempt_count: string;
+            node_status: string;
+            retry_decision: string;
+            run_status: string;
+          }>(
+            `select attempt.retry_decision,node.status node_status,
+                    run.status run_status,
+                    (select count(*)::text from app.node_attempts candidate
+                      where candidate.workspace_id=attempt.workspace_id
+                        and candidate.node_run_id=attempt.node_run_id) attempt_count
+               from app.node_attempts attempt
+               join app.node_runs node
+                 on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+               join app.workflow_runs run
+                 on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
+               where attempt.workspace_id=$1 and attempt.id=$2`,
+            [workspaceId, scenario.attempt.attempt_id],
+          ),
+        (rows) => rows[0]?.retry_decision === 'failed',
+      );
+      expect(terminal[0]).toEqual({
+        attempt_count: '1',
+        node_status: 'failed',
+        retry_decision: 'failed',
+        run_status: 'failed',
+      });
+      expect(runtime.transportRequests).toHaveLength(0);
+    } finally {
+      await closeProofRuntime(runtime);
+    }
+  }, 30_000);
+
+  it.each(['canceled', 'timed_out'] as const)(
+    'persists durable %s arriving after claim but before provider execution',
+    async (reason) => {
+      const encryption = fixtureEncryption;
+      if (encryption === undefined)
+        throw new Error('HTTP attempt fixture encryption is missing');
+      let controlled = false;
+      const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+        afterAttemptClaimed: async (result) => {
+          if (
+            result.kind !== 'claimed' ||
+            result.lease.nodeId !== 'provider' ||
+            controlled
+          )
+            return;
+          controlled = true;
+          if (reason === 'canceled')
+            await cancelProviderScenarioRun(result.lease.runId);
+          else await expireProviderScenarioRun(result.lease.runId);
+        },
+      });
+      try {
+        const scenario = await admitProviderScenario(runtime, 'http');
+        await publishAndWaitForCompletion(
+          runtime.producer,
+          runtime.attemptQueue,
+          attemptJob(scenario.accepted.runId, scenario.attempt),
+          `Pre-execution ${reason} HTTP attempt`,
+        );
+        const completed = await workerQuery<{
+          attempt_status: string;
+          dispatch_marked_at: Date | null;
+          inbox_completed: string;
+          safe_error_code: string;
+        }>(
+          `select attempt.status attempt_status,attempt.dispatch_marked_at,
+                  attempt.safe_error_code,
+                  (select count(receipt.completed_at)::text
+                     from app.inbox_receipts receipt
+                    where receipt.workspace_id=attempt.workspace_id
+                      and receipt.message_id=$3) inbox_completed
+             from app.node_attempts attempt
+            where attempt.workspace_id=$1 and attempt.id=$2`,
+          [
+            workspaceId,
+            scenario.attempt.attempt_id,
+            scenario.attempt.outbox_id,
+          ],
+        );
+        expect(completed).toEqual([
+          {
+            attempt_status: reason,
+            dispatch_marked_at: null,
+            inbox_completed: '1',
+            safe_error_code:
+              reason === 'canceled'
+                ? 'execution.canceled'
+                : 'execution.deadline_exceeded',
+          },
+        ]);
+        expect(controlled).toBe(true);
+        expect(runtime.transportRequests).toHaveLength(0);
+        await advanceScenario(
+          runtime,
+          scenario.accepted.runId,
+          scenario.coordinatorOutboxes,
+          `Pre-execution ${reason} terminal coordinator`,
+        );
+        const terminal = await waitFor(
+          () =>
+            workerQuery<{ node_status: string; run_status: string }>(
+              `select node.status node_status,run.status run_status
+                 from app.node_runs node
+                 join app.workflow_runs run
+                   on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
+                where node.workspace_id=$1 and node.workflow_run_id=$2
+                  and node.node_id='provider'`,
+              [workspaceId, scenario.accepted.runId],
+            ),
+          (rows) => rows[0]?.node_status === reason,
+        );
+        expect(terminal).toEqual([{ node_status: reason, run_status: reason }]);
+      } finally {
+        await closeProofRuntime(runtime);
+      }
+    },
+    30_000,
+  );
+
+  it.each(['canceled', 'timed_out'] as const)(
+    'persists unsafe outcome_unknown when durable %s arrives during a heartbeat-controlled provider request',
+    async (reason) => {
+      const encryption = fixtureEncryption;
+      if (encryption === undefined)
+        throw new Error('HTTP attempt fixture encryption is missing');
+      let signalProviderStarted: (() => void) | undefined;
+      const providerStarted = new Promise<void>((resolve) => {
+        signalProviderStarted = resolve;
+      });
+      let providerCalls = 0;
+      const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+        dispatchHttp: async (request) => {
+          providerCalls += 1;
+          signalProviderStarted?.();
+          const signal = request.signal;
+          if (signal === undefined)
+            throw new Error('HTTP scenario signal is missing');
+          await new Promise<never>((_resolve, reject) => {
+            const rejectAborted = () => {
+              reject(
+                new DOMException('The operation was aborted', 'AbortError'),
+              );
+            };
+            if (signal.aborted) rejectAborted();
+            else
+              signal.addEventListener('abort', rejectAborted, { once: true });
+          });
+          throw new Error('Aborted provider request unexpectedly resumed');
+        },
+      });
+      try {
+        const scenario = await admitProviderScenario(runtime, 'http');
+        const published = await runtime.producer.publish(
+          attemptJob(scenario.accepted.runId, scenario.attempt),
+        );
+        await providerStarted;
+        if (reason === 'canceled')
+          await cancelProviderScenarioRun(scenario.accepted.runId);
+        else await expireProviderScenarioRun(scenario.accepted.runId);
+        const job = await waitFor(
+          () => runtime.attemptQueue.getJob(published.jobId),
+          (candidate) => candidate !== undefined,
+        );
+        if (job === undefined) throw new Error('Controlled HTTP job missing');
+        await waitFor(
+          () => job.getState(),
+          (state) => state === 'completed' || state === 'failed',
+        );
+        expect(await job.getState()).toBe('completed');
+        const completed = await workerQuery<{
+          attempt_status: string;
+          dispatch_marked_at: Date | null;
+          inbox_completed: string;
+          safe_error_code: string;
+        }>(
+          `select attempt.status attempt_status,attempt.dispatch_marked_at,
+                  attempt.safe_error_code,
+                  (select count(receipt.completed_at)::text
+                     from app.inbox_receipts receipt
+                    where receipt.workspace_id=attempt.workspace_id
+                      and receipt.message_id=$3) inbox_completed
+             from app.node_attempts attempt
+            where attempt.workspace_id=$1 and attempt.id=$2`,
+          [
+            workspaceId,
+            scenario.attempt.attempt_id,
+            scenario.attempt.outbox_id,
+          ],
+        );
+        const completedAttempt = completed[0];
+        if (completedAttempt === undefined)
+          throw new Error('Completed provider attempt missing');
+        expect(completedAttempt).toMatchObject({
+          attempt_status: 'outcome_unknown',
+          inbox_completed: '1',
+          safe_error_code: 'execution.outcome_unknown',
+        });
+        expect(completedAttempt.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(providerCalls).toBe(1);
+        await advanceScenario(
+          runtime,
+          scenario.accepted.runId,
+          scenario.coordinatorOutboxes,
+          `During-execution ${reason} terminal coordinator`,
+        );
+        const terminal = await waitFor(
+          () =>
+            workerQuery<{ node_status: string; run_status: string }>(
+              `select node.status node_status,run.status run_status
+                 from app.node_runs node
+                 join app.workflow_runs run
+                   on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id
+                where node.workspace_id=$1 and node.workflow_run_id=$2
+                  and node.node_id='provider'`,
+              [workspaceId, scenario.accepted.runId],
+            ),
+          (rows) => rows[0]?.node_status === 'outcome_unknown',
+        );
+        expect(terminal).toEqual([
+          { node_status: 'outcome_unknown', run_status: 'outcome_unknown' },
+        ]);
+      } finally {
+        await closeProofRuntime(runtime);
+      }
+    },
+    30_000,
+  );
+
+  it('keeps an email dispatch key and prior ambiguity when credential resolution fails before the retry can redispatch', async () => {
+    const encryption = fixtureEncryption;
+    if (encryption === undefined)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    const providerKeys: string[] = [];
+    let emailResolutions = 0;
+    const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+      beforeConnectionResolve: (input) => {
+        if (input.expectedProviderKey === 'email') {
+          emailResolutions += 1;
+          if (emailResolutions === 2)
+            throw new Error('connection store unavailable before redispatch');
+        }
+        return Promise.resolve();
+      },
+      sendEmailNotification: async (input) => {
+        await input.beforeDispatch();
+        providerKeys.push(input.idempotencyKey);
+        throw new Error('provider connection reset after possible dispatch');
+      },
+    });
+    try {
+      const scenario = await admitProviderScenario(runtime, 'email');
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, scenario.attempt),
+        'Ambiguous email attempt',
+      );
+      const first = await workerQuery<{
+        dispatch_marked_at: Date | null;
+        executor_error_kind: string | null;
+        executor_failure_kind: string | null;
+        executor_possibly_dispatched: boolean | null;
+        provider_dispatch_binding: string | null;
+        provider_idempotency_key: string | null;
+      }>(
+        `select attempt.dispatch_marked_at,attempt.executor_error_kind,
+                attempt.executor_failure_kind,attempt.executor_possibly_dispatched,
+                attempt.provider_idempotency_key,node.provider_dispatch_binding
+           from app.node_attempts attempt
+           join app.node_runs node
+             on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+           where attempt.workspace_id=$1 and attempt.id=$2`,
+        [workspaceId, scenario.attempt.attempt_id],
+      );
+      const firstAttempt = first[0];
+      if (firstAttempt === undefined)
+        throw new Error('Ambiguous email attempt missing');
+      expect(firstAttempt).toMatchObject({
+        executor_error_kind: 'network',
+        executor_failure_kind: 'retry',
+        executor_possibly_dispatched: true,
+      });
+      expect(firstAttempt.dispatch_marked_at).toBeInstanceOf(Date);
+      expect(firstAttempt.provider_dispatch_binding).toMatch(
+        /^email:v1:sha256:[0-9a-f]{64}$/u,
+      );
+      expect(firstAttempt.provider_idempotency_key).toMatch(
+        /^v1\.[0-9a-f]{64}$/u,
+      );
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Ambiguous email retry decision',
+      );
+      const retryDue = await waitFor(
+        () =>
+          workerQuery<{ retry_due_at: Date | null }>(
+            `select retry_due_at from app.node_runs
+               where workspace_id=$1 and workflow_run_id=$2 and node_id='provider'`,
+            [workspaceId, scenario.accepted.runId],
+          ),
+        (rows) => rows[0]?.retry_due_at instanceof Date,
+      );
+      const retryDueAt = retryDue[0]?.retry_due_at;
+      if (retryDueAt === null || retryDueAt === undefined)
+        throw new Error('Ambiguous email retry due time missing');
+      const delayMillis = retryDueAt.getTime() - Date.now();
+      if (delayMillis > 0)
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, delayMillis + 25),
+        );
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Ambiguous email retry due admission',
+      );
+      const retry = await attemptDelivery(
+        scenario.accepted.runId,
+        'provider',
+        2,
+      );
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(scenario.accepted.runId, retry),
+        'Pre-redispatch email resolution failure',
+      );
+      const attempts = await workerQuery<{
+        attempt_number: number;
+        dispatch_marked_at: Date | null;
+        executor_failure_kind: string | null;
+        executor_possibly_dispatched: boolean | null;
+        provider_dispatch_binding: string | null;
+        provider_idempotency_key: string | null;
+      }>(
+        `select attempt.attempt_number,attempt.dispatch_marked_at,
+                attempt.executor_failure_kind,attempt.executor_possibly_dispatched,
+                attempt.provider_idempotency_key,node.provider_dispatch_binding
+           from app.node_attempts attempt
+           join app.node_runs node
+             on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+           where attempt.workspace_id=$1 and node.workflow_run_id=$2
+             and node.node_id='provider'
+           order by attempt.attempt_number`,
+        [workspaceId, scenario.accepted.runId],
+      );
+      expect(attempts).toHaveLength(2);
+      expect(attempts[1]).toMatchObject({
+        attempt_number: 2,
+        dispatch_marked_at: null,
+        executor_failure_kind: 'outcome_unknown',
+        executor_possibly_dispatched: true,
+        provider_dispatch_binding: attempts[0]?.provider_dispatch_binding,
+        provider_idempotency_key: attempts[0]?.provider_idempotency_key,
+      });
+      expect(providerKeys).toEqual([attempts[0]?.provider_idempotency_key]);
+      expect(emailResolutions).toBe(2);
+      await advanceScenario(
+        runtime,
+        scenario.accepted.runId,
+        scenario.coordinatorOutboxes,
+        'Ambiguous email terminal decision',
+      );
+      await expect(
+        workerQuery<{ attempt_count: string; node_status: string }>(
+          `select node.status node_status,
+                  (select count(*)::text from app.node_attempts attempt
+                    where attempt.workspace_id=node.workspace_id
+                      and attempt.node_run_id=node.id) attempt_count
+             from app.node_runs node
+             where node.workspace_id=$1 and node.workflow_run_id=$2
+               and node.node_id='provider'`,
+          [workspaceId, scenario.accepted.runId],
+        ),
+      ).resolves.toEqual([
+        { attempt_count: '2', node_status: 'outcome_unknown' },
+      ]);
+    } finally {
+      await closeProofRuntime(runtime);
+    }
+  }, 30_000);
+
+  it.each([
+    ['canceled', 'early'],
+    ['timed_out', 'early'],
+    ['canceled', 'heartbeat'],
+    ['timed_out', 'heartbeat'],
+  ] as const)(
+    'preserves prior keyed email ambiguity when %s is observed on the retry %s path before redispatch',
+    async (reason, entryPath) => {
+      const encryption = fixtureEncryption;
+      if (encryption === undefined)
+        throw new Error('HTTP attempt fixture encryption is missing');
+      let emailResolutions = 0;
+      let providerCalls = 0;
+      const providerKeys: string[] = [];
+      let signalRetryResolution: (() => void) | undefined;
+      const retryResolution = new Promise<void>((resolve) => {
+        signalRetryResolution = resolve;
+      });
+      let releaseRetryResolution: (() => void) | undefined;
+      const retryResolutionRelease = new Promise<void>((resolve) => {
+        releaseRetryResolution = resolve;
+      });
+      let signalDurableAbort: (() => void) | undefined;
+      const durableAbort = new Promise<void>((resolve) => {
+        signalDurableAbort = resolve;
+      });
+      const requestControl = (runId: string) =>
+        reason === 'canceled'
+          ? cancelProviderScenarioRun(runId)
+          : expireProviderScenarioRun(runId);
+      const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
+        afterAttemptClaimed: async (result) => {
+          if (
+            entryPath === 'early' &&
+            result.kind === 'claimed' &&
+            result.lease.nodeId === 'provider' &&
+            result.lease.attemptNumber === 2
+          )
+            await requestControl(result.lease.runId);
+        },
+        afterHeartbeat: (result) => {
+          if (entryPath === 'heartbeat' && result.abortRequested)
+            signalDurableAbort?.();
+          return Promise.resolve();
+        },
+        beforeConnectionResolve: async (input) => {
+          if (input.expectedProviderKey !== 'email') return;
+          emailResolutions += 1;
+          if (entryPath === 'heartbeat' && emailResolutions === 2) {
+            signalRetryResolution?.();
+            await retryResolutionRelease;
+          }
+        },
+        heartbeatIntervalMillis: 50,
+        sendEmailNotification: async (input) => {
+          await input.beforeDispatch();
+          providerCalls += 1;
+          providerKeys.push(input.idempotencyKey);
+          throw new Error('provider connection reset after possible dispatch');
+        },
+      });
+      try {
+        const scenario = await prepareAmbiguousEmailRetry(runtime);
+        if (entryPath === 'early') {
+          await publishAndWaitForCompletion(
+            runtime.producer,
+            runtime.attemptQueue,
+            attemptJob(scenario.accepted.runId, scenario.retry),
+            `Early ${reason} email retry`,
+          );
+        } else {
+          const published = await runtime.producer.publish(
+            attemptJob(scenario.accepted.runId, scenario.retry),
+          );
+          await retryResolution;
+          await requestControl(scenario.accepted.runId);
+          await durableAbort;
+          releaseRetryResolution?.();
+          const job = await waitFor(
+            () => runtime.attemptQueue.getJob(published.jobId),
+            (candidate) => candidate !== undefined,
+          );
+          if (job === undefined)
+            throw new Error('Blocked email retry is missing');
+          await waitFor(
+            () => job.getState(),
+            (state) => state === 'completed' || state === 'failed',
+          );
+          expect(await job.getState()).toBe('completed');
+        }
+
+        const attempts = await workerQuery<{
+          attempt_number: number;
+          dispatch_marked_at: Date | null;
+          executor_failure_kind: string | null;
+          executor_possibly_dispatched: boolean | null;
+          provider_dispatch_binding: string | null;
+          provider_idempotency_key: string | null;
+          safe_error_code: string | null;
+          status: string;
+        }>(
+          `select attempt.attempt_number,attempt.status,
+                  attempt.dispatch_marked_at,attempt.safe_error_code,
+                  attempt.executor_failure_kind,
+                  attempt.executor_possibly_dispatched,
+                  attempt.provider_idempotency_key,
+                  node.provider_dispatch_binding
+             from app.node_attempts attempt
+             join app.node_runs node
+               on node.workspace_id=attempt.workspace_id
+              and node.id=attempt.node_run_id
+            where attempt.workspace_id=$1 and node.workflow_run_id=$2
+              and node.node_id='provider'
+            order by attempt.attempt_number`,
+          [workspaceId, scenario.accepted.runId],
+        );
+        expect(attempts).toHaveLength(2);
+        expect(attempts[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(attempts[0]?.provider_idempotency_key).toMatch(
+          /^v1\.[0-9a-f]{64}$/u,
+        );
+        expect(attempts[0]).toMatchObject({
+          attempt_number: 1,
+          executor_failure_kind: 'retry',
+          executor_possibly_dispatched: true,
+        });
+        expect(attempts[1]).toMatchObject({
+          attempt_number: 2,
+          dispatch_marked_at: null,
+          executor_failure_kind: null,
+          executor_possibly_dispatched: null,
+          provider_dispatch_binding: attempts[0]?.provider_dispatch_binding,
+          provider_idempotency_key: attempts[0]?.provider_idempotency_key,
+          safe_error_code: 'execution.outcome_unknown',
+          status: 'outcome_unknown',
+        });
+        expect(providerCalls).toBe(1);
+        expect(providerKeys).toEqual([attempts[0]?.provider_idempotency_key]);
+        expect(emailResolutions).toBe(entryPath === 'early' ? 1 : 2);
+        await expect(
+          workerQuery<{ completed: string }>(
+            `select count(completed_at)::text completed
+               from app.inbox_receipts
+              where workspace_id=$1 and message_id=$2`,
+            [workspaceId, scenario.retry.outbox_id],
+          ),
+        ).resolves.toEqual([{ completed: '1' }]);
+
+        await advanceScenario(
+          runtime,
+          scenario.accepted.runId,
+          scenario.coordinatorOutboxes,
+          `${entryPath} ${reason} email terminal decision`,
+        );
+        await expect(
+          workerQuery<{ node_status: string; run_status: string }>(
+            `select node.status node_status,run.status run_status
+               from app.node_runs node
+               join app.workflow_runs run
+                 on run.workspace_id=node.workspace_id
+                and run.id=node.workflow_run_id
+              where node.workspace_id=$1 and node.workflow_run_id=$2
+                and node.node_id='provider'`,
+            [workspaceId, scenario.accepted.runId],
+          ),
+        ).resolves.toEqual([
+          { node_status: 'outcome_unknown', run_status: 'outcome_unknown' },
+        ]);
+      } finally {
+        releaseRetryResolution?.();
+        await closeProofRuntime(runtime);
+      }
+    },
+    30_000,
+  );
+
+  it('recovers a keyed provider attempt after heartbeat ownership is lost without accepting stale completion or exact redelivery', async () => {
+    const encryption = fixtureEncryption;
+    if (encryption === undefined)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    let oldLease: NodeAttemptLease | undefined;
+    let signalProviderStarted: (() => void) | undefined;
+    const providerStarted = new Promise<void>((resolve) => {
+      signalProviderStarted = resolve;
+    });
+    const providerKeys: string[] = [];
+    let providerInFlight = false;
+    const firstRuntime = await createHttpNodeAttemptProofRuntime(encryption, {
+      afterAttemptClaimed: (result) => {
+        if (result.kind === 'claimed' && result.lease.nodeId === 'provider')
+          oldLease = result.lease;
+        return Promise.resolve();
+      },
+      beforeHeartbeat: (input) => {
+        if (input.lease.nodeId === 'provider' && providerInFlight)
+          throw new Error('heartbeat ownership lost');
+        return Promise.resolve();
+      },
+      heartbeatIntervalMillis: 50,
+      leaseDurationSeconds: 1,
+      sendEmailNotification: async (input) => {
+        await input.beforeDispatch();
+        providerKeys.push(input.idempotencyKey);
+        providerInFlight = true;
+        signalProviderStarted?.();
+        const signal = input.signal;
+        if (signal === undefined)
+          throw new Error('Email scenario signal is missing');
+        await new Promise<never>((_resolve, reject) => {
+          const rejectAborted = () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          };
+          if (signal.aborted) rejectAborted();
+          else signal.addEventListener('abort', rejectAborted, { once: true });
+        });
+        throw new Error('Aborted email request unexpectedly resumed');
+      },
+    });
+    const scenario = await admitProviderScenario(firstRuntime, 'email');
+    const firstPublished = await firstRuntime.producer.publish(
+      attemptJob(scenario.accepted.runId, scenario.attempt),
+    );
+    try {
+      await providerStarted;
+      const failedJob = await waitFor(
+        () => firstRuntime.attemptQueue.getJob(firstPublished.jobId),
+        (candidate) => candidate !== undefined,
+      );
+      if (failedJob === undefined)
+        throw new Error('Heartbeat-loss email job missing');
+      await waitFor(
+        () => failedJob.getState(),
+        (state) => state === 'failed',
+      );
+      const abandoned = await workerQuery<{
+        dispatch_marked_at: Date | null;
+        fence_token: string;
+        inbox_completed: string;
+        lease_expires_at: Date;
+        provider_idempotency_key: string;
+        status: string;
+      }>(
+        `select attempt.status,attempt.fence_token::text,
+                attempt.lease_expires_at,attempt.dispatch_marked_at,
+                attempt.provider_idempotency_key,
+                (select count(receipt.completed_at)::text
+                   from app.inbox_receipts receipt
+                  where receipt.workspace_id=attempt.workspace_id
+                    and receipt.message_id=$3) inbox_completed
+           from app.node_attempts attempt
+          where attempt.workspace_id=$1 and attempt.id=$2`,
+        [workspaceId, scenario.attempt.attempt_id, scenario.attempt.outbox_id],
+      );
+      const abandonedAttempt = abandoned[0];
+      if (abandonedAttempt === undefined)
+        throw new Error('Abandoned provider attempt missing');
+      expect(abandonedAttempt).toMatchObject({
+        fence_token: '1',
+        inbox_completed: '0',
+        status: 'running',
+      });
+      expect(abandonedAttempt.dispatch_marked_at).toBeInstanceOf(Date);
+      expect(abandonedAttempt.lease_expires_at).toBeInstanceOf(Date);
+      expect(abandonedAttempt.provider_idempotency_key).toMatch(
+        /^v1\.[0-9a-f]{64}$/u,
+      );
+      expect(providerKeys).toEqual([abandonedAttempt.provider_idempotency_key]);
+      const lease = oldLease;
+      if (lease === undefined) throw new Error('Heartbeat-loss lease missing');
+
+      await closeProofRuntime(firstRuntime);
+      const leaseDelay =
+        abandonedAttempt.lease_expires_at.getTime() - Date.now();
+      if (leaseDelay > 0)
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, leaseDelay + 25),
+        );
+      const reclaimed = await reclaimProviderScenarioAttempt({
+        attemptId: scenario.attempt.attempt_id,
+        expectedFence: 1,
+      });
+      expect(reclaimed).toMatchObject({
+        command_outcome: 'reclaimed',
+        result: {
+          fenceToken: 2,
+          outcome: 'reclaimed',
+          schemaVersion: 1,
+        },
+      });
+      expect(reclaimed.result.outboxEventId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+      );
+
+      const staleStore = createNodeAttemptRunStore(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+          max: 1,
+        }),
+      );
+      try {
+        await expect(
+          staleStore.complete({
+            lease,
+            outcome: {
+              status: 'succeeded',
+              output: { emailId: '3e6b2d7e-80fd-4b80-852c-735169874e1c' },
+            },
+            signal: new AbortController().signal,
+          }),
+        ).rejects.toBeInstanceOf(NodeAttemptReconciliationRequiredError);
+      } finally {
+        await staleStore.close();
+      }
+
+      const secondRuntime = await createHttpNodeAttemptProofRuntime(
+        encryption,
+        {
+          sendEmailNotification: async (input) => {
+            await input.beforeDispatch();
+            providerKeys.push(input.idempotencyKey);
+            return {
+              kind: 'succeeded',
+              emailId: '3e6b2d7e-80fd-4b80-852c-735169874e1c',
+            };
+          },
+        },
+      );
+      try {
+        await Promise.all([
+          secondRuntime.attempts.consumer.waitUntilReady(5_000),
+          secondRuntime.producer.waitUntilReady(5_000),
+        ]);
+        const recoveryDelivery = {
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1 as const,
+            workspaceId,
+            runId: scenario.accepted.runId,
+            nodeRunId: scenario.attempt.node_run_id,
+            attemptId: scenario.attempt.attempt_id,
+            outboxEventId: reclaimed.result.outboxEventId,
+          },
+        };
+        const recoveredJob = await publishAndWaitForCompletion(
+          secondRuntime.producer,
+          secondRuntime.attemptQueue,
+          recoveryDelivery,
+          'Reclaimed email attempt',
+        );
+        const recovered = await workerQuery<{
+          completed_receipts: string;
+          continuation_count: string;
+          fence_token: string;
+          node_status: string;
+          provider_idempotency_key: string;
+          status: string;
+        }>(
+          `select attempt.status,attempt.fence_token::text,
+                  attempt.provider_idempotency_key,node.status node_status,
+                  (select count(receipt.completed_at)::text
+                     from app.inbox_receipts receipt
+                    where receipt.workspace_id=attempt.workspace_id
+                      and receipt.message_id in ($3,$4)) completed_receipts,
+                  (select count(*)::text from app.outbox_events outbox
+                    where outbox.workspace_id=attempt.workspace_id
+                      and outbox.aggregate_id=$5
+                      and outbox.job_name='advance-workflow-run') continuation_count
+             from app.node_attempts attempt
+             join app.node_runs node
+               on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+            where attempt.workspace_id=$1 and attempt.id=$2`,
+          [
+            workspaceId,
+            scenario.attempt.attempt_id,
+            scenario.attempt.outbox_id,
+            reclaimed.result.outboxEventId,
+            scenario.accepted.runId,
+          ],
+        );
+        expect(recovered).toEqual([
+          {
+            completed_receipts: '1',
+            continuation_count: '3',
+            fence_token: '3',
+            node_status: 'succeeded',
+            provider_idempotency_key: abandonedAttempt.provider_idempotency_key,
+            status: 'succeeded',
+          },
+        ]);
+        expect(providerKeys).toEqual([
+          abandonedAttempt.provider_idempotency_key,
+          abandonedAttempt.provider_idempotency_key,
+        ]);
+        const beforeDuplicate = recovered[0];
+        await recoveredJob.remove();
+        await publishAndWaitForCompletion(
+          secondRuntime.producer,
+          secondRuntime.attemptQueue,
+          recoveryDelivery,
+          'Exact reclaimed email redelivery',
+        );
+        await expect(
+          workerQuery<{
+            completed_receipts: string;
+            continuation_count: string;
+            fence_token: string;
+            node_status: string;
+            provider_idempotency_key: string;
+            status: string;
+          }>(
+            `select attempt.status,attempt.fence_token::text,
+                    attempt.provider_idempotency_key,node.status node_status,
+                    (select count(receipt.completed_at)::text
+                       from app.inbox_receipts receipt
+                      where receipt.workspace_id=attempt.workspace_id
+                        and receipt.message_id in ($3,$4)) completed_receipts,
+                    (select count(*)::text from app.outbox_events outbox
+                      where outbox.workspace_id=attempt.workspace_id
+                        and outbox.aggregate_id=$5
+                        and outbox.job_name='advance-workflow-run') continuation_count
+               from app.node_attempts attempt
+               join app.node_runs node
+                 on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+              where attempt.workspace_id=$1 and attempt.id=$2`,
+            [
+              workspaceId,
+              scenario.attempt.attempt_id,
+              scenario.attempt.outbox_id,
+              reclaimed.result.outboxEventId,
+              scenario.accepted.runId,
+            ],
+          ),
+        ).resolves.toEqual([beforeDuplicate]);
+        expect(providerKeys).toHaveLength(2);
+      } finally {
+        await closeProofRuntime(secondRuntime);
+      }
+    } finally {
+      await closeProofRuntime(firstRuntime);
+    }
+  }, 30_000);
+
+  it('keeps a logical retry key but derives a new provider identity for an operator replay without rewriting source history', async () => {
+    const encryption = fixtureEncryption;
+    if (encryption === undefined)
+      throw new Error('HTTP attempt fixture encryption is missing');
+    const runtime = await createHttpNodeAttemptProofRuntime(encryption);
+    const operator = createOperatorCommandDatabase(
+      parseOperatorDatabaseConfig({
+        ...process.env,
+        DATABASE_OPERATOR_URL: databaseUrl(operatorUrl),
+      }),
+    );
+    const replayStore = createDatabaseOperatorRunReplayStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 1,
+      }),
+      'email_activation',
+    );
+    try {
+      const source = await admitProviderScenario(runtime, 'email');
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(source.accepted.runId, source.attempt),
+        'Source email attempt',
+      );
+      await withOwner((client) =>
+        client.query(
+          `update app.workflow_runs
+              set status='succeeded',completed_at=clock_timestamp(),
+                  updated_at=clock_timestamp()
+            where workspace_id=$1 and id=$2`,
+          [workspaceId, source.accepted.runId],
+        ),
+      );
+      const sourceRows = await workerQuery<{
+        provider_idempotency_key: string;
+        run_status: string;
+      }>(
+        `select attempt.provider_idempotency_key,run.status run_status
+           from app.node_attempts attempt
+           join app.node_runs node on node.workspace_id=attempt.workspace_id
+             and node.id=attempt.node_run_id
+           join app.workflow_runs run on run.workspace_id=node.workspace_id
+             and run.id=node.workflow_run_id
+          where attempt.workspace_id=$1 and attempt.id=$2`,
+        [workspaceId, source.attempt.attempt_id],
+      );
+      const sourceRow = sourceRows[0];
+      if (sourceRow === undefined)
+        throw new Error('Source provider attempt missing');
+      expect(sourceRow.run_status).toBe('succeeded');
+      expect(sourceRow.provider_idempotency_key).toMatch(/^v1\.[0-9a-f]{64}$/u);
+
+      const commandId = randomUUID();
+      const requested = await operator.replayRun({
+        actorRef: 'node-attempt-proof',
+        commandId,
+        dryRun: false,
+        reason: 'prove replay provider identity isolation',
+        runInput: {},
+        sourceRunId: source.accepted.runId,
+        workflowVersionId: source.accepted.workflowVersionId,
+        workspaceId,
+      });
+      const replayOutboxId = requested.result.outboxEventId;
+      if (typeof replayOutboxId !== 'string')
+        throw new Error('Replay outbox identity missing');
+      const replayed = await replayStore.replay({
+        commandId,
+        delivery: {
+          outboxEventId: replayOutboxId,
+          payloadChecksum: canonicalOutboxPayloadChecksum({
+            commandId,
+            outboxEventId: replayOutboxId,
+            schemaVersion: 1,
+            workspaceId,
+          }),
+        },
+        workspaceId,
+      });
+      if (replayed.kind !== 'processed' || replayed.runId === undefined)
+        throw new Error('Replay run was not created');
+      expect(replayed.runId).not.toBe(source.accepted.runId);
+
+      const replayInitialOutbox = await continuation(replayed.runId, []);
+      const coordinatorOutboxes = [replayInitialOutbox];
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.coordinatorQueue,
+        {
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: replayed.runId,
+            outboxEventId: replayInitialOutbox,
+          },
+        },
+        'Replay initial coordinator',
+      );
+      const replayManual = await attemptDelivery(replayed.runId, 'manual');
+      await publishAndWaitForCompletion(
+        runtime.producer,
+        runtime.attemptQueue,
+        attemptJob(replayed.runId, replayManual),
+        'Replay manual attempt',
+      );
+      await advanceScenario(
+        runtime,
+        replayed.runId,
+        coordinatorOutboxes,
+        'Replay provider admission',
+      );
+      const replayProvider = await attemptDelivery(replayed.runId, 'provider');
+      const identities = await workerQuery<{
+        id: string;
+        provider_idempotency_key: string;
+      }>(
+        `select attempt.id,attempt.provider_idempotency_key
+           from app.node_attempts attempt
+          where attempt.workspace_id=$1 and attempt.id=any($2::uuid[])
+          order by attempt.id`,
+        [workspaceId, [source.attempt.attempt_id, replayProvider.attempt_id]],
+      );
+      const byId = new Map(
+        identities.map((row) => [row.id, row.provider_idempotency_key]),
+      );
+      expect(byId.get(source.attempt.attempt_id)).toBe(
+        sourceRows[0]?.provider_idempotency_key,
+      );
+      expect(byId.get(replayProvider.attempt_id)).toMatch(
+        /^v1\.[0-9a-f]{64}$/u,
+      );
+      expect(byId.get(replayProvider.attempt_id)).not.toBe(
+        sourceRows[0]?.provider_idempotency_key,
+      );
+    } finally {
+      await Promise.allSettled([operator.close(), replayStore.close()]);
+      await closeProofRuntime(runtime);
+    }
+  }, 30_000);
 });

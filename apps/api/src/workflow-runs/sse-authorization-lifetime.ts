@@ -22,13 +22,17 @@ type SseAuthorizationLifetimeInput = Pick<
   }>;
 
 export type StreamAuthorizationLifetime = Readonly<{
-  authorizationLost: Promise<Readonly<{ error: unknown }>>;
+  authorizationLost: AbortSignal;
   reauthorize(): Promise<void>;
   stop(): Promise<void>;
 }>;
 
 /** Final portion of the verified lifetime reserved for completing fresh I/O. */
 const AUTHORIZATION_LOOKUP_BUDGET_MS = 1_000;
+
+function signalAbortedAfterSubscription(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
 
 export function createStreamAuthorizationLifetime(
   input: SseAuthorizationLifetimeInput,
@@ -44,8 +48,6 @@ export function createStreamAuthorizationLifetime(
   );
   let deadlineTimer: NodeJS.Timeout | undefined;
   let pendingAuthorization: Promise<void> | undefined;
-  const authorizationLost =
-    Promise.withResolvers<Readonly<{ error: unknown }>>();
   let revoked = false;
 
   const clearDeadlineTimer = (): void => {
@@ -56,7 +58,6 @@ export function createStreamAuthorizationLifetime(
     if (revoked) return;
     revoked = true;
     clearDeadlineTimer();
-    authorizationLost.resolve({ error });
     lifetimeController.abort(error);
     input.abortStream(error);
   };
@@ -141,7 +142,7 @@ export function createStreamAuthorizationLifetime(
   })();
 
   return {
-    authorizationLost: authorizationLost.promise,
+    authorizationLost: lifetimeController.signal,
     reauthorize: async () => {
       try {
         await reauthorize();
@@ -157,6 +158,55 @@ export function createStreamAuthorizationLifetime(
       await watchdog;
     },
   };
+}
+
+export async function nextFrameOrAuthorizationLoss<T>(
+  iterator: AsyncIterator<T>,
+  authorizationLost: AbortSignal,
+): Promise<
+  | Readonly<{ kind: 'frame'; result: IteratorResult<T> }>
+  | Readonly<{ kind: 'authorization_lost'; error: unknown }>
+> {
+  if (authorizationLost.aborted) {
+    return {
+      kind: 'authorization_lost',
+      error: authorizationLost.reason,
+    };
+  }
+  let resolveLoss:
+    | ((
+        value: Readonly<{ kind: 'authorization_lost'; error: unknown }>,
+      ) => void)
+    | undefined;
+  const lost = new Promise<
+    Readonly<{ kind: 'authorization_lost'; error: unknown }>
+  >((resolve) => {
+    resolveLoss = resolve;
+  });
+  const onAuthorizationLost = (): void => {
+    resolveLoss?.({
+      kind: 'authorization_lost',
+      error: authorizationLost.reason,
+    });
+  };
+  authorizationLost.addEventListener('abort', onAuthorizationLost, {
+    once: true,
+  });
+  if (signalAbortedAfterSubscription(authorizationLost)) onAuthorizationLost();
+  try {
+    const outcome = await Promise.race([
+      iterator.next().then((result) => ({ kind: 'frame' as const, result })),
+      lost,
+    ]);
+    return signalAbortedAfterSubscription(authorizationLost)
+      ? {
+          kind: 'authorization_lost',
+          error: authorizationLost.reason,
+        }
+      : outcome;
+  } finally {
+    authorizationLost.removeEventListener('abort', onAuthorizationLost);
+  }
 }
 
 async function raceAgainstAbort<T>(
@@ -207,12 +257,16 @@ function waitUntilAuthorizationDeadline(
     Readonly<{ kind: 'aborted' }> | Readonly<{ kind: 'reauthorize' }>
   >((resolve) => {
     resolveWait = resolve;
-    if (signal.aborted) {
+    if (signalAbortedAfterSubscription(signal)) {
       settled = true;
       resolve({ kind: 'aborted' });
       return;
     }
     signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
     timer = setTimeout(
       () => {
         if (settled) return;

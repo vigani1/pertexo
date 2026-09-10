@@ -40,24 +40,26 @@ const delivery = {
   },
 };
 
+function readyClaim() {
+  return {
+    kind: 'ready' as const,
+    attemptNumber: 1,
+    context,
+    destinationId: '77777777-7777-4777-8777-777777777777',
+    destinationConfigVersion: 2,
+    idempotencyKey:
+      'failure-notification:v1:55555555-5555-4555-8555-555555555555',
+    sideEffectClass: 'idempotent_with_key' as const,
+    connectionSecretVersionId: '88888888-8888-4888-8888-888888888888',
+    deliveryUnresolved: false,
+  };
+}
+
 function store(kind: 'ready' | 'terminal' = 'ready'): FailureNotificationStore {
   return {
-    claimDelivery: vi.fn().mockResolvedValue(
-      kind === 'terminal'
-        ? { kind }
-        : {
-            kind,
-            attemptNumber: 1,
-            context,
-            destinationId: '77777777-7777-4777-8777-777777777777',
-            destinationConfigVersion: 2,
-            idempotencyKey:
-              'failure-notification:v1:55555555-5555-4555-8555-555555555555',
-            sideEffectClass: 'idempotent_with_key',
-            connectionSecretVersionId: '88888888-8888-4888-8888-888888888888',
-            deliveryUnresolved: false,
-          },
-    ),
+    claimDelivery: vi
+      .fn()
+      .mockResolvedValue(kind === 'terminal' ? { kind } : readyClaim()),
     completeDelivery: vi.fn().mockResolvedValue('completed'),
     loadDestination: vi.fn(),
     fenceDispatch: vi.fn(),
@@ -106,6 +108,39 @@ describe('failure notification handler', () => {
       retryDelaySeconds: 1,
     });
     await handler.handle(delivery, { signal: new AbortController().signal });
+    expect(deliver).not.toHaveBeenCalled();
+    expect(repository.completeDelivery).not.toHaveBeenCalled();
+  });
+
+  it('does not start delivery when queue cancellation occurs during claim', async () => {
+    const repository = store();
+    let releaseClaim: (() => void) | undefined;
+    vi.mocked(repository.claimDelivery).mockImplementation(
+      () =>
+        new Promise<ReturnType<typeof readyClaim>>((resolve) => {
+          releaseClaim = () => {
+            resolve(readyClaim());
+          };
+        }),
+    );
+    const deliver = vi.fn();
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: { deliver },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+    const controller = new AbortController();
+    const pending = handler.handle(delivery, { signal: controller.signal });
+
+    await vi.waitFor(() => {
+      expect(releaseClaim).toBeTypeOf('function');
+    });
+    controller.abort(new Error('worker stopping'));
+    releaseClaim?.();
+    await pending;
+
     expect(deliver).not.toHaveBeenCalled();
     expect(repository.completeDelivery).not.toHaveBeenCalled();
   });

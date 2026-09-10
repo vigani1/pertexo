@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 import { API_PROBLEM_MANIFEST } from './errors/api-problem.js';
 import type { ApiProblemCode } from './errors/api-problem.js';
+import {
+  csrfTokenSchema,
+  idempotencyKeySchema,
+  webhookJsonContentTypeSchema,
+} from './http/transport-headers.js';
 
 export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
   return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
@@ -73,6 +78,33 @@ export function pathParameter(
     required: true,
     ...(description === undefined ? {} : { description }),
     schema,
+  } as const;
+}
+
+export function csrfHeaderParameter(name = 'x-csrf-token') {
+  return {
+    name,
+    in: 'header',
+    required: true,
+    schema: jsonSchema(csrfTokenSchema, 'input'),
+  } as const;
+}
+
+export function idempotencyHeaderParameter(required = true) {
+  return {
+    name: 'Idempotency-Key',
+    in: 'header',
+    required,
+    schema: jsonSchema(idempotencyKeySchema, 'input'),
+  } as const;
+}
+
+export function webhookContentTypeHeaderParameter() {
+  return {
+    name: 'Content-Type',
+    in: 'header',
+    required: true,
+    schema: jsonSchema(webhookJsonContentTypeSchema, 'input'),
   } as const;
 }
 

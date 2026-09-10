@@ -26,16 +26,7 @@ import {
   createWorkflowVersionRestoreStore,
   type WorkflowVersionRestoreContext,
 } from './workflow-authoring-version-restore.js';
-import {
-  createWorkflowAuthoringLifecycleStore,
-  type TransitionWorkflowLifecycleInput,
-  type TransitionWorkflowLifecycleResult,
-} from './workflow-authoring-lifecycle.js';
-import type {
-  WorkflowDraftRecord,
-  WorkflowRecord,
-  WorkflowVersionRecord,
-} from './workflow-authoring-records.js';
+import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -50,9 +41,6 @@ import {
 import {
   acceptPreviewRun,
   readPreviewRun,
-  type AcceptedPreviewRun,
-  type AcceptPreviewRunInput,
-  type PreviewRunRecord,
 } from '../execution/preview-execution.js';
 import {
   withTenantScopedClient,
@@ -62,7 +50,6 @@ import type { WorkflowAuthoringDatabaseOptions } from './workflow-authoring-type
 export type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringTestHooks,
-  WorkflowExecutableCompiler,
 } from './workflow-authoring-types.js';
 
 const uuidSchema = z.uuid();
@@ -83,7 +70,11 @@ export type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
-} from './workflow-authoring-lifecycle.js';
+} from './workflow-authoring-contracts.js';
+import type {
+  PublishWorkflowResult,
+  WorkflowAuthoringDatabase,
+} from './workflow-authoring-contracts.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{
   code: 'definition_not_placeable';
@@ -101,124 +92,21 @@ export class WorkflowDefinitionPlacementError extends Error {
   }
 }
 
-export type CreateWorkflowInput = Readonly<{
-  id?: string;
-  workspaceId: string;
-  actorId: string;
-  name: string;
-  emptyGraph: unknown;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-}>;
-
-export type CreateWorkflowResult = Readonly<{
-  workflowId: string;
-  workflow: WorkflowRecord;
-  draft: WorkflowDraftRecord;
-}>;
-
-export type SaveWorkflowDraftInput = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  expectedRevision: number;
-  graphJson: unknown;
-  requestId?: string;
-  traceId?: string;
-}>;
-
-export type RestoreWorkflowVersionInput = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  versionId: string;
-  actorId: string;
-  representationTag: string;
-  requestId?: string;
-  traceId?: string;
-}>;
-
-export type PublishWorkflowInput = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  representationTag: string;
-  /** Canonical application request digest, including the original If-Match. */
-  requestHash: string;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-  traceparent?: string;
-}>;
-
-export type ListWorkflowsInput = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  limit?: number;
-  after?: Readonly<{ createdAt: Date; id: string }>;
-}>;
-
-export type WorkflowPage = Readonly<{
-  items: readonly WorkflowRecord[];
-  nextCursor?: Readonly<{ createdAt: Date; id: string }>;
-}>;
-
-export type ListWorkflowVersionsInput = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  limit?: number;
-  beforeVersionNumber?: number;
-}>;
-
-export type WorkflowVersionPage = Readonly<{
-  items: readonly WorkflowVersionRecord[];
-  nextCursor?: Readonly<{ beforeVersionNumber: number }>;
-}>;
-
-export type PublishWorkflowResult = Readonly<{
-  version: WorkflowVersionRecord;
-  reused: boolean;
-  replayed: boolean;
-}>;
+export type {
+  CreateWorkflowInput,
+  CreateWorkflowResult,
+  ListWorkflowsInput,
+  ListWorkflowVersionsInput,
+  PublishWorkflowInput,
+  PublishWorkflowResult,
+  RestoreWorkflowVersionInput,
+  SaveWorkflowDraftInput,
+  WorkflowAuthoringDatabase,
+  WorkflowPage,
+  WorkflowVersionPage,
+} from './workflow-authoring-contracts.js';
 
 export { reconcileWorkflowTriggersPayload } from './workflow-publication.js';
-
-export type WorkflowAuthoringDatabase = Readonly<{
-  acceptPreview(
-    input: AcceptPreviewRunInput & Readonly<{ workspaceId: string }>,
-  ): Promise<AcceptedPreviewRun>;
-  readPreview(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      previewRunId: string;
-    }>,
-  ): Promise<PreviewRunRecord | null>;
-  createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
-  listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
-  getDraft(
-    workspaceId: string,
-    workflowId: string,
-    actorId: string,
-  ): Promise<WorkflowDraftRecord | null>;
-  getVersion(
-    workspaceId: string,
-    workflowId: string,
-    versionId: string,
-    actorId: string,
-  ): Promise<WorkflowVersionRecord | null>;
-  listVersions(input: ListWorkflowVersionsInput): Promise<WorkflowVersionPage>;
-  saveDraft(input: SaveWorkflowDraftInput): Promise<WorkflowDraftRecord>;
-  restoreWorkflowVersion(
-    input: RestoreWorkflowVersionInput,
-  ): Promise<WorkflowDraftRecord>;
-  publishWorkflow(input: PublishWorkflowInput): Promise<PublishWorkflowResult>;
-  transitionWorkflowLifecycle(
-    input: TransitionWorkflowLifecycleInput,
-  ): Promise<TransitionWorkflowLifecycleResult>;
-  close(): Promise<void>;
-}>;
 
 function definitionIdentityToken(
   definition: Readonly<{ key: string; version: number }>,

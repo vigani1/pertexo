@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -11,7 +13,6 @@ import {
 } from './openapi-primitives.js';
 
 import { apiProblemSchema } from './errors/api-problem.js';
-import { idempotencyKeySchema } from './http/identity-workspace.js';
 import {
   nodeSideEffectDisclosureSchema,
   nodeTestExecuteAcceptedResponseSchema,
@@ -99,19 +100,11 @@ const previewRunParameter = pathParameter(
   'previewRunId',
   'Preview run identifier',
 );
-const csrfParameter = {
-  name: 'x-csrf-token',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(z.string().min(16).max(512), 'input'),
-} as const;
+const csrfParameter = csrfHeaderParameter();
 const conditionalIdempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: false,
+  ...idempotencyHeaderParameter(false),
   description:
     'Required when request mode is test_execute; ignored for validate',
-  schema: jsonSchema(idempotencyKeySchema, 'input'),
 } as const;
 
 export const nodeTestingOpenApiDocument = Object.freeze({

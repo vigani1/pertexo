@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { csrfTokenSchema } from '@pertexo/contracts/transport';
 
 import {
   constantTimeStringEqual,
@@ -8,7 +8,6 @@ import {
 import { IdentityError } from './errors.js';
 import type { IdentityCrypto } from './crypto.js';
 
-const csrfTokenSchema = z.string().min(16).max(256);
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export type CsrfMutationInput = Readonly<{

@@ -195,14 +195,12 @@ function coreWorkflowCompatibility(
       placementDefinitionCatalog,
     });
   });
-  const latestVariant = variants.at(-1);
-  if (latestVariant === undefined)
+  if (variants.length === 0)
     throw new Error('Core compatibility release support is empty');
   return Object.freeze({
     releaseSupport,
     readinessSupport,
     variants: Object.freeze(variants),
-    definitionCatalog: latestVariant.definitionCatalog,
   });
 }
 
@@ -269,7 +267,7 @@ export function createApiWorkflowRuntime(
   runtime?: DatabaseRuntime,
 ): ApiWorkflowRuntime {
   const releaseCohort = overrides.releaseCohort ?? 'core';
-  const { readinessSupport, variants, definitionCatalog } =
+  const { readinessSupport, variants } =
     coreWorkflowCompatibility(releaseCohort);
   const database =
     overrides.database ??
@@ -323,7 +321,6 @@ export function createApiWorkflowRuntime(
     dependencies: Object.freeze({
       persistence: database,
       authorization: identityRuntime.dependencies.authorization,
-      definitionCatalog,
       telemetry,
     }),
     nodeTestingDependencies: Object.freeze({

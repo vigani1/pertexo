@@ -8,7 +8,7 @@ import type {
   CreateSessionInput,
   IdentityWorkspaceDatabase,
   SessionRecord,
-} from './identity-workspace.js';
+} from './identity-workspace-contracts.js';
 import {
   IdentityConflictError,
   IdentityNotFoundError,

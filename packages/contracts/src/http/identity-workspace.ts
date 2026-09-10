@@ -1,13 +1,9 @@
 import { z } from 'zod';
 
+export { idempotencyKeySchema } from './transport-headers.js';
+
 export const oidcAuthorizationCodeSchema = z.string().min(1).max(4_096);
 export const oidcStateSchema = z.string().min(16).max(512);
-export const idempotencyKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
 export const oidcCallbackRequestSchema = z
   .object({ code: oidcAuthorizationCodeSchema, state: oidcStateSchema })
   .strict();

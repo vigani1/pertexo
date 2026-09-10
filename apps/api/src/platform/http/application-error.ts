@@ -42,7 +42,9 @@ export function isApplicationError(value: unknown): value is ApplicationError {
   }
 
   const code = value.code;
-  return typeof code === 'string' && code in APPLICATION_ERROR_CATALOG;
+  return (
+    typeof code === 'string' && Object.hasOwn(APPLICATION_ERROR_CATALOG, code)
+  );
 }
 
 export function throwApplicationError(error: ApplicationError): never {

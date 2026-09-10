@@ -63,6 +63,13 @@ export class ProviderExecutionRateLimitError extends Error {
   }
 }
 
+export class ProviderCredentialInvalidError extends Error {
+  public override readonly name = 'ProviderCredentialInvalidError';
+  public constructor() {
+    super('Provider credential is no longer valid');
+  }
+}
+
 export type NodeErrorCode =
   | 'registry_compatibility'
   | 'definition_not_found'

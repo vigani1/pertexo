@@ -13,11 +13,13 @@ import {
 import type {
   RestoreWorkflowVersionInput,
   WorkflowAuthoringDatabase,
-  WorkflowAuthoringTestHooks,
+} from './workflow-authoring-contracts.js';
+import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
+import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-records.js';
 import {
   workflowRowSelection,
   workflowVersionRowSelection,

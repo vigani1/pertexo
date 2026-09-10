@@ -84,6 +84,7 @@ const config = {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,
     maximumAdmissions: 32,
+    runTimeoutFailureContextEnabled: false,
   },
   database: {
     connectionString: 'postgresql://unused',

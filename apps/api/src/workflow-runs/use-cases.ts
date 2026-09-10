@@ -26,6 +26,7 @@ import type {
 } from './ports.js';
 import {
   createStreamAuthorizationLifetime,
+  nextFrameOrAuthorizationLoss,
   type StreamAuthorizationLifetime,
 } from './sse-authorization-lifetime.js';
 
@@ -87,7 +88,7 @@ const SSE_REAUTHORIZATION_INTERVAL_MS = 5_000;
 
 export class StartWorkflowRunUseCase {
   public constructor(
-    private readonly persistence: WorkflowRunPersistence,
+    private readonly persistence: Pick<WorkflowRunPersistence, 'start'>,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
@@ -117,7 +118,7 @@ export class StartWorkflowRunUseCase {
 
 export class ReplayWorkflowRunUseCase {
   public constructor(
-    private readonly persistence: WorkflowRunPersistence,
+    private readonly persistence: Pick<WorkflowRunPersistence, 'replay'>,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
@@ -148,7 +149,7 @@ export class ReplayWorkflowRunUseCase {
 
 export class GetWorkflowRunUseCase {
   public constructor(
-    private readonly persistence: WorkflowRunPersistence,
+    private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
@@ -171,7 +172,7 @@ export class GetWorkflowRunUseCase {
 
 export class CancelWorkflowRunUseCase {
   public constructor(
-    private readonly persistence: WorkflowRunPersistence,
+    private readonly persistence: Pick<WorkflowRunPersistence, 'cancel'>,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
@@ -207,7 +208,7 @@ export class CancelWorkflowRunUseCase {
 
 export class StreamRunEventsUseCase {
   public constructor(
-    private readonly persistence: WorkflowRunPersistence,
+    private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly streamer: WorkflowRunEventStreamer,
   ) {}
@@ -260,16 +261,10 @@ async function* authorizedStreamFrames(
   const iterator = frames[Symbol.asyncIterator]();
   try {
     while (!input.signal.aborted) {
-      const outcome = await Promise.race([
-        iterator.next().then((result) => ({
-          kind: 'frame' as const,
-          result,
-        })),
-        authorizationLifetime.authorizationLost.then(({ error }) => ({
-          kind: 'authorization_lost' as const,
-          error,
-        })),
-      ]);
+      const outcome = await nextFrameOrAuthorizationLoss(
+        iterator,
+        authorizationLifetime.authorizationLost,
+      );
       if (outcome.kind === 'authorization_lost') throw outcome.error;
       if (outcome.result.done === true) return;
       await authorizationLifetime.reauthorize();

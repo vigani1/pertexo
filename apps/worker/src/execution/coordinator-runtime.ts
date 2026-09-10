@@ -59,6 +59,7 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
+  runTimeoutFailureContextEnabled?: boolean;
   releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
@@ -152,7 +153,10 @@ export async function createCoordinatorRuntime(
     });
   const runStore =
     dependencies.runStore ??
-    createCoordinatorRunStore(options.database, options.databaseRuntime);
+    createCoordinatorRunStore(options.database, options.databaseRuntime, {
+      runTimeoutFailureContextEnabled:
+        options.runTimeoutFailureContextEnabled ?? false,
+    });
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(

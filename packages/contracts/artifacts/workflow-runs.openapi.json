@@ -46,7 +46,7 @@
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
-              "maxLength": 512
+              "maxLength": 256
             }
           },
           {
@@ -58,7 +58,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 128,
-              "pattern": "^[\\x21-\\x7e]+$"
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
             }
           }
         ],
@@ -288,7 +288,7 @@
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
-              "maxLength": 512
+              "maxLength": 256
             }
           }
         ],
@@ -375,7 +375,7 @@
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
-              "maxLength": 512
+              "maxLength": 256
             }
           },
           {
@@ -387,7 +387,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 128,
-              "pattern": "^[\\x21-\\x7e]+$"
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
             }
           }
         ],

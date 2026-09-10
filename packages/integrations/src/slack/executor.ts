@@ -3,6 +3,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
+  ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
@@ -75,6 +76,7 @@ function failure(
     | 'authentication'
     | 'canceled'
     | 'configuration'
+    | 'internal'
     | 'network'
     | 'provider'
     | 'rate_limit'
@@ -149,6 +151,8 @@ async function execute(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
+    if (runtime.providerDispatchUnresolved === true)
+      throw failure('outcome_unknown', 'provider', true);
     if (error instanceof ProviderExecutionRateLimitError)
       throw failure(
         'retry',
@@ -156,7 +160,14 @@ async function execute(
         false,
         error.retryAfterSeconds * 1_000,
       );
-    throw failure('failed', 'authentication', false);
+    if (error instanceof ProviderCredentialInvalidError)
+      throw failure('failed', 'authentication', false);
+    if (
+      invocation.signal.aborted ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      throw failure('canceled', 'canceled', false);
+    throw failure('retry', 'provider', false);
   }
   try {
     if (
@@ -196,10 +207,14 @@ async function execute(
     } catch (error: unknown) {
       if (error instanceof SlackSendMessageExecutorError) throw error;
       if (error instanceof SecureHttpError) {
+        if (runtime.providerDispatchUnresolved === true)
+          throw failure('outcome_unknown', 'provider', true);
         if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
           throw failure('failed', 'authentication', false);
         if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
           throw failure('failed', 'configuration', false);
+        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+          throw failure('retry', 'provider', false);
         if (error.code === SECURE_HTTP_ERROR_CODE.canceled) {
           if (!error.possiblyDispatched)
             throw failure('canceled', 'canceled', false);

@@ -37,6 +37,7 @@ import { serializePersistedWorkflowCheckpoint } from '../compatibility/persisted
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
   input: CommitAdvancePlanInput,
+  options: Readonly<{ runTimeoutFailureContextEnabled: boolean }>,
 ): Promise<CommitAdvancePlanResult> {
   if (!(input.signal instanceof AbortSignal))
     throw new CoordinatorPlanInvalidError();
@@ -132,6 +133,8 @@ export async function commitCoordinatorAdvancePlan(
           plan,
           planFingerprint,
           row: commitState.row,
+          runTimeoutFailureContextEnabled:
+            options.runTimeoutFailureContextEnabled,
           runId,
           ...(traceparent === undefined ? {} : { traceparent }),
           workflowVersionId,

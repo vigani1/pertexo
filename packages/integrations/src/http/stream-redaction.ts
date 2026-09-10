@@ -129,32 +129,40 @@ export async function* boundedRedactedBody(
   };
   try {
     for await (const chunk of body) {
-      if (signal.aborted) throw abortFailure(signal, true, false);
-      rawBytes += chunk.byteLength;
-      if (rawBytes > limit)
-        throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-      const previous = pending;
-      try {
-        pending = concatenateBytes(previous, chunk);
-      } finally {
-        previous.fill(0);
+      const clearChunk = (): void => {
         chunk.fill(0);
+      };
+      signal.addEventListener('abort', clearChunk, { once: true });
+      try {
+        if (signal.aborted) throw abortFailure(signal, true, false);
+        rawBytes += chunk.byteLength;
+        if (rawBytes > limit)
+          throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+        const previous = pending;
+        try {
+          pending = concatenateBytes(previous, chunk);
+        } finally {
+          previous.fill(0);
+        }
+        // Buffered iterators may only schedule microtasks. Yield even for small
+        // chunks so caller cancellation and timeout timers can make progress.
+        await yieldToEventLoop();
+        const candidate = pending;
+        const redacted = await redactAndClear(
+          candidate,
+          patterns,
+          false,
+          limit - emittedBytes,
+          signal,
+          deadline,
+        );
+        pending = redacted.remaining;
+        const output = emit(redacted.emitted);
+        if (output !== undefined) yield output;
+      } finally {
+        signal.removeEventListener('abort', clearChunk);
+        clearChunk();
       }
-      // Buffered iterators may only schedule microtasks. Yield even for small
-      // chunks so caller cancellation and timeout timers can make progress.
-      await yieldToEventLoop();
-      const candidate = pending;
-      const redacted = await redactAndClear(
-        candidate,
-        patterns,
-        false,
-        limit - emittedBytes,
-        signal,
-        deadline,
-      );
-      pending = redacted.remaining;
-      const output = emit(redacted.emitted);
-      if (output !== undefined) yield output;
     }
     const candidate = pending;
     const redacted = await redactAndClear(

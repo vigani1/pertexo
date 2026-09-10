@@ -96,7 +96,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
   });
 
-  it('retries a pre-dispatch evidence outage without pretending it is a provider failure', () => {
+  it('maps a pre-dispatch provider-runtime outage into the immutable retry policy', () => {
     expect(
       classifySecureHttpError(
         new SecureHttpError(
@@ -109,7 +109,7 @@ describe('ADR 007 HTTP outcome policy', () => {
       ),
     ).toEqual({
       kind: 'retry',
-      errorKind: 'internal',
+      errorKind: 'provider',
       reuseProviderKey: false,
     });
   });

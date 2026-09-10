@@ -31,9 +31,14 @@ export type {
   CoordinatorRunStore,
   LoadAdvanceStateResult,
 };
+export type CoordinatorRunStoreOptions = Readonly<{
+  runTimeoutFailureContextEnabled?: boolean;
+}>;
+
 export function createCoordinatorRunStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  options: CoordinatorRunStoreOptions = {},
 ): CoordinatorRunStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
@@ -43,7 +48,10 @@ export function createCoordinatorRunStore(
     loadAdvanceState: (input: LoadAdvanceStateInput) =>
       loadCoordinatorAdvanceState(pool, input),
     commitAdvancePlan: (input: CommitAdvancePlanInput) =>
-      commitCoordinatorAdvancePlan(pool, input),
+      commitCoordinatorAdvancePlan(pool, input, {
+        runTimeoutFailureContextEnabled:
+          options.runTimeoutFailureContextEnabled ?? false,
+      }),
     close: () => lease.close(),
   });
 }

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   NodeDispatchEvidenceError,
+  ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
@@ -23,6 +24,7 @@ import {
   type SecureHttpRequest,
   type SecureHttpResponse,
 } from '../src/server.js';
+import { providerCredentialFailureCases } from './support/provider-credential-failure-cases.js';
 
 const connectionId = '22222222-2222-4222-8222-222222222222';
 const secretVersionId = '33333333-3333-4333-8333-333333333333';
@@ -440,7 +442,7 @@ describe('email.send_notification@1', () => {
       emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
     });
     state.assertCurrent.mockRejectedValueOnce(
-      new Error('credential_not_current'),
+      new ProviderCredentialInvalidError(),
     );
 
     await expect(
@@ -472,9 +474,27 @@ describe('email.send_notification@1', () => {
       }).execute(invocation(historicalRuntime)),
     ).rejects.toMatchObject({
       kind: 'outcome_unknown',
+      errorKind: 'provider',
+      possiblyDispatched: true,
+    });
+  });
+
+  it('reports historical ambiguity when the retry lacks a credential fence', async () => {
+    const state = runtime(undefined, secretVersionId, originalBinding, true);
+    const { connections, ...withoutConnections } = state.value;
+    expect(connections).toBeDefined();
+    state.value = Object.freeze(withoutConnections);
+
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'outcome_unknown',
       errorKind: 'authentication',
       possiblyDispatched: true,
     });
+    expect(state.sendNotification).not.toHaveBeenCalled();
   });
 
   it('classifies credential admission failures before provider dispatch', async () => {
@@ -573,6 +593,39 @@ describe('email.send_notification@1', () => {
       }).execute(invocation(state.value)),
     ).rejects.toBeInstanceOf(EmailSendNotificationExecutorError);
   });
+
+  it.each(providerCredentialFailureCases)(
+    'preserves %s without sending provider bytes',
+    async (_name, stage, error, kind, errorKind) => {
+      const state = runtime({
+        kind: 'succeeded',
+        emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+      });
+      const originalConnections = state.value.connections;
+      if (originalConnections === undefined)
+        throw new Error('Expected connection runtime');
+      state.value = Object.freeze({
+        ...state.value,
+        connections: {
+          assertCurrent:
+            stage === 'fence'
+              ? () => Promise.reject(error)
+              : state.assertCurrent,
+          resolve:
+            stage === 'resolve'
+              ? () => Promise.reject(error)
+              : originalConnections.resolve.bind(originalConnections),
+        },
+      });
+
+      await expect(
+        createEmailSendNotificationExecutorRegistration({
+          client: { sendNotification: state.sendNotification },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({ kind, errorKind, possiblyDispatched: false });
+      expect(state.beforeDispatch).not.toHaveBeenCalled();
+    },
+  );
 
   it('preserves dispatch identity through the real secure HTTP boundary', async () => {
     const transport = { dispatch: vi.fn() };

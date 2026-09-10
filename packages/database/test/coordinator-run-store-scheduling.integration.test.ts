@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { z } from 'zod';
 
 import {
   FailureNotificationContextV1Schema,
@@ -8,6 +9,7 @@ import {
   asOwner,
   asRuntime,
   checkpoint,
+  createCoordinatorRunStore,
   createFailureNotificationStore,
   databaseUrl,
   insertRun,
@@ -24,6 +26,20 @@ import {
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
+
+const predecessorPrimaryFailureSchema = z
+  .object({
+    nodeId: z.string().min(1).max(128),
+    invocationKey: z.string().min(1).max(256),
+    nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+    attemptNumber: z.number().int().nonnegative(),
+    safeErrorCode: z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u),
+  })
+  .strict();
+const predecessorFailureNotificationContextV1Schema =
+  FailureNotificationContextV1Schema.extend({
+    primaryFailure: predecessorPrimaryFailureSchema,
+  });
 
 describe('Coordinator scheduling and notification invariants', () => {
   it('defers queued coordination durably until an active entitlement slot is free', async () => {
@@ -210,6 +226,312 @@ describe('Coordinator scheduling and notification invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'already_committed', revision: 1 });
+  });
+
+  it('preserves one queued-timeout intent through predecessor rejection and R1 rollback recovery', async () => {
+    const runId = await insertRun({
+      failureNotificationPolicy: {
+        destinationId: notificationDestinationId,
+        destinationConfigVersion: 1,
+        sideEffectClass: 'idempotent_with_key',
+        connectionSecretVersionId: notificationSecretVersionId,
+      },
+    });
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'timed_out',
+        nextEventSequence: 3,
+        invocations: [],
+      }),
+      events: [
+        {
+          schemaVersion: 1 as const,
+          sequence: 2,
+          name: 'run.timed_out' as const,
+          occurredAt: '2026-08-24T10:01:00.000Z',
+          reasonCode: 'execution.deadline_exceeded',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    const input = {
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      signal: new AbortController().signal,
+      plan,
+    };
+
+    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+      kind: 'committed',
+    });
+    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+      kind: 'already_committed',
+    });
+
+    const proof = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{
+        context: Record<string, unknown>;
+        intent_count: number;
+        outbox_count: number;
+        run_status: string;
+        terminal_event_count: number;
+      }>(
+        `select run.status run_status,
+                count(distinct event.sequence) filter (
+                  where event.type='run.timed_out'
+                )::int terminal_event_count,
+                count(distinct intent.id)::int intent_count,
+                count(distinct outbox.id)::int outbox_count,
+                min(intent.context::text)::jsonb context
+           from app.workflow_runs run
+           left join app.run_events event
+             on event.workspace_id=run.workspace_id
+            and event.workflow_run_id=run.id
+           left join app.run_failure_notification_intents intent
+             on intent.workspace_id=run.workspace_id
+            and intent.workflow_run_id=run.id
+           left join app.outbox_events outbox on outbox.aggregate_id=intent.id
+          where run.workspace_id=$1 and run.id=$2
+          group by run.status`,
+        [workspaceA, runId],
+      ),
+    );
+    expect(proof.rows[0]).toMatchObject({
+      run_status: 'timed_out',
+      terminal_event_count: 1,
+      intent_count: 1,
+      outbox_count: 1,
+    });
+    expect(
+      FailureNotificationContextV1Schema.parse(proof.rows[0]?.context),
+    ).toMatchObject({
+      terminalStatus: 'timed_out',
+      primaryFailure: {
+        source: 'run',
+        runStatus: 'timed_out',
+        safeErrorCode: 'execution.deadline_exceeded',
+      },
+      totalFailureCount: 1,
+    });
+
+    const identity = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{
+        context: Record<string, unknown>;
+        context_checksum: string;
+        intent_id: string;
+        outbox_id: string;
+        payload_checksum: string;
+      }>(
+        `select intent.id intent_id,intent.context,intent.context_checksum,
+                outbox.id outbox_id,outbox.payload_checksum
+           from app.run_failure_notification_intents intent
+           join app.outbox_events outbox on outbox.aggregate_id=intent.id
+          where intent.workspace_id=$1 and intent.workflow_run_id=$2
+          order by outbox.created_at,outbox.id limit 1`,
+        [workspaceA, runId],
+      ),
+    );
+    const first = identity.rows[0];
+    if (first === undefined) throw new Error('notification fixture missing');
+
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, async (client) => {
+        const selected = await client.query<{ context: unknown }>(
+          `select context from app.run_failure_notification_intents
+            where workspace_id=$1 and id=$2 for update`,
+          [workspaceA, first.intent_id],
+        );
+        predecessorFailureNotificationContextV1Schema.parse(
+          selected.rows[0]?.context,
+        );
+      }),
+    ).rejects.toThrow();
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `select 1 from app.run_failure_notification_intents
+            where workspace_id=$1 and id=$2 and status='pending' and delivery_attempts=0`,
+          [workspaceA, first.intent_id],
+        ),
+      ),
+    ).resolves.toMatchObject({ rowCount: 1 });
+
+    const claimInput = {
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      delivery: {
+        outboxEventId: first.outbox_id,
+        payloadChecksum: first.payload_checksum,
+      },
+      recoverySeconds: 1,
+      maxAttempts: 3,
+    } as const;
+    const candidateStore = createFailureNotificationStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    try {
+      await expect(
+        candidateStore.claimDelivery(claimInput),
+      ).resolves.toMatchObject({
+        kind: 'ready',
+        attemptNumber: 1,
+        context: first.context,
+      });
+    } finally {
+      await candidateStore.close();
+    }
+
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `update app.run_failure_notification_intents
+            set recovery_at=clock_timestamp()-interval '1 second'
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, first.intent_id],
+      ),
+    );
+    const rollbackReaderStore = createFailureNotificationStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    try {
+      await expect(rollbackReaderStore.recoverDue(10, 3)).resolves.toBe(1);
+      const recovered = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{
+          context: Record<string, unknown>;
+          context_checksum: string;
+          delivery_attempts: number;
+          intent_count: number;
+          outbox_count: number;
+          outbox_id: string;
+          payload_checksum: string;
+        }>(
+          `select intent.context,intent.context_checksum,intent.delivery_attempts,
+                    (select count(*)::int from app.run_failure_notification_intents other
+                      where other.workflow_run_id=intent.workflow_run_id) intent_count,
+                    (select count(*)::int from app.outbox_events other
+                      where other.aggregate_id=intent.id) outbox_count,
+                    outbox.id outbox_id,outbox.payload_checksum
+               from app.run_failure_notification_intents intent
+               join lateral (
+                 select id,payload_checksum from app.outbox_events
+                  where aggregate_id=intent.id order by created_at desc,id desc limit 1
+               ) outbox on true
+              where intent.workspace_id=$1 and intent.id=$2`,
+          [workspaceA, first.intent_id],
+        ),
+      );
+      const retry = recovered.rows[0];
+      expect(retry).toMatchObject({
+        context: first.context,
+        context_checksum: first.context_checksum,
+        delivery_attempts: 1,
+        intent_count: 1,
+        outbox_count: 2,
+      });
+      if (retry === undefined) throw new Error('recovery fixture missing');
+      await expect(
+        rollbackReaderStore.claimDelivery({
+          ...claimInput,
+          delivery: {
+            outboxEventId: retry.outbox_id,
+            payloadChecksum: retry.payload_checksum,
+          },
+        }),
+      ).resolves.toMatchObject({
+        kind: 'ready',
+        attemptNumber: 2,
+        context: first.context,
+      });
+    } finally {
+      await rollbackReaderStore.close();
+    }
+  });
+
+  it('keeps R1 run-timeout context production disabled while committing terminal truth', async () => {
+    const runId = await insertRun({
+      failureNotificationPolicy: {
+        destinationId: notificationDestinationId,
+        destinationConfigVersion: 1,
+        sideEffectClass: 'idempotent_with_key',
+        connectionSecretVersionId: notificationSecretVersionId,
+      },
+    });
+    const r1Store = createCoordinatorRunStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    try {
+      await expect(
+        r1Store.commitAdvancePlan({
+          workspaceId: workspaceA,
+          runId,
+          workflowVersionId: versionA,
+          delivery: await testDelivery(workspaceA, runId, 0),
+          signal: new AbortController().signal,
+          plan: {
+            expectedRevision: 0,
+            expectedNextEventSequence: 2,
+            consumedThroughEventSequence: 1,
+            checkpoint: checkpoint({
+              revision: 1,
+              runStatus: 'timed_out',
+              nextEventSequence: 3,
+              invocations: [],
+            }),
+            events: [
+              {
+                schemaVersion: 1,
+                sequence: 2,
+                name: 'run.timed_out',
+                occurredAt: '2026-08-24T10:01:00.000Z',
+                reasonCode: 'execution.deadline_exceeded',
+              },
+            ],
+            nodeRunAdmissions: [],
+            attempts: [],
+          },
+        }),
+      ).resolves.toMatchObject({ kind: 'committed' });
+    } finally {
+      await r1Store.close();
+    }
+
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ intent_count: number; run_status: string }>(
+          `select run.status run_status,
+                  count(intent.id)::int intent_count
+             from app.workflow_runs run
+             left join app.run_failure_notification_intents intent
+               on intent.workspace_id=run.workspace_id
+              and intent.workflow_run_id=run.id
+            where run.workspace_id=$1 and run.id=$2
+            group by run.status`,
+          [workspaceA, runId],
+        ),
+      ),
+    ).resolves.toMatchObject({
+      rows: [{ run_status: 'timed_out', intent_count: 0 }],
+    });
   });
 
   it('atomically creates one safe failure notification intent and excludes cancellation', async () => {

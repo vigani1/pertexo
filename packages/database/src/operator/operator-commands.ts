@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import type {
+  GenericOperatorCommandResult,
+  OperatorCommandDatabaseOptions,
+} from './operator-command-contracts.js';
+export type {
+  GenericOperatorCommandResult,
+  OperatorCommandDatabaseOptions,
+} from './operator-command-contracts.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
@@ -106,13 +114,6 @@ export type OperatorCommandResult = Readonly<{
   replayed: boolean;
   status: 'completed' | 'failed' | 'pending';
 }>;
-export type GenericOperatorCommandResult = Readonly<{
-  commandId: string;
-  outcome: string;
-  replayed: boolean;
-  result: Readonly<Record<string, unknown>>;
-  status: 'completed' | 'failed' | 'pending';
-}>;
 export type OperatorCommandRecord = Readonly<{
   commandId: string;
   commandType: OperatorCommandType;
@@ -175,12 +176,6 @@ export interface OperatorCommandDatabase {
   retryTriggerReconciliation(
     input: OperatorWorkflowCommandInput,
   ): Promise<GenericOperatorCommandResult>;
-}
-
-export interface OperatorCommandDatabaseOptions {
-  readonly forbiddenRoles?: readonly string[];
-  readonly lockTimeoutMs?: number;
-  readonly statementTimeoutMs?: number;
 }
 
 const outcomeSchema = z.enum([

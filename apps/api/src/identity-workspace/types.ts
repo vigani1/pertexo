@@ -38,8 +38,8 @@ export interface IdentityWorkspaceRequest {
 }
 
 export interface AuthenticatedRequestSession {
-  userId: string;
-  sessionId: string;
-  expiresAt: Date;
-  clientMetadata: Readonly<Record<string, string>>;
+  readonly userId: string;
+  readonly sessionId: string;
+  readonly expiresAt: Date;
+  readonly clientMetadata: Readonly<Record<string, string>>;
 }

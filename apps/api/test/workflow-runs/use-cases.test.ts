@@ -318,6 +318,167 @@ describe('workflow run application seams', () => {
     );
   });
 
+  it.each(['start', 'replay'] as const)(
+    'rejects an invalid %s deadline before persistence',
+    async (operation) => {
+      const fixture = persistence();
+      const common = {
+        actor,
+        routeWorkspaceId: workspaceId,
+        idempotencyKey: `invalid-${operation}-deadline`,
+        deadlineAt: 'not-a-date',
+      };
+
+      const execution =
+        operation === 'start'
+          ? new StartWorkflowRunUseCase(fixture.store, authorization()).execute(
+              { ...common, workflowId },
+            )
+          : new ReplayWorkflowRunUseCase(
+              fixture.store,
+              authorization(),
+            ).execute({
+              ...common,
+              runId,
+              workflowVersionId,
+              input: {},
+            });
+
+      await expect(execution).rejects.toThrow('deadline is invalid');
+      expect(fixture.start).not.toHaveBeenCalled();
+      expect(fixture.replay).not.toHaveBeenCalled();
+    },
+  );
+
+  it('supports omitted and explicit request metadata across start, replay, and cancel', async () => {
+    const fixture = persistence();
+    const actorWithoutTrace = createActorContext({
+      actorId,
+      workspaceId,
+      sessionId,
+      requestId: 'actor-request',
+    });
+
+    await new StartWorkflowRunUseCase(fixture.store, authorization()).execute({
+      actor: actorWithoutTrace,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      idempotencyKey: 'start-minimal',
+      requestId: 'start-request',
+    });
+    await new ReplayWorkflowRunUseCase(fixture.store, authorization()).execute({
+      actor: actorWithoutTrace,
+      routeWorkspaceId: workspaceId,
+      runId,
+      workflowVersionId,
+      idempotencyKey: 'replay-minimal',
+      input: null,
+      requestId: 'replay-request',
+      traceId: 'replay-trace',
+    });
+    await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
+      actor: actorWithoutTrace,
+      routeWorkspaceId: workspaceId,
+      runId,
+      requestId: 'cancel-request',
+      traceId: 'cancel-trace',
+    });
+    await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
+      actor: actorWithoutTrace,
+      routeWorkspaceId: workspaceId,
+      runId,
+    });
+
+    expect(fixture.start).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'start-request' }),
+    );
+    expect(fixture.start.mock.calls[0]?.[0]).not.toHaveProperty('traceId');
+    expect(fixture.replay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'replay-request',
+        traceId: 'replay-trace',
+      }),
+    );
+    expect(fixture.cancel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'cancel-request',
+        traceId: 'cancel-trace',
+      }),
+    );
+    expect(fixture.cancel.mock.calls[0]?.[0]).not.toHaveProperty('reason');
+    expect(fixture.cancel.mock.calls[0]?.[0]).not.toHaveProperty('traceparent');
+    expect(fixture.cancel.mock.calls[1]?.[0]).not.toHaveProperty('traceId');
+  });
+
+  it.each(['get', 'stream'] as const)(
+    'reports a missing run before %s behavior proceeds',
+    async (operation) => {
+      const fixture = persistence();
+      fixture.get.mockResolvedValue(undefined);
+
+      const execution =
+        operation === 'get'
+          ? new GetWorkflowRunUseCase(
+              fixture.store,
+              authorization('viewer'),
+            ).execute({ actor, routeWorkspaceId: workspaceId, runId })
+          : new StreamRunEventsUseCase(fixture.store, authorization('viewer'), {
+              stream: vi.fn(),
+            }).execute({
+              actor,
+              routeWorkspaceId: workspaceId,
+              runId,
+              lastEventId: 0,
+              sessionExpiresAt: new Date(Date.now() + 60_000),
+              reauthorizeSession: vi.fn(),
+              abortStream: vi.fn(),
+              signal: new AbortController().signal,
+            });
+
+      await expect(execution).rejects.toMatchObject({
+        name: 'WorkflowRunNotFoundError',
+      });
+    },
+  );
+
+  it('serializes non-null run and node lifecycle timestamps', async () => {
+    const fixture = persistence();
+    fixture.get.mockResolvedValue({
+      run: {
+        ...run(),
+        startedAt: now,
+        completedAt: now,
+        deadlineAt: now,
+        cancelRequestedAt: now,
+      },
+      nodes: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          nodeId: 'node-1',
+          invocationKey: 'node-1',
+          status: 'succeeded',
+          currentAttemptNumber: 1,
+          startedAt: now,
+          completedAt: now,
+          resumeAt: now,
+          safeErrorCode: null,
+        },
+      ],
+    });
+
+    const result = await new GetWorkflowRunUseCase(
+      fixture.store,
+      authorization('viewer'),
+    ).execute({ actor, routeWorkspaceId: workspaceId, runId });
+
+    expect(result.run.startedAt).toBe(now.toISOString());
+    expect(result.nodes[0]).toMatchObject({
+      startedAt: now.toISOString(),
+      completedAt: now.toISOString(),
+      resumeAt: now.toISOString(),
+    });
+  });
+
   it('authorizes the stream, proves the run exists, and delegates the cursor', async () => {
     const fixture = persistence();
     const signal = new AbortController().signal;

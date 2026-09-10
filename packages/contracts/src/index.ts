@@ -22,6 +22,7 @@ export {
   identityWorkspaceOpenApiDocument,
 } from './identity-workspace.js';
 export * from './http/identity-workspace.js';
+export * from './http/transport-headers.js';
 export {
   nodeTestingClientContract,
   nodeTestingOpenApiDocument,

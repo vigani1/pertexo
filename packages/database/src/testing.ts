@@ -45,6 +45,7 @@ export type {
   CommitAdvancePlanResult,
   CoordinatorAdvanceDelivery,
   CoordinatorRunStore,
+  CoordinatorRunStoreOptions,
   LoadAdvanceStateResult,
 } from './execution/coordinator-run-store.js';
 export {

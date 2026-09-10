@@ -20,10 +20,11 @@ import {
   workflowVersionsResponseSchema,
   strongEtagSchema,
 } from './http/workflow-authoring.js';
-import { idempotencyKeySchema } from './http/identity-workspace.js';
 import { projectContractSchema } from './schema-projection.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -31,7 +32,7 @@ import {
   responseReference,
   uuidPathParameter as pathParameter,
 } from './openapi-primitives.js';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 export * from './http/workflow-authoring.js';
 
@@ -173,18 +174,8 @@ const etagParameter = {
   required: true,
   schema: jsonSchema(strongEtagSchema, 'input'),
 } as const;
-const idempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(idempotencyKeySchema, 'input'),
-} as const;
-const csrfParameter = {
-  name: 'x-csrf-token',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(z.string().min(16).max(512), 'input'),
-} as const;
+const idempotencyParameter = idempotencyHeaderParameter();
+const csrfParameter = csrfHeaderParameter();
 
 function lifecycleOperation(
   operationId: 'archiveWorkflow' | 'restoreWorkflow',

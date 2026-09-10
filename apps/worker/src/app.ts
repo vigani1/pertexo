@@ -66,7 +66,8 @@ export async function createWorkerApplication(
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
       .checkCompatibility();
-    await application.get(WorkerReadinessMonitor).check();
+    const readinessMonitor = application.get(WorkerReadinessMonitor);
+    await readinessMonitor.check();
     const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);
     const metrics = application.get<TransportMetrics>(TRANSPORT_METRICS);
     const database = application.get<WorkspaceDatabase>(WORKSPACE_DATABASE);
@@ -81,6 +82,7 @@ export async function createWorkerApplication(
     } catch (error: unknown) {
       dependencies.logger.warn('worker.process_start_metric_failed', {}, error);
     }
+    readinessMonitor.start();
   } catch (error: unknown) {
     await application.close();
     throw error;

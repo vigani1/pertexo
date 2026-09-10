@@ -148,6 +148,16 @@ describe('generic webhook ingress', () => {
   it.each([
     [{ 'content-type': 'text/plain' }, 415, 'webhook.unsupported_media_type'],
     [
+      { 'content-type': 'application/jsonevil' },
+      415,
+      'webhook.unsupported_media_type',
+    ],
+    [
+      { 'content-type': 'application/json; charset=latin1' },
+      415,
+      'webhook.unsupported_media_type',
+    ],
+    [
       { 'content-type': 'application/json', 'content-encoding': 'identity' },
       415,
       'webhook.unsupported_media_type',
@@ -161,6 +171,19 @@ describe('generic webhook ingress', () => {
     });
     expect(response.statusCode).toBe(status);
     expect(response.json<{ code: string }>().code).toBe(code);
+  });
+
+  it('accepts case-insensitive JSON media type and UTF-8 parameter', async () => {
+    const { application } = setup();
+    const base = request('{}', currentSecret);
+    const response = await application.inject({
+      ...base,
+      headers: {
+        ...base.headers,
+        'content-type': 'APPLICATION/JSON ; CHARSET=UTF-8',
+      },
+    });
+    expect(response.statusCode).toBe(202);
   });
 
   it('enforces the exact 256 KiB limit', async () => {

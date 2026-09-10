@@ -12,11 +12,13 @@ import type {
   ListWorkflowsInput,
   ListWorkflowVersionsInput,
   WorkflowAuthoringDatabase,
-  WorkflowDraftRecord,
   WorkflowPage,
   WorkflowVersionPage,
+} from './workflow-authoring-contracts.js';
+import type {
+  WorkflowDraftRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-records.js';
 import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/graph';
 
 type ReadStore = Pick<

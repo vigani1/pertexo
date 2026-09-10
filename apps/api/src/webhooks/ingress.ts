@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
+import {
+  idempotencyKeySchema,
+  webhookJsonContentTypeSchema,
+} from '@pertexo/contracts/transport';
 import type { ApiProblemCode } from '@pertexo/contracts/errors';
 
 import {
@@ -30,8 +34,6 @@ import {
 } from '../platform/http/index.js';
 
 const MAX_BODY = 256 * 1024;
-const JSON_MEDIA_TYPE = /^application\/json(?:\s*;\s*charset=utf-8)?$/iu;
-const IDEMPOTENCY_KEY = /^[\x21-\x2b\x2d-\x7e]{1,128}$/u;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
@@ -118,7 +120,7 @@ async function acceptWebhook(
   const contentType = singleHeader(request, 'content-type');
   if (
     contentType === undefined ||
-    !JSON_MEDIA_TYPE.test(contentType) ||
+    !webhookJsonContentTypeSchema.safeParse(contentType).success ||
     headerPresent(request, 'content-encoding')
   ) {
     record(() => {
@@ -361,7 +363,9 @@ function optionalIdempotencyKey(
 ): string | undefined | null {
   if (!headerPresent(request, 'idempotency-key')) return undefined;
   const value = singleHeader(request, 'idempotency-key');
-  return value !== undefined && IDEMPOTENCY_KEY.test(value) ? value : null;
+  return value !== undefined && idempotencyKeySchema.safeParse(value).success
+    ? value
+    : null;
 }
 
 function sha256(value: string | Uint8Array): string {

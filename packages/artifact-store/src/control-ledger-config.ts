@@ -49,18 +49,29 @@ export interface DualRegionControlLedgerConfig {
   readonly recovery: ControlLedgerConfig;
 }
 
+function assertControlBucketsAreDedicated(
+  controlBuckets: readonly string[],
+  environment: Readonly<Record<string, string | undefined>>,
+): void {
+  const artifactBuckets = [
+    environment.ARTIFACT_STORE_BUCKET,
+    environment.ARTIFACT_STORE_RECOVERY_BUCKET,
+  ].filter((bucket): bucket is string => bucket !== undefined);
+  if (
+    controlBuckets.some((controlBucket) =>
+      artifactBuckets.includes(controlBucket),
+    )
+  )
+    throw new Error(
+      'Control ledger buckets must be distinct from artifact store buckets',
+    );
+}
+
 export function parseControlLedgerConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): ControlLedgerConfig {
   const parsed = controlLedgerEnvironmentSchema.parse(environment);
-  if (
-    environment.ARTIFACT_STORE_BUCKET !== undefined &&
-    parsed.CONTROL_LEDGER_BUCKET === environment.ARTIFACT_STORE_BUCKET
-  ) {
-    throw new Error(
-      'CONTROL_LEDGER_BUCKET must be distinct from ARTIFACT_STORE_BUCKET',
-    );
-  }
+  assertControlBucketsAreDedicated([parsed.CONTROL_LEDGER_BUCKET], environment);
   return Object.freeze({
     accessKeyId: parsed.CONTROL_LEDGER_ACCESS_KEY_ID,
     bucket: parsed.CONTROL_LEDGER_BUCKET,
@@ -103,13 +114,9 @@ export function parseDualRegionControlLedgerConfig(
       'Control ledger primary and recovery access key IDs must be distinct',
     );
   }
-  if (
-    environment.ARTIFACT_STORE_BUCKET !== undefined &&
-    recovery.bucket === environment.ARTIFACT_STORE_BUCKET
-  ) {
-    throw new Error(
-      'CONTROL_LEDGER_RECOVERY_BUCKET must be distinct from ARTIFACT_STORE_BUCKET',
-    );
-  }
+  assertControlBucketsAreDedicated(
+    [primary.bucket, recovery.bucket],
+    environment,
+  );
   return Object.freeze({ primary, recovery });
 }
