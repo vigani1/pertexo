@@ -31,3 +31,22 @@ test('validates environment image overrides as well as compose images', () => {
     0,
   );
 });
+
+test('rejects mutable YAML environment image overrides', () => {
+  const errors = validateImagePins(
+    ['env:', '  POSTGRES_IMAGE: postgres:latest'].join('\n'),
+    'fixture.yml',
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /must end in a sha256 digest/u);
+});
+
+test('accepts digest-pinned YAML environment image overrides', () => {
+  assert.deepEqual(
+    validateImagePins(
+      'POSTGRES_IMAGE: postgres:18@sha256:' + 'd'.repeat(64),
+      'fixture.yml',
+    ),
+    [],
+  );
+});

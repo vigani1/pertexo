@@ -19,6 +19,122 @@
   },
   "reviewGroups": [
     {
+      "cohort": "api-orchestration",
+      "file": "apps/api/src/workflow-runs/sse-authorization-lifetime.ts",
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:03f0bc920d43f35d107fc9f3dceb5ea7fd4ef90c91b6f3ca80aeb53a67e08d34",
+          "classification": "unreachable",
+          "justification": "The success handler owns the sole pending authorization promise; reauthorize coalesces every concurrent caller and no code can replace that promise before its own settlement handler runs."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:03f0bc920d43f35d107fc9f3dceb5ea7fd4ef90c91b6f3ca80aeb53a67e08d34",
+          "classification": "unreachable",
+          "justification": "The rejection handler owns the sole pending authorization promise; reauthorize coalesces every concurrent caller and no code can replace that promise before its own settlement handler runs."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:590fa7e8faf94ba03b0d540aa1f3ebf380d55274d1cef91c71c11a55383a14f0",
+          "classification": "unreachable",
+          "justification": "After the synchronous aborted precheck, the abort listener is registered and the timer is assigned in the same JavaScript job; an abort callback cannot interleave before timer assignment."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:590fa7e8faf94ba03b0d540aa1f3ebf380d55274d1cef91c71c11a55383a14f0",
+          "classification": "unreachable",
+          "justification": "The watchdog creates a wait only after its non-aborted loop check, and that wait synchronously assigns its timer; cancellation after the awaited outcome therefore always has a timer to clear."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:88a2b883b7be2a8ea6e8db0ec36939b0cd0727501c44d56af29f7d59074a4f99",
+          "classification": "unreachable",
+          "justification": "The watchdog invokes cancel only after the wait promise resolves, and both abort and deadline resolution set settled first; the unresolved cancel branch is not reachable through this private owner."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 58,
+          "column": 4,
+          "sourceFingerprint": "sha256:266ff2cd2d4e107ea018934a97a2bf0483907884a10e400578d570a3a5fea911",
+          "classification": "defensive",
+          "justification": "Authorization loss can be observed by the watchdog and an explicit refresh near the same boundary; the idempotence guard prevents duplicate stream aborts after the first revocation."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 223,
+          "column": 23,
+          "sourceFingerprint": "sha256:5422639dcd5b65d47be70cacf29b67660db564af74f7eb031c87c75f06fa17dc",
+          "classification": "defensive",
+          "justification": "Native AbortController and composed AbortSignal instances supply an abort reason; the fallback preserves a safe AbortError if a conforming signal implementation ever omits one."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 250,
+          "column": 4,
+          "sourceFingerprint": "sha256:5d4f0142ee500470173a932ca3f91371b9c5c6b4adf870e666b7304b4df8f56c",
+          "classification": "defensive",
+          "justification": "The abort listener is registered once and removed by every competing settlement path; this guard contains duplicate or reentrant EventTarget delivery without changing the resolved outcome."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 260,
+          "column": 4,
+          "sourceFingerprint": "sha256:7f97b21bb0e7039e1424c01eb885803e85df1709f634c0b36ec2844a7a4aa320",
+          "classification": "defensive",
+          "justification": "The watchdog checks the same composed signal immediately before constructing this private wait; the helper precheck safely contains a nonstandard synchronously changing signal."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 266,
+          "column": 4,
+          "sourceFingerprint": "sha256:7b37fab6a19b365e1bbadbad4d4d9604ccf204fe162148bbfc8b7a024ff5fc0b",
+          "classification": "defensive",
+          "justification": "The second abort check closes the narrow registration race between the precheck and listener subscription; ordinary AbortSignal delivery is already exercised through the listener path."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 272,
+          "column": 8,
+          "sourceFingerprint": "sha256:5d4f0142ee500470173a932ca3f91371b9c5c6b4adf870e666b7304b4df8f56c",
+          "classification": "defensive",
+          "justification": "Abort settlement clears the deadline timer and deadline settlement removes the abort listener; this callback guard contains a late host-timer delivery after the wait has already settled."
+        }
+      ]
+    },
+    {
       "cohort": "contracts",
       "file": "packages/contracts/src/http/webhooks.ts",
       "reviews": [
@@ -105,10 +221,20 @@
           "justification": "The append helper and raw-byte counter enforce the output limit before emit; this aggregate check protects future algorithm changes."
         },
         {
-          "branchId": "22",
+          "branchId": "21",
           "locationIndex": 0,
           "branchType": "if",
           "line": 189,
+          "column": 2,
+          "sourceFingerprint": "sha256:200d836b4cc148c34b722bf381d667dd0a260bb30199fd608ce85d0559f5ffbf",
+          "classification": "defensive",
+          "justification": "The streaming redactor checks the monotonic response deadline during chunk processing; ordinary timeout behavior is covered while this exact elapsed-at-check boundary is scheduler-dependent."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 197,
           "column": 2,
           "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
           "classification": "defensive",
@@ -118,7 +244,7 @@
           "branchId": "23",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 190,
+          "line": 198,
           "column": 2,
           "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
           "classification": "defensive",
@@ -136,7 +262,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:2106f9b08c89f386a21a03da338782b6f85d932e1d975f8c83d41cbc8bf02e12",
+          "sourceFingerprint": "sha256:4171a742c8531b074861f8b98178ad60e94fb103c2fcbda035597f7b462bb838",
           "classification": "generated",
           "justification": "V8 reports an implicit early-return fallthrough without a source location; provider dispatch evidence error classes are exercised through the public executor boundary."
         }
@@ -1064,12 +1190,12 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:a80f1a0c04b0f2ad9697477f1d367361f25ec129d4812e32c797e952cd0cceb7",
+          "sourceFingerprint": "sha256:d80062365eaf485581de14ca440c6083facd36b2e9285781a8f8226d9c189486",
           "classification": "generated",
           "justification": "V8 reports this implicit SecureHttpError fallthrough branch without a source location; both possibly-dispatched and predispatch policies are exercised at their source-level decisions."
         },
         {
-          "branchId": "26",
+          "branchId": "27",
           "locationIndex": 2,
           "branchType": "switch",
           "line": 502,
@@ -1090,7 +1216,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:712d44a971c1b17d3681afe5492bb16ec4f88322a8ace33088a14b2c9354fa69",
+          "sourceFingerprint": "sha256:d61b4e93350011541c22039afc9a5862f8feac6f91173396adff1ec4c0f37046",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough without a source location; the surrounding heartbeat decision is exercised at its concrete source coordinates."
         },
@@ -1100,7 +1226,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:4be2077624378902be53c244e29d12b8a42d3aa938d2ca71c507ef8a850f3b97",
+          "sourceFingerprint": "sha256:30587604b80ebcfb8cc289532a4f5d964db12333d27a65c599e146440cec1046",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough without a source location; the executor failure policy is exercised at its concrete source coordinates."
         },
@@ -1128,23 +1254,59 @@
     },
     {
       "cohort": "worker",
+      "file": "apps/worker/src/runtime/worker-readiness-monitor.ts",
+      "reviews": [
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:6b9a80dc942a06641ec8a40fa7349b5f4f0062a1442bab6fcb7f4e1cb8e92ed1",
+          "classification": "unreachable",
+          "justification": "The in-flight promise owns its own finally callback and no other path replaces currentCheck, so a completing check can only clear the same promise; coalescing and shutdown overlap are exercised through the public lifecycle seam."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 32,
+          "column": 6,
+          "sourceFingerprint": "sha256:42bfb52d8964795c113e382450cc37cf679b7cbbf66c5b5cacdd8e89d0c0e65d",
+          "classification": "defensive",
+          "justification": "Revocation attempts both marker operations with Promise.allSettled; a filesystem rejection is retained here so every cleanup failure is propagated together instead of masking the other operation."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 33,
+          "column": 4,
+          "sourceFingerprint": "sha256:7d3c2a6bf96fd8f0a4c97cc1f8af548642660437d19e407376b9d81d32c407d6",
+          "classification": "defensive",
+          "justification": "Production-only marker filesystem failures are aggregated and propagated to the fail-closed lifecycle path; injected marker failures exercise that public shutdown behavior without mutating host /tmp state."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
       "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
       "reviews": [
         {
-          "branchId": "7",
+          "branchId": "1",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 206,
+          "line": 113,
           "column": 4,
           "sourceFingerprint": "sha256:5436fbf2f84969cb70958d9aeb05d70035c9f787c1f21348350a6e843dde9a5a",
           "classification": "defensive",
           "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
         },
         {
-          "branchId": "19",
+          "branchId": "13",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 338,
+          "line": 245,
           "column": 14,
           "sourceFingerprint": "sha256:9e7fd57dfe0b1f0dd46e096683dc73dc6c0c7254e96503d8151214cac2337b2d",
           "classification": "integration",
@@ -1152,20 +1314,20 @@
           "evidenceId": "worker-artifact-reference"
         },
         {
-          "branchId": "19",
+          "branchId": "13",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 347,
+          "line": 254,
           "column": 14,
           "sourceFingerprint": "sha256:52ec9fcee52f59b026c3a6453362d065e76c4fca58c59ffe63398b7168d440f7",
           "classification": "defensive",
           "justification": "Preview artifact persistence is retained for artifact-producing preview executors; the current supported preview cohort produces inline output only."
         },
         {
-          "branchId": "40",
+          "branchId": "34",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 483,
+          "line": 390,
           "column": 13,
           "sourceFingerprint": "sha256:5fc1d333425582dbe5970718e544330e63929cc4f8112173248fb664b21daed8",
           "classification": "integration",
@@ -1355,7 +1517,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:2c38b24842d21cdf588b2ddad207e9c0bb407b190b2de9a4b67206db8adc829c",
+          "sourceFingerprint": "sha256:36907053f166e8f247401d3a3caf7dc8c3647d41182eff101d47df2a73850a35",
           "classification": "generated",
           "justification": "V8 branch 13 in packages/integrations/src/email/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         }
@@ -1371,7 +1533,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:4e139ac324f0299bd8fdaeba9edd406206561293b66848474851cf59e866cfa3",
+          "sourceFingerprint": "sha256:1edd5a66daa5043c4403d7dd70329433654ca9b21c2cd5cea551b7be3f59961a",
           "classification": "generated",
           "justification": "V8 branch 7 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
@@ -1381,25 +1543,25 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:f0cfa3a7bbf0351b4656f7f8107a0798b44260379a1ba161bcace9f0555a57b4",
+          "sourceFingerprint": "sha256:5ff9898be6586be5457eafc48693e1069d253622dcfa19cbbc77fa714ec49d2f",
           "classification": "generated",
           "justification": "V8 branch 10 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
         {
-          "branchId": "26",
+          "branchId": "31",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:434de5f6d2e5d7c37b15063136abce34c0ec0825eb484362540c220420a21674",
+          "sourceFingerprint": "sha256:70f09754247cedb3441b7450569fe98d4daf37477bbcab3f83cff43e146fb405",
           "classification": "generated",
-          "justification": "V8 branch 26 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+          "justification": "V8 branch 29 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
         {
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 47,
+          "line": 48,
           "column": 4,
           "sourceFingerprint": "sha256:609e3741c3dc4f0d94d1774a834de5bc0a4c8718f31dc7fde8478615abb067ad",
           "classification": "defensive",
@@ -1409,7 +1571,7 @@
           "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 186,
+          "line": 187,
           "column": 2,
           "sourceFingerprint": "sha256:9aa634b4e721d84408edd27f3775a324b0729fc5400f13c00b96be2483683aa5",
           "classification": "defensive",
@@ -1664,20 +1826,20 @@
       "file": "packages/integrations/src/http/outcome-policy.ts",
       "reviews": [
         {
-          "branchId": "27",
+          "branchId": "28",
           "locationIndex": 0,
           "branchType": "switch",
-          "line": 152,
+          "line": 153,
           "column": 4,
           "sourceFingerprint": "sha256:3d981430e500086bb0b6b72a718924568ac7d134134f35462502dbf162ad7e4a",
           "classification": "unreachable",
           "justification": "Cancellation is handled before generic secure-error kind derivation, so the later canceled switch arm cannot be reached."
         },
         {
-          "branchId": "27",
+          "branchId": "28",
           "locationIndex": 12,
           "branchType": "switch",
-          "line": 169,
+          "line": 170,
           "column": 4,
           "sourceFingerprint": "sha256:9f1ae61cc4d94db594400f8e93c425fbeb47a43371a22049113e4ee72115c384",
           "classification": "unreachable",
@@ -1693,7 +1855,7 @@
           "branchId": "24",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 421,
+          "line": 420,
           "column": 4,
           "sourceFingerprint": "sha256:d07a4939f26a0b698badf85e2a3ec6a131d496b9b308e5f59491e2ef17109f78",
           "classification": "unreachable",
@@ -1703,7 +1865,7 @@
           "branchId": "32",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 495,
+          "line": 494,
           "column": 4,
           "sourceFingerprint": "sha256:a0c2b4629072d5c53e92a965c26f09e21c390504273843306ef6ed5aeb638344",
           "classification": "unreachable",
@@ -1713,7 +1875,7 @@
           "branchId": "50",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 596,
+          "line": 595,
           "column": 36,
           "sourceFingerprint": "sha256:f381a26b1da4747ed8b31b6addedb4c60aae1f8d4595ac99adbd5bf3865d328b",
           "classification": "defensive",
@@ -1723,7 +1885,7 @@
           "branchId": "58",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 671,
+          "line": 670,
           "column": 2,
           "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
           "classification": "defensive",
@@ -1733,24 +1895,14 @@
           "branchId": "59",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 672,
+          "line": 671,
           "column": 2,
           "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
           "classification": "defensive",
           "justification": "The transport mapper accepts Node timeout-shaped errors in addition to the total deadline; both normalize to the tested timeout outcome."
         },
         {
-          "branchId": "60",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 683,
-          "column": 2,
-          "sourceFingerprint": "sha256:75fcd42c4e69ab799efe9b7aaa1b5a45e9c828d5d6ef3a2aa29cf3fbab0c62e5",
-          "classification": "defensive",
-          "justification": "The client checks the combined signal immediately before each race, leaving only a nondeterministic abort-at-helper-entry interleaving."
-        },
-        {
-          "branchId": "61",
+          "branchId": "62",
           "locationIndex": 1,
           "branchType": "cond-expr",
           "line": 700,
@@ -1760,7 +1912,7 @@
           "justification": "The secure boundary converts non-Error promise rejections to a generic Error so arbitrary values and secrets cannot escape."
         },
         {
-          "branchId": "62",
+          "branchId": "63",
           "locationIndex": 1,
           "branchType": "cond-expr",
           "line": 708,
@@ -1792,24 +1944,14 @@
       "file": "packages/integrations/src/slack/executor.ts",
       "reviews": [
         {
-          "branchId": "8",
+          "branchId": "16",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:fd366ee72f084df29f9e557b6781c305ba488dc76d4145d87329f71a36f8cd94",
+          "sourceFingerprint": "sha256:d59605fe100299e1e94a19849e1b76302f407490f44bb0b828e9b7fc2564ce52",
           "classification": "generated",
-          "justification": "V8 branch 8 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
-        },
-        {
-          "branchId": "12",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:2bf909b656a7d2923eba2402dbba43e8504bb3b7782a70fc3e2d69dcfe1d2732",
-          "classification": "generated",
-          "justification": "V8 branch 12 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+          "justification": "V8 branch 15 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         }
       ]
     },
@@ -2758,6 +2900,16 @@
       "file": "packages/artifact-store/src/store.ts",
       "reviews": [
         {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:846012b624121d9d7c9d833238ef920d18ef43cc47d41946ffdd88720154c3fa",
+          "classification": "unreachable",
+          "justification": "Every production caller of verifiedBody supplies the AbortSignal returned by requestSignal; that helper always creates or composes a signal, so the implicit no-signal arm cannot be reached through ArtifactStore.put, getStream, or validateDirectUpload."
+        },
+        {
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "if",
@@ -2899,6 +3051,26 @@
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/coordinator-observations.ts",
       "reviews": [
+        {
+          "branchId": "17",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 143,
+          "column": 10,
+          "sourceFingerprint": "sha256:e563e76899154b1c4ff9439bc27594878c8d8ee2ee59de99df9a00b4bf9200c9",
+          "classification": "unreachable",
+          "justification": "indexPersistedSuccessfulOutcomes receives facts from parsePersistedObservations and indexes only parsed succeeded outcomes, whose invocationKey is required to be a string; the undefined lookup arm cannot follow that production path."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 144,
+          "column": 49,
+          "sourceFingerprint": "sha256:3d7b881ebda0e4356ece38e1f5b5ee75072f073f559224b2f966c93eb47a8364",
+          "classification": "unreachable",
+          "justification": "parsePersistedObservations rejects a fresh outcome whose invocation is absent or stale before branchSelectionObservations receives the indexed successful outcomes; the missing-node fallback therefore cannot be selected by the public advance operation."
+        },
         {
           "branchId": "6",
           "locationIndex": 1,
@@ -3629,6 +3801,36 @@
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/graph-scheduler.ts",
       "reviews": [
+        {
+          "branchId": "35",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:39b6354b6fed4a4a1d6e2e2e3b21e9854cb291445c697b6654bece538e931015",
+          "classification": "unreachable",
+          "justification": "A parsed checkpoint invocation key is derived from its workflow, node, branch, and iteration identity. Within one scheduler scope it is therefore a root identity, while an existing entry is replaced only by that same root; the implicit inconsistent-key arm requires bypassing checkpoint validation."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:e258effe72639f2b3d65cacd0b5db6f2beb52a7ed5be93dacac4fff0600ac6bb",
+          "classification": "unreachable",
+          "justification": "Validated structured graphs cannot reconverge two branch paths before their declared Merge boundary, and descendant marking stops at Merge nodes. A node therefore cannot first receive a longer path and later an equal or shorter competing path in one scheduling pass."
+        },
+        {
+          "branchId": "62",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 399,
+          "column": 47,
+          "sourceFingerprint": "sha256:9bcce46906c3724bc4d53018ef3430f0287005967f6146fe707aa3ae4c11eae2",
+          "classification": "unreachable",
+          "justification": "indexSchedulerGraph initializes a predecessor array for every graph node before readiness is derived, including isolated roots; the empty-array fallback guards only an internally inconsistent index."
+        },
         {
           "branchId": "4",
           "locationIndex": 0,

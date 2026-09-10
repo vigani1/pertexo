@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 
 const digestPattern = /@sha256:[0-9a-f]{64}$/u;
-const imagePattern = /(?:image:\s*|^[A-Z][A-Z0-9_]*_IMAGE=)([^\s#]+)/u;
+const imagePattern = /(?:image:\s*|^[A-Z][A-Z0-9_]*_IMAGE(?:=|:\s*))([^\s#]+)/u;
 
 /**
  * Validate that every container image reference in a checked-in deployment
@@ -20,10 +20,9 @@ export function validateImagePins(source, label) {
   for (const [index, line] of source.split('\n').entries()) {
     const match = imagePattern.exec(line.trim());
     if (!match) continue;
-    const reference = match[1].replace(
-      /^\$\{[A-Z][A-Z0-9_]*:-([^}]+)\}$/u,
-      '$1',
-    );
+    const reference = match[1]
+      .replace(/^(['"])(.*)\1$/u, '$2')
+      .replace(/^\$\{[A-Z][A-Z0-9_]*:-([^}]+)\}$/u, '$1');
     if (
       reference.includes('${{') ||
       reference.startsWith('pertexo-release-gate:')

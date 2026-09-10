@@ -267,17 +267,30 @@ export function requestAuthenticationHeaders(
   };
 }
 
+export function resolveExerciseTarget(baseUrl, path) {
+  const base = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(base.protocol))
+    fail('base URL must use HTTP or HTTPS');
+  if (
+    typeof path !== 'string' ||
+    !path.startsWith('/') ||
+    path.startsWith('//') ||
+    path.includes('\\')
+  )
+    fail('target must be an absolute same-origin path');
+  const target = new URL(path, base);
+  if (target.origin !== base.origin)
+    fail('target must be an absolute same-origin path');
+  return target;
+}
+
 async function loadInputs(profilePath) {
   const profileBytes = await readFile(profilePath);
   const profile = parseProfile(JSON.parse(profileBytes.toString('utf8')));
   const baseUrl = process.env.PERTEXO_EXERCISE_BASE_URL;
   if (baseUrl === undefined) fail('PERTEXO_EXERCISE_BASE_URL is required');
-  const base = new URL(baseUrl);
-  if (!['http:', 'https:'].includes(base.protocol))
-    fail('base URL must use HTTP or HTTPS');
   const path = process.env[profile.pathEnvironment];
-  if (path === undefined || !path.startsWith('/'))
-    fail(`${profile.pathEnvironment} must be an absolute path`);
+  const target = resolveExerciseTarget(baseUrl, path);
   const bodyFile = process.env[profile.bodyFileEnvironment];
   if (bodyFile === undefined)
     fail(`${profile.bodyFileEnvironment} is required`);
@@ -288,7 +301,7 @@ async function loadInputs(profilePath) {
     body,
     profile,
     profileDigest: sha256(profileBytes),
-    target: new URL(path, base),
+    target,
   };
 }
 

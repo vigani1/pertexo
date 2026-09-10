@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 4,
+  "seed": 15011,
+  "warmupRounds": 1,
+  "rounds": 5,
+  "scenarios": [
+    {
+      "name": "authoring-publication",
+      "description": "Real-role PostgreSQL publication and derived integration-usage behavior.",
+      "databaseScope": "configured-base",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "workflows": 1,
+        "publications": 2
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/database",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/workflow-authoring-publication.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "workflow-create",
+              "count": 1,
+              "population": 1,
+              "boundary": "createWorkflow call through durable returned result"
+            },
+            {
+              "name": "workflow-publish-initial",
+              "count": 1,
+              "population": 1,
+              "boundary": "publishWorkflow call with precomputed representation tag through durable returned result"
+            },
+            {
+              "name": "workflow-publish-change",
+              "count": 1,
+              "population": 1,
+              "boundary": "publishWorkflow call with precomputed representation tag through durable returned result"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "webhook-admission",
+      "description": "Composed API webhook authentication, durable acceptance, replay and rollback.",
+      "databaseScope": "runner-owned-fixture",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "authenticatedDeliveries": 1,
+        "payloadBytes": 23
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/api",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/webhooks/direct-webhook.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "webhook-admit",
+              "count": 1,
+              "population": 1,
+              "boundary": "authenticated webhook request through durable admission response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "schedule-to-start",
+      "description": "A due schedule is scanned, accepted, dispatched and committed as run.started by the coordinator.",
+      "databaseScope": "runner-owned-fixture",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "dueSchedules": 1,
+        "coordinatorAdmissions": 1
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/worker",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/schedule-trigger.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "schedule-to-run-start",
+              "count": 1,
+              "population": 1,
+              "boundary": "release verified due schedule to scanner through durable run.started observation (25ms polling)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "event-visibility",
+      "description": "PostgreSQL event backfill followed by live Redis visibility without duplicates.",
+      "databaseScope": "configured-base",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "backfilledEvents": 3,
+        "liveEvents": 1
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/api",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/executions/run-event-stream.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "event-live-visibility",
+              "count": 1,
+              "population": 1,
+              "boundary": "live event publication through SSE visibility observation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bounded-loop",
+      "description": "Persist and reload a 128-item ordinal-scoped For Each barrier through PostgreSQL.",
+      "databaseScope": "runner-owned-fixture",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "loopItems": 128,
+        "activeOrdinals": 1
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/database",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/coordinator-run-store-foreach.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "loop-state-load",
+              "count": 1,
+              "population": 128,
+              "boundary": "For Each loop-state-load database call through returned durable result"
+            },
+            {
+              "name": "loop-plan-commit",
+              "count": 1,
+              "population": 128,
+              "boundary": "For Each loop-plan-commit database call through returned durable result"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "artifact-streaming",
+      "description": "Composed authenticated upload, dual-store verification and download streaming.",
+      "databaseScope": "configured-base",
+      "concurrency": 1,
+      "fixturePopulation": {
+        "artifactBytes": 1048576,
+        "concurrentBeginRequests": 2,
+        "storageRegions": 2
+      },
+      "commands": [
+        {
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/api",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/artifacts/transfer.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "artifact-begin",
+              "count": 1,
+              "population": 2,
+              "boundary": "composed artifact artifact-begin request through response or stream completion"
+            },
+            {
+              "name": "artifact-upload",
+              "count": 1,
+              "population": 1048576,
+              "boundary": "composed artifact artifact-upload request through response or stream completion"
+            },
+            {
+              "name": "artifact-finalize",
+              "count": 1,
+              "population": 1,
+              "boundary": "composed artifact artifact-finalize request through response or stream completion"
+            },
+            {
+              "name": "artifact-metadata",
+              "count": 1,
+              "population": 1,
+              "boundary": "composed artifact artifact-metadata request through response or stream completion"
+            },
+            {
+              "name": "artifact-download",
+              "count": 1,
+              "population": 1048576,
+              "boundary": "composed artifact artifact-download request through response or stream completion"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "foreground-alone",
+      "description": "Foreground durable admissions on a runner-owned database without retention interference.",
+      "concurrency": 1,
+      "databaseScope": "runner-owned-shared",
+      "fixturePopulation": {
+        "foregroundAcceptances": 32
+      },
+      "commands": [
+        {
+          "participant": "foreground",
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/database",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/transport.integration.test.ts",
+            "-t",
+            "commits and rolls back domain acceptance"
+          ],
+          "expectedOperations": [
+            {
+              "name": "foreground-acceptance",
+              "count": 1,
+              "population": 32,
+              "boundary": "concurrent real-role acceptance transactions through durable commit",
+              "databaseScope": "runner-owned-shared"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "retention-versus-foreground",
+      "description": "A file barrier releases retention scheduling and foreground durable admission together; timestamp intervals must overlap.",
+      "concurrency": 1,
+      "requireOverlap": true,
+      "databaseScope": "runner-owned-shared",
+      "fixturePopulation": {
+        "retentionWorkspaces": 26,
+        "retentionCallers": 6,
+        "foregroundAcceptances": 32
+      },
+      "commands": [
+        {
+          "participant": "retention",
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/database",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/retention-scheduling.integration.test.ts"
+          ],
+          "expectedOperations": [
+            {
+              "name": "retention-schedule",
+              "count": 1,
+              "population": 26,
+              "boundary": "six concurrent scheduleEnforcement calls through durable commit",
+              "databaseScope": "runner-owned-shared"
+            }
+          ]
+        },
+        {
+          "participant": "foreground",
+          "file": "pnpm",
+          "args": [
+            "--filter",
+            "@pertexo/database",
+            "exec",
+            "vitest",
+            "run",
+            "--config",
+            "vitest.integration.config.ts",
+            "test/transport.integration.test.ts",
+            "-t",
+            "commits and rolls back domain acceptance"
+          ],
+          "expectedOperations": [
+            {
+              "name": "foreground-acceptance",
+              "count": 1,
+              "population": 32,
+              "boundary": "concurrent real-role acceptance transactions through durable commit",
+              "databaseScope": "runner-owned-shared"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,14 @@ versioned JSON evidence file. It never writes session, CSRF, webhook signing,
 authorization, or request-body values to evidence. Output creation is exclusive
 so reruns cannot overwrite a prior result.
 
+Executing these profiles against a deployed environment is E01-05 and requires a
+completed
+[external qualification approval packet](../../docs/operations/external-platform-contract.md#e01-05--admitted-load-fairness-and-autoscaling).
+The base URL, every path/session/secret, synthetic workspace and workflow,
+aggregate cost and repetition caps, operator, cleanup owner and approvers must
+be resolved first. The checked-in rates and durations bound one invocation; they
+do not authorize a target, cloud spend, provider send or repeat count.
+
 All profiles require:
 
 - `PERTEXO_EXERCISE_BASE_URL`: target origin.
@@ -31,7 +39,20 @@ Run and validate profiles with:
 pnpm exercise:check
 pnpm exercise:http infrastructure/exercises/profiles/api-steady.json evidence/api-steady.json
 pnpm exercise:http infrastructure/exercises/profiles/webhook-burst.json evidence/webhook-burst.json
+pnpm exercise:http infrastructure/exercises/profiles/large-fan-out.json evidence/large-fan-out.json
+pnpm exercise:http infrastructure/exercises/profiles/long-wait.json evidence/long-wait.json
+pnpm exercise:http infrastructure/exercises/profiles/noisy-tenant-load.json evidence/noisy-tenant-load.json &
+NOISY_PID=$!
+pnpm exercise:http infrastructure/exercises/profiles/noisy-tenant-control.json evidence/noisy-tenant-control.json
+wait "$NOISY_PID"
 ```
+
+Use a dedicated shell for the concurrent pair if the approved operator tooling
+does not preserve the background PID safely. One invocation schedules at most
+1,200 `api-steady`, 15,000 webhook, 600 fan-out, 600 long-wait, 15,000
+noisy-load and 3,000 control requests (35,400 total). Open-loop scheduling can
+record fewer attempts under its in-flight bound; the evidence reports the actual
+count.
 
 Every checked-in scenario expects `202 Accepted`. Any other response, including
 `401`, `403`, or `429`, fails the response-policy check even when throughput,
@@ -56,3 +77,12 @@ environment variables:
 A passing local file does not prove ECS, RDS, regional recovery, pager routing,
 or production SLO attainment. Preserve production evidence in the approved
 operations evidence system, not in Git.
+
+Before launch, verify the target origin and hashed paths belong to the approved
+synthetic environment. During the run, stop all clients on a target mismatch,
+customer/provider effect, safety alarm, database connection-budget breach,
+unbounded backlog or incident-command request. After stopping, do not delete
+durable rows directly: allow accepted work to settle, use supported lifecycle
+commands for synthetic workspaces, confirm queues/outboxes and provider effects
+are settled, and have the packet's cleanup owner sign the retained JSON and
+correlated telemetry record.

@@ -18,7 +18,8 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/worker',
       include: [
-        'src/execution/{failure-notification-delivery,node-attempt-handler,node-runtime-capabilities,preview-attempt-runtime}.ts',
+        'src/execution/{failure-notification-delivery,node-attempt-handler,node-runtime-capabilities,preview-attempt-runtime,provider-connection-runtime}.ts',
+        'src/runtime/{worker-process-shutdown,worker-readiness-monitor,worker-readiness}.ts',
       ],
       // These gates establish the measured critical-runtime baseline. Raising
       // them requires tests for additional failure branches; integration-only

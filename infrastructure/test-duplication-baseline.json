@@ -318,20 +318,6 @@
         },
         {
           "files": [
-            "packages/contracts/src/schedules.ts",
-            "packages/contracts/src/webhooks.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "The independently generated schedule and webhook OpenAPI documents intentionally spell out the same management security headers and standard error responses at each contract boundary.",
-          "clones": [
-            {
-              "hash": "0abf10fd32ba05bc6808f9600c3b4634cf45966860fef875d49fa783b47d3725",
-              "maxLines": 30
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/src/connections/controllers.ts",
             "apps/api/src/node-testing/controller.ts"
           ],

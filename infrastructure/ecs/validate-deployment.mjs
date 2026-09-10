@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { calculateDatabaseConnectionBudget } from './validate-database-connection-budget.mjs';
+import { validateReadinessHealthCheck } from './validate-readiness-health-check.mjs';
 import {
   collectRuntimeWorkspaces,
   expectedCommands,
@@ -61,8 +62,14 @@ const expectedScalingSignals = new Map([
   ],
 ]);
 const readinessMarkers = new Map([
-  ['worker', '/tmp/pertexo-worker-ready'],
-  ['lifecycle-command', '/tmp/pertexo-lifecycle-command-ready'],
+  [
+    'worker',
+    {
+      ready: '/tmp/pertexo-worker-ready',
+      notReady: '/tmp/pertexo-worker-not-ready',
+    },
+  ],
+  ['lifecycle-command', { ready: '/tmp/pertexo-lifecycle-command-ready' }],
 ]);
 const requiredServingConfiguration = new Map([
   [
@@ -230,11 +237,8 @@ for (const [name, expectedEntry] of expectedCommands) {
   if (workload.kind !== 'service' && workload.healthCheck)
     throw new Error(`${name} job must report health by exit status`);
   const readinessMarker = readinessMarkers.get(name);
-  if (
-    readinessMarker !== undefined &&
-    !workload.healthCheck.join(' ').includes(readinessMarker)
-  )
-    throw new Error(`${name} health check must require its readiness marker`);
+  if (readinessMarker !== undefined)
+    validateReadinessHealthCheck(name, workload.healthCheck, readinessMarker);
   if (
     telemetryWorkloads.has(name) &&
     !workload.configuration.includes('OTEL_EXPORTER_OTLP_ENDPOINT')
