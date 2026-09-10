@@ -1,7 +1,7 @@
-import { z } from 'zod';
-
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -11,7 +11,6 @@ import {
 } from './openapi-primitives.js';
 
 import { apiProblemSchema } from './errors/api-problem.js';
-import { idempotencyKeySchema } from './http/identity-workspace.js';
 import {
   lastRunEventIdHeaderSchema,
   workflowNodeRunSummarySchema,
@@ -65,18 +64,8 @@ const problemResponses = Object.freeze({
 const workspaceParameter = pathParameter('workspaceId', 'Workspace identifier');
 const workflowParameter = pathParameter('workflowId', 'Workflow identifier');
 const runParameter = pathParameter('runId', 'Workflow run identifier');
-const csrfParameter = {
-  name: 'x-csrf-token',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(z.string().min(16).max(512), 'input'),
-} as const;
-const idempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(idempotencyKeySchema, 'input'),
-} as const;
+const csrfParameter = csrfHeaderParameter();
+const idempotencyParameter = idempotencyHeaderParameter();
 const lastEventIdParameter = {
   name: 'Last-Event-ID',
   in: 'header',

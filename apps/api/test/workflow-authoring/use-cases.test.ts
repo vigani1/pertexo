@@ -116,7 +116,6 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
     }),
     listWorkflows: vi.fn().mockResolvedValue({ items: [workflow()] }),
     getDraft: vi.fn().mockResolvedValue(draft()),
-    getVersion: vi.fn(),
     listVersions: vi.fn().mockResolvedValue({ items: [version()] }),
     saveDraft: vi.fn().mockResolvedValue(draft({ revision: 2 })),
     publishWorkflow: vi.fn().mockResolvedValue({
@@ -159,7 +158,6 @@ describe('workflow authoring application seams', () => {
     });
     expect(result.body.revision).toBe(2);
     expect(result.representationTag).not.toBe(representationTag);
-    expect(store.getVersion).not.toHaveBeenCalled();
     expect(store.getDraft).not.toHaveBeenCalled();
     expect(store.publishWorkflow).not.toHaveBeenCalled();
   });

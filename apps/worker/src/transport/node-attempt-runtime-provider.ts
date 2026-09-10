@@ -18,9 +18,51 @@ import {
   type TransportModuleDependencies,
 } from './transport-tokens.js';
 
+export type NodeAttemptActivation = Readonly<{
+  preview: boolean;
+  production: boolean;
+}>;
+
+type NodeAttemptRuntimeProviderFactories = Readonly<{
+  createPreviewInvoker: typeof createPlatformPreviewNodeInvoker;
+  createPreviewRunStore: typeof createDatabasePreviewAttemptRunStore;
+  createRuntime: typeof createNodeAttemptRuntime;
+}>;
+
+const defaultFactories: NodeAttemptRuntimeProviderFactories = {
+  createPreviewInvoker: createPlatformPreviewNodeInvoker,
+  createPreviewRunStore: createDatabasePreviewAttemptRunStore,
+  createRuntime: createNodeAttemptRuntime,
+};
+
+export function nodeAttemptActivation(
+  enabledJobNames: readonly string[],
+): NodeAttemptActivation {
+  return Object.freeze({
+    production: enabledJobNames.includes(JOB_NAME.executeNodeAttempt),
+    preview: enabledJobNames.includes(JOB_NAME.executePreviewAttempt),
+  });
+}
+
+async function closePreviewStoreAfterFailure(
+  store: ReturnType<typeof createDatabasePreviewAttemptRunStore>,
+  primary: unknown,
+): Promise<never> {
+  try {
+    await store.close();
+  } catch (cleanupError: unknown) {
+    throw new AggregateError(
+      [primary, cleanupError],
+      'Preview runtime construction failed and its run store could not be closed',
+    );
+  }
+  throw primary;
+}
+
 export function nodeAttemptRuntimeProvider(
   config: WorkerConfig,
   dependencies: TransportModuleDependencies,
+  factories: NodeAttemptRuntimeProviderFactories = defaultFactories,
 ): Provider {
   return {
     provide: NODE_ATTEMPT_RUNTIME,
@@ -32,35 +74,43 @@ export function nodeAttemptRuntimeProvider(
         return dependencies.nodeAttemptRuntime;
       if (dependencies.dispatchConsumerCapabilities !== undefined)
         return undefined;
-      const enabledJobNames = config.outboxDispatcher.enabledJobNames;
-      const nodeAttemptEnabled = enabledJobNames.includes(
-        JOB_NAME.executeNodeAttempt,
+      const activation = nodeAttemptActivation(
+        config.outboxDispatcher.enabledJobNames,
       );
-      const previewEnabled = enabledJobNames.includes(
-        JOB_NAME.executePreviewAttempt,
-      );
-      if (!nodeAttemptEnabled && !previewEnabled) return undefined;
-      let previewRunStore:
-        ReturnType<typeof createDatabasePreviewAttemptRunStore> | undefined;
-      try {
-        if (previewEnabled) {
-          previewRunStore = createDatabasePreviewAttemptRunStore(
-            config.database,
-            dependencies.databaseRuntime,
-          );
-        }
-        return await composeNodeAttemptRuntime(
+      if (!activation.production && !activation.preview) return undefined;
+      if (!activation.preview)
+        return composeNodeAttemptRuntime(
           config,
           observer,
           dependencies.databaseRuntime,
-          previewEnabled && previewRunStore !== undefined
-            ? { runStore: previewRunStore }
-            : undefined,
+          undefined,
+          factories,
         );
+
+      const previewRunStore = factories.createPreviewRunStore(
+        config.database,
+        dependencies.databaseRuntime,
+      );
+      let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
+      try {
+        previewInvoker = factories.createPreviewInvoker({
+          releaseCohort: config.nodeCompatibilityCohort,
+          registry: createPlatformNodeRegistryForRelease(
+            platformServingRegistryRelease(config.nodeCompatibilityCohort),
+          ),
+        });
       } catch (error: unknown) {
-        await previewRunStore?.close();
-        throw error;
+        return closePreviewStoreAfterFailure(previewRunStore, error);
       }
+      // Ownership of both preview resources transfers at this call boundary;
+      // createNodeAttemptRuntime closes them on every later failure and close.
+      return composeNodeAttemptRuntime(
+        config,
+        observer,
+        dependencies.databaseRuntime,
+        { invoker: previewInvoker, runStore: previewRunStore },
+        factories,
+      );
     },
   };
 }
@@ -71,11 +121,13 @@ async function composeNodeAttemptRuntime(
   databaseRuntime: TransportModuleDependencies['databaseRuntime'],
   preview:
     | Readonly<{
+        invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
         runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
       }>
     | undefined,
+  factories: NodeAttemptRuntimeProviderFactories,
 ): Promise<NodeAttemptRuntime | undefined> {
-  return createNodeAttemptRuntime({
+  return factories.createRuntime({
     ...(config.artifactStore === undefined
       ? {}
       : { artifactStore: config.artifactStore }),
@@ -87,16 +139,14 @@ async function composeNodeAttemptRuntime(
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,
+    productionEnabled: nodeAttemptActivation(
+      config.outboxDispatcher.enabledJobNames,
+    ).production,
     ...(preview === undefined
       ? {}
       : {
           preview: {
-            invoker: createPlatformPreviewNodeInvoker({
-              releaseCohort: config.nodeCompatibilityCohort,
-              registry: createPlatformNodeRegistryForRelease(
-                platformServingRegistryRelease(config.nodeCompatibilityCohort),
-              ),
-            }),
+            invoker: preview.invoker,
             runStore: preview.runStore,
           },
         }),

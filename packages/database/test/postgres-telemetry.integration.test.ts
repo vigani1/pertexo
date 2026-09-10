@@ -14,6 +14,7 @@ function telemetryMeter(): {
   activeLockWait(): number | undefined;
   readonly lockWaitDurations: number[];
   readonly meter: Meter;
+  readonly poolCheckoutDurations: number[];
   readonly transactionOutcomes: string[];
 } {
   const callbacks = new Map<
@@ -21,6 +22,7 @@ function telemetryMeter(): {
     (result: { observe(value: number): void }) => void
   >();
   const lockWaitDurations: number[] = [];
+  const poolCheckoutDurations: number[] = [];
   const transactionOutcomes: string[] = [];
   const meter = {
     createHistogram(name: string) {
@@ -28,6 +30,11 @@ function telemetryMeter(): {
         record(value: number, attributes?: Record<string, string>) {
           if (name === DATABASE_METRIC_NAME.lockWaitDuration)
             lockWaitDurations.push(value);
+          if (
+            name === DATABASE_METRIC_NAME.poolCheckoutDuration &&
+            attributes?.outcome === 'success'
+          )
+            poolCheckoutDurations.push(value);
           if (
             name === DATABASE_METRIC_NAME.transactionDuration &&
             attributes?.outcome !== undefined
@@ -58,6 +65,7 @@ function telemetryMeter(): {
     },
     lockWaitDurations,
     meter,
+    poolCheckoutDurations,
     transactionOutcomes,
   };
 }
@@ -120,4 +128,22 @@ it('records a transaction abandoned through the real pool release seam', async (
     await pool.end();
   }
   expect(telemetry.transactionOutcomes).toEqual(['abandoned', 'abandoned']);
+});
+
+it('measures real pool checkout contention', async () => {
+  const telemetry = telemetryMeter();
+  const pool = createDatabasePool(
+    { connectionString: databaseUrl, max: 1 },
+    { meter: telemetry.meter, monitorLockWaits: false },
+  );
+  const owner = await pool.connect();
+  const waiting = pool.connect();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  owner.release();
+  const waiter = await waiting;
+  waiter.release();
+  await pool.end();
+
+  expect(telemetry.poolCheckoutDurations).toHaveLength(2);
+  expect(telemetry.poolCheckoutDurations[1]).toBeGreaterThanOrEqual(0.04);
 });

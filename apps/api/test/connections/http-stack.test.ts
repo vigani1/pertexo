@@ -360,9 +360,42 @@ describe('connections real Nest HTTP stack', () => {
     expect(connection.encryption.open).toHaveBeenCalledOnce();
     expect(connection.markConnectionTestDispatched).toHaveBeenCalledOnce();
 
+    const destinationPath = `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`;
+    const unauthenticatedDestination = await application.inject({
+      method: 'POST',
+      url: destinationPath,
+      payload: {
+        expectedVersion: 1,
+        config: {
+          kind: 'slack',
+          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          channelId: 'C67890',
+        },
+      },
+    });
+    expect(unauthenticatedDestination.statusCode).toBe(401);
+    const forbiddenDestination = await application.inject({
+      method: 'POST',
+      url: destinationPath.replace(
+        workspaceId,
+        'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      ),
+      headers: { ...headers, 'idempotency-key': 'destination-hidden-wire' },
+      payload: {
+        expectedVersion: 1,
+        config: {
+          kind: 'slack',
+          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          channelId: 'C67890',
+        },
+      },
+    });
+    expect(forbiddenDestination.statusCode).toBe(404);
+    expect(connection.appendDestinationVersion).not.toHaveBeenCalled();
+
     const appended = await application.inject({
       method: 'POST',
-      url: `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
+      url: destinationPath,
       headers: { ...headers, 'idempotency-key': 'destination-append-wire' },
       payload: {
         expectedVersion: 1,

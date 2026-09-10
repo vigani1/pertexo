@@ -73,6 +73,35 @@ function store(kind: 'slack' | 'email'): FailureNotificationStore {
   };
 }
 
+function successfulSlackDelivery(persistence: FailureNotificationStore) {
+  const sendMessage = vi.fn<SlackClient['sendMessage']>(async (input) => {
+    await input.beforeDispatch();
+    return {
+      kind: 'succeeded' as const,
+      channelId: 'C12345',
+      messageTs: '1.2',
+    };
+  });
+  const delivery = createProviderFailureNotificationDelivery({
+    store: persistence,
+    encryption: {
+      open: vi.fn().mockResolvedValue(
+        new TextEncoder().encode(
+          JSON.stringify({
+            schemaVersion: 1,
+            type: 'slack_bot_token',
+            botToken: 'xoxb-1234567890',
+          }),
+        ),
+      ),
+    },
+    slack: { sendMessage },
+    email: { sendNotification: vi.fn() },
+    workerId: 'worker-1',
+  });
+  return { delivery, sendMessage };
+}
+
 describe('provider failure notification delivery', () => {
   it.each(['slack', 'email'] as const)(
     'classifies pre-fence %s destination-store loss without provider bytes',
@@ -372,37 +401,41 @@ describe('provider failure notification delivery', () => {
   );
   it('sends deterministic Slack text only after the durable fence', async () => {
     const persistence = store('slack');
-    const sendMessage = vi.fn<SlackClient['sendMessage']>(async (input) => {
-      await input.beforeDispatch();
-      return {
-        kind: 'succeeded' as const,
-        channelId: 'C12345',
-        messageTs: '1.2',
-      };
-    });
-    const delivery = createProviderFailureNotificationDelivery({
-      store: persistence,
-      encryption: {
-        open: vi.fn().mockResolvedValue(
-          new TextEncoder().encode(
-            JSON.stringify({
-              schemaVersion: 1,
-              type: 'slack_bot_token',
-              botToken: 'xoxb-1234567890',
-            }),
-          ),
-        ),
-      },
-      slack: { sendMessage },
-      email: { sendNotification: vi.fn() },
-      workerId: 'worker-1',
-    });
+    const { delivery, sendMessage } = successfulSlackDelivery(persistence);
 
     await expect(
       delivery.deliver({ ...identity, sideEffectClass: 'unsafe' }),
     ).resolves.toMatchObject({ kind: 'delivered', providerReference: '1.2' });
     expect(vi.mocked(persistence.fenceDispatch)).toHaveBeenCalledOnce();
     expect(sendMessage.mock.calls[0]?.[0].text).toContain('provider.failure');
+  });
+
+  it('renders a run-level timeout without inventing a node', async () => {
+    const persistence = store('slack');
+    const { delivery, sendMessage } = successfulSlackDelivery(persistence);
+
+    await expect(
+      delivery.deliver({
+        ...identity,
+        sideEffectClass: 'unsafe',
+        context: {
+          ...context,
+          terminalStatus: 'timed_out',
+          primaryFailure: {
+            source: 'run',
+            runStatus: 'timed_out',
+            safeErrorCode: 'execution.deadline_exceeded',
+          },
+        },
+      }),
+    ).resolves.toMatchObject({ kind: 'delivered' });
+    expect(sendMessage.mock.calls[0]?.[0].text).toContain(
+      'Failure: execution.deadline_exceeded',
+    );
+    expect(sendMessage.mock.calls[0]?.[0].text).toContain(
+      'Scope: run (timed_out)',
+    );
+    expect(sendMessage.mock.calls[0]?.[0].text).not.toContain('Node:');
   });
 
   it('binds identical Resend identity and payload before retryable delivery', async () => {

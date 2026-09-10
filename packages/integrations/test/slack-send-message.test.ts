@@ -22,6 +22,7 @@ import {
   type SecureHttpRequest,
   type SecureHttpResponse,
 } from '../src/server.js';
+import { providerCredentialFailureCases } from './support/provider-credential-failure-cases.js';
 
 const connectionId = '22222222-2222-4222-8222-222222222222';
 const secretVersionId = '33333333-3333-4333-8333-333333333333';
@@ -208,7 +209,7 @@ describe('slack.send_message@1', () => {
       }).execute(invocation(state.value)),
     ).rejects.toMatchObject({
       kind: 'retry',
-      errorKind: 'network',
+      errorKind: 'provider',
       possiblyDispatched: false,
     });
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
@@ -680,4 +681,75 @@ describe('slack.send_message@1', () => {
       possiblyDispatched: false,
     });
   });
+
+  it.each(providerCredentialFailureCases)(
+    'preserves %s without sending provider bytes',
+    async (_name, stage, error, kind, errorKind) => {
+      const state = runtime({
+        kind: 'succeeded',
+        channelId: 'C123ABC',
+        messageTs: '1724412345.000100',
+      });
+      const originalConnections = state.value.connections;
+      if (originalConnections === undefined)
+        throw new Error('Expected connection runtime');
+      state.value = Object.freeze({
+        ...state.value,
+        connections: {
+          assertCurrent:
+            stage === 'fence'
+              ? () => Promise.reject(error)
+              : state.assertCurrent,
+          resolve:
+            stage === 'resolve'
+              ? () => Promise.reject(error)
+              : originalConnections.resolve.bind(originalConnections),
+        },
+      });
+
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({ kind, errorKind, possiblyDispatched: false });
+      expect(state.beforeDispatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['resolve', 'fence'] as const)(
+    'preserves an earlier uncertain dispatch across a transient %s outage',
+    async (stage) => {
+      const state = runtime({
+        kind: 'succeeded',
+        channelId: 'C123ABC',
+        messageTs: '1724412345.000100',
+      });
+      const connections = state.value.connections;
+      if (connections === undefined) throw new Error('connections missing');
+      state.value = Object.freeze({
+        ...state.value,
+        providerDispatchUnresolved: true,
+        connections: {
+          assertCurrent:
+            stage === 'fence'
+              ? () => Promise.reject(new Error('postgres unavailable'))
+              : state.assertCurrent,
+          resolve:
+            stage === 'resolve'
+              ? () => Promise.reject(new Error('postgres unavailable'))
+              : connections.resolve.bind(connections),
+        },
+      });
+
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      });
+    },
+  );
 });

@@ -6,6 +6,7 @@ import {
   createConnectionDatabase,
   createWorkspaceDatabase,
   parseDatabaseConfig,
+  requestWorkflowRunCancellation,
   type ConnectionDatabase,
 } from '@pertexo/database/testing';
 import {
@@ -45,6 +46,9 @@ export const apiUrl =
 export const workerUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+export const operatorUrl =
+  process.env.DATABASE_OPERATOR_URL ??
+  'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 export const redisUrl = (() => {
@@ -103,6 +107,10 @@ const ownerPool = new Pool({
 const workerPool = new Pool({
   connectionString: databaseUrl(workerUrl),
   max: 3,
+});
+const operatorPool = new Pool({
+  connectionString: databaseUrl(operatorUrl),
+  max: 1,
 });
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
@@ -312,6 +320,84 @@ function graph() {
   };
 }
 
+type ProviderScenario = 'email' | 'http' | 'slack';
+
+function providerScenarioNode(provider: ProviderScenario) {
+  switch (provider) {
+    case 'http':
+      return {
+        id: 'provider',
+        definition: { key: 'http.request', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: {
+          method: 'GET',
+          url: 'https://provider.example.test/scenario',
+          headers: { accept: 'application/json' },
+          timeoutMillis: 5_000,
+          maxRedirects: 0,
+          maxResponseBytes: 100_000,
+          inlineResponseBytes: 100_000,
+        },
+        inputMappings: {},
+        connectionRefs: { http_headers: connectionId },
+      };
+    case 'slack':
+      return {
+        id: 'provider',
+        definition: { key: 'slack.send_message', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: { timeoutMillis: 5_000 },
+        inputMappings: {
+          channelId: { kind: 'literal' as const, value: 'C123ABC' },
+          text: { kind: 'literal' as const, value: slackMessageText },
+        },
+        connectionRefs: { slack_bot_token: slackConnectionId },
+      };
+    case 'email':
+      return {
+        id: 'provider',
+        definition: { key: 'email.send_notification', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: { timeoutMillis: 5_000 },
+        inputMappings: {
+          toEmail: { kind: 'literal' as const, value: emailRecipient },
+          subject: { kind: 'literal' as const, value: emailSubject },
+          text: { kind: 'literal' as const, value: emailText },
+        },
+        connectionRefs: { resend_api_key: emailConnectionId },
+      };
+  }
+}
+
+function providerScenarioGraph(provider: ProviderScenario) {
+  return {
+    schemaVersion: 1 as const,
+    settings: { maxRunDurationMs: 60_000 },
+    nodes: [
+      {
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      providerScenarioNode(provider),
+    ],
+    edges: [
+      {
+        id: 'manual-provider',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'provider', port: 'in' },
+      },
+    ],
+  };
+}
+
 class ContextKeyProvider implements EnvelopeKeyProvider {
   private readonly key = randomBytes(32);
 
@@ -486,6 +572,115 @@ export async function acceptRun() {
   );
 }
 
+export async function acceptProviderScenarioRun(provider: ProviderScenario) {
+  const scenarioWorkflowId = randomUUID();
+  const scenarioWorkflowVersionId = randomUUID();
+  const scenarioGraph = providerScenarioGraph(provider);
+  const executable = buildWorkflowExecutableV2({
+    graph: scenarioGraph,
+    release: activeRelease,
+  });
+  await withOwner(async (client) => {
+    await client.query(
+      `insert into app.workflows (id,workspace_id,name,created_by)
+       values ($1,$2,$3,$4)`,
+      [
+        scenarioWorkflowId,
+        workspaceId,
+        `Provider ${provider} scenario`,
+        actorId,
+      ],
+    );
+    await client.query(
+      `insert into app.workflow_versions (
+         id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+         checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by
+       ) values ($1,$2,$3,1,1,$4::jsonb,$5,2,$6::jsonb,$7,$8)`,
+      [
+        scenarioWorkflowVersionId,
+        workspaceId,
+        scenarioWorkflowId,
+        JSON.stringify(scenarioGraph),
+        executable.checksum,
+        JSON.stringify(executable.envelope),
+        activeRelease.epoch,
+        actorId,
+      ],
+    );
+  });
+  const accepted = await apiDatabase.withWorkspace(workspaceId, (transaction) =>
+    acceptWorkflowRun(transaction, {
+      engineVersion: 'http-attempt-engine-v1',
+      initialCheckpoint: createCheckpoint({
+        engineVersion: 'http-attempt-engine-v1',
+        workflowVersionId: scenarioWorkflowVersionId,
+        iterationBudget: 0,
+        nextEventSequence: 2,
+      }),
+      keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      operation: 'workflow.run.accept',
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      runInput: {},
+      scope: `http-attempt-scenario:${scenarioWorkflowId}`,
+      triggerType: 'manual',
+      workflowId: scenarioWorkflowId,
+      workflowVersionId: scenarioWorkflowVersionId,
+    }),
+  );
+  return Object.freeze({
+    ...accepted,
+    workflowId: scenarioWorkflowId,
+    workflowVersionId: scenarioWorkflowVersionId,
+  });
+}
+
+export async function cancelProviderScenarioRun(runId: string): Promise<void> {
+  await apiDatabase.withWorkspace(workspaceId, (transaction) =>
+    requestWorkflowRunCancellation(transaction, {
+      actor: 'http-attempt-integration',
+      reason: 'Exercise durable cancellation in the composed worker proof',
+      runId,
+    }),
+  );
+}
+
+export async function expireProviderScenarioRun(runId: string): Promise<void> {
+  await withOwner((client) =>
+    client.query(
+      `update app.workflow_runs
+          set deadline_at=clock_timestamp(),updated_at=clock_timestamp()
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, runId],
+    ),
+  );
+}
+
+export async function reclaimProviderScenarioAttempt(input: {
+  attemptId: string;
+  expectedFence: number;
+}) {
+  const result = await operatorPool.query<{
+    command_outcome: string;
+    result: {
+      fenceToken: number;
+      outboxEventId: string;
+      outcome: string;
+      schemaVersion: number;
+    };
+  }>(
+    `select command_outcome,result
+       from app.reconcile_operator_attempt(
+         $1,$2,$3,$4,'reclaim','http-attempt-operator',
+         'Recover an expired keyed provider attempt in the composed proof',false
+       )`,
+    [randomUUID(), workspaceId, input.attemptId, input.expectedFence],
+  );
+  const row = result.rows[0];
+  if (row === undefined) throw new Error('Attempt reclaim result missing');
+  return row;
+}
+
 export async function attemptDelivery(
   runId: string,
   nodeId: string,
@@ -543,7 +738,7 @@ export function installHttpNodeAttemptFixture(): void {
       );
       await admin.query(`revoke all on database "${databaseName}" from public`);
       await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_operator`,
       );
     } finally {
       await admin.end();
@@ -560,6 +755,7 @@ export function installHttpNodeAttemptFixture(): void {
       connectionDatabase?.close(),
       apiDatabase.close(),
       ownerPool.end(),
+      operatorPool.end(),
       workerPool.end(),
     ]);
     const admin = new Pool({ connectionString: adminUrl, max: 1 });

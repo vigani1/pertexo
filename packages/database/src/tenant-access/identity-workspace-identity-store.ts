@@ -23,7 +23,7 @@ import type {
   ResolveOrCreateIdentityInput,
   ResolvedIdentity,
   UserRecord,
-} from './identity-workspace.js';
+} from './identity-workspace-contracts.js';
 import { withPlatformTransaction } from './workspace.js';
 
 const issuerSchema = z.url().max(2048);

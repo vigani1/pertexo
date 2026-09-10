@@ -17,7 +17,7 @@ import {
   type WorkflowVersionsResponse,
   type WorkflowSummary,
 } from '@pertexo/contracts/workflow-authoring';
-import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
+import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 
 export {
   workflowCreateRequestSchema,
@@ -42,22 +42,20 @@ export type {
   WorkflowSummary,
 };
 
-export type WorkflowAuthoringRequest = Readonly<{
-  method?: string;
-  headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
-  cookies?: Readonly<Record<string, string | undefined>>;
-  requestId?: string;
-  traceId?: string;
-  params?: unknown;
-  query?: unknown;
-  identitySession?: Readonly<{
-    userId: string;
-    sessionId: string;
-    expiresAt: Date;
-    clientMetadata: Readonly<Record<string, string>>;
-  }>;
-  authorizedWorkspace?: AuthorizedWorkspaceContext;
-}>;
+export type WorkflowAuthoringRequest = Readonly<
+  Pick<
+    IdentityWorkspaceRequest,
+    | 'authorizedWorkspace'
+    | 'cookies'
+    | 'headers'
+    | 'identitySession'
+    | 'method'
+    | 'params'
+    | 'query'
+    | 'requestId'
+    | 'traceId'
+  >
+>;
 
 export interface WorkflowResponse {
   header(name: string, value: string): unknown;

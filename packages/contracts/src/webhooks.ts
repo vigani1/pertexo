@@ -9,12 +9,15 @@ import {
 } from './http/webhooks.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
   pathParameter as openApiPathParameter,
   problemResponse,
   responseReference,
+  webhookContentTypeHeaderParameter,
 } from './openapi-primitives.js';
 
 function pathParameter(name: string, pattern?: string) {
@@ -27,18 +30,8 @@ function pathParameter(name: string, pattern?: string) {
 const workspaceParameter = pathParameter('workspaceId');
 const workflowParameter = pathParameter('workflowId');
 const triggerParameter = pathParameter('triggerId');
-const idempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 1, maxLength: 128 },
-} as const;
-const csrfParameter = {
-  name: 'X-CSRF-Token',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 1, maxLength: 256 },
-} as const;
+const idempotencyParameter = idempotencyHeaderParameter();
+const csrfParameter = csrfHeaderParameter('X-CSRF-Token');
 const managementParameters = [
   workspaceParameter,
   workflowParameter,
@@ -170,12 +163,7 @@ export const webhooksOpenApiDocument = Object.freeze({
         operationId: 'acceptWebhook',
         parameters: [
           pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$'),
-          {
-            name: 'Content-Type',
-            in: 'header',
-            required: true,
-            schema: { type: 'string', pattern: '^application/json' },
-          },
+          webhookContentTypeHeaderParameter(),
           {
             name: 'X-Pertexo-Timestamp',
             in: 'header',

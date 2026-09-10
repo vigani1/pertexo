@@ -8,6 +8,11 @@ import {
   retention,
   userId,
 } from './support/retention.integration.support.js';
+import {
+  readQ11DatabaseIdentity,
+  recordQ11Operation,
+  waitForQ11OverlapBarrier,
+} from './support/q11-benchmark.js';
 
 describe('retention enforcement scheduling', () => {
   it('schedules bounded enforcement exactly once across concurrency and restart', async () => {
@@ -63,8 +68,18 @@ describe('retention enforcement scheduling', () => {
       throw error;
     }
 
+    await waitForQ11OverlapBarrier();
+    const databaseIdentity = await readQ11DatabaseIdentity(maintenanceUrl);
+    const operationStartedAt = performance.now();
     const concurrent = await Promise.all(
       Array.from({ length: 6 }, () => retention.scheduleEnforcement()),
+    );
+    recordQ11Operation(
+      'retention-schedule',
+      operationStartedAt,
+      26,
+      'six concurrent scheduleEnforcement calls through durable commit',
+      databaseIdentity,
     );
     expect(
       concurrent.reduce((sum, result) => sum + result.scannedCount, 0),

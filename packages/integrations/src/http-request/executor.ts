@@ -5,6 +5,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
+  ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import type { z } from 'zod';
@@ -197,6 +198,11 @@ async function executeHttpRequest(
     });
   } catch (error: unknown) {
     body?.fill(0);
+    if (runtime.providerDispatchUnresolved === true)
+      throw new HttpRequestExecutorError(
+        Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+        true,
+      );
     if (error instanceof ProviderExecutionRateLimitError)
       throw new HttpRequestExecutorError(
         Object.freeze({
@@ -206,8 +212,25 @@ async function executeHttpRequest(
         }),
         false,
       );
+    if (error instanceof ProviderCredentialInvalidError)
+      throw new HttpRequestExecutorError(
+        Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+        false,
+      );
+    if (
+      invocation.signal.aborted ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      throw new HttpRequestExecutorError(
+        Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
+        false,
+      );
     throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+      Object.freeze({
+        kind: 'retry',
+        errorKind: 'provider',
+        reuseProviderKey: false,
+      }),
       false,
     );
   }
@@ -255,6 +278,11 @@ async function executeHttpRequest(
       if (!(error instanceof SecureHttpError))
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
+          true,
+        );
+      if (runtime.providerDispatchUnresolved === true)
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
           true,
         );
       if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)

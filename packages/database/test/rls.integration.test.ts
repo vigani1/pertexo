@@ -430,7 +430,7 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0085_artifact_media_type_http_safety.sql',
+      migrationHead: '0086_operator_attempt_reclaim_state.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

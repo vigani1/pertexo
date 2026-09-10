@@ -1,4 +1,8 @@
-import { HeadBucketCommand } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadBucketCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +12,7 @@ import {
   type ObjectStoreRequestObservation,
   type ObjectStoreSafetyObservation,
 } from '../src/object-store-telemetry.js';
+import { createArtifactDownloadPresigner } from '../src/artifact-download.js';
 import { createArtifactStore } from '../src/store.js';
 import type { S3ClientLike } from '../src/store.js';
 
@@ -29,6 +34,44 @@ function recordingObserver() {
 }
 
 describe('object-store telemetry', () => {
+  it('observes the production GET presigner without network I/O', async () => {
+    const recording = recordingObserver();
+    const client = new S3Client({
+      credentials: {
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+      },
+      endpoint: 'http://localhost:9090',
+      forcePathStyle: true,
+      region: 'us-east-1',
+    });
+    try {
+      const presign = createArtifactDownloadPresigner(
+        client,
+        recording.observer,
+        'artifact',
+      );
+      const url = await presign({
+        command: new GetObjectCommand({
+          Bucket: 'pertexo-artifacts',
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
+        }),
+        expiresInSeconds: 60,
+        signal: new AbortController().signal,
+      });
+
+      expect(new URL(url).searchParams.get('X-Amz-Expires')).toBe('60');
+      expect(recording.requests).toEqual([
+        expect.objectContaining({
+          operation: 'presign_get_object',
+          outcome: 'success',
+        }),
+      ]);
+    } finally {
+      client.destroy();
+    }
+  });
+
   it('records only the bounded request dimensions and classifies failures', async () => {
     const recording = recordingObserver();
     const failure = Object.assign(new Error('private provider detail'), {

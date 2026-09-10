@@ -281,6 +281,178 @@ describe('workspace purge foundation', () => {
     }
   });
 
+  it('reclaims one expired object-step lease and fences stale release and checkpoint attempts', async () => {
+    if (maintenance === undefined || owner === undefined)
+      throw new Error('Database pools unavailable');
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
+    const options = {
+      externalOperationTimeoutMs: 1_000,
+      leaseOwner: 'purge-stale-step-a',
+      leaseSeconds: 5,
+      lockTimeoutMs: 1_000,
+      statementTimeoutMs: 1_000,
+    } as const;
+    const first = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      options,
+    );
+    const second = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      { ...options, leaseOwner: 'purge-stale-step-b' },
+    );
+    try {
+      await expect(first.processNext()).resolves.toMatchObject({
+        status: 'started',
+        workspaceId,
+      });
+      await owner.query('begin');
+      let state:
+        | {
+            control_hash: string;
+            control_sequence: string;
+            job_id: string;
+          }
+        | undefined;
+      try {
+        await owner.query('set local role pertexo_owner');
+        const current = await owner.query<{
+          control_hash: string;
+          control_sequence: string;
+          job_id: string;
+        }>(
+          `select workspace.retention_control_hash control_hash,
+                  workspace.retention_control_sequence::text control_sequence,
+                  job.id job_id
+             from app.workspaces workspace
+             join app.workspace_purge_jobs job on job.workspace_id=workspace.id
+            where workspace.id=$1`,
+          [workspaceId],
+        );
+        state = current.rows[0];
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback');
+        throw error;
+      }
+      if (state === undefined) throw new Error('Purge state missing');
+      const staleClaim = await maintenance.query<{
+        lease_fence: string;
+        lease_token: string;
+        step_name: string;
+      }>(
+        `select * from app.claim_workspace_purge_step(
+          $1,$2,$3,'crashed-purge-worker',interval '1 minute'
+        )`,
+        [state.job_id, state.control_sequence, state.control_hash],
+      );
+      const staleLease = staleClaim.rows[0];
+      expect(staleLease?.step_name).toBe('object_versions');
+      if (staleLease === undefined) throw new Error('Step claim missing');
+
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        await owner.query(
+          "select set_config('app.workspace_purge_transition','on',true)",
+        );
+        await owner.query(
+          `update app.workspace_purge_steps
+              set lease_acquired_at=clock_timestamp()-interval '2 seconds',
+                  lease_expires_at=clock_timestamp()-interval '1 second'
+            where job_id=$1 and step_name='object_versions'`,
+          [state.job_id],
+        );
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback');
+        throw error;
+      }
+
+      await expect(
+        maintenance.query(
+          'select app.release_workspace_purge_step($1,$2,$3) released',
+          [state.job_id, staleLease.lease_token, staleLease.lease_fence],
+        ),
+      ).resolves.toMatchObject({ rows: [{ released: false }] });
+      await expect(
+        maintenance.query(
+          `select app.checkpoint_workspace_object_versions_page(
+            $1,$2,$3,0,true,$4,$5
+          )`,
+          [
+            state.job_id,
+            staleLease.lease_token,
+            staleLease.lease_fence,
+            state.control_sequence,
+            state.control_hash,
+          ],
+        ),
+      ).rejects.toMatchObject({ code: '55000' });
+
+      const outcomes = await Promise.all([
+        first.processNext(),
+        second.processNext(),
+      ]);
+      expect(
+        outcomes.every(({ status }) => ['idle', 'progressed'].includes(status)),
+      ).toBe(true);
+      expect(outcomes.some(({ status }) => status === 'progressed')).toBe(true);
+      expect(objectStore.calls).toBe(1);
+
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        const proof = await owner.query<{
+          attempt_count: number;
+          lease_fence: string;
+          status: string;
+        }>(
+          `select attempt_count,lease_fence::text,status
+             from app.workspace_purge_steps
+            where job_id=$1 and step_name='object_versions'`,
+          [state.job_id],
+        );
+        expect(proof.rows).toEqual([
+          { attempt_count: 2, lease_fence: '2', status: 'completed' },
+        ]);
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback');
+        throw error;
+      }
+      let completed = false;
+      for (let page = 0; page < 20 && !completed; page += 1) {
+        const outcome = await first.processNext();
+        completed =
+          outcome.status === 'completed' && outcome.workspaceId === workspaceId;
+      }
+      expect(completed).toBe(true);
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
+
   it('retries object erasure after deletion succeeds before checkpointing', async () => {
     const workspaceId = await createDueWorkspace();
     const ledger = new MemoryPurgeLedger();

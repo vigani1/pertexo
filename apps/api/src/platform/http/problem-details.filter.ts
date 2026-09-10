@@ -257,6 +257,20 @@ function normalize(
     return fromApplicationError(exception);
   }
 
+  if (exception instanceof HttpException) {
+    const status = exception.getStatus();
+    const code = nestCode(status);
+    const entry = APPLICATION_ERROR_CATALOG[code];
+    const issues = nestIssues(exception);
+    return {
+      code,
+      status:
+        code === 'internal.unexpected' ? safeHttpStatus(status) : entry.status,
+      title: entry.title,
+      ...(issues === undefined ? {} : { errors: issues }),
+    };
+  }
+
   for (const mapper of applicationErrorMappers) {
     const mapped = mapper(exception, request);
     if (mapped !== undefined) return fromApplicationError(mapped);
@@ -269,20 +283,6 @@ function normalize(
       status: entry.status,
       title: entry.title,
       errors: zodIssues(exception),
-    };
-  }
-
-  if (exception instanceof HttpException) {
-    const status = exception.getStatus();
-    const code = nestCode(status);
-    const entry = APPLICATION_ERROR_CATALOG[code];
-    const issues = nestIssues(exception);
-    return {
-      code,
-      status:
-        code === 'internal.unexpected' ? safeHttpStatus(status) : entry.status,
-      title: entry.title,
-      ...(issues === undefined ? {} : { errors: issues }),
     };
   }
 
@@ -407,8 +407,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
 
     if (this.logger !== undefined) {
-      void Promise.resolve(
-        this.logger.log({
+      try {
+        const logged = this.logger.log({
           code: normalized.code,
           requestId,
           severity: APPLICATION_ERROR_CATALOG[normalized.code].severity,
@@ -420,8 +420,11 @@ export class ProblemDetailsFilter implements ExceptionFilter {
             : { workspaceId: context.workspaceId }),
           ...(instance === undefined ? {} : { instance }),
           cause: normalized.cause,
-        }),
-      ).catch(() => undefined);
+        });
+        void Promise.resolve(logged).catch(() => undefined);
+      } catch {
+        // Diagnostic sinks must not alter the problem response contract.
+      }
     }
 
     writeProblem(response, normalized.status, problem);

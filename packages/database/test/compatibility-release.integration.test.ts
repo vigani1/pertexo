@@ -204,7 +204,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0085_artifact_media_type_http_safety.sql',
+        migrationHead: '0086_operator_attempt_reclaim_state.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -327,7 +327,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0085_artifact_media_type_http_safety.sql',
+        migrationHead: '0086_operator_attempt_reclaim_state.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -440,7 +440,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0085_artifact_media_type_http_safety.sql',
+          migrationHead: '0086_operator_attempt_reclaim_state.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -468,7 +468,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0085_artifact_media_type_http_safety.sql',
+        migrationHead: '0086_operator_attempt_reclaim_state.sql',
       });
     } finally {
       await pool.end();

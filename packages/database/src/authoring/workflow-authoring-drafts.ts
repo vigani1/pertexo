@@ -26,9 +26,9 @@ import type {
   CreateWorkflowResult,
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
-  WorkflowAuthoringTestHooks,
-  WorkflowDraftRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-contracts.js';
+import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
+import type { WorkflowDraftRecord } from './workflow-authoring-records.js';
 
 type DraftStore = Pick<
   WorkflowAuthoringDatabase,

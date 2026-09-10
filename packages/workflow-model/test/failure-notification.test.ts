@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import {
   FailureNotificationContextV1Schema,
@@ -10,7 +12,85 @@ import {
 const id = (digit: string): string =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
 
+const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
+const predecessorFailureNotificationContextV1Schema = z
+  .object({
+    schemaVersion: z.literal(1),
+    runId: z.uuid(),
+    workflowId: z.uuid(),
+    workflowVersionId: z.uuid(),
+    terminalEventSequence: z.number().int().positive(),
+    terminalStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+    triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
+    startedAt: z.iso.datetime(),
+    completedAt: z.iso.datetime(),
+    primaryFailure: z
+      .object({
+        nodeId: z.string().min(1).max(128),
+        invocationKey: z.string().min(1).max(256),
+        nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+        attemptNumber: z.number().int().nonnegative(),
+        safeErrorCode: safeCodeSchema,
+      })
+      .strict(),
+    totalFailureCount: z.number().int().positive().max(10_000),
+  })
+  .strict();
+
+async function contextFixture(
+  release: 'predecessor' | 'candidate',
+): Promise<unknown> {
+  return JSON.parse(
+    await readFile(
+      new URL(
+        `./fixtures/failure-notification-context-${release}-v1.json`,
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  ) as unknown;
+}
+
 describe('failure notification contracts', () => {
+  it('pins predecessor and candidate readers for an additive mixed-version rollout', async () => {
+    const predecessor = await contextFixture('predecessor');
+    const candidate = await contextFixture('candidate');
+
+    expect(
+      predecessorFailureNotificationContextV1Schema.parse(predecessor),
+    ).toEqual(predecessor);
+    expect(FailureNotificationContextV1Schema.parse(predecessor)).toEqual(
+      predecessor,
+    );
+    expect(FailureNotificationContextV1Schema.parse(candidate)).toEqual(
+      candidate,
+    );
+    expect(
+      predecessorFailureNotificationContextV1Schema.safeParse(candidate)
+        .success,
+    ).toBe(false);
+  });
+
+  it('fails closed on unsupported notification context versions in both readers', async () => {
+    const predecessor = (await contextFixture('predecessor')) as Record<
+      string,
+      unknown
+    >;
+
+    expect(
+      predecessorFailureNotificationContextV1Schema.safeParse({
+        ...predecessor,
+        schemaVersion: 2,
+      }).success,
+    ).toBe(false);
+    expect(
+      FailureNotificationContextV1Schema.safeParse({
+        ...predecessor,
+        schemaVersion: 2,
+      }).success,
+    ).toBe(false);
+  });
+
   it('canonicalizes the destination email domain', () => {
     expect(
       FailureNotificationDestinationConfigSchema.parse({
@@ -56,6 +136,25 @@ describe('failure notification contracts', () => {
         totalFailureCount: 1,
       }),
     ).toMatchObject({ totalFailureCount: 1 });
+    expect(
+      FailureNotificationContextV1Schema.parse({
+        schemaVersion: 1,
+        runId: id('2'),
+        workflowId: id('3'),
+        workflowVersionId: id('4'),
+        terminalEventSequence: 7,
+        terminalStatus: 'timed_out',
+        triggerType: 'manual',
+        startedAt: '2026-08-24T10:00:00.000Z',
+        completedAt: '2026-08-24T10:01:00.000Z',
+        primaryFailure: {
+          source: 'run',
+          runStatus: 'timed_out',
+          safeErrorCode: 'execution.deadline_exceeded',
+        },
+        totalFailureCount: 1,
+      }),
+    ).toMatchObject({ primaryFailure: { source: 'run' } });
     expect(
       FailureNotificationDeliveryResultV1Schema.parse({
         schemaVersion: 1,
@@ -103,6 +202,18 @@ describe('failure notification contracts', () => {
         kind: 'definite_failure',
         possiblyDispatched: false,
         safeErrorCode: 'UPPER CASE AND UNSAFE',
+      }).success,
+    ).toBe(false);
+    expect(
+      FailureNotificationContextV1Schema.safeParse({
+        ...base,
+        terminalStatus: 'timed_out',
+        primaryFailure: {
+          source: 'run',
+          runStatus: 'timed_out',
+          safeErrorCode: 'execution.deadline_exceeded',
+          nodeId: 'invented-node',
+        },
       }).success,
     ).toBe(false);
   });

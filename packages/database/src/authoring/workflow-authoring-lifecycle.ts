@@ -15,10 +15,12 @@ import {
   WorkflowNotFoundError,
 } from './workflow-authoring-errors.js';
 import type {
+  TransitionWorkflowLifecycleInput,
+  TransitionWorkflowLifecycleResult,
   WorkflowAuthoringDatabase,
-  WorkflowAuthoringTestHooks,
-  WorkflowRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-contracts.js';
+import type { WorkflowAuthoringTestHooks } from './workflow-authoring-types.js';
+import type { WorkflowRecord } from './workflow-authoring-records.js';
 import { workflowRowSelection } from './workflow-authoring-rows.js';
 import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
@@ -30,25 +32,6 @@ const lifecycleRevisionSchema = z
   .positive()
   .max(Number.MAX_SAFE_INTEGER);
 const requestIdSchema = z.string().max(128);
-
-export type WorkflowLifecycleCommand = z.output<typeof commandSchema>;
-
-export type TransitionWorkflowLifecycleInput = Readonly<{
-  command: WorkflowLifecycleCommand;
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  expectedLifecycleRevision: number;
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-  traceparent?: string;
-}>;
-
-export type TransitionWorkflowLifecycleResult = Readonly<{
-  workflow: WorkflowRecord;
-  replayed: boolean;
-}>;
 
 type WorkflowLifecycleStore = Pick<
   WorkflowAuthoringDatabase,

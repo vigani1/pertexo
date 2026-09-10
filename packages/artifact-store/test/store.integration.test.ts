@@ -51,6 +51,14 @@ integrationDescribe('ArtifactStore S3 integration', () => {
 
       const download = await store.getStream(identity);
       await expect(readAll(download.body)).resolves.toEqual(body);
+      const directDownload = await store.beginDirectDownload({
+        ...identity,
+        expiresInSeconds: 300,
+      });
+      expect(directDownload).toMatchObject({ method: 'GET' });
+      expect(new URL(directDownload.url).pathname).toContain(
+        `/workspaces/${identity.workspaceId}/artifacts/${identity.artifactId}`,
+      );
 
       await store.delete(identity);
       await store.delete(identity);

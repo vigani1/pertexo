@@ -11,15 +11,12 @@ import {
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
-  CONNECTION_AUTH_TYPE,
-  ConnectionUnavailableError,
   createWorkerConnectionResolutionDatabase,
   createPendingArtifact,
   createPendingPreviewArtifact,
   createWorkspaceDatabase,
   finalizeArtifactUpload,
   generatePersistedId,
-  type ConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
@@ -31,22 +28,17 @@ import {
   type AwsConnectionEnvelopeEncryptionRuntime,
   type ConnectionEnvelopeEncryption,
 } from '@pertexo/integrations/server';
-import {
-  ProviderExecutionRateLimitError,
-  type NodeArtifactRuntime,
-  type NodeConnectionRuntime,
-} from '@pertexo/node-sdk/server';
-import {
-  AbuseRateLimitPolicy,
-  RedisRateLimitRuntime,
-  type DistributedRateLimitResult,
-  type RateLimitDecision,
-} from '@pertexo/rate-limit';
+import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import type {
   NodeAttemptCapabilityContext,
   NodeAttemptRuntimeCapabilityFactories,
 } from './node-attempt-handler.js';
+import {
+  createProviderConnectionRuntimeFactory,
+  type ProviderRateLimiter,
+} from './provider-connection-runtime.js';
 
 const DEFAULT_ARTIFACT_RETENTION_MILLIS = 30 * 24 * 60 * 60_000;
 
@@ -60,7 +52,9 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
-  connectionDatabase?: ConnectionResolutionDatabase;
+  connectionDatabase?: Parameters<
+    typeof createProviderConnectionRuntimeFactory
+  >[0];
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
   artifactStore?: Pick<ArtifactStore, 'put'> &
@@ -68,9 +62,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
-  providerRateLimiter?: Readonly<{
-    consume(decision: RateLimitDecision): Promise<DistributedRateLimitResult>;
-  }>;
+  providerRateLimiter?: ProviderRateLimiter;
 }>;
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
@@ -104,91 +96,6 @@ function abortError(): DOMException {
 
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError();
-}
-
-function connectionFactory(
-  database: ConnectionResolutionDatabase,
-  encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
-  providerRateLimiter: NonNullable<
-    WorkerNodeRuntimeCapabilityDependencies['providerRateLimiter']
-  >,
-): (context: NodeAttemptCapabilityContext) => NodeConnectionRuntime {
-  return (context) =>
-    Object.freeze({
-      resolve: async (
-        input: Parameters<NodeConnectionRuntime['resolve']>[0],
-      ) => {
-        assertNotAborted(input.signal);
-        const admission = await providerRateLimiter.consume(
-          new AbuseRateLimitPolicy().evaluate('provider_execution', {
-            workspaceId: context.workspaceId,
-            connectionId: input.connectionId,
-          }),
-        );
-        if (!admission.allowed)
-          throw new ProviderExecutionRateLimitError(
-            admission.retryAfterSeconds,
-          );
-        const resolved = await database.resolveConnectionSecret({
-          workspaceId: context.workspaceId,
-          connectionId: input.connectionId,
-          expectedProviderKey: input.expectedProviderKey,
-          workerId: context.workerId,
-          purpose: input.purpose,
-        });
-        if (
-          resolved.connection.authType !== input.expectedAuthType ||
-          resolved.connection.id !== input.connectionId ||
-          resolved.connection.workspaceId !== context.workspaceId
-        )
-          throw new ConnectionUnavailableError(
-            'Connection is not compatible with this executor',
-          );
-        const secret = await encryption.open(
-          resolved.sealed,
-          {
-            workspaceId: context.workspaceId,
-            connectionId: input.connectionId,
-            secretVersionId: resolved.secretVersionId,
-          },
-          input.signal,
-        );
-        if (input.signal.aborted) {
-          secret.fill(0);
-          throw abortError();
-        }
-        return Object.freeze({
-          connectionId: resolved.connection.id,
-          providerKey: resolved.connection.providerKey,
-          authType: resolved.connection.authType,
-          secretVersionId: resolved.secretVersionId,
-          secret,
-        });
-      },
-      assertCurrent: async (
-        input: Parameters<
-          NonNullable<NodeConnectionRuntime['assertCurrent']>
-        >[0],
-      ): Promise<void> => {
-        assertNotAborted(input.signal);
-        if (
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey
-        )
-          throw new ConnectionUnavailableError(
-            'Connection auth type is not supported',
-          );
-        await database.assertConnectionSecretCurrent({
-          workspaceId: context.workspaceId,
-          connectionId: input.connectionId,
-          expectedProviderKey: input.expectedProviderKey,
-          expectedAuthType: input.expectedAuthType,
-          secretVersionId: input.secretVersionId,
-        });
-        assertNotAborted(input.signal);
-      },
-    });
 }
 
 async function writeAll(
@@ -459,7 +366,7 @@ export async function createWorkerNodeRuntimeCapabilities(
             )).encryption);
       if (encryption === undefined)
         throw new Error('Worker connection capability is incomplete');
-      factories.connections = connectionFactory(
+      factories.connections = createProviderConnectionRuntimeFactory(
         connectionDatabase,
         encryption,
         providerRateLimiter,

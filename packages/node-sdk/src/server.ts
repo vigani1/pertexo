@@ -1,5 +1,4 @@
 import './server-only.js';
-
 import { z, type ZodType } from 'zod';
 
 import type {
@@ -71,6 +70,7 @@ export {
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
   NodeSdkError,
+  ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
   type NodeErrorCode,
   type NodeExecutorErrorKind,

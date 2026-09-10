@@ -252,6 +252,7 @@ describe('artifact finalization retention deadline prior-head migration', () => 
         '0083_artifact_finalization_retention_deadline.sql',
         '0084_workspace_member_discovery_index.sql',
         '0085_artifact_media_type_http_safety.sql',
+        '0086_operator_attempt_reclaim_state.sql',
       ]);
 
       const api = new Pool({

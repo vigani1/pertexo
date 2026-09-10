@@ -3,11 +3,7 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
-import {
-  FailureNotificationContextV1Schema,
-  type FailureNotificationContextV1,
-  type FailureNotificationDeliveryResultV1,
-} from '@pertexo/workflow-model/failure-notification';
+import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from '../config.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
@@ -15,6 +11,13 @@ import { withTenantScopedClient } from '../tenant-access/workspace.js';
 import { FailureNotificationStateError } from './failure-notification-errors.js';
 import { createFailureNotificationDestinationStore } from './failure-notification-destination-store.js';
 import { createFailureNotificationCompletionStore } from './failure-notification-completion-store.js';
+import type { FailureNotificationStore } from './failure-notification-contracts.js';
+export type {
+  FailureNotificationClaimResult,
+  FailureNotificationDelivery,
+  FailureNotificationResolvedDestination,
+  FailureNotificationStore,
+} from './failure-notification-contracts.js';
 import {
   auditFailureNotification as audit,
   failureNotificationChecksumSchema as checksumSchema,
@@ -22,86 +25,6 @@ import {
 } from './failure-notification-store-support.js';
 
 export { FailureNotificationStateError } from './failure-notification-errors.js';
-
-export type FailureNotificationDelivery = Readonly<{
-  outboxEventId: string;
-  payloadChecksum: string;
-}>;
-
-export type FailureNotificationClaimResult =
-  | Readonly<{ kind: 'busy' | 'terminal' }>
-  | Readonly<{
-      kind: 'ready';
-      attemptNumber: number;
-      context: FailureNotificationContextV1;
-      destinationId: string;
-      destinationConfigVersion: number;
-      idempotencyKey: string;
-      sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
-      connectionSecretVersionId: string;
-      deliveryBinding?: string;
-      deliveryUnresolved: boolean;
-    }>;
-
-type FailureNotificationResolvedDestinationBase = Readonly<{
-  connectionId: string;
-  secretVersionId: string;
-  sealed: Readonly<{
-    schemaVersion: 1;
-    kmsKeyReference: string;
-    encryptedDataKey: string;
-    ciphertext: string;
-    nonce: string;
-    tag: string;
-  }>;
-}>;
-
-export type FailureNotificationResolvedDestination =
-  | (FailureNotificationResolvedDestinationBase &
-      Readonly<{ kind: 'slack'; channelId: string }>)
-  | (FailureNotificationResolvedDestinationBase &
-      Readonly<{ kind: 'email'; toEmail: string }>);
-
-export interface FailureNotificationStore {
-  claimDelivery(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      delivery: FailureNotificationDelivery;
-      recoverySeconds: number;
-      maxAttempts: number;
-    }>,
-  ): Promise<FailureNotificationClaimResult>;
-  completeDelivery(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      maxAttempts: number;
-      retryDelaySeconds: number;
-      result: FailureNotificationDeliveryResultV1;
-    }>,
-  ): Promise<'completed' | 'stale'>;
-  loadDestination(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      workerId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<FailureNotificationResolvedDestination>;
-  fenceDispatch(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      deliveryBinding?: string;
-    }>,
-  ): Promise<void>;
-  recoverDue(limit: number, maxAttempts: number): Promise<number>;
-  close(): Promise<void>;
-}
 
 export function createFailureNotificationStore(
   config: DatabaseConfig,

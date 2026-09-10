@@ -171,6 +171,25 @@ describe('API bootstrap', () => {
     application = undefined;
   });
 
+  it.each([
+    '/v1/workspaces/nonexistent',
+    '/v1/workspaces/workspace-a/workflows/nonexistent/nested',
+  ])('keeps an unknown feature-family route at 404: %s', async (url) => {
+    application = await createApiApplication(config, dependencies());
+    await application.init();
+
+    const response = await application.inject({ method: 'GET', url });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.json()).toMatchObject({
+      status: 404,
+      code: 'resource.not_found',
+    });
+  });
+
   it('rejects contradictory provided and create-time runtime dependencies', async () => {
     const selectedIdentityRuntime = identityRuntime();
     const selectedWorkflowRuntime = createStubApiWorkflowRuntime(
@@ -622,6 +641,48 @@ describe('API bootstrap', () => {
     await application.close();
     application = undefined;
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    const authorizationUrl = vi.fn(
+      selectedIdentityRuntime.dependencies.provider.authorizationUrl.bind(
+        selectedIdentityRuntime.dependencies.provider,
+      ),
+    );
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: {
+        ...selectedIdentityRuntime,
+        dependencies: {
+          ...selectedIdentityRuntime.dependencies,
+          provider: {
+            ...selectedIdentityRuntime.dependencies.provider,
+            authorizationUrl,
+          },
+        },
+      },
+      rateLimitConsumer: {
+        consume: () => Promise.reject(new Error('redis endpoint unavailable')),
+      },
+    });
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/auth/oidc/start',
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.headers['retry-after']).toBe('1');
+    expect(response.json()).toMatchObject({
+      code: 'request.rate_limit_unavailable',
+      status: 503,
+    });
+    expect(response.payload).not.toContain('redis endpoint unavailable');
+    expect(authorizationUrl).not.toHaveBeenCalled();
   });
 
   it.each([false, true])(

@@ -20,10 +20,13 @@ export const adminUrl =
 export const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-export const databaseName = `pertexo_test_retention_${randomUUID().replaceAll('-', '')}`;
+const sharedDatabase = process.env.PERTEXO_Q11_SHARED_DATABASE === '1';
+export const databaseName = sharedDatabase
+  ? new URL(migrationBaseUrl).pathname.slice(1)
+  : `pertexo_test_retention_${randomUUID().replaceAll('-', '')}`;
 export const withDatabase = (baseUrl: string) => {
   const url = new URL(baseUrl);
-  url.pathname = `/${databaseName}`;
+  if (!sharedDatabase) url.pathname = `/${databaseName}`;
   return url.toString();
 };
 export const withApplicationName = (
@@ -90,28 +93,32 @@ export const operator = createOperatorCommandDatabase(
 export let owner: Pool;
 
 beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration,
-       pertexo_maintenance,pertexo_api,pertexo_worker,pertexo_dispatcher,
-       pertexo_lifecycle_command,pertexo_operator`,
-    );
-  } finally {
-    await admin.end();
+  if (!sharedDatabase) {
+    const admin = new Pool({ connectionString: adminUrl, max: 1 });
+    try {
+      await admin.query(
+        `create database "${databaseName}" owner pertexo_owner`,
+      );
+      await admin.query(`revoke all on database "${databaseName}" from public`);
+      await admin.query(
+        `grant connect on database "${databaseName}" to pertexo_migration,
+         pertexo_maintenance,pertexo_api,pertexo_worker,pertexo_dispatcher,
+         pertexo_lifecycle_command,pertexo_operator`,
+      );
+    } finally {
+      await admin.end();
+    }
+    await migrateDatabase({
+      apiRuntimeRole: 'pertexo_api',
+      connectionString: migrationUrl,
+      dispatcherRole: 'pertexo_dispatcher',
+      lifecycleCommandRole: 'pertexo_lifecycle_command',
+      operatorRole: 'pertexo_operator',
+      maintenanceRole: 'pertexo_maintenance',
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
   }
-  await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
-    connectionString: migrationUrl,
-    dispatcherRole: 'pertexo_dispatcher',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
-    maintenanceRole: 'pertexo_maintenance',
-    ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
-  });
   owner = new Pool({ connectionString: migrationUrl, max: 1 });
   await owner.query('begin');
   try {
@@ -165,11 +172,13 @@ afterAll(async () => {
   await retention.close();
   await operator.close();
   await owner.end();
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
+  if (!sharedDatabase) {
+    const admin = new Pool({ connectionString: adminUrl, max: 1 });
+    try {
+      await dropDisconnectedDatabase(admin, databaseName);
+    } finally {
+      await admin.end();
+    }
   }
 });
 

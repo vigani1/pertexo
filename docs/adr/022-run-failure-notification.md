@@ -30,10 +30,15 @@ a second intent.
 The immutable V1 context has `schemaVersion: 1`, canonical run/workflow/version
 identities, terminal event sequence and status, trigger type, bounded start and
 completion timestamps, one deterministic primary failure, and total failure
-count. Primary failure selection uses status severity (`outcome_unknown`, then
-`timed_out`, then `failed`) followed by canonical invocation-key order. It may
-contain only node ID, invocation key, node status, attempt number, and bounded
-`safeErrorCode`. The canonical context is at most 4,096 UTF-8 bytes.
+count. Primary failure is a strict union. When failed invocation state exists,
+selection uses status severity (`outcome_unknown`, then `timed_out`, then
+`failed`) followed by canonical invocation-key order, and the existing node
+shape contains only node ID, invocation key, node status, attempt number, and
+bounded `safeErrorCode`. A run that times out before any invocation exists uses
+the run-level shape `{ source: 'run', runStatus: 'timed_out', safeErrorCode }`;
+it does not invent a node. Keeping the existing node shape unchanged preserves
+V1 contexts already stored before this clarification. The canonical context is
+at most 4,096 UTF-8 bytes.
 
 The context never contains run or node inputs, outputs, artifacts, graph/config
 JSON, connection identifiers or secrets, provider request/response bodies or
@@ -58,6 +63,46 @@ proofs. Provider-specific Slack/email destinations are added in Phase 6 without
 changing intent identity or run semantics. The capability remains disabled
 until its consumer is readiness-advertised; producer activation and rollback
 follow additive transport compatibility rather than node compatibility.
+
+The run-level timeout shape is an additive-reader, then additive-writer rollout:
+
+1. R0 is the predecessor artifact: it writes and strictly reads only the node
+   primary-failure shape.
+2. R1 retains the predecessor writer and deploys the dual-shape reader to every
+   notification-consuming worker cohort. The repository's pinned predecessor
+   and candidate fixtures must both pass the R1 reader before rollout proceeds.
+   `FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED` is absent or exactly
+   `false`, which is the fail-safe default, on every coordinator producer.
+3. R2 enables the coordinator's run-level timeout writer only after R1 is fully
+   deployed and its notification consumer readiness is healthy by setting
+   `FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED=true` on coordinator
+   producers. R2 retains the dual-shape reader. Values other than the exact
+   strings `true` and `false` fail worker configuration before startup.
+
+The API pins notification policy but neither reads nor writes notification
+context, and the dispatcher transports only identifiers. The worker artifact
+contains both the coordinator producer and delivery consumer, so release
+activation—not queue routing—must enforce the R1-before-R2 order. Generic node
+compatibility epochs and readiness do not advertise notification-context reader
+support and cannot be used as evidence for this activation. The gate suppresses
+only creation of a node-free run-timeout notification intent; it does not alter
+terminal run/event persistence or predecessor node-primary notification intents.
+
+During overlap, an R0 reader encountering the candidate shape must fail closed
+before claiming the intent. PostgreSQL remains authoritative: the intent stays
+pending and a dual-reader worker can claim it without creating another intent.
+After a claimed worker restarts, ordinary recovery emits another identifier-only
+outbox delivery for the same immutable intent and context. The mixed-version
+integration proof covers this rejection, takeover, restart, recovery, and
+redelivery path.
+
+R2 rollback first sets the producer gate back to `false` on all coordinators and
+may otherwise roll back only to R1. Rollback past R1 is forbidden while any candidate
+shape can remain in an intent, unpublished outbox row, queue delivery, retry,
+or retained replay population. Removing the run-level reader requires the
+inventory's production zero-result evidence across the full retention and
+redelivery window; stored context is never rewritten in place. These are
+repository rollout requirements, not claims that a deployment has occurred.
 
 Before intent creation, failure-blocked descendants must settle explicitly so
 the run cannot remain nonterminal merely because an ordinary downstream node is

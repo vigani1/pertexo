@@ -122,7 +122,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0085_artifact_media_type_http_safety.sql',
+      migrationHead: '0086_operator_attempt_reclaim_state.sql',
     });
     await readinessPool.end();
   });

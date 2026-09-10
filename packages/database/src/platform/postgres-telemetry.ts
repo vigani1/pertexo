@@ -4,6 +4,7 @@ import {
   type DatabasePoolRole,
   withDatabaseDeadlineBudget,
 } from './postgres-pool-policy.js';
+import { instrumentPoolCheckout } from './postgres-pool-checkout-telemetry.js';
 
 export type { DatabasePoolRole } from './postgres-pool-policy.js';
 
@@ -12,6 +13,7 @@ export const DATABASE_METRIC_NAME = Object.freeze({
   lockWaitDuration: 'pertexo.database.lock_wait.duration',
   poolConnections: 'pertexo.database.pool.connections',
   poolSaturation: 'pertexo.database.pool.saturation',
+  poolCheckoutDuration: 'pertexo.database.pool.checkout.duration',
   poolWaiters: 'pertexo.database.pool.waiters',
   queryDuration: 'pertexo.database.query.duration',
   transactionDuration: 'pertexo.database.transaction.duration',
@@ -55,6 +57,7 @@ interface MeterState {
   readonly pools: Map<Pool, DatabasePoolRole>;
   readonly monitors: Map<string, LockWaitMonitor>;
   readonly queryDuration: Histogram;
+  readonly poolCheckoutDuration: Histogram;
   readonly transactionDuration: Histogram;
   readonly lockWaitDuration: Histogram;
 }
@@ -185,6 +188,14 @@ function stateFor(meter: Meter): MeterState {
   const state: MeterState = {
     pools,
     monitors,
+    poolCheckoutDuration: meter.createHistogram(
+      DATABASE_METRIC_NAME.poolCheckoutDuration,
+      {
+        description:
+          'Elapsed PostgreSQL pool checkout duration by authority and outcome',
+        unit: 's',
+      },
+    ),
     queryDuration: meter.createHistogram(DATABASE_METRIC_NAME.queryDuration, {
       description: 'PostgreSQL query duration by bounded operation and outcome',
       unit: 's',
@@ -388,34 +399,6 @@ function instrumentClientRelease(client: PoolClient, state: MeterState): void {
   };
 }
 
-function instrumentPoolConnect(pool: Pool, state: MeterState): void {
-  const originalConnect = pool.connect.bind(pool);
-  const connect = (
-    callback?: (
-      error: Error | undefined,
-      client: PoolClient | undefined,
-      release: (destroy?: boolean | Error) => void,
-    ) => void,
-  ): unknown => {
-    if (callback !== undefined) {
-      originalConnect((error, client, release) => {
-        if (client !== undefined) instrumentClientRelease(client, state);
-        const done = (destroy?: boolean | Error): void => {
-          if (client === undefined) release(destroy);
-          else client.release(destroy);
-        };
-        callback.call(undefined, error, client, done);
-      });
-      return;
-    }
-    return originalConnect().then((client) => {
-      instrumentClientRelease(client, state);
-      return client;
-    });
-  };
-  pool.connect = connect as typeof pool.connect;
-}
-
 function startLockWaitMonitor(
   config: PoolConfig,
   state: MeterState,
@@ -571,7 +554,9 @@ export function createDatabasePool(
       errorType: errorType(error),
     });
   });
-  instrumentPoolConnect(pool, state);
+  instrumentPoolCheckout(pool, state.poolCheckoutDuration, role, (client) => {
+    instrumentClientRelease(client, state);
+  });
   const monitor =
     options.monitorLockWaits === false
       ? undefined

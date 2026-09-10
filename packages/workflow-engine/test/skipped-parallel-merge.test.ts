@@ -205,6 +205,27 @@ describe('skipped Parallel/Merge scheduling', () => {
     ).toBe(false);
   });
 
+  it('skips a paired Merge without fabricating an absent branch scope', () => {
+    const graph = pairedSchedulerGraph();
+    const invocations = [
+      scopedInvocation(workflowVersionId, 'parallel', 'skipped'),
+      scopedInvocation(workflowVersionId, 'left', 'skipped', {
+        branchPath: [{ nodeId: 'parallel', outputPort: 'branch-01' }],
+      }),
+      scopedInvocation(workflowVersionId, 'right', 'skipped', {
+        branchPath: [{ nodeId: 'parallel', outputPort: 'branch-02' }],
+      }),
+    ];
+
+    expect(
+      deriveReadyNodes({ graph, workflowVersionId, invocations }),
+    ).toContainEqual({
+      invocationKey: invocationKey({ workflowVersionId, nodeId: 'merge' }),
+      nodeId: 'merge',
+      disposition: 'skipped',
+    });
+  });
+
   it('keeps skipped Merge scope isolated across nested iteration paths', () => {
     const branchPath = [{ nodeId: 'switch', outputPort: 'default' }] as const;
     const iterationPath = [{ loopNodeId: 'loop', ordinal: 2 }] as const;

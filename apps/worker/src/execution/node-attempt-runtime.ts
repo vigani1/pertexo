@@ -98,12 +98,14 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
+  productionEnabled?: boolean;
   releaseCohort?: PlatformReleaseCohort;
   redisUrl: string;
   workerId: string;
 }>;
 
 export type NodeAttemptRuntimeDependencies = Readonly<{
+  capabilityFactory?: typeof createWorkerNodeRuntimeCapabilities;
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
   notifications?: RunEventNotificationPublisher;
@@ -112,10 +114,49 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   runStore?: NodeAttemptRunStore;
   runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
   previewTelemetry?: PreviewTelemetry;
+  previewHandlerFactory?: typeof createPreviewAttemptHandler;
 }>;
 
+type OwnedNodeAttemptResource = Readonly<{
+  close: () => Promise<unknown>;
+  name: string;
+  phase: 'drain' | 'release';
+}>;
+
+async function closeNodeAttemptResources(
+  resources: readonly OwnedNodeAttemptResource[],
+  primary?: Readonly<{ error: unknown }>,
+): Promise<void> {
+  const drainSettled = await Promise.allSettled(
+    resources
+      .filter(({ phase }) => phase === 'drain')
+      .map(({ close }) => close()),
+  );
+  const releaseSettled = await Promise.allSettled(
+    resources
+      .filter(({ phase }) => phase === 'release')
+      .map(({ close }) => close()),
+  );
+  const cleanupFailures: unknown[] = [];
+  for (const result of [...drainSettled, ...releaseSettled])
+    if (result.status === 'rejected')
+      cleanupFailures.push(result.reason as unknown);
+  const failures: unknown[] = [
+    ...(primary === undefined ? [] : [primary.error]),
+    ...cleanupFailures,
+  ];
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      primary === undefined
+        ? 'Node-attempt runtime cleanup failed'
+        : 'Node-attempt runtime construction failed and cleanup was incomplete',
+    );
+}
+
 function queueHandler(
-  handler: NodeAttemptHandler,
+  handler: NodeAttemptHandler | undefined,
   previewHandler: PreviewAttemptHandler | undefined,
 ): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
@@ -134,7 +175,10 @@ function queueHandler(
         await previewHandler.handle(delivery, context);
         return;
       }
-      if (delivery.name !== JOB_NAME.executeNodeAttempt)
+      if (
+        delivery.name !== JOB_NAME.executeNodeAttempt ||
+        handler === undefined
+      )
         throw new InvalidQueueDeliveryError(
           `Node-attempt consumer cannot handle ${delivery.name}`,
         );
@@ -155,21 +199,23 @@ function queueHandler(
   };
 }
 
-export async function createNodeAttemptRuntime(
+type OwnNodeAttemptResource = (
+  name: string,
+  close: (() => Promise<unknown>) | undefined,
+) => void;
+
+interface ProductionNodeAttemptRuntime {
+  capabilityRuntime?: WorkerNodeRuntimeCapabilities;
+  handler: NodeAttemptHandler;
+  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
+}
+
+async function createProductionNodeAttemptRuntime(
   options: NodeAttemptRuntimeOptions,
-  dependencies: NodeAttemptRuntimeDependencies = {},
-): Promise<NodeAttemptRuntime> {
-  if (
-    !Number.isSafeInteger(options.leaseDurationSeconds) ||
-    options.leaseDurationSeconds < 1 ||
-    options.leaseDurationSeconds > 300 ||
-    !Number.isSafeInteger(options.heartbeatIntervalMillis) ||
-    options.heartbeatIntervalMillis < 10 ||
-    options.heartbeatIntervalMillis >= options.leaseDurationSeconds * 1_000 ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
-  )
-    throw new TypeError('Node-attempt runtime options are invalid');
-  const releaseCohort = options.releaseCohort ?? 'core';
+  dependencies: NodeAttemptRuntimeDependencies,
+  releaseCohort: PlatformReleaseCohort,
+  own: OwnNodeAttemptResource,
+): Promise<ProductionNodeAttemptRuntime> {
   if (
     platformServingReleaseRequiresHttpCapabilities(releaseCohort) &&
     !(
@@ -182,6 +228,7 @@ export async function createNodeAttemptRuntime(
     throw new TypeError(
       'HTTP activation requires connection and artifact runtime capabilities',
     );
+
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(releaseCohort).map(
       composeExecutableCompatibilityRelease,
@@ -197,6 +244,10 @@ export async function createNodeAttemptRuntime(
   );
   const expressionEvaluator =
     dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
+  own(
+    'expression evaluator',
+    expressionEvaluator?.shutdown.bind(expressionEvaluator),
+  );
   const engineOptions: NodeAttemptExecutionEngineOptions = {
     admissionRelease: firstRelease,
     releaseSupport,
@@ -214,6 +265,7 @@ export async function createNodeAttemptRuntime(
   const runStore =
     dependencies.runStore ??
     createNodeAttemptRunStore(options.database, options.databaseRuntime);
+  own('node-attempt run store', runStore.close.bind(runStore));
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(
@@ -225,127 +277,167 @@ export async function createNodeAttemptRuntime(
       ).descriptions,
       options.databaseRuntime,
     );
+  own('published workflow reader', reader.close.bind(reader));
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
+  own('run-event notifications', notifications.close.bind(notifications));
+
   let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
-  try {
-    if (
-      dependencies.runtimeCapabilities === undefined &&
-      (options.connectionEncryption !== undefined ||
-        options.artifactStore !== undefined)
-    )
-      capabilityRuntime = await createWorkerNodeRuntimeCapabilities(
-        {
-          database: options.database,
-          redisUrl: options.redisUrl,
-          ...(options.connectionEncryption === undefined
-            ? {}
-            : { connectionEncryption: options.connectionEncryption }),
-          ...(options.artifactStore === undefined
-            ? {}
-            : { artifactStore: options.artifactStore }),
-        },
-        options.databaseRuntime === undefined
+  let runtimeCapabilities = dependencies.runtimeCapabilities;
+  if (
+    runtimeCapabilities === undefined &&
+    (options.connectionEncryption !== undefined ||
+      options.artifactStore !== undefined)
+  )
+    capabilityRuntime = await (
+      dependencies.capabilityFactory ?? createWorkerNodeRuntimeCapabilities
+    )(
+      {
+        database: options.database,
+        redisUrl: options.redisUrl,
+        ...(options.connectionEncryption === undefined
           ? {}
-          : { databaseRuntime: options.databaseRuntime },
-      );
-  } catch (error: unknown) {
-    await Promise.allSettled([
-      notifications.close(),
-      reader.close(),
-      runStore.close(),
-      expressionEvaluator?.shutdown(),
-      options.preview?.invoker.close?.(),
-    ]);
-    throw error;
-  }
-  const runtimeCapabilities =
-    dependencies.runtimeCapabilities ?? capabilityRuntime?.factories;
+          : { connectionEncryption: options.connectionEncryption }),
+        ...(options.artifactStore === undefined
+          ? {}
+          : { artifactStore: options.artifactStore }),
+      },
+      options.databaseRuntime === undefined
+        ? {}
+        : { databaseRuntime: options.databaseRuntime },
+    );
+  own(
+    'node runtime capabilities',
+    capabilityRuntime?.close.bind(capabilityRuntime),
+  );
+  runtimeCapabilities ??= capabilityRuntime?.factories;
+  return {
+    ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
+    handler: createNodeAttemptHandler({
+      engine,
+      heartbeatIntervalMillis: options.heartbeatIntervalMillis,
+      leaseDurationSeconds: options.leaseDurationSeconds,
+      notifications,
+      reader,
+      registry,
+      runStore,
+      ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
+      workerId: options.workerId,
+    }),
+    ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
+  };
+}
+
+export async function createNodeAttemptRuntime(
+  options: NodeAttemptRuntimeOptions,
+  dependencies: NodeAttemptRuntimeDependencies = {},
+): Promise<NodeAttemptRuntime> {
+  // Resources supplied through these close-capable ports transfer to this
+  // runtime immediately. Capability factory overrides are borrowed; only a
+  // capability runtime created here is owned. The consumer is the sole drain
+  // barrier; every other owner is released only after that barrier settles.
+  // Same-phase releases remain concurrent so one independent cleanup cannot
+  // prevent the others from being attempted.
+  const ownedResources: OwnedNodeAttemptResource[] = [];
+  const own = (
+    name: string,
+    close: (() => Promise<unknown>) | undefined,
+  ): void => {
+    if (close !== undefined)
+      ownedResources.push({ close, name, phase: 'release' });
+  };
   const previewStore = options.preview?.runStore;
-  const previewClose =
+  own(
+    'preview run store',
     previewStore?.close === undefined
       ? undefined
-      : previewStore.close.bind(previewStore);
-  const nodeHandler = createNodeAttemptHandler({
-    engine,
-    heartbeatIntervalMillis: options.heartbeatIntervalMillis,
-    leaseDurationSeconds: options.leaseDurationSeconds,
-    notifications,
-    reader,
-    registry,
-    runStore,
-    ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
-    workerId: options.workerId,
-  });
-  let consumer: QueueConsumer;
+      : previewStore.close.bind(previewStore),
+  );
+  own(
+    'preview invoker',
+    options.preview?.invoker.close?.bind(options.preview.invoker),
+  );
+
   try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
+    if (
+      !Number.isSafeInteger(options.leaseDurationSeconds) ||
+      options.leaseDurationSeconds < 1 ||
+      options.leaseDurationSeconds > 300 ||
+      !Number.isSafeInteger(options.heartbeatIntervalMillis) ||
+      options.heartbeatIntervalMillis < 10 ||
+      options.heartbeatIntervalMillis >= options.leaseDurationSeconds * 1_000 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
+    )
+      throw new TypeError('Node-attempt runtime options are invalid');
+    const releaseCohort = options.releaseCohort ?? 'core';
+    const productionEnabled = options.productionEnabled ?? true;
+    let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
+    let runtimeCapabilities = dependencies.runtimeCapabilities;
+    let nodeHandler: NodeAttemptHandler | undefined;
+    if (productionEnabled) {
+      const production = await createProductionNodeAttemptRuntime(
+        options,
+        dependencies,
+        releaseCohort,
+        own,
+      );
+      capabilityRuntime = production.capabilityRuntime;
+      runtimeCapabilities = production.runtimeCapabilities;
+      nodeHandler = production.handler;
+    }
+    const consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
       queueName: QUEUE_NAME.nodeAttempts,
       redisUrl: options.redisUrl,
       handler: queueHandler(
         nodeHandler,
         options.preview === undefined
           ? undefined
-          : createPreviewAttemptHandler({
-              heartbeatIntervalMillis:
-                options.preview.heartbeatIntervalMillis ??
-                options.heartbeatIntervalMillis,
-              invoker: options.preview.invoker,
-              leaseDurationSeconds:
-                options.preview.leaseDurationSeconds ??
-                options.leaseDurationSeconds,
-              runStore: options.preview.runStore,
-              telemetry:
-                dependencies.previewTelemetry ??
-                createProductionPreviewTelemetry(),
-              ...(options.preview.runtimeCapabilities === undefined
-                ? runtimeCapabilities === undefined
-                  ? {}
-                  : { runtimeCapabilities }
-                : {
-                    runtimeCapabilities: options.preview.runtimeCapabilities,
-                  }),
-              workerId: options.workerId,
-            }),
+          : (dependencies.previewHandlerFactory ?? createPreviewAttemptHandler)(
+              {
+                heartbeatIntervalMillis:
+                  options.preview.heartbeatIntervalMillis ??
+                  options.heartbeatIntervalMillis,
+                invoker: options.preview.invoker,
+                leaseDurationSeconds:
+                  options.preview.leaseDurationSeconds ??
+                  options.leaseDurationSeconds,
+                runStore: options.preview.runStore,
+                telemetry:
+                  dependencies.previewTelemetry ??
+                  createProductionPreviewTelemetry(),
+                ...(options.preview.runtimeCapabilities === undefined
+                  ? runtimeCapabilities === undefined
+                    ? {}
+                    : { runtimeCapabilities }
+                  : {
+                      runtimeCapabilities: options.preview.runtimeCapabilities,
+                    }),
+                workerId: options.workerId,
+              },
+            ),
       ),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner: createQueueTraceRunner(),
     });
+    ownedResources.unshift({
+      close: consumer.close.bind(consumer),
+      name: 'shared node-attempt consumer',
+      phase: 'drain',
+    });
+    let closePromise: Promise<void> | undefined;
+    return Object.freeze({
+      consumer,
+      checkReadiness: (): Promise<void> =>
+        capabilityRuntime?.checkReadiness() ?? Promise.resolve(),
+      close: (): Promise<void> => {
+        closePromise ??= closeNodeAttemptResources(ownedResources);
+        return closePromise;
+      },
+    });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      notifications.close(),
-      reader.close(),
-      runStore.close(),
-      capabilityRuntime?.close(),
-      previewClose?.(),
-      options.preview?.invoker.close?.(),
-      expressionEvaluator?.shutdown(),
-    ]);
+    await closeNodeAttemptResources(ownedResources, { error });
     throw error;
   }
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    consumer,
-    checkReadiness: (): Promise<void> =>
-      capabilityRuntime?.checkReadiness() ?? Promise.resolve(),
-    close: (): Promise<void> => {
-      closePromise ??= (async (): Promise<void> => {
-        const results = await Promise.allSettled([
-          consumer.close(),
-          notifications.close(),
-          reader.close(),
-          runStore.close(),
-          capabilityRuntime?.close(),
-          previewClose?.(),
-          options.preview?.invoker.close?.(),
-          expressionEvaluator?.shutdown(),
-        ]);
-        const failure = results.find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
-    },
-  });
 }
 import type { DualRegionArtifactStoreConfig } from '@pertexo/artifact-store';

@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0085_artifact_media_type_http_safety.sql',
+          migrationHead: '0086_operator_attempt_reclaim_state.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -167,6 +167,7 @@ describe('Coordinator migration and identity invariants', () => {
         '0083_artifact_finalization_retention_deadline.sql',
         '0084_workspace_member_discovery_index.sql',
         '0085_artifact_media_type_http_safety.sql',
+        '0086_operator_attempt_reclaim_state.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -182,7 +183,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0085_artifact_media_type_http_safety.sql',
+          migrationHead: '0086_operator_attempt_reclaim_state.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -249,7 +250,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0085_artifact_media_type_http_safety.sql',
+        migrationHead: '0086_operator_attempt_reclaim_state.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -488,7 +489,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0085_artifact_media_type_http_safety.sql',
+        migrationHead: '0086_operator_attempt_reclaim_state.sql',
       });
     } finally {
       await readinessPool.end();

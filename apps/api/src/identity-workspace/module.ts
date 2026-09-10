@@ -28,10 +28,7 @@ import {
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
-import type {
-  IdentityWorkspaceDependencies,
-  SessionCookiePolicy,
-} from './ports.js';
+import type { IdentityWorkspaceDependencies } from './ports.js';
 import {
   CSRF_POLICY,
   IDENTITY_CLOCK,
@@ -187,36 +184,6 @@ export class IdentityWorkspaceModule {
       },
       WorkspaceManageGuard,
       WorkspaceMemberReadGuard,
-      {
-        provide: OidcController,
-        useFactory: (
-          oidc: OidcLoginService,
-          sessions: OpaqueSessionService,
-          csrf: DoubleSubmitCsrfPolicy,
-          policy: SessionCookiePolicy,
-          telemetry: IdentityWorkspaceTelemetry,
-        ) => new OidcController(oidc, sessions, csrf, policy, telemetry),
-        inject: [
-          OidcLoginService,
-          OpaqueSessionService,
-          CSRF_POLICY,
-          SESSION_COOKIE_POLICY,
-          IDENTITY_WORKSPACE_TELEMETRY,
-        ],
-      },
-      {
-        provide: SessionController,
-        useFactory: (
-          sessions: OpaqueSessionService,
-          policy: SessionCookiePolicy,
-          telemetry: IdentityWorkspaceTelemetry,
-        ) => new SessionController(sessions, policy, telemetry),
-        inject: [
-          OpaqueSessionService,
-          SESSION_COOKIE_POLICY,
-          IDENTITY_WORKSPACE_TELEMETRY,
-        ],
-      },
     ];
     return {
       module: IdentityWorkspaceModule,
@@ -269,12 +236,6 @@ function identityReadProviders(): Provider[] {
         WORKSPACE_AUTHORIZATION,
         IDENTITY_WORKSPACE_TELEMETRY,
       ],
-    },
-    {
-      provide: UserController,
-      useFactory: (currentUser: GetCurrentUserUseCase) =>
-        new UserController(currentUser),
-      inject: [GetCurrentUserUseCase],
     },
   ];
 }

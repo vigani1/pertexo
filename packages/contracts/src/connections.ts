@@ -1,6 +1,8 @@
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -103,23 +105,8 @@ const workflowParameter = {
   required: true,
   schema: { type: 'string', format: 'uuid' },
 } as const;
-const csrfParameter = {
-  name: 'x-csrf-token',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 16, maxLength: 256 },
-} as const;
-const idempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: {
-    type: 'string',
-    minLength: 1,
-    maxLength: 128,
-    pattern: '^[\\x21-\\x7e]+$',
-  },
-} as const;
+const csrfParameter = csrfHeaderParameter();
+const idempotencyParameter = idempotencyHeaderParameter();
 
 export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',

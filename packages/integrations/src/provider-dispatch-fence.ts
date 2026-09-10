@@ -4,10 +4,12 @@ import {
   type NodeConnectionRuntime,
   NodeDispatchEvidenceError,
   type NodeExecutionRuntime,
+  ProviderCredentialInvalidError,
 } from '@pertexo/node-sdk/server';
 
 import {
   SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
   secureHttpPreDispatchError,
 } from './http/secure-http.js';
 
@@ -44,9 +46,22 @@ export function createProviderBeforeDispatch(input: {
         secretVersionId: input.secretVersionId,
         signal: input.signal,
       });
-    } catch {
+    } catch (error: unknown) {
+      if (error instanceof ProviderCredentialInvalidError)
+        throw secureHttpPreDispatchError(
+          SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+        );
+      if (
+        input.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      )
+        throw new SecureHttpError(
+          SECURE_HTTP_ERROR_CODE.canceled,
+          'definite_failure',
+          false,
+        );
       throw secureHttpPreDispatchError(
-        SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+        SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
       );
     }
     try {

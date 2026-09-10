@@ -47,5 +47,6 @@ export class WorkerReadiness {
       this.triggerRuntime?.checkReadiness(),
       this.nodeAttemptRuntime?.checkReadiness?.(),
     ]);
+    this.assertCanAcceptWork();
   }
 }

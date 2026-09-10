@@ -222,7 +222,7 @@ export function createNodeAttemptHandler(
           inputs.abortReason,
           delivery,
           context.signal,
-          false,
+          hasProviderDispatchUncertainty(claimed.lease, false),
         );
       }
       if (claimed.lease.admissionKind === 'wait_resume') {
@@ -424,7 +424,7 @@ export function createNodeAttemptHandler(
             durableAbortReason,
             delivery,
             context.signal,
-            dispatched,
+            hasProviderDispatchUncertainty(claimed.lease, dispatched),
           );
         if (heartbeatFailure !== undefined)
           throw heartbeatFailure instanceof Error
@@ -479,4 +479,11 @@ export function createNodeAttemptHandler(
       }
     },
   });
+}
+
+function hasProviderDispatchUncertainty(
+  lease: NodeAttemptLease,
+  dispatched: boolean,
+): boolean {
+  return lease.providerDispatchUnresolved === true || dispatched;
 }

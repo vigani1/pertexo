@@ -8,6 +8,8 @@ import {
 } from './http/schedules.js';
 import {
   authenticatedComponents,
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -19,18 +21,8 @@ import {
 const workspaceParameter = pathParameter('workspaceId');
 const workflowParameter = pathParameter('workflowId');
 const triggerParameter = pathParameter('triggerId');
-const idempotencyParameter = {
-  name: 'Idempotency-Key',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 1, maxLength: 128 },
-} as const;
-const csrfParameter = {
-  name: 'X-CSRF-Token',
-  in: 'header',
-  required: true,
-  schema: { type: 'string', minLength: 1, maxLength: 256 },
-} as const;
+const idempotencyParameter = idempotencyHeaderParameter();
+const csrfParameter = csrfHeaderParameter('X-CSRF-Token');
 const commandParameters = [
   workspaceParameter,
   workflowParameter,

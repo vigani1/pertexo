@@ -31,6 +31,7 @@ export async function persistFailureNotificationIntent(
     destinationConfigVersion: number | null;
     sideEffectClass: string | null;
     cancellationRequested: boolean;
+    runTimeoutFailureContextEnabled: boolean;
     plan: ParsedTransitionPlan;
     traceparent?: string;
   }>,
@@ -64,21 +65,42 @@ export async function persistFailureNotificationIntent(
       );
     });
   const primary = failures[0];
-  if (primary === undefined) throw new CoordinatorRunStateCorruptError();
-  const physical = await client.query<{
-    current_attempt_number: number | null;
-    node_id: string;
-    safe_error_code: string | null;
-    status: string;
-  }>(
-    `select node_id,status,current_attempt_number,safe_error_code
-     from app.node_runs
-     where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
-    [input.workspaceId, input.runId, primary.invocationKey],
-  );
-  const node = physical.rows[0];
-  if (node?.node_id !== primary.nodeId || node.status !== primary.status)
-    throw new CoordinatorRunStateCorruptError();
+  let primaryFailure: Record<string, unknown>;
+  if (primary === undefined) {
+    if (input.plan.checkpoint.runStatus !== 'timed_out')
+      throw new CoordinatorRunStateCorruptError();
+    if (!input.runTimeoutFailureContextEnabled) return;
+    primaryFailure = {
+      source: 'run',
+      runStatus: 'timed_out',
+      safeErrorCode: terminalEvent.reasonCode ?? 'execution.deadline_exceeded',
+    };
+  } else {
+    const physical = await client.query<{
+      current_attempt_number: number | null;
+      node_id: string;
+      safe_error_code: string | null;
+      status: string;
+    }>(
+      `select node_id,status,current_attempt_number,safe_error_code
+       from app.node_runs
+       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
+      [input.workspaceId, input.runId, primary.invocationKey],
+    );
+    const node = physical.rows[0];
+    if (node?.node_id !== primary.nodeId || node.status !== primary.status)
+      throw new CoordinatorRunStateCorruptError();
+    primaryFailure = {
+      nodeId: primary.nodeId,
+      invocationKey: primary.invocationKey,
+      nodeStatus: primary.status,
+      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
+      safeErrorCode:
+        node.safe_error_code ??
+        terminalEvent.reasonCode ??
+        `execution.${primary.status}`,
+    };
+  }
   const context = FailureNotificationContextV1Schema.parse({
     schemaVersion: 1,
     runId: input.runId,
@@ -89,17 +111,8 @@ export async function persistFailureNotificationIntent(
     triggerType: input.triggerType,
     startedAt: (input.startedAt ?? input.createdAt).toISOString(),
     completedAt: terminalEvent.occurredAt,
-    primaryFailure: {
-      nodeId: primary.nodeId,
-      invocationKey: primary.invocationKey,
-      nodeStatus: primary.status,
-      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
-      safeErrorCode:
-        node.safe_error_code ??
-        terminalEvent.reasonCode ??
-        `execution.${primary.status}`,
-    },
-    totalFailureCount: failures.length,
+    primaryFailure,
+    totalFailureCount: Math.max(1, failures.length),
   });
   const contextJson = serializeStoredExecutionJsonValue(context);
   if (

@@ -8,6 +8,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type ResolvedNodeConnection,
+  ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -713,7 +714,7 @@ describe('http.request@1 server executor', () => {
       }).execute(invocation(connectionState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
-        { kind: 'failed', errorKind: 'authentication' },
+        { kind: 'retry', errorKind: 'provider', reuseProviderKey: false },
         false,
       ),
     );
@@ -825,39 +826,127 @@ describe('http.request@1 server executor', () => {
     );
   });
 
-  it('rechecks the resolved secret immediately before dispatch and stops a rotation race', async () => {
-    const state = runtime();
-    const executionRuntime: NodeExecutionRuntime = {
-      ...state.value,
-      connections: {
-        resolve: state.resolve,
-        assertCurrent: () => Promise.reject(new Error('rotated')),
-      },
-    };
-    const dispatch = vi.fn();
-    const registration = createHttpRequestExecutorRegistration({
-      httpClient: new SecureHttpClient(
-        {
-          resolve: () =>
-            Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
+  it.each([
+    [
+      'transient resolution failure',
+      new Error('postgres unavailable'),
+      { kind: 'retry', errorKind: 'provider' },
+    ],
+    [
+      'resolution cancellation',
+      new DOMException('stopping', 'AbortError'),
+      { kind: 'canceled', errorKind: 'canceled' },
+    ],
+    [
+      'invalid credential',
+      new ProviderCredentialInvalidError(),
+      { kind: 'failed', errorKind: 'authentication' },
+    ],
+  ] as const)(
+    'preserves %s before provider dispatch',
+    async (_name, error, expected) => {
+      const state = runtime({
+        connections: {
+          assertCurrent: () => Promise.resolve(),
+          resolve: () => Promise.reject(error),
         },
-        { dispatch },
-      ),
-    });
+      });
+      const executeStreaming = vi.fn();
 
-    await expect(
-      registration.execute(invocation(executionRuntime)),
-    ).rejects.toMatchObject({
-      decision: {
-        kind: 'failed',
-        errorKind: 'authentication',
-      },
-      possiblyDispatched: false,
-    });
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(state.beforeDispatch).not.toHaveBeenCalled();
-    expect(state.secret.every((byte) => byte === 0)).toBe(true);
-  });
+      await expect(
+        createHttpRequestExecutorRegistration({
+          httpClient: { executeStreaming },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({
+        decision: expected,
+        possiblyDispatched: false,
+      });
+      expect(executeStreaming).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['resolve', 'fence'] as const)(
+    'preserves an earlier uncertain dispatch across a transient %s outage',
+    async (stage) => {
+      const state = runtime();
+      const executionRuntime: NodeExecutionRuntime = {
+        ...state.value,
+        providerDispatchUnresolved: true,
+        connections: {
+          assertCurrent:
+            stage === 'fence'
+              ? () => Promise.reject(new Error('postgres unavailable'))
+              : state.assertCurrent,
+          resolve:
+            stage === 'resolve'
+              ? () => Promise.reject(new Error('postgres unavailable'))
+              : state.resolve,
+        },
+      };
+
+      await expect(
+        createHttpRequestExecutorRegistration({
+          httpClient: streamingHttpClient(async (request) => {
+            await request.beforeDispatch();
+            return response(new Uint8Array());
+          }),
+        }).execute(invocation(executionRuntime)),
+      ).rejects.toMatchObject({
+        decision: { kind: 'outcome_unknown', errorKind: 'provider' },
+        possiblyDispatched: true,
+      });
+    },
+  );
+
+  it.each([
+    [
+      'transient fence failure',
+      new Error('postgres unavailable'),
+      { kind: 'retry', errorKind: 'provider' },
+    ],
+    [
+      'fence cancellation',
+      new DOMException('stopping', 'AbortError'),
+      { kind: 'canceled', errorKind: 'canceled' },
+    ],
+    [
+      'credential rotation',
+      new ProviderCredentialInvalidError(),
+      { kind: 'failed', errorKind: 'authentication' },
+    ],
+  ] as const)(
+    'preserves %s at the dispatch fence',
+    async (_name, error, expected) => {
+      const state = runtime();
+      const executionRuntime: NodeExecutionRuntime = {
+        ...state.value,
+        connections: {
+          resolve: state.resolve,
+          assertCurrent: () => Promise.reject(error),
+        },
+      };
+      const dispatch = vi.fn();
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient: new SecureHttpClient(
+          {
+            resolve: () =>
+              Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
+          },
+          { dispatch },
+        ),
+      });
+
+      await expect(
+        registration.execute(invocation(executionRuntime)),
+      ).rejects.toMatchObject({
+        decision: expected,
+        possiblyDispatched: false,
+      });
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(state.beforeDispatch).not.toHaveBeenCalled();
+      expect(state.secret.every((byte) => byte === 0)).toBe(true);
+    },
+  );
 
   it.each([
     ['invalid config', { config: config({ method: 'TRACE' }) }],

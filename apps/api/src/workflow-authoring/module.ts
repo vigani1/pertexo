@@ -21,12 +21,7 @@ import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
-import {
-  WORKFLOW_AUTHORING_AUTHORIZATION,
-  WORKFLOW_AUTHORING_PERSISTENCE,
-  WORKFLOW_AUTHORING_TELEMETRY,
-  WORKFLOW_DEFINITION_CATALOG,
-} from './tokens.js';
+import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
@@ -54,29 +49,13 @@ export class WorkflowAuthoringModule {
         ),
       },
       {
-        provide: WORKFLOW_AUTHORING_PERSISTENCE,
-        useValue: dependencies.persistence,
-      },
-      {
         provide: WORKFLOW_AUTHORING_AUTHORIZATION,
         useValue: dependencies.authorization,
-      },
-      {
-        provide: WORKFLOW_AUTHORING_TELEMETRY,
-        useValue: dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
       },
       WorkflowReadGuard,
       WorkflowCreateGuard,
       WorkflowUpdateGuard,
       WorkflowPublishGuard,
-      ...(dependencies.definitionCatalog === undefined
-        ? []
-        : [
-            {
-              provide: WORKFLOW_DEFINITION_CATALOG,
-              useValue: dependencies.definitionCatalog,
-            } satisfies Provider,
-          ]),
       {
         provide: ListWorkflowsUseCase,
         useValue: new ListWorkflowsUseCase(

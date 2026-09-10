@@ -113,6 +113,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
 
       await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
         '0085_artifact_media_type_http_safety.sql',
+        '0086_operator_attempt_reclaim_state.sql',
       ]);
 
       await owner.query('begin');

@@ -4,9 +4,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
-import { createDatabaseRuntime } from '@pertexo/database/execution';
+import {
+  ConnectionUnavailableError,
+  createDatabaseRuntime,
+} from '@pertexo/database/execution';
 import type { ConnectionDatabase } from '@pertexo/database/testing';
-import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
+import {
+  ProviderCredentialInvalidError,
+  ProviderExecutionRateLimitError,
+} from '@pertexo/node-sdk/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -499,7 +505,7 @@ describe('worker node runtime capabilities', () => {
           purpose: 'http.request.execute',
           signal: new AbortController().signal,
         }),
-      ).rejects.toThrow('Connection is not compatible');
+      ).rejects.toBeInstanceOf(ProviderCredentialInvalidError);
       expect(open).not.toHaveBeenCalled();
       await runtime.close();
     },
@@ -536,7 +542,7 @@ describe('worker node runtime capabilities', () => {
         secretVersionId,
         signal: new AbortController().signal,
       }),
-    ).rejects.toThrow('Connection auth type is not supported');
+    ).rejects.toBeInstanceOf(ProviderCredentialInvalidError);
     await expect(
       assertCurrent({
         connectionId,
@@ -548,6 +554,72 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
     await runtime.close();
   });
+
+  it.each([
+    ['resolution', 'resolve', new Error('postgres unavailable'), false],
+    [
+      'revoked resolution',
+      'resolve',
+      new ConnectionUnavailableError('revoked'),
+      true,
+    ],
+    ['currency check', 'assert', new Error('postgres unavailable'), false],
+    [
+      'rotated currency check',
+      'assert',
+      new ConnectionUnavailableError('rotated'),
+      true,
+    ],
+  ] as const)(
+    'preserves %s failure semantics at the worker capability boundary',
+    async (_name, stage, sourceError, invalidCredential) => {
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret: () =>
+              stage === 'resolve'
+                ? Promise.reject(sourceError)
+                : Promise.reject(new Error('not exercised')),
+            assertConnectionSecretCurrent: () =>
+              stage === 'assert'
+                ? Promise.reject(sourceError)
+                : Promise.reject(new Error('not exercised')),
+          },
+          connectionEncryption: { open: vi.fn() },
+          providerRateLimiter: {
+            consume: () => Promise.resolve({ allowed: true as const }),
+          },
+        },
+      );
+      const connections = runtime.factories.connections?.(context);
+      if (connections?.assertCurrent === undefined)
+        throw new Error('connection capability missing');
+      const operation =
+        stage === 'resolve'
+          ? connections.resolve({
+              connectionId,
+              expectedProviderKey: 'http',
+              expectedAuthType: 'http_headers',
+              purpose: 'http.request.execute',
+              signal: new AbortController().signal,
+            })
+          : connections.assertCurrent({
+              connectionId,
+              expectedProviderKey: 'http',
+              expectedAuthType: 'http_headers',
+              secretVersionId,
+              signal: new AbortController().signal,
+            });
+
+      if (invalidCredential)
+        await expect(operation).rejects.toBeInstanceOf(
+          ProviderCredentialInvalidError,
+        );
+      else await expect(operation).rejects.toBe(sourceError);
+      await runtime.close();
+    },
+  );
 
   it('spools a bounded stream, persists pending metadata before upload, finalizes after verification, and cleans up', async () => {
     const spoolDirectory = await mkdtemp(
@@ -669,6 +741,45 @@ describe('worker node runtime capabilities', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(RangeError);
+    expect(put).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('rejects an already-aborted artifact write before creating spool data', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const put = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();

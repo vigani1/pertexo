@@ -87,6 +87,8 @@ class MemoryS3Client implements S3ClientLike {
   public useInvalidGetMetadata = false;
   public getBodyFactory: ((object: StoredObject) => Readable) | undefined;
   public getBodyOverride: unknown = USE_STORED_BODY;
+  public getError: Error | undefined;
+  public headError: Error | undefined;
 
   public async send(
     command: unknown,
@@ -118,6 +120,7 @@ class MemoryS3Client implements S3ClientLike {
       return {};
     }
     if (command instanceof HeadObjectCommand) {
+      if (this.headError !== undefined) throw this.headError;
       if (this.hangHead)
         await new Promise<never>((_resolve, reject) => {
           const abort = () => {
@@ -149,6 +152,7 @@ class MemoryS3Client implements S3ClientLike {
     }
     if (command instanceof GetObjectCommand) {
       this.getCalls += 1;
+      if (this.getError !== undefined) throw this.getError;
       const object = this.object(String(command.input.Key));
       const body =
         this.getBodyFactory?.(object) ?? Readable.from([object.body]);
@@ -952,6 +956,30 @@ describe('ArtifactStore', () => {
     await expect(store.head(identity)).resolves.toBeNull();
     await expect(store.getStream(identity)).rejects.toBeInstanceOf(
       ArtifactNotFoundError,
+    );
+  });
+
+  it('preserves non-not-found GET and direct-upload HEAD failures', async () => {
+    const client = new MemoryS3Client();
+    const { store } = createStore(client);
+    const metadata = {
+      artifactId: ARTIFACT_ID,
+      byteLength: 5,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      workspaceId: WORKSPACE_ID,
+    };
+    await store.put({ ...metadata, body: Readable.from(['hello']) });
+
+    const getFailure = new Error('provider GET failed');
+    client.getError = getFailure;
+    await expect(store.getStream(metadata)).rejects.toBe(getFailure);
+    client.getError = undefined;
+
+    const headFailure = new Error('provider HEAD failed');
+    client.headError = headFailure;
+    await expect(store.validateDirectUpload(metadata)).rejects.toBe(
+      headFailure,
     );
   });
 

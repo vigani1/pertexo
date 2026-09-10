@@ -83,7 +83,6 @@ export function createStubApiWorkflowRuntime(
         createWorkflow: () => Promise.reject(new Error('not used')),
         listWorkflows: () => Promise.resolve({ items: [] }),
         getDraft: () => Promise.resolve(null),
-        getVersion: () => Promise.resolve(null),
         listVersions: () => Promise.resolve({ items: [] }),
         saveDraft: () => Promise.reject(new Error('not used')),
         publishWorkflow: () => Promise.reject(new Error('not used')),

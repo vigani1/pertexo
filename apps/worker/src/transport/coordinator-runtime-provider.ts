@@ -40,6 +40,8 @@ export function coordinatorRuntimeProvider(
         dueWakeupPollIntervalMillis:
           config.coordinator.dueWakeupPollIntervalMillis,
         maximumAdmissions: config.coordinator.maximumAdmissions,
+        runTimeoutFailureContextEnabled:
+          config.coordinator.runTimeoutFailureContextEnabled,
         observer,
         releaseCohort: config.nodeCompatibilityCohort,
         redisUrl: config.redisUrl,

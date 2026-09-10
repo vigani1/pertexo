@@ -8,6 +8,7 @@ import {
   FailureNotificationDestinationUseCases,
   type ConnectionDependencies,
 } from '../../src/connections/index.js';
+import { CONNECTION_AUTHORIZATION } from '../../src/connections/tokens.js';
 
 const dependencies = {
   persistence: {
@@ -62,6 +63,11 @@ describe('connections Nest module', () => {
     expect(dynamic.controllers).toContain(ConnectionsController);
     expect(dynamic.controllers).toContain(
       FailureNotificationDestinationsController,
+    );
+    expect(dynamic.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provide: CONNECTION_AUTHORIZATION }),
+      ]),
     );
   });
 });

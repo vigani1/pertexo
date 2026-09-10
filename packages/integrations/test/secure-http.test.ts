@@ -106,6 +106,13 @@ function expectSecureFailure(
 }
 
 describe('public network address policy', () => {
+  it.each(['provider.example.test', '999.1.1.1', 'not-an-address'])(
+    'rejects non-IP address %s',
+    (address) => {
+      expect(() => assertPublicAddress(address)).toThrow('invalid address');
+    },
+  );
+
   it.each([
     '0.1.2.3',
     '10.0.0.1',
@@ -819,6 +826,45 @@ describe('secure HTTP client', () => {
       { code: SECURE_HTTP_ERROR_CODE.canceled, possiblyDispatched: true },
     );
     expect(chunk.every((byte) => byte === 0)).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('clears a transport chunk when cancellation wins before redaction starts', async () => {
+    const controller = new AbortController();
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const chunk = encoder.encode('provider-secret');
+    const close = vi.fn();
+    const transport = new FakeTransport(() =>
+      Promise.resolve({
+        status: 200,
+        headers: {},
+        close,
+        body: {
+          async *[Symbol.asyncIterator]() {
+            await Promise.resolve();
+            yield chunk;
+          },
+        },
+      }),
+    );
+    const reason = new Error('cancel before the first streamed chunk');
+
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, transport).executeStreaming(
+        request({ signal: controller.signal }),
+        async (stream) => {
+          controller.abort(reason);
+          for await (const _chunk of stream.body) void _chunk;
+          return undefined;
+        },
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.canceled, possiblyDispatched: true },
+    );
+    await vi.waitFor(() => {
+      expect(chunk.every((byte) => byte === 0)).toBe(true);
+    });
     expect(close).toHaveBeenCalledOnce();
   });
 

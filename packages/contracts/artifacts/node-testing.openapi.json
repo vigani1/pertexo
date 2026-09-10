@@ -58,21 +58,21 @@
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
-              "maxLength": 512
+              "maxLength": 256
             }
           },
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Required when request mode is test_execute; ignored for validate",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
               "maxLength": 128,
-              "pattern": "^[\\x21-\\x7e]+$"
-            }
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            },
+            "description": "Required when request mode is test_execute; ignored for validate"
           }
         ],
         "requestBody": {

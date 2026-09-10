@@ -14,6 +14,16 @@ type RouteErrorMapper = Readonly<{
   map: (error: unknown) => ApplicationError;
 }>;
 
+function mappedFeatureError(
+  mapper: RouteErrorMapper['map'],
+  error: unknown,
+): ApplicationError | undefined {
+  const mapped = mapper(error);
+  return mapped.code === 'internal.unexpected' && mapped.cause === error
+    ? undefined
+    : mapped;
+}
+
 const ROUTE_ERROR_MAPPERS: readonly RouteErrorMapper[] = Object.freeze([
   {
     route: /^\/v1\/workspaces\/[^/]+\/artifacts(?:\/|$)/u,
@@ -58,8 +68,9 @@ export const APPLICATION_ERROR_MAPPERS: readonly HttpApplicationErrorMapper[] =
     (error, request) => {
       const path = requestPath(request.url);
       if (path === undefined) return undefined;
-      return ROUTE_ERROR_MAPPERS.find(({ route }) => route.test(path))?.map(
-        error,
-      );
+      const mapper = ROUTE_ERROR_MAPPERS.find(({ route }) => route.test(path));
+      return mapper === undefined
+        ? undefined
+        : mappedFeatureError(mapper.map, error);
     },
   ]);

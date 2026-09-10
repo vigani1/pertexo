@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
-import { IdentityConflictError } from './identity-workspace.js';
+import { IdentityConflictError } from './identity-workspace-errors.js';
 
 const stateDigestSchema = sha256HexSchema;
 const secretSchema = z.string().min(1).max(16_384);

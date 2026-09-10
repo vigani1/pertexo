@@ -23,11 +23,15 @@ import {
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
+} from './workflow-authoring-contracts.js';
+import type {
   WorkflowAuthoringTestHooks,
-  WorkflowDraftRecord,
   WorkflowExecutableCompiler,
+} from './workflow-authoring-types.js';
+import type {
+  WorkflowDraftRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './workflow-authoring-records.js';
 import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
 import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
 import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';

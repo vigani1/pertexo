@@ -57,15 +57,24 @@ export const FailureNotificationContextV1Schema = z
     triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
     startedAt: z.iso.datetime(),
     completedAt: z.iso.datetime(),
-    primaryFailure: z
-      .object({
-        nodeId: z.string().min(1).max(128),
-        invocationKey: z.string().min(1).max(256),
-        nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
-        attemptNumber: z.number().int().nonnegative(),
-        safeErrorCode: safeCodeSchema,
-      })
-      .strict(),
+    primaryFailure: z.union([
+      z
+        .object({
+          nodeId: z.string().min(1).max(128),
+          invocationKey: z.string().min(1).max(256),
+          nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+          attemptNumber: z.number().int().nonnegative(),
+          safeErrorCode: safeCodeSchema,
+        })
+        .strict(),
+      z
+        .object({
+          source: z.literal('run'),
+          runStatus: z.literal('timed_out'),
+          safeErrorCode: safeCodeSchema,
+        })
+        .strict(),
+    ]),
     totalFailureCount: z.number().int().positive().max(10_000),
   })
   .strict();

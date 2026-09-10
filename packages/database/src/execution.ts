@@ -38,7 +38,10 @@ export {
   CoordinatorDeliveryMismatchError,
   createCoordinatorRunStore,
 } from './execution/coordinator-run-store.js';
-export type { CoordinatorRunStore } from './execution/coordinator-run-store.js';
+export type {
+  CoordinatorRunStore,
+  CoordinatorRunStoreOptions,
+} from './execution/coordinator-run-store.js';
 export type { DatabaseConfig } from './config.js';
 export { createDatabaseRuntime } from './platform/database-runtime.js';
 export type {

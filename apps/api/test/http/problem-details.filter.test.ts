@@ -735,4 +735,88 @@ describe('RFC 9457 problem details filter', () => {
     await Promise.resolve();
     expect(logger.log).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    [400, 'request.invalid'],
+    [401, 'auth.unauthenticated'],
+    [403, 'auth.forbidden'],
+    [404, 'resource.not_found'],
+    [503, 'internal.unexpected'],
+  ] as const)(
+    'preserves a framework %i response when real feature mappers are installed',
+    (status, code) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(
+        new RequestContextStore(),
+        undefined,
+        APPLICATION_ERROR_MAPPERS,
+      ).catch(
+        new HttpException('framework response', status),
+        hostFor(
+          { url: '/v1/workspaces/workspace-a/workflows/missing' },
+          response,
+        ),
+      );
+
+      expect(response.status).toHaveBeenCalledWith(status);
+      expect(response.body).toMatchObject({ status, code });
+    },
+  );
+
+  it.each(['constructor', 'toString', '__proto__'])(
+    'treats inherited catalog code %s as an unknown failure',
+    (code) => {
+      const response = responseMock();
+      expect(() => {
+        new ProblemDetailsFilter(new RequestContextStore()).catch(
+          { code },
+          hostFor({ url: '/v1/resource' }, response),
+        );
+      }).not.toThrow();
+      expect(response.body).toMatchObject({
+        status: 500,
+        code: 'internal.unexpected',
+      });
+    },
+  );
+
+  it.each([
+    { url: '/v1/workspaces/workspace-a/workflows/workflow-a' },
+    {},
+    { url: 'http://[invalid' },
+  ])('falls back safely when no feature mapper accepts $url', (request) => {
+    const response = responseMock();
+
+    new ProblemDetailsFilter(
+      new RequestContextStore(),
+      undefined,
+      APPLICATION_ERROR_MAPPERS,
+    ).catch(new Error('private failure'), hostFor(request, response));
+
+    expect(response.body).toMatchObject({
+      status: 500,
+      code: 'internal.unexpected',
+    });
+  });
+
+  it('still sends the safe problem exactly once when logging throws synchronously', () => {
+    const response = responseMock();
+    const logger = {
+      log: vi.fn(() => {
+        throw new Error('sink failed');
+      }),
+    };
+
+    expect(() => {
+      new ProblemDetailsFilter(new RequestContextStore(), logger).catch(
+        new Error('private failure'),
+        hostFor({ url: '/v1/resource' }, response),
+      );
+    }).not.toThrow();
+    expect(response.send).toHaveBeenCalledOnce();
+    expect(response.body).toMatchObject({
+      status: 500,
+      code: 'internal.unexpected',
+    });
+  });
 });

@@ -4,6 +4,8 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
+import type { LeasedOutboxEvent } from './dispatcher-contracts.js';
+export type { LeasedOutboxEvent } from './dispatcher-contracts.js';
 import { claimQueryResultSchema, toLeasedEvent } from './dispatcher-rows.js';
 import {
   EXPECTED_MIGRATION_HEAD,
@@ -48,22 +50,6 @@ export type ClaimOutboxBatchInput = Readonly<
 export type ObserveOutboxBacklogInput = Readonly<{
   enabledJobNames: readonly string[];
 }>;
-export type LeasedOutboxEvent = Readonly<{
-  aggregateId: string;
-  aggregateType: string;
-  availableAt: Date;
-  id: string;
-  jobName: string;
-  leaseExpiresAt: Date;
-  leaseOwner: string;
-  leaseToken: string;
-  payload: unknown;
-  payloadChecksum: string;
-  publishAttempts: number;
-  schemaVersion: number;
-  workspaceId: string;
-}>;
-
 export type ReleaseOutboxResult = 'retry_scheduled' | 'failed' | 'not_leased';
 
 export type OutboxBacklogSnapshot = Readonly<{

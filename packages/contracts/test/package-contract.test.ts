@@ -21,6 +21,7 @@ describe('contracts package boundary', () => {
       './connections',
       './catalog',
       './identity-workspace',
+      './transport',
       './node-testing',
       './workflow-authoring',
       './workflow-runs',

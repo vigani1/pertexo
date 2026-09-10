@@ -42,6 +42,15 @@ import {
 } from '../src/http/identity-workspace.js';
 import { manifestProblemResponse } from '../src/openapi-primitives.js';
 import {
+  csrfHeaderParameter,
+  idempotencyHeaderParameter,
+  webhookContentTypeHeaderParameter,
+} from '../src/openapi-primitives.js';
+import {
+  csrfTokenSchema,
+  webhookJsonContentTypeSchema,
+} from '../src/http/transport-headers.js';
+import {
   strongEtagSchema,
   workflowCompatibilityReportSchema,
   workflowCreateRequestSchema,
@@ -98,6 +107,13 @@ describe('public contracts package', () => {
     );
   });
 
+  it('renders matching problem metadata from the canonical manifest', () => {
+    expect(manifestProblemResponse(401, 'auth.unauthenticated')).toMatchObject({
+      'x-pertexo-code': 'auth.unauthenticated',
+      'x-pertexo-status': 401,
+    });
+  });
+
   it('enforces credential and idempotency boundary refinements', () => {
     expect(httpHeaderCredentialSchema.safeParse({}).success).toBe(false);
     expect(
@@ -141,6 +157,51 @@ describe('public contracts package', () => {
 
     expect(idempotencyKeySchema.safeParse('one,two').success).toBe(false);
     expect(idempotencyKeySchema.safeParse('one-two').success).toBe(true);
+  });
+
+  it('keeps transport header schemas and OpenAPI parameters on the same edges', () => {
+    for (const value of ['x'.repeat(16), 'x'.repeat(256)])
+      expect(csrfTokenSchema.safeParse(value).success).toBe(true);
+    for (const value of ['x'.repeat(15), 'x'.repeat(257)])
+      expect(csrfTokenSchema.safeParse(value).success).toBe(false);
+
+    for (const value of ['!', '~'.repeat(128)])
+      expect(idempotencyKeySchema.safeParse(value).success).toBe(true);
+    for (const value of ['', 'has space', 'one,two', 'x'.repeat(129)])
+      expect(idempotencyKeySchema.safeParse(value).success).toBe(false);
+
+    for (const value of [
+      'application/json',
+      'Application/JSON',
+      'application/json; charset=utf-8',
+      'APPLICATION/JSON ; CHARSET=UTF-8',
+    ])
+      expect(webhookJsonContentTypeSchema.safeParse(value).success).toBe(true);
+    for (const value of [
+      'application/jsonevil',
+      'application/json; charset=latin1',
+      'application/json; profile=test',
+    ])
+      expect(webhookJsonContentTypeSchema.safeParse(value).success).toBe(false);
+
+    expect(csrfHeaderParameter().schema).toEqual(
+      expect.objectContaining({ minLength: 16, maxLength: 256 }),
+    );
+    const idempotencyParameterSchema = idempotencyHeaderParameter()
+      .schema as Readonly<Record<string, unknown>>;
+    expect(idempotencyParameterSchema).toEqual(
+      expect.objectContaining({ minLength: 1, maxLength: 128 }),
+    );
+    const idempotencyPattern = new RegExp(
+      String(idempotencyParameterSchema.pattern),
+      'u',
+    );
+    expect(idempotencyPattern.test('one-two')).toBe(true);
+    expect(idempotencyPattern.test('one,two')).toBe(false);
+    const contentTypeParameterSchema = webhookContentTypeHeaderParameter()
+      .schema as Readonly<Record<string, unknown>>;
+    expect(contentTypeParameterSchema.type).toBe('string');
+    expect(typeof contentTypeParameterSchema.pattern).toBe('string');
   });
 
   it('maps every problem code exactly once to stable HTTP metadata', () => {

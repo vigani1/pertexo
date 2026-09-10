@@ -36,6 +36,7 @@ export async function persistCoordinatorRunTransition(
     plan: ParsedTransitionPlan;
     planFingerprint: string;
     row: CoordinatorCommitRow;
+    runTimeoutFailureContextEnabled: boolean;
     runId: string;
     traceparent?: string;
     workflowVersionId: string;
@@ -48,6 +49,7 @@ export async function persistCoordinatorRunTransition(
     plan,
     planFingerprint,
     row,
+    runTimeoutFailureContextEnabled,
     runId,
     traceparent,
     workflowVersionId,
@@ -67,6 +69,7 @@ export async function persistCoordinatorRunTransition(
       row.failure_notification_destination_config_version,
     sideEffectClass: row.failure_notification_side_effect_class,
     cancellationRequested: authoritativeCancellation,
+    runTimeoutFailureContextEnabled,
     plan,
     ...(traceparent === undefined ? {} : { traceparent }),
   });

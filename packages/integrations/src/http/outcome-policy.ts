@@ -70,10 +70,11 @@ export function classifySecureHttpError(
       sideEffectClass,
       providerKeyPresent,
     );
-  if (
-    error.code === SECURE_HTTP_ERROR_CODE.dnsFailed ||
-    error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed
-  )
+  if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+    return error.possiblyDispatched
+      ? retryDefinite('provider', sideEffectClass, providerKeyPresent)
+      : retry('provider', sideEffectClass, providerKeyPresent);
+  if (error.code === SECURE_HTTP_ERROR_CODE.dnsFailed)
     return error.possiblyDispatched
       ? retryDefinite(errorKind, sideEffectClass, providerKeyPresent)
       : retry(errorKind, sideEffectClass, providerKeyPresent);

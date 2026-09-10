@@ -38,7 +38,14 @@ const workerBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const databaseName = `pertexo_test_0016_run_store_${randomUUID().replaceAll('-', '')}`;
+const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
+const databaseName = (() => {
+  if (!runnerOwnsDatabase)
+    return `pertexo_test_0016_run_store_${randomUUID().replaceAll('-', '')}`;
+  const value = process.env.PERTEXO_Q11_DATABASE_NAME;
+  if (!value) throw new Error('Q11 runner-owned database name is required');
+  return value;
+})();
 const zeroDatabaseName = `pertexo_test_0016_zero_${randomUUID().replaceAll('-', '')}`;
 const priorHeadDatabaseName = `pertexo_test_0030_upgrade_${randomUUID().replaceAll('-', '')}`;
 
@@ -84,6 +91,8 @@ const rawStore = createCoordinatorRunStore(
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   }),
+  undefined,
+  { runTimeoutFailureContextEnabled: true },
 );
 const nodeAttemptStore = createNodeAttemptRunStore(
   parseDatabaseConfig({
@@ -132,6 +141,7 @@ function checkpoint(input: {
 }
 
 async function createDatabase(): Promise<void> {
+  if (runnerOwnsDatabase) return;
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
     await admin.query(`drop database if exists "${databaseName}" with (force)`);
@@ -147,6 +157,7 @@ async function createDatabase(): Promise<void> {
 
 async function dropDatabase(): Promise<void> {
   await Promise.all([store.close(), nodeAttemptStore.close()]);
+  if (runnerOwnsDatabase) return;
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);

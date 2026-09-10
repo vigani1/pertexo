@@ -90,6 +90,13 @@ export function createTransportTestEnvironment() {
           `transport-b-${workspaceB}`,
         ],
       );
+      if (process.env.PERTEXO_Q11_SHARED_DATABASE === '1')
+        await client.query(
+          `update app.retention_schedule_state
+              set next_scan_at=clock_timestamp()+interval '1 day'
+            where workspace_id=any($1::uuid[])`,
+          [[workspaceA, workspaceB]],
+        );
       await client.query('commit');
     } catch (error: unknown) {
       await client.query('rollback').catch(() => undefined);
@@ -135,6 +142,7 @@ export function createTransportTestEnvironment() {
 
   return {
     apiDatabase,
+    apiUrl,
     checksumA,
     checksumB,
     close: () =>
@@ -158,7 +166,8 @@ export function createTransportTestEnvironment() {
         return false;
       },
     initialize: async (): Promise<void> => {
-      await migrateDatabase(migrationConfig);
+      if (process.env.PERTEXO_Q11_SHARED_DATABASE !== '1')
+        await migrateDatabase(migrationConfig);
       await applyProofFixture();
     },
     migrationUrl,

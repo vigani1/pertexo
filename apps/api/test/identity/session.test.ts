@@ -199,6 +199,26 @@ describe('opaque browser sessions', () => {
     expect(() => {
       csrf.assertMutationAllowed({ method: 'DELETE', cookieToken: token });
     }).toThrow(expect.objectContaining({ code: 'identity.csrf_failed' }));
+    for (const boundary of [16, 256]) {
+      const boundaryToken = 'x'.repeat(boundary);
+      expect(() => {
+        csrf.assertMutationAllowed({
+          method: 'POST',
+          cookieToken: boundaryToken,
+          headerToken: boundaryToken,
+        });
+      }).not.toThrow();
+    }
+    for (const outsideBoundary of [15, 257]) {
+      const boundaryToken = 'x'.repeat(outsideBoundary);
+      expect(() => {
+        csrf.assertMutationAllowed({
+          method: 'POST',
+          cookieToken: boundaryToken,
+          headerToken: boundaryToken,
+        });
+      }).toThrow(expect.objectContaining({ code: 'identity.csrf_failed' }));
+    }
   });
 
   it('revokes a persisted session when cookie delivery fails', async () => {

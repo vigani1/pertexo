@@ -44,6 +44,18 @@ const integrationDescribe = artifactTransferIntegrationEnabled
   ? describe
   : describe.skip;
 
+function recordBenchmarkOperation(
+  name: string,
+  startedAt: number,
+  population = 1,
+): void {
+  if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
+  const endedAt = performance.now();
+  process.stdout.write(
+    `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name, startedAtUnixMs: performance.timeOrigin + startedAt, endedAtUnixMs: performance.timeOrigin + endedAt, population, boundary: `composed artifact ${name} request through response or stream completion` })}\n`,
+  );
+}
+
 type ArtifactMetadata = Readonly<{
   id: string;
   workspaceId: string;
@@ -206,11 +218,12 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
 
   it('claims one exact concurrent upload, enforces immutable signed PUT metadata, and finalizes through both regions', async () => {
     const owner = await fixture.login('owner');
-    const body = Buffer.from('direct artifact upload through signed PUT');
+    const body = Buffer.alloc(1_048_576, 0x61);
     const metadata = requestMetadata(body);
     const key = `concurrent-${randomUUID()}`;
     const base = `/v1/workspaces/${fixture.workspaceId}/artifacts`;
     const uploadUrl = `${base}/uploads`;
+    let operationStartedAt = performance.now();
     const responses = await Promise.all(
       [0, 1].map(() =>
         fixture.application.inject({
@@ -221,6 +234,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
         }),
       ),
     );
+    recordBenchmarkOperation('artifact-begin', operationStartedAt, 2);
     for (const response of responses) expect(response.statusCode).toBe(201);
     const bodies = responses.map((response) => response.json<UploadResponse>());
     expect(bodies[0]?.artifact.id).toBe(bodies[1]?.artifact.id);
@@ -283,7 +297,13 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       `wrong-size-${artifactId}`,
     );
 
+    operationStartedAt = performance.now();
     const uploaded = await signedPut(upload, body);
+    recordBenchmarkOperation(
+      'artifact-upload',
+      operationStartedAt,
+      body.length,
+    );
     expect(uploaded.ok).toBe(true);
     await expect(
       fixture.verificationStore.head({
@@ -298,12 +318,14 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       sha256: metadata.sha256,
     });
 
+    operationStartedAt = performance.now();
     const finalized = await fixture.application.inject({
       method: 'POST',
       url: `${base}/${artifactId}/finalize`,
       headers: mutationHeaders(owner, `finalize-${artifactId}`),
       payload: {},
     });
+    recordBenchmarkOperation('artifact-finalize', operationStartedAt);
     expect(finalized.statusCode).toBe(200);
     const finalizedBody = finalized.json<ArtifactMetadata>();
     expect(finalizedBody).toMatchObject({
@@ -351,17 +373,20 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(fixture.readStorageCalls()).toEqual(beforeAvailableReplay);
 
     const viewer = await fixture.login('viewer');
+    operationStartedAt = performance.now();
     const safeMetadata = await fixture.application.inject({
       method: 'GET',
       url: `${base}/${artifactId}`,
       headers: { cookie: viewer.cookieHeader },
     });
+    recordBenchmarkOperation('artifact-metadata', operationStartedAt);
     expect(safeMetadata.statusCode).toBe(200);
     expect(safeMetadata.headers['cache-control']).toBe('no-store');
     expect(safeMetadata.json<ArtifactMetadata>()).toEqual(finalizedBody);
     expect(safeMetadata.payload).not.toContain('storageKey');
     expect(safeMetadata.payload).not.toContain('workspaces/');
 
+    operationStartedAt = performance.now();
     const download = await fixture.application.inject({
       method: 'GET',
       url: `${base}/${artifactId}/download`,
@@ -381,6 +406,11 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     });
     expect(downloaded.ok).toBe(true);
     expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(body);
+    recordBenchmarkOperation(
+      'artifact-download',
+      operationStartedAt,
+      body.length,
+    );
 
     const durableEvidence =
       await fixture.readDurableTransferEvidence(artifactId);

@@ -140,6 +140,10 @@ const workerConfigSchema = z
       .min(1)
       .max(64)
       .default(32),
+    FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     WORKFLOW_DUE_WAKEUP_BATCH_SIZE: z.coerce
       .number()
       .int()
@@ -258,6 +262,7 @@ const workerConfigSchema = z
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+      FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
       WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
       WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
       TRIGGER_SCHEDULE_BATCH_SIZE,
@@ -326,6 +331,8 @@ const workerConfigSchema = z
         dueWakeupBatchSize: WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
         dueWakeupPollIntervalMillis: WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+        runTimeoutFailureContextEnabled:
+          FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED,
       },
       nodeAttempt: {
         heartbeatIntervalMillis: NODE_ATTEMPT_HEARTBEAT_MILLIS,

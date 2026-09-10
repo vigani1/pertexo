@@ -321,6 +321,26 @@ describe('PostgreSQL telemetry pool', () => {
     await pool.end();
   });
 
+  it('records failed pool checkout duration without connection details', async () => {
+    const telemetry = fakeMeter();
+    const pool = createDatabasePool(
+      { connectionString: 'postgresql://secret@db/app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+
+    await expect(pool.connect()).rejects.toThrow('not implemented');
+    const checkout = telemetry.measurements.get(
+      DATABASE_METRIC_NAME.poolCheckoutDuration,
+    );
+    expect(checkout).toHaveLength(1);
+    expect(checkout?.[0]?.attributes).toEqual({
+      outcome: 'error',
+      pool_role: 'api',
+    });
+    expect(JSON.stringify(checkout)).not.toContain('secret');
+    await pool.end();
+  });
+
   it('reports sanitized idle-client and monitor failures without changing pool behavior', async () => {
     const telemetry = fakeMeter();
     const record = vi.fn();
