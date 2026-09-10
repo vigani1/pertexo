@@ -19,6 +19,30 @@ const migrationRunnerOptionsSchema = Object.freeze({
   statementTimeoutMs: 300_000,
 });
 
+function preserveMigrationFailureDuringCleanup(
+  migration: Readonly<{ error: unknown; failed: boolean }>,
+  cleanupErrors: readonly unknown[],
+): void {
+  if (cleanupErrors.length === 0) return;
+  if (migration.failed)
+    throw new AggregateError(
+      [migration.error, ...cleanupErrors],
+      'Migration failed and database cleanup was incomplete',
+    );
+  if (cleanupErrors.length === 1) {
+    const [cleanupError] = cleanupErrors;
+    throw cleanupError instanceof Error
+      ? cleanupError
+      : new Error('Migration database cleanup failed', {
+          cause: cleanupError,
+        });
+  }
+  throw new AggregateError(
+    cleanupErrors,
+    'Migration database cleanup was incomplete',
+  );
+}
+
 export type MigrationProgressEvent = Readonly<{
   batchesCompleted?: number;
   mode: MigrationExecution['mode'];
@@ -271,6 +295,7 @@ export async function migrateDatabase(
     }
   };
 
+  let migration = { error: undefined as unknown, failed: false };
   try {
     const migrationNames = (await readdir(migrationsDirectory))
       .filter((name) => migrationNamePattern.test(name))
@@ -385,12 +410,31 @@ export async function migrateDatabase(
       );
     });
     return Object.freeze(applied);
+  } catch (error) {
+    migration = { error, failed: true };
+    throw error;
   } finally {
-    await client.query('reset role').catch(() => undefined);
-    await client
-      .query('select pg_advisory_unlock($1)', [MIGRATION_LOCK_ID])
-      .catch(() => undefined);
-    client.release();
-    await pool.end();
+    const cleanupErrors: unknown[] = [];
+    try {
+      await client.query('reset role');
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      await client.query('select pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      client.release();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      await pool.end();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    preserveMigrationFailureDuringCleanup(migration, cleanupErrors);
   }
 }

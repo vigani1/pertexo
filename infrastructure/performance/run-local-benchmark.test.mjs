@@ -22,8 +22,13 @@ import {
   startDatabaseSampler,
   summarize,
   validateManifest,
+  writeBenchmarkEvidence,
 } from './run-local-benchmark.mjs';
-import { validatePostgresEvidence } from './postgres-evidence.mjs';
+import {
+  runPoolContentionSamples,
+  validatePostgresEvidence,
+} from './postgres-evidence.mjs';
+import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 
@@ -157,6 +162,163 @@ test('partial database client construction preserves connect and close failures'
       error.errors[0] === connectError &&
       error.errors[1] === endError,
   );
+});
+
+test('owned database cleanup preserves an undefined operation rejection', async () => {
+  let ended = false;
+  let rejected = false;
+  try {
+    await runWithOwnedDatabaseClient(
+      {
+        end: async () => {
+          ended = true;
+        },
+      },
+      () => Promise.reject(undefined),
+      'undefined fixture',
+    );
+  } catch (error) {
+    rejected = true;
+    assert.equal(error, undefined);
+  }
+  assert.equal(rejected, true);
+  assert.equal(ended, true);
+});
+
+test('runner-owned database cleanup preserves an undefined query rejection', async () => {
+  let ended = false;
+  let rejected = false;
+  try {
+    await closeRunnerOwnedScenarioDatabase(
+      {
+        query: () => Promise.reject(undefined),
+        end: async () => {
+          ended = true;
+        },
+      },
+      'pertexo_q11_owned',
+    );
+  } catch (error) {
+    rejected = true;
+    assert.equal(error, undefined);
+  }
+  assert.equal(rejected, true);
+  assert.equal(ended, true);
+});
+
+test('PostgreSQL evidence preserves sampling and pool cleanup failures', async () => {
+  const samplingError = new Error('sample failed');
+  const cleanupError = new Error('pool cleanup failed');
+  let connectCalls = 0;
+  let ownerReleased = false;
+  await assert.rejects(
+    runPoolContentionSamples(
+      {
+        connect: () => {
+          connectCalls += 1;
+          return connectCalls === 1
+            ? Promise.resolve({ release: () => (ownerReleased = true) })
+            : Promise.reject(samplingError);
+        },
+        end: () => Promise.reject(cleanupError),
+      },
+      async () => undefined,
+    ),
+    (error) => {
+      assert(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [samplingError, cleanupError]);
+      return true;
+    },
+  );
+  assert.equal(ownerReleased, true);
+});
+
+test('PostgreSQL evidence releases a sampled client before ending its pool owner', async () => {
+  const queryError = new Error('sample query failed');
+  let checkedOut = 0;
+  let connectCalls = 0;
+  const releases = [];
+  const pool = {
+    connect: async () => {
+      const index = connectCalls;
+      connectCalls += 1;
+      checkedOut += 1;
+      return {
+        query: async () => {
+          throw queryError;
+        },
+        release: () => {
+          checkedOut -= 1;
+          releases.push(index);
+        },
+      };
+    },
+    end: async () => {
+      assert.equal(checkedOut, 0, 'pool.end observed a checked-out client');
+    },
+  };
+
+  await assert.rejects(
+    runPoolContentionSamples(pool, async () => undefined),
+    (error) => error === queryError,
+  );
+  assert.deepEqual(releases, [0, 1]);
+});
+
+test('PostgreSQL evidence drains and releases its waiter when sampling delay fails', async () => {
+  const waitError = new Error('sampling delay failed');
+  let checkedOut = 0;
+  const releases = [];
+  const pool = {
+    connect: async () => {
+      const index = checkedOut;
+      checkedOut += 1;
+      return {
+        query: async () => undefined,
+        release: () => {
+          checkedOut -= 1;
+          releases.push(index);
+        },
+      };
+    },
+    end: async () => {
+      assert.equal(checkedOut, 0, 'pool.end observed a checked-out client');
+    },
+  };
+
+  await assert.rejects(
+    runPoolContentionSamples(pool, async () => {
+      throw waitError;
+    }),
+    (error) => error === waitError,
+  );
+  assert.deepEqual(releases, [0, 1]);
+});
+
+test('PostgreSQL evidence does not mistake an undefined rejection for success', async () => {
+  let connectCalls = 0;
+  let ended = false;
+  let rejected = false;
+  try {
+    await runPoolContentionSamples(
+      {
+        connect: async () => {
+          connectCalls += 1;
+          if (connectCalls === 1) return { release: () => undefined };
+          return Promise.reject(undefined);
+        },
+        end: async () => {
+          ended = true;
+        },
+      },
+      async () => undefined,
+    );
+  } catch (error) {
+    rejected = true;
+    assert.equal(error, undefined);
+  }
+  assert.equal(rejected, true);
+  assert.equal(ended, true);
 });
 
 test('parses only named, timestamped, positive operation timing markers', () => {
@@ -453,6 +615,212 @@ test('records repeated operation latency, throughput, launcher cost and RSS', as
   assert.match(evidence.workloadMetricLimitations.heap, /unavailable/u);
   assert.equal(evidence.databaseObservations.available, false);
   assert.equal(evidence.postgresEvidence.available, false);
+});
+
+test('validates and safely owns the actual producer output', async (t) => {
+  const summary = (value) => ({
+    minimum: value,
+    p50: value,
+    p95: value,
+    p99: value,
+    maximum: value,
+    mean: value,
+    standardDeviation: 0,
+    coefficientOfVariation: 0,
+  });
+  const observations = {
+    available: true,
+    sampleIntervalMs: 250,
+    samples: [
+      {
+        recordedAt: '2026-09-10T10:00:00.000Z',
+        databaseSizeBytes: 10,
+        connectionCount: 1,
+        activeTaskCount: 1,
+        lockWaitCount: 0,
+      },
+    ],
+    databaseSizeBytes: summary(10),
+    connectionCount: summary(1),
+    activeTaskCount: summary(1),
+    lockWaitCount: summary(0),
+  };
+  const postgresEvidence = {
+    available: true,
+    poolCheckoutWaitSeconds: [0.05, 0.06, 0.07],
+    instrumentedSqlRoundTrips: 1,
+    queryPlans: [
+      'retention-keyset',
+      'artifact-version-listing',
+      'purge-discovery',
+      'purge-claim',
+      'purge-checkpoint',
+      'tenant-row-page',
+    ].map((name) => ({
+      name,
+      role: 'pertexo_maintenance',
+      plan: { Plan: { 'Node Type': 'Result' }, 'Execution Time': 1 },
+    })),
+  };
+  const produced = await benchmark(
+    manifest(),
+    { ...process.env, PERTEXO_Q11_ISOLATED: '1' },
+    {
+      startDatabaseSampler: async () => ({
+        beginScenario: async () => undefined,
+        endScenario: async () => ({
+          sqlRoundTrips: 1,
+          serverExecutionMs: 1,
+        }),
+        stop: async () => observations,
+      }),
+      capturePostgresEvidence: async () => postgresEvidence,
+      sourceIdentity: async () => ({
+        workingTreeSha256: 'producer-source',
+      }),
+    },
+  );
+  assert.equal(validateBenchmarkEvidence(produced), produced);
+
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+  const corruptions = [
+    (value) => delete value.scenarios[0].databaseWorkload,
+    (value) => (value.scenarios[0].databaseWorkload.sqlRoundTrips = 0),
+    (value) => delete value.scenarios[0].operationBreakdown['fixture-first'],
+    (value) => (value.scenarios[0].launcherElapsedMs.mean += 1),
+    (value) => value.scenarios[0].rounds.pop(),
+    (value) => delete value.environment.cpuModel,
+    (value) => (value.status = 'partial'),
+  ];
+  for (const corrupt of corruptions) {
+    const invalid = clone(produced);
+    corrupt(invalid);
+    assert.throws(() => validateBenchmarkEvidence(invalid));
+  }
+
+  await t.test(
+    'rejects corrupt producer evidence before output creation',
+    async () => {
+      const invalid = clone(produced);
+      invalid.status = 'partial';
+      let openAttempted = false;
+      await assert.rejects(
+        writeBenchmarkEvidence('must-not-exist.json', invalid, {
+          open: async () => {
+            openAttempted = true;
+          },
+        }),
+      );
+      assert.equal(openAttempted, false);
+    },
+  );
+
+  for (const failureCase of [
+    { name: 'write failure', writeFails: true, closeFails: false },
+    { name: 'close failure', writeFails: false, closeFails: true },
+    {
+      name: 'combined write and close failure',
+      writeFails: true,
+      closeFails: true,
+    },
+  ])
+    await t.test(failureCase.name, async () => {
+      const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-output-'));
+      const outputFile = path.join(directory, 'evidence.json');
+      const writeError = new Error('write failed');
+      const closeError = new Error('close failed');
+      let closeAttempted = false;
+      try {
+        const result = writeBenchmarkEvidence(outputFile, produced, {
+          open: async (resolvedOutput, flag) => {
+            assert.equal(flag, 'wx');
+            await writeFile(resolvedOutput, 'incomplete', { flag });
+            return {
+              writeFile: async () => {
+                if (failureCase.writeFails) throw writeError;
+              },
+              close: async () => {
+                closeAttempted = true;
+                if (failureCase.closeFails) throw closeError;
+              },
+            };
+          },
+        });
+        if (failureCase.writeFails && failureCase.closeFails)
+          await assert.rejects(result, (error) => {
+            assert(error instanceof AggregateError);
+            assert.deepEqual(error.errors, [writeError, closeError]);
+            return true;
+          });
+        else
+          await assert.rejects(
+            result,
+            failureCase.writeFails ? writeError : closeError,
+          );
+        assert.equal(closeAttempted, true);
+        await assert.rejects(readFile(outputFile), { code: 'ENOENT' });
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+  await t.test(
+    'cleanup failure is retained after write and close failures',
+    async () => {
+      const failures = [
+        new Error('write failed'),
+        new Error('close failed'),
+        new Error('cleanup failed'),
+      ];
+      await assert.rejects(
+        writeBenchmarkEvidence('incomplete.json', produced, {
+          open: async (_resolvedOutput, flag) => {
+            assert.equal(flag, 'wx');
+            return {
+              writeFile: async () => {
+                throw failures[0];
+              },
+              close: async () => {
+                throw failures[1];
+              },
+            };
+          },
+          rm: async () => {
+            throw failures[2];
+          },
+        }),
+        (error) => {
+          assert(error instanceof AggregateError);
+          assert.deepEqual(error.errors, failures);
+          return true;
+        },
+      );
+    },
+  );
+
+  await t.test(
+    'exclusive creation never removes a pre-existing output',
+    async () => {
+      const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-output-'));
+      const outputFile = path.join(directory, 'evidence.json');
+      let removeAttempted = false;
+      try {
+        await writeFile(outputFile, 'existing');
+        await assert.rejects(
+          writeBenchmarkEvidence(outputFile, produced, {
+            rm: async () => {
+              removeAttempted = true;
+            },
+          }),
+          { code: 'EEXIST' },
+        );
+        assert.equal(removeAttempted, false);
+        assert.equal(await readFile(outputFile, 'utf8'), 'existing');
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 test('releases declared contention participants together and proves overlap', async () => {

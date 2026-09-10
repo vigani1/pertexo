@@ -16,8 +16,120 @@ import {
   type CookieResponse,
 } from '../../src/identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/index.js';
+import { mapIdentityWorkspaceError } from '../../src/identity-workspace/errors.js';
+import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
+
+const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const guardActorId = '99999999-9999-4999-8999-999999999999';
+const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+function workspaceRequest() {
+  return {
+    requestId: 'request-identity',
+    traceId: 'trace-identity',
+    headers: { 'idempotency-key': 'workspace-lifecycle' },
+    identitySession: {
+      userId: actorId,
+      sessionId,
+      expiresAt: new Date('2026-08-23T00:00:00.000Z'),
+      clientMetadata: {},
+    },
+  } as const;
+}
 
 describe('identity/workspace controllers', () => {
+  it('projects absent and guarded workspace context through the lifecycle controller', async () => {
+    const lifecycle = {
+      requestDeletion: vi.fn().mockResolvedValue({ accepted: true }),
+      restore: vi.fn(),
+      readOperation: vi.fn(),
+    };
+    const controller = new WorkspaceController(
+      { execute: vi.fn() } as never,
+      lifecycle as never,
+    );
+    await controller.requestDeletion(
+      workspaceRequest(),
+      { workspaceId },
+      { reason: 'operator request' },
+    );
+    expect(lifecycle.requestDeletion).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        actor: expect.objectContaining({
+          actorId,
+          requestId: 'request-identity',
+          traceId: 'trace-identity',
+        }),
+        requestId: 'request-identity',
+        traceId: 'trace-identity',
+      }),
+    );
+    expect(lifecycle.requestDeletion.mock.calls.at(-1)?.[0]).not.toHaveProperty(
+      'authorizedWorkspace',
+    );
+
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'workspace:manage' as const,
+    };
+    await controller.requestDeletion(
+      { ...workspaceRequest(), authorizedWorkspace },
+      { workspaceId },
+      { reason: 'operator request' },
+    );
+    expect(lifecycle.requestDeletion).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it('maps an invalid lifecycle actor from the controller to request.invalid status 400', async () => {
+    const lifecycle = {
+      requestDeletion: vi.fn(),
+      restore: vi.fn(),
+      readOperation: vi.fn(),
+    };
+    const controller = new WorkspaceController(
+      { execute: vi.fn() } as never,
+      lifecycle as never,
+    );
+    let thrown: unknown;
+    try {
+      await controller.requestDeletion(
+        {
+          ...workspaceRequest(),
+          identitySession: {
+            ...workspaceRequest().identitySession,
+            userId: 'not-a-uuid',
+          },
+        },
+        { workspaceId },
+        { reason: 'operator request' },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(mapIdentityWorkspaceError(thrown)).toMatchObject({
+      code: 'request.invalid',
+    });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(lifecycle.requestDeletion).not.toHaveBeenCalled();
+  });
   it('returns the current profile with private cache policy', async () => {
     const response: CookieResponse = { header: vi.fn() };
     const controller = new UserController({

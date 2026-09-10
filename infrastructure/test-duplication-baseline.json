@@ -174,20 +174,6 @@
         },
         {
           "files": [
-            "apps/worker/src/execution/coordinator-engine.ts",
-            "apps/worker/src/execution/node-attempt-engine.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Coordinator and attempt engines validate compatibility at separate execution boundaries and then construct different engines with different failure ownership.",
-          "clones": [
-            {
-              "hash": "242b3296d49d446610c24a080f2ddf8e0b2605a50955f8c63af9d4788d9a1ed6",
-              "maxLines": 36
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/recovery/src/config.ts",
             "apps/retention/src/config.ts"
           ],
@@ -258,24 +244,6 @@
         },
         {
           "files": [
-            "apps/api/src/workflow-authoring/controllers.ts",
-            "apps/api/src/workflow-runs/controllers.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Authoring and run controllers consume the same authorization decoration but retain feature-owned actor and trace extraction at separate HTTP boundaries.",
-          "clones": [
-            {
-              "hash": "45819724caab9c0e11553e2c4656a49387142e13383edba9737cfd146d2901ce",
-              "maxLines": 15
-            },
-            {
-              "hash": "80bf7a1f36ee2d62b512e79e615e5355826bc81033f82d5c6c9c5535f6b83e5a",
-              "maxLines": 21
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/src/identity-workspace/telemetry.ts",
             "apps/api/src/workflow-authoring/telemetry.ts"
           ],
@@ -313,20 +281,6 @@
             {
               "hash": "5b98c8a68dc65caee8d2b2c1e6a445f9fce39340c9a070453c3fcac34bc7616c",
               "maxLines": 18
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/api/src/connections/controllers.ts",
-            "apps/api/src/node-testing/controller.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Connection and node-testing controllers consume the shared authorization decoration but retain feature-owned actor extraction at separate HTTP seams.",
-          "clones": [
-            {
-              "hash": "b3b1bb3fea7a69da2566c293f74859813c1008b92d0d68640f46313f03720762",
-              "maxLines": 15
             }
           ]
         }

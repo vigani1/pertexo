@@ -17,6 +17,7 @@ import {
   type ApplicationError,
 } from '../platform/http/index.js';
 import type { NodeValidationIssue } from './validation.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
 
 export class NodeTestRequestError extends Error {
   public override readonly name = 'NodeTestRequestError';
@@ -40,6 +41,8 @@ export class NodeTestInvalidError extends Error {
 
 export function mapNodeTestingError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
+  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
+    return applicationError('request.invalid', { safeDetail: error.message });
   if (
     error instanceof NodeTestRequestError &&
     error.code === 'idempotency_required'

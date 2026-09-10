@@ -19,16 +19,16 @@ import type {
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import type {
-  NodeArtifactRuntime,
-  NodeConnectionRuntime,
-  NodeExecutionRuntime,
-} from '@pertexo/node-sdk/server';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   NodeDispatchEvidenceError,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 import { waitForAbortableDelay } from '../runtime/abortable-delay.js';
+import type {
+  NodeExecutionCapabilityContext,
+  NodeExecutionCapabilityFactories,
+} from './node-execution-capabilities.js';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -72,26 +72,6 @@ export interface NodeAttemptHandler {
   ): Promise<NodeAttemptHandlerResult>;
 }
 
-export type NodeAttemptCapabilityContext = Readonly<{
-  artifactRetentionDeadline?: Date;
-  previewRunId?: string;
-  workspaceId: string;
-  runId: string;
-  nodeRunId: string;
-  attemptId: string;
-  attemptNumber: number;
-  nodeId: string;
-  invocationKey: string;
-  workerId: string;
-}>;
-
-export type NodeAttemptRuntimeCapabilityFactories = Readonly<{
-  connections?: (
-    context: NodeAttemptCapabilityContext,
-  ) => NodeConnectionRuntime;
-  artifacts?: (context: NodeAttemptCapabilityContext) => NodeArtifactRuntime;
-}>;
-
 export type NodeAttemptHandlerDependencies = Readonly<{
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
@@ -100,7 +80,7 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   reader: PublishedWorkflowReader;
   registry: NodeExecutionRegistry;
   runStore: NodeAttemptRunStore;
-  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
+  runtimeCapabilities?: NodeExecutionCapabilityFactories;
   workerId: string;
 }>;
 
@@ -249,7 +229,7 @@ export function createNodeAttemptHandler(
         executionAbort.signal,
       ]);
       let durableAbortReason: 'canceled' | 'timed_out' | undefined;
-      let heartbeatFailure: unknown;
+      const heartbeatFailure: { error?: unknown } = {};
       const heartbeat = (async (): Promise<void> => {
         try {
           while (!heartbeatSignal.aborted) {
@@ -274,13 +254,13 @@ export function createNodeAttemptHandler(
           }
         } catch (error: unknown) {
           if (!heartbeatStop.signal.aborted && !context.signal.aborted) {
-            heartbeatFailure = error;
+            heartbeatFailure.error = error;
             executionAbort.abort();
           }
         }
       })();
       let dispatched = false;
-      const capabilityContext: NodeAttemptCapabilityContext = Object.freeze({
+      const capabilityContext: NodeExecutionCapabilityContext = Object.freeze({
         workspaceId: claimed.lease.workspaceId,
         runId: claimed.lease.runId,
         nodeRunId: claimed.lease.nodeRunId,
@@ -426,9 +406,9 @@ export function createNodeAttemptHandler(
             context.signal,
             hasProviderDispatchUncertainty(claimed.lease, dispatched),
           );
-        if (heartbeatFailure !== undefined)
-          throw heartbeatFailure instanceof Error
-            ? heartbeatFailure
+        if ('error' in heartbeatFailure)
+          throw heartbeatFailure.error instanceof Error
+            ? heartbeatFailure.error
             : new Error('Node attempt heartbeat failed');
         if (error instanceof NodeExecutorFailure) {
           const completed = await dependencies.runStore.complete({

@@ -38,6 +38,7 @@ export interface RetentionWorkerResources {
 export async function runRetentionWorker(
   resources: RetentionWorkerResources,
 ): Promise<void> {
+  let operationFailed = false;
   let operationError: unknown;
   const supervisorShutdown = new AbortController();
   const supervisorSignal = AbortSignal.any([
@@ -58,14 +59,17 @@ export async function runRetentionWorker(
     ];
     await Promise.all(supervisors);
   } catch (error: unknown) {
+    operationFailed = true;
     operationError = error;
   }
 
   supervisorShutdown.abort(new Error('Retention worker stopping'));
   const supervisorResults = await Promise.allSettled(supervisors);
   for (const result of supervisorResults)
-    if (result.status === 'rejected' && operationError === undefined)
+    if (result.status === 'rejected' && !operationFailed) {
+      operationFailed = true;
       operationError = result.reason;
+    }
 
   const cleanupErrors: unknown[] = [];
   for (const close of [
@@ -87,9 +91,9 @@ export async function runRetentionWorker(
       .then(close)
       .catch((error: unknown) => cleanupErrors.push(error));
   }
-  if (operationError !== undefined || cleanupErrors.length > 0) {
+  if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
-      [operationError, ...cleanupErrors].filter((error) => error !== undefined),
+      [...(operationFailed ? [operationError] : []), ...cleanupErrors],
       'Retention worker did not stop cleanly',
     );
   }

@@ -264,6 +264,21 @@ describe('operator command runner', () => {
     expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
   });
 
+  it('preserves an undefined operation rejection while attempting both cleanups', async () => {
+    const fixture = createResources({
+      ...commandBase(),
+      dryRun: false,
+      runId: randomUUID(),
+      type: 'run.cancel',
+    });
+    fixture.database.cancelRun.mockRejectedValueOnce(undefined);
+    await expect(
+      runOperatorCommand(fixture.resources).catch((error: unknown) => error),
+    ).resolves.toMatchObject({ errors: [undefined] });
+    expect(fixture.database.close).toHaveBeenCalledOnce();
+    expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
+  });
+
   it('bounds a stuck cleanup and continues to the next cleanup', async () => {
     vi.useFakeTimers();
     const fixture = createResources({

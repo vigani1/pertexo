@@ -297,6 +297,35 @@ test('quality command lifecycle reports spawn failure and closes its evidence lo
   }
 });
 
+test('managed command does not mistake an undefined cleanup rejection for success', async () => {
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  let rejected = false;
+  try {
+    await runManagedCommand({
+      args: [],
+      command: 'synthetic-command',
+      failure: () => new Error('unexpected command failure'),
+      onStderr: () => undefined,
+      onStdout: () => undefined,
+      releaseOwned: () => Promise.reject(undefined),
+      spawnOptions: {},
+      spawnOwned: () => {
+        setImmediate(() => {
+          child.emit('exit', 0, null);
+          child.emit('close', 0, null);
+        });
+        return child;
+      },
+    });
+  } catch (error) {
+    rejected = true;
+    assert.equal(error, undefined);
+  }
+  assert.equal(rejected, true);
+});
+
 test('exploratory partial runs remain explicit and reject unknown cohorts', () => {
   assert.deepEqual(parseArguments([]), {
     mode: 'qualification',

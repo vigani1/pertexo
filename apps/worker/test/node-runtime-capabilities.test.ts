@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, open, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -741,6 +741,127 @@ describe('worker node runtime capabilities', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(RangeError);
+    expect(put).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('preserves sole and combined spool file-close failures', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const sourceError = new Error('injected artifact source failure');
+    const closeError = new Error('injected spool close failure');
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put: vi.fn() },
+        artifactSpoolOperations: {
+          openFile: async (filePath) => {
+            const file = await open(filePath, 'wx', 0o600);
+            const closeFile = file.close.bind(file);
+            file.close = vi.fn(async () => {
+              await closeFile();
+              throw closeError;
+            });
+            return file;
+          },
+          removeDirectory: (directory) =>
+            rm(directory, { recursive: true, force: true }),
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 2,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(closeError);
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+          throw sourceError;
+        })(),
+        maxBytes: 2,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([
+        sourceError,
+        closeError,
+      ]);
+      return true;
+    });
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('rejects an undefined artifact operation failure and still removes its spool directory', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const put = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          // Deliberately exercise a hostile non-Error adapter rejection.
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          createPending: () => Promise.reject(undefined),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    let rejection: unknown;
+    let rejected = false;
+    try {
+      await artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      });
+    } catch (error) {
+      rejected = true;
+      rejection = error;
+    }
+    expect(rejected).toBe(true);
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toBe(
+      'Artifact operation failed with a non-Error value',
+    );
+    expect(Object.hasOwn(rejection as Error, 'cause')).toBe(true);
+    expect((rejection as Error).cause).toBeUndefined();
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();

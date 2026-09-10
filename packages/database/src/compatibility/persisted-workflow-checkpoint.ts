@@ -1,6 +1,23 @@
 import { z } from 'zod';
 
 import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
+import {
+  refineBranchSelections,
+  refineInvocationScopes,
+  refineJoinScopes,
+  refineLoopsBudgetAndWaits,
+} from './persisted-workflow-checkpoint-refinements.js';
+
+export const PERSISTED_WORKFLOW_CHECKPOINT_LIMITS = Object.freeze({
+  readySet: 10_000,
+  admittedInvocationKeys: 10_000,
+  invocations: 10_000,
+  joins: 1_000,
+  loops: 1_000,
+  branchSelections: 10_000,
+  scopeParts: 1_000,
+  invocationKeyBytes: 256,
+});
 
 const canonicalUuidSchema = z
   .string()
@@ -16,7 +33,10 @@ const outputReferenceSchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 const invocationShape = {
-  invocationKey: z.string().min(1).max(256),
+  invocationKey: z
+    .string()
+    .min(1)
+    .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocationKeyBytes),
   nodeId: z.string().min(1).max(128),
   status: z.enum([
     'pending',
@@ -51,8 +71,14 @@ const iterationScopePartSchema = z
 const invocationSchemaV2 = z
   .object({
     ...invocationShape,
-    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
-    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
+    branchPath: z
+      .array(branchScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts)
+      .optional(),
+    iterationPath: z
+      .array(iterationScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts)
+      .optional(),
   })
   .strict()
   .superRefine((invocation, context) => {
@@ -68,7 +94,10 @@ const invocationSchemaV2 = z
   });
 const branchSelectionSchema = z
   .object({
-    invocationKey: z.string().min(1).max(256),
+    invocationKey: z
+      .string()
+      .min(1)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocationKeyBytes),
     nodeId: z.string().min(1).max(128),
     selectedOutputPort: z.string().min(1).max(128),
   })
@@ -96,10 +125,20 @@ const joinPolicySchema = z.discriminatedUnion('kind', [
 ]);
 const joinSchema = z
   .object({
-    joinInvocationKey: z.string().min(1).max(256).optional(),
+    joinInvocationKey: z
+      .string()
+      .min(1)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocationKeyBytes)
+      .optional(),
     joinId: z.string().min(1).max(128),
-    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
-    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
+    branchPath: z
+      .array(branchScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts)
+      .optional(),
+    iterationPath: z
+      .array(iterationScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts)
+      .optional(),
     policy: joinPolicySchema,
     ledger: z.array(branchLedgerEntrySchema).min(1).max(16),
     selectedBranchIds: z.array(z.string().min(1).max(128)).max(16).optional(),
@@ -110,11 +149,21 @@ const joinSchema = z
   .strict();
 const loopSchema = z
   .object({
-    controlInvocationKey: z.string().min(1).max(256),
+    controlInvocationKey: z
+      .string()
+      .min(1)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocationKeyBytes),
     loopId: z.string().min(1).max(128),
-    branchPath: z.array(branchScopePartSchema).max(1_000),
-    iterationPath: z.array(iterationScopePartSchema).max(1_000),
-    bodyRootNodeIds: z.array(z.string().min(1).max(128)).min(1).max(1_000),
+    branchPath: z
+      .array(branchScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts),
+    iterationPath: z
+      .array(iterationScopePartSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts),
+    bodyRootNodeIds: z
+      .array(z.string().min(1).max(128))
+      .min(1)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts),
     bodySinkNodeId: z.string().min(1).max(128),
     terminalStatus: z
       .enum(['failed', 'canceled', 'timed_out', 'outcome_unknown'])
@@ -125,8 +174,12 @@ const loopSchema = z
     maxConcurrency: z.number().int().positive(),
     maxIterations: z.number().int().positive(),
     nextOrdinal: z.number().int().nonnegative(),
-    activeOrdinals: z.array(z.number().int().nonnegative()).max(1_000),
-    terminalOrdinals: z.array(z.number().int().nonnegative()).max(1_000),
+    activeOrdinals: z
+      .array(z.number().int().nonnegative())
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts),
+    terminalOrdinals: z
+      .array(z.number().int().nonnegative())
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.scopeParts),
   })
   .strict()
   .superRefine((loop, context) => {
@@ -164,6 +217,7 @@ const loopSchema = z
       (left, right) => left - right,
     ),
   }));
+
 const checkpointShape = {
   engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
   workflowVersionId: canonicalUuidSchema,
@@ -179,9 +233,13 @@ const checkpointShape = {
     'outcome_unknown',
   ]),
   nextEventSequence: z.number().int().positive(),
-  readySet: z.array(z.string().min(1).max(256)).max(10_000),
-  admittedInvocationKeys: z.array(z.string().min(1).max(256)).max(10_000),
-  joins: z.array(joinSchema).max(1_000),
+  readySet: z
+    .array(z.string().min(1).max(256))
+    .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.readySet),
+  admittedInvocationKeys: z
+    .array(z.string().min(1).max(256))
+    .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.admittedInvocationKeys),
+  joins: z.array(joinSchema).max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.joins),
   remainingIterationBudget: z.number().int().nonnegative(),
   cancelRequested: z.boolean(),
   deadlineExpired: z.boolean(),
@@ -226,7 +284,9 @@ const persistedWorkflowCheckpointV1Schema = z
     schemaVersion: z.literal(1),
     ...checkpointShape,
     loops: z.array(z.never()).max(0),
-    invocations: z.array(invocationSchemaV1).max(10_000),
+    invocations: z
+      .array(invocationSchemaV1)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations),
   })
   .strict()
   .superRefine(refineInvocationIndexes);
@@ -235,9 +295,13 @@ const persistedWorkflowCheckpointV2Schema = z
   .object({
     schemaVersion: z.literal(2),
     ...checkpointShape,
-    loops: z.array(loopSchema).max(1_000),
-    invocations: z.array(invocationSchemaV2).max(10_000),
-    branchSelections: z.array(branchSelectionSchema).max(10_000),
+    loops: z.array(loopSchema).max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.loops),
+    invocations: z
+      .array(invocationSchemaV2)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations),
+    branchSelections: z
+      .array(branchSelectionSchema)
+      .max(PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.branchSelections),
     initialIterationBudget: z.number().int().nonnegative().optional(),
   })
   .strict()
@@ -249,139 +313,10 @@ const persistedWorkflowCheckpointV2Schema = z
         invocation,
       ]),
     );
-    const selections = new Map<string, string>();
-    for (const selection of checkpoint.branchSelections) {
-      const invocation = invocations.get(selection.invocationKey);
-      const key = `${selection.invocationKey}\u0000${selection.nodeId}`;
-      const existing = selections.get(key);
-      if (
-        invocation?.nodeId !== selection.nodeId ||
-        invocation.status !== 'succeeded' ||
-        invocation.output === undefined ||
-        (existing !== undefined && existing !== selection.selectedOutputPort)
-      )
-        context.addIssue({
-          code: 'custom',
-          message: 'checkpoint branch selection is inconsistent',
-        });
-      selections.set(key, selection.selectedOutputPort);
-    }
-    const scopedInvocationKey = (
-      nodeId: string,
-      branchPath: readonly z.output<typeof branchScopePartSchema>[],
-      iterationPath: readonly z.output<typeof iterationScopePartSchema>[],
-    ): string => {
-      const branches = branchPath
-        .map(
-          ({ nodeId: branchNodeId, outputPort }) =>
-            `${branchNodeId}:${outputPort}`,
-        )
-        .join('/');
-      const iterations = iterationPath
-        .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
-        .join('/');
-      return `${encodeURIComponent(checkpoint.workflowVersionId)}|${encodeURIComponent(nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
-    };
-    for (const invocation of checkpoint.invocations) {
-      if (
-        (invocation.branchPath !== undefined ||
-          invocation.iterationPath !== undefined) &&
-        invocation.invocationKey !==
-          scopedInvocationKey(
-            invocation.nodeId,
-            invocation.branchPath ?? [],
-            invocation.iterationPath ?? [],
-          )
-      )
-        context.addIssue({
-          code: 'custom',
-          message: 'checkpoint invocation scope is inconsistent',
-        });
-    }
-    for (const join of checkpoint.joins) {
-      const key =
-        join.joinInvocationKey ??
-        scopedInvocationKey(
-          join.joinId,
-          join.branchPath ?? [],
-          join.iterationPath ?? [],
-        );
-      const invocation = invocations.get(key);
-      if (
-        invocation?.nodeId !== join.joinId ||
-        JSON.stringify(invocation.branchPath ?? []) !==
-          JSON.stringify(join.branchPath ?? []) ||
-        JSON.stringify(invocation.iterationPath ?? []) !==
-          JSON.stringify(join.iterationPath ?? [])
-      )
-        context.addIssue({
-          code: 'custom',
-          message: 'checkpoint join scope is inconsistent',
-        });
-    }
-    const loopKeys = new Set<string>();
-    for (const loop of checkpoint.loops) {
-      const control = invocations.get(loop.controlInvocationKey);
-      const complete =
-        loop.nextOrdinal === loop.collectionSize &&
-        loop.activeOrdinals.length === 0;
-      if (
-        loopKeys.has(loop.controlInvocationKey) ||
-        loop.controlInvocationKey !==
-          scopedInvocationKey(
-            loop.loopId,
-            loop.branchPath,
-            loop.iterationPath,
-          ) ||
-        control?.nodeId !== loop.loopId ||
-        JSON.stringify(control.branchPath ?? []) !==
-          JSON.stringify(loop.branchPath) ||
-        JSON.stringify(control.iterationPath ?? []) !==
-          JSON.stringify(loop.iterationPath) ||
-        JSON.stringify(control.output) !== JSON.stringify(loop.collection) ||
-        (loop.terminalStatus === undefined
-          ? complete
-            ? control.status !== 'succeeded'
-            : control.status !== 'waiting'
-          : control.status !== loop.terminalStatus)
-      )
-        context.addIssue({
-          code: 'custom',
-          message: 'checkpoint loop ownership is inconsistent',
-        });
-      loopKeys.add(loop.controlInvocationKey);
-    }
-    if (
-      checkpoint.loops.length > 0 &&
-      checkpoint.initialIterationBudget === undefined
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'checkpoint loop budget is missing',
-      });
-    if (
-      checkpoint.initialIterationBudget !== undefined &&
-      checkpoint.remainingIterationBudget +
-        checkpoint.loops.reduce(
-          (total, loop) => total + loop.collectionSize,
-          0,
-        ) !==
-        checkpoint.initialIterationBudget
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'checkpoint loop budget is inconsistent',
-      });
-    for (const invocation of checkpoint.invocations)
-      if (
-        invocation.status === 'waiting' &&
-        invocation.resumeAt === undefined &&
-        !loopKeys.has(invocation.invocationKey)
-      )
-        context.addIssue({
-          code: 'custom',
-          message: 'checkpoint undated wait is not a loop barrier',
-        });
+    refineBranchSelections(checkpoint, invocations, context);
+    refineInvocationScopes(checkpoint, context);
+    refineJoinScopes(checkpoint, invocations, context);
+    refineLoopsBudgetAndWaits(checkpoint, invocations, context);
   })
   .transform((checkpoint) => {
     const selections = new Map<

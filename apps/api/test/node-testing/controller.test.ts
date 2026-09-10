@@ -6,12 +6,15 @@ import type {
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingController } from '../../src/node-testing/controller.js';
+import { mapNodeTestingError } from '../../src/node-testing/errors.js';
+import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import {
   GetPreviewRunUseCase,
   TestWorkflowNodeUseCase,
 } from '../../src/node-testing/use-case.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const guardActorId = '99999999-9999-4999-8999-999999999999';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const connectionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -133,6 +136,92 @@ function request(headers: Record<string, string> = {}) {
 const params = { workspaceId, workflowId, nodeId: 'http' };
 
 describe('node testing controller', () => {
+  it('projects absent and guarded workspace context through the owning controller', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValue({ mode: 'validate', valid: true });
+    const instance = new NodeTestingController(
+      { execute } as never,
+      { execute: vi.fn() } as never,
+    );
+    const response = { status: vi.fn() };
+    const command = { mode: 'validate' as const, expectedRevision: 3 };
+    await instance.test(request(), params, command, response);
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        actor: expect.objectContaining({
+          actorId,
+          requestId: 'request-node-test',
+          traceId: 'trace-node-test',
+        }),
+        requestId: 'request-node-test',
+        traceId: 'trace-node-test',
+      }),
+    );
+    expect(execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
+      'authorizedWorkspace',
+    );
+
+    const base = request();
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId: base.identitySession.sessionId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'workflow:update' as const,
+    };
+    await instance.test(
+      { ...base, authorizedWorkspace },
+      params,
+      command,
+      response,
+    );
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it('maps an invalid session actor from the controller to request.invalid status 400', async () => {
+    const execute = vi.fn();
+    const instance = new NodeTestingController(
+      { execute } as never,
+      { execute: vi.fn() } as never,
+    );
+    let thrown: unknown;
+    try {
+      await instance.test(
+        {
+          ...request(),
+          identitySession: {
+            ...request().identitySession,
+            userId: 'not-a-uuid',
+          },
+        },
+        params,
+        { mode: 'validate', expectedRevision: 3 },
+        { status: vi.fn() },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(mapNodeTestingError(thrown)).toMatchObject({
+      code: 'request.invalid',
+    });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(execute).not.toHaveBeenCalled();
+  });
   it('returns validation at 200 without requiring or using idempotency', async () => {
     const fixture = controller();
     const response = { status: vi.fn() };

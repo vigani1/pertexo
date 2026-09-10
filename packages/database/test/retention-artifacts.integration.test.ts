@@ -731,6 +731,35 @@ describe('retention artifact reclamation', () => {
     }
   });
 
+  it('does not mistake an undefined destructive-work rejection for success', async () => {
+    const pool = new Pool({ connectionString: maintenanceUrl, max: 2 });
+    let rejected = false;
+    try {
+      await withWorkspaceDestructiveOperationLock(
+        pool,
+        workspaceId,
+        undefined,
+        // Deliberately exercise a hostile non-Error adapter rejection.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        () => Promise.reject(undefined),
+      );
+    } catch (error) {
+      rejected = true;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(
+        'Workspace destructive operation failed',
+      );
+      expect(Object.hasOwn(error as Error, 'cause')).toBe(true);
+      expect((error as Error).cause).toBeUndefined();
+    } finally {
+      await expect(pool.query('select 1')).resolves.toMatchObject({
+        rowCount: 1,
+      });
+      await pool.end();
+    }
+    expect(rejected).toBe(true);
+  });
+
   it('does not acquire or leak a workspace lock after cancellation while waiting for a pool connection', async () => {
     const queuedPool = new Pool({ connectionString: maintenanceUrl, max: 2 });
     const verifierPool = new Pool({ connectionString: maintenanceUrl, max: 1 });

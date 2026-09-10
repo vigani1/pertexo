@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
@@ -341,11 +342,40 @@ describe('workflow graph V1 public contract', () => {
   });
 
   it('preflights exact and over-limit structured and arbitrary JSON depth', () => {
-    expect(
-      parseWorkflowGraphDraft(
-        nestedStructuredGraph(WORKFLOW_GRAPH_LIMITS.structuredDepth),
-      ),
-    ).toBeDefined();
+    for (const population of [
+      1,
+      Math.ceil(WORKFLOW_GRAPH_LIMITS.structuredDepth / 2),
+      WORKFLOW_GRAPH_LIMITS.structuredDepth,
+    ]) {
+      const setupStarted = performance.now();
+      const input = nestedStructuredGraph(population);
+      const setupMs = performance.now() - setupStarted;
+      const heapBefore = process.memoryUsage().heapUsed;
+      const started = performance.now();
+      expect(parseWorkflowGraphDraft(input)).toBeDefined();
+      const operationMs = performance.now() - started;
+      const processHeapDeltaBytes = process.memoryUsage().heapUsed - heapBefore;
+      console.info(
+        `Q9_BOUNDED_WORK_V1=${JSON.stringify({
+          schemaVersion: 1,
+          family: 'workflow-model-structured-graph-validation',
+          contractVersion: 'workflow-graph-v1',
+          population,
+          upperSupportedPopulation: WORKFLOW_GRAPH_LIMITS.structuredDepth,
+          completedOperations: population,
+          setupMs,
+          operationMs,
+          sql: null,
+          clients: null,
+          attributableMemory: {
+            available: false,
+            reason:
+              'The probe shares a Vitest process and garbage collector; process heap delta is diagnostic, not attributable workload memory.',
+            processHeapDeltaBytes,
+          },
+        })}`,
+      );
+    }
     const overStructured = nestedStructuredGraph(
       WORKFLOW_GRAPH_LIMITS.structuredDepth + 1,
     );

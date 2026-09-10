@@ -16,6 +16,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { URL } from 'node:url';
 
 import { capturePostgresEvidence } from './postgres-evidence.mjs';
+import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
 import {
   OwnedProcessSupervisor,
   runManagedCommand,
@@ -93,6 +94,42 @@ export function percentile(values, proportion) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.ceil(proportion * sorted.length) - 1] ?? sorted[0];
+}
+
+export async function writeBenchmarkEvidence(
+  outputFile,
+  evidence,
+  operations = {},
+) {
+  validateBenchmarkEvidence(evidence, 'Generated benchmark');
+  const openOutput = operations.open ?? open;
+  const removeOutput = operations.rm ?? rm;
+  const resolvedOutput = path.resolve(outputFile);
+  const handle = await openOutput(resolvedOutput, 'wx');
+  const failures = [];
+
+  try {
+    await handle.writeFile(`${JSON.stringify(evidence, null, 2)}\n`);
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await handle.close();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length === 0) return;
+
+  try {
+    await removeOutput(resolvedOutput, { force: true });
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length === 1) throw failures[0];
+  throw new AggregateError(
+    failures,
+    'Benchmark output failed and its incomplete artifact could not be finalized safely',
+  );
 }
 
 export function summarize(values) {
@@ -515,25 +552,29 @@ async function prepareScenarioDatabase(scenario, environment) {
 }
 
 export async function runWithOwnedDatabaseClient(client, operation, label) {
+  let operationFailed = false;
   let operationError;
   try {
     await operation();
   } catch (error) {
+    operationFailed = true;
     operationError = error;
   }
+  let closeFailed = false;
   let closeError;
   try {
     await client.end();
   } catch (error) {
+    closeFailed = true;
     closeError = error;
   }
-  if (operationError !== undefined && closeError !== undefined)
+  if (operationFailed && closeFailed)
     throw new AggregateError(
       [operationError, closeError],
       `${label} failed and its client could not close`,
     );
-  if (operationError !== undefined) throw operationError;
-  if (closeError !== undefined) throw closeError;
+  if (operationFailed) throw operationError;
+  if (closeFailed) throw closeError;
 }
 
 export async function closeRunnerOwnedScenarioDatabase(
@@ -541,6 +582,7 @@ export async function closeRunnerOwnedScenarioDatabase(
   databaseName,
   options = {},
 ) {
+  let databaseFailed = false;
   let databaseError;
   try {
     if (databaseName !== undefined) {
@@ -558,21 +600,24 @@ export async function closeRunnerOwnedScenarioDatabase(
       }
     }
   } catch (error) {
+    databaseFailed = true;
     databaseError = error;
   }
+  let clientFailed = false;
   let clientError;
   try {
     await admin.end();
   } catch (error) {
+    clientFailed = true;
     clientError = error;
   }
-  if (databaseError !== undefined && clientError !== undefined)
+  if (databaseFailed && clientFailed)
     throw new AggregateError(
       [databaseError, clientError],
       'Runner-owned scenario database and admin client cleanup failed',
     );
-  if (databaseError !== undefined) throw databaseError;
-  if (clientError !== undefined) throw clientError;
+  if (databaseFailed) throw databaseError;
+  if (clientFailed) throw clientError;
 }
 
 async function waitForOverlapBarrier(directory, executions) {
@@ -689,6 +734,7 @@ async function executeRound(scenario, inheritedEnvironment, roundIndex) {
   );
   let sampling = true;
   const sampleStartedAt = performance.now();
+  let samplingFailed = false;
   let samplingError;
   const sampler = (async () => {
     try {
@@ -715,16 +761,19 @@ async function executeRound(scenario, inheritedEnvironment, roundIndex) {
         await delay(100);
       }
     } catch (error) {
+      samplingFailed = true;
       samplingError = error;
     }
   })();
   let results;
+  let roundFailed = false;
   let roundError;
   try {
     if (overlapDirectory !== undefined)
       await waitForOverlapBarrier(overlapDirectory, executions);
     results = await Promise.all(executions.map(({ promise }) => promise));
   } catch (error) {
+    roundFailed = true;
     roundError = error;
     const cleanup = await Promise.allSettled([
       processSupervisor.terminateAll(),
@@ -741,22 +790,25 @@ async function executeRound(scenario, inheritedEnvironment, roundIndex) {
   }
   sampling = false;
   await sampler;
+  let overlapCleanupFailed = false;
   let overlapCleanupError;
   if (overlapDirectory !== undefined)
     try {
       await rm(overlapDirectory, { recursive: true, force: true });
     } catch (error) {
+      overlapCleanupFailed = true;
       overlapCleanupError = error;
     }
-  const trailingErrors = [samplingError, overlapCleanupError].filter(
-    (error) => error !== undefined,
-  );
-  if (roundError !== undefined && trailingErrors.length > 0)
+  const trailingErrors = [
+    ...(samplingFailed ? [samplingError] : []),
+    ...(overlapCleanupFailed ? [overlapCleanupError] : []),
+  ];
+  if (roundFailed && trailingErrors.length > 0)
     throw new AggregateError(
       [roundError, ...trailingErrors],
       `${scenario.name} failed and diagnostics cleanup was incomplete`,
     );
-  if (roundError !== undefined) throw roundError;
+  if (roundFailed) throw roundError;
   if (trailingErrors.length > 0)
     throw new AggregateError(
       trailingErrors,
@@ -1012,6 +1064,7 @@ export async function benchmark(
   const databaseSampler = await createDatabaseSampler(benchmarkEnvironment);
   const scenarios = [];
   let databaseObservations;
+  let benchmarkFailed = false;
   let benchmarkError;
   try {
     for (const scenario of manifest.scenarios) {
@@ -1023,6 +1076,7 @@ export async function benchmark(
       let targetDatabaseSampler;
       let targetDatabaseObservations;
       let targetDatabaseWorkload;
+      let scenarioFailed = false;
       let scenarioError;
       const rounds = [];
       try {
@@ -1051,6 +1105,7 @@ export async function benchmark(
         }
         targetDatabaseWorkload = await targetDatabaseSampler?.endScenario?.();
       } catch (error) {
+        scenarioFailed = true;
         scenarioError = error;
       }
       const cleanupErrors = [];
@@ -1064,11 +1119,10 @@ export async function benchmark(
       } catch (error) {
         cleanupErrors.push(error);
       }
-      if (scenarioError !== undefined && cleanupErrors.length === 0)
-        throw scenarioError;
-      if (scenarioError !== undefined || cleanupErrors.length > 0)
+      if (scenarioFailed && cleanupErrors.length === 0) throw scenarioError;
+      if (scenarioFailed || cleanupErrors.length > 0)
         throw new AggregateError(
-          [scenarioError, ...cleanupErrors].filter(Boolean),
+          [...(scenarioFailed ? [scenarioError] : []), ...cleanupErrors],
           `${scenario.name} failed or its shared database did not close cleanly`,
         );
       const databaseWorkload = await databaseSampler.endScenario?.();
@@ -1193,23 +1247,28 @@ export async function benchmark(
       });
     }
   } catch (error) {
+    benchmarkFailed = true;
     benchmarkError = error;
   }
+  let samplerStopFailed = false;
   let samplerStopError;
   try {
     databaseObservations = await databaseSampler.stop();
   } catch (error) {
+    samplerStopFailed = true;
     samplerStopError = error;
   }
   lag.disable();
-  if (benchmarkError !== undefined && samplerStopError !== undefined)
+  if (benchmarkFailed && samplerStopFailed)
     throw new AggregateError(
       [benchmarkError, samplerStopError],
       'Benchmark failed and database sampler cleanup was incomplete',
     );
-  if (benchmarkError !== undefined) throw benchmarkError;
-  if (samplerStopError !== undefined) throw samplerStopError;
-  const postgresEvidence = await capturePostgresEvidence(benchmarkEnvironment);
+  if (benchmarkFailed) throw benchmarkError;
+  if (samplerStopFailed) throw samplerStopError;
+  const postgresEvidence = await (
+    options.capturePostgresEvidence ?? capturePostgresEvidence
+  )(benchmarkEnvironment);
   const pnpm = await run('pnpm', ['--version']);
   const foregroundAlone = scenarios.find(
     ({ name }) => name === 'foreground-alone',
@@ -1252,7 +1311,7 @@ export async function benchmark(
     schemaVersion: 4,
     status: 'complete',
     recordedAt: new Date().toISOString(),
-    source: await sourceIdentity(),
+    source: await (options.sourceIdentity ?? sourceIdentity)(),
     manifestSha256: createHash('sha256')
       .update(JSON.stringify(manifest))
       .digest('hex'),
@@ -1309,32 +1368,31 @@ async function main() {
   );
   if (option === '--validate') return;
   if (!outputFile) throw new Error('Output path is required');
+  let primaryFailed = false;
   let primaryError;
   try {
     const evidence = await benchmark(manifest);
     if (receivedSignal) throw new Error(`Interrupted by ${receivedSignal}`);
-    const handle = await open(path.resolve(outputFile), 'wx');
-    try {
-      await handle.writeFile(`${JSON.stringify(evidence, null, 2)}\n`);
-    } finally {
-      await handle.close();
-    }
+    await writeBenchmarkEvidence(outputFile, evidence);
   } catch (error) {
+    primaryFailed = true;
     primaryError = error;
   }
+  let cleanupFailed = false;
   let cleanupError;
   try {
     await requestOwnedProcessTermination();
   } catch (error) {
+    cleanupFailed = true;
     cleanupError = error;
   }
-  if (primaryError !== undefined && cleanupError !== undefined)
+  if (primaryFailed && cleanupFailed)
     throw new AggregateError(
       [primaryError, cleanupError],
       'Benchmark failed and owned process cleanup was incomplete',
     );
-  if (primaryError !== undefined) throw primaryError;
-  if (cleanupError !== undefined) throw cleanupError;
+  if (primaryFailed) throw primaryError;
+  if (cleanupFailed) throw cleanupError;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

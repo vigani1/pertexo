@@ -81,8 +81,22 @@ try {
   await client.query('commit');
   process.stdout.write('Operator database role is provisioned.\n');
 } catch (error) {
-  await client.query('rollback').catch(() => undefined);
+  const failures = [error];
+  try {
+    await client.query('rollback');
+  } catch (rollbackError) {
+    failures.push(rollbackError);
+  }
+  try {
+    await client.end();
+  } catch (closeError) {
+    failures.push(closeError);
+  }
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      'Operator role provisioning failed and cleanup was incomplete',
+    );
   throw error;
-} finally {
-  await client.end();
 }
+await client.end();

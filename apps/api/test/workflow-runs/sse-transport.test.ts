@@ -338,6 +338,107 @@ describe('workflow run SSE transport', () => {
     expect(destination.end).toHaveBeenCalledOnce();
   });
 
+  it('preserves producer and cleanup failures while still ending the destination', async () => {
+    const readError = new Error('producer read failed');
+    const returnError = new Error('producer cleanup failed');
+    const endError = new Error('destination end failed');
+    const frames = {
+      [Symbol.asyncIterator]: () => ({
+        next: () =>
+          Promise.reject<IteratorResult<ReturnType<typeof frame>>>(readError),
+        return: () =>
+          Promise.reject<IteratorResult<ReturnType<typeof frame>>>(returnError),
+      }),
+    };
+    const destination = new EventEmitter() as EventEmitter & {
+      write: (chunk: string) => boolean;
+      end: ReturnType<typeof vi.fn<() => void>>;
+      destroy: (error?: Error) => void;
+      destroyed: boolean;
+    };
+    destination.write = vi.fn().mockReturnValue(true);
+    destination.end = vi.fn(() => {
+      throw endError;
+    });
+    destination.destroy = vi.fn();
+    destination.destroyed = false;
+
+    const failure = await writeSseFrames(
+      frames,
+      destination,
+      new AbortController(),
+      { recordFirstEligibleFrame: vi.fn() },
+      'live_wakeup',
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      readError,
+      returnError,
+      endError,
+    ]);
+    expect(destination.end).toHaveBeenCalledOnce();
+  });
+
+  it('preserves authorization loss with producer cleanup failure', async () => {
+    vi.useFakeTimers();
+    const authorizationError = new Error('session expired');
+    const returnError = new Error('producer cleanup failed');
+    const returned = vi.fn().mockRejectedValue(returnError);
+    try {
+      const frames = await new StreamRunEventsUseCase(
+        {
+          get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
+        },
+        {
+          findAccess: vi.fn().mockResolvedValue({
+            actorId,
+            workspaceId,
+            role: 'viewer',
+            membershipStatus: 'active',
+            workspaceStatus: 'active',
+          }),
+        },
+        {
+          stream: () => ({
+            [Symbol.asyncIterator]: () => ({
+              next: () => new Promise<IteratorResult<never>>(() => undefined),
+              return: returned,
+            }),
+          }),
+        },
+      ).execute({
+        actor: createActorContext({
+          actorId,
+          workspaceId,
+          sessionId,
+          requestId: 'request-42',
+        }),
+        routeWorkspaceId: workspaceId,
+        runId,
+        lastEventId: 0,
+        sessionExpiresAt: new Date(Date.now() + 5_000),
+        reauthorizeSession: vi.fn().mockRejectedValue(authorizationError),
+        abortStream: vi.fn(),
+        signal: new AbortController().signal,
+      });
+      const reading = frames[Symbol.asyncIterator]().next();
+      const outcome = reading.catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      const failure = await outcome;
+
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect((failure as AggregateError).errors).toEqual([
+        authorizationError,
+        returnError,
+      ]);
+      expect(returned).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('revokes authorization while a frame is blocked on transport backpressure', async () => {
     vi.useFakeTimers();
     const controller = new AbortController();

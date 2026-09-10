@@ -18,6 +18,7 @@ import {
   terminateProcessTree,
 } from './owned-process-tree.mjs';
 import { validateVitestGateReport } from './validate-vitest-gate-report.mjs';
+import { validateBenchmarkEvidence } from './performance/compare-local-benchmark.mjs';
 
 export { terminateProcessTree };
 
@@ -739,9 +740,10 @@ export async function execute(
     flags: 'a',
   });
   const logCompletion = finished(log).then(
-    () => undefined,
-    (error) => error,
+    () => ({ error: undefined, failed: false }),
+    (error) => ({ error, failed: true }),
   );
+  let completionFailed = false;
   let completionError;
   try {
     await runManagedCommand({
@@ -777,22 +779,27 @@ export async function execute(
       },
     });
   } catch (error) {
+    completionFailed = true;
     completionError = error;
   }
+  let logEndFailed = false;
   let logEndError;
   try {
     log.end();
   } catch (error) {
+    logEndFailed = true;
     logEndError = error;
   }
-  const logError = logEndError ?? (await logCompletion);
-  if (completionError && logError)
+  const logFailure = logEndFailed
+    ? { error: logEndError, failed: true }
+    : await logCompletion;
+  if (completionFailed && logFailure.failed)
     throw new AggregateError(
-      [completionError, logError],
+      [completionError, logFailure.error],
       `${command} ${arguments_.join(' ')} failed and its evidence log was incomplete`,
     );
-  if (completionError) throw completionError;
-  if (logError) throw logError;
+  if (completionFailed) throw completionError;
+  if (logFailure.failed) throw logFailure.error;
 }
 
 async function assertCommands(environment, needsDocker) {
@@ -823,6 +830,7 @@ async function run() {
   let environment = process.env;
   let servicesStarted = false;
   let manifest;
+  let primaryFailed = false;
   let primaryError;
 
   process.once('exit', () => {
@@ -1046,6 +1054,10 @@ async function run() {
             { ...environment, PERTEXO_Q11_ISOLATED: '1' },
             path.join(outputDirectory, `${definition.id}.log`),
           );
+          validateBenchmarkEvidence(
+            JSON.parse(await readFile(evidencePath, 'utf8')),
+            'Qualification benchmark',
+          );
           record.evidence = path.relative(repositoryRoot, evidencePath);
         } else if (definition.internal === 'cleanup') {
           await cleanup(false);
@@ -1060,12 +1072,14 @@ async function run() {
               ? ['--reporter=json', `--outputFile=${reportPath}`]
               : []),
           ];
+          const reportProducerStartedAt = reportPath ? Date.now() : undefined;
           await execute(
             command[0],
             arguments_,
             environment,
             path.join(outputDirectory, `${definition.id}.log`),
           );
+          const reportProducerCompletedAt = reportPath ? Date.now() : undefined;
           for (const after of definition.after ?? [])
             await execute(
               after[0],
@@ -1083,6 +1097,39 @@ async function run() {
             );
             record.report = path.relative(repositoryRoot, reportPath);
             record.reportValidated = true;
+            if (definition.id === 'integration-worker') {
+              const integrationEvidencePath = path.join(
+                reportsDirectory,
+                `${definition.id}-evidence.json`,
+              );
+              await execute(
+                process.execPath,
+                ['infrastructure/report-risk-coverage.mjs'],
+                {
+                  ...environment,
+                  PERTEXO_RISK_COVERAGE_RESULT_FILE: reportPath,
+                  PERTEXO_RISK_COVERAGE_EVIDENCE_FILE: integrationEvidencePath,
+                  PERTEXO_RISK_COVERAGE_COMMAND: command.join(' '),
+                  PERTEXO_RISK_COVERAGE_PRODUCER_STARTED_AT: String(
+                    reportProducerStartedAt,
+                  ),
+                  PERTEXO_RISK_COVERAGE_PRODUCER_COMPLETED_AT: String(
+                    reportProducerCompletedAt,
+                  ),
+                  PERTEXO_RISK_COVERAGE_CANDIDATE_FINGERPRINT:
+                    manifest.source.started.fingerprint,
+                  PERTEXO_RISK_COVERAGE_RUN_ID: id,
+                  ...(options.mode === 'qualification'
+                    ? { PERTEXO_RISK_COVERAGE_REQUIRE_EXECUTED: '1' }
+                    : {}),
+                },
+                path.join(outputDirectory, `${definition.id}.log`),
+              );
+              record.evidence = path.relative(
+                repositoryRoot,
+                integrationEvidencePath,
+              );
+            }
           }
         }
         record.status = 'passed';
@@ -1124,6 +1171,7 @@ async function run() {
       `Local quality ${manifest.outcome}: ${manifestPath}\n`,
     );
   } catch (error) {
+    primaryFailed = true;
     primaryError = error;
     try {
       if (manifest) {
@@ -1167,19 +1215,21 @@ async function run() {
       );
     }
   }
+  let cleanupFailed = false;
   let cleanupError;
   try {
     await cleanup();
   } catch (error) {
+    cleanupFailed = true;
     cleanupError = error;
   }
-  if (primaryError !== undefined && cleanupError !== undefined)
+  if (primaryFailed && cleanupFailed)
     throw new AggregateError(
       [primaryError, cleanupError],
       'Local quality failed and cleanup was incomplete',
     );
-  if (primaryError !== undefined) throw primaryError;
-  if (cleanupError !== undefined) throw cleanupError;
+  if (primaryFailed) throw primaryError;
+  if (cleanupFailed) throw cleanupError;
 }
 
 if (

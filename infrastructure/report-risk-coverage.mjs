@@ -7,6 +7,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
+import { validateVitestGateReport } from './validate-vitest-gate-report.mjs';
+
 const REVIEW_CLASSIFICATIONS = new Set([
   'defensive',
   'unreachable',
@@ -109,13 +111,107 @@ function matchingExecutedTest(result, evidence) {
   );
 }
 
-function validatedIntegrationEvidence(evidence, sourceRevision) {
+function resultSha256(result) {
+  return createHash('sha256').update(JSON.stringify(result)).digest('hex');
+}
+
+function assertProducedResultInterval(result, startedAt, completedAt) {
+  validateVitestGateReport(result, 'Integration evidence producer', 1, 0);
+  const assertions = Array.isArray(result.testResults)
+    ? result.testResults.flatMap((suite) => suite.assertionResults ?? [])
+    : [];
+  if (
+    !Number.isFinite(startedAt) ||
+    !Number.isFinite(completedAt) ||
+    completedAt < startedAt ||
+    !Number.isFinite(result.startTime) ||
+    result.startTime < startedAt ||
+    result.startTime > completedAt ||
+    !Array.isArray(result.testResults) ||
+    result.testResults.length === 0 ||
+    assertions.length !== result.numTotalTests ||
+    assertions.some(
+      (assertion) =>
+        typeof assertion?.title !== 'string' || assertion.status !== 'passed',
+    ) ||
+    result.testResults.some(
+      (suite) =>
+        typeof suite?.name !== 'string' ||
+        !Number.isFinite(suite?.endTime) ||
+        suite.endTime < result.startTime ||
+        suite.endTime > completedAt ||
+        !Array.isArray(suite.assertionResults),
+    )
+  )
+    throw new Error(
+      'Integration test result was not produced within the qualification interval',
+    );
+}
+
+export async function produceIntegrationEvidenceArtifact(
+  {
+    artifactFile,
+    candidateFingerprint,
+    command,
+    completedAt,
+    resultFile,
+    runId,
+    sourceRevision,
+    startedAt,
+  },
+  operations = {},
+) {
+  const readResult = operations.readFile ?? readFile;
+  const writeArtifact = operations.writeFile ?? writeFile;
+  if (
+    typeof artifactFile !== 'string' ||
+    artifactFile.length === 0 ||
+    typeof resultFile !== 'string' ||
+    resultFile.length === 0 ||
+    typeof command !== 'string' ||
+    command.length === 0 ||
+    typeof candidateFingerprint !== 'string' ||
+    candidateFingerprint.length === 0 ||
+    typeof runId !== 'string' ||
+    runId.length === 0 ||
+    typeof sourceRevision !== 'string' ||
+    sourceRevision.length === 0
+  )
+    throw new Error('Integration evidence producer identity is incomplete');
+  const result = JSON.parse(await readResult(resultFile, 'utf8'));
+  assertProducedResultInterval(result, startedAt, completedAt);
+  const artifact = {
+    schemaVersion: 3,
+    command,
+    sourceRevision,
+    candidateFingerprint,
+    runId,
+    producerInterval: { startedAt, completedAt },
+    resultSha256: resultSha256(result),
+    result,
+  };
+  await writeArtifact(artifactFile, `${JSON.stringify(artifact, null, 2)}\n`, {
+    flag: 'wx',
+  });
+  return artifact;
+}
+
+function validatedIntegrationEvidence(
+  evidence,
+  sourceRevision,
+  execution = {},
+) {
   const entries = new Map();
   for (const [id, item] of Object.entries(evidence)) {
+    const integrationCommand =
+      typeof item?.command === 'string' &&
+      (item.command.includes('test:integration') ||
+        (item.command.includes('exec vitest run') &&
+          item.command.includes('vitest.integration')));
     if (
       !/^[a-z0-9][a-z0-9-]*$/u.test(id) ||
       typeof item?.command !== 'string' ||
-      !item.command.includes('test:integration') ||
+      !integrationCommand ||
       typeof item.testFile !== 'string' ||
       !item.testFile.endsWith('.integration.test.ts') ||
       typeof item.testName !== 'string' ||
@@ -124,25 +220,47 @@ function validatedIntegrationEvidence(evidence, sourceRevision) {
       throw new Error(`Invalid integration evidence: ${id}`);
     if ('execution' in item)
       throw new Error(`Inline integration execution is not an artifact: ${id}`);
-    const resultFile = item.resultFile;
     const resultArtifact = item.resultArtifact;
-    if (resultFile !== undefined) {
+    const executed = resultArtifact !== undefined;
+    if (executed) {
       if (
-        typeof resultFile !== 'string' ||
-        !resultFile.endsWith('.json') ||
-        resultArtifact?.schemaVersion !== 1 ||
+        resultArtifact?.schemaVersion !== 3 ||
         resultArtifact.command !== item.command ||
         resultArtifact.sourceRevision !== sourceRevision ||
+        resultArtifact.candidateFingerprint !==
+          execution.candidateFingerprint ||
+        resultArtifact.runId !== execution.runId ||
+        resultArtifact.resultSha256 !== resultSha256(resultArtifact.result) ||
+        (() => {
+          try {
+            assertProducedResultInterval(
+              resultArtifact.result,
+              resultArtifact.producerInterval?.startedAt,
+              resultArtifact.producerInterval?.completedAt,
+            );
+            return false;
+          } catch {
+            return true;
+          }
+        })() ||
         !matchingExecutedTest(resultArtifact.result, item)
       )
         throw new Error(`Invalid executed integration evidence: ${id}`);
     }
+    if (execution.requireExecuted === true && !executed)
+      throw new Error(`Missing executed integration evidence: ${id}`);
     const publicEvidence = Object.fromEntries(
       Object.entries(item).filter(([key]) => key !== 'resultArtifact'),
     );
     entries.set(id, {
       ...publicEvidence,
-      evidenceState: resultFile === undefined ? 'referenced-only' : 'executed',
+      evidenceState: executed ? 'executed' : 'referenced-only',
+      ...(executed
+        ? {
+            runId: resultArtifact.runId,
+            candidateFingerprint: resultArtifact.candidateFingerprint,
+          }
+        : {}),
     });
   }
   return entries;
@@ -325,6 +443,7 @@ export function createRiskCoverageReport(
   sourceByFile = new Map(),
   testHealthByCohort = new Map(),
   sourceRevision,
+  integrationExecution = {},
 ) {
   const selections = [...reports.entries()]
     .map(([cohort, report]) => {
@@ -343,6 +462,7 @@ export function createRiskCoverageReport(
   const integrationEvidenceById = validatedIntegrationEvidence(
     integrationEvidence,
     sourceRevision,
+    integrationExecution,
   );
   const branches = [...reports.entries()].flatMap(([cohort, report]) =>
     uncoveredBranches(report, cohort, rootDirectory, sourceByFile),
@@ -446,7 +566,7 @@ export function assertRiskCoveragePolicies(
   }
 }
 
-async function main() {
+async function main(environment = process.env) {
   const reports = new Map();
   const sourceByFile = new Map();
   const testHealthByCohort = new Map();
@@ -490,18 +610,51 @@ async function main() {
     }),
   );
   const sourceRevision = riskCoverageSourceRevision(sourceByFile);
+  const executedReportFile = environment.PERTEXO_RISK_COVERAGE_RESULT_FILE;
+  const executedArtifactFile = environment.PERTEXO_RISK_COVERAGE_EVIDENCE_FILE;
+  const execution = {
+    candidateFingerprint:
+      environment.PERTEXO_RISK_COVERAGE_CANDIDATE_FINGERPRINT,
+    runId: environment.PERTEXO_RISK_COVERAGE_RUN_ID,
+    requireExecuted: environment.PERTEXO_RISK_COVERAGE_REQUIRE_EXECUTED === '1',
+  };
+  if (execution.requireExecuted && executedReportFile === undefined)
+    throw new Error('Required run-linked integration evidence is missing');
+  if (
+    executedReportFile !== undefined &&
+    (typeof execution.candidateFingerprint !== 'string' ||
+      execution.candidateFingerprint.length === 0 ||
+      typeof execution.runId !== 'string' ||
+      execution.runId.length === 0)
+  )
+    throw new Error('Run-linked integration evidence identity is incomplete');
+  const executedArtifact =
+    executedReportFile === undefined
+      ? undefined
+      : await produceIntegrationEvidenceArtifact({
+          artifactFile: executedArtifactFile,
+          candidateFingerprint: execution.candidateFingerprint,
+          command: environment.PERTEXO_RISK_COVERAGE_COMMAND,
+          completedAt: Number(
+            environment.PERTEXO_RISK_COVERAGE_PRODUCER_COMPLETED_AT,
+          ),
+          resultFile: executedReportFile,
+          runId: execution.runId,
+          sourceRevision,
+          startedAt: Number(
+            environment.PERTEXO_RISK_COVERAGE_PRODUCER_STARTED_AT,
+          ),
+        });
   const integrationEvidence = Object.fromEntries(
     await Promise.all(
       Object.entries(reviewManifest.integrationEvidence).map(
         async ([id, evidence]) => [
           id,
-          evidence.resultFile === undefined
+          executedArtifact === undefined
             ? evidence
             : {
                 ...evidence,
-                resultArtifact: JSON.parse(
-                  await readFile(evidence.resultFile, 'utf8'),
-                ),
+                resultArtifact: executedArtifact,
               },
         ],
       ),
@@ -516,6 +669,7 @@ async function main() {
     sourceByFile,
     testHealthByCohort,
     sourceRevision,
+    execution,
   );
   assertRiskCoverageCohort(
     output,

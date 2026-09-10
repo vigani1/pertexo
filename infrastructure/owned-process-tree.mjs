@@ -129,13 +129,17 @@ export async function runManagedCommand({
 }) {
   const child = spawnOwned(command, args, spawnOptions);
   let exitResult;
+  let commandFailed = false;
   let commandError;
   const closed = new Promise((resolve) => {
     child.once('close', (code, signal) => resolve({ code, signal }));
   });
   await new Promise((resolve) => {
     const recordCommandError = (error) => {
-      commandError ??= error;
+      if (!commandFailed) {
+        commandFailed = true;
+        commandError = error;
+      }
       resolve();
     };
     const consumeOutput = (consumer) => (chunk) => {
@@ -155,8 +159,10 @@ export async function runManagedCommand({
     child.on('error', recordCommandError);
     child.once('exit', (code, signal) => {
       exitResult = { code, signal };
-      if (commandError === undefined && code !== 0)
+      if (!commandFailed && code !== 0) {
+        commandFailed = true;
         commandError = failure(code, signal);
+      }
       resolve();
     });
     try {
@@ -166,31 +172,32 @@ export async function runManagedCommand({
     }
   });
 
+  let cleanupFailed = false;
   let cleanupError;
   try {
     await releaseOwned(child);
   } catch (error) {
+    cleanupFailed = true;
     cleanupError = error;
   }
-  if (cleanupError !== undefined) {
+  if (cleanupFailed) {
     child.stdout?.destroy();
     child.stderr?.destroy();
   }
-  const closeResult =
-    cleanupError === undefined
-      ? await closed
-      : (exitResult ?? { code: null, signal: null });
+  const closeResult = !cleanupFailed
+    ? await closed
+    : (exitResult ?? { code: null, signal: null });
   const result = {
     child,
     code: closeResult.code ?? exitResult?.code ?? null,
     signal: closeResult.signal ?? exitResult?.signal ?? null,
   };
-  if (commandError !== undefined && cleanupError !== undefined)
+  if (commandFailed && cleanupFailed)
     throw new AggregateError(
       [commandError, cleanupError],
       `${command} failed and its process tree could not be cleaned up`,
     );
-  if (commandError !== undefined) throw commandError;
-  if (cleanupError !== undefined) throw cleanupError;
+  if (commandFailed) throw commandError;
+  if (cleanupFailed) throw cleanupError;
   return result;
 }

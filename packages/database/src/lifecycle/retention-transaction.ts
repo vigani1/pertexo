@@ -186,6 +186,7 @@ export async function withWorkspaceDestructiveOperationLock<T>(
   }
   let acquired = false;
   const clientState = { released: false };
+  let operationFailed = false;
   let operationError: unknown;
   let result: T | undefined;
   const releaseLockWaitForAbort = (): void => {
@@ -212,6 +213,7 @@ export async function withWorkspaceDestructiveOperationLock<T>(
     signal?.throwIfAborted();
     result = await work();
   } catch (error: unknown) {
+    operationFailed = true;
     operationError =
       signal?.aborted === true
         ? throwableError(signal.reason, 'Workspace lifecycle lock aborted')
@@ -220,11 +222,13 @@ export async function withWorkspaceDestructiveOperationLock<T>(
     signal?.removeEventListener('abort', releaseLockWaitForAbort);
   }
 
+  let unlockFailed = false;
   let unlockError: unknown;
   if (acquired) {
     try {
       await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
     } catch (error: unknown) {
+      unlockFailed = true;
       unlockError = error;
     }
   }
@@ -233,24 +237,24 @@ export async function withWorkspaceDestructiveOperationLock<T>(
       client.release(
         unlockError instanceof Error
           ? unlockError
-          : unlockError === undefined
+          : !unlockFailed
             ? undefined
             : new Error('Workspace destructive-operation lock release failed'),
       );
   } finally {
     releasePermit();
   }
-  if (operationError !== undefined && unlockError === undefined)
+  if (operationFailed && !unlockFailed)
     throw throwableError(
       operationError,
       'Workspace destructive operation failed',
     );
-  if (operationError === undefined && unlockError !== undefined)
+  if (!operationFailed && unlockFailed)
     throw throwableError(
       unlockError,
       'Workspace destructive-operation lock release failed',
     );
-  if (operationError !== undefined && unlockError !== undefined)
+  if (operationFailed && unlockFailed)
     throw new AggregateError(
       [operationError, unlockError],
       'Workspace destructive operation did not complete cleanly',

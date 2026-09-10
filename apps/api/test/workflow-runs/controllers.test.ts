@@ -3,8 +3,10 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowRunsController } from '../../src/workflow-runs/controllers.js';
+import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const guardActorId = '99999999-9999-4999-8999-999999999999';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -117,6 +119,108 @@ function controller() {
 }
 
 describe('workflow runs controller public seam', () => {
+  it('uses session context without a guard and gives guarded context precedence', async () => {
+    const fixture = controller();
+    await fixture.instance.startRun(
+      request({ 'idempotency-key': 'session-context' }),
+      { workspaceId, workflowId },
+      {},
+    );
+    expect(fixture.start.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        actor: expect.objectContaining({ actorId, requestId: 'request-42' }),
+        requestId: 'request-42',
+        traceId: 'trace-42',
+      }),
+    );
+    expect(fixture.start.execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
+      'authorizedWorkspace',
+    );
+
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'run:start' as const,
+    };
+    await fixture.instance.startRun(
+      {
+        ...request({ 'idempotency-key': 'guard-context' }),
+        authorizedWorkspace,
+      },
+      { workspaceId, workflowId },
+      {},
+    );
+    expect(fixture.start.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it('maps an invalid session actor to request.invalid status 400', async () => {
+    const fixture = controller();
+    const invalid = {
+      ...request({ 'idempotency-key': 'invalid-actor' }),
+      identitySession: { ...request().identitySession, userId: 'not-a-uuid' },
+    };
+    await expect(
+      fixture.instance.startRun(invalid, { workspaceId, workflowId }, {}),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(fixture.start.execute).not.toHaveBeenCalled();
+  });
+
+  it('passes controller-owned SSE reauthorization and authorization to the stream use case', async () => {
+    const fixture = controller();
+    const reply = sseReply();
+    const reauthorizeIdentitySession = vi.fn(
+      request().reauthorizeIdentitySession,
+    );
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId,
+        requestId: 'guard-request',
+      }),
+      workspaceId,
+      role: 'viewer' as const,
+      capability: 'run:read' as const,
+    };
+    await fixture.instance.streamRunEvents(
+      {
+        ...request(),
+        authorizedWorkspace,
+        reauthorizeIdentitySession,
+      },
+      { workspaceId, runId },
+      reply as never,
+    );
+    expect(fixture.stream.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        reauthorizeSession: reauthorizeIdentitySession,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        abortStream: expect.any(Function),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
   it('parses one start request and forwards idempotency and trace context', async () => {
     const fixture = controller();
     await fixture.instance.startRun(

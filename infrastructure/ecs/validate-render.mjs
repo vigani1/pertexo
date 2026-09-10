@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 
+import { preserveTemporaryDirectoryFailure } from '../temporary-directory-cleanup.mjs';
+
 const execFileAsync = promisify(execFile);
 const root = resolve(import.meta.dirname, '../..');
 const renderer = resolve(
@@ -30,6 +32,7 @@ const renderEnvironment = {
   ECS_TASK_ROLE_ARN_PREFIX: 'arn:aws:iam::000000000000:role/pertexo-task',
 };
 const temporaryRoot = await mkdtemp(resolve(tmpdir(), 'pertexo-ecs-render-'));
+let primary = { error: undefined, failed: false };
 
 async function render(directory) {
   await execFileAsync(process.execPath, [renderer, directory], {
@@ -112,8 +115,13 @@ try {
         : '';
     if (!stderr.includes('ECS_IMAGE_URI must be digest-qualified')) throw error;
   }
+} catch (error) {
+  primary = { error, failed: true };
+  throw error;
 } finally {
-  await rm(temporaryRoot, { recursive: true, force: true });
+  await preserveTemporaryDirectoryFailure(primary, () =>
+    rm(temporaryRoot, { recursive: true, force: true }),
+  );
 }
 
 process.stdout.write(

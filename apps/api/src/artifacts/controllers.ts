@@ -18,14 +18,14 @@ import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  authenticatedSession,
-  requestIdentifier,
-  traceIdentifier,
 } from '../identity-workspace/index.js';
+import {
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../identity-workspace/authenticated-command-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import { singleRequestHeader } from '../platform/http/request-headers.js';
-import { createActorContext } from '../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import { ArtifactService } from './service.js';
@@ -141,16 +141,7 @@ export class ArtifactsController {
 }
 
 function actorFrom(request: ArtifactRequest, workspaceId: string) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  return createActorContext({
-    actorId: session.userId,
-    workspaceId,
-    sessionId: session.sessionId,
-    requestId: requestIdentifier(request),
-    ...traceInput(request),
-  });
+  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
 function idempotencyKey(request: ArtifactRequest): string {
@@ -162,12 +153,5 @@ function idempotencyKey(request: ArtifactRequest): string {
 function authorizedInput(request: ArtifactRequest): Readonly<{
   authorizedWorkspace?: NonNullable<ArtifactRequest['authorizedWorkspace']>;
 }> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
-}
-
-function traceInput(request: ArtifactRequest): Readonly<{ traceId?: string }> {
-  const traceId = traceIdentifier(request);
-  return traceId === undefined ? {} : { traceId };
+  return optionalAuthorizedWorkspace(request);
 }

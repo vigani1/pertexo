@@ -32,9 +32,9 @@ import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import type {
-  NodeAttemptCapabilityContext,
-  NodeAttemptRuntimeCapabilityFactories,
-} from './node-attempt-handler.js';
+  NodeExecutionCapabilityContext,
+  NodeExecutionCapabilityFactories,
+} from './node-execution-capabilities.js';
 import {
   createProviderConnectionRuntimeFactory,
   type ProviderRateLimiter,
@@ -62,11 +62,15 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
+  artifactSpoolOperations?: Readonly<{
+    openFile(path: string): ReturnType<typeof open>;
+    removeDirectory(path: string): Promise<void>;
+  }>;
   providerRateLimiter?: ProviderRateLimiter;
 }>;
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
-  factories: NodeAttemptRuntimeCapabilityFactories;
+  factories: NodeExecutionCapabilityFactories;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }>;
@@ -116,6 +120,43 @@ async function writeAll(
   }
 }
 
+async function completeWithCleanup<T>(
+  operation: () => Promise<T>,
+  cleanup: () => Promise<void>,
+  combinedFailureMessage: string,
+): Promise<T> {
+  let result: T | undefined;
+  let operationFailed = false;
+  let operationError: unknown;
+  try {
+    result = await operation();
+  } catch (error) {
+    operationFailed = true;
+    operationError = error;
+  }
+  try {
+    await cleanup();
+  } catch (cleanupError) {
+    if (operationFailed)
+      throw new AggregateError(
+        [operationError, cleanupError],
+        combinedFailureMessage,
+      );
+    throw cleanupError instanceof Error
+      ? cleanupError
+      : new Error('Artifact cleanup failed with a non-Error value', {
+          cause: cleanupError,
+        });
+  }
+  if (operationFailed)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error('Artifact operation failed with a non-Error value', {
+          cause: operationError,
+        });
+  return result as T;
+}
+
 function artifactFactory(
   persistence: WorkerArtifactPersistence,
   store: Pick<ArtifactStore, 'put'>,
@@ -123,7 +164,10 @@ function artifactFactory(
   artifactId: () => string,
   now: () => Date,
   spoolDirectory: string,
-): (context: NodeAttemptCapabilityContext) => NodeArtifactRuntime {
+  spoolOperations: NonNullable<
+    WorkerNodeRuntimeCapabilityDependencies['artifactSpoolOperations']
+  >,
+): (context: NodeExecutionCapabilityContext) => NodeArtifactRuntime {
   return (context) =>
     Object.freeze({
       write: async (input: Parameters<NodeArtifactRuntime['write']>[0]) => {
@@ -140,93 +184,101 @@ function artifactFactory(
         const spoolPath = path.join(directory, 'body');
         const digest = createHash('sha256');
         let byteLength = 0;
-        try {
-          const file = await open(spoolPath, 'wx', 0o600);
-          try {
-            for await (const chunk of input.body) {
-              assertNotAborted(input.signal);
-              byteLength += chunk.byteLength;
-              if (byteLength > input.maxBytes)
-                throw new RangeError('Node artifact exceeds its byte limit');
-              try {
-                digest.update(chunk);
-                await writeAll(file, chunk);
-              } finally {
-                chunk.fill(0);
-              }
-            }
-            await file.sync();
-          } finally {
-            await file.close();
-          }
-          assertNotAborted(input.signal);
-          const id = artifactId();
-          const sha256 = digest.digest('hex');
-          const storageKey = artifactStorageKey(context.workspaceId, id);
-          const createdAt = now();
-          const defaultExpiry = new Date(createdAt.getTime() + retentionMillis);
-          const retentionDeadline = context.artifactRetentionDeadline;
-          if (
-            retentionDeadline !== undefined &&
-            !Number.isFinite(retentionDeadline.getTime())
-          )
-            throw new TypeError('Artifact retention deadline is invalid');
-          const expiresAt =
-            retentionDeadline !== undefined &&
-            retentionDeadline.getTime() < defaultExpiry.getTime()
-              ? new Date(retentionDeadline.getTime())
-              : defaultExpiry;
-          if (expiresAt.getTime() <= createdAt.getTime())
-            throw new RangeError('Artifact retention deadline has expired');
-          await persistence.createPending({
-            artifactId: id,
-            workspaceId: context.workspaceId,
-            byteLength,
-            mediaType: input.mediaType,
-            sha256,
-            storageKey,
-            expiresAt,
-            purpose: input.purpose,
-            ...(context.previewRunId === undefined
-              ? {}
-              : { previewRunId: context.previewRunId }),
-            signal: input.signal,
-          });
-          const uploaded = await store.put({
-            artifactId: id,
-            workspaceId: context.workspaceId,
-            byteLength,
-            mediaType: input.mediaType,
-            sha256,
-            body: createReadStream(spoolPath),
-            signal: input.signal,
-          });
-          if (
-            uploaded.artifactId !== id ||
-            uploaded.workspaceId !== context.workspaceId ||
-            uploaded.byteLength !== byteLength ||
-            uploaded.mediaType !== input.mediaType ||
-            uploaded.sha256 !== sha256
-          )
-            throw new Error('Artifact store returned incompatible metadata');
-          await persistence.finalize({
-            artifactId: id,
-            workspaceId: context.workspaceId,
-            byteLength,
-            mediaType: input.mediaType,
-            sha256,
-            storageKey,
-            signal: input.signal,
-          });
-          return Object.freeze({
-            artifactId: id,
-            byteLength,
-            mediaType: input.mediaType,
-            sha256,
-          });
-        } finally {
-          await rm(directory, { recursive: true, force: true });
-        }
+        return completeWithCleanup(
+          async () => {
+            const file = await spoolOperations.openFile(spoolPath);
+            await completeWithCleanup(
+              async () => {
+                for await (const chunk of input.body) {
+                  assertNotAborted(input.signal);
+                  byteLength += chunk.byteLength;
+                  if (byteLength > input.maxBytes)
+                    throw new RangeError(
+                      'Node artifact exceeds its byte limit',
+                    );
+                  try {
+                    digest.update(chunk);
+                    await writeAll(file, chunk);
+                  } finally {
+                    chunk.fill(0);
+                  }
+                }
+                await file.sync();
+              },
+              () => file.close(),
+              'Artifact spool write and file close both failed',
+            );
+            assertNotAborted(input.signal);
+            const id = artifactId();
+            const sha256 = digest.digest('hex');
+            const storageKey = artifactStorageKey(context.workspaceId, id);
+            const createdAt = now();
+            const defaultExpiry = new Date(
+              createdAt.getTime() + retentionMillis,
+            );
+            const retentionDeadline = context.artifactRetentionDeadline;
+            if (
+              retentionDeadline !== undefined &&
+              !Number.isFinite(retentionDeadline.getTime())
+            )
+              throw new TypeError('Artifact retention deadline is invalid');
+            const expiresAt =
+              retentionDeadline !== undefined &&
+              retentionDeadline.getTime() < defaultExpiry.getTime()
+                ? new Date(retentionDeadline.getTime())
+                : defaultExpiry;
+            if (expiresAt.getTime() <= createdAt.getTime())
+              throw new RangeError('Artifact retention deadline has expired');
+            await persistence.createPending({
+              artifactId: id,
+              workspaceId: context.workspaceId,
+              byteLength,
+              mediaType: input.mediaType,
+              sha256,
+              storageKey,
+              expiresAt,
+              purpose: input.purpose,
+              ...(context.previewRunId === undefined
+                ? {}
+                : { previewRunId: context.previewRunId }),
+              signal: input.signal,
+            });
+            const uploaded = await store.put({
+              artifactId: id,
+              workspaceId: context.workspaceId,
+              byteLength,
+              mediaType: input.mediaType,
+              sha256,
+              body: createReadStream(spoolPath),
+              signal: input.signal,
+            });
+            if (
+              uploaded.artifactId !== id ||
+              uploaded.workspaceId !== context.workspaceId ||
+              uploaded.byteLength !== byteLength ||
+              uploaded.mediaType !== input.mediaType ||
+              uploaded.sha256 !== sha256
+            )
+              throw new Error('Artifact store returned incompatible metadata');
+            await persistence.finalize({
+              artifactId: id,
+              workspaceId: context.workspaceId,
+              byteLength,
+              mediaType: input.mediaType,
+              sha256,
+              storageKey,
+              signal: input.signal,
+            });
+            return Object.freeze({
+              artifactId: id,
+              byteLength,
+              mediaType: input.mediaType,
+              sha256,
+            });
+          },
+          () => spoolOperations.removeDirectory(directory),
+          'Artifact write failed and spool cleanup was incomplete',
+        );
       },
     });
 }
@@ -313,10 +365,8 @@ export async function createWorkerNodeRuntimeCapabilities(
     dependencies.artifactStore !== undefined;
 
   const factories: {
-    connections?: NonNullable<
-      NodeAttemptRuntimeCapabilityFactories['connections']
-    >;
-    artifacts?: NonNullable<NodeAttemptRuntimeCapabilityFactories['artifacts']>;
+    connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
+    artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
   } = {};
   let closePromise: Promise<void> | undefined;
   let checkArtifactReadiness: (() => Promise<unknown>) | undefined;
@@ -404,6 +454,11 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.artifactId ?? generatePersistedId,
         dependencies.now ?? (() => new Date()),
         dependencies.spoolDirectory ?? tmpdir(),
+        dependencies.artifactSpoolOperations ?? {
+          openFile: (filePath) => open(filePath, 'wx', 0o600),
+          removeDirectory: (directory) =>
+            rm(directory, { recursive: true, force: true }),
+        },
       );
     }
   } catch (error: unknown) {

@@ -45,6 +45,9 @@ export const attemptJobPayloadSchema = z
 
 const nodeIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
 const invocationKeySchema = z.string().min(1).max(256);
+export const NODE_ATTEMPT_INPUT_LIMITS = Object.freeze({
+  upstreamNodeOutputs: 100,
+});
 const sideEffectClassSchema = z.enum(['safe', 'idempotent_with_key', 'unsafe']);
 const admissionKindSchema = z.enum(['execute', 'retry', 'wait_resume']);
 const branchScopePartSchema = z
@@ -156,7 +159,7 @@ export const loadInputsSchema = z
           })
           .strict(),
       )
-      .max(100)
+      .max(NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs)
       .refine(
         (values) =>
           new Set(values.map(({ invocationKey }) => invocationKey)).size ===

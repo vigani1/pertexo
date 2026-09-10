@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   streamRunEventFrames,
@@ -118,6 +118,116 @@ async function nextFrame(
 }
 
 describe('run event SSE reconstruction', () => {
+  it('preserves a read failure together with subscription cleanup failure', async () => {
+    const readError = new Error('read failed');
+    const closeError = new Error('subscription close failed');
+    const subscription: LiveRunEventSubscription = {
+      close: () => Promise.reject(closeError),
+      async *[Symbol.asyncIterator]() {
+        await Promise.resolve();
+        for (const notification of [] as LiveRunEventNotification[])
+          yield notification;
+      },
+    };
+    const iterator = streamRunEventFrames(
+      {
+        lastEventId: 0,
+        runId: RUN_ID,
+        signal: new AbortController().signal,
+        workspaceId: WORKSPACE_ID,
+      },
+      {
+        liveSource: { subscribe: () => Promise.resolve(subscription) },
+        reader: { readPage: () => Promise.reject(readError) },
+      },
+    )[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([readError, closeError]);
+      return true;
+    });
+  });
+
+  it('preserves an undefined read rejection together with subscription cleanup failure', async () => {
+    const closeError = new Error('subscription close failed');
+    const subscription: LiveRunEventSubscription = {
+      close: () => Promise.reject(closeError),
+      async *[Symbol.asyncIterator]() {
+        await Promise.resolve();
+        for (const notification of [] as LiveRunEventNotification[])
+          yield notification;
+      },
+    };
+    const iterator = streamRunEventFrames(
+      {
+        lastEventId: 0,
+        runId: RUN_ID,
+        signal: new AbortController().signal,
+        workspaceId: WORKSPACE_ID,
+      },
+      {
+        liveSource: { subscribe: () => Promise.resolve(subscription) },
+        reader: {
+          // Deliberately exercise a hostile non-Error adapter rejection.
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          readPage: () => Promise.reject(undefined),
+        },
+      },
+    )[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([undefined, closeError]);
+      return true;
+    });
+  });
+
+  it('attempts every cleanup when synchronous failures follow a read failure', async () => {
+    const readError = new Error('read failed');
+    const closeError = new Error('subscription close failed synchronously');
+    const returnError = new Error('iterator return failed synchronously');
+    const close = vi.fn(() => {
+      throw closeError;
+    });
+    const returnIterator = vi.fn(() => {
+      throw returnError;
+    });
+    const pendingNext =
+      Promise.withResolvers<IteratorResult<LiveRunEventNotification>>().promise;
+    const subscription: LiveRunEventSubscription = {
+      close,
+      [Symbol.asyncIterator]: () => ({
+        next: () => pendingNext,
+        return: returnIterator,
+      }),
+    };
+    const iterator = streamRunEventFrames(
+      {
+        lastEventId: 0,
+        runId: RUN_ID,
+        signal: new AbortController().signal,
+        workspaceId: WORKSPACE_ID,
+      },
+      {
+        liveSource: { subscribe: () => Promise.resolve(subscription) },
+        reader: { readPage: () => Promise.reject(readError) },
+      },
+    )[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([
+        readError,
+        closeError,
+        returnError,
+      ]);
+      return true;
+    });
+    expect(close).toHaveBeenCalledOnce();
+    expect(returnIterator).toHaveBeenCalledOnce();
+  });
+
   it('subscribes before reading and closes the subscription on cancellation', async () => {
     const order: string[] = [];
     const subscription = new ControlledSubscription();

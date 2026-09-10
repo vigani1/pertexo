@@ -96,6 +96,66 @@ function recordingMeter(metricNames) {
   };
 }
 
+export async function runPoolContentionSamples(pool, wait = () => delay(60)) {
+  let samplingFailed = false;
+  let samplingError;
+  try {
+    for (let round = 0; round < 3; round += 1) {
+      const owner = await pool.connect();
+      const waiting = pool.connect();
+      let waitFailed = false;
+      let waitError;
+      try {
+        await wait();
+      } catch (error) {
+        waitFailed = true;
+        waitError = error;
+      } finally {
+        owner.release();
+      }
+      let checkoutFailed = false;
+      let checkoutError;
+      let client;
+      try {
+        client = await waiting;
+      } catch (error) {
+        checkoutFailed = true;
+        checkoutError = error;
+      }
+      if (client !== undefined)
+        try {
+          if (!waitFailed) await client.query('select 1');
+        } finally {
+          client.release();
+        }
+      const setupFailures = [
+        ...(waitFailed ? [waitError] : []),
+        ...(checkoutFailed ? [checkoutError] : []),
+      ];
+      if (setupFailures.length === 1) throw setupFailures[0];
+      if (setupFailures.length > 1)
+        throw new AggregateError(
+          setupFailures,
+          'PostgreSQL pool evidence sample setup failed',
+        );
+    }
+  } catch (error) {
+    samplingFailed = true;
+    samplingError = error;
+  }
+  try {
+    await pool.end();
+  } catch (cleanupError) {
+    if (samplingFailed)
+      throw new AggregateError(
+        [samplingError, cleanupError],
+        'PostgreSQL pool evidence failed and pool cleanup was incomplete',
+      );
+    throw cleanupError;
+  }
+  if (samplingFailed) throw samplingError;
+}
+
 async function capturePoolEvidence(environment) {
   const { createDatabasePool, DATABASE_METRIC_NAME } =
     await import('../../packages/database/dist/testing.js');
@@ -108,19 +168,7 @@ async function capturePoolEvidence(environment) {
       role: 'maintenance',
     },
   );
-  try {
-    for (let round = 0; round < 3; round += 1) {
-      const owner = await pool.connect();
-      const waiting = pool.connect();
-      await delay(60);
-      owner.release();
-      const client = await waiting;
-      await client.query('select 1');
-      client.release();
-    }
-  } finally {
-    await pool.end();
-  }
+  await runPoolContentionSamples(pool);
   const successful = telemetry.checkoutSamples();
   return {
     // Each round first records an uncontended acquisition and then its waiter.
@@ -274,6 +322,7 @@ async function capturePlans(environment) {
   });
   let ownerConnected = false;
   let maintenanceConnected = false;
+  let operationFailed = false;
   let operationError;
   let plans;
   try {
@@ -341,6 +390,7 @@ async function capturePlans(environment) {
       });
     }
   } catch (error) {
+    operationFailed = true;
     operationError = error;
   }
   const closing = await Promise.allSettled([
@@ -350,9 +400,9 @@ async function capturePlans(environment) {
   const closeFailures = closing
     .filter((result) => result.status === 'rejected')
     .map((result) => result.reason);
-  if (operationError !== undefined || closeFailures.length > 0)
+  if (operationFailed || closeFailures.length > 0)
     throw new AggregateError(
-      [operationError, ...closeFailures].filter((error) => error !== undefined),
+      [...(operationFailed ? [operationError] : []), ...closeFailures],
       'PostgreSQL plan evidence collection failed',
     );
   return plans;

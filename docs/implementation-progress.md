@@ -1,12 +1,65 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-09
+Last updated: 2026-09-10
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
 is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
+
+## Backend code-quality Q9 — complete
+
+The repository-local quality pass follows the finite, repository-wide
+[Q9 plan](./backend-code-quality-9-plan.md). Its
+[implementation record](./backend-code-quality-9-implementation.md) owns the
+frozen dirty-candidate identity, per-area occurrence matrix, design comparisons,
+bounded-work measurements, exact focused recipes, final qualification, and six
+code-quality scores. This checkpoint does not change the authoritative backend
+phase statuses or claim the separately gated AWS/deployment evidence.
+
+- [x] Freeze a recoverable candidate and enumerate each improvement family
+      across applications, packages, infrastructure, configuration, CI, and
+      current documentation.
+- [x] Separate the node-attempt input loader's ordered SQL from named proof and
+      projection phases; expose persisted checkpoint refinement families while
+      retaining one topology-aware engine authority.
+- [x] Move worker execution capability contracts to a neutral owner, share the
+      persisted workflow projection verifier, centralize authenticated API
+      command projection, and reuse one nested graph walk.
+- [x] Make benchmark producers validate their actual schema-v4 output, and bind
+      full-run integration-only risk reviews to the exact executed worker
+      report and candidate identity.
+- [x] Add deterministic bounded-work probes for batched upstream reads,
+      checkpoint collections, joins, and nested structured scopes; retain
+      already-bounded designs where no avoidable growth was demonstrated.
+- [x] Complete the repository-wide failure-owner rescan: preserve primary and
+      cleanup failures through artifact spooling, SSE producer/authorization/
+      destination shutdown, HTTP streamed-body ownership, migrations,
+      PostgreSQL sampling, startup smoke and temporary-directory validators;
+      keep explicitly best-effort and nonrejecting cleanup distinct.
+- [x] Complete one fresh source-stable `pnpm quality:local`, reconcile the final
+      rescan, record concrete artifacts/counts/durations, and close the six
+      rubric scores.
+
+Final run `2026-09-10t18-24-31-402z-18163-d7e439f0` held candidate fingerprint
+`f579d065…09078a` stable for 808.539 seconds and passed all 21 required cohorts,
+2,500 unit assertions and 520 local-service assertions. The manifest,
+performance and risk-report SHA-256 values are respectively
+`51d08413…e2060`, `d0e77efc…ab77c6` and `6f456916…f83df`. The risk report
+records 477 reviewed, zero unreviewed branches in 130 selected files / 5,558
+coverable lines, including five integration branches bound to the exact passed
+42-suite / 43-test worker artifact. The performance artifact is complete for
+all eight scenarios with PostgreSQL evidence available; comparison against the
+compatible pre-Q9 run found no attributable avoidable regression. All 43
+occurrence records reconcile to 22 improved, 14 already compliant and seven
+intentionally retained, with zero unfinished. Review corrections release every
+PostgreSQL benchmark sample client, use explicit failure state for `undefined`
+promise rejections and map every occurrence to exact named assertions. Final
+fixed-rubric scores are 9/10 for naming, control flow, responsibilities, safety
+and local performance, and 10/10 for tests/verification. The post-qualification
+documentation reconciliation is report-only and passes docs, format and diff
+checks; deployment/AWS evidence remains separately gated.
 
 ## Deferred audit improvements — complete within requested scope
 

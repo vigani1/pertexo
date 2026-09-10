@@ -1,66 +1,19 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { PublishedWorkflowV2Projection } from '@pertexo/database/execution';
 import {
   advanceWorkflow,
   parseCheckpoint,
-  verifyWorkflowExecutableV2,
-  type ExecutableCompatibilityReleaseSupport,
   type WorkflowTransitionPlan,
 } from '@pertexo/workflow-engine';
 
 import type { CoordinatorAdvanceEngine } from './coordinator-handler.js';
+import {
+  verifyPersistedWorkflowProjection,
+  type PersistedWorkflowProjectionVerificationOptions,
+} from './persisted-workflow-projection.js';
 
-export type CoordinatorAdvanceEngineOptions = Readonly<{
-  admissionRelease: unknown;
-  currentRelease?: unknown;
-  releaseSupport?: ExecutableCompatibilityReleaseSupport;
-}>;
-
-function verifyProjection(
-  projection: PublishedWorkflowV2Projection,
-  options: CoordinatorAdvanceEngineOptions,
-) {
-  const supportedCurrent = projection.currentCompatibilityRelease;
-  const admissionDescription = options.releaseSupport?.descriptions.find(
-    ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-  );
-  if (
-    options.releaseSupport !== undefined &&
-    (supportedCurrent === undefined || admissionDescription === undefined)
-  )
-    throw new TypeError('Published workflow compatibility release is missing');
-  const admissionRelease =
-    options.releaseSupport === undefined
-      ? options.admissionRelease
-      : options.releaseSupport.resolve(
-          admissionDescription?.epoch ?? 0,
-          admissionDescription?.fingerprint ?? '',
-        );
-  const currentRelease =
-    options.releaseSupport === undefined
-      ? options.currentRelease
-      : options.releaseSupport.resolve(
-          supportedCurrent?.epoch ?? 0,
-          supportedCurrent?.fingerprint ?? '',
-        );
-  const executable = verifyWorkflowExecutableV2({
-    envelope: projection.executableJson,
-    checksum: projection.checksum,
-    admissionRelease,
-    ...(currentRelease === undefined ? {} : { currentRelease }),
-    execution: { alreadyAdmitted: true },
-  });
-  if (
-    executable.envelope.compatibilityReleaseEpoch !==
-    projection.compatibilityReleaseEpoch
-  ) {
-    throw new TypeError(
-      'Published workflow compatibility release epoch does not match its executable envelope',
-    );
-  }
-  return executable;
-}
+export type CoordinatorAdvanceEngineOptions =
+  PersistedWorkflowProjectionVerificationOptions;
 
 export function createCoordinatorAdvanceEngine(
   options: CoordinatorAdvanceEngineOptions,
@@ -73,7 +26,10 @@ export function createCoordinatorAdvanceEngine(
       const plan: WorkflowTransitionPlan = await advanceWorkflow({
         runId: input.runId,
         workflowVersionId: input.workflowVersionId,
-        executable: verifyProjection(input.projection, options),
+        executable: verifyPersistedWorkflowProjection(
+          input.projection,
+          options,
+        ),
         checkpoint: input.checkpoint,
         observations: input.observations,
         completedOutputs: input.completedOutputs,

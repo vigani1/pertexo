@@ -8,6 +8,8 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, URL } from 'node:url';
 
+import { preserveTemporaryDirectoryFailure } from './temporary-directory-cleanup.mjs';
+
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const baselinePath = new URL(
   './test-duplication-baseline.json',
@@ -140,6 +142,7 @@ export async function main() {
   }
 
   const temporaryDirectory = await mkdtemp(join(tmpdir(), 'pertexo-jscpd-'));
+  let primary = { error: undefined, failed: false };
   try {
     const failures = [];
     for (const [scopeName, scope] of Object.entries(baseline.scopes)) {
@@ -155,8 +158,13 @@ export async function main() {
       );
     }
     if (failures.length > 0) throw new Error(failures.join('\n'));
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
-    await rm(temporaryDirectory, { force: true, recursive: true });
+    await preserveTemporaryDirectoryFailure(primary, () =>
+      rm(temporaryDirectory, { force: true, recursive: true }),
+    );
   }
 }
 

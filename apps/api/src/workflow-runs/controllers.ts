@@ -32,9 +32,12 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
-  requestIdentifier,
-  traceIdentifier,
 } from '../identity-workspace/index.js';
+import {
+  authenticatedRequestIdentifiers,
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../identity-workspace/authenticated-command-context.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { applicationError } from '../platform/http/index.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
@@ -45,7 +48,6 @@ import {
   type SseVisibilityPath,
 } from '../platform/observability/sse-visibility-metrics.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
   WorkflowRunCancelGuard,
@@ -54,6 +56,11 @@ import {
   WorkflowRunStartGuard,
 } from './guards.js';
 import type { WorkflowRunEventFrame } from './ports.js';
+import {
+  NO_STREAM_FAILURE,
+  preserveFailureDuringStreamCleanup,
+  type StreamFailure,
+} from './stream-cleanup.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
@@ -253,9 +260,7 @@ export class WorkflowRunsController {
 function guardAuthorization(
   request: WorkflowRunsRequest,
 ): Pick<WorkflowRunsRequest, 'authorizedWorkspace'> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
+  return optionalAuthorizedWorkspace(request);
 }
 
 interface SseDestination {
@@ -282,6 +287,7 @@ export async function writeSseFrames(
 ): Promise<void> {
   const iterator = frames[Symbol.asyncIterator]();
   let lastRecordedSequence: number | undefined;
+  let primary: StreamFailure = NO_STREAM_FAILURE;
   try {
     while (!controller.signal.aborted && !destination.destroyed) {
       const next = await iterator.next();
@@ -302,10 +308,21 @@ export async function writeSseFrames(
         });
       }
     }
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
-    controller.abort();
-    await iterator.return?.();
-    if (!destination.destroyed) destination.end();
+    await preserveFailureDuringStreamCleanup(primary, [
+      () => {
+        controller.abort();
+      },
+      async () => {
+        await iterator.return?.();
+      },
+      () => {
+        if (!destination.destroyed) destination.end();
+      },
+    ]);
   }
 }
 
@@ -403,18 +420,8 @@ function lastEventId(request: WorkflowRunsRequest): number {
 }
 
 function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  const traceId = traceIdentifier(request);
   try {
-    return createActorContext({
-      actorId: session.userId,
-      workspaceId,
-      sessionId: session.sessionId,
-      requestId: requestIdentifier(request),
-      ...(traceId === undefined ? {} : { traceId }),
-    });
+    return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
   } catch (error: unknown) {
     return throwWorkflowRunError(
       applicationError('request.invalid', {
@@ -429,19 +436,7 @@ function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{
   requestId: string;
   traceId?: string;
 }> {
-  if (request.authorizedWorkspace !== undefined) {
-    const actor = request.authorizedWorkspace.actor;
-    return {
-      requestId: actor.requestId,
-      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
-    };
-  }
-  const requestId = requestIdentifier(request);
-  const traceId = traceIdentifier(request);
-  return {
-    requestId,
-    ...(traceId === undefined ? {} : { traceId }),
-  };
+  return authenticatedRequestIdentifiers(request);
 }
 
 function traceparent(

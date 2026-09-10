@@ -20,17 +20,23 @@ import {
   serializeStoredExecutionJsonValue,
 } from './stored-execution-value.js';
 
-export async function loadNodeAttemptInputs(
-  pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['loadInputs']>[0],
-): Promise<NodeAttemptInputs> {
-  assertNotAborted(inputValue.signal);
-  let input: z.output<typeof loadInputsSchema>;
-  try {
-    input = loadInputsSchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptStateCorruptError();
-  }
+type ParsedCheckpoint = ReturnType<typeof parsePersistedWorkflowCheckpoint>;
+type UpstreamOutputRow = Readonly<{
+  invocation_key: string;
+  node_id: string;
+  node_output_ref: unknown;
+  attempt_output_ref: unknown;
+}>;
+type LoopDeclarationRow = Readonly<{
+  attempt_id: string;
+  attempt_output_ref: unknown;
+  node_output_ref: unknown;
+  node_id: string;
+}>;
+
+function assertPermittedUpstreamInvocationScopes(
+  input: z.output<typeof loadInputsSchema>,
+): void {
   if (
     input.upstreamNodeOutputs.some(({ nodeId, invocationKey }) => {
       const branchPath = input.lease.branchPath ?? [];
@@ -53,6 +59,161 @@ export async function loadNodeAttemptInputs(
     })
   )
     throw new NodeAttemptStateCorruptError();
+}
+
+function reconcileCompletedNodeOutputs(
+  expectedOutputs: z.output<typeof loadInputsSchema>['upstreamNodeOutputs'],
+  rows: readonly UpstreamOutputRow[],
+): readonly Readonly<{
+  invocationKey: string;
+  nodeId: string;
+  value: unknown;
+}>[] {
+  if (rows.length !== expectedOutputs.length)
+    throw new NodeAttemptStateCorruptError();
+  const outputsByInvocationKey = new Map(
+    rows.map((output) => [output.invocation_key, output]),
+  );
+  return Object.freeze(
+    expectedOutputs.map((expected) => {
+      const output = outputsByInvocationKey.get(expected.invocationKey);
+      if (
+        output?.node_id !== expected.nodeId ||
+        serializeStoredExecutionJsonValue(output.node_output_ref) !==
+          serializeStoredExecutionJsonValue(output.attempt_output_ref)
+      )
+        throw new NodeAttemptStateCorruptError();
+      const stored = parseStoredExecutionValueV1(output.attempt_output_ref);
+      if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
+      return Object.freeze({
+        invocationKey: output.invocation_key,
+        nodeId: output.node_id,
+        value: stored.value,
+      });
+    }),
+  );
+}
+
+function projectCoordinatorInput(
+  checkpoint: ParsedCheckpoint,
+  invocationKey: string,
+): NonNullable<NodeAttemptInputs['coordinatorInput']> | undefined {
+  const join = checkpoint.joins.find(
+    ({ joinInvocationKey }) => joinInvocationKey === invocationKey,
+  );
+  return join?.selectedBranchIds === undefined
+    ? undefined
+    : Object.freeze({
+        ledger: Object.fromEntries(
+          join.ledger.map(({ branchId, disposition, output }) => [
+            branchId,
+            { disposition, ...(output === undefined ? {} : { output }) },
+          ]),
+        ),
+        selectedBranchIds: join.selectedBranchIds,
+      });
+}
+
+function selectStructuredLoopDeclarations(
+  checkpoint: ParsedCheckpoint,
+  iterationPath: NonNullable<
+    z.output<typeof loadInputsSchema>['lease']['iterationPath']
+  >,
+  branchPath: NonNullable<
+    z.output<typeof loadInputsSchema>['lease']['branchPath']
+  >,
+) {
+  return iterationPath.map((scope, index) => {
+    const enclosingIterationPath = iterationPath.slice(0, index);
+    const matches = checkpoint.loops.filter(
+      (loop) =>
+        loop.loopId === scope.loopNodeId &&
+        serializeStoredExecutionJsonValue(loop.iterationPath) ===
+          serializeStoredExecutionJsonValue(enclosingIterationPath) &&
+        loop.branchPath.length <= branchPath.length &&
+        loop.branchPath.every((part, branchIndex) => {
+          const leasePart = branchPath[branchIndex];
+          return (
+            leasePart?.nodeId === part.nodeId &&
+            leasePart.outputPort === part.outputPort
+          );
+        }) &&
+        loop.activeOrdinals.includes(scope.ordinal),
+    );
+    if (matches.length !== 1) throw new NodeAttemptStateCorruptError();
+    return matches[0];
+  });
+}
+
+function projectStructuredCollection(
+  loop: ParsedCheckpoint['loops'][number],
+  scope: NonNullable<
+    z.output<typeof loadInputsSchema>['lease']['iterationPath']
+  >[number],
+  rows: readonly LoopDeclarationRow[],
+): NonNullable<NodeAttemptInputs['structuredCollection']> {
+  const declarationRow = rows[0];
+  if (
+    rows.length !== 1 ||
+    declarationRow?.node_id !== loop.loopId ||
+    loop.collection.kind !== 'inline' ||
+    loop.collection.attemptId !== declarationRow.attempt_id ||
+    serializeStoredExecutionJsonValue(declarationRow.node_output_ref) !==
+      serializeStoredExecutionJsonValue(declarationRow.attempt_output_ref)
+  )
+    throw new NodeAttemptStateCorruptError();
+  const stored = parseStoredExecutionValueV1(declarationRow.attempt_output_ref);
+  if (
+    stored.kind !== 'inline' ||
+    stored.value === null ||
+    Array.isArray(stored.value) ||
+    typeof stored.value !== 'object'
+  )
+    throw new NodeAttemptStateCorruptError();
+  const declarationOutput = stored.value as Readonly<Record<string, unknown>>;
+  const keys = Object.keys(declarationOutput).sort();
+  const items = declarationOutput.items;
+  const iterationCount = declarationOutput.iterationCount;
+  const collectionChecksum = Array.isArray(items)
+    ? createHash('sha256')
+        .update(serializeStoredExecutionJsonValue(items))
+        .digest('hex')
+    : undefined;
+  if (
+    keys.length !== 2 ||
+    keys[0] !== 'items' ||
+    keys[1] !== 'iterationCount' ||
+    !Array.isArray(items) ||
+    typeof iterationCount !== 'number' ||
+    !Number.isSafeInteger(iterationCount) ||
+    iterationCount !== items.length ||
+    loop.collectionSize !== items.length ||
+    scope.ordinal < 0 ||
+    scope.ordinal >= items.length ||
+    loop.collectionChecksum !== collectionChecksum
+  )
+    throw new NodeAttemptStateCorruptError();
+  return Object.freeze({
+    loopNodeId: loop.loopId,
+    ordinal: scope.ordinal,
+    collection: items,
+    collectionSize: loop.collectionSize,
+    declaredCollectionChecksum: loop.collectionChecksum,
+  });
+}
+
+export async function loadNodeAttemptInputs(
+  pool: Pool,
+  inputValue: Parameters<NodeAttemptRunStore['loadInputs']>[0],
+): Promise<NodeAttemptInputs> {
+  assertNotAborted(inputValue.signal);
+  let input: z.output<typeof loadInputsSchema>;
+  try {
+    input = loadInputsSchema.parse(inputValue);
+  } catch {
+    throw new NodeAttemptStateCorruptError();
+  }
+  assertPermittedUpstreamInvocationScopes(input);
   return withWorkspaceReadClient(
     pool,
     input.lease.workspaceId,
@@ -131,11 +292,8 @@ export async function loadNodeAttemptInputs(
         resumeOutput = stored.value;
       }
 
-      const completedNodeOutputs: {
-        invocationKey: string;
-        nodeId: string;
-        value: unknown;
-      }[] = [];
+      let completedNodeOutputs: NodeAttemptInputs['completedNodeOutputs'] =
+        Object.freeze([]);
       if (input.upstreamNodeOutputs.length > 0) {
         const outputs = await client.query<{
           invocation_key: string;
@@ -160,74 +318,26 @@ export async function loadNodeAttemptInputs(
             input.upstreamNodeOutputs.map(({ invocationKey }) => invocationKey),
           ],
         );
-        if (outputs.rows.length !== input.upstreamNodeOutputs.length)
-          throw new NodeAttemptStateCorruptError();
-        const outputsByInvocationKey = new Map(
-          outputs.rows.map((output) => [output.invocation_key, output]),
+        completedNodeOutputs = reconcileCompletedNodeOutputs(
+          input.upstreamNodeOutputs,
+          outputs.rows,
         );
-        for (const expected of input.upstreamNodeOutputs) {
-          const output = outputsByInvocationKey.get(expected.invocationKey);
-          if (
-            output?.node_id !== expected.nodeId ||
-            serializeStoredExecutionJsonValue(output.node_output_ref) !==
-              serializeStoredExecutionJsonValue(output.attempt_output_ref)
-          )
-            throw new NodeAttemptStateCorruptError();
-          const stored = parseStoredExecutionValueV1(output.attempt_output_ref);
-          if (stored.kind !== 'inline')
-            throw new NodeAttemptStateCorruptError();
-          completedNodeOutputs.push({
-            invocationKey: output.invocation_key,
-            nodeId: output.node_id,
-            value: stored.value,
-          });
-        }
       }
       const checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
-      const join = checkpoint.joins.find(
-        ({ joinInvocationKey }) =>
-          joinInvocationKey === input.lease.invocationKey,
+      const coordinatorInput = projectCoordinatorInput(
+        checkpoint,
+        input.lease.invocationKey,
       );
-      const coordinatorInput =
-        join?.selectedBranchIds === undefined
-          ? undefined
-          : {
-              ledger: Object.fromEntries(
-                join.ledger.map(({ branchId, disposition, output }) => [
-                  branchId,
-                  {
-                    disposition,
-                    ...(output === undefined ? {} : { output }),
-                  },
-                ]),
-              ),
-              selectedBranchIds: join.selectedBranchIds,
-            };
       let structuredCollection:
         NonNullable<NodeAttemptInputs['structuredCollection']> | undefined;
       const iterationPath = input.lease.iterationPath ?? [];
       if (iterationPath.length > 0) {
         const branchPath = input.lease.branchPath ?? [];
-        const declaredLoops = iterationPath.map((scope, index) => {
-          const enclosingIterationPath = iterationPath.slice(0, index);
-          const matches = checkpoint.loops.filter(
-            (loop) =>
-              loop.loopId === scope.loopNodeId &&
-              serializeStoredExecutionJsonValue(loop.iterationPath) ===
-                serializeStoredExecutionJsonValue(enclosingIterationPath) &&
-              loop.branchPath.length <= branchPath.length &&
-              loop.branchPath.every((part, branchIndex) => {
-                const leasePart = branchPath[branchIndex];
-                return (
-                  leasePart?.nodeId === part.nodeId &&
-                  leasePart.outputPort === part.outputPort
-                );
-              }) &&
-              loop.activeOrdinals.includes(scope.ordinal),
-          );
-          if (matches.length !== 1) throw new NodeAttemptStateCorruptError();
-          return matches[0];
-        });
+        const declaredLoops = selectStructuredLoopDeclarations(
+          checkpoint,
+          iterationPath,
+          branchPath,
+        );
         const nearestScope = iterationPath.at(-1);
         const nearestLoop = declaredLoops.at(-1);
         if (nearestScope === undefined || nearestLoop === undefined)
@@ -255,62 +365,15 @@ export async function loadNodeAttemptInputs(
             nearestLoop.controlInvocationKey,
           ],
         );
-        const declarationRow = declaration.rows[0];
-        if (
-          declaration.rows.length !== 1 ||
-          declarationRow?.node_id !== nearestLoop.loopId ||
-          nearestLoop.collection.kind !== 'inline' ||
-          nearestLoop.collection.attemptId !== declarationRow.attempt_id ||
-          serializeStoredExecutionJsonValue(declarationRow.node_output_ref) !==
-            serializeStoredExecutionJsonValue(declarationRow.attempt_output_ref)
-        )
-          throw new NodeAttemptStateCorruptError();
-        const stored = parseStoredExecutionValueV1(
-          declarationRow.attempt_output_ref,
+        structuredCollection = projectStructuredCollection(
+          nearestLoop,
+          nearestScope,
+          declaration.rows,
         );
-        if (
-          stored.kind !== 'inline' ||
-          stored.value === null ||
-          Array.isArray(stored.value) ||
-          typeof stored.value !== 'object'
-        )
-          throw new NodeAttemptStateCorruptError();
-        const declarationOutput = stored.value as Readonly<
-          Record<string, unknown>
-        >;
-        const keys = Object.keys(declarationOutput).sort();
-        const items = declarationOutput.items;
-        const iterationCount = declarationOutput.iterationCount;
-        const collectionChecksum = Array.isArray(items)
-          ? createHash('sha256')
-              .update(serializeStoredExecutionJsonValue(items))
-              .digest('hex')
-          : undefined;
-        if (
-          keys.length !== 2 ||
-          keys[0] !== 'items' ||
-          keys[1] !== 'iterationCount' ||
-          !Array.isArray(items) ||
-          typeof iterationCount !== 'number' ||
-          !Number.isSafeInteger(iterationCount) ||
-          iterationCount !== items.length ||
-          nearestLoop.collectionSize !== items.length ||
-          nearestScope.ordinal < 0 ||
-          nearestScope.ordinal >= items.length ||
-          nearestLoop.collectionChecksum !== collectionChecksum
-        )
-          throw new NodeAttemptStateCorruptError();
-        structuredCollection = Object.freeze({
-          loopNodeId: nearestLoop.loopId,
-          ordinal: nearestScope.ordinal,
-          collection: items,
-          collectionSize: nearestLoop.collectionSize,
-          declaredCollectionChecksum: nearestLoop.collectionChecksum,
-        });
       }
       return Object.freeze({
         runInput,
-        completedNodeOutputs: Object.freeze(completedNodeOutputs),
+        completedNodeOutputs,
         ...(coordinatorInput === undefined ? {} : { coordinatorInput }),
         ...(structuredCollection === undefined ? {} : { structuredCollection }),
         abortRequested: row.abort_requested,

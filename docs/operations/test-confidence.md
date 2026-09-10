@@ -78,6 +78,14 @@ skipped, mismatched and stale integration evidence is rejected by
 `infrastructure/report-risk-coverage.test.mjs`. Those negative fixtures are
 kept distinct from the six source-policy perturbations above.
 
+During a full `pnpm quality:local` run, integration-only branch reviews are
+promoted from `referenced-only` to `executed` only after the worker integration
+JSON report proves the exact named file and test passed for the same run ID,
+source revision, and candidate fingerprint. A standalone coverage report has no
+such execution authority. The benchmark producer, comparator, and full runner
+likewise share one schema-v4 validator, so a corrupt or incomplete artifact
+cannot become successful evidence merely because its producer exited zero.
+
 Each coverage command also writes a Vitest JSON result beside its coverage
 files. The combined report records elapsed duration, passed, failed, skipped,
 and todo tests per cohort. Retries are deliberately disabled, so retry attempts

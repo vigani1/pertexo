@@ -6,6 +6,7 @@ import {
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
 
 export class ArtifactApiNotFoundError extends Error {
   public constructor() {
@@ -52,6 +53,8 @@ export class ArtifactUploadTooLargeError extends Error {
 
 export function mapArtifactError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
+  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
+    return applicationError('request.invalid', { safeDetail: error.message });
   if (
     error instanceof z.ZodError ||
     error instanceof ArtifactUploadTooLargeError

@@ -14,12 +14,13 @@ import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  authenticatedSession,
   readHeader,
-  requestIdentifier,
-  traceIdentifier,
 } from '../identity-workspace/index.js';
-import { createActorContext } from '../workspaces/index.js';
+import {
+  authenticatedRequestIdentifiers,
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../identity-workspace/authenticated-command-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
@@ -152,9 +153,7 @@ export class ConnectionsController {
 function guardAuthorization(
   request: ConnectionRequest,
 ): Pick<ConnectionRequest, 'authorizedWorkspace'> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
+  return optionalAuthorizedWorkspace(request);
 }
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
@@ -162,17 +161,7 @@ function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
 }
 
 function actorFrom(request: ConnectionRequest, workspaceId: string) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  const traceId = traceIdentifier(request);
-  return createActorContext({
-    actorId: session.userId,
-    workspaceId,
-    sessionId: session.sessionId,
-    requestId: requestIdentifier(request),
-    ...(traceId === undefined ? {} : { traceId }),
-  });
+  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
 function idempotencyKey(request: ConnectionRequest): string {
@@ -183,16 +172,5 @@ function requestMetadata(request: ConnectionRequest): Readonly<{
   requestId: string;
   traceId?: string;
 }> {
-  if (request.authorizedWorkspace !== undefined) {
-    const actor = request.authorizedWorkspace.actor;
-    return {
-      requestId: actor.requestId,
-      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
-    };
-  }
-  const traceId = traceIdentifier(request);
-  return {
-    requestId: requestIdentifier(request),
-    ...(traceId === undefined ? {} : { traceId }),
-  };
+  return authenticatedRequestIdentifiers(request);
 }

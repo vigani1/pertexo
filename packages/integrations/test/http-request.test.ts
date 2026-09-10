@@ -382,6 +382,153 @@ describe('http.request@1 server executor', () => {
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
   });
 
+  it('preserves streamed body and iterator cleanup failures without double-closing ownership', async () => {
+    const state = runtime();
+    const readError = new Error('response body failed');
+    const returnError = new Error('response body cleanup failed');
+    const providerBody = new Uint8Array(70_000).fill(7);
+    const closeBody = vi.fn().mockRejectedValue(returnError);
+    let reads = 0;
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: {
+        executeStreaming: async (request, consume) => {
+          await request.beforeDispatch();
+          const body = await consume({
+            ...response(new Uint8Array()),
+            body: {
+              [Symbol.asyncIterator]: () => ({
+                next: () => {
+                  reads += 1;
+                  return reads === 1
+                    ? Promise.resolve({
+                        done: false as const,
+                        value: providerBody,
+                      })
+                    : Promise.reject<IteratorResult<Uint8Array>>(readError);
+                },
+                return: closeBody,
+              }),
+            },
+            signal: request.signal ?? new AbortController().signal,
+          });
+          return { ...response(new Uint8Array()), body };
+        },
+      },
+    });
+
+    const failure = await registration
+      .execute(invocation(state.value))
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(HttpRequestExecutorError);
+    expect(failure).toMatchObject({
+      decision: { kind: 'outcome_unknown', errorKind: 'provider' },
+      possiblyDispatched: true,
+    });
+    expect((failure as HttpRequestExecutorError).cause).toBeInstanceOf(
+      AggregateError,
+    );
+    expect(
+      ((failure as HttpRequestExecutorError).cause as AggregateError).errors,
+    ).toEqual([readError, returnError]);
+    expect(closeBody).toHaveBeenCalledOnce();
+    expect(providerBody.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it('closes an unclaimed response body when artifact writing rejects before iteration', async () => {
+    const writeError = new Error('artifact write rejected before iteration');
+    const write = vi.fn(() => Promise.reject(writeError));
+    const providerBody = new Uint8Array(70_000).fill(7);
+    const closeBody = vi.fn().mockResolvedValue({
+      done: true as const,
+      value: undefined,
+    });
+    const state = runtime({ artifacts: { write } });
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: {
+        executeStreaming: async (request, consume) => {
+          await request.beforeDispatch();
+          const body = await consume({
+            ...response(new Uint8Array()),
+            body: {
+              [Symbol.asyncIterator]: () => ({
+                next: () =>
+                  Promise.resolve({
+                    done: false as const,
+                    value: providerBody,
+                  }),
+                return: closeBody,
+              }),
+            },
+            signal: request.signal ?? new AbortController().signal,
+          });
+          return { ...response(new Uint8Array()), body };
+        },
+      },
+    });
+
+    const failure = await registration
+      .execute(invocation(state.value))
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(HttpRequestExecutorError);
+    expect((failure as HttpRequestExecutorError).cause).toBe(writeError);
+    expect(write).toHaveBeenCalledOnce();
+    expect(closeBody).toHaveBeenCalledOnce();
+    expect(providerBody.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it.each([
+    ['Error', new Error('response body cleanup failed')],
+    ['non-Error', 'response body cleanup rejected'],
+  ])(
+    'preserves a sole %s streamed-body cleanup failure',
+    async (_label, reason) => {
+      const state = runtime();
+      const providerBody = new Uint8Array(70_000).fill(7);
+      const closeBody = vi.fn().mockRejectedValue(reason);
+      let reads = 0;
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient: {
+          executeStreaming: async (request, consume) => {
+            await request.beforeDispatch();
+            const body = await consume({
+              ...response(new Uint8Array()),
+              body: {
+                [Symbol.asyncIterator]: () => ({
+                  next: () => {
+                    reads += 1;
+                    return Promise.resolve(
+                      reads === 1
+                        ? { done: false as const, value: providerBody }
+                        : { done: true as const, value: undefined },
+                    );
+                  },
+                  return: closeBody,
+                }),
+              },
+              signal: request.signal ?? new AbortController().signal,
+            });
+            return { ...response(new Uint8Array()), body };
+          },
+        },
+      });
+
+      const failure = (await registration
+        .execute(invocation(state.value))
+        .catch((error: unknown) => error)) as HttpRequestExecutorError;
+
+      expect(failure).toBeInstanceOf(HttpRequestExecutorError);
+      expect(failure.cause).toEqual(
+        reason instanceof Error
+          ? reason
+          : new Error('HTTP response body cleanup failed', { cause: reason }),
+      );
+      expect(closeBody).toHaveBeenCalledOnce();
+      expect(providerBody.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
   it('truthfully classifies unsafe ambiguity and pre-dispatch network failure', async () => {
     const ambiguousState = runtime();
     const providerBody = encoder.encode('unavailable');
@@ -786,12 +933,10 @@ describe('http.request@1 server executor', () => {
           return response(new Uint8Array(70_000));
         }),
       }).execute(invocation(artifactState.value)),
-    ).rejects.toEqual(
-      new HttpRequestExecutorError(
-        { kind: 'outcome_unknown', errorKind: 'provider' },
-        true,
-      ),
-    );
+    ).rejects.toMatchObject({
+      decision: { kind: 'outcome_unknown', errorKind: 'provider' },
+      possiblyDispatched: true,
+    });
 
     const noArtifactState = runtime();
     const { artifacts: _artifacts, ...runtimeWithoutArtifacts } =
