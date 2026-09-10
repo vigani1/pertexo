@@ -68,6 +68,7 @@
       "environment": {
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
+        "FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED": "false",
         "NODE_ENV": "production",
         "WORKER_MAX_EVENT_LOOP_DELAY_MILLIS": "200",
         "WORKER_MAX_RSS_BYTES": "805306368",
@@ -101,7 +102,7 @@
       ],
       "healthCheck": [
         "CMD-SHELL",
-        "test -f /tmp/pertexo-worker-ready && kill -0 1"
+        "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"
       ]
     },
     "lifecycle-command": {

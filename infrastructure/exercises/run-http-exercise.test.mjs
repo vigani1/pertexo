@@ -8,6 +8,7 @@ import {
   loadAuthentication,
   parseProfile,
   requestAuthenticationHeaders,
+  resolveExerciseTarget,
   responseMatchesPolicy,
 } from './run-http-exercise.mjs';
 
@@ -109,4 +110,30 @@ test('an intentional rate-limit policy must name its stable problem code', () =>
     responseMatchesPolicy(429, 'webhook.rate_limited', parsed.responsePolicy),
     true,
   );
+});
+
+test('resolves only same-origin absolute exercise paths', () => {
+  assert.equal(
+    resolveExerciseTarget('https://api.example.test/base', '/v1/runs?dry=true')
+      .href,
+    'https://api.example.test/v1/runs?dry=true',
+  );
+  assert.equal(
+    resolveExerciseTarget('http://127.0.0.1:3000', '/hooks/key').href,
+    'http://127.0.0.1:3000/hooks/key',
+  );
+});
+
+test('rejects network paths, backslashes, cross-origin resolution, and non-path input', () => {
+  for (const target of [
+    '//another.example/path',
+    '///another.example/path',
+    '/safe\\@another.example/path',
+    'relative/path',
+    42,
+  ])
+    assert.throws(
+      () => resolveExerciseTarget('https://api.example.test', target),
+      /absolute same-origin path/u,
+    );
 });

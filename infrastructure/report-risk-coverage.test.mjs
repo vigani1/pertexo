@@ -4,13 +4,65 @@ import test from 'node:test';
 import {
   assertNoUnreviewedBranches,
   assertRiskCoverageCohort,
+  assertRiskCoveragePolicies,
   coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
   RISK_COVERAGE_COHORTS,
+  riskCoverageSourceRevision,
   summarizeVitestResult,
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
+
+test('enforces strict cohorts and freezes staged unreviewed debt', () => {
+  assert.ok(RISK_COVERAGE_COHORTS.includes('api-orchestration'));
+  assert.doesNotThrow(() =>
+    assertRiskCoveragePolicies({
+      uncoveredBranches: [
+        ...Array.from({ length: 8 }, () => ({
+          cohort: 'artifact-store',
+          reviewStatus: 'unreviewed',
+        })),
+        { cohort: 'api', reviewStatus: 'reviewed' },
+      ],
+    }),
+  );
+  assert.throws(
+    () =>
+      assertRiskCoveragePolicies({
+        uncoveredBranches: [{ cohort: 'api', reviewStatus: 'unreviewed' }],
+      }),
+    /Unreviewed api risk-coverage branches/u,
+  );
+  assert.throws(
+    () =>
+      assertRiskCoveragePolicies({
+        uncoveredBranches: Array.from({ length: 9 }, () => ({
+          cohort: 'artifact-store',
+          reviewStatus: 'unreviewed',
+        })),
+      }),
+    /debt exceeds ceiling 8/u,
+  );
+  assert.doesNotThrow(() =>
+    assertRiskCoveragePolicies({
+      uncoveredBranches: Array.from({ length: 2 }, () => ({
+        cohort: 'integrations',
+        reviewStatus: 'unreviewed',
+      })),
+    }),
+  );
+  assert.throws(
+    () =>
+      assertRiskCoveragePolicies({
+        uncoveredBranches: Array.from({ length: 3 }, () => ({
+          cohort: 'integrations',
+          reviewStatus: 'unreviewed',
+        })),
+      }),
+    /debt exceeds ceiling 2/u,
+  );
+});
 
 test('keeps lifecycle executable files in the enforced risk cohort', () => {
   assert.ok(RISK_COVERAGE_COHORTS.includes('lifecycle-command'));
@@ -109,6 +161,13 @@ test('publishes exact coverable-line denominators beside percentages', () => {
   );
 });
 
+test('binds execution evidence to the exact selected source contents', () => {
+  assert.notEqual(
+    riskCoverageSourceRevision(new Map([['/repo/a.ts', 'one\n']])),
+    riskCoverageSourceRevision(new Map([['/repo/a.ts', 'two\n']])),
+  );
+});
+
 test('summarizes duration and test health without retry-masked flakes', () => {
   assert.deepEqual(
     summarizeVitestResult({
@@ -197,6 +256,7 @@ test('reports each uncovered branch location with its risk cohort', () => {
       line: 12,
       column: 2,
       reviewStatus: 'unreviewed',
+      evidenceState: 'unreviewed',
     },
   ]);
 });
@@ -294,6 +354,7 @@ test('attaches exact durable reviews and rejects stale review locations', () => 
   assert.deepEqual(report.uncoveredBranches[0], {
     ...review,
     reviewStatus: 'reviewed',
+    evidenceState: 'reviewed-uncovered',
   });
 
   assert.throws(
@@ -371,7 +432,7 @@ test('reviews distinct instrumentation branches at the same source location', ()
   assert.equal(report.classification.unreviewedCount, 0);
 });
 
-test('accepts an exact integration-covered branch review', () => {
+test('labels source-linked integration evidence as referenced-only', () => {
   const reports = new Map([
     [
       'worker',
@@ -434,6 +495,7 @@ test('accepts an exact integration-covered branch review', () => {
   );
   assert.equal(report.classification.reviewedCount, 1);
   assert.equal(report.classification.unreviewedCount, 0);
+  assert.equal(report.uncoveredBranches[0].evidenceState, 'referenced-only');
 
   assert.throws(
     () =>
@@ -447,6 +509,136 @@ test('accepts an exact integration-covered branch review', () => {
       ),
     /Missing integration evidence/u,
   );
+});
+
+test('accepts only matching passing integration execution evidence', () => {
+  const base = {
+    command: 'pnpm test:integration',
+    testFile: 'apps/worker/test/adapter.integration.test.ts',
+    testName: 'worker adapter integration',
+  };
+  const reports = new Map([
+    [
+      'worker',
+      {
+        '/repo/apps/worker/src/adapter.ts': {
+          branchMap: {
+            0: {
+              type: 'if',
+              locations: [{ start: { line: 1, column: 0 } }],
+            },
+          },
+          b: { 0: [0] },
+        },
+      },
+    ],
+  ]);
+  const sources = new Map([
+    ['/repo/apps/worker/src/adapter.ts', 'if (ready) run();\n'],
+  ]);
+  const initial = createRiskCoverageReport(
+    reports,
+    '/repo',
+    new Date(0),
+    [],
+    {},
+    sources,
+  );
+  const branch = initial.uncoveredBranches[0];
+  const review = {
+    ...branch,
+    classification: 'integration',
+    evidenceId: 'worker-adapter-integration',
+    justification:
+      'A real adapter integration result supplies this branch evidence.',
+  };
+  delete review.reviewStatus;
+
+  const passingArtifact = {
+    schemaVersion: 1,
+    command: base.command,
+    sourceRevision: 'revision-1',
+    result: {
+      success: true,
+      testResults: [
+        {
+          name: `/repo/${base.testFile}`,
+          assertionResults: [{ title: base.testName, status: 'passed' }],
+        },
+      ],
+    },
+  };
+  const passingEvidence = {
+    'worker-adapter-integration': {
+      ...base,
+      resultFile: 'coverage/worker-integration/results.json',
+      resultArtifact: passingArtifact,
+    },
+  };
+  const report = createRiskCoverageReport(
+    reports,
+    '/repo',
+    new Date(0),
+    [review],
+    passingEvidence,
+    sources,
+    new Map(),
+    'revision-1',
+  );
+  assert.equal(report.uncoveredBranches[0].evidenceState, 'executed');
+
+  for (const resultArtifact of [
+    {
+      ...passingArtifact,
+      result: { ...passingArtifact.result, success: false },
+    },
+    {
+      ...passingArtifact,
+      result: {
+        success: true,
+        testResults: [
+          {
+            name: `/repo/${base.testFile}`,
+            assertionResults: [{ title: base.testName, status: 'skipped' }],
+          },
+        ],
+      },
+    },
+    {
+      ...passingArtifact,
+      result: {
+        success: true,
+        testResults: [
+          {
+            name: `/repo/${base.testFile}`,
+            assertionResults: [{ title: 'different test', status: 'passed' }],
+          },
+        ],
+      },
+    },
+    { ...passingArtifact, sourceRevision: 'stale' },
+  ]) {
+    assert.throws(
+      () =>
+        createRiskCoverageReport(
+          reports,
+          '/repo',
+          new Date(0),
+          [review],
+          {
+            'worker-adapter-integration': {
+              ...base,
+              resultFile: 'coverage/worker-integration/results.json',
+              resultArtifact,
+            },
+          },
+          sources,
+          new Map(),
+          'revision-1',
+        ),
+      /Invalid executed integration evidence/u,
+    );
+  }
 });
 
 test('rejects a review after source semantics change at the same location', () => {

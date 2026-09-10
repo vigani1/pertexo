@@ -22,6 +22,7 @@ export const RISK_COVERAGE_COHORTS = [
   'database',
   'worker',
   'api',
+  'api-orchestration',
   'lifecycle-command',
 ];
 
@@ -31,6 +32,18 @@ const LIFECYCLE_COMMAND_RISK_FILES = [
   'apps/lifecycle-command/src/readiness-marker.ts',
   'apps/lifecycle-command/src/run.ts',
 ];
+
+export const RISK_COVERAGE_POLICIES = Object.freeze({
+  'artifact-store': { mode: 'debt-ceiling', maximumUnreviewed: 8 },
+  contracts: { mode: 'debt-ceiling', maximumUnreviewed: 1 },
+  integrations: { mode: 'debt-ceiling', maximumUnreviewed: 2 },
+  'workflow-engine': { mode: 'debt-ceiling', maximumUnreviewed: 11 },
+  database: { mode: 'strict' },
+  worker: { mode: 'strict' },
+  api: { mode: 'strict' },
+  'api-orchestration': { mode: 'strict' },
+  'lifecycle-command': { mode: 'strict' },
+});
 
 function branchKey(branch) {
   return [
@@ -79,7 +92,24 @@ function sourceFingerprint(source, metadata, locationIndex) {
     .digest('hex')}`;
 }
 
-function validatedIntegrationEvidence(evidence) {
+function matchingExecutedTest(result, evidence) {
+  if (result?.success !== true || !Array.isArray(result.testResults))
+    return false;
+  return result.testResults.some(
+    (suite) =>
+      typeof suite?.name === 'string' &&
+      (suite.name === evidence.testFile ||
+        suite.name.endsWith(`/${evidence.testFile}`)) &&
+      Array.isArray(suite.assertionResults) &&
+      suite.assertionResults.some(
+        (assertion) =>
+          assertion?.title === evidence.testName &&
+          assertion.status === 'passed',
+      ),
+  );
+}
+
+function validatedIntegrationEvidence(evidence, sourceRevision) {
   const entries = new Map();
   for (const [id, item] of Object.entries(evidence)) {
     if (
@@ -92,9 +122,43 @@ function validatedIntegrationEvidence(evidence) {
       item.testName.trim().length < 5
     )
       throw new Error(`Invalid integration evidence: ${id}`);
-    entries.set(id, item);
+    if ('execution' in item)
+      throw new Error(`Inline integration execution is not an artifact: ${id}`);
+    const resultFile = item.resultFile;
+    const resultArtifact = item.resultArtifact;
+    if (resultFile !== undefined) {
+      if (
+        typeof resultFile !== 'string' ||
+        !resultFile.endsWith('.json') ||
+        resultArtifact?.schemaVersion !== 1 ||
+        resultArtifact.command !== item.command ||
+        resultArtifact.sourceRevision !== sourceRevision ||
+        !matchingExecutedTest(resultArtifact.result, item)
+      )
+        throw new Error(`Invalid executed integration evidence: ${id}`);
+    }
+    const publicEvidence = Object.fromEntries(
+      Object.entries(item).filter(([key]) => key !== 'resultArtifact'),
+    );
+    entries.set(id, {
+      ...publicEvidence,
+      evidenceState: resultFile === undefined ? 'referenced-only' : 'executed',
+    });
   }
   return entries;
+}
+
+export function riskCoverageSourceRevision(sourceByFile) {
+  const digest = createHash('sha256');
+  for (const [file, source] of [...sourceByFile.entries()].sort(
+    ([left], [right]) => left.localeCompare(right),
+  )) {
+    digest.update(file);
+    digest.update('\0');
+    digest.update(source);
+    digest.update('\0');
+  }
+  return `sha256:${digest.digest('hex')}`;
 }
 
 export function flattenRiskCoverageReviewGroups(groups) {
@@ -235,6 +299,7 @@ export function uncoveredBranches(
                 sourceFingerprint: sourceFingerprint(source, metadata, index),
               }),
           reviewStatus: 'unreviewed',
+          evidenceState: 'unreviewed',
         });
       }
     }
@@ -259,6 +324,7 @@ export function createRiskCoverageReport(
   integrationEvidence = {},
   sourceByFile = new Map(),
   testHealthByCohort = new Map(),
+  sourceRevision,
 ) {
   const selections = [...reports.entries()]
     .map(([cohort, report]) => {
@@ -274,8 +340,10 @@ export function createRiskCoverageReport(
     })
     .sort((left, right) => left.cohort.localeCompare(right.cohort));
   const reviewByKey = validatedReviews(reviews);
-  const integrationEvidenceById =
-    validatedIntegrationEvidence(integrationEvidence);
+  const integrationEvidenceById = validatedIntegrationEvidence(
+    integrationEvidence,
+    sourceRevision,
+  );
   const branches = [...reports.entries()].flatMap(([cohort, report]) =>
     uncoveredBranches(report, cohort, rootDirectory, sourceByFile),
   );
@@ -298,6 +366,8 @@ export function createRiskCoverageReport(
       reviewStatus: 'reviewed',
       classification: review.classification,
       justification: review.justification,
+      evidenceState:
+        evidence === undefined ? 'reviewed-uncovered' : evidence.evidenceState,
       ...(evidence === undefined
         ? {}
         : { evidenceId: review.evidenceId, evidence }),
@@ -312,7 +382,7 @@ export function createRiskCoverageReport(
   const reviewedCount = reviewedBranches.size;
   const unreviewedCount = classifiedBranches.length - reviewedCount;
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     scope: {
       kind: 'selected-critical-module-files',
       cohorts: selections,
@@ -354,6 +424,26 @@ export function assertRiskCoverageCohort(report, cohort, expectedFiles) {
   if (JSON.stringify(actualFiles) !== JSON.stringify(requiredFiles))
     throw new Error(`Unexpected ${cohort} risk-coverage file inventory`);
   assertNoUnreviewedBranches(report, cohort);
+}
+
+export function assertRiskCoveragePolicies(
+  report,
+  policies = RISK_COVERAGE_POLICIES,
+) {
+  for (const [cohort, policy] of Object.entries(policies)) {
+    const unreviewed = report.uncoveredBranches.filter(
+      (branch) =>
+        branch.cohort === cohort && branch.reviewStatus === 'unreviewed',
+    ).length;
+    if (policy.mode === 'strict' && unreviewed > 0)
+      throw new Error(
+        `Unreviewed ${cohort} risk-coverage branches: ${String(unreviewed)}`,
+      );
+    if (policy.mode === 'debt-ceiling' && unreviewed > policy.maximumUnreviewed)
+      throw new Error(
+        `Unreviewed ${cohort} risk-coverage debt exceeds ceiling ${String(policy.maximumUnreviewed)}: ${String(unreviewed)}`,
+      );
+  }
 }
 
 async function main() {
@@ -399,20 +489,40 @@ async function main() {
         );
     }),
   );
+  const sourceRevision = riskCoverageSourceRevision(sourceByFile);
+  const integrationEvidence = Object.fromEntries(
+    await Promise.all(
+      Object.entries(reviewManifest.integrationEvidence).map(
+        async ([id, evidence]) => [
+          id,
+          evidence.resultFile === undefined
+            ? evidence
+            : {
+                ...evidence,
+                resultArtifact: JSON.parse(
+                  await readFile(evidence.resultFile, 'utf8'),
+                ),
+              },
+        ],
+      ),
+    ),
+  );
   const output = createRiskCoverageReport(
     reports,
     process.cwd(),
     new Date(),
     flattenRiskCoverageReviewGroups(reviewManifest.reviewGroups),
-    reviewManifest.integrationEvidence,
+    integrationEvidence,
     sourceByFile,
     testHealthByCohort,
+    sourceRevision,
   );
   assertRiskCoverageCohort(
     output,
     'lifecycle-command',
     LIFECYCLE_COMMAND_RISK_FILES,
   );
+  assertRiskCoveragePolicies(output);
   await writeFile(
     'coverage/risk-uncovered-branches.json',
     `${JSON.stringify(output, null, 2)}\n`,

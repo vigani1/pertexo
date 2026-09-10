@@ -359,6 +359,8 @@ jobs:
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude test/platform/compatibility-rollout.integration.test.ts \
             --reporter=json --outputFile=../../artifacts/api-gates.json
+      - name: Prove new regression tests fail under selected mutations
+        run: node infrastructure/verify-mutation-sensitivity.mjs
       - name: Prove every required integration cohort executed
         run: |
           node infrastructure/validate-vitest-gate-report.mjs \
