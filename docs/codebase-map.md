@@ -11,7 +11,7 @@ review and verification behind the latest cleanup.
 | Application | Start reading | Responsibility and internal organization |
 | --- | --- | --- |
 | API | [Composition](../apps/api/src/app.module.ts), [bootstrap](../apps/api/src/main.ts) | Product HTTP. Feature directories own their controllers, use cases, authorization and adapters; `platform/` owns shared HTTP/config/runtime wiring. `identity/`, `identity-infrastructure/`, and `identity-workspace/` distinguish identity policy, external adapters and authenticated workspace capabilities. |
-| Worker | [Composition](../apps/worker/src/worker.module.ts), [bootstrap](../apps/worker/src/main.ts) | `transport/` receives jobs and dispatches outbox work; `execution/` coordinates attempts and capabilities; `triggers/` scans/reconciles triggers; `runtime/` owns process health and shutdown. No product HTTP server. |
+| Worker | [Composition](../apps/worker/src/worker.module.ts), [bootstrap](../apps/worker/src/main.ts), [provider credential capability](../apps/worker/src/execution/provider-connection-runtime.ts) | `transport/` receives jobs and dispatches outbox work; `execution/` coordinates attempts and capabilities, with provider credential resolution/fencing isolated from artifact ownership; `triggers/` scans/reconciles triggers; `runtime/` owns process health and shutdown. No product HTTP server. |
 | Lifecycle command | [Command runner](../apps/lifecycle-command/src/run.ts) | Narrow process for workspace lifecycle commands. Configuration, execution, readiness marker and executable entrypoint remain separate files. |
 | Operator command | [Command runner](../apps/operator-command/src/run.ts) | Explicit operator command dispatch and its distinct database credentials. Keep this authority out of API/worker processes. |
 | Recovery | [Restore-before-serve](../apps/recovery/src/restore-before-serve.ts) | Reconcile restored control state before serving traffic. The small config/main/orchestration layout is intentional. |
@@ -65,17 +65,63 @@ Use workspace package exports, never a relative path into another package's
 `pnpm build` uses TypeScript project references, which mirror runtime workspace
 dependencies. `pnpm architecture:check` checks that graph and rejects local
 static runtime import cycles and cross-workspace relative source traversal.
-`pnpm check` adds
-formatting, documented invariants, dependency checks, typechecks, contract
-generation drift and unit tests. Complexity and duplication checks are
-ratchets: an existing long function is not automatically permission to grow it.
+`pnpm check` adds formatting, documented invariants, dependency checks,
+typechecks, contract generation drift, built-package self-reference/browser
+export checks and unit tests. Complexity and duplication checks are ratchets:
+an existing long function is not automatically permission to grow it.
 
 `pnpm test:coverage` keeps workspace coverage floors and the selected critical
 branch review inventory. `pnpm test:integration` exercises real local services;
 it is required for changes that affect persistence, transport, object storage,
 HTTP or process behavior. A passing unit gate is not deployed AWS evidence.
+`pnpm quality:local` owns disposable services, serializes fixed coverage output,
+runs the repeated local performance cohort, and emits a source-stable manifest
+for the complete applicable local matrix.
+The current post-remediation quality status and exact dirty-candidate identity
+live in the
+[backend quality improvement plan](./backend-quality-improvement-plan.md#implementation-record);
+historical audits are not a substitute for that current entrypoint.
 
 Infrastructure tooling stays under `infrastructure/`, with existing explicit
 subdirectories for ECS, PostgreSQL, observability and exercises. Historical
 audits and ADRs remain under `docs/`; use current implementation progress for
 mutable delivery status rather than rewriting historical conclusions.
+
+## Behavior-to-owner routes
+
+These routes name the first production entrypoint and the owners of policy,
+durable truth and acquired resources. The linked test is the shortest composed
+behavioral route; owner-local unit suites remain useful but do not replace it.
+
+| Journey | Entrypoint | Policy owner | Persistence owner | Resource owner | Owning behavioral test |
+| --- | --- | --- | --- | --- | --- |
+| Manual run and run replay | [`WorkflowRunsController`](../apps/api/src/workflow-runs/controllers.ts) | API [run use cases and authorization](../apps/api/src/workflow-runs/use-cases.ts); replay identity stays in the [database transaction](../packages/database/src/execution/workflow-run-replay.ts) | [Workflow-run API](../packages/database/src/execution/workflow-run-api.ts) and [execution acceptance](../packages/database/src/execution/execution-acceptance.ts) | [API workflow-runtime composition](../apps/api/src/platform/workflow/workflow-runtime.module.ts) owns its pool/queue adapters; the database transaction owns locks | [Workflow-run API integration](../packages/database/test/workflow-run-api.integration.test.ts) |
+| Webhook admission | [`registerWebhookIngress`](../apps/api/src/webhooks/ingress.ts) | Ingress security order and API rate-limit policy; trigger interpretation in the [webhook service](../apps/api/src/webhooks/service.ts) | [Webhook trigger store](../packages/database/src/triggers/webhook-triggers.ts) and execution acceptance | API bootstrap owns the HTTP body stream and rate limiter; persistence owns its transaction | [Direct webhook integration](../apps/api/test/webhooks/direct-webhook.integration.test.ts) |
+| Scheduled start | [Worker trigger runtime](../apps/worker/src/triggers/trigger-runtime.ts) | [Schedule recurrence](../packages/database/src/triggers/schedule-recurrence.ts) and trigger scanner | [Schedule trigger scanner/database](../packages/database/src/triggers/schedule-trigger-scanner.ts) and execution acceptance | Worker runtime owns scanner timers and database/queue clients | [Schedule trigger integration](../apps/worker/test/schedule-trigger.integration.test.ts) |
+| Provider execution, retry and cancellation | [Node-attempt handler](../apps/worker/src/execution/node-attempt-handler.ts) | Registered provider executor plus [dispatch fence](../packages/integrations/src/provider-dispatch-fence.ts); [`engine.retry@1`](../packages/workflow-engine/src/retries.ts) owns retry eligibility | [Node-attempt run store](../packages/database/src/execution/node-attempt-run-store.ts) and [coordinator run store](../packages/database/src/execution/coordinator-run-store.ts) | [Node-attempt runtime](../apps/worker/src/execution/node-attempt-runtime.ts) owns consumer, capabilities and cleanup | [HTTP node-attempt integration](../apps/worker/test/http-node-attempt.integration.test.ts) |
+| Run-event streaming | [`WorkflowRunsController.streamRunEvents`](../apps/api/src/workflow-runs/controllers.ts) | [SSE authorization lifetime](../apps/api/src/workflow-runs/sse-authorization-lifetime.ts) and streamer backpressure/reconciliation | [PostgreSQL run-event reader](../apps/api/src/executions/postgres-run-event-reader.ts) over [run events](../packages/database/src/execution/run-events.ts) | API request owns its abort signal; event streamer owns subscription and polling cleanup | [Run-event stream integration](../apps/api/test/executions/run-event-stream.integration.test.ts) and [resilience integration](../apps/api/test/executions/run-event-stream.resilience.integration.test.ts) |
+| Failure notification | [Failure-notification handler](../apps/worker/src/execution/failure-notification-handler.ts) | [ADR 022](./adr/022-run-failure-notification.md), immutable notification context and registered destination executor | Terminal commit creates the intent in [coordinator terminal persistence](../packages/database/src/execution/coordinator-run-store-terminal.ts); [completion store](../packages/database/src/execution/failure-notification-completion-store.ts) fences delivery | Worker transport owns the consumer; handler owns timeout/abort; destination store owns secret lease/fence lifetime | [Coordinator consumer notification integration](../apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts) |
+| Artifact transfer | [`ArtifactController`](../apps/api/src/artifacts/controllers.ts) | API artifact service enforces media, authorization and bounded transfer policy | [Artifact upload persistence](../packages/database/src/execution/artifact-upload.ts) owns metadata/intent truth | [Artifact-store adapter](../packages/artifact-store/src/store.ts) owns object streams and clients; request abort owns transfer cancellation | [Artifact transfer integration](../apps/api/test/artifacts/transfer.integration.test.ts) |
+| Retention and workspace purge | [Retention runner](../apps/retention/src/run.ts) | Database [retention](../packages/database/src/lifecycle/retention.ts) and [workspace-purge](../packages/database/src/lifecycle/workspace-purge.ts) coordinators | Those coordinators own transaction, advisory-lock and durable cursor/job state | Retention composition owns pools/object-store clients; runner owns loop abort and close ordering | [Retention transaction integration](../packages/database/test/retention-transaction-cancellation.integration.test.ts) and [workspace purge integration](../packages/database/test/workspace-purge-foundation.integration.test.ts) |
+| Restore-before-serve and durable recovery | [`restoreBeforeServe`](../apps/recovery/src/restore-before-serve.ts) | [Control-ledger coordinator](../packages/database/src/lifecycle/control-ledger-coordinator.ts) and recovery runbook | PostgreSQL control state plus the artifact-store [control ledger](../packages/artifact-store/src/control-ledger.ts) | Recovery composition owns pool, dual-region ledger clients and their cleanup | [Restore-before-serve process test](../apps/recovery/test/restore-before-serve.test.ts) and [control-ledger integration](../packages/artifact-store/test/control-ledger.integration.test.ts) |
+
+Workflow lifecycle, workspace lifecycle, activation, workflow restoration,
+version restoration and run replay are deliberately distinct terms. They
+represent different authorization, identity and persistence contracts; stable
+wire, database and versioned identifiers retain those names.
+
+Authenticated request objects are transport types. The canonical shared
+session/workspace fields belong to
+[`IdentityWorkspaceRequest`](../apps/api/src/identity-workspace/types.ts).
+Feature request types select those fields and add only feature-specific HTTP
+extensions such as raw close notification or reauthorization. Application
+[`Input` ports](../apps/api/src/workflow-runs/ports.ts) contain already-derived
+values and must not acquire headers, sockets or framework request fields.
+
+The generic filenames `module.ts`, `types.ts` and `use-cases.ts` remain
+intentional inside feature directories: their directory supplies the bounded
+context and Nest discovers the module as the composition entrypoint. The
+`create*Runtime` factory names also remain intentional because they construct
+and transfer ownership of live resources rather than describe domain services.
+No misleading owner name was found in the mapped routes, so N01 makes no
+symbol rename.

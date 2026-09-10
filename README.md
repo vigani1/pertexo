@@ -108,6 +108,7 @@ pnpm test
 pnpm check
 pnpm prepush:check
 pnpm prepush:full
+pnpm quality:local
 pnpm test:integration
 pnpm --filter @pertexo/api test:sse-resilience
 pnpm --filter @pertexo/worker test:resilience
@@ -121,6 +122,12 @@ S3-compatible services above. Resilience and compatibility-rollout commands are
 separate destructive or recovery-focused gates. Historical Phase 0E invariants
 now run through the production coordinator, node-attempt, and SSE integration
 suites selected by CI's `recovery` job.
+
+`pnpm quality:local` is the isolated, manifest-producing full local
+qualification. It owns disposable services and serializes the repository's fixed
+coverage outputs. See the
+[local quality qualification runbook](./docs/operations/local-quality-verification.md)
+for partial investigative runs, cleanup behavior, and the named AWS-only limits.
 
 `pnpm install` configures the repository-managed pre-push hook. Every ordinary
 push runs `pnpm prepush:check`, which combines `pnpm check` with the

@@ -4,6 +4,10 @@ This runbook covers repository checks that are reproducible without production
 credentials or an AWS account. It is a release prerequisite, not production
 deployment evidence.
 
+The fillable [E01 approval packet](./external-platform-contract.md#e01-external-qualification-approval-packet)
+is the separate authority boundary for AWS/provider mutations and live drills.
+Completing the commands below does not approve that packet.
+
 ## Commands
 
 - `pnpm security:audit` queries the pnpm advisory service for production
@@ -91,3 +95,10 @@ owners must map the OpenTelemetry metrics into CloudWatch, define the active-slo
 metric math, create scaling policies and alarms, and verify behavior under the
 engineering-envelope load tests. Until that evidence exists, autoscaling remains
 AWS-blocked and Phase 7 is not complete.
+
+For release interpretation, retain three distinct records: repository validation
+(`pnpm deployment:check` and the other local gates), the normalized AWS API
+snapshot accepted by `deployment:evidence:check`, and the individually approved
+E01 drill results. None substitutes for either of the others. Image promotion,
+migration execution, provider sends, load, alarms, failover and recovery require
+their explicit target, cap, owner and approver fields in the E01 packet.
