@@ -29,6 +29,11 @@ import {
   nextFrameOrAuthorizationLoss,
   type StreamAuthorizationLifetime,
 } from './sse-authorization-lifetime.js';
+import {
+  NO_STREAM_FAILURE,
+  preserveFailureDuringStreamCleanup,
+  type StreamFailure,
+} from './stream-cleanup.js';
 
 export class WorkflowRunNotFoundError extends Error {
   public override readonly name = 'WorkflowRunNotFoundError';
@@ -259,6 +264,7 @@ async function* authorizedStreamFrames(
   authorizationLifetime: StreamAuthorizationLifetime,
 ): AsyncGenerator<WorkflowRunEventFrame> {
   const iterator = frames[Symbol.asyncIterator]();
+  let primary: StreamFailure = NO_STREAM_FAILURE;
   try {
     while (!input.signal.aborted) {
       const outcome = await nextFrameOrAuthorizationLoss(
@@ -270,13 +276,22 @@ async function* authorizedStreamFrames(
       await authorizationLifetime.reauthorize();
       yield outcome.result.value;
     }
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
     // Authorization loss must cancel a pending producer read before awaiting
     // iterator cleanup. Otherwise an idle Redis/database read can keep the
     // authorization failure—and therefore the HTTP close—pending forever.
-    lifetimeController.abort();
-    await authorizationLifetime.stop();
-    await iterator.return?.();
+    await preserveFailureDuringStreamCleanup(primary, [
+      () => {
+        lifetimeController.abort();
+      },
+      () => authorizationLifetime.stop(),
+      async () => {
+        await iterator.return?.();
+      },
+    ]);
   }
 }
 

@@ -18,10 +18,11 @@ import {
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  authenticatedSession,
-  requestIdentifier,
-  traceIdentifier,
 } from '../identity-workspace/index.js';
+import {
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../identity-workspace/authenticated-command-context.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { parseIdempotencyKey } from '../platform/http/index.js';
 import {
@@ -29,7 +30,6 @@ import {
   singleRequestHeader,
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { createActorContext } from '../workspaces/index.js';
 import { NodeTestRequestError } from './errors.js';
 import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
@@ -103,23 +103,11 @@ export class NodeTestingController {
 function guardAuthorization(
   request: IdentityWorkspaceRequest,
 ): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
+  return optionalAuthorizedWorkspace(request);
 }
 
 function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  const traceId = traceIdentifier(request);
-  return createActorContext({
-    actorId: session.userId,
-    workspaceId,
-    sessionId: session.sessionId,
-    requestId: requestIdentifier(request),
-    ...(traceId === undefined ? {} : { traceId }),
-  });
+  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
 function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {

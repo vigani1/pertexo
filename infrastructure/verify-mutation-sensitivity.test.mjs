@@ -7,6 +7,7 @@ import {
   MUTATIONS,
   validateMutationDefinitions,
 } from './verify-mutation-sensitivity.mjs';
+import { preserveTemporaryDirectoryFailure } from './temporary-directory-cleanup.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 
@@ -40,4 +41,34 @@ test('covers provider truth, both control entries, both CLIs, fences, duplicates
     'incompatible-benchmark',
   ])
     assert.match(ids, new RegExp(expected, 'u'));
+});
+
+test('preserves primary and temporary-directory cleanup failures', async () => {
+  const primary = new Error('validation failed');
+  const cleanup = new Error('temporary directory removal failed');
+
+  await assert.rejects(
+    preserveTemporaryDirectoryFailure({ error: primary, failed: true }, () =>
+      Promise.reject(cleanup),
+    ),
+    (error) => {
+      assert(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [primary, cleanup]);
+      return true;
+    },
+  );
+});
+
+test('normalizes a sole non-Error temporary-directory cleanup failure', async () => {
+  await assert.rejects(
+    preserveTemporaryDirectoryFailure({ error: undefined, failed: false }, () =>
+      Promise.reject('cleanup rejected'),
+    ),
+    (error) => {
+      assert(error instanceof Error);
+      assert.equal(error.message, 'Temporary-directory cleanup failed');
+      assert.equal(error.cause, 'cleanup rejected');
+      return true;
+    },
+  );
 });

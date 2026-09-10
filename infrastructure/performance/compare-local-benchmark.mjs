@@ -633,6 +633,11 @@ function assertEvidence(evidence, label) {
   }
 }
 
+export function validateBenchmarkEvidence(evidence, label = 'Benchmark') {
+  assertEvidence(evidence, label);
+  return evidence;
+}
+
 function stable(value) {
   const canonical = (candidate) => {
     if (Array.isArray(candidate)) return candidate.map(canonical);
@@ -648,8 +653,8 @@ function stable(value) {
 }
 
 export function compareEvidence(baseline, candidate) {
-  assertEvidence(baseline, 'Baseline');
-  assertEvidence(candidate, 'Candidate');
+  validateBenchmarkEvidence(baseline, 'Baseline');
+  validateBenchmarkEvidence(candidate, 'Candidate');
   if (baseline.manifestSha256 !== candidate.manifestSha256)
     throw new Error(
       'Benchmark manifests or fixture populations are incompatible',

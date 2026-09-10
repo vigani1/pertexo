@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConnectionsController } from '../../src/connections/controllers.js';
+import { mapConnectionError } from '../../src/connections/errors.js';
+import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const guardActorId = '99999999-9999-4999-8999-999999999999';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const secretVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -88,6 +91,61 @@ describe('connections controller public seam', () => {
     )
       throw new Error('controller did not forward an actor');
     expect(Object.isFrozen(command.actor)).toBe(true);
+    expect(command).not.toHaveProperty('authorizedWorkspace');
+  });
+
+  it('gives guarded actor and identifiers precedence over session context', async () => {
+    const { instance, create } = controller();
+    const base = request({ 'idempotency-key': 'guard-context' });
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId: base.identitySession.sessionId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'connection:manage' as const,
+    };
+    await instance.create(
+      { ...base, authorizedWorkspace },
+      { workspaceId },
+      { providerKey: 'http', name: 'Guarded', credential },
+    );
+    expect(create.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it('maps an invalid session actor from the controller to request.invalid status 400', async () => {
+    const { instance, create } = controller();
+    const invalid = {
+      ...request({ 'idempotency-key': 'invalid-actor' }),
+      identitySession: { ...request().identitySession, userId: 'not-a-uuid' },
+    };
+    let thrown: unknown;
+    try {
+      await instance.create(
+        invalid,
+        { workspaceId },
+        { providerKey: 'http', name: 'Invalid', credential },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(mapConnectionError(thrown)).toMatchObject({
+      code: 'request.invalid',
+    });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(create.execute).not.toHaveBeenCalled();
   });
 
   it('requires an idempotency key before delegating create or rotation', async () => {

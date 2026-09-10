@@ -15,10 +15,12 @@ import {
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  authenticatedSession,
-  requestIdentifier,
-  traceIdentifier,
 } from '../identity-workspace/index.js';
+import {
+  authenticatedRequestIdentifiers,
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../identity-workspace/authenticated-command-context.js';
 import { applicationError } from '../platform/http/index.js';
 import {
   requestHeaderValue,
@@ -28,7 +30,6 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
-import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowApplicationError } from './errors.js';
 import {
   WorkflowCreateGuard,
@@ -322,9 +323,7 @@ export class WorkflowAuthoringController {
 function guardAuthorization(
   request: WorkflowAuthoringRequest,
 ): Pick<WorkflowAuthoringRequest, 'authorizedWorkspace'> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
+  return optionalAuthorizedWorkspace(request);
 }
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
@@ -339,18 +338,8 @@ function workflowParams(value: unknown): Readonly<{
 }
 
 function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  const traceId = traceIdentifier(request);
   try {
-    return createActorContext({
-      actorId: session.userId,
-      workspaceId,
-      sessionId: session.sessionId,
-      requestId: requestIdentifier(request),
-      ...(traceId === undefined ? {} : { traceId }),
-    });
+    return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
   } catch (error: unknown) {
     return throwWorkflowApplicationError(
       applicationError('request.invalid', {
@@ -365,19 +354,7 @@ function requestIdentifiers(request: WorkflowAuthoringRequest): Readonly<{
   requestId: string;
   traceId?: string;
 }> {
-  if (request.authorizedWorkspace !== undefined) {
-    const actor = request.authorizedWorkspace.actor;
-    return {
-      requestId: actor.requestId,
-      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
-    };
-  }
-  const requestId = requestIdentifier(request);
-  const traceId = traceIdentifier(request);
-  return {
-    requestId,
-    ...(traceId === undefined ? {} : { traceId }),
-  };
+  return authenticatedRequestIdentifiers(request);
 }
 
 function traceparent(

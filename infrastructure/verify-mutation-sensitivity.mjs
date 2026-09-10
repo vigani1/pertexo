@@ -21,6 +21,7 @@ import {
   OwnedProcessSupervisor,
   runManagedCommand,
 } from './owned-process-tree.mjs';
+import { preserveTemporaryDirectoryFailure } from './temporary-directory-cleanup.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 
@@ -296,6 +297,7 @@ export async function verifyMutationSensitivity() {
   );
   const snapshot = path.join(directory, 'source');
   const evidence = [];
+  let primary = { error: undefined, failed: false };
   try {
     await mkdir(snapshot);
     await copyCandidate(snapshot);
@@ -383,8 +385,13 @@ export async function verifyMutationSensitivity() {
       retryPolicy: 'disabled',
       mutations: evidence,
     };
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await preserveTemporaryDirectoryFailure(primary, () =>
+      rm(directory, { recursive: true, force: true }),
+    );
   }
 }
 

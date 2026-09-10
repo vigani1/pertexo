@@ -40,10 +40,12 @@ import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
+  public override readonly cause: unknown;
 
   public constructor(
     public readonly decision: HttpOutcomeDecision,
     possiblyDispatched: boolean,
+    cause?: unknown,
   ) {
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
@@ -52,6 +54,7 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
       errorKind: decision.errorKind,
       possiblyDispatched,
     });
+    this.cause = cause;
   }
 }
 
@@ -340,10 +343,11 @@ async function writeArtifact(
       purpose: 'node-output',
       signal,
     });
-  } catch {
+  } catch (error) {
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
       true,
+      error,
     );
   }
   return Object.freeze({ kind: 'artifact' as const, ...reference });
@@ -359,11 +363,40 @@ function concatenate(chunks: readonly Uint8Array[], byteLength: number) {
   return result;
 }
 
+type BodyFailure = Readonly<{ error: unknown; failed: boolean }>;
+const NO_BODY_FAILURE: BodyFailure = Object.freeze({
+  error: undefined,
+  failed: false,
+});
+
+async function preserveBodyFailureDuringCleanup(
+  primary: BodyFailure,
+  cleanup: () => Promise<void>,
+): Promise<void> {
+  try {
+    await cleanup();
+  } catch (cleanupError) {
+    if (primary.failed)
+      throw new AggregateError(
+        [primary.error, cleanupError],
+        'HTTP response body failed and its iterator cleanup was incomplete',
+      );
+    throw cleanupError instanceof Error
+      ? cleanupError
+      : new Error('HTTP response body cleanup failed', {
+          cause: cleanupError,
+        });
+  }
+}
+
 async function* continueBody(
   buffered: readonly Uint8Array[],
   iterator: AsyncIterator<Uint8Array>,
+  takeOwnership: () => void,
 ): AsyncGenerator<Uint8Array> {
+  let primary: BodyFailure = NO_BODY_FAILURE;
   try {
+    takeOwnership();
     for (const chunk of buffered) {
       try {
         yield chunk;
@@ -381,8 +414,13 @@ async function* continueBody(
         chunk.fill(0);
       }
     }
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
-    await iterator.return?.();
+    await preserveBodyFailureDuringCleanup(primary, async () => {
+      await iterator.return?.();
+    });
   }
 }
 
@@ -397,6 +435,7 @@ async function consumeResponseBody(
   const iterator = response.body[Symbol.asyncIterator]();
   const buffered: Uint8Array[] = [];
   let byteLength = 0;
+  const bodyOwnership = { transferred: false };
   try {
     for (;;) {
       const next = await iterator.next();
@@ -412,18 +451,27 @@ async function consumeResponseBody(
       const chunk = next.value;
       buffered.push(chunk);
       byteLength += chunk.byteLength;
-      if (byteLength > inlineLimit)
+      if (byteLength > inlineLimit) {
         return await writeArtifact(
           artifacts,
-          continueBody(buffered, iterator),
+          continueBody(buffered, iterator, () => {
+            bodyOwnership.transferred = true;
+          }),
           response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
           response.signal,
         );
+      }
     }
   } catch (error: unknown) {
     for (const chunk of buffered) chunk.fill(0);
-    await iterator.return?.();
+    if (!bodyOwnership.transferred)
+      await preserveBodyFailureDuringCleanup(
+        { error, failed: true },
+        async () => {
+          await iterator.return?.();
+        },
+      );
     throw error;
   }
 }

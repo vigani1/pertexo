@@ -19,8 +19,11 @@ import {
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../identity-workspace/authenticated-command-context-error.js';
 
 export function mapConnectionError(error: unknown): ApplicationError {
+  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
+    return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof InvalidIdempotencyKeyError)
     return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof z.ZodError)

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowAuthoringController } from '../../src/workflow-authoring/controllers.js';
+import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const guardActorId = '99999999-9999-4999-8999-999999999999';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 const body = {
@@ -94,6 +96,84 @@ function makeController() {
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('uses session context without a guard and gives guarded context precedence', async () => {
+    const { controller, createWorkflow } = makeController();
+    await controller.create(
+      request(
+        { 'idempotency-key': 'session-context' },
+        { traceId: 'session-trace' },
+      ),
+      { workspaceId },
+      { name: 'Session context' },
+      { header: vi.fn() },
+    );
+    expect(createWorkflow.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        actor: expect.objectContaining({ actorId, requestId: 'request-42' }),
+        requestId: 'request-42',
+        traceId: 'session-trace',
+      }),
+    );
+    expect(createWorkflow.execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
+      'authorizedWorkspace',
+    );
+
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'workflow:update' as const,
+    };
+    await controller.create(
+      {
+        ...request(
+          { 'idempotency-key': 'guard-context' },
+          { requestId: 'ignored-request', traceId: 'ignored-trace' },
+        ),
+        authorizedWorkspace,
+      },
+      { workspaceId },
+      { name: 'Guard context' },
+      { header: vi.fn() },
+    );
+    expect(createWorkflow.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actor: authorizedWorkspace.actor,
+        authorizedWorkspace,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
+      }),
+    );
+  });
+
+  it('maps an invalid session actor to request.invalid status 400', async () => {
+    const { controller, createWorkflow } = makeController();
+    const invalid = {
+      ...request({ 'idempotency-key': 'invalid-actor' }),
+      identitySession: {
+        ...request().identitySession,
+        userId: 'not-a-uuid',
+      },
+    };
+    await expect(
+      controller.create(
+        invalid,
+        { workspaceId },
+        { name: 'Invalid actor' },
+        { header: vi.fn() },
+      ),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(createWorkflow.execute).not.toHaveBeenCalled();
+  });
   it('requires If-Match for version restore and returns its fresh draft tag', async () => {
     const { controller, restoreVersion } = makeController();
     const route = {

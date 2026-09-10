@@ -88,6 +88,23 @@ function definitionCatalogFingerprint(
 }
 
 /**
+ * Enumerate every node with the same stack order previously used by the two
+ * identity projections. The graph remains authoritative; callers retain their
+ * own deduplication, validation and ordering policies.
+ */
+function* workflowNodes(graph: WorkflowGraph) {
+  const pending: WorkflowGraph[] = [graph];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined) continue;
+    for (const node of current.nodes) {
+      yield node;
+      if (node.structured !== undefined) pending.push(node.structured.body);
+    }
+  }
+}
+
+/**
  * Derive the exact integration index from a graph and its pinned definition
  * catalog. The result is disposable: the graph remains the sole authority.
  */
@@ -103,34 +120,28 @@ export function workflowIntegrationUsage(
     ]),
   );
   const usages = new Map<string, WorkflowIntegrationUsage>();
-  const pending: WorkflowGraph[] = [graph];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) continue;
-    for (const node of current.nodes) {
-      const integration = definitions.get(
-        `${node.definition.key}\u0000${String(node.definition.version)}`,
-      );
-      if (integration !== undefined) {
-        for (const slot of integration.connectionSlots) {
-          const connectionId = node.connectionRefs[slot];
-          if (connectionId === undefined) {
-            throw new TypeError(
-              `Integration definition ${node.definition.key}@${String(node.definition.version)} requires connection slot ${slot}`,
-            );
-          }
-          const usage = Object.freeze({
-            providerKey: integration.providerKey,
-            operationKey: integration.operationKey,
-            connectionId,
-          });
-          usages.set(
-            `${usage.providerKey}\u0000${usage.operationKey}\u0000${usage.connectionId}`,
-            usage,
+  for (const node of workflowNodes(graph)) {
+    const integration = definitions.get(
+      `${node.definition.key}\u0000${String(node.definition.version)}`,
+    );
+    if (integration !== undefined) {
+      for (const slot of integration.connectionSlots) {
+        const connectionId = node.connectionRefs[slot];
+        if (connectionId === undefined) {
+          throw new TypeError(
+            `Integration definition ${node.definition.key}@${String(node.definition.version)} requires connection slot ${slot}`,
           );
         }
+        const usage = Object.freeze({
+          providerKey: integration.providerKey,
+          operationKey: integration.operationKey,
+          connectionId,
+        });
+        usages.set(
+          `${usage.providerKey}\u0000${usage.operationKey}\u0000${usage.connectionId}`,
+          usage,
+        );
       }
-      if (node.structured !== undefined) pending.push(node.structured.body);
     }
   }
   return Object.freeze(
@@ -156,20 +167,14 @@ function compatibilityForGraph(
     ),
   );
   const unknown = new Map<string, WorkflowCompatibilityIssue>();
-  const stack: WorkflowGraph[] = [graph];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (current === undefined) continue;
-    for (const node of current.nodes) {
-      const identity = `${node.definition.key}\u0000${String(node.definition.version)}`;
-      if (!known.has(identity))
-        unknown.set(identity, {
-          code: 'unknown_definition',
-          definitionKey: node.definition.key,
-          version: node.definition.version,
-        });
-      if (node.structured !== undefined) stack.push(node.structured.body);
-    }
+  for (const node of workflowNodes(graph)) {
+    const identity = `${node.definition.key}\u0000${String(node.definition.version)}`;
+    if (!known.has(identity))
+      unknown.set(identity, {
+        code: 'unknown_definition',
+        definitionKey: node.definition.key,
+        version: node.definition.version,
+      });
   }
   const issues = [...unknown.values()].sort(
     (left, right) =>

@@ -7,7 +7,8 @@ import {
 import { instrumentPoolCheckout } from './postgres-pool-checkout-telemetry.js';
 
 export type { DatabasePoolRole } from './postgres-pool-policy.js';
-
+const cleanupError = (cause: unknown): Error =>
+  new Error('Cleanup failed', { cause });
 export const DATABASE_METRIC_NAME = Object.freeze({
   lockWaitActive: 'pertexo.database.lock_wait.active',
   lockWaitDuration: 'pertexo.database.lock_wait.duration',
@@ -540,7 +541,6 @@ export function createDatabasePool(
     throw new RangeError(
       'lockWaitSampleIntervalMs must be a safe integer of at least 100',
     );
-
   const meter =
     options.meter ?? metrics.getMeter('@pertexo/database.postgres', '0.0.0');
   const state = stateFor(meter);
@@ -579,12 +579,26 @@ export function createDatabasePool(
   });
   const originalEnd = pool.end.bind(pool);
   pool.end = async (): Promise<void> => {
+    let poolEndFailed = false;
+    let poolEndError: unknown;
     try {
       await originalEnd();
-    } finally {
-      state.pools.delete(pool);
-      await monitor?.close();
+    } catch (error) {
+      poolEndFailed = true;
+      poolEndError = error;
     }
+    state.pools.delete(pool);
+    try {
+      await monitor?.close();
+    } catch (monitorCloseError) {
+      if (poolEndFailed)
+        throw new AggregateError(
+          [poolEndError, monitorCloseError],
+          'PostgreSQL pool and lock-wait monitor cleanup both failed',
+        );
+      throw cleanupError(monitorCloseError);
+    }
+    if (poolEndFailed) throw cleanupError(poolEndError);
   };
   return pool;
 }

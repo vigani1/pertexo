@@ -19,7 +19,6 @@ import {
   OpaqueSessionService,
   type SessionCookieOptions,
 } from '../identity/index.js';
-import { createActorContext } from '../workspaces/index.js';
 import {
   applicationError,
   throwApplicationError,
@@ -55,6 +54,10 @@ import {
   type IdentityWorkspaceRequest,
 } from './types.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
+import {
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from './authenticated-command-context.js';
 import {
   IDENTITY_WORKSPACE_TELEMETRY,
   SESSION_COOKIE_POLICY,
@@ -313,25 +316,14 @@ export class WorkspaceController {
 function guardAuthorization(
   request: IdentityWorkspaceRequest,
 ): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
-  return request.authorizedWorkspace === undefined
-    ? {}
-    : { authorizedWorkspace: request.authorizedWorkspace };
+  return optionalAuthorizedWorkspace(request);
 }
 
 function lifecycleActorFrom(
   request: IdentityWorkspaceRequest,
   workspaceId: string,
 ) {
-  if (request.authorizedWorkspace !== undefined)
-    return request.authorizedWorkspace.actor;
-  const session = authenticatedSession(request);
-  return createActorContext({
-    actorId: session.userId,
-    workspaceId,
-    sessionId: session.sessionId,
-    requestId: requestIdentifier(request),
-    ...traceFields(traceIdentifier(request)),
-  });
+  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
 function requestIdempotencyKey(request: IdentityWorkspaceRequest): string {

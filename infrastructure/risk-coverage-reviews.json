@@ -2,17 +2,17 @@
   "schemaVersion": 4,
   "integrationEvidence": {
     "worker-artifact-reference": {
-      "command": "pnpm --filter @pertexo/worker test:integration -- artifact-reference.integration.test.ts",
+      "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
       "testFile": "apps/worker/test/artifact-reference.integration.test.ts",
       "testName": "streams a bounded node response through worker metadata and object-store adapters"
     },
     "worker-http-node-attempt": {
-      "command": "pnpm --filter @pertexo/worker test:integration -- http-node-attempt.integration.test.ts",
+      "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
       "testFile": "apps/worker/test/http-node-attempt.integration.test.ts",
       "testName": "commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials"
     },
     "worker-preview-delivery": {
-      "command": "pnpm --filter @pertexo/worker test:integration -- preview-consumer-delivery.integration.test.ts",
+      "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
       "testFile": "apps/worker/test/preview-consumer-delivery.integration.test.ts",
       "testName": "executes an accepted preview through BullMQ once and duplicates safely"
     }
@@ -1216,7 +1216,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:d61b4e93350011541c22039afc9a5862f8feac6f91173396adff1ec4c0f37046",
+          "sourceFingerprint": "sha256:5c1cbd468a131db6dc349eba4236bc5c89a66a5fb61e094e6786ffdb0ba332c0",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough without a source location; the surrounding heartbeat decision is exercised at its concrete source coordinates."
         },
@@ -1226,7 +1226,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:30587604b80ebcfb8cc289532a4f5d964db12333d27a65c599e146440cec1046",
+          "sourceFingerprint": "sha256:4c73c0c9a0757a273defcae76ae16da1983b4c8518b7914bd97889f6545a06cb",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough without a source location; the executor failure policy is exercised at its concrete source coordinates."
         },
@@ -1234,7 +1234,7 @@
           "branchId": "38",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 385,
+          "line": 365,
           "column": 18,
           "sourceFingerprint": "sha256:14869c9bb64e3cebcd070a49dff92ffdc49a602005fb3edaa25d827837219e48",
           "classification": "defensive",
@@ -1244,9 +1244,9 @@
           "branchId": "44",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 432,
+          "line": 412,
           "column": 14,
-          "sourceFingerprint": "sha256:8fae89634ad7816606332bc998d5e627bc2884ef1497d0f0b44d12955cf6ffcd",
+          "sourceFingerprint": "sha256:6535e28cf11374fa9a44da1b0dda3b1f4ad63ccc99943d8aea485bf3579523aa",
           "classification": "defensive",
           "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
         }
@@ -1296,17 +1296,27 @@
           "branchId": "1",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 113,
+          "line": 117,
           "column": 4,
           "sourceFingerprint": "sha256:5436fbf2f84969cb70958d9aeb05d70035c9f787c1f21348350a6e843dde9a5a",
           "classification": "defensive",
           "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
         },
         {
-          "branchId": "13",
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 147,
+          "column": 8,
+          "sourceFingerprint": "sha256:eddedf6d6363603848fa7d87b4d1348a6adf70ddbf8e6a4f6b07ea5d4c172479",
+          "classification": "defensive",
+          "justification": "Filesystem and injected cleanup implementations normally reject with Error; a non-Error rejection is still converted into an Error while retaining the original value as its cause."
+        },
+        {
+          "branchId": "17",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 245,
+          "line": 297,
           "column": 14,
           "sourceFingerprint": "sha256:9e7fd57dfe0b1f0dd46e096683dc73dc6c0c7254e96503d8151214cac2337b2d",
           "classification": "integration",
@@ -1314,20 +1324,20 @@
           "evidenceId": "worker-artifact-reference"
         },
         {
-          "branchId": "13",
+          "branchId": "17",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 254,
+          "line": 306,
           "column": 14,
           "sourceFingerprint": "sha256:52ec9fcee52f59b026c3a6453362d065e76c4fca58c59ffe63398b7168d440f7",
           "classification": "defensive",
           "justification": "Preview artifact persistence is retained for artifact-producing preview executors; the current supported preview cohort produces inline output only."
         },
         {
-          "branchId": "34",
+          "branchId": "38",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 390,
+          "line": 440,
           "column": 13,
           "sourceFingerprint": "sha256:5fc1d333425582dbe5970718e544330e63929cc4f8112173248fb664b21daed8",
           "classification": "integration",
@@ -1533,7 +1543,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:1edd5a66daa5043c4403d7dd70329433654ca9b21c2cd5cea551b7be3f59961a",
+          "sourceFingerprint": "sha256:0f1cda0f34528df6f652b18b31cfa86546980f786c7f08160c617d766850f894",
           "classification": "generated",
           "justification": "V8 branch 7 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
@@ -1543,25 +1553,25 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:5ff9898be6586be5457eafc48693e1069d253622dcfa19cbbc77fa714ec49d2f",
+          "sourceFingerprint": "sha256:8139d8c195f6a6cdfea372b992465ac47a0d352b41c6e2b27b6a655c7b5a9174",
           "classification": "generated",
           "justification": "V8 branch 10 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
         {
-          "branchId": "31",
+          "branchId": "33",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:70f09754247cedb3441b7450569fe98d4daf37477bbcab3f83cff43e146fb405",
+          "sourceFingerprint": "sha256:1723f5805ebbf8ba57178d3dacbf35d9a5c1a3982f00bab564ac2f65b4326ab8",
           "classification": "generated",
-          "justification": "V8 branch 29 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+          "justification": "V8 branch 33 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         },
         {
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 48,
+          "line": 50,
           "column": 4,
           "sourceFingerprint": "sha256:609e3741c3dc4f0d94d1774a834de5bc0a4c8718f31dc7fde8478615abb067ad",
           "classification": "defensive",
@@ -1571,7 +1581,7 @@
           "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 187,
+          "line": 190,
           "column": 2,
           "sourceFingerprint": "sha256:9aa634b4e721d84408edd27f3775a324b0729fc5400f13c00b96be2483683aa5",
           "classification": "defensive",

@@ -2,6 +2,11 @@ import { Buffer } from 'node:buffer';
 
 import { z } from 'zod';
 
+import {
+  NO_STREAM_FAILURE,
+  preserveFailureDuringStreamCleanup,
+} from '../workflow-runs/stream-cleanup.js';
+
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
 const MAX_SSE_DATA_BYTES = 256 * 1_024;
@@ -208,6 +213,7 @@ export async function* streamRunEventFrames(
     return page.map((event) => persistedRunEventSchema.parse(event));
   };
 
+  let primary = NO_STREAM_FAILURE;
   try {
     let shouldBackfill = true;
     let backfillPath: SseRunEventFrame['visibilityPath'] =
@@ -263,8 +269,19 @@ export async function* streamRunEventFrames(
       shouldBackfill = true;
       backfillPath = 'live_wakeup';
     }
+  } catch (error) {
+    primary = { error, failed: true };
+    throw error;
   } finally {
-    await subscription.close();
-    await iterator.return?.();
+    const cleanups: (() => void | Promise<void>)[] = [
+      () => subscription.close(),
+    ];
+    if (iterator.return !== undefined) {
+      const returnIterator = iterator.return.bind(iterator);
+      cleanups.push(async () => {
+        await returnIterator();
+      });
+    }
+    await preserveFailureDuringStreamCleanup(primary, cleanups);
   }
 }

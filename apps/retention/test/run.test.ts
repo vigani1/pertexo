@@ -418,4 +418,21 @@ describe('retention worker', () => {
     expect(input.processNext).not.toHaveBeenCalled();
     expect(input.events.slice(-2)).toEqual(['ledger-close', 'telemetry-close']);
   });
+
+  it('preserves an undefined readiness rejection and still closes resources', async () => {
+    const input = resources([]);
+    input.database.checkReadiness = vi.fn(() => {
+      // Deliberately exercise a hostile non-Error adapter rejection.
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      return Promise.reject(undefined);
+    });
+
+    const error = await runRetentionWorker(input).catch(
+      (failure: unknown) => failure,
+    );
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).errors).toEqual([undefined]);
+    expect(input.processNext).not.toHaveBeenCalled();
+    expect(input.events.slice(-2)).toEqual(['ledger-close', 'telemetry-close']);
+  });
 });

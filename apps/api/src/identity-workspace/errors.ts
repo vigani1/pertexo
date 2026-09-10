@@ -14,6 +14,7 @@ import {
   type AuthorizationErrorCode,
 } from '../workspaces/index.js';
 import { isIdentityError, type IdentityError } from '../identity/index.js';
+import { InvalidAuthenticatedWorkspaceContextError } from './authenticated-command-context-error.js';
 
 function workspaceApplicationError(
   code: AuthorizationErrorCode,
@@ -23,6 +24,8 @@ function workspaceApplicationError(
 }
 
 export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
+  if (error instanceof InvalidAuthenticatedWorkspaceContextError)
+    return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof z.ZodError) {
     return applicationError('request.invalid', {
       safeDetail: 'The request is invalid.',

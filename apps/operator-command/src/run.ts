@@ -53,6 +53,7 @@ export async function runOperatorCommand(
     | OperatorCommandRecord
     | null
     | undefined;
+  let operationFailed = false;
   let operationError: unknown;
   try {
     resources.telemetry.start();
@@ -134,6 +135,7 @@ export async function runOperatorCommand(
         : {}),
     });
   } catch (error: unknown) {
+    operationFailed = true;
     operationError = error;
     resources.logger.error(
       'operator_command.failed',
@@ -167,12 +169,9 @@ export async function runOperatorCommand(
   } catch (error: unknown) {
     cleanupErrors.push(error);
   }
-  if (operationError !== undefined || cleanupErrors.length > 0) {
+  if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
-      [
-        ...(operationError === undefined ? [] : [operationError]),
-        ...cleanupErrors,
-      ],
+      [...(operationFailed ? [operationError] : []), ...cleanupErrors],
       'Operator command did not complete cleanly',
     );
   }

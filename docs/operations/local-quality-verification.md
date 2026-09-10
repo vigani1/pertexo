@@ -23,11 +23,20 @@ Each run writes logs, Vitest JSON reports, and start/end source fingerprints to
 `coverage/local-quality/<run-id>/manifest.json`. Qualification succeeds only
 when the checkout remains unchanged, every required local cohort passes, and
 every expected report is complete.
+After the worker integration cohort finishes, the runner regenerates the risk
+coverage report with that cohort's exact result file, run ID, source revision,
+and candidate fingerprint. Full qualification rejects a report whose named
+integration-only reviews were not actually executed and passed by that run.
+The standalone `pnpm coverage:risk-report` command remains useful before
+integration and labels those reviews `referenced-only`; it does not claim they
+ran.
 The manifest includes unit/static quality, coverage, a repeated isolated local
 performance baseline, real-service integration, SSE resilience, worker
 transport resilience, API and database compatibility, deployment, image, and
-exercise checks. The performance evidence is written beside the manifest and
-uses the same owned services. The manifest also names three AWS-only
+exercise checks. The performance evidence is written beside the manifest, uses
+the same owned services, and is validated against the schema-v4 evidence
+contract before its exclusive output file is accepted. The full runner validates
+it again before qualification succeeds. The manifest also names three AWS-only
 control-ledger policy tests as skipped because local MinIO cannot qualify AWS S3
 Object Lock or production bucket-policy enforcement.
 

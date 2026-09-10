@@ -24,6 +24,20 @@ The final Q13 report supersedes the 468/22 observation above and records its own
 exact candidate identity; this paragraph does not relabel historical coverage
 output.
 
+The completed repository-local Q9 code-quality pass is specified by the
+[Q9 plan](./backend-code-quality-9-plan.md) and tracked separately in its
+[implementation record](./backend-code-quality-9-implementation.md). That record
+is the current repository-local code-quality entrypoint. The reopened
+provenance, combined-failure, bounded-work and API consumer-proof gaps are
+implemented. Review corrections now release every PostgreSQL benchmark sample
+client and use explicit failure state for `undefined` promise rejections; all
+43 occurrences map to exact named assertions. Final source-stable run
+`2026-09-10t18-24-31-402z-18163-d7e439f0` passed all 21 cohorts, 2,500 unit
+assertions and 520 local-service assertions at one stable candidate
+fingerprint; its risk report records 477 reviewed and zero unreviewed selected
+branches. The six Q9 scores are final. This completion does not replace
+separately gated AWS/deployment evidence or change backend phase status.
+
 The platform is **not production-ready**. The follow-up cron traversal bound,
 artifact policy/contract corrections, and lifecycle-command CI coverage
 ratchet are verified locally.

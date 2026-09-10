@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const pg = vi.hoisted(() => {
   class FakePool {
     static instances: FakePool[] = [];
+    static endFailures: { readonly error: unknown }[] = [];
     static queryErrors: unknown[] = [];
     static queryResults: { rows: { pid: number }[] }[] = [];
     readonly options: Readonly<{
@@ -65,6 +66,10 @@ const pg = vi.hoisted(() => {
     }
 
     end(): Promise<void> {
+      const failure = FakePool.endFailures.shift();
+      // Deliberately exercise hostile non-Error adapter rejections.
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      if (failure !== undefined) return Promise.reject(failure.error);
       return Promise.resolve();
     }
   }
@@ -160,8 +165,21 @@ function poolAt(index: number): InstanceType<typeof pg.FakePool> {
 describe('PostgreSQL telemetry pool', () => {
   beforeEach(() => {
     pg.FakePool.instances.length = 0;
+    pg.FakePool.endFailures.length = 0;
     pg.FakePool.queryErrors.length = 0;
     pg.FakePool.queryResults.length = 0;
+  });
+
+  it('does not mistake an undefined pool-end rejection for success', async () => {
+    pg.FakePool.endFailures.push({ error: undefined });
+    const pool = createDatabasePool(
+      {},
+      { monitorLockWaits: false, role: 'maintenance' },
+    );
+
+    await expect(pool.end()).rejects.toMatchObject({
+      message: 'Cleanup failed',
+    });
   });
 
   it('applies bounded role deadlines and preserves narrower explicit values', async () => {

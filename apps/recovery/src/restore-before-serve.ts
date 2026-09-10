@@ -89,6 +89,7 @@ export async function restoreBeforeServe(
   resources: RestoreBeforeServeResources,
 ): Promise<RestoreBeforeServeResult> {
   let result: RestoreBeforeServeResult | undefined;
+  let operationFailed = false;
   let operationError: unknown;
   const startedAt = performance.now();
   try {
@@ -128,6 +129,7 @@ export async function restoreBeforeServe(
       'failed',
       (performance.now() - startedAt) / 1_000,
     );
+    operationFailed = true;
     operationError = error;
     resources.logger.error(
       'restore_before_serve.failed',
@@ -158,12 +160,9 @@ export async function restoreBeforeServe(
     cleanupErrors.push(error);
   }
 
-  if (operationError !== undefined || cleanupErrors.length > 0) {
+  if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
-      [
-        ...(operationError === undefined ? [] : [operationError]),
-        ...cleanupErrors,
-      ],
+      [...(operationFailed ? [operationError] : []), ...cleanupErrors],
       'Restore-before-serve recovery did not complete cleanly',
     );
   }

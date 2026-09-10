@@ -13,7 +13,7 @@ import type {
   PreviewTerminalOutcome,
   PreviewDelivery,
 } from '@pertexo/database/execution';
-import type { NodeAttemptRuntimeCapabilityFactories } from './node-attempt-handler.js';
+import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import type {
   PreviewTelemetry,
   PreviewTerminalStatus,
@@ -121,7 +121,7 @@ export interface PreviewAttemptHandler {
 }
 
 export type PreviewRuntimeCapabilityFactories =
-  NodeAttemptRuntimeCapabilityFactories;
+  NodeExecutionCapabilityFactories;
 
 export interface PreviewAttemptHandlerDependencies {
   heartbeatIntervalMillis: number;

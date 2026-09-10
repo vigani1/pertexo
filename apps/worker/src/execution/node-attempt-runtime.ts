@@ -52,9 +52,9 @@ import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
-  type NodeAttemptRuntimeCapabilityFactories,
   NodeAttemptHandlerStateError,
 } from './node-attempt-handler.js';
+import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createPreviewAttemptHandler,
   type PreviewAttemptRunStore,
@@ -112,7 +112,7 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
-  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
+  runtimeCapabilities?: NodeExecutionCapabilityFactories;
   previewTelemetry?: PreviewTelemetry;
   previewHandlerFactory?: typeof createPreviewAttemptHandler;
 }>;
@@ -207,7 +207,7 @@ type OwnNodeAttemptResource = (
 interface ProductionNodeAttemptRuntime {
   capabilityRuntime?: WorkerNodeRuntimeCapabilities;
   handler: NodeAttemptHandler;
-  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
+  runtimeCapabilities?: NodeExecutionCapabilityFactories;
 }
 
 async function createProductionNodeAttemptRuntime(

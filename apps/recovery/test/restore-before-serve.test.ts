@@ -225,6 +225,24 @@ describe('restoreBeforeServe', () => {
     ]);
   });
 
+  it('preserves an undefined readiness rejection and still closes every resource', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.spies.checkLedgerReadiness.mockRejectedValueOnce(undefined);
+
+    const error = await restoreBeforeServe(input).catch(
+      (failure: unknown) => failure,
+    );
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).errors).toEqual([undefined]);
+    expect(events.slice(-4)).toEqual([
+      'database-close',
+      'ledger-close',
+      'artifact-close',
+      'telemetry-close',
+    ]);
+  });
+
   it('fails the gate when successful work cannot be cleaned up', async () => {
     const events: string[] = [];
     const input = resources(events);

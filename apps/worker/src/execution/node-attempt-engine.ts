@@ -9,8 +9,6 @@ import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import {
   executeNodeAttempt,
   invocationKey,
-  verifyWorkflowExecutableV2,
-  type ExecutableCompatibilityReleaseSupport,
   type WorkflowExecutableNodeV2,
 } from '@pertexo/workflow-engine';
 
@@ -22,57 +20,16 @@ import {
   isWorkerCoreMergeDefinition,
   isWorkerCoreParallelDefinition,
 } from './core-definition-identities.js';
+import {
+  verifyPersistedWorkflowProjection,
+  type PersistedWorkflowProjectionVerificationOptions,
+} from './persisted-workflow-projection.js';
 
-export type NodeAttemptExecutionEngineOptions = Readonly<{
-  admissionRelease: unknown;
-  currentRelease?: unknown;
-  releaseSupport?: ExecutableCompatibilityReleaseSupport;
-  expressionEvaluator?: ExpressionEvaluator;
-}>;
-
-function verifyProjection(
-  projection: PublishedWorkflowV2Projection,
-  options: NodeAttemptExecutionEngineOptions,
-) {
-  const supportedCurrent = projection.currentCompatibilityRelease;
-  const admissionDescription = options.releaseSupport?.descriptions.find(
-    ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-  );
-  if (
-    options.releaseSupport !== undefined &&
-    (supportedCurrent === undefined || admissionDescription === undefined)
-  )
-    throw new TypeError('Published workflow compatibility release is missing');
-  const admissionRelease =
-    options.releaseSupport === undefined
-      ? options.admissionRelease
-      : options.releaseSupport.resolve(
-          admissionDescription?.epoch ?? 0,
-          admissionDescription?.fingerprint ?? '',
-        );
-  const currentRelease =
-    options.releaseSupport === undefined
-      ? options.currentRelease
-      : options.releaseSupport.resolve(
-          supportedCurrent?.epoch ?? 0,
-          supportedCurrent?.fingerprint ?? '',
-        );
-  const executable = verifyWorkflowExecutableV2({
-    envelope: projection.executableJson,
-    checksum: projection.checksum,
-    admissionRelease,
-    ...(currentRelease === undefined ? {} : { currentRelease }),
-    execution: { alreadyAdmitted: true },
-  });
-  if (
-    executable.envelope.compatibilityReleaseEpoch !==
-    projection.compatibilityReleaseEpoch
-  )
-    throw new TypeError(
-      'Published workflow compatibility release epoch does not match its executable envelope',
-    );
-  return executable;
-}
+export type NodeAttemptExecutionEngineOptions = Readonly<
+  PersistedWorkflowProjectionVerificationOptions & {
+    expressionEvaluator?: ExpressionEvaluator;
+  }
+>;
 
 function ordinal(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -195,7 +152,7 @@ function prepareNode(
     throw new TypeError(
       'Node attempt workflow version identity does not match',
     );
-  const executable = verifyProjection(projection, options);
+  const executable = verifyPersistedWorkflowProjection(projection, options);
   const located = locateNode(executable.envelope.graph, lease.nodeId);
   if (located === undefined)
     throw new TypeError('Node attempt is not in workflow');

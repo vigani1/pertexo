@@ -98,6 +98,32 @@ const temporaryRoot = await mkdtemp(
 const containers = new Set();
 let objectStoreBridge;
 let telemetryServer;
+let primaryFailed = false;
+let primaryError;
+
+function preserveSmokeFailureDuringCleanup(primary, cleanup) {
+  const cleanupErrors = cleanup.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason] : [],
+  );
+  if (cleanupErrors.length === 0) return;
+  if (primary.failed)
+    throw new AggregateError(
+      [primary.error, ...cleanupErrors],
+      'Rendered-task smoke failed and cleanup was incomplete',
+    );
+  if (cleanupErrors.length === 1) {
+    const [cleanupError] = cleanupErrors;
+    throw cleanupError instanceof Error
+      ? cleanupError
+      : new Error('Rendered-task smoke cleanup failed', {
+          cause: cleanupError,
+        });
+  }
+  throw new AggregateError(
+    cleanupErrors,
+    'Rendered-task smoke cleanup was incomplete',
+  );
+}
 
 try {
   const manifest = JSON.parse(
@@ -171,15 +197,21 @@ try {
   process.stdout.write(
     `IWA02 rendered-task startup smoke passed: image=${resolvedImage.reference} imageId=${resolvedImage.imageId} imageDigestSource=${resolvedImage.source} renderedCohorts=${productionCohorts.join(',')} runtimeCohort=${runtimeCohort} database=${databaseName}.\n`,
   );
+} catch (error) {
+  primaryFailed = true;
+  primaryError = error;
+  throw error;
 } finally {
-  await Promise.all(
-    [...containers].map(async (name) => {
-      await docker(['rm', '--force', name]).catch(() => undefined);
-    }),
+  const cleanup = await Promise.allSettled([
+    ...[...containers].map((name) => docker(['rm', '--force', name])),
+    objectStoreBridge?.close(),
+    telemetryServer?.close(),
+    rm(temporaryRoot, { recursive: true, force: true }),
+  ]);
+  preserveSmokeFailureDuringCleanup(
+    { error: primaryError, failed: primaryFailed },
+    cleanup,
   );
-  await objectStoreBridge?.close();
-  await telemetryServer?.close();
-  await rm(temporaryRoot, { recursive: true, force: true });
 }
 
 async function render(directory) {

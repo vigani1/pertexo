@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -8,6 +11,7 @@ import {
   coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
+  produceIntegrationEvidenceArtifact,
   RISK_COVERAGE_COHORTS,
   riskCoverageSourceRevision,
   summarizeVitestResult,
@@ -511,7 +515,7 @@ test('labels source-linked integration evidence as referenced-only', () => {
   );
 });
 
-test('accepts only matching passing integration execution evidence', () => {
+test('accepts only evidence produced by the matching qualification run', async (t) => {
   const base = {
     command: 'pnpm test:integration',
     testFile: 'apps/worker/test/adapter.integration.test.ts',
@@ -554,90 +558,182 @@ test('accepts only matching passing integration execution evidence', () => {
   };
   delete review.reviewStatus;
 
-  const passingArtifact = {
-    schemaVersion: 1,
-    command: base.command,
-    sourceRevision: 'revision-1',
-    result: {
-      success: true,
-      testResults: [
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-risk-evidence-'),
+  );
+  const passingResult = {
+    success: true,
+    numTotalTests: 1,
+    numPassedTests: 1,
+    numFailedTests: 0,
+    numPendingTests: 0,
+    numTodoTests: 0,
+    startTime: 1_100,
+    testResults: [
+      {
+        name: `/repo/${base.testFile}`,
+        endTime: 1_200,
+        assertionResults: [{ title: base.testName, status: 'passed' }],
+      },
+    ],
+  };
+  let artifactIndex = 0;
+  const produce = async (result = passingResult, identity = {}) => {
+    artifactIndex += 1;
+    const resultFile = path.join(
+      directory,
+      `result-${String(artifactIndex)}.json`,
+    );
+    const artifactFile = path.join(
+      directory,
+      `evidence-${String(artifactIndex)}.json`,
+    );
+    await writeFile(resultFile, JSON.stringify(result));
+    await produceIntegrationEvidenceArtifact({
+      artifactFile,
+      candidateFingerprint: identity.candidateFingerprint ?? 'candidate-1',
+      command: identity.command ?? base.command,
+      completedAt: identity.completedAt ?? 1_300,
+      resultFile,
+      runId: identity.runId ?? 'run-1',
+      sourceRevision: identity.sourceRevision ?? 'revision-1',
+      startedAt: identity.startedAt ?? 1_000,
+    });
+    return JSON.parse(await readFile(artifactFile, 'utf8'));
+  };
+  const reportWith = (resultArtifact) =>
+    createRiskCoverageReport(
+      reports,
+      '/repo',
+      new Date(0),
+      [review],
+      {
+        'worker-adapter-integration': { ...base, resultArtifact },
+      },
+      sources,
+      new Map(),
+      'revision-1',
+      {
+        candidateFingerprint: 'candidate-1',
+        runId: 'run-1',
+        requireExecuted: true,
+      },
+    );
+
+  try {
+    const artifact = await produce();
+    const report = reportWith(artifact);
+    assert.equal(report.uncoveredBranches[0].evidenceState, 'executed');
+    assert.equal(
+      report.uncoveredBranches[0].evidence.candidateFingerprint,
+      'candidate-1',
+    );
+
+    await t.test('rejects an older report supplied to a new run', async () => {
+      await assert.rejects(
+        produce(passingResult, { startedAt: 1_201, completedAt: 1_300 }),
+        /not produced within the qualification interval/u,
+      );
+    });
+
+    for (const [name, identity] of [
+      ['wrong candidate', { candidateFingerprint: 'candidate-2' }],
+      ['wrong source', { sourceRevision: 'revision-2' }],
+      ['wrong command', { command: 'pnpm test:integration --wrong' }],
+      ['wrong run', { runId: 'run-2' }],
+    ])
+      await t.test(name, async () => {
+        const mismatchedArtifact = await produce(passingResult, identity);
+        assert.throws(
+          () => reportWith(mismatchedArtifact),
+          /Invalid executed integration evidence/u,
+        );
+      });
+
+    await t.test('rejects missing producer identity', async () => {
+      await assert.rejects(
+        produceIntegrationEvidenceArtifact({
+          artifactFile: path.join(directory, 'missing-identity.json'),
+          command: base.command,
+          completedAt: 1_300,
+          resultFile: path.join(directory, 'result-1.json'),
+          sourceRevision: 'revision-1',
+          startedAt: 1_000,
+        }),
+        /identity is incomplete/u,
+      );
+    });
+
+    for (const [name, result] of [
+      ['malformed result', { success: true }],
+      [
+        'failed result',
         {
-          name: `/repo/${base.testFile}`,
-          assertionResults: [{ title: base.testName, status: 'passed' }],
+          ...passingResult,
+          success: false,
+          numPassedTests: 0,
+          numFailedTests: 1,
         },
       ],
-    },
-  };
-  const passingEvidence = {
-    'worker-adapter-integration': {
-      ...base,
-      resultFile: 'coverage/worker-integration/results.json',
-      resultArtifact: passingArtifact,
-    },
-  };
-  const report = createRiskCoverageReport(
-    reports,
-    '/repo',
-    new Date(0),
-    [review],
-    passingEvidence,
-    sources,
-    new Map(),
-    'revision-1',
-  );
-  assert.equal(report.uncoveredBranches[0].evidenceState, 'executed');
+      [
+        'skipped result',
+        {
+          ...passingResult,
+          numPassedTests: 0,
+          numPendingTests: 1,
+          testResults: [
+            {
+              ...passingResult.testResults[0],
+              assertionResults: [{ title: base.testName, status: 'skipped' }],
+            },
+          ],
+        },
+      ],
+    ])
+      await t.test(name, async () => {
+        await assert.rejects(produce(result));
+      });
 
-  for (const resultArtifact of [
-    {
-      ...passingArtifact,
-      result: { ...passingArtifact.result, success: false },
-    },
-    {
-      ...passingArtifact,
-      result: {
-        success: true,
-        testResults: [
+    for (const [name, testResults] of [
+      [
+        'unrelated passing test',
+        [
           {
-            name: `/repo/${base.testFile}`,
-            assertionResults: [{ title: base.testName, status: 'skipped' }],
-          },
-        ],
-      },
-    },
-    {
-      ...passingArtifact,
-      result: {
-        success: true,
-        testResults: [
-          {
-            name: `/repo/${base.testFile}`,
+            ...passingResult.testResults[0],
             assertionResults: [{ title: 'different test', status: 'passed' }],
           },
         ],
-      },
-    },
-    { ...passingArtifact, sourceRevision: 'stale' },
-  ]) {
+      ],
+      [
+        'duplicate title in another file',
+        [
+          {
+            ...passingResult.testResults[0],
+            name: '/repo/apps/worker/test/other.integration.test.ts',
+          },
+        ],
+      ],
+    ])
+      await t.test(name, async () => {
+        const resultArtifact = await produce({ ...passingResult, testResults });
+        assert.throws(
+          () => reportWith(resultArtifact),
+          /Invalid executed integration evidence/u,
+        );
+      });
+
     assert.throws(
       () =>
-        createRiskCoverageReport(
-          reports,
-          '/repo',
-          new Date(0),
-          [review],
-          {
-            'worker-adapter-integration': {
-              ...base,
-              resultFile: 'coverage/worker-integration/results.json',
-              resultArtifact,
-            },
-          },
-          sources,
-          new Map(),
-          'revision-1',
-        ),
+        reportWith({
+          schemaVersion: 1,
+          command: base.command,
+          sourceRevision: 'revision-1',
+          result: passingResult,
+        }),
       /Invalid executed integration evidence/u,
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 
