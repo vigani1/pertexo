@@ -1,8 +1,28 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-09
+Updated: 2026-09-10
 
 ## Delivery state
+
+The completed Q01–Q13 remediation is recorded in the
+[backend quality improvement plan](./backend-quality-improvement-plan.md#implementation-record),
+and its authorized follow-up is tracked in the
+[next-stage implementation record](./backend-quality-next-stage-plan.md#implementation-record--maintain-during-execution).
+The Q01 record binds the uncommitted implementation to the exact base commit,
+tracked patch and untracked-file hashes. That historical Q01-bound risk report
+contains 468 reviewed and 22 unreviewed branches; the audit closeout's 23 is a
+retained preceding observation, not the result of that later run. Neither local
+result is production qualification.
+
+The next-stage record is the current disposition entrypoint. Its predecessor's supporting operational
+contracts are the [isolated local qualification](./operations/local-quality-verification.md),
+[test-confidence evidence](./operations/test-confidence.md),
+[local performance baseline](./operations/local-performance-evidence.md),
+[compatibility retirement inventory](./operations/compatibility-retirement-inventory.md),
+and [ADR 022's notification rollout](./adr/022-run-failure-notification.md).
+The final Q13 report supersedes the 468/22 observation above and records its own
+exact candidate identity; this paragraph does not relabel historical coverage
+output.
 
 The platform is **not production-ready**. The follow-up cron traversal bound,
 artifact policy/contract corrections, and lifecycle-command CI coverage

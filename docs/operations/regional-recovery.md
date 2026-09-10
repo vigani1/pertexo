@@ -3,6 +3,12 @@
 This runbook implements the dependency order in ADR 015. It is an operator
 procedure, not evidence that a regional restore drill has passed.
 
+Live use requires completed E01-13 and E01-14 fields in the
+[external qualification approval packet](./external-platform-contract.md#e01-13--backup-restore-and-point-in-time-recovery),
+including exact resource selectors, synthetic markers, spend/window limits,
+operators, cleanup owner and approvals. The repository does not supply those
+deployment-specific values.
+
 ## Preconditions
 
 - Declare and audit the recovery attempt.
@@ -48,3 +54,8 @@ operator command retry is the only path that may heal its own matching tail.
 Record the job identity, immutable image version, start/end times, selected
 PostgreSQL recovery point, inventory digest, workspace count, sweep count, and
 exit status in the recovery evidence. Do not record credentials or tenant data.
+Also record the latest recoverable synthetic PostgreSQL/object marker versus the
+fault time and the time from declared regional loss to restored audited traffic.
+ADR 015 remains authoritative: measured loss must be at most five minutes (RPO)
+and traffic restoration at most 24 hours (RTO). A successful process exit alone
+does not establish either bound.

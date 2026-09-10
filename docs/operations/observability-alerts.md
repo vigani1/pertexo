@@ -6,6 +6,12 @@ PostgreSQL and bounded metric dimensions. Use trace and structured-log
 correlation for individual requests, runs, and workspaces; do not add those
 identifiers to metric labels.
 
+Repository rule validation does not prove deployed publication, alarm actions,
+pager delivery or autoscaling. That live proof is E01-11 in the
+[external qualification approval packet](./external-platform-contract.md#e01-11--deployed-alarms-pager-routing-and-autoscaling-response)
+and requires exact alarm/scalable-target selectors, a bounded test window,
+notification recipients, cleanup and approval before threshold injection.
+
 ## Shared Triage
 
 1. Confirm the alert expression has current samples and note only bounded labels

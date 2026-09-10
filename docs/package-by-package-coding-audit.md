@@ -1,5 +1,1029 @@
 # Package-by-package coding audit
 
+## Current whole-backend assessment — 2026-09-09
+
+**Status: implementation complete in the uncommitted worktree. WB-01 through
+WB-10, MC-01 through MC-05, TQ-01 through TQ-05, and MH-01 are resolved with
+focused and combined verification recorded in the closeout below. The reviewed
+baseline remains the historical 7/10 assessment; this remediation does not
+silently substitute a new whole-repository score.**
+
+The backend has a strong foundation in explicit contracts, tenant isolation,
+durable execution and real integration tests. It is not a clean correctness
+sign-off: composition and lifecycle failures remain, including a notification
+assumption that blocks a legitimate timeout. Targeted corrections and removal
+of redundant construction/validation paths are warranted; a wholesale rewrite
+is not supported by the evidence.
+
+Reviewed baseline: `9a09ccec09fa97215f54ed46a687cb00805dd4f6`, tree
+`548df4948a1d3c4e4c91eec902b726ef27b15457`, local `main` (one commit ahead
+of `origin/main` when this review began). The working tree was clean. This
+assessment covers the existing backend, not only the most recent fixes. It
+does not authorize implementation changes, commits, pushes, deployment, or
+deletion of historical documents.
+
+This is the canonical document for the current assessment. Earlier sections
+below remain historical evidence for their recorded revisions; their completed
+statuses and scores do not certify the current baseline. Other audit documents
+were checked for still-relevant evidence and supersession, not duplicated
+into a new report series. Removing superseded documents requires agreement and
+a reference check.
+
+### Review method and completion rule
+
+- Account for every tracked application, package, test/configuration area,
+  migration area, repository tool, infrastructure definition and document.
+- Inspect responsibilities, module depth and interfaces, dependency direction,
+  ownership, domain invariants, types/naming, control flow, duplication and
+  unnecessary state. Large files are prompts to inspect cohesion, not automatic
+  findings; small pass-through files are not automatic successes.
+- Check correctness, security/tenancy, contracts, transactions/concurrency,
+  cancellation/timeouts/retries, resource cleanup, observability and bounded
+  performance at each relevant area.
+- Trace complete workflows across owners: identity/workspace access,
+  authoring/publication, execution/recovery, triggers, connections/artifacts,
+  and retention/deletion.
+- Review tests for meaningful assertions, fault detection, realism, redundant
+  protection, brittleness, isolation and coverage exclusions. Passing a test
+  suite is distinct from manually reviewing it; reviewed uncovered branches
+  remain uncovered.
+- Consolidate symptoms by root cause. Each finding needs evidence, impact,
+  confidence, a coherent correction (including what it replaces/removes), and
+  closure criteria. Distinguish blockers, maintainability improvements,
+  intentional complexity and unverified external assumptions.
+- Finish only when every inventory row has a supported disposition and all
+  verification results/gaps are recorded. Do not truncate findings to a quota
+  or call sampled inspection exhaustive. Scores follow the assessment.
+
+### Current inventory and inspection ledger
+
+Counts reconcile to all 1,471 tracked files at the baseline. Source/test counts
+include all files under those directories, including fixtures; other files include local
+configuration, tooling and generated contracts. Database other files include
+85 forward migrations plus the `0000` probe. Inspection completion is not an
+unconditional quality pass. Authored code and tests require full-body inspection;
+generated artifacts require structural/semantic validation. Historical prose
+is inventoried and checked for relevance and references, not represented as a
+fresh line-by-line review of every historical narrative.
+
+| Area | Source files | Test/support files | Other tracked files | Current inspection |
+| --- | ---: | ---: | ---: | --- |
+| API | 145 | 89 | 8 | Full source/test/config inspection complete |
+| Worker | 54 | 76 | 7 | Full source/test/config inspection complete |
+| Lifecycle command | 4 | 7 | 5 | Full authored-file inspection complete |
+| Operator command | 3 | 2 | 4 | Full authored-file inspection complete |
+| Recovery | 3 | 2 | 4 | Full authored-file inspection complete |
+| Retention | 5 | 3 | 4 | Full authored-file inspection complete |
+| Artifact store | 15 | 13 | 6 | Full authored-file inspection complete |
+| Contracts | 25 | 9 | 25 | Authored source/tests inspected; generated contracts validated |
+| Database | 169 | 172 | 95 | All source/test bodies and 86 numbered SQL files inspected; configuration validated |
+| Integrations | 32 | 9 | 5 | Full authored-file inspection complete |
+| Node catalog | 5 | 6 | 5 | Full authored-file inspection complete |
+| Node SDK | 10 | 2 | 5 | Full authored-file inspection complete |
+| Core nodes | 57 | 7 | 5 | Full authored-file inspection complete |
+| Observability | 11 | 11 | 5 | Full authored-file inspection complete |
+| Queue | 12 | 13 | 6 | Full authored-file inspection complete |
+| Rate limit | 4 | 3 | 5 | Full authored-file inspection complete |
+| Workflow engine | 48 | 28 | 5 | Full source/test/config inspection complete |
+| Workflow model | 22 | 10 | 5 | Full source/test/config inspection complete |
+| Root, CI and infrastructure | — | — | 100 | Authored files inspected; generated baselines/lockfile validated |
+| Documentation | — | — | 81 | Inventoried; current contracts/relevant ADRs inspected; historical material reference-checked |
+
+### Current verification ledger
+
+| Check | Evidence/status | Limit |
+| --- | --- | --- |
+| `pnpm check` | Passed on the exact implementation immediately before baseline commit | Build, lint, static gates, contracts, test typechecks and unit suites; not integration or whole-codebase coverage |
+| `pnpm test:coverage` | Fresh run passed; 121 selected files / 5,110 coverable lines; 457 reviewed and 23 unreviewed uncovered branches | Positive include lists exclude substantial production code; classifications are not executed tests |
+| Local integration | Fresh isolated run passed: artifact store 5, queue 1, database 407, worker 30, API 33 (476 passed total); database coverage merge passed | Three AWS-only artifact tests and one API compatibility-rollout test skipped; specialized resilience/rollout cohorts and real AWS/provider behavior are separate |
+| Specialized local integration | Fresh isolated API SSE Redis-loss, worker transport recovery, and API compatibility-rollout cohorts each passed (3 additional tests) | The previously skipped local compatibility test is now executed; three AWS-only artifact tests remain unexecuted |
+| Manual module/test inspection | Complete across all application/package source and test/support bodies, including 169 database source files, 172 database test/support files and 86 numbered SQL files | Generated artifacts structurally/semantically validated; historical prose has the separate disposition above |
+| Report verification | Prettier check, `git diff --check`, and `pnpm docs:check` passed (13 tests, 302 local links across 81 documents) | Documentation validation does not prove runtime correctness; its historical audited-tree label is not this review's baseline |
+
+The temporary integration Compose project and its five disposable volumes were
+removed after the run; the user's existing Compose services were not targets.
+
+### Confirmed current findings
+
+These are current-baseline findings, not copied historical issues or a
+quota-limited selection. Nine are P2 and one is P3. The descriptions and root
+corrections record the reviewed baseline; the later closeout records the
+implemented remediation without rewriting that evidence.
+
+#### WB-01 — Framework errors are swallowed by feature fallback mapping (P2)
+
+`apps/api/src/platform/http/problem-details.filter.ts` calls route-specific
+application mappers before handling `HttpException`. The mappers selected by
+`apps/api/src/application-error-mappers.ts` generally return
+`internal.unexpected` for an unrecognized exception, so the framework fallback
+is unreachable for those URLs. A fresh injection through the built Nest/Fastify
+application returned 404 for `/nonexistent`, but 500 for
+`/v1/workspaces/nonexistent` and an unknown nested workflow URL. These are
+unknown routes, not failed database operations.
+
+Root correction: make error normalization a single coherent decision chain:
+preserve explicit framework HTTP errors and allow feature mappers to decline
+unknown failures before applying the final generic fallback. Replace tests that
+exercise framework and feature normalization only in separate configurations
+with an additional composed-app matrix across route families and statuses.
+Closure: unknown routes remain 404 and explicit 400/401/403/404/503 framework
+responses retain safe problem semantics with all real mappers installed.
+
+#### WB-02 — Application-error recognition accepts inherited catalog names (P2)
+
+`apps/api/src/platform/http/application-error.ts:isApplicationError` uses
+`code in APPLICATION_ERROR_CATALOG`. The real function accepts
+`{ code: 'constructor' }`, `{ code: 'toString' }`, and `{ code: '__proto__' }`.
+The problem filter then reads catalog fields from inherited objects/functions,
+which do not define a valid problem status/title/type. This is a malformed-error
+containment defect; no unauthenticated exploit path is claimed.
+
+Root correction: recognize only own catalog entries and send unrecognized
+error-shaped values through the generic unknown-error path. Closure:
+table-driven inherited-name and ordinary unknown-error tests produce valid
+generic 500 problems without throwing from the filter; existing optional-field
+sanitization remains intact.
+
+#### WB-03 — A synchronous logging failure prevents the problem response (P2)
+
+`apps/api/src/platform/http/problem-details.filter.ts:409–427` evaluates
+`logger.log(...)` before `Promise.resolve(...)`, so its rejection handler cannot
+contain a synchronous exception. The production logger adapter calls Pino
+synchronously. A worker reproduced a synchronous throw from the installed Pino
+version with a failing destination; a primary-agent probe of the built filter
+with a throwing logger recorded zero response sends and propagated the sink
+error. The current test covers only a returned rejected promise.
+
+Root correction: isolate the entire logging invocation, including synchronous
+failure, from response emission. Keep the response contract independent of the
+diagnostic sink; test both thrown and rejected logging failures. Closure: the
+original safe problem is sent exactly once in both cases.
+
+#### WB-04 — SSE authorization races retain one pending reaction per frame (P2)
+
+`apps/api/src/workflow-runs/use-cases.ts:251–264` attaches another `.then()` to
+the same unresolved `authorizationLost` promise on every iteration. Winning
+`Promise.race` with a frame does not detach the losing reaction. On the actual
+built `StreamRunEventsUseCase`, 10,000 frames registered 10,000 callbacks on
+that one promise, with none executed while authorization stayed valid. A
+separate GC-enabled probe grew from 37.7 MiB at 5,000 frames to 68.4 MiB at
+20,000 frames. The heap observation also includes other per-frame runtime
+allocations; the callback count directly confirms this specific retention.
+
+Root correction: give each producer wait a removable cancellation subscription
+owned by that wait, preserving the independent authorization deadline and
+backpressure safeguards. Merely moving `.then()` outside the loop still leaves
+`Promise.race` subscriptions on a long-lived pending promise. Closure: a long
+authorized stream has bounded pending cancellation observers, and the existing
+expiry, stalled-lookup, disconnect and backpressure regressions still pass.
+
+#### WB-05 — An in-flight readiness check can recreate the shutdown marker (P2)
+
+`apps/worker/src/runtime/worker-readiness-monitor.ts:31–49` clears its interval
+and removes the marker during shutdown, but neither invalidates nor awaits the
+check already in flight. That check can subsequently call `setReady(true)`.
+`WorkerReadiness.checkReadiness()` checks the drain state only before its
+asynchronous dependency checks. A primary-agent probe of the built monitor,
+redirecting only the marker path to a disposable directory, confirmed that the
+marker exists after shutdown when the outstanding readiness promise resolves.
+
+Root correction: make the monitor own both scheduling and completion of its
+current check, with a terminal stopping state and ordering that prevents a
+late successful write after final removal. Closure: deferred success, deferred
+failure and shutdown-during-write tests leave no readiness marker and no timer;
+the application must not report ready while draining.
+
+#### WB-06 — Connection-test dispatch drops the request cancellation signal (P2)
+
+`apps/api/src/connections/connection-testing.ts:113–182` forwards no signal to
+the HTTP, Slack or email client, although all three client interfaces support
+one. The controller supplies a disconnection/deadline signal, but the use case
+uses it only for decryption, unlike create/rotate which also check for abort
+after encryption. Consequently a request aborted during or after decryption
+can still commit dispatch evidence and contact the provider under a fresh
+15-second timeout.
+
+A primary-agent probe through the built use case aborted immediately after
+decryption and observed `requestAborted: true`, no client signal, one dispatch
+and a successful result. Provider I/O was replaced with a recording client; no
+external request was made. The missing signal is also present at the real
+production call sites, whose clients honor supplied cancellation.
+
+Root correction: retain one request-owned signal across decryption and provider
+dispatch, forward it to all three clients, and check it before initiating
+dispatch. Preserve durable dispatch/ambiguity handling for cancellations after
+dispatch. Closure: disconnect/deadline before dispatch prevents provider I/O;
+abort during I/O reaches the client; completed idempotent replay still requires
+neither decryption nor provider contact.
+
+#### WB-07 — Image-pin gate misses YAML environment overrides (P2)
+
+`infrastructure/validate-image-pins.mjs:8–22` recognizes `image:` and dotenv
+`*_IMAGE=...`, but not the `*_IMAGE: ...` mappings used by
+`.github/workflows/ci.yml:66–69`. The current values are digest-pinned; the
+defect is that the advertised gate would accept their replacement with mutable
+tags. A primary-agent probe returned no errors for
+`POSTGRES_IMAGE: postgres:latest`, while the equivalent dotenv assignment was
+correctly rejected. The environment-override test is positive-only.
+
+Root correction: inspect the actual YAML and dotenv representations used by
+the checked contracts, preferably through their structural parsers, and test
+negative mutations in each supported format. Closure: removing any of the CI
+image digests fails `images:check`, while approved dynamic release references
+retain their explicitly documented treatment.
+
+#### WB-08 — Control-ledger isolation omits the recovery artifact bucket (P2)
+
+`packages/artifact-store/src/control-ledger-config.ts:55–113` rejects both
+ledger buckets when equal to `ARTIFACT_STORE_BUCKET`, but never compares them
+with `ARTIFACT_STORE_RECOVERY_BUCKET`. The built parser accepted a recovery
+ledger configured to use that recovery artifact bucket. ADR 013 requires a
+dedicated control ledger; artifact and immutable-control retention policies
+must not accidentally share the same storage location. No current deployed
+collision or data loss is claimed.
+
+Root correction: validate the complete set of configured artifact/control
+storage locations in the composition/configuration owner, instead of extending
+individual primary-only checks one at a time. Keep supported local endpoints
+and independent regional credentials intact. Closure: a matrix of primary and
+recovery ledger/artifact collisions fails before any clients are opened, and
+valid dedicated regional locations pass.
+
+#### WB-09 — Repeated header definitions drift from runtime validation (P3)
+
+The contract builders repeat header grammar independently of the runtime:
+`workflow-runs.ts:68–73`, `workflow-authoring.ts:182–188` and
+`node-testing.ts:102–107` allow CSRF tokens up to 512 characters, whereas
+`apps/api/src/identity/csrf.ts:12` accepts 16–256. Schedule/webhook definitions
+allow a one-character token, and artifact transfer has no maximum. Some
+idempotency-header definitions omit the runtime printable/no-comma restriction.
+`packages/contracts/src/webhooks.ts:174–177` advertises a Content-Type prefix
+pattern that accepts `application/jsonevil`, which ingress correctly rejects.
+Regeneration passes because it faithfully reproduces those handwritten inputs;
+it is not proof that runtime and documentation agree.
+
+Root correction: share transport-owned header schemas and derive repeated
+OpenAPI parameters from them, with runtime-versus-contract acceptance cases at
+the grammar edges. Replace redundant literal definitions; do not add another
+parallel validator. Closure: the generated documents and runtime agree on
+CSRF lengths, idempotency characters and supported webhook media types, with
+case/parameter handling represented intentionally.
+
+#### WB-10 — Notification context prevents a node-free run timeout (P2)
+
+`packages/database/src/execution/coordinator-run-store-terminal.ts:54–71`
+requires a failed/timed-out/outcome-unknown invocation for every notifiable
+terminal run. A run can time out while still queued, before any invocation
+exists. The actual engine produced a valid `timed_out` plan containing only
+`run.timed_out` and zero invocations; passing that plan to the actual
+`persistFailureNotificationIntent` accepted an absent policy but threw
+`CoordinatorRunStateCorruptError` with policy version 1, before its first query.
+`persistCoordinatorRunTransition` calls this function before writing the
+checkpoint and terminal run state, in the same transaction. Consequently an
+enabled notification policy prevents this legitimate timeout from committing.
+
+Root correction: model run-level failure separately from node failure in the
+notification context and its consumers, without inventing a failed node or
+weakening terminal-state atomicity. Replace the unconditional node-primary
+assumption with an explicit run-level timeout representation. Closure: a
+queued deadline commits exactly one terminal event and notification intent
+with a truthful context; replay is idempotent, and existing node-failure,
+cancellation-suppression and delivery tests remain valid. The engine already
+tests pre-materialization deadlines; the missing regression crosses that
+behavior with enabled notification persistence.
+
+**Resolved 2026-09-09:** ADR 022 now records a backward-compatible strict
+primary-failure union: existing node contexts retain their original shape and
+node-free queued timeouts use an explicit run-level timeout shape. Persistence
+creates that truthful context without querying or inventing a node, while the
+worker renders run scope explicitly. A red-before-fix database integration now
+proves one atomic terminal event/intent/outbox and idempotent replay; the full
+workflow-model suite, focused worker delivery/handler suites, database unit
+suite, and the complete scheduling integration file pass.
+
+### Structural improvements — separate from correctness findings
+
+These recommendations use the codebase-design and architecture-review skills:
+improve locality and leverage at an existing seam, and specify what disappears.
+They are not permission to implement, introduce new architectural decisions, or
+reopen settled ADRs. The requested single Markdown report replaces the skill's
+default separate HTML presentation.
+
+| Recommendation | Evidence and friction | Coherent replacement and test effect | Strength |
+| --- | --- | --- | --- |
+| One problem-normalization module | `platform/http/problem-details.filter.ts`, `application-error-mappers.ts`, and feature error mappers spread classification/fallback ordering across owners; WB-01–03 show failures at their composition | Retain feature-specific domain mappings, but give one module ownership of precedence, unknown errors and diagnostic failure containment. Replace redundant fallback branches with composed HTTP-response tests; keep mapper tests for actual domain distinctions | Strong |
+| One owner for each long-lived async operation | SSE authorization waits, worker readiness, and connection-test dispatch lose observer cleanup, stopping state, or the parent signal (WB-04–06) | Deepen each existing operation's lifecycle, with explicit cancellation and completion ownership. Remove uncancelled waits and alternate timeout ownership. Test deferred completion and cancellation through the public operation, not only extracted timer helpers. Do not build a universal lifecycle framework for three different domains | Strong |
+| Remove alternate dependency construction paths | `identity-workspace/module.ts` registers OIDC, session and user controllers both as controller entries and factory providers. Authoring and connection modules register persistence/telemetry/encryption/catalog tokens while constructing use cases directly from the supplied dependencies; those tokens have no consumers in production source | Choose one construction path per module. Remove unused provider registrations/tokens and redundant controller factories where Nest's controller construction already supplies the dependencies. Preserve authorization tokens actually injected by guards. Verify the composed module's routes and dependency identities; do not add more factories just for uniformity | Strong |
+| Narrow use-case persistence requirements | `identity-workspace/use-cases.ts` accepts `IdentityWorkspacePersistence` even for current-user lookup; authoring use cases accept the entire nine-operation authoring port. Existing lifecycle/restore use cases already use narrower `Pick`s | Express each use case's actual capability with an ordinary `Pick` or small existing contract. Keep one real database adapter; remove irrelevant test stub methods and broad casts. This improves the interface without creating an adapter/class/file per operation | Worth exploring |
+| Keep transport parsing out of destination orchestration | `connections/failure-notification-destinations.ts` houses controllers and application orchestration, with use cases consuming the HTTP-shaped request | At the existing feature seam, let controllers supply explicit actor/command data and let orchestration own destination policy. Remove request-header knowledge from application tests. Preserve transaction-time database authorization; this is not a reason to move tenant authority into controllers | Worth exploring |
+| Deepen database capability owners without fragmenting transactions | `retention.ts` combines scheduling, lag/readiness, reaping, rerun handling and enforcement; connection persistence combines several caller roles. Coordinator files already split planning, physical-state validation, settlement and commit | Group by independently consumed capability and keep shared transaction invariants together. Remove type-only root/child contract cycles where a leaf-neutral contract clarifies ownership. Do not split every SQL statement into a module or hide fencing behind generic repository methods. Preserve integration tests at the real transaction seam | Worth exploring |
+
+The first recommendation is the highest-leverage structural follow-up: three
+confirmed failures share the same error-response composition. WB-10 separately
+requires correcting a domain assumption across engine, persistence and delivery,
+not merely catching the exception in the coordinator.
+
+### Test-quality assessment — established evidence
+
+The suite provides substantial real protection: fresh database integration
+executes RLS, grants, leases, replay and retention against PostgreSQL; transport
+cohorts exercise Redis loss and recovery; API injection tests exercise real
+Nest/Fastify routing. Deterministic clocks, deferred promises and recording
+adapters are appropriate for cancellation and dispatch-order contracts. Mocks
+are not intrinsically low value, nor are repeated security checks redundant
+when they protect different entry points.
+
+The confirmed gaps are primarily combinations missing at the same seam:
+framework errors with real feature mappers; synchronous versus asynchronous
+logging failure; repeated SSE frames while authorization remains pending;
+readiness success after shutdown; abort after decryption; and a queued deadline
+with enabled failure notifications. Add these behavioral regressions as part of
+their fixes, replacing assertions that merely repeat an implementation detail
+where the stronger test subsumes them. Do not delete meaningful corruption,
+tenant-isolation, fencing or recovery matrices to reduce test count.
+
+Coverage is explicitly selected-file coverage, not a whole-backend percentage.
+For example, API coverage includes selected identity/HTTP/rate-limit/workspace
+files but excludes substantial OIDC, feature orchestration, SSE and bootstrap
+code; worker coverage includes four selected execution files but not the
+readiness monitor. The database unit cohort is similarly narrow and is
+supplemented by separate integration coverage. The report's 457 reviewed
+uncovered branches are classifications, not 457 newly executed branches.
+`report-risk-coverage.mjs` checks named integration evidence and source
+fingerprints, but a named test's presence does not prove a current run passed.
+Its global report permits unreviewed branches outside the specifically enforced
+lifecycle-command cohort. Keep these scope labels visible and add missing
+high-risk modules deliberately; do not raise baselines or relabel uncovered
+branches as a substitute for fault-detecting tests.
+
+No mutation-test score, production workload benchmark, live AWS qualification,
+or real provider end-to-end success is claimed by this assessment.
+
+Concrete low-value-test cleanup: `nodes-core/test/package-contract.test.ts`
+asserts that each node has three specifically named files. That protects a
+layout, not the executable contract, and makes a cohesive refactor fail without
+a behavior regression. Its entry-source regexes, and the Node SDK test named
+"transitive source imports", do not traverse all transitive imports. Replace
+those checks with the existing dependency-graph gate where it expresses the
+rule, or a browser-entry build/import-graph check. Keep exact export-condition
+tests, independently pinned release fingerprints, public-registry execution
+matrices, hostile JSON tests and dispatch-marker concurrency tests: these
+protect observable compatibility and safety, not merely the current layout.
+
+### Actionable non-bug backlog — implementation and closure details
+
+This section makes the structural and test concerns actionable; it does not
+add them to the ten confirmed correctness findings. All items are **open**.
+Line references describe baseline `9a09ccec`; named symbols/test titles are
+the stable locator if lines move. Paths below are repository-relative.
+
+**Classification:** “cleanup” means observed unnecessary coupling or brittle
+protection with a bounded replacement; “design proposal” means the friction is
+real but an interface decision must be settled before moving code; “assurance”
+means evidence or measurement is incomplete, not that the unmeasured code is
+known to be wrong; “hardening” means preventing a configuration mistake, not a
+demonstrated attacker-controlled exploit.
+
+The six structural-summary rows are not six additional bugs. Error normalization
+is already tracked by WB-01–03 and async ownership by WB-04–06; their structural
+work must be closed with those fixes, not charged twice. The remaining rows are
+expanded below, together with the test-quality concerns. Preserve all existing
+behavior unless a separately identified correctness finding requires a change.
+
+| Concern raised in the assessment | Detailed work item | Classification |
+| --- | --- | --- |
+| Redundant dependency construction | MC-01 | Cleanup |
+| Oversized use-case persistence interfaces | MC-02 | Cleanup |
+| HTTP-coupled destination orchestration | MC-03 | Cleanup |
+| Mixed retention responsibilities | MC-04 | Design proposal |
+| Root/child type-contract ownership | MC-05 | Cleanup; connection-role clarification included |
+| File-layout assertions | TQ-01 | Cleanup |
+| Incomplete transitive-import assertions | TQ-02 | Cleanup |
+| Unmeasured API orchestration | TQ-03 | Assurance |
+| Unmeasured worker lifecycle | TQ-04 | Assurance |
+| Risk-review versus execution evidence | TQ-05 | Assurance/policy decision |
+| Exercise target path validation | MH-01 | Optional hardening |
+
+These are the specific non-bug concerns behind the assessment, not undisclosed
+point deductions. The remaining per-area “preserve/avoid” guidance is not a
+hidden cleanup list: no blanket renaming, new framework, generic repository,
+immutable-version deduplication or coverage-only test deletion is requested.
+Live AWS/provider qualification is a separately recorded verification limit,
+not a local refactor that can be checked off here. The headline score remains
+subjective; it must not substitute for closing individual items with evidence.
+
+#### MC-01 — Remove unused and duplicate API dependency registrations (cleanup)
+
+- **Exact targets:** `apps/api/src/identity-workspace/module.ts:190–219`
+  registers `OidcController` and `SessionController` as factory providers,
+  while `:223–229` also lists them in `controllers`. The `UserController`
+  factory in `identityReadProviders` at `:273–278` repeats the same pattern.
+  `apps/api/src/workflow-authoring/module.ts:56–78` registers persistence,
+  telemetry and definition-catalog tokens despite passing those dependencies
+  directly into use-case instances. `apps/api/src/connections/module.ts:39–45`
+  similarly registers persistence, encryption and telemetry tokens with no
+  production consumers. This is redundant construction/configuration, not a
+  claim that requests execute twice.
+- **Change:** retain Nest controller registration and remove the three unused
+  controller factory-provider entries after confirming their constructor
+  injection metadata. Retain the existing explicit use-case construction in
+  authoring/connections and remove the unused registrations plus the unused
+  declarations/imports in their respective `tokens.ts` files:
+  `WORKFLOW_AUTHORING_PERSISTENCE`, `WORKFLOW_AUTHORING_TELEMETRY`,
+  `WORKFLOW_DEFINITION_CATALOG`, `CONNECTION_PERSISTENCE`,
+  `CONNECTION_ENCRYPTION`, `CONNECTION_TELEMETRY`.
+- **Follow the dead catalog plumbing to its source:** remove the now-unused
+  `WorkflowAuthoringDependencies.definitionCatalog` in
+  `apps/api/src/workflow-authoring/ports.ts:24–32` and its forwarding through
+  `apps/api/src/platform/workflow/workflow-runtime.module.ts:272–273,323–328`.
+  Remove the latest-catalog convenience projection only if no consumer remains.
+  Preserve per-release `definitionCatalog` and `placementDefinitionCatalog`
+  inside `coreAuthoringOptions` (`:219–226`); the database compiler uses them.
+- **Preserve:** `WORKFLOW_AUTHORING_AUTHORIZATION`, `CONNECTION_AUTHORIZATION`
+  and identity tokens actually injected by guards/controllers/services. Do
+  not convert every existing `useValue` into a factory merely for consistency,
+  or remove legitimate provider aliases without a separate consumer check.
+- **Tests/closure:** use the composed API bootstrap/feature tests to prove
+  OIDC, session, current-user, authoring and connection routes still resolve
+  the intended dependencies and enforce guards. Check registration uniqueness
+  only where it tests the duplicate-construction contract, not an exact array
+  ordering snapshot. Search all source/tests for removed token consumers,
+  update obsolete test setup and run API tests/typecheck plus dependency and
+  architecture gates. Success means less construction machinery with unchanged
+  routes, dependency identity and lifecycle ownership.
+  Concrete module-test owners are
+  `test/identity-workspace/nest-module.test.ts:82–101`,
+  `test/workflow-authoring/module.test.ts` and
+  `test/connections/module.test.ts:49–66` under `apps/api`;
+  `test/connections/http-stack.test.ts` supplies real route composition.
+
+#### MC-02 — Narrow API use-case persistence contracts (cleanup)
+
+**Targets:** constructor dependencies in
+`apps/api/src/identity-workspace/use-cases.ts:69–275`,
+`apps/api/src/workflow-authoring/use-cases.ts:88–296`, and
+`apps/api/src/workflow-runs/use-cases.ts:88–223`. The following is the actual
+method requirement, not a proposed interface per SQL statement:
+
+| Owner / use case | Required persistence methods |
+| --- | --- |
+| Identity: `GetCurrentUserUseCase` | `findUserById` |
+| Identity: `ListWorkspaceMembersUseCase` | `listWorkspaceMembers` |
+| Identity: `CreateWorkspaceUseCase` | `createWorkspaceWithOwner` |
+| Identity: `WorkspaceLifecycleUseCase` | `requestWorkspaceLifecycleOperation`, `readWorkspaceLifecycleOperation` |
+| Authoring: `ListWorkflowsUseCase` | `listWorkflows` |
+| Authoring: `CreateWorkflowUseCase` | `createWorkflow` |
+| Authoring: `GetWorkflowDraftUseCase` | `getDraft` |
+| Authoring: `SaveWorkflowDraftUseCase` | `saveDraft`, `getDraft` (including conflict handling) |
+| Authoring: `ValidateWorkflowDraftUseCase` | `getDraft` |
+| Authoring: `PublishWorkflowUseCase` | `publishWorkflow` |
+| Authoring: `ListWorkflowVersionsUseCase` | `listVersions` |
+| Runs: `StartWorkflowRunUseCase` | `start` |
+| Runs: `ReplayWorkflowRunUseCase` | `replay` |
+| Runs: `GetWorkflowRunUseCase` | `get` |
+| Runs: `CancelWorkflowRunUseCase` | `cancel` |
+| Runs: `StreamRunEventsUseCase` | `get` (its event reader/authorization dependencies remain separate) |
+
+- **Problem:** constructors currently require broad persistence ports rather
+  than the methods above. Tests must supply irrelevant members or weaken
+  typing, and future use cases can accidentally depend on unrelated behavior.
+- **Change:** use ordinary `Pick<ExistingPort, ...>` at these constructors
+  or a small feature-local alias when reused. Keep each real adapter and
+  composition factory intact. Do not split the database, invent a class/file
+  for each `Pick`, or narrow away session methods needed by the actual session
+  service. Existing narrow restore/lifecycle authoring ports are precedents,
+  not targets to widen.
+- **Dead aggregate member:** remove unused `getVersion` from the API's
+  `WorkflowAuthoringPersistence` in `apps/api/src/workflow-authoring/ports.ts:10–22`.
+  Remove its stubs/assertions in `test/workflow-authoring/use-cases.test.ts`,
+  `test/workflow-authoring/module.test.ts` and `test/support/api-platform.fixture.ts`
+  under `apps/api`. Keep `getVersion` in the database's own public contract
+  and the full database fixture in `apps/api/test/api-bootstrap.test.ts:124–140`;
+  they have a different, legitimate surface.
+- **Tests/closure:** update the three feature `test/.../use-cases.test.ts`
+  suites so focused construction compiles with only the listed methods.
+  Remove broad casts/unrelated no-op stubs where narrowing makes them
+  unnecessary; retain shared full fixtures where a test genuinely exercises
+  several use cases. API test typecheck and behavior suites must pass,
+  including save-conflict fallback, authorization-before-persistence,
+  idempotent replay, lifecycle polling and stream visibility checks. Adapter
+  lifecycle/close remains owned by composition, never by a single use case.
+  In `apps/api/test/identity-workspace/use-cases.test.ts:65–82`, session/identity
+  stub methods can disappear from focused use-case fixtures; retain them in
+  `test/identity-workspace/nest-module.test.ts` where full composition needs them.
+
+#### MC-03 — Separate notification-destination commands from HTTP requests (cleanup)
+
+- **Exact target:** `apps/api/src/connections/failure-notification-destinations.ts`:
+  `DestinationRequestInput` carries `HttpConnectionRequest`;
+  `FailureNotificationDestinationUseCases` calls `command` and
+  `idempotentCommand` with `input.request` in create/list/get/append/status/
+  setPolicy/clearPolicy. The same file contains the Nest controllers and
+  transport validation helpers. The problem is transport coupling, not simply
+  that the file is long or contains several classes.
+- **Change:** let controllers parse headers, validate path/body inputs and
+  extract authenticated actor/request context. Pass explicit command metadata
+  using the existing `ConnectionCommandInput` vocabulary from
+  `apps/api/src/connections/use-case-support.ts:19–27` (`actor`,
+  `routeWorkspaceId`, optional request/trace identifiers), plus an explicit
+  idempotency key for mutations and typed operation data. Map actor/workspace
+  identifiers to the unchanged database command shape inside orchestration.
+  Keep canonical request-hash construction in the command owner so all callers
+  use the same semantic payload. Move use cases and their input types to a
+  feature-local application module if needed; leave HTTP decorators/parsing in
+  the controller module. Preserve current external exports with a re-export
+  where appropriate, not duplicate implementations.
+- **Preserve:** exact operation/scope/hash semantics, generated destination
+  identity and replay behavior, response schemas/statuses, telemetry, session
+  and CSRF guards. Transaction-time membership/workspace/user checks in
+  `packages/database/src/execution/failure-notification-destinations.ts`
+  remain authoritative; extracting an actor is not replacing authorization.
+- **Tests/closure:** application tests invoke all seven operations using typed
+  command data without manufacturing HTTP headers or `HttpConnectionRequest`.
+  Controller/injection tests prove missing/duplicate/invalid idempotency
+  headers, malformed bodies and unauthenticated/forbidden requests retain
+  their current responses. Database integration still proves same-key replay,
+  mismatched-key conflicts, tenant isolation and role restrictions. Confirm
+  equivalent pre/post-refactor commands produce identical request hashes.
+  The immediate test owner is
+  `apps/api/test/connections/failure-notification-destinations.test.ts:31–263`:
+  replace its HTTP fixture only for direct use-case tests; keep HTTP fixtures
+  for controller parsing tests. Preserve the composed append-route regression
+  in `apps/api/test/connections/http-stack.test.ts:363–381`.
+
+#### MC-04 — Give retention capabilities clearer internal ownership (design proposal)
+
+- **Exact targets:** `packages/database/src/lifecycle/retention.ts` exposes
+  `RetentionDatabase` at `:110–135`; `createRetentionDatabase` at `:230–604`
+  combines dry-run claim/page/process, batch creation, readiness, replica-lag
+  observation, operator reruns, transient reaping and enforcement scheduling.
+  `createRetentionEnforcementCoordinator` starts at `:618` in the same file.
+  `apps/retention/src/maintenance-loops.ts:16–28` receives the broad database
+  alongside separate enforcement/artifact/preview/purge coordinators.
+- **Actual friction:** independently changing readiness/replica-lag logic or
+  operator rerun handling requires navigating the same factory as dry-run
+  processing and scheduler policy. File length alone is not the finding.
+- **Proposed grouping:** keep dry-run claim/page/process and batch creation
+  together; group readiness and replica-lag observations as maintenance health;
+  isolate operator rerun dispatch; keep enforcement scheduling with its bounded
+  scan policy. Keep transient reaping delegated to its existing implementation.
+  Move the existing enforcement coordinator as one coherent unit if that
+  clarifies ownership; do not break a page's claim/prepare/complete sequence
+  into independently callable fragments. Suggested filenames are not a
+  required architecture—choose after mapping the actual callers.
+- **Selected design decision (recorded before implementation):** keep the public
+  `RetentionDatabase` interface and `createRetentionDatabase` composition seam
+  unchanged. That composer will acquire and close the single pool lease, then
+  lend the pool and parsed options to four private capabilities: dry-run/batch
+  work (`claimDryRuns`, `executeDryRunPage`, `processNext`, `startDryRun`,
+  `startEnforcement`), maintenance health (`checkReadiness`,
+  `recordRegionalReplicaLag`), operator recovery (`processOperatorRerun`), and
+  enforcement scheduling (`scheduleEnforcement`). Transient-data reaping stays
+  delegated to its existing module. `apps/retention/src/run.ts` is the health
+  caller; `maintenance-loops.ts` consumes the latter three loop capabilities
+  plus dry-run `processNext`; database integration tests additionally exercise
+  the lower-level dry-run/batch methods. The extraction therefore removes SQL,
+  validation, and mapping knowledge from the composer without exposing new
+  public methods, creating extra pools/close owners, or splitting any
+  claim/page/complete sequence.
+- **Implementation constraints:** composition acquires/owns the pool lease once
+  and lends it to internal capabilities. Do not create one pool per extracted
+  file, duplicate `close`, change maintenance role, or replace explicit SQL
+  fencing with generic repository calls. Preserve advisory-lock serialization
+  with legal holds, timeout/abort handling, stale-lease outcomes, bounded batch
+  limits, regional control-ledger authority and external-I/O ordering. Keep
+  public exports compatible unless a deliberate caller migration is agreed.
+- **Tests/closure:** `retention-scheduling.integration.test.ts`,
+  `retention-operator.integration.test.ts`, `retention-legal-hold.integration.test.ts`,
+  `retention-transaction.test.ts`,
+  `retention-transaction-cancellation.integration.test.ts` and the artifact/
+  purge retention suites under `packages/database/test` retain their real
+  transaction tests. Retention-app loop tests must still demonstrate bounded
+  polling/backoff and shutdown. Before implementation, record the chosen
+  capability/caller map and what leaves the large factory. Close only when
+  those changes reduce caller knowledge while preserving pool ownership and
+  all durable invariants; a file split with unchanged broad coupling is not
+  sufficient. No schema migration or new ADR is required merely to move code.
+
+**Completed 2026-09-09:** `createRetentionDatabase` is now a small composition
+owner for one maintenance pool lease and one `close`. It combines four private
+capabilities in `retention-database-capabilities.ts` (dry-run/batch work,
+maintenance health, operator recovery, and enforcement scheduling), with
+shared parsing/query mapping in `retention-support.ts` and public shapes in the
+leaf-neutral `retention-contracts.ts`. Transient reaping remains delegated and
+the enforcement coordinator remains cohesive. Database build and all 264 unit
+tests pass; seven scheduling/operator/legal-hold/cancellation/artifact/purge
+integration files pass with 19 tests.
+
+#### MC-05 — Remove implementation-root imports from shared type contracts (cleanup)
+
+- **Exact edges:** `packages/database/src/authoring/workflow-authoring.ts:23–24`
+  imports its read/draft stores; `workflow-authoring-reads.ts:11–19` and
+  `workflow-authoring-drafts.ts:24–31` import their types back from that root.
+  `packages/database/src/tenant-access/identity-workspace.ts:24–30` imports
+  row/session implementations; `identity-workspace-rows.ts:4–10` and
+  `identity-workspace-session-store.ts:7–11` import records/ports from the root.
+- **Problem:** erased type back-edges make foundational contracts appear owned
+  by the implementation assembler. This is navigation/ownership friction,
+  **not** an emitted runtime cycle or proven initialization failure.
+- **Change:** read existing record types directly from
+  `authoring/workflow-authoring-records.ts`; put shared input/result/port types
+  in a leaf-neutral authoring contract module, reusing
+  `workflow-authoring-types.ts` if it remains cohesive. Put identity records,
+  input types and shared port vocabulary in a leaf-neutral identity contract
+  module. Both assembler and child stores import that contract. Preserve
+  existing public type re-exports; do not create a catch-all package-wide
+  `types.ts` or duplicate definitions across children. Include other child
+  imports of these same roots in the migration, not just the four examples.
+- **Apply the same bounded correction to the other verified back-edges:**
+  `execution/dispatcher-rows.ts:3` imports `LeasedOutboxEvent` from its assembler
+  `execution/dispatcher.ts`; `execution/failure-notification-completion-store.ts:10`
+  and `failure-notification-destination-store.ts:9–14` import shared contracts
+  from `execution/failure-notifications.ts`; `operator/operator-command-runtime.ts:6–9`
+  imports `GenericOperatorCommandResult`/`OperatorCommandDatabaseOptions` from
+  `operator/operator-commands.ts`. All paths are under `packages/database/src`.
+  Move only shared contracts to a cohesive leaf in each feature, not a universal
+  contract registry. Also change
+  `tenant-access/oidc-login-transactions.ts:10` to import `IdentityConflictError`
+  directly from the existing `identity-workspace-errors.ts`; that is a runtime
+  import through a re-export, unlike the erased type edges.
+- **Tests/closure:** verify no child needs its assembler solely for a type,
+  no replacement leaf imports that assembler, public declarations remain
+  compatible, and typecheck/build/architecture checks pass. Keep
+  `workflow-authoring.test.ts`, authoring atomicity/coordination/publication
+  integration suites and identity/session integration/cancellation tests.
+  Do not rewrite behavior tests around moved private filenames.
+- **Connection clarification:** `connections/connection-persistence.ts`
+  already provides management/test/resolution `Pick`s (`:318–357`) and shares
+  validation, mapping and transaction vocabulary with focused implementation
+  files. Do **not** count its broad umbrella contract or line count as an
+  independently confirmed missing-role-separation defect. Further splitting
+  its shared codecs/helpers needs demonstrated caller friction; retain the
+  current role-specific factories and single transaction authority. The
+  earlier broad recommendation is bounded by this clarification.
+
+**Completed 2026-09-09:** authoring, identity, dispatcher,
+failure-notification, and operator-runtime shared shapes now live in cohesive
+feature-local contract leaves, while assembler roots preserve their public
+re-exports. Authoring children read record shapes directly from the existing
+record leaf, and OIDC login imports `IdentityConflictError` directly from its
+error owner. No replacement contract leaf imports its assembler. Database
+typecheck/build and 264 unit tests pass; eight authoring/identity integration
+files pass with 52 tests.
+
+#### TQ-01 — Replace the core-node file-layout assertion (cleanup)
+
+- **Exact target:** `packages/nodes-core/test/package-contract.test.ts:44–63`,
+  test `keeps each core node behind definition, validation, and executor modules`.
+  It loops over twelve hard-coded node directories and requires nonempty
+  `definition.ts`, `executor.ts`, and `validation.ts` files in each.
+- **Problem:** a behavior-preserving rename/merge fails the test, while three
+  files containing incorrect implementations can satisfy it. The hard-coded
+  list is another inventory to maintain beside the actual registry.
+- **Change:** remove this layout-only assertion after mapping its intended
+  responsibility guarantees to the existing public-registry tests. Where a
+  guarantee is missing, exercise the registered definition's validation and
+  executor through the supported registry. Do not merely replace the filename
+  list with a directory snapshot. Do not derive independently pinned historical
+  release expectations from the same live registry being tested.
+- **Preserve:** browser/server export conditions, compatibility fingerprints,
+  immutable version behavior, invalid-input handling and dispatch-marker tests.
+- **Closure:** a private file rename with unchanged exports/behavior passes;
+  removing a supported registration or breaking a required executor/validation
+  behavior still fails an independent contract test. Run the nodes-core tests,
+  build/typecheck and architecture checks. Record which stronger assertion
+  replaces each claimed guarantee before deleting the old test.
+
+#### TQ-02 — Replace partial source regexes with browser-entry protection (cleanup)
+
+- **Exact targets:** `packages/node-sdk/test/package-contract.test.ts:37–50`
+  reads only `src/index.ts` and `src/release.ts`, despite its “transitive source
+  imports” title. `packages/nodes-core/test/package-contract.test.ts:34–42`
+  scans only `src/index.ts`. The server-source regexes at SDK `:52–64` and
+  core `:65–76` likewise do not inspect implementation dependencies.
+- **Problem:** an intermediary module can import a Node builtin/server module
+  without appearing in those inspected strings. Conversely a forbidden word
+  in a comment can fail a regex without adding a dependency.
+- **Change:** provide one reusable browser-entry dependency check for the
+  SDK default/release exports and core default export. Resolve runtime imports
+  and re-exports through local modules and workspace export conditions; cover
+  literal dynamic imports or explicitly report them as unsupported instead of
+  silently certifying them. Reject reachable Node builtins and server-only
+  exports. A browser-target build with a verifiable dependency graph is also
+  acceptable. Keep type-only imports separate from executable imports.
+- **Existing gate limit:** `infrastructure/validate-module-imports.mjs:35–111`
+  checks static relative runtime cycles and cross-package relative imports;
+  it is not already a browser-reachability checker. Reuse its parser concepts
+  where helpful, but do not delete the package tests merely because
+  `architecture:check` passes.
+- **Tests/closure:** add small fixtures for a two-hop forbidden import, a
+  re-export, a legal type-only import, a comment containing `node:`, and browser
+  versus server export resolution. The two-hop runtime violation must fail,
+  and the safe cases must pass. Keep exact package export assertions and the
+  server-only guard-order assertion unless a replacement actually proves that
+  ordering guarantee. Remove only regex checks subsumed by the new protection.
+
+#### TQ-03 — Measure the API orchestration implicated by this review (assurance)
+
+**Selected measurement disposition:** retain the original near-100% API
+critical-file cohort unchanged and add a separately named API orchestration
+cohort for `application-error-mappers.ts`, `connection-testing.ts`,
+`workflow-runs/use-cases.ts` and `sse-authorization-lifetime.ts`. The direct
+`identity/oidc.ts`, identity/workspace and authoring use-case suites remain the
+behavioral seams for those modules; `app.ts` remains covered by the composed
+Nest/Fastify bootstrap suite. They are intentionally not folded into this first
+orchestration denominator because doing so would mix independently actionable
+coverage debt into the WB-01–06 closure. `main.ts` remains excluded from unit
+coverage because its process exit/signal behavior requires compiled
+child-process evidence. These are explicit evidence dispositions, not claims
+that the excluded production files have percentage coverage.
+
+- **Exact target:** `apps/api/vitest.coverage.config.ts:11–16` includes selected
+  identity, HTTP, rate-limit and workspace-policy files, not all API source.
+  API-wide unit test execution does not make excluded files appear in coverage.
+- **First concrete additions:** `src/workflow-runs/use-cases.ts` and
+  `src/workflow-runs/sse-authorization-lifetime.ts` for stream authorization,
+  `src/connections/connection-testing.ts` for dispatch cancellation, and
+  `src/application-error-mappers.ts` for composed error mapping. Add these
+  alongside WB-01–04/WB-06 regression work, not after declaring those fixes done.
+- **Existing test owners:** `apps/api/test/workflow-runs/use-cases.test.ts`,
+  `test/workflow-runs/sse-transport.test.ts`,
+  `test/connections/use-cases.test.ts`, `test/api-bootstrap.test.ts`, and
+  `test/platform/http/problem-details.filter.test.ts`.
+- **Further explicit disposition:** record the measurement/test seam for
+  `src/identity/oidc.ts`, `src/identity-workspace/use-cases.ts`,
+  `src/workflow-authoring/use-cases.ts`, `src/app.ts`, and `src/main.ts`.
+  Reuse `test/identity/oidc.test.ts`, identity/authoring use-case suites and
+  bootstrap tests; process entrypoints may need child-process evidence rather
+  than a fake unit percentage. An intentional exclusion needs a named reason
+  and alternative evidence, not silence.
+- **Closure:** changed include inventories are asserted, new high-risk files
+  occur in the report, and their safety branches have behavioral regressions
+  including the WB combinations. Keep existing critical-file protections;
+  if a broader denominator requires separate cohorts, retain the old cohort
+  and establish the new one explicitly rather than lowering the old gate.
+  Passing coverage is additional evidence, not a substitute for those cases.
+
+#### TQ-04 — Measure worker readiness and lifecycle behavior (assurance)
+
+- **Exact target:** `apps/worker/vitest.coverage.config.ts:21–23` includes only
+  `failure-notification-delivery`, `node-attempt-handler`,
+  `node-runtime-capabilities`, and `preview-attempt-runtime`.
+- **First concrete additions:** `src/runtime/worker-readiness-monitor.ts`,
+  `src/runtime/worker-readiness.ts` and
+  `src/runtime/worker-process-shutdown.ts`. Make the monitor's in-flight check
+  and stopping state observable through its lifecycle interface, not private
+  variable assertions.
+- **Test work:** add a focused readiness-monitor lifecycle suite for deferred
+  success, deferred failure and shutdown during marker writing (WB-05), using
+  isolated temporary paths or an internal marker adapter. Preserve
+  `test/worker-bootstrap.test.ts` and
+  `test/worker-process-lifecycle.test.ts` as composition/process evidence.
+- **Closure:** no late completion recreates readiness after final shutdown;
+  checks/timers are settled or stopped; repeated shutdown is safe; resources
+  close in the established order. New files appear in a measured cohort, with
+  existing execution thresholds retained. Child-process behavior is reported
+  separately where the unit coverage collector cannot observe it.
+
+#### TQ-05 — Make risk classifications and integration evidence unambiguous (assurance)
+
+**Selected policy decision (recorded before tooling implementation):**
+lifecycle-command, API (including the separate orchestration measurement),
+worker and database are strict cohorts: every uncovered branch must have a
+durable review. Existing unreviewed debt in
+artifact-store (8), contracts (1), integrations (3) and workflow-engine (11)
+is retained as an explicit ceiling, not accepted as reviewed; the report
+rejects any increase. The new, separately measured API orchestration cohort
+retains the original near-100% API gate and establishes an honest independent
+non-regression floor without weakening that gate; its remaining uncovered
+branches must still be covered or durably classified.
+Source-linked named integration tests are `referenced-only`. They become
+`executed` only when a matching passing, non-skipped result is supplied for the
+same test identity and reviewed source revision. This staged policy prevents
+new silent debt and avoids falsely relabeling historical gaps.
+
+- **Exact targets:** `infrastructure/report-risk-coverage.mjs:394–400` verifies
+  that an integration test name occurs in its source; `:411–415` enforces the
+  exact file inventory/no-unreviewed rule only for `lifecycle-command`.
+  `infrastructure/risk-coverage-reviews.json` stores the classifications.
+  Cohort test-health reports are consumed elsewhere; the specific limitation
+  is that a referenced integration case is not proven executed by source text.
+- **Change:** label source-linked integration evidence as a reference until
+  a matching successful execution artifact is supplied. If the report claims
+  executed integration evidence, match test identity and result from the
+  relevant run, reject failed/skipped/missing cases, and bind evidence to the
+  reviewed source revision. Offline/unit-only runs should say “not executed
+  in this run,” not masquerade as integration-qualified runs.
+- **Policy decision:** document which cohorts must reject new/unreviewed
+  uncovered branches. Preserve the lifecycle rule; choose an explicit staged
+  policy for other high-risk cohorts rather than silently declaring all 23
+  existing unreviewed branches acceptable or relabeling them defensive.
+- **Database distinction:** `packages/database/vitest.integration-coverage.config.ts`
+  already includes `src/**/*.ts`; `database:coverage:merge` combines it with
+  the narrow unit cohort. Preserve that real-service evidence. This item does
+  not request a duplicate all-database unit suite or claim database source is
+  absent from integration coverage.
+- **Tests/closure:** extend `infrastructure/report-risk-coverage.test.mjs`
+  with present-but-skipped, failed, missing, stale-revision and passing
+  integration evidence, plus policy tests for permitted versus prohibited
+  unreviewed branches. Output must distinguish executed, reviewed-uncovered,
+  referenced-only and unreviewed states. Document the cohort policy and do not
+  mark externally unavailable tests passed to close this item.
+
+#### MH-01 — Constrain exercise paths to the configured origin (hardening)
+
+- **Exact target:** `infrastructure/exercises/run-http-exercise.mjs:280–293`,
+  `loadInputs`: `startsWith('/')` accepts `//another-host/path`, then
+  `new URL(path, base)` changes origin. Authentication headers are assembled
+  by `requestAuthenticationHeaders` at `:247–267`.
+- **Change:** validate the target before loading/using authentication: reject
+  network-path references and backslashes and require resolved origin equality
+  with the configured base. Keep legitimate absolute paths, query strings and
+  supported base protocols. Extract a pure target resolver only if that makes
+  the input contract directly testable; do not add another HTTP client layer.
+- **Tests/closure:** extend `infrastructure/exercises/run-http-exercise.test.mjs`
+  with ordinary paths, same-origin queries, `//host`, `///host`, backslashes
+  and non-path input. Invalid targets fail before authenticated network I/O.
+  Both inputs are operator-controlled today; classify this as prevention of
+  configuration mistakes, not an external credential-theft vulnerability.
+
+### Per-area coding assessment
+
+These are current-baseline judgments, not inherited scores from the historical
+sections. Naming, conditions/constants, readability, responsibility boundaries,
+runtime/data safety, and test value are considered together below. A clear
+module can still contain a consequential defect; absence of a finding is not
+proof of defect-free behavior. Numerical scores follow this assessment and the
+completed inspection ledger.
+
+| Area | What is working and should remain | Specific friction or next improvement |
+| --- | --- | --- |
+| API | Feature ownership is recognizable; request-bound authorization capabilities, real routing tests, explicit persistence adapters and safe response shapes provide useful seams. Constants and guard names generally express policy rather than incidental mechanics | Error normalization has competing fallback owners (WB-01–03). Signal/observer lifetimes are incomplete at composed operations (WB-04, WB-06). Remove unused DI registrations, narrow oversized use-case ports, and separate destination commands from HTTP request parsing. These changes should reduce alternate paths and test scaffolding |
+| Worker | Claim, execute, dispatch marking, completion and coordinator persistence are separate responsibilities. Explicit leases and ambiguity classifications are necessary safety complexity; deferred-promise and transport-loss tests are valuable | Readiness lacks a terminal lifecycle boundary (WB-05). Keep constructor/cleanup ownership visible when assembling attempt capabilities; do not turn each small callback into another framework. Selected coverage misses lifecycle code, so execution-file coverage is not worker-wide assurance |
+| Lifecycle command | Command parsing, execution and side-effect ports separate operator intent from destructive work. Confirmation, deadline, replay and cleanup tests protect observable safety | Preserve bounded cleanup and cancellation behavior at the public command seam. The specially enforced risk-coverage cohort is useful but must not be generalized to claim all other cohorts have no unreviewed branches |
+| Operator command | Small command surface with explicit compatibility and control operations; argument validation and guarded execution are appropriate | Keep operator authorization and target identity explicit. Do not add a generic command abstraction solely to deduplicate small parsing branches; distinguish local command checks from live operational qualification |
+| Recovery | Recovery evidence and orchestration are kept separate from ordinary execution. Dedicated identities and fail-closed checks fit the risk | Regional/control-storage configuration must be judged at the composition owner with artifact storage (WB-08), not independently per parser. Local tests do not qualify real regional failover |
+| Retention | The app delegates durable retention authority to database/control-ledger owners instead of duplicating deletion policy. Bounded batches and cancellation are meaningful | Preserve thin composition here; capability deepening belongs in the large database retention owner. Avoid duplicating retry or cleanup policy in both app and database layers |
+| Artifact store | Explicit object identity, checksums, capacity limits, upload finalization and control-ledger roles have useful contracts. Fake-adapter tests and local integration cover different failure surfaces | Validate the complete artifact/control location matrix (WB-08). Keep the three unexecuted AWS-only tests visible; local object-store behavior is not evidence for AWS retention/permissions guarantees |
+| Contracts | Generated outputs, route catalogs and deterministic schemas make the public surface inspectable. Exact export and regeneration checks are useful | Repeated handwritten header definitions drift from runtime (WB-09). Share grammar at the transport seam and retain independent acceptance/rejection cases; generated equality alone cannot detect incorrect source schemas |
+| Database | Tenant transactions, RLS/grants, explicit fences, immutable versions, inbox/outbox identity and real PostgreSQL integration provide strong protection. Coordinator planning/validation/commit separation is worth preserving | Notification context assumes every terminal failure belongs to a node (WB-10). Deepen independently consumed retention/connection capabilities without hiding SQL lock order or splitting atomic operations. Keep schema and migration invariants visible rather than introducing generic repositories |
+| Integrations | Provider-specific adapters sit behind bounded runtime capabilities; dispatch evidence and safe error classification are explicit. Security checks at distinct entry points are not redundant | Cancellation must be forwarded by callers as well as supported by clients (WB-06 is in the API caller). Preserve ambiguity semantics and independently exercise pre-/post-dispatch failure paths; provider mocks do not certify actual provider behavior |
+| Node catalog | Small projection layer derives browser-safe catalog information from registered definitions; historical release tests protect observable compatibility | Keep the single registration/projection source and ordering contracts. Do not split projection helpers merely to reduce file length; improve tests only where they assert layout instead of catalog behavior |
+| Node SDK | Registry, release identity, execution and capability contracts are separate and deliberately explicit. Hostile-value and immutable-release tests provide real value | The purported transitive-import source test does not traverse the whole graph. Replace that assurance with a graph/build check; preserve independently pinned fingerprints rather than deriving expected values from the implementation under test |
+| Core nodes | Shared registration and consistent node contracts make many files navigable. Immutable behavior versions, golden compatibility values, executor matrices and dispatch-marker tests are intentional protection | The three-filenames-per-node test obstructs cohesive refactoring without protecting runtime behavior. Replace layout/source-regex checks with export/import-graph or executable contract checks. Repeated immutable version code is not automatically safe to deduplicate |
+| Observability | Structured safe fields, bounded labels, redaction and explicit shutdown keep diagnostics separate from domain work. Tests cover sanitization and lifecycle behaviors | Diagnostic failure containment must hold at consumers too (WB-03). Avoid treating arbitrary hypothetical tracer callback behavior as a production defect without evidence. Preserve meaningful label bounds rather than adding generalized serialization machinery |
+| Queue | Durable message identities, schema checks, readiness and transport cleanup have clear ownership. Redis-loss/recovery integration adds evidence not supplied by mocks | Keep queue delivery distinct from database execution authority. Do not duplicate durable retry decisions in transport wrappers or inflate coverage with filename checks |
+| Rate limit | Compact policy/store separation, bounded dimensions and explicit unavailable behavior are proportionate to the problem | Keep policy constants centralized and failure-mode tests behavioral. Runtime validation of impossible internal typed states is hardening, not a demonstrated production bug; avoid multiplying adapters for this small module |
+| Workflow engine | Pure transitions, explicit control facts, scoped invocations and durable plans make orchestration testable. Branch/loop/retry/control matrices protect meaningful combinatorial behavior | Test valid engine outcomes across persistence consumers, especially node-free deadlines with notifications (WB-10). Keep pure planning separate from database mechanics and avoid broad rewrites of intentional state-machine complexity |
+| Workflow model | Central graph, executable, checkpoint and notification schemas expose domain invariants and compatibility versions | Notification context needs a truthful run-level failure variant (WB-10). This is a domain correction, not a permissive optional node field everywhere. Preserve canonicalization, bounded graph validation and independent compatibility fixtures |
+| Root, CI and infrastructure | Dependency, complexity, duplication, contract and image gates make policy executable. Authored scripts/configs were inspected; syntax checks and structural JSON/YAML/lockfile validation add evidence | Image-pin parsing misses CI's actual YAML override shape (WB-07). Historical ledgers/baselines are revision-bound evidence, not proof of current full inspection. Add negative mutations for advertised gates and avoid raising baselines to hide regressions |
+| Documentation | The plan, context and ADRs provide explicit sources of authority; revision-pinned historical reports can explain previous decisions | Use this current section as the assessment entry point. Preserve historical labels and distinguish implemented guarantees from local tests and external qualification. Do not update old pinned counts to pretend they describe the new tree, or delete linked history without agreement |
+
+An additional non-blocking exercise-runner hardening opportunity is to enforce
+that `new URL(path, base).origin === base.origin` and reject network-path inputs
+in `infrastructure/exercises/run-http-exercise.mjs`. Its current leading-slash
+check accepts `//another-host/path`. The path and base are both supplied by the
+operator's environment, so this is not presented as an untrusted remote-input
+vulnerability or a deployed credential leak. A same-origin assertion would
+make the advertised path contract safer against configuration mistakes.
+
+### Refreshed scores
+
+Scores are qualitative engineering judgments, not measured coverage or defect
+probabilities. Use 9 for a particularly cohesive area with no material issue
+identified, 8 for strong code with bounded improvement opportunities, 7 for
+good foundations needing targeted corrections, and 6 for a criterion with
+several consequential gaps. No area receives 10 from a finite review. Scores
+are rounded, and the overall 7/10 is risk-weighted rather than an average of
+package sizes or test counts. The preceding area notes supply their rationale.
+
+“Names” includes file/folder organization and terminology; “Flow” includes
+conditions, guards, constants and readability; “Design” includes responsibility
+separation, interfaces and duplication; “Safety” includes runtime/error/data,
+security, concurrency and resource behavior; “Tests” includes fault detection,
+realism, brittleness and honest coverage scope.
+
+| Area | Names | Flow | Design | Safety | Tests | Overall |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| API | 8 | 7 | 7 | 6 | 7 | 7 |
+| Worker | 8 | 8 | 8 | 7 | 8 | 8 |
+| Lifecycle command | 8 | 8 | 8 | 8 | 8 | 8 |
+| Operator command | 8 | 8 | 8 | 8 | 8 | 8 |
+| Recovery | 8 | 8 | 8 | 8 | 8 | 8 |
+| Retention | 8 | 8 | 8 | 8 | 8 | 8 |
+| Artifact store | 8 | 8 | 8 | 7 | 8 | 8 |
+| Contracts | 8 | 8 | 8 | 7 | 7 | 7 |
+| Database | 8 | 7 | 7 | 7 | 8 | 7 |
+| Integrations | 8 | 8 | 8 | 8 | 8 | 8 |
+| Node catalog | 9 | 9 | 9 | 9 | 8 | 9 |
+| Node SDK | 9 | 8 | 9 | 8 | 8 | 8 |
+| Core nodes | 9 | 8 | 8 | 8 | 8 | 8 |
+| Observability | 8 | 8 | 8 | 8 | 8 | 8 |
+| Queue | 8 | 8 | 8 | 8 | 8 | 8 |
+| Rate limit | 8 | 8 | 8 | 8 | 8 | 8 |
+| Workflow engine | 8 | 8 | 9 | 8 | 8 | 8 |
+| Workflow model | 9 | 8 | 8 | 7 | 8 | 8 |
+| Root, CI and infrastructure | 8 | 7 | 8 | 7 | 7 | 7 |
+
+Documentation is assessed separately at **8/10 for clarity and authority**:
+current contracts and ADRs are useful, but extensive historical material needs
+clear revision boundaries. That is not a runtime/test score or a renewed
+production-readiness qualification.
+
+### Recommended follow-up order
+
+1. Correct the run-level notification model and cross-seam timeout regression
+   (WB-10). A legitimate engine transition must not become uncommittable because
+   optional notification configuration is enabled.
+2. Repair operation ownership at connection dispatch, SSE waits and worker
+   shutdown (WB-06, WB-04, WB-05). Keep each change paired with a deferred or
+   cancellation regression at the real operation boundary.
+3. Consolidate safe error-response normalization (WB-01–03). Resolve precedence,
+   catalog membership and sink isolation together, with composed-app tests.
+4. Close configuration/contract assurance gaps (WB-08, WB-07, WB-09), using
+   complete collision matrices and negative grammar/configuration cases.
+5. Remove unused DI paths and layout-bound tests, then narrow ports where that
+   measurably removes irrelevant dependencies or stubs. Evaluate larger
+   database capability changes separately; do not bundle them into bug fixes.
+
+For non-bug work, MC-01/MC-02/MC-03 and MC-05 are bounded cleanup candidates;
+TQ-01/TQ-02 replace weak tests, not safety contracts. Pair TQ-03/TQ-04 with the
+relevant bug fixes. Settle TQ-05's evidence policy and MC-04's capability design
+before implementation. MH-01 is independent optional hardening.
+
+Closeout checklist:
+
+- [x] MC-01: duplicate/unused DI registrations removed; composed routes verified.
+- [x] MC-02: listed use-case ports narrowed; irrelevant test scaffolding removed.
+- [x] MC-03: typed destination commands replace HTTP-shaped application input.
+- [x] MC-04: retention design selected, then cohesive extraction verified.
+- [x] MC-05: shared types no longer require child-to-assembler imports.
+- [x] TQ-01: layout test replaced by documented executable guarantees.
+- [x] TQ-02: transitive browser dependency protection passes negative fixtures.
+- [x] TQ-03: API measurement expanded/dispositions documented; regressions pass.
+- [x] TQ-04: readiness/lifecycle measurement and shutdown regressions pass.
+- [x] TQ-05: evidence states and cohort enforcement policy made explicit/tested.
+- [x] MH-01: same-origin exercise target contract verified before authenticated I/O.
+
+For each completed item record the changed symbols, removed/replaced path,
+checks and results, revision, and any residual limitation next to its ID. An
+accepted deferral must record its reason; it is not “fixed.” These checklist
+items supplement WB-01–10 and do not close any of those bugs implicitly.
+
+The sequence above records the pre-implementation recommendation. The user
+subsequently authorized implementation of all listed items. No commit, push or
+deployment is part of this closeout.
+
+### Current implementation closeout — 2026-09-09
+
+All changes below are present only in the uncommitted working tree. “Passed”
+means the named local check completed successfully; it does not qualify live
+AWS, provider, regional-failover, or production behavior.
+
+| Item | Resolution and concrete evidence |
+| --- | --- |
+| WB-01 | Error normalization now preserves Nest `HttpException` semantics before feature mapping, and feature mappers decline unknown failures instead of manufacturing a terminal fallback. Composed bootstrap/filter regressions cover unknown nested routes plus explicit 400/401/403/404/503 responses with the real mapper set. |
+| WB-02 | Application errors require an own catalog property. `constructor`, `toString`, `__proto__`, ordinary unknown values, and optional-field sanitization all pass through the safe generic problem path. |
+| WB-03 | The complete logger invocation is isolated from response emission for both synchronous throws and rejected promises; the original safe problem is sent exactly once. |
+| WB-04 | SSE authorization lifetime now owns removable wait subscriptions and coalesces refresh work instead of adding a permanent reaction per frame. Long-stream observer bounds, pre-revocation, refresh coalescing, stalled lookup, expiry, disconnect, backpressure, and stop-during-refresh regressions pass. |
+| WB-05 | `WorkerReadinessMonitor` owns one in-flight check, has terminal stopping/stopped states, awaits completion before final marker removal, and refuses new scheduling/check work during shutdown. Deferred success/failure, marker-write overlap, coalescing, repeated shutdown, and drain-during-probe regressions pass. |
+| WB-06 | Connection test dispatch retains and checks the request signal across decryption and forwards it to HTTP, Slack, and email clients. Pre-dispatch abort prevents provider I/O; in-flight abort reaches the client; completed replay still skips decryption and dispatch. |
+| WB-07 | The image-pin validator recognizes both YAML environment mappings and dotenv assignments. Negative mutable-tag mutations in both representations and the repository image check pass. |
+| WB-08 | Control-ledger configuration validates the complete primary/recovery artifact and ledger bucket collision matrix while retaining valid regional endpoints and credentials. Matrix regressions pass. |
+| WB-09 | Transport-owned CSRF, idempotency, content-type, and related header schemas now drive both runtime parsing and OpenAPI generation. Grammar-edge parity tests and regenerated contract artifacts pass contract validation. |
+| WB-10 | ADR 022 records a strict backward-compatible node/run primary-failure union. Node-free queued timeouts persist a truthful run-level context atomically and render run scope without inventing a node; replay, model, worker, database unit, and scheduling integration regressions pass. |
+| MC-01 | Removed duplicate OIDC/session/user controller factories and unused connection/authoring persistence, encryption, telemetry, and catalog registrations, including dead latest-catalog plumbing. Module uniqueness and composed route tests preserve controller/guard resolution. |
+| MC-02 | Identity/workspace, authoring, and workflow-run use cases now depend on method-level `Pick` contracts. The unused API `getVersion` aggregate member and irrelevant focused-test stubs were removed while real adapters and composition ownership remain unchanged. |
+| MC-03 | Destination controllers now parse authentication, route metadata, and idempotency headers into typed application commands; direct use cases no longer manufacture HTTP requests. All seven operations, canonical request hashes, invalid/missing/duplicate headers, unauthenticated access, and hidden-workspace behavior are covered. |
+| MC-04 | The recorded design was implemented: `createRetentionDatabase` owns one pool lease/close and composes cohesive dry-run/batch, health, operator-recovery, and enforcement-scheduling capabilities. Database build/unit checks and seven relevant integration files (19 tests) pass. |
+| MC-05 | Authoring, identity, dispatcher, failure-notification, and operator contracts moved to feature-local leaves; child modules no longer import assembler roots solely for types, public re-exports remain compatible, and OIDC imports its error directly. Architecture, database build/typecheck/unit checks, and eight authoring/identity integration files (52 tests) pass. |
+| TQ-01 | The core-node private filename assertion was replaced with a pinned public registration inventory backed by existing schema/executor behavior suites. |
+| TQ-02 | A reusable TypeScript-AST traversal now rejects transitive Node built-ins, server-only modules, unavailable browser exports, and non-literal dynamic imports. Safe, direct, and two-hop negative fixtures pass for browser entrypoints. |
+| TQ-03 | The original API critical cohort remains unchanged at 100% across statements, branches, functions, and lines. A separate asserted orchestration cohort measures the four review-target files at 96.47% statements, 94.04% branches, 96.82% functions, and 97.31% lines; 582 tests pass and every remaining branch has a durable review. Identity/OIDC/authoring use cases retain their named direct suites, `app.ts` retains composed bootstrap evidence, and `main.ts` retains child-process disposition rather than a fabricated unit percentage. |
+| TQ-04 | Worker coverage now includes readiness monitor, readiness, and process-shutdown sources. The worker run passes 286 tests at 94.00% statements, 95.08% branches, 83.33% functions, and 94.41% lines; remaining selected-file branches are reviewed under the strict policy and child-process shutdown remains separately exercised. |
+| TQ-05 | The risk report distinguishes `unreviewed`, `reviewed-uncovered`, `referenced-only`, and source-revision-bound `executed` evidence. Lifecycle, API, API orchestration, worker, and database cohorts are strict; the pre-existing artifact/contracts/integrations/workflow-engine debt ceilings remain 8/1/3/11. Thirteen policy regressions pass, and the current report records 468 reviewed plus 23 ceiling-bound unreviewed branches across 129 selected files and 5,449 coverable lines. |
+| MH-01 | Exercise targets must resolve as absolute-path HTTP(S) URLs on the configured origin before authentication headers or network I/O. Ordinary/query paths pass; network paths, alternate origins, backslashes, and non-path inputs fail. |
+
+| Combined closeout check | Result and limit |
+| --- | --- |
+| `pnpm check` | Passed end to end: formatting, documentation, runtime/project/import/dependency/schema gates, build, lint, complexity and duplication ratchets, generated contracts, all workspace typechecks, and 2,388 unit/component tests. |
+| `pnpm test:coverage` | Passed end to end. The original API critical cohort remains 100%; API orchestration and worker results are recorded under TQ-03/TQ-04. The risk report enforces all strict cohorts and the four frozen debt ceilings. |
+| `pnpm test:integration` | Exited successfully with all 408 PostgreSQL integration tests passing. The ordinary command did not enable artifact-store, queue, worker, or API service gates, so their 73 tests were reported as skipped rather than passed. The WB-10/MC-04/MC-05 focused database integration sets are included in the passing database run; live Redis/S3/provider qualification remains a recorded limit. |
+| `pnpm deployment:check` | Passed runtime-closure typecheck, 29 deployment assertions, deterministic rendering, and digest-pin validation. |
+| `pnpm images:check` / `pnpm exercise:check` | Passed seven image-pin and seven exercise-runner assertions, including the new negative YAML and same-origin cases. |
+
+A later source-bound risk report generated at `2026-09-09T12:11:25.558Z`
+records 468 reviewed and 22 unreviewed branches (artifact store 8, contracts 1,
+integrations 2, workflow engine 11). The 23 above remains the preceding closeout
+observation and equals the configured ceiling total; it is not silently
+rewritten as if it came from the later run. No coverage threshold or debt
+ceiling changed during this reconciliation.
+
+The baseline score and per-area narrative above remain pinned review evidence
+rather than being retroactively edited into a post-remediation audit.
+
+## Historical assessment — 2026-09-08
+
 Date: 2026-09-08. Source revision: `2206d6748c0c728ff9bf61f4ea06e64fb9eb0b1a`.
 Branch: `feat/low-value-code-cleanup`, upstream
 `origin/feat/low-value-code-cleanup`.

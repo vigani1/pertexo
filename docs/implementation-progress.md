@@ -1171,7 +1171,7 @@ duplication remains within its ratchet at 6 groups, 267 lines, and 0.28%.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; current migration head follows [the executable readiness contract](../packages/database/src/platform/readiness.ts); 24-hour terminal request-idempotency expiry with legal-hold-aware bounded reaping and 30-day expired/revoked session metadata grace with lock-safe bounded reaping; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs including persisted-to-visible SSE latency, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, a two-process MinIO integration harness, distributed abuse limits, truthful partitioned CI, immutable service-image validation, critical-module coverage, and a strict external AWS platform evidence contract; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured deployed load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; current migration head follows [the executable readiness contract](../packages/database/src/platform/readiness.ts); 24-hour terminal request-idempotency expiry with legal-hold-aware bounded reaping and 30-day expired/revoked session metadata grace with lock-safe bounded reaping; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs including persisted-to-visible SSE latency, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, a two-process MinIO integration harness, distributed abuse limits, truthful partitioned CI, immutable service-image validation, critical-module coverage, a strict external AWS platform evidence contract, a source-stable 21-cohort local N00–N11 qualification, and a fillable separately authorized E01/Q14 packet covering deployment/storage/security/provider/load/failure/pager/migration/PITR/regional and deletion/restore/purge lifecycle drills with per-drill identity, access, command, cap and cleanup fields; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured deployed load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open and the packet is not execution evidence; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -4452,6 +4452,10 @@ Operator recovery and observability:
 
 Release exercises and completion gates:
 
+- [x] Complete the mandatory local backend-quality N00–N11 stage with a
+      source-stable full qualification, mutation sensitivity, comparable local
+      performance evidence, explicit external exclusions, independent review,
+      and owned cleanup.
 - [ ] Run webhook bursts, large fan-out, long-wait, and noisy-tenant load tests
       against the engineering envelope and prove fair admission under saturation.
 - [ ] Run Redis-loss, PostgreSQL-failover, provider-outage, worker-drain, and
@@ -4465,6 +4469,33 @@ Release exercises and completion gates:
 
 Current evidence:
 
+- The backend-quality N00–N11 local checkpoint is complete. The unchanged
+  `pnpm quality:local` run
+  `2026-09-10t10-48-49-281z-78496-16f7e49b` passed all 21 required cohorts on
+  one source-stable candidate fingerprint
+  `4312c2f3c166b44673ad2ed436791f6d90ea4add007d76c55ec62d0ed49680e2`.
+  It passed 2,463 unit/component tests and 519 of 522 report-bearing service
+  assertions; the other three are the named AWS-only control-ledger exclusions.
+  Coverage recorded 476 reviewed and zero unreviewed branches in the 130-file /
+  5,523-line risk scope, all seven mutation canaries turned red with their
+  expected diagnostics and green after restoration, eight five-round local
+  performance scenarios passed, and cleanup removed the owned resources. The
+  manifest SHA-256 is
+  `07508491fa11ecb495487e85665f1949fc81ec9ff1bdf760df994a78d6cb4dff`.
+  The performance evidence SHA-256 is
+  `6d07634a52825778e3a163fbbef69b7cd00f2c84cca9262dd0cfb087abc31a68`;
+  its schema-v4 `pg_stat_statements` reset and aggregation are scoped to the
+  measured database OID, with exact raw rounds and target observations required
+  by the comparator. The foreground control recorded 1,836 target calls /
+  209.58 ms across 25 samples and contention recorded 2,544 / 439.96 ms across
+  28, while the base-database sampler recorded zero workload calls in both
+  cases. The seven-pair mutation log SHA-256 is
+  `c5af5207ac4ab4ac2ed720e04dea9b57a91f84e2777e5bb7bd7d465994b6084c`.
+  This source-stable run supersedes the earlier 10:01 schema-v4 and 06:02
+  schema-v3 closeouts, which predate the final runner and comparator integrity
+  corrections.
+  This closes local evidence only; E01/Q14 production/provider execution was not
+  authorized, so Phase 7 remains **In progress**.
 - A 2026-09-08 local verification closeout used a new disposable Compose project
   with PostgreSQL 18, Redis 8.2.8, S3Mock 5.1 and separate primary/recovery MinIO
   processes on non-default host ports. The full configured local integration
