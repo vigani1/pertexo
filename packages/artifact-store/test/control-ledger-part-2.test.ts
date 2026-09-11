@@ -402,6 +402,11 @@ describe('external control ledger', () => {
         workspaceId: WORKSPACE_ID,
       }),
     ).rejects.toThrow('projection anchor is invalid');
+    expect(
+      client.commands.some(
+        (candidate) => candidate instanceof ListObjectsV2Command,
+      ),
+    ).toBe(false);
     await expect(
       ledger.reconcile({
         maxRecords: 1,

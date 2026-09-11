@@ -56,6 +56,7 @@ async function bufferBody(body: unknown): Promise<Buffer> {
 
 class MemoryS3Client implements S3ClientLike {
   private readonly objects = new Map<string, StoredObject>();
+  public readonly commands: unknown[] = [];
   public ambiguousPutFailure: Error | undefined;
   public destroyCalls = 0;
   public deleteVersionsErrors:
@@ -94,6 +95,7 @@ class MemoryS3Client implements S3ClientLike {
     command: unknown,
     options?: { readonly abortSignal?: AbortSignal },
   ): Promise<unknown> {
+    this.commands.push(command);
     if (command instanceof PutObjectCommand) {
       if (this.ambiguousPutFailure !== undefined) {
         throw this.ambiguousPutFailure;
@@ -1005,6 +1007,9 @@ describe('ArtifactStore', () => {
       { Key: `${prefix}artifacts/${ARTIFACT_ID}`, VersionId: 'version-1' },
       { Key: `${prefix}markers/one`, VersionId: 'marker-1' },
     ]);
+    expect(client.commands).toHaveLength(2);
+    expect(client.commands[0]).toBeInstanceOf(ListObjectVersionsCommand);
+    expect(client.commands[1]).toBeInstanceOf(DeleteObjectsCommand);
   });
 
   it('completes only on a fresh empty version listing', async () => {
@@ -1069,7 +1074,7 @@ describe('ArtifactStore', () => {
 
     await expect(
       store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
-    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    ).rejects.toThrow('Object version deletion reported one or more failures');
   });
 
   it.each([

@@ -341,6 +341,7 @@ describe('external control ledger', () => {
     };
     client.putRaw(key(3), Buffer.from(JSON.stringify(thirdMaterial)));
 
+    const commandOffset = client.commands.length;
     await expect(
       ledger.reconcile({
         maxRecords: 100,
@@ -350,10 +351,15 @@ describe('external control ledger', () => {
       }),
     ).rejects.toThrow('keys are not consecutive');
     expect(
-      client.commands.some(
-        (candidate) => candidate instanceof ListObjectsV2Command,
-      ),
-    ).toBe(true);
+      client.commands
+        .slice(commandOffset)
+        .filter((candidate) => candidate instanceof ListObjectsV2Command),
+    ).toHaveLength(1);
+    expect(
+      client.commands
+        .slice(commandOffset)
+        .filter((candidate) => candidate instanceof GetObjectCommand),
+    ).toHaveLength(1);
   });
 
   it('bounds reconciliation GET concurrency while preserving chain order', async () => {
@@ -449,6 +455,11 @@ describe('external control ledger', () => {
         workspaceId: WORKSPACE_ID,
       }),
     ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
+    expect(
+      client.commands.filter(
+        (candidate) => candidate instanceof GetObjectCommand,
+      ),
+    ).toHaveLength(0);
   });
 
   it('fails closed when a strongly listed record disappears before GET', async () => {
