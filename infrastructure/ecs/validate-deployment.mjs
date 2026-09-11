@@ -108,6 +108,86 @@ const expectedRegionalEndpoints = [
   'secrets-manager',
 ];
 
+function sameSortedValues(actual, expected) {
+  return (
+    JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort())
+  );
+}
+
+function assertAutoscalingCapacity(name, service, workloads) {
+  for (const region of ['eu-central-1', 'eu-west-1']) {
+    const capacity = service.capacity[region];
+    if (
+      capacity === undefined ||
+      !Number.isSafeInteger(capacity.min) ||
+      !Number.isSafeInteger(capacity.max) ||
+      capacity.min < 0 ||
+      capacity.max < capacity.min
+    )
+      throw new Error(`${name} has invalid ${region} autoscaling capacity`);
+    const desiredCount = workloads[name].desiredCount[region];
+    if (desiredCount < capacity.min || desiredCount > capacity.max)
+      throw new Error(`${name} has invalid ${region} autoscaling capacity`);
+  }
+}
+
+function assertAutoscalingCooldowns(name, service) {
+  const cooldownsAreOrdered =
+    Number.isSafeInteger(service.scaleOutCooldownSeconds) &&
+    Number.isSafeInteger(service.scaleInCooldownSeconds) &&
+    service.scaleOutCooldownSeconds > 0 &&
+    service.scaleInCooldownSeconds > service.scaleOutCooldownSeconds;
+  if (!cooldownsAreOrdered)
+    throw new Error(`${name} autoscaling cooldowns must favor slower scale-in`);
+  if (
+    name === 'worker' &&
+    (!Number.isSafeInteger(service.configuredSlotsPerTask) ||
+      service.configuredSlotsPerTask <= 0)
+  )
+    throw new Error('worker autoscaling requires configured slot capacity');
+}
+
+function assertScalingSignal(name, signal, expectedSignals) {
+  if (
+    !expectedSignals.has(signal.name) ||
+    expectedSignals.get(signal.name) !== signal.metric
+  )
+    throw new Error(`${name} has an unexpected ${signal.name} scaling metric`);
+  const measurementIsValid =
+    ['Average', 'Maximum', 'Sum', 'p95'].includes(signal.statistic) &&
+    Number.isFinite(signal.threshold) &&
+    signal.threshold > 0;
+  if (!measurementIsValid)
+    throw new Error(`${name} ${signal.name} scaling signal is invalid`);
+  const evaluationWindowIsValid =
+    Number.isSafeInteger(signal.periodSeconds) &&
+    signal.periodSeconds >= 60 &&
+    Number.isSafeInteger(signal.evaluationPeriods) &&
+    signal.evaluationPeriods >= 1;
+  if (!evaluationWindowIsValid)
+    throw new Error(`${name} ${signal.name} scaling signal is invalid`);
+  if (name !== 'worker' || signal.name !== 'active-slots') return;
+  const usesRunningCapacity =
+    signal.unit === 'Ratio' &&
+    signal.statistic === 'Sum' &&
+    signal.normalization ===
+      'metric/(runningTaskCount*configuredSlotsPerTask)' &&
+    signal.threshold < 1;
+  if (!usesRunningCapacity)
+    throw new Error(
+      'worker active-slot scaling must normalize the summed count by running-task capacity',
+    );
+}
+
+function assertAutoscalingSignals(name, service, expectedSignals) {
+  if (service.signals.length !== expectedSignals.size)
+    throw new Error(
+      `${name} must declare exactly the required scaling signals`,
+    );
+  for (const signal of service.signals)
+    assertScalingSignal(name, signal, expectedSignals);
+}
+
 async function workspaceManifestDirectories(parent) {
   return (await readdir(resolve(root, parent), { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
@@ -187,18 +267,13 @@ if (
 )
   throw new Error('external platform recovery writer fence is unsafe');
 if (
-  JSON.stringify(
-    [...externalPlatform.recoveryWriterFence.writerWorkloads].sort(),
-  ) !==
-  JSON.stringify(
-    [
-      'api',
-      'worker',
-      'lifecycle-command',
-      'retention',
-      'operator-command',
-    ].sort(),
-  )
+  !sameSortedValues(externalPlatform.recoveryWriterFence.writerWorkloads, [
+    'api',
+    'worker',
+    'lifecycle-command',
+    'retention',
+    'operator-command',
+  ])
 )
   throw new Error('external platform recovery writer inventory is incomplete');
 
@@ -268,72 +343,9 @@ for (const [name, expectedSignals] of expectedScalingSignals) {
   const service = autoscaling.services[name];
   if (!service || service.workload !== name)
     throw new Error(`${name} autoscaling must target its own workload`);
-  for (const region of ['eu-central-1', 'eu-west-1']) {
-    const capacity = service.capacity[region];
-    if (
-      !capacity ||
-      !Number.isSafeInteger(capacity.min) ||
-      !Number.isSafeInteger(capacity.max) ||
-      capacity.min < 0 ||
-      capacity.max < capacity.min ||
-      manifest.workloads[name].desiredCount[region] < capacity.min ||
-      manifest.workloads[name].desiredCount[region] > capacity.max
-    ) {
-      throw new Error(`${name} has invalid ${region} autoscaling capacity`);
-    }
-  }
-  if (
-    !Number.isSafeInteger(service.scaleOutCooldownSeconds) ||
-    !Number.isSafeInteger(service.scaleInCooldownSeconds) ||
-    service.scaleOutCooldownSeconds <= 0 ||
-    service.scaleInCooldownSeconds <= service.scaleOutCooldownSeconds
-  ) {
-    throw new Error(`${name} autoscaling cooldowns must favor slower scale-in`);
-  }
-  if (
-    name === 'worker' &&
-    (!Number.isSafeInteger(service.configuredSlotsPerTask) ||
-      service.configuredSlotsPerTask <= 0)
-  ) {
-    throw new Error('worker autoscaling requires configured slot capacity');
-  }
-  if (service.signals.length !== expectedSignals.size)
-    throw new Error(
-      `${name} must declare exactly the required scaling signals`,
-    );
-  for (const signal of service.signals) {
-    if (
-      !expectedSignals.has(signal.name) ||
-      expectedSignals.get(signal.name) !== signal.metric
-    )
-      throw new Error(
-        `${name} has an unexpected ${signal.name} scaling metric`,
-      );
-    if (
-      !['Average', 'Maximum', 'Sum', 'p95'].includes(signal.statistic) ||
-      !Number.isFinite(signal.threshold) ||
-      signal.threshold <= 0 ||
-      !Number.isSafeInteger(signal.periodSeconds) ||
-      signal.periodSeconds < 60 ||
-      !Number.isSafeInteger(signal.evaluationPeriods) ||
-      signal.evaluationPeriods < 1
-    ) {
-      throw new Error(`${name} ${signal.name} scaling signal is invalid`);
-    }
-    if (
-      name === 'worker' &&
-      signal.name === 'active-slots' &&
-      (signal.unit !== 'Ratio' ||
-        signal.statistic !== 'Sum' ||
-        signal.normalization !==
-          'metric/(runningTaskCount*configuredSlotsPerTask)' ||
-        signal.threshold >= 1)
-    ) {
-      throw new Error(
-        'worker active-slot scaling must normalize the summed count by running-task capacity',
-      );
-    }
-  }
+  assertAutoscalingCapacity(name, service, manifest.workloads);
+  assertAutoscalingCooldowns(name, service);
+  assertAutoscalingSignals(name, service, expectedSignals);
 }
 if (manifest.workloads.migration.kind !== 'release-job')
   throw new Error('migrations must be a release job');

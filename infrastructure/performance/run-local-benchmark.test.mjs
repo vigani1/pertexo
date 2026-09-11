@@ -9,6 +9,7 @@ import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import { setImmediate } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { URL } from 'node:url';
 
 import {
@@ -31,6 +32,12 @@ import {
 import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const benchmarkOperationFixture = fileURLToPath(
+  new URL('./fixtures/benchmark-operation-fixture.mjs', import.meta.url),
+);
+const overlapWorkloadFixture = fileURLToPath(
+  new URL('./fixtures/overlap-workload-fixture.mjs', import.meta.url),
+);
 
 async function waitForFile(file, timeoutMillis = 5_000) {
   const deadline = Date.now() + timeoutMillis;
@@ -70,10 +77,7 @@ function manifest(overrides = {}) {
         commands: [
           {
             file: process.execPath,
-            args: [
-              '-e',
-              "if (process.env.PERTEXO_BENCHMARK_SEED !== '42') process.exit(2); const origin=performance.timeOrigin; const started=origin+performance.now(); setTimeout(() => { const middle=origin+performance.now(); process.stdout.write('PERTEXO_Q11_OPERATION_V2='+JSON.stringify({schemaVersion:2,name:'fixture-first',startedAtUnixMs:started,endedAtUnixMs:middle,population:1,boundary:'first fixture boundary'})+'\\n'); const ended=origin+performance.now()+7.5; process.stdout.write('PERTEXO_Q11_OPERATION_V2='+JSON.stringify({schemaVersion:2,name:'fixture-second',startedAtUnixMs:middle,endedAtUnixMs:ended,population:1,boundary:'second fixture boundary'})+'\\n'); }, 120)",
-            ],
+            args: [benchmarkOperationFixture],
             expectedOperations: [
               {
                 name: 'fixture-first',
@@ -824,7 +828,6 @@ test('validates and safely owns the actual producer output', async (t) => {
 });
 
 test('releases declared contention participants together and proves overlap', async () => {
-  const workload = `(async()=>{const {access,writeFile}=require('node:fs/promises');const path=require('node:path');const delay=require('node:timers/promises').setTimeout;const directory=process.env.PERTEXO_Q11_OVERLAP_DIRECTORY;const participant=process.env.PERTEXO_Q11_OVERLAP_PARTICIPANT;await writeFile(path.join(directory,participant+'.ready'),'',{flag:'wx'});for(;;){try{await access(path.join(directory,'release'));break}catch(error){if(error.code!=='ENOENT')throw error;await delay(5)}}const started=performance.timeOrigin+performance.now();await delay(80);const ended=performance.timeOrigin+performance.now();process.stdout.write('PERTEXO_Q11_OPERATION_V2='+JSON.stringify({schemaVersion:2,name:participant,startedAtUnixMs:started,endedAtUnixMs:ended,population:1,boundary:participant+' boundary',databaseIdentity:{database:'fixture',role:'fixture',applicationName:'q11-fixture-'+participant}})+'\\n')})()`;
   const base = manifest();
   const overlapManifest = manifest({
     scenarios: [
@@ -836,7 +839,7 @@ test('releases declared contention participants together and proves overlap', as
         commands: ['left', 'right'].map((participant) => ({
           participant,
           file: process.execPath,
-          args: ['-e', workload],
+          args: [overlapWorkloadFixture],
           expectedOperations: [
             {
               name: participant,

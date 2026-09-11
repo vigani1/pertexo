@@ -19,17 +19,21 @@ function requireSummary(value, label, options = {}) {
   if (
     value === null ||
     typeof value !== 'object' ||
-    summaryMetrics.some((metric) => !Number.isFinite(value[metric])) ||
+    summaryMetrics.some((metric) => !Number.isFinite(value[metric]))
+  )
+    throw new Error(`${label} required measurement is absent`);
+  if (
     value.minimum > value.p50 ||
     value.p50 > value.p95 ||
     value.p95 > value.p99 ||
-    value.p99 > value.maximum ||
-    value.mean < value.minimum ||
-    value.mean > value.maximum ||
-    value.standardDeviation < 0 ||
-    value.coefficientOfVariation < 0 ||
-    (options.allowNegative !== true && value.minimum < 0)
+    value.p99 > value.maximum
   )
+    throw new Error(`${label} required measurement is absent`);
+  if (value.mean < value.minimum || value.mean > value.maximum)
+    throw new Error(`${label} required measurement is absent`);
+  if (value.standardDeviation < 0 || value.coefficientOfVariation < 0)
+    throw new Error(`${label} required measurement is absent`);
+  if (options.allowNegative !== true && value.minimum < 0)
     throw new Error(`${label} required measurement is absent`);
   return value;
 }
@@ -154,8 +158,7 @@ function scenarioMap(scenarios, label) {
   return result;
 }
 
-function requireScenarioDatabaseEvidence(scenario, label) {
-  const databaseScope = scenario.configuration?.databaseScope;
+function assertCompleteMeasuredRounds(scenario, label) {
   if (
     !Number.isSafeInteger(scenario.environmentMeasuredRounds) ||
     scenario.environmentMeasuredRounds < 1 ||
@@ -163,6 +166,9 @@ function requireScenarioDatabaseEvidence(scenario, label) {
     scenario.rounds.length !== scenario.environmentMeasuredRounds
   )
     throw new Error(`${label} measured rounds are incomplete`);
+}
+
+function operationContracts(scenario, label) {
   const concurrency = scenario.configuration?.concurrency;
   const contracts = scenario.configuration?.operationContracts;
   if (
@@ -188,6 +194,10 @@ function requireScenarioDatabaseEvidence(scenario, label) {
   );
   if (contractByName.size !== contracts.length)
     throw new Error(`${label} operation contracts are duplicated`);
+  return { concurrency, contracts, contractByName };
+}
+
+function assertOperationBreakdown(scenario, contractByName, label) {
   const breakdown = scenario.operationBreakdown;
   const breakdownNames = Object.keys(breakdown ?? {}).sort();
   const contractNames = [...contractByName.keys()].sort();
@@ -211,135 +221,161 @@ function requireScenarioDatabaseEvidence(scenario, label) {
     )
       throw new Error(`${label}.${name} declared populations are missing`);
   }
-  const expectedOperationsPerRound =
-    concurrency * contracts.reduce((sum, contract) => sum + contract.count, 0);
+  return breakdown;
+}
+
+function assertRoundOperationEvidence(
+  round,
+  roundIndex,
+  expectedOperationsPerRound,
+  concurrency,
+  contracts,
+  contractByName,
+  label,
+) {
   if (
-    scenario.configuration.expectedOperationsPerRound !==
-    expectedOperationsPerRound
+    !Array.isArray(round.operationSamples) ||
+    round.operationSamples.length !== expectedOperationsPerRound
   )
-    throw new Error(`${label} expected operation count is invalid`);
-  for (const [roundIndex, round] of scenario.rounds.entries()) {
-    if (
-      !Array.isArray(round.operationSamples) ||
-      round.operationSamples.length !== expectedOperationsPerRound
-    )
-      throw new Error(
-        `${label}.rounds[${roundIndex}] operation samples are absent or incomplete`,
-      );
-    for (const sample of round.operationSamples)
-      if (
-        !Number.isFinite(sample?.startedAtUnixMs) ||
-        !Number.isFinite(sample?.endedAtUnixMs) ||
-        sample.endedAtUnixMs <= sample.startedAtUnixMs ||
-        !Number.isFinite(sample?.durationMs) ||
-        sample.durationMs <= 0 ||
-        !approximatelyEqual(
-          sample.durationMs,
-          sample.endedAtUnixMs - sample.startedAtUnixMs,
-        )
-      )
-        throw new Error(
-          `${label}.rounds[${roundIndex}] operation timing is invalid`,
-        );
-    for (const contract of contracts) {
-      const matching = round.operationSamples.filter(
-        (sample) => sample?.name === contract.name,
-      );
-      if (
-        matching.length !== concurrency * contract.count ||
-        matching.some(
-          (sample) =>
-            sample.population !== contract.population ||
-            sample.boundary !== contract.boundary,
-        )
-      )
-        throw new Error(
-          `${label}.rounds[${roundIndex}] operation samples violate their contract`,
-        );
-    }
-    if (
-      round.operationSamples.some((sample) => !contractByName.has(sample?.name))
-    )
-      throw new Error(
-        `${label}.rounds[${roundIndex}] undeclared operation sample is present`,
-      );
-    const workloadStartedAtUnixMs = Math.min(
-      ...round.operationSamples.map((sample) => sample.startedAtUnixMs),
+    throw new Error(
+      `${label}.rounds[${roundIndex}] operation samples are absent or incomplete`,
     );
-    const workloadEndedAtUnixMs = Math.max(
-      ...round.operationSamples.map((sample) => sample.endedAtUnixMs),
-    );
-    const workloadDurationMs = workloadEndedAtUnixMs - workloadStartedAtUnixMs;
+  for (const sample of round.operationSamples)
     if (
-      round.workloadInterval?.startedAtUnixMs !== workloadStartedAtUnixMs ||
-      round.workloadInterval?.endedAtUnixMs !== workloadEndedAtUnixMs ||
+      !Number.isFinite(sample?.startedAtUnixMs) ||
+      !Number.isFinite(sample?.endedAtUnixMs) ||
+      sample.endedAtUnixMs <= sample.startedAtUnixMs ||
+      !Number.isFinite(sample?.durationMs) ||
+      sample.durationMs <= 0 ||
       !approximatelyEqual(
-        round.workloadInterval?.durationMs,
-        workloadDurationMs,
-      ) ||
-      !Array.isArray(round.operationLatencyMs) ||
-      round.operationLatencyMs.length !== round.operationSamples.length ||
-      round.operationLatencyMs.some(
-        (duration, index) =>
-          !Number.isFinite(duration) ||
-          duration <= 0 ||
-          !approximatelyEqual(
-            duration,
-            round.operationSamples[index].durationMs,
-          ),
-      ) ||
-      !Number.isFinite(round.operationThroughputPerSecond) ||
-      round.operationThroughputPerSecond <= 0 ||
-      !approximatelyEqual(
-        round.operationThroughputPerSecond,
-        round.operationSamples.length / (workloadDurationMs / 1_000),
+        sample.durationMs,
+        sample.endedAtUnixMs - sample.startedAtUnixMs,
       )
     )
       throw new Error(
-        `${label}.rounds[${roundIndex}] derived operation measurements are invalid`,
+        `${label}.rounds[${roundIndex}] operation timing is invalid`,
       );
-    const processMetrics = round.workloadProcessMetrics;
+  for (const contract of contracts) {
+    const matching = round.operationSamples.filter(
+      (sample) => sample?.name === contract.name,
+    );
     if (
-      !Number.isFinite(round.launcherElapsedMs) ||
-      round.launcherElapsedMs <= 0 ||
-      !Number.isFinite(processMetrics?.sampleIntervalMs) ||
-      processMetrics.sampleIntervalMs <= 0 ||
-      !Array.isArray(processMetrics.samples) ||
-      processMetrics.samples.length === 0 ||
-      processMetrics.samples.some(
+      matching.length !== concurrency * contract.count ||
+      matching.some(
         (sample) =>
-          !Number.isFinite(sample?.elapsedMs) ||
-          sample.elapsedMs < 0 ||
-          !Number.isSafeInteger(sample?.processCount) ||
-          sample.processCount < 0 ||
-          !Number.isFinite(sample?.rssBytes) ||
-          sample.rssBytes < 0 ||
-          !Number.isFinite(sample?.cpuPercent) ||
-          sample.cpuPercent < 0,
+          sample.population !== contract.population ||
+          sample.boundary !== contract.boundary,
       )
     )
       throw new Error(
-        `${label}.rounds[${roundIndex}] process measurements are invalid`,
-      );
-    const rssValues = processMetrics.samples.map((sample) => sample.rssBytes);
-    const cpuValues = processMetrics.samples.map((sample) => sample.cpuPercent);
-    const processCounts = processMetrics.samples.map(
-      (sample) => sample.processCount,
-    );
-    if (
-      processMetrics.peakRssBytes !== Math.max(...rssValues) ||
-      processMetrics.peakCpuPercent !== Math.max(...cpuValues) ||
-      processMetrics.peakProcessCount !== Math.max(...processCounts) ||
-      processMetrics.rssTrendBytes?.first !== rssValues[0] ||
-      processMetrics.rssTrendBytes?.last !== rssValues.at(-1) ||
-      processMetrics.rssTrendBytes?.delta !== rssValues.at(-1) - rssValues[0]
-    )
-      throw new Error(
-        `${label}.rounds[${roundIndex}] derived process measurements are invalid`,
+        `${label}.rounds[${roundIndex}] operation samples violate their contract`,
       );
   }
+  if (
+    round.operationSamples.some((sample) => !contractByName.has(sample?.name))
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] undeclared operation sample is present`,
+    );
+
+  const workloadStartedAtUnixMs = Math.min(
+    ...round.operationSamples.map((sample) => sample.startedAtUnixMs),
+  );
+  const workloadEndedAtUnixMs = Math.max(
+    ...round.operationSamples.map((sample) => sample.endedAtUnixMs),
+  );
+  const workloadDurationMs = workloadEndedAtUnixMs - workloadStartedAtUnixMs;
+  if (
+    round.workloadInterval?.startedAtUnixMs !== workloadStartedAtUnixMs ||
+    round.workloadInterval?.endedAtUnixMs !== workloadEndedAtUnixMs ||
+    !approximatelyEqual(round.workloadInterval?.durationMs, workloadDurationMs)
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] derived operation measurements are invalid`,
+    );
+  if (
+    !Array.isArray(round.operationLatencyMs) ||
+    round.operationLatencyMs.length !== round.operationSamples.length ||
+    round.operationLatencyMs.some(
+      (duration, index) =>
+        !Number.isFinite(duration) ||
+        duration <= 0 ||
+        !approximatelyEqual(duration, round.operationSamples[index].durationMs),
+    )
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] derived operation measurements are invalid`,
+    );
+  if (
+    !Number.isFinite(round.operationThroughputPerSecond) ||
+    round.operationThroughputPerSecond <= 0 ||
+    !approximatelyEqual(
+      round.operationThroughputPerSecond,
+      round.operationSamples.length / (workloadDurationMs / 1_000),
+    )
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] derived operation measurements are invalid`,
+    );
+}
+
+function assertRoundProcessEvidence(round, roundIndex, label) {
+  const processMetrics = round.workloadProcessMetrics;
+  const hasProcessSamples =
+    Number.isFinite(round.launcherElapsedMs) &&
+    round.launcherElapsedMs > 0 &&
+    Number.isFinite(processMetrics?.sampleIntervalMs) &&
+    processMetrics.sampleIntervalMs > 0 &&
+    Array.isArray(processMetrics.samples) &&
+    processMetrics.samples.length > 0;
+  const everyProcessSampleIsValid =
+    hasProcessSamples &&
+    processMetrics.samples.every(
+      (sample) =>
+        Number.isFinite(sample?.elapsedMs) &&
+        sample.elapsedMs >= 0 &&
+        Number.isSafeInteger(sample?.processCount) &&
+        sample.processCount >= 0 &&
+        Number.isFinite(sample?.rssBytes) &&
+        sample.rssBytes >= 0 &&
+        Number.isFinite(sample?.cpuPercent) &&
+        sample.cpuPercent >= 0,
+    );
+  if (!everyProcessSampleIsValid)
+    throw new Error(
+      `${label}.rounds[${roundIndex}] process measurements are invalid`,
+    );
+  const rssValues = processMetrics.samples.map((sample) => sample.rssBytes);
+  const cpuValues = processMetrics.samples.map((sample) => sample.cpuPercent);
+  const processCounts = processMetrics.samples.map(
+    (sample) => sample.processCount,
+  );
+  if (
+    processMetrics.peakRssBytes !== Math.max(...rssValues) ||
+    processMetrics.peakCpuPercent !== Math.max(...cpuValues) ||
+    processMetrics.peakProcessCount !== Math.max(...processCounts)
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] derived process measurements are invalid`,
+    );
+  if (
+    processMetrics.rssTrendBytes?.first !== rssValues[0] ||
+    processMetrics.rssTrendBytes?.last !== rssValues.at(-1) ||
+    processMetrics.rssTrendBytes?.delta !== rssValues.at(-1) - rssValues[0]
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] derived process measurements are invalid`,
+    );
+}
+
+function assertAggregateOperationEvidence(
+  rounds,
+  contractByName,
+  breakdown,
+  label,
+) {
   for (const [name] of contractByName) {
-    const samplesByRound = scenario.rounds.map((round) =>
+    const samplesByRound = rounds.map((round) =>
       round.operationSamples.filter((sample) => sample.name === name),
     );
     requireSummaryMatches(
@@ -363,6 +399,9 @@ function requireScenarioDatabaseEvidence(scenario, label) {
       `${label}.${name}.throughput`,
     );
   }
+}
+
+function requireTargetDatabaseEvidence(scenario, databaseScope, label) {
   if (databaseScope === 'configured-base') {
     requireDatabaseWorkload(scenario.databaseWorkload, `${label}.sql`);
     if (
@@ -372,7 +411,7 @@ function requireScenarioDatabaseEvidence(scenario, label) {
       throw new Error(
         `${label} unexpected target database evidence is present`,
       );
-    return;
+    return null;
   }
   if (
     databaseScope !== 'runner-owned-fixture' &&
@@ -383,16 +422,17 @@ function requireScenarioDatabaseEvidence(scenario, label) {
     allowZero: true,
   });
   const target = scenario.targetDatabase;
-  if (
-    target === null ||
-    typeof target !== 'object' ||
-    typeof target.databaseName !== 'string' ||
-    target.databaseName.length === 0 ||
-    target.scope !==
-      (databaseScope === 'runner-owned-fixture'
-        ? 'runner-owned fixture database'
-        : 'runner-owned shared disposable database')
-  )
+  const expectedScope =
+    databaseScope === 'runner-owned-fixture'
+      ? 'runner-owned fixture database'
+      : 'runner-owned shared disposable database';
+  const hasTargetIdentity =
+    target !== null &&
+    typeof target === 'object' &&
+    typeof target.databaseName === 'string' &&
+    target.databaseName.length > 0 &&
+    target.scope === expectedScope;
+  if (!hasTargetIdentity)
     throw new Error(
       `${label} required shared target database evidence is absent`,
     );
@@ -401,114 +441,211 @@ function requireScenarioDatabaseEvidence(scenario, label) {
     target.observations,
     `${label}.targetDatabase.observations`,
   );
+  return target;
+}
 
-  if (databaseScope === 'runner-owned-fixture') return;
-
-  for (const [roundIndex, round] of scenario.rounds.entries()) {
-    const participantIdentities = new Map();
-    const samplesByParticipant = new Map(
-      contracts.map((contract) => [contract.participant, []]),
-    );
-    for (const sample of round.operationSamples) {
-      const contract = contractByName.get(sample.name);
-      const identity = sample.databaseIdentity;
-      if (
-        contract?.databaseScope !== 'runner-owned-shared' ||
-        typeof contract.participant !== 'string' ||
-        contract.participant.length === 0 ||
-        identity === null ||
-        typeof identity !== 'object' ||
-        identity.database !== target.databaseName ||
-        typeof identity.role !== 'string' ||
-        identity.role.length === 0 ||
-        typeof identity.applicationName !== 'string' ||
-        identity.applicationName.length === 0
-      )
-        throw new Error(
-          `${label}.rounds[${roundIndex}] shared-database identity is invalid`,
-        );
-      const signature = `${identity.role}\u0000${identity.applicationName}`;
-      const prior = participantIdentities.get(contract.participant);
-      if (prior !== undefined && prior !== signature)
-        throw new Error(
-          `${label}.rounds[${roundIndex}] participant identity is inconsistent`,
-        );
-      participantIdentities.set(contract.participant, signature);
-      samplesByParticipant.get(contract.participant).push(sample);
-    }
-    const expectedParticipants = new Set(
-      contracts.map((contract) => contract.participant),
-    );
-    const identities = [...participantIdentities.values()].map((signature) => {
-      const [role, applicationName] = signature.split('\u0000');
-      return { role, applicationName };
-    });
+function sharedRoundParticipants(
+  round,
+  roundIndex,
+  contracts,
+  contractByName,
+  target,
+  label,
+) {
+  const participantIdentities = new Map();
+  const samplesByParticipant = new Map(
+    contracts.map((contract) => [contract.participant, []]),
+  );
+  for (const sample of round.operationSamples) {
+    const contract = contractByName.get(sample.name);
+    const identity = sample.databaseIdentity;
     if (
-      participantIdentities.size !== expectedParticipants.size ||
-      [...expectedParticipants].some(
-        (participant) => !participantIdentities.has(participant),
-      ) ||
-      new Set(identities.map(({ role }) => role)).size !== identities.length ||
-      new Set(identities.map(({ applicationName }) => applicationName)).size !==
-        identities.length
+      contract?.databaseScope !== 'runner-owned-shared' ||
+      typeof contract.participant !== 'string' ||
+      contract.participant.length === 0
     )
       throw new Error(
-        `${label}.rounds[${roundIndex}] participant identities are missing or duplicated`,
+        `${label}.rounds[${roundIndex}] shared-database identity is invalid`,
       );
-
-    if (scenario.configuration.requireOverlap === true) {
-      const expectedIntervals = [...samplesByParticipant].map(
-        ([participant, samples]) => ({
-          participant,
-          startedAtUnixMs: Math.min(
-            ...samples.map(({ startedAtUnixMs }) => startedAtUnixMs),
-          ),
-          endedAtUnixMs: Math.max(
-            ...samples.map(({ endedAtUnixMs }) => endedAtUnixMs),
-          ),
-        }),
+    if (
+      identity === null ||
+      typeof identity !== 'object' ||
+      identity.database !== target.databaseName ||
+      typeof identity.role !== 'string' ||
+      identity.role.length === 0 ||
+      typeof identity.applicationName !== 'string' ||
+      identity.applicationName.length === 0
+    )
+      throw new Error(
+        `${label}.rounds[${roundIndex}] shared-database identity is invalid`,
       );
-      const overlapStartedAtUnixMs = Math.max(
-        ...expectedIntervals.map(({ startedAtUnixMs }) => startedAtUnixMs),
+    const signature = `${identity.role}\u0000${identity.applicationName}`;
+    const prior = participantIdentities.get(contract.participant);
+    if (prior !== undefined && prior !== signature)
+      throw new Error(
+        `${label}.rounds[${roundIndex}] participant identity is inconsistent`,
       );
-      const overlapEndedAtUnixMs = Math.min(
-        ...expectedIntervals.map(({ endedAtUnixMs }) => endedAtUnixMs),
-      );
-      if (
-        round.overlap?.verified !== true ||
-        stable(round.overlap.intervals) !== stable(expectedIntervals) ||
-        round.overlap.overlapStartedAtUnixMs !== overlapStartedAtUnixMs ||
-        round.overlap.overlapEndedAtUnixMs !== overlapEndedAtUnixMs ||
-        overlapEndedAtUnixMs <= overlapStartedAtUnixMs ||
-        !approximatelyEqual(
-          round.overlap.overlapDurationMs,
-          overlapEndedAtUnixMs - overlapStartedAtUnixMs,
-        )
-      )
-        throw new Error(
-          `${label}.rounds[${roundIndex}] required temporal overlap is absent`,
-        );
-      const overlapIdentities = round.overlap.databaseIdentities;
-      const overlapSignatures = new Set(
-        overlapIdentities?.map(
-          (identity) => `${identity?.role}\u0000${identity?.applicationName}`,
-        ),
-      );
-      if (
-        !Array.isArray(overlapIdentities) ||
-        overlapIdentities.length !== participantIdentities.size ||
-        overlapIdentities.some(
-          (identity) => identity?.database !== target.databaseName,
-        ) ||
-        [...participantIdentities.values()].some(
-          (signature) => !overlapSignatures.has(signature),
-        )
-      )
-        throw new Error(
-          `${label}.rounds[${roundIndex}] overlap identities are invalid`,
-        );
-    }
+    participantIdentities.set(contract.participant, signature);
+    samplesByParticipant.get(contract.participant).push(sample);
   }
+  const expectedParticipants = new Set(
+    contracts.map((contract) => contract.participant),
+  );
+  const identities = [...participantIdentities.values()].map((signature) => {
+    const [role, applicationName] = signature.split('\u0000');
+    return { role, applicationName };
+  });
+  if (
+    participantIdentities.size !== expectedParticipants.size ||
+    [...expectedParticipants].some(
+      (participant) => !participantIdentities.has(participant),
+    )
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] participant identities are missing or duplicated`,
+    );
+  if (
+    new Set(identities.map(({ role }) => role)).size !== identities.length ||
+    new Set(identities.map(({ applicationName }) => applicationName)).size !==
+      identities.length
+  )
+    throw new Error(
+      `${label}.rounds[${roundIndex}] participant identities are missing or duplicated`,
+    );
+  return { participantIdentities, samplesByParticipant };
+}
+
+function assertSharedRoundOverlap(
+  round,
+  roundIndex,
+  target,
+  participantIdentities,
+  samplesByParticipant,
+  label,
+) {
+  const expectedIntervals = [...samplesByParticipant].map(
+    ([participant, samples]) => ({
+      participant,
+      startedAtUnixMs: Math.min(
+        ...samples.map(({ startedAtUnixMs }) => startedAtUnixMs),
+      ),
+      endedAtUnixMs: Math.max(
+        ...samples.map(({ endedAtUnixMs }) => endedAtUnixMs),
+      ),
+    }),
+  );
+  const overlapStartedAtUnixMs = Math.max(
+    ...expectedIntervals.map(({ startedAtUnixMs }) => startedAtUnixMs),
+  );
+  const overlapEndedAtUnixMs = Math.min(
+    ...expectedIntervals.map(({ endedAtUnixMs }) => endedAtUnixMs),
+  );
+  const intervalProofMatches =
+    round.overlap?.verified === true &&
+    stable(round.overlap.intervals) === stable(expectedIntervals) &&
+    round.overlap.overlapStartedAtUnixMs === overlapStartedAtUnixMs &&
+    round.overlap.overlapEndedAtUnixMs === overlapEndedAtUnixMs &&
+    overlapEndedAtUnixMs > overlapStartedAtUnixMs &&
+    approximatelyEqual(
+      round.overlap.overlapDurationMs,
+      overlapEndedAtUnixMs - overlapStartedAtUnixMs,
+    );
+  if (!intervalProofMatches)
+    throw new Error(
+      `${label}.rounds[${roundIndex}] required temporal overlap is absent`,
+    );
+  const overlapIdentities = round.overlap.databaseIdentities;
+  const overlapSignatures = new Set(
+    overlapIdentities?.map(
+      (identity) => `${identity?.role}\u0000${identity?.applicationName}`,
+    ),
+  );
+  const identityProofMatches =
+    Array.isArray(overlapIdentities) &&
+    overlapIdentities.length === participantIdentities.size &&
+    overlapIdentities.every(
+      (identity) => identity?.database === target.databaseName,
+    ) &&
+    [...participantIdentities.values()].every((signature) =>
+      overlapSignatures.has(signature),
+    );
+  if (!identityProofMatches)
+    throw new Error(
+      `${label}.rounds[${roundIndex}] overlap identities are invalid`,
+    );
+}
+
+function assertSharedDatabaseEvidence(
+  scenario,
+  contracts,
+  contractByName,
+  target,
+  label,
+) {
+  for (const [roundIndex, round] of scenario.rounds.entries()) {
+    const { participantIdentities, samplesByParticipant } =
+      sharedRoundParticipants(
+        round,
+        roundIndex,
+        contracts,
+        contractByName,
+        target,
+        label,
+      );
+    if (scenario.configuration.requireOverlap === true)
+      assertSharedRoundOverlap(
+        round,
+        roundIndex,
+        target,
+        participantIdentities,
+        samplesByParticipant,
+        label,
+      );
+  }
+}
+
+function requireScenarioDatabaseEvidence(scenario, label) {
+  assertCompleteMeasuredRounds(scenario, label);
+  const { concurrency, contracts, contractByName } = operationContracts(
+    scenario,
+    label,
+  );
+  const breakdown = assertOperationBreakdown(scenario, contractByName, label);
+  const expectedOperationsPerRound =
+    concurrency * contracts.reduce((sum, contract) => sum + contract.count, 0);
+  if (
+    scenario.configuration.expectedOperationsPerRound !==
+    expectedOperationsPerRound
+  )
+    throw new Error(`${label} expected operation count is invalid`);
+  for (const [roundIndex, round] of scenario.rounds.entries()) {
+    assertRoundOperationEvidence(
+      round,
+      roundIndex,
+      expectedOperationsPerRound,
+      concurrency,
+      contracts,
+      contractByName,
+      label,
+    );
+    assertRoundProcessEvidence(round, roundIndex, label);
+  }
+  assertAggregateOperationEvidence(
+    scenario.rounds,
+    contractByName,
+    breakdown,
+    label,
+  );
+  const databaseScope = scenario.configuration?.databaseScope;
+  const target = requireTargetDatabaseEvidence(scenario, databaseScope, label);
+  if (databaseScope === 'runner-owned-shared')
+    assertSharedDatabaseEvidence(
+      scenario,
+      contracts,
+      contractByName,
+      target,
+      label,
+    );
 }
 
 function ratio(candidate, baseline) {
@@ -550,32 +687,7 @@ function assertEvidence(evidence, label) {
     evidence.source.workingTreeSha256.length === 0
   )
     throw new Error(`${label} source fingerprint is missing`);
-  const stringEnvironmentKeys = [
-    'node',
-    'pnpm',
-    'platform',
-    'release',
-    'architecture',
-    'cpuModel',
-    'serviceConfigurationSha256',
-  ];
-  if (
-    stringEnvironmentKeys.some(
-      (key) =>
-        typeof evidence.environment?.[key] !== 'string' ||
-        evidence.environment[key].length === 0,
-    ) ||
-    !Number.isSafeInteger(evidence.environment?.logicalCpuCount) ||
-    evidence.environment.logicalCpuCount < 1 ||
-    !Number.isSafeInteger(evidence.environment?.totalMemoryBytes) ||
-    evidence.environment.totalMemoryBytes < 1 ||
-    !Number.isSafeInteger(evidence.environment?.seed) ||
-    !Number.isSafeInteger(evidence.environment?.warmupRounds) ||
-    evidence.environment.warmupRounds < 1 ||
-    !Number.isSafeInteger(evidence.environment?.measuredRounds) ||
-    evidence.environment.measuredRounds < 1
-  )
-    throw new Error(`${label} benchmark environment is incomplete`);
+  assertBenchmarkEnvironment(evidence.environment, label);
   scenarioMap(evidence.scenarios, label);
   requireDatabaseObservations(
     evidence.databaseObservations,
@@ -593,44 +705,75 @@ function assertEvidence(evidence, label) {
       },
       `${label}.${scenario.name}`,
     );
-    requireSummaryMatches(
-      scenario.launcherElapsedMs,
-      scenario.rounds.map((round) => round.launcherElapsedMs),
-      `${label}.${scenario.name}.launcherElapsedMs`,
-    );
-    requireSummaryMatches(
-      scenario.operationThroughputPerSecond,
-      scenario.rounds.map((round) => round.operationThroughputPerSecond),
-      `${label}.${scenario.name}.throughput`,
-    );
-    requireSummaryMatches(
-      scenario.workloadProcessPeakRssBytes,
-      scenario.rounds.map((round) => round.workloadProcessMetrics.peakRssBytes),
-      `${label}.${scenario.name}.peakRssBytes`,
-    );
-    requireSummaryMatches(
-      scenario.workloadProcessPeakCpuPercent,
-      scenario.rounds.map(
-        (round) => round.workloadProcessMetrics.peakCpuPercent,
-      ),
-      `${label}.${scenario.name}.peakCpuPercent`,
-    );
-    requireSummaryMatches(
-      scenario.workloadProcessPeakCount,
-      scenario.rounds.map(
-        (round) => round.workloadProcessMetrics.peakProcessCount,
-      ),
-      `${label}.${scenario.name}.peakProcessCount`,
-    );
-    requireSummaryMatches(
-      scenario.workloadProcessRssDeltaBytes,
-      scenario.rounds.map(
-        (round) => round.workloadProcessMetrics.rssTrendBytes.delta,
-      ),
-      `${label}.${scenario.name}.rssDeltaBytes`,
-      { allowNegative: true },
-    );
+    assertScenarioSummaries(scenario, label);
   }
+}
+
+function assertBenchmarkEnvironment(environment, label) {
+  const stringEnvironmentKeys = [
+    'node',
+    'pnpm',
+    'platform',
+    'release',
+    'architecture',
+    'cpuModel',
+    'serviceConfigurationSha256',
+  ];
+  if (
+    stringEnvironmentKeys.some(
+      (key) =>
+        typeof environment?.[key] !== 'string' || environment[key].length === 0,
+    ) ||
+    !Number.isSafeInteger(environment?.logicalCpuCount) ||
+    environment.logicalCpuCount < 1 ||
+    !Number.isSafeInteger(environment?.totalMemoryBytes) ||
+    environment.totalMemoryBytes < 1 ||
+    !Number.isSafeInteger(environment?.seed) ||
+    !Number.isSafeInteger(environment?.warmupRounds) ||
+    environment.warmupRounds < 1 ||
+    !Number.isSafeInteger(environment?.measuredRounds) ||
+    environment.measuredRounds < 1
+  )
+    throw new Error(`${label} benchmark environment is incomplete`);
+}
+
+function assertScenarioSummaries(scenario, evidenceLabel) {
+  const label = `${evidenceLabel}.${scenario.name}`;
+  requireSummaryMatches(
+    scenario.launcherElapsedMs,
+    scenario.rounds.map((round) => round.launcherElapsedMs),
+    `${label}.launcherElapsedMs`,
+  );
+  requireSummaryMatches(
+    scenario.operationThroughputPerSecond,
+    scenario.rounds.map((round) => round.operationThroughputPerSecond),
+    `${label}.throughput`,
+  );
+  requireSummaryMatches(
+    scenario.workloadProcessPeakRssBytes,
+    scenario.rounds.map((round) => round.workloadProcessMetrics.peakRssBytes),
+    `${label}.peakRssBytes`,
+  );
+  requireSummaryMatches(
+    scenario.workloadProcessPeakCpuPercent,
+    scenario.rounds.map((round) => round.workloadProcessMetrics.peakCpuPercent),
+    `${label}.peakCpuPercent`,
+  );
+  requireSummaryMatches(
+    scenario.workloadProcessPeakCount,
+    scenario.rounds.map(
+      (round) => round.workloadProcessMetrics.peakProcessCount,
+    ),
+    `${label}.peakProcessCount`,
+  );
+  requireSummaryMatches(
+    scenario.workloadProcessRssDeltaBytes,
+    scenario.rounds.map(
+      (round) => round.workloadProcessMetrics.rssTrendBytes.delta,
+    ),
+    `${label}.rssDeltaBytes`,
+    { allowNegative: true },
+  );
 }
 
 export function validateBenchmarkEvidence(evidence, label = 'Benchmark') {

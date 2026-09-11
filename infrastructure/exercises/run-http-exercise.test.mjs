@@ -90,6 +90,32 @@ test('profiles cannot declare authentication failures as expected', () => {
   );
 });
 
+test('profile validation preserves response-policy and header failure order', () => {
+  assert.throws(
+    () =>
+      parseProfile({
+        ...profile,
+        headers: { authorization: 'secret' },
+        responsePolicy: {
+          expectedStatuses: [401],
+          expectedProblemCodes: [],
+        },
+      }),
+    /headers are invalid/u,
+  );
+  assert.throws(
+    () =>
+      parseProfile({
+        ...profile,
+        responsePolicy: {
+          expectedStatuses: [401],
+          expectedProblemCodes: ['not a problem code'],
+        },
+      }),
+    /authentication and authorization failures/u,
+  );
+});
+
 test('an intentional rate-limit policy must name its stable problem code', () => {
   assert.throws(
     () =>

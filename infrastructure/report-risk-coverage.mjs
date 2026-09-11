@@ -115,25 +115,45 @@ function resultSha256(result) {
   return createHash('sha256').update(JSON.stringify(result)).digest('hex');
 }
 
-function assertProducedResultInterval(result, startedAt, completedAt) {
-  validateVitestGateReport(result, 'Integration evidence producer', 1, 0);
-  const assertions = Array.isArray(result.testResults)
-    ? result.testResults.flatMap((suite) => suite.assertionResults ?? [])
-    : [];
+function invalidProducerInterval() {
+  throw new Error(
+    'Integration test result was not produced within the qualification interval',
+  );
+}
+
+function assertFiniteProducerInterval(result, startedAt, completedAt) {
   if (
     !Number.isFinite(startedAt) ||
     !Number.isFinite(completedAt) ||
-    completedAt < startedAt ||
+    completedAt < startedAt
+  )
+    invalidProducerInterval();
+  if (
     !Number.isFinite(result.startTime) ||
     result.startTime < startedAt ||
-    result.startTime > completedAt ||
+    result.startTime > completedAt
+  )
+    invalidProducerInterval();
+}
+
+function assertCompletePassedAssertions(result, assertions) {
+  if (
     !Array.isArray(result.testResults) ||
     result.testResults.length === 0 ||
-    assertions.length !== result.numTotalTests ||
+    assertions.length !== result.numTotalTests
+  )
+    invalidProducerInterval();
+  if (
     assertions.some(
       (assertion) =>
         typeof assertion?.title !== 'string' || assertion.status !== 'passed',
-    ) ||
+    )
+  )
+    invalidProducerInterval();
+}
+
+function assertSuitesCompletedWithinInterval(result, completedAt) {
+  if (
     result.testResults.some(
       (suite) =>
         typeof suite?.name !== 'string' ||
@@ -143,9 +163,34 @@ function assertProducedResultInterval(result, startedAt, completedAt) {
         !Array.isArray(suite.assertionResults),
     )
   )
-    throw new Error(
-      'Integration test result was not produced within the qualification interval',
-    );
+    invalidProducerInterval();
+}
+
+function assertProducedResultInterval(result, startedAt, completedAt) {
+  validateVitestGateReport(result, 'Integration evidence producer', 1, 0);
+  const assertions = Array.isArray(result.testResults)
+    ? result.testResults.flatMap((suite) => suite.assertionResults ?? [])
+    : [];
+  assertFiniteProducerInterval(result, startedAt, completedAt);
+  assertCompletePassedAssertions(result, assertions);
+  assertSuitesCompletedWithinInterval(result, completedAt);
+}
+
+function assertCompleteProducerIdentity(identity) {
+  const identityValues = [
+    identity.artifactFile,
+    identity.resultFile,
+    identity.command,
+    identity.candidateFingerprint,
+    identity.runId,
+    identity.sourceRevision,
+  ];
+  if (
+    identityValues.some(
+      (value) => typeof value !== 'string' || value.length === 0,
+    )
+  )
+    throw new Error('Integration evidence producer identity is incomplete');
 }
 
 export async function produceIntegrationEvidenceArtifact(
@@ -163,21 +208,14 @@ export async function produceIntegrationEvidenceArtifact(
 ) {
   const readResult = operations.readFile ?? readFile;
   const writeArtifact = operations.writeFile ?? writeFile;
-  if (
-    typeof artifactFile !== 'string' ||
-    artifactFile.length === 0 ||
-    typeof resultFile !== 'string' ||
-    resultFile.length === 0 ||
-    typeof command !== 'string' ||
-    command.length === 0 ||
-    typeof candidateFingerprint !== 'string' ||
-    candidateFingerprint.length === 0 ||
-    typeof runId !== 'string' ||
-    runId.length === 0 ||
-    typeof sourceRevision !== 'string' ||
-    sourceRevision.length === 0
-  )
-    throw new Error('Integration evidence producer identity is incomplete');
+  assertCompleteProducerIdentity({
+    artifactFile,
+    candidateFingerprint,
+    command,
+    resultFile,
+    runId,
+    sourceRevision,
+  });
   const result = JSON.parse(await readResult(resultFile, 'utf8'));
   assertProducedResultInterval(result, startedAt, completedAt);
   const artifact = {
@@ -203,50 +241,19 @@ function validatedIntegrationEvidence(
 ) {
   const entries = new Map();
   for (const [id, item] of Object.entries(evidence)) {
-    const integrationCommand =
-      typeof item?.command === 'string' &&
-      (item.command.includes('test:integration') ||
-        (item.command.includes('exec vitest run') &&
-          item.command.includes('vitest.integration')));
-    if (
-      !/^[a-z0-9][a-z0-9-]*$/u.test(id) ||
-      typeof item?.command !== 'string' ||
-      !integrationCommand ||
-      typeof item.testFile !== 'string' ||
-      !item.testFile.endsWith('.integration.test.ts') ||
-      typeof item.testName !== 'string' ||
-      item.testName.trim().length < 5
-    )
-      throw new Error(`Invalid integration evidence: ${id}`);
+    assertIntegrationEvidenceIdentity(id, item);
     if ('execution' in item)
       throw new Error(`Inline integration execution is not an artifact: ${id}`);
     const resultArtifact = item.resultArtifact;
     const executed = resultArtifact !== undefined;
-    if (executed) {
-      if (
-        resultArtifact?.schemaVersion !== 3 ||
-        resultArtifact.command !== item.command ||
-        resultArtifact.sourceRevision !== sourceRevision ||
-        resultArtifact.candidateFingerprint !==
-          execution.candidateFingerprint ||
-        resultArtifact.runId !== execution.runId ||
-        resultArtifact.resultSha256 !== resultSha256(resultArtifact.result) ||
-        (() => {
-          try {
-            assertProducedResultInterval(
-              resultArtifact.result,
-              resultArtifact.producerInterval?.startedAt,
-              resultArtifact.producerInterval?.completedAt,
-            );
-            return false;
-          } catch {
-            return true;
-          }
-        })() ||
-        !matchingExecutedTest(resultArtifact.result, item)
-      )
-        throw new Error(`Invalid executed integration evidence: ${id}`);
-    }
+    if (executed)
+      assertExecutedIntegrationEvidence(
+        id,
+        item,
+        resultArtifact,
+        sourceRevision,
+        execution,
+      );
     if (execution.requireExecuted === true && !executed)
       throw new Error(`Missing executed integration evidence: ${id}`);
     const publicEvidence = Object.fromEntries(
@@ -264,6 +271,55 @@ function validatedIntegrationEvidence(
     });
   }
   return entries;
+}
+
+function assertIntegrationEvidenceIdentity(id, item) {
+  const command = item?.command;
+  const isIntegrationCommand =
+    typeof command === 'string' &&
+    (command.includes('test:integration') ||
+      (command.includes('exec vitest run') &&
+        command.includes('vitest.integration')));
+  if (
+    !/^[a-z0-9][a-z0-9-]*$/u.test(id) ||
+    typeof item?.command !== 'string' ||
+    !isIntegrationCommand ||
+    typeof item.testFile !== 'string' ||
+    !item.testFile.endsWith('.integration.test.ts') ||
+    typeof item.testName !== 'string' ||
+    item.testName.trim().length < 5
+  )
+    throw new Error(`Invalid integration evidence: ${id}`);
+}
+
+function assertExecutedIntegrationEvidence(
+  id,
+  item,
+  artifact,
+  sourceRevision,
+  execution,
+) {
+  const identityMatches =
+    artifact?.schemaVersion === 3 &&
+    artifact.command === item.command &&
+    artifact.sourceRevision === sourceRevision &&
+    artifact.candidateFingerprint === execution.candidateFingerprint &&
+    artifact.runId === execution.runId;
+  if (!identityMatches)
+    throw new Error(`Invalid executed integration evidence: ${id}`);
+  if (artifact.resultSha256 !== resultSha256(artifact.result))
+    throw new Error(`Invalid executed integration evidence: ${id}`);
+  try {
+    assertProducedResultInterval(
+      artifact.result,
+      artifact.producerInterval?.startedAt,
+      artifact.producerInterval?.completedAt,
+    );
+  } catch {
+    throw new Error(`Invalid executed integration evidence: ${id}`);
+  }
+  if (!matchingExecutedTest(artifact.result, item))
+    throw new Error(`Invalid executed integration evidence: ${id}`);
 }
 
 export function riskCoverageSourceRevision(sourceByFile) {
