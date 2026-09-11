@@ -11,6 +11,79 @@ import type { FailureNotificationStore } from './failure-notification-contracts.
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;
+type DeliveryResult = ReturnType<
+  typeof FailureNotificationDeliveryResultV1Schema.parse
+>;
+type LockedIntent = Readonly<{
+  delivery_attempts: number;
+  possibly_dispatched: boolean | null;
+  side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
+  status: string;
+}>;
+type CompletionDecision =
+  | Readonly<{ kind: 'retry'; deliveryUnresolved: boolean }>
+  | Readonly<{
+      kind: 'terminal';
+      deliveryUnresolved: boolean;
+      status: 'delivered' | 'outcome_unknown' | 'dead_letter';
+    }>;
+type TerminalCompletionStatus = Extract<
+  CompletionDecision,
+  { readonly kind: 'terminal' }
+>['status'];
+
+function terminalCompletionStatus(
+  row: LockedIntent,
+  result: DeliveryResult,
+  actuallyDispatched: boolean,
+  deliveryUnresolved: boolean,
+): TerminalCompletionStatus {
+  if (result.kind === 'delivered') return 'delivered';
+  if (actuallyDispatched || result.kind === 'outcome_unknown')
+    return 'outcome_unknown';
+  if (row.side_effect_class === 'idempotent_with_key' && deliveryUnresolved)
+    return 'outcome_unknown';
+  return 'dead_letter';
+}
+
+function completionAuditFactType(
+  status: TerminalCompletionStatus,
+): 'delivered' | 'outcome_unknown' | 'dead_lettered' {
+  if (status === 'delivered') return 'delivered';
+  if (status === 'outcome_unknown') return 'outcome_unknown';
+  return 'dead_lettered';
+}
+
+function completionDecision(
+  row: LockedIntent,
+  result: DeliveryResult,
+  attemptNumber: number,
+  maxAttempts: number,
+): CompletionDecision {
+  const actuallyDispatched =
+    row.status === 'dispatching' && result.possiblyDispatched;
+  const deliveryUnresolved =
+    row.possibly_dispatched === true || actuallyDispatched;
+  const retryRequested =
+    result.kind === 'retry' ||
+    (row.side_effect_class !== 'unsafe' && result.kind === 'outcome_unknown');
+  const unsafeRetryIsKnownNotDispatched =
+    row.side_effect_class !== 'unsafe' ||
+    (result.kind === 'retry' && !actuallyDispatched);
+  if (
+    retryRequested &&
+    unsafeRetryIsKnownNotDispatched &&
+    attemptNumber < maxAttempts
+  )
+    return { kind: 'retry', deliveryUnresolved };
+  const status = terminalCompletionStatus(
+    row,
+    result,
+    actuallyDispatched,
+    deliveryUnresolved,
+  );
+  return { kind: 'terminal', deliveryUnresolved, status };
+}
 
 export function createFailureNotificationCompletionStore(
   pool: Pool,
@@ -31,12 +104,7 @@ export function createFailureNotificationCompletionStore(
       const providerReference =
         result.kind === 'delivered' ? result.providerReference : undefined;
       return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const locked = await client.query<{
-          delivery_attempts: number;
-          possibly_dispatched: boolean | null;
-          side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
-          status: string;
-        }>(
+        const locked = await client.query<LockedIntent>(
           `select status,delivery_attempts,side_effect_class,possibly_dispatched
            from app.run_failure_notification_intents
            where workspace_id=$1 and id=$2 for update`,
@@ -57,22 +125,13 @@ export function createFailureNotificationCompletionStore(
           throw new FailureNotificationStateError(
             'Predispatch completion result is incompatible',
           );
-        const actuallyDispatched =
-          row.status === 'dispatching' && result.possiblyDispatched;
-        const deliveryUnresolved =
-          row.possibly_dispatched === true || actuallyDispatched;
-        const retryRequested =
-          result.kind === 'retry' ||
-          (row.side_effect_class !== 'unsafe' &&
-            result.kind === 'outcome_unknown');
-        const safeUnsafeRetry =
-          row.side_effect_class !== 'unsafe' ||
-          (result.kind === 'retry' && !actuallyDispatched);
-        const mayRetry =
-          retryRequested &&
-          safeUnsafeRetry &&
-          raw.attemptNumber < raw.maxAttempts;
-        if (mayRetry) {
+        const decision = completionDecision(
+          row,
+          result,
+          raw.attemptNumber,
+          raw.maxAttempts,
+        );
+        if (decision.kind === 'retry') {
           const scheduled = await client.query<{ next_delivery_at: Date }>(
             `update app.run_failure_notification_intents
              set status='retry',dispatch_marked_at=null,recovery_at=null,
@@ -85,7 +144,7 @@ export function createFailureNotificationCompletionStore(
               intentId,
               raw.retryDelaySeconds,
               safeErrorCode ?? null,
-              deliveryUnresolved,
+              decision.deliveryUnresolved,
             ],
           );
           const due = scheduled.rows[0]?.next_delivery_at;
@@ -105,19 +164,10 @@ export function createFailureNotificationCompletionStore(
             factType: 'retry_scheduled',
             attemptNumber: raw.attemptNumber,
             ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
-            possiblyDispatched: deliveryUnresolved,
+            possiblyDispatched: decision.deliveryUnresolved,
           });
           return 'completed' as const;
         }
-        const terminalStatus =
-          result.kind === 'delivered'
-            ? 'delivered'
-            : actuallyDispatched ||
-                result.kind === 'outcome_unknown' ||
-                (row.side_effect_class === 'idempotent_with_key' &&
-                  deliveryUnresolved)
-              ? 'outcome_unknown'
-              : 'dead_letter';
         await client.query(
           `update app.run_failure_notification_intents
            set status=$3,dispatch_marked_at=null,recovery_at=null,next_delivery_at=null,
@@ -127,24 +177,19 @@ export function createFailureNotificationCompletionStore(
           [
             workspaceId,
             intentId,
-            terminalStatus,
+            decision.status,
             safeErrorCode ?? null,
-            deliveryUnresolved,
+            decision.deliveryUnresolved,
             providerReference ?? null,
           ],
         );
         await auditFailureNotification(client, {
           workspaceId,
           intentId,
-          factType:
-            terminalStatus === 'delivered'
-              ? 'delivered'
-              : terminalStatus === 'outcome_unknown'
-                ? 'outcome_unknown'
-                : 'dead_lettered',
+          factType: completionAuditFactType(decision.status),
           attemptNumber: raw.attemptNumber,
           ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
-          possiblyDispatched: deliveryUnresolved,
+          possiblyDispatched: decision.deliveryUnresolved,
         });
         return 'completed' as const;
       });

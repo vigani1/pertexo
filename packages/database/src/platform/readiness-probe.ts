@@ -192,18 +192,14 @@ export function assertDatabaseReadinessRow(
     throw new Error('Protected table does not force row-level security');
   for (const [field, message] of CAPABILITY_FAILURES)
     if (!row[field]) throw new Error(message);
-  const hasProtectedTableAccess =
+  const hasProtectedCrudGrant =
     row.can_select || row.can_insert || row.can_update || row.can_delete;
-  if (
-    (hasProtectedTableAccess &&
-      (!row.can_select ||
-        !row.can_insert ||
-        !row.can_update ||
-        !row.can_delete)) ||
-    row.can_truncate ||
-    row.can_references ||
-    row.can_trigger
-  )
+  const hasPartialProtectedCrudGrant =
+    hasProtectedCrudGrant &&
+    (!row.can_select || !row.can_insert || !row.can_update || !row.can_delete);
+  if (hasPartialProtectedCrudGrant)
+    throw new Error('Runtime database grants are incompatible');
+  if (row.can_truncate || row.can_references || row.can_trigger)
     throw new Error('Runtime database grants are incompatible');
   if (row.rolsuper || row.rolbypassrls || row.owner_member)
     throw new Error('Runtime database role is privileged');

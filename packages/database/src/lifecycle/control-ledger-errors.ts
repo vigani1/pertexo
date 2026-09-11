@@ -17,3 +17,14 @@ export class ControlLedgerReconciliationBoundError extends ControlLedgerReconcil
     super('Control ledger reconciliation invocation bound exceeded');
   }
 }
+
+export function controlLedgerClientReleaseError(
+  rollbackError: unknown,
+  cancellationRequested: boolean,
+): Error | undefined {
+  if (rollbackError instanceof Error) return rollbackError;
+  if (cancellationRequested)
+    return new Error('Control ledger transaction was canceled');
+  if (rollbackError === undefined) return undefined;
+  return new Error('Control ledger transaction could not roll back');
+}

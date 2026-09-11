@@ -345,14 +345,13 @@ async function checkCompatibilityReleaseSchema(
     [ownerRole, workerRole],
   );
   const row = result.rows[0];
+  if (row?.compatible !== true)
+    throw new Error('Node compatibility release authority is incompatible');
+  if (row.worker_can_write || !row.worker_can_read)
+    throw new Error('Node compatibility release authority is incompatible');
   if (
-    row === undefined ||
-    !row.compatible ||
-    row.worker_can_write ||
-    !row.worker_can_read ||
     row.current_role_can_write ||
     (requireCurrentRoleRead && !row.current_role_can_read)
-  ) {
+  )
     throw new Error('Node compatibility release authority is incompatible');
-  }
 }
