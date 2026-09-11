@@ -8,6 +8,12 @@ import { z } from 'zod';
 
 import { abandonResponse, cancelBounded } from './oidc-response-cleanup.js';
 import {
+  assertAuthorizationRequest,
+  assertTokenExchangeInput,
+  invalidAuthorizationRequest,
+  MAXIMUM_AUTHORIZATION_URL_LENGTH,
+} from './oidc-request-validation.js';
+import {
   IdentityError,
   isIdentityError,
   type OidcAuthorizationRequest,
@@ -141,25 +147,7 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
   }
 
   authorizationUrl(request: OidcAuthorizationRequest): string {
-    if (
-      request.state.length < 16 ||
-      request.state.length > 512 ||
-      request.nonce.length < 16 ||
-      request.nonce.length > 512 ||
-      request.codeChallenge.length < 32 ||
-      request.codeChallenge.length > 512 ||
-      request.redirectUri.length > 2_048 ||
-      request.redirectUri !== this.configuration.redirectUri ||
-      request.clientId !== this.configuration.clientId ||
-      !/^[A-Za-z0-9_-]{16,512}$/u.test(request.state) ||
-      !/^[A-Za-z0-9_-]{16,512}$/u.test(request.nonce) ||
-      !/^[A-Za-z0-9_-]{43,128}$/u.test(request.codeChallenge) ||
-      request.scopes.length < 1 ||
-      request.scopes.length > 16 ||
-      request.scopes.some((scope) => !/^[A-Za-z0-9._:-]{1,64}$/u.test(scope))
-    ) {
-      throw new IdentityError('identity.invalid_input');
-    }
+    assertAuthorizationRequest(request, this.configuration);
     const url = new URL(this.configuration.authorizationEndpoint);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', request.clientId);
@@ -169,9 +157,8 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
     url.searchParams.set('nonce', request.nonce);
     url.searchParams.set('code_challenge', request.codeChallenge);
     url.searchParams.set('code_challenge_method', 'S256');
-    if (url.toString().length > 8_192) {
-      throw new IdentityError('identity.invalid_input');
-    }
+    if (url.toString().length > MAXIMUM_AUTHORIZATION_URL_LENGTH)
+      invalidAuthorizationRequest();
     return url.toString();
   }
 
@@ -182,17 +169,7 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
       redirectUri: string;
     }>,
   ): Promise<OidcTokenResponse> {
-    if (
-      input.code.length < 1 ||
-      input.code.length > 4_096 ||
-      input.codeVerifier.length < 43 ||
-      input.codeVerifier.length > 128 ||
-      !/^[A-Za-z0-9._~-]{43,128}$/u.test(input.codeVerifier) ||
-      input.redirectUri.length > 2_048 ||
-      input.redirectUri !== this.configuration.redirectUri
-    ) {
-      throw new IdentityError('identity.provider_rejected');
-    }
+    assertTokenExchangeInput(input, this.configuration.redirectUri);
 
     const form = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -379,16 +356,16 @@ function validateEndpointProtocols(
   ];
   for (const endpoint of endpoints) {
     const parsed = new URL(endpoint);
+    const protocolIsAllowed = configuration.allowInsecureHttpForTests
+      ? parsed.protocol === 'https:' || parsed.protocol === 'http:'
+      : parsed.protocol === 'https:';
+    if (!protocolIsAllowed) throw new Error('invalid OIDC endpoint');
     if (
-      (!configuration.allowInsecureHttpForTests &&
-        parsed.protocol !== 'https:') ||
-      (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') ||
       parsed.username.length > 0 ||
       parsed.password.length > 0 ||
       parsed.hash.length > 0
-    ) {
+    )
       throw new Error('invalid OIDC endpoint');
-    }
   }
 }
 

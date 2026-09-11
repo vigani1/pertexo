@@ -13,6 +13,15 @@ import {
   throwApplicationError,
 } from '../platform/http/index.js';
 
+function endpointKeyHash(
+  generatedEndpointKey: string | undefined,
+  existingEndpointKey: string | undefined,
+): string | undefined {
+  if (generatedEndpointKey !== undefined) return sha256(generatedEndpointKey);
+  if (existingEndpointKey !== undefined) return sha256(existingEndpointKey);
+  return undefined;
+}
+
 export class WebhookManagementService {
   public constructor(
     private readonly database: WebhookTriggerDatabase,
@@ -61,12 +70,7 @@ export class WebhookManagementService {
       operation === 'rotateEndpoint' ? undefined : randomBytes(32);
     const endpointKey = endpointBytes?.toString('base64url');
     const signingSecret = secretBytes?.toString('base64url');
-    const endpointHash =
-      endpointKey === undefined
-        ? input.endpointKey === undefined
-          ? undefined
-          : sha256(input.endpointKey)
-        : sha256(endpointKey);
+    const endpointHash = endpointKeyHash(endpointKey, input.endpointKey);
     const secretVersionId =
       secretBytes === undefined ? undefined : generatePersistedId();
     try {

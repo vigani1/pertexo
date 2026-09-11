@@ -106,6 +106,71 @@ function adapterWithToken(
 }
 
 describe('generic OIDC provider adapter', () => {
+  it.each([
+    ['short state', { state: 'too-short' }],
+    ['long state', { state: 's'.repeat(513) }],
+    ['short nonce', { nonce: 'too-short' }],
+    ['long nonce', { nonce: 'n'.repeat(513) }],
+    ['short code challenge', { codeChallenge: 'c'.repeat(31) }],
+    ['long code challenge', { codeChallenge: 'c'.repeat(513) }],
+    [
+      'long redirect URI',
+      { redirectUri: `https://example.test/${'r'.repeat(2_048)}` },
+    ],
+    [
+      'unregistered redirect URI',
+      { redirectUri: 'https://evil.example.test/callback' },
+    ],
+    ['unregistered client', { clientId: 'other-client' }],
+    ['invalid state syntax', { state: `state${'s'.repeat(20)}!` }],
+    ['invalid nonce syntax', { nonce: `nonce${'n'.repeat(20)}!` }],
+    ['invalid challenge syntax', { codeChallenge: '!'.repeat(43) }],
+    ['missing scopes', { scopes: [] }],
+    ['too many scopes', { scopes: Array.from({ length: 17 }, () => 'openid') }],
+    ['invalid scope syntax', { scopes: ['openid', 'not valid'] }],
+  ] satisfies readonly (readonly [
+    string,
+    Partial<OidcAuthorizationRequest>,
+  ])[])('rejects an authorization request with %s', (_name, invalidFields) => {
+    const adapter = new GenericOidcProviderAdapter(configuration);
+    expect(() =>
+      adapter.authorizationUrl({ ...request, ...invalidFields }),
+    ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
+  });
+
+  it.each([
+    ['missing code', { code: '' }],
+    ['oversized code', { code: 'c'.repeat(4_097) }],
+    ['short verifier', { codeVerifier: 'v'.repeat(42) }],
+    ['long verifier', { codeVerifier: 'v'.repeat(129) }],
+    ['invalid verifier syntax', { codeVerifier: '!'.repeat(43) }],
+    [
+      'oversized redirect URI',
+      { redirectUri: `https://example.test/${'r'.repeat(2_048)}` },
+    ],
+    [
+      'unregistered redirect URI',
+      { redirectUri: 'https://evil.example.test/callback' },
+    ],
+  ] as const)(
+    'rejects a token exchange with %s before provider dispatch',
+    async (_name, invalidFields) => {
+      const fetchImpl = vi.fn<typeof fetch>();
+      const adapter = new GenericOidcProviderAdapter(configuration, {
+        fetch: fetchImpl,
+      });
+      await expect(
+        adapter.exchangeCode({
+          code: 'one-time-code',
+          codeVerifier: 'a'.repeat(43),
+          redirectUri: request.redirectUri,
+          ...invalidFields,
+        }),
+      ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
+      expect(fetchImpl).not.toHaveBeenCalled();
+    },
+  );
+
   it('builds authorization parameters and exchanges only a verified bounded profile', async () => {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const token = await signedToken(privateKey);

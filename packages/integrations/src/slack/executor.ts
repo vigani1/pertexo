@@ -1,6 +1,7 @@
 import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
+  type NodeExecutionRuntime,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
   ProviderCredentialInvalidError,
@@ -44,6 +45,13 @@ const DEFINITE_ERRORS = new Set([
   'not_in_channel',
 ]);
 const RETRYABLE_ERRORS = new Set(['service_unavailable']);
+
+type ResolvedSlackConnection = Awaited<
+  ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
+>;
+type SlackCredential = ReturnType<
+  typeof resolvedSlackBotTokenCredentialSchema.parse
+>;
 
 export class SlackSendMessageExecutorError extends NodeExecutorFailure {
   public override readonly name = 'SlackSendMessageExecutorError';
@@ -113,6 +121,34 @@ function classifyResult(
   }
 }
 
+async function withSlackCredential<T>(
+  resolved: ResolvedSlackConnection,
+  connectionId: string,
+  work: (credential: SlackCredential) => Promise<T>,
+): Promise<T> {
+  try {
+    if (
+      resolved.connectionId !== connectionId ||
+      resolved.providerKey !== 'slack' ||
+      resolved.authType !== 'slack_bot_token'
+    )
+      throw failure('failed', 'configuration', false);
+    let credential: SlackCredential;
+    try {
+      credential = resolvedSlackBotTokenCredentialSchema.parse(
+        JSON.parse(
+          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
+        ),
+      );
+    } catch {
+      throw failure('failed', 'authentication', false);
+    }
+    return await work(credential);
+  } finally {
+    resolved.secret.fill(0);
+  }
+}
+
 async function execute(
   dependencies: SlackSendMessageExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -140,6 +176,7 @@ async function execute(
     Object.keys(invocation.connectionRefs).length !== 1
   )
     throw failure('failed', 'configuration', false);
+  const assertCurrent = connections.assertCurrent;
 
   let resolved;
   try {
@@ -169,23 +206,7 @@ async function execute(
       throw failure('canceled', 'canceled', false);
     throw failure('retry', 'provider', false);
   }
-  try {
-    if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'slack' ||
-      resolved.authType !== 'slack_bot_token'
-    )
-      throw failure('failed', 'configuration', false);
-    let credential;
-    try {
-      credential = resolvedSlackBotTokenCredentialSchema.parse(
-        JSON.parse(
-          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
-        ),
-      );
-    } catch {
-      throw failure('failed', 'authentication', false);
-    }
+  return withSlackCredential(resolved, connectionId, async (credential) => {
     let result;
     try {
       result = await dependencies.client.sendMessage({
@@ -195,7 +216,7 @@ async function execute(
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
         beforeDispatch: createProviderBeforeDispatch({
-          assertCurrent: connections.assertCurrent,
+          assertCurrent,
           connectionId,
           expectedProviderKey: 'slack',
           expectedAuthType: 'slack_bot_token',
@@ -245,9 +266,7 @@ async function execute(
       channelId: result.channelId,
       messageTs: result.messageTs,
     });
-  } finally {
-    resolved.secret.fill(0);
-  }
+  });
 }
 
 export function createSlackSendMessageExecutorRegistration(

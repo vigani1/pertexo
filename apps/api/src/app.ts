@@ -373,17 +373,18 @@ function assertValidRuntimeSources(
     throw new TypeError(
       'artifact overrides require configured artifact runtime creation',
     );
-  if (
-    !identityAvailable &&
-    (unchecked.connectionRuntime !== undefined ||
+  if (!identityAvailable) {
+    const featureRuntimeAvailable =
+      unchecked.connectionRuntime !== undefined ||
       unchecked.workflowRuntime !== undefined ||
       unchecked.webhookRuntime !== undefined ||
       unchecked.scheduleRuntime !== undefined ||
-      unchecked.artifactRuntime !== undefined)
-  )
-    throw new TypeError(
-      'feature runtimes require an available identity runtime',
-    );
+      unchecked.artifactRuntime !== undefined;
+    if (featureRuntimeAvailable)
+      throw new TypeError(
+        'feature runtimes require an available identity runtime',
+      );
+  }
 }
 
 function assertExclusiveRuntime(
