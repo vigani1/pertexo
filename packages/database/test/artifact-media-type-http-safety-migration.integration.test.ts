@@ -1,12 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { migrateDatabase } from '../src/migrations.js';
+import {
+  copyMigrationsBefore,
+  createArtifactMigrationConfig,
+} from './support/artifact-migration-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
@@ -31,16 +35,9 @@ const database = createDisposableDatabaseFixture({
   ownerRole: 'pertexo_owner',
 });
 const { databaseUrl } = database;
-const migrationConfig = {
-  apiRuntimeRole: 'pertexo_api',
-  connectionString: databaseUrl(migrationBaseUrl),
-  dispatcherRole: 'pertexo_dispatcher',
-  lifecycleCommandRole: 'pertexo_lifecycle_command',
-  maintenanceRole: 'pertexo_maintenance',
-  operatorRole: 'pertexo_operator',
-  ownerRole: 'pertexo_owner',
-  workerRuntimeRole: 'pertexo_worker',
-} as const;
+const migrationConfig = createArtifactMigrationConfig(
+  databaseUrl(migrationBaseUrl),
+);
 
 beforeAll(database.create, 30_000);
 afterAll(database.drop);
@@ -57,17 +54,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
       max: 1,
     });
     try {
-      const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-        (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0085_',
-      );
-      await Promise.all(
-        migrations.map((name) =>
-          copyFile(
-            path.join(MIGRATIONS_DIRECTORY, name),
-            path.join(priorDirectory, name),
-          ),
-        ),
-      );
+      await copyMigrationsBefore(priorDirectory, '0085_');
       const prior = await migrateDatabase(migrationConfig, priorDirectory);
       expect(prior.at(-1)).toBe('0084_workspace_member_discovery_index.sql');
 
