@@ -425,6 +425,38 @@ describe('workflow transition public risk behavior', () => {
     ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
   });
 
+  it('accepts only an output-identical terminal invocation replay without another event', () => {
+    const terminal = {
+      ...checkpoint(),
+      runStatus: 'succeeded' as const,
+      invocations: [
+        {
+          invocationKey: 'completed-node',
+          nodeId: 'completed-node',
+          status: 'succeeded' as const,
+          attemptNumber: 1,
+          output: inline(ATTEMPT_ID),
+        },
+      ],
+    };
+    const replay = {
+      kind: 'outcome' as const,
+      invocationKey: 'completed-node',
+      status: 'succeeded' as const,
+      output: inline(ATTEMPT_ID),
+    };
+
+    const plan = advance(terminal, [replay]);
+    expect(plan.checkpoint.invocations).toEqual(terminal.invocations);
+    expect(plan.events).toEqual([]);
+
+    expect(() =>
+      advance(terminal, [
+        { ...replay, output: inline('22222222-2222-4222-8222-222222222222') },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
+  });
+
   it('rejects branch selection against a V1 checkpoint', () => {
     expect(() =>
       advance(
