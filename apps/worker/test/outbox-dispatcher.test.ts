@@ -26,6 +26,17 @@ const LEASE_TOKEN = '22222222-2222-4222-8222-222222222222';
 const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
 const RUN_ID = '44444444-4444-4444-8444-444444444444';
 
+function indexedId(prefix: string, index: number): string {
+  return `${prefix}-${index.toString(16).padStart(12, '0')}`;
+}
+
+function indexedEvent(index: number): LeasedOutboxEvent {
+  return event({
+    id: indexedId('11111111-1111-4111-8111', index),
+    workspaceId: indexedId('33333333-3333-4333-8333', index),
+  });
+}
+
 function checksum(value: unknown): string {
   return canonicalOutboxPayloadChecksum(value);
 }
@@ -467,6 +478,94 @@ describe('outbox dispatcher', () => {
       failed: 0,
       published: 1,
     });
+  });
+
+  it('bounds pending workspace capacity samples while one sample is in flight', async () => {
+    const selected = boundaries(
+      Array.from({ length: 102 }, (_, index) => indexedEvent(index)),
+    );
+    const firstSample = Promise.withResolvers<void>();
+    const observeWorkspaceCapacity = vi
+      .fn<(workspaceId: string) => Promise<void>>()
+      .mockImplementationOnce(() => firstSample.promise)
+      .mockResolvedValue(undefined);
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
+
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      published: 102,
+    });
+    expect(observeWorkspaceCapacity).toHaveBeenCalledOnce();
+
+    firstSample.resolve();
+    await vi.waitFor(() => {
+      expect(observeWorkspaceCapacity).toHaveBeenCalledTimes(101);
+    });
+    expect(observeWorkspaceCapacity).not.toHaveBeenCalledWith(
+      indexedEvent(101).workspaceId,
+    );
+    await dispatcher.close();
+  });
+
+  it('evicts the oldest tracked workspace capacity sample at the tracking limit', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    const selected = boundaries([]);
+    let claimedEvents: readonly LeasedOutboxEvent[] = [];
+    vi.mocked(selected.database.claimBatch).mockImplementation(() =>
+      Promise.resolve({ events: claimedEvents, exhaustedCount: 0 }),
+    );
+    const observeWorkspaceCapacity = vi.fn().mockResolvedValue(undefined);
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
+
+    for (let batch = 0; batch < 10; batch += 1) {
+      claimedEvents = Array.from({ length: 100 }, (_, offset) =>
+        indexedEvent(batch * 100 + offset),
+      );
+      await dispatcher.dispatchOnce();
+      await vi.waitFor(() => {
+        expect(observeWorkspaceCapacity).toHaveBeenCalledTimes(
+          (batch + 1) * 100,
+        );
+      });
+    }
+
+    claimedEvents = [indexedEvent(1_000)];
+    await dispatcher.dispatchOnce();
+    await vi.waitFor(() => {
+      expect(observeWorkspaceCapacity).toHaveBeenCalledTimes(1_001);
+    });
+
+    claimedEvents = [indexedEvent(0), indexedEvent(500)];
+    await dispatcher.dispatchOnce();
+    await vi.waitFor(() => {
+      expect(observeWorkspaceCapacity).toHaveBeenCalledTimes(1_002);
+    });
+    expect(observeWorkspaceCapacity).toHaveBeenLastCalledWith(
+      indexedEvent(0).workspaceId,
+    );
+    await dispatcher.close();
+  });
+
+  it('drains an in-flight workspace capacity sample before closing boundaries', async () => {
+    const selected = boundaries([event()]);
+    const sample = Promise.withResolvers<void>();
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({
+      observeWorkspaceCapacity: vi.fn(() => sample.promise),
+    });
+    await dispatcher.dispatchOnce();
+
+    const closing = dispatcher.close();
+    await Promise.resolve();
+    expect(selected.database.close).not.toHaveBeenCalled();
+    expect(selected.producer.close).not.toHaveBeenCalled();
+
+    sample.resolve();
+    await expect(closing).resolves.toBeUndefined();
+    expect(selected.database.close).toHaveBeenCalledOnce();
+    expect(selected.producer.close).toHaveBeenCalledOnce();
   });
 
   it('records retry claims, stale leases, and exhausted attempts without dynamic labels', async () => {
