@@ -33,31 +33,9 @@ import {
   runManagedCommand,
   terminateProcessTree,
 } from './owned-process-tree.mjs';
+import { processExists, waitForFile } from './test-process-observation.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
-
-async function waitForFile(file, timeoutMillis = 5_000) {
-  const deadline = Date.now() + timeoutMillis;
-  while (Date.now() < deadline) {
-    try {
-      return await readFile(file, 'utf8');
-    } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
-      await delay(25);
-    }
-  }
-  throw new Error(`Timed out waiting for ${file}`);
-}
-
-function processExists(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (error?.code === 'ESRCH') return false;
-    throw error;
-  }
-}
 
 test('current CI supplies the shared local service and specialized-suite contract', async () => {
   const source = await readFile(
