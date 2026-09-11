@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **in progress; baseline recorded and M01–M05 complete**.
+Status: **complete; M01–M05 implemented and M06–M08 retained with evidence**.
 
 ## Purpose and authority
 
@@ -366,7 +366,7 @@ selected work and final verification are complete.
 - [x] M06 local comparison recorded; implemented and verified, or retained.
 - [x] M07 local comparison recorded; implemented and verified, or retained.
 - [x] M08 local comparison recorded; implemented and verified, or retained.
-- [ ] Final source-bound checks, coverage inheritance, and outcomes recorded.
+- [x] Final source-bound checks, coverage inheritance, and outcomes recorded.
 
 Implementation and commits are authorized for the current request; pushing is
 not. Use coherent independently verified changes and the repository's git
@@ -447,3 +447,11 @@ discipline, never a fixed commit count or history rewrite.
   output fails with `transition_invalid`; the loop replay coverage remains in
   place. The six focused suites passed 89 cases, workflow-engine typecheck
   passed, and all 307 coverage cases passed.
+- **Final qualification:** `pnpm check` and every required cohort in
+  `pnpm quality:local` passed in run
+  `2026-09-11t16-04-59-502z-47013-dcb25c52`. Its manifest records unchanged
+  start/completion HEAD `766e5ac7`, a clean source tree, stable fingerprint
+  `6e24332d74435be8985b3b127d8daad2350490b82406e6e19eeae992012f9921`,
+  all 21 cohorts passing, and only the three named AWS control-ledger cases
+  excluded. Coverage retained the post-split thresholds and reported 0
+  unreviewed and 465 reviewed uncovered branches across 142 selected files.
