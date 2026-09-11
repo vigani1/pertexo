@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **in progress; baseline recorded and M01–M03 complete**.
+Status: **in progress; baseline recorded and M01–M04 complete**.
 
 ## Purpose and authority
 
@@ -361,7 +361,7 @@ selected work and final verification are complete.
 - [x] M01 completed with binding/error-order evidence.
 - [x] M02 completed with fail-before-query evidence.
 - [x] M03 completed with unchanged subprocess/error-policy evidence.
-- [ ] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
+- [x] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
 - [ ] M05 purge and reconciliation slices completed or individually retained with reason.
 - [ ] M06 local comparison recorded; implemented and verified, or retained.
 - [ ] M07 local comparison recorded; implemented and verified, or retained.
@@ -396,3 +396,11 @@ discipline, never a fixed commit count or history rewrite.
   process errors; the real subprocess suites remain unchanged at their call
   sites. All 55 owning Node tests, architecture/dependency checks, and focused
   lint passed.
+- **M04 — implemented:** the two artifact migration suites share one test-only
+  owner for their identical seven-role migration configuration and unsorted,
+  parallel prior-head copy mechanics. Database names, seven-role fixture grants,
+  directory lifetime, explicit `0083_`/`0085_` cutoffs, SQL, and assertions remain
+  scenario-local. Partial qualification
+  `2026-09-11t15-33-54-639z-19311-0b4e3007` was source-stable and passed all 418
+  database integration cases; its JSON report confirms both named cases executed
+  and passed. The 297 database coverage cases and merged thresholds also passed.
