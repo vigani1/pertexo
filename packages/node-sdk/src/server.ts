@@ -420,11 +420,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
   ): 'before_execute' | 'executor_controlled' => {
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
-    assertDefinitionExecutorBinding(
-      definition.manifest.definition,
-      definition.manifest.executor,
-      request.executor,
-    );
+    assertDefinitionExecutorBinding(definition.manifest, request.executor);
     return executor.registration.abiVersion ===
       DISPATCH_AWARE_EXECUTOR_ABI_VERSION
       ? 'executor_controlled'
@@ -436,11 +432,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     assertNotAborted(request.signal);
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
-    assertDefinitionExecutorBinding(
-      definition.manifest.definition,
-      definition.manifest.executor,
-      request.executor,
-    );
+    assertDefinitionExecutorBinding(definition.manifest, request.executor);
     const bounded = canonicalizeBoundedJson({
       config: request.config,
       input: request.input,
