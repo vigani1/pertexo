@@ -1,6 +1,7 @@
 import { WorkflowEngineError } from './errors.js';
 import type { SchedulerState } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
+import { sameOutputReference } from './output-reference.js';
 import { sameBranchPath, sameIterationPath } from './scope.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
@@ -12,7 +13,6 @@ import type {
   JoinState,
   LoopState,
   NodeStatus,
-  OutputReference,
   RunStatus,
   WorkflowCheckpoint,
   WorkflowObservation,
@@ -57,19 +57,6 @@ export function isTerminalNodeStatus(status: NodeStatus): boolean {
     'timed_out',
     'outcome_unknown',
   ].includes(status);
-}
-
-export function sameOutputReference(
-  left: OutputReference | undefined,
-  right: OutputReference | undefined,
-): boolean {
-  if (left?.kind !== right?.kind) return false;
-  if (left === undefined || right === undefined) return true;
-  return left.kind === 'inline' && right.kind === 'inline'
-    ? left.attemptId === right.attemptId
-    : left.kind === 'artifact' && right.kind === 'artifact'
-      ? left.artifactId === right.artifactId
-      : false;
 }
 
 export function observationOrder(

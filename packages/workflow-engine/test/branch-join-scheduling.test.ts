@@ -86,4 +86,13 @@ describe('branch and join scheduling', () => {
       }),
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
   });
+
+  it('rejects a disposition for a branch outside the declared ledger', () => {
+    expect(() =>
+      recordBranchDisposition(ledger([['a', 'pending']]), {
+        branchId: 'unknown',
+        disposition: 'arrived',
+      }),
+    ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
+  });
 });

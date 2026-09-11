@@ -10,6 +10,47 @@ import {
   sortedUnique,
 } from './checkpoint-shared.js';
 
+type JoinPolicy = JoinState['policy'];
+type JoinLedger = JoinState['ledger'];
+
+function requiredJoinArrivals(
+  policy: JoinPolicy,
+  arrivedCount: number,
+): number {
+  if (policy.kind === 'all') return arrivedCount;
+  if (policy.kind === 'any') return 1;
+  return policy.count;
+}
+
+function joinSelectionIsSatisfiable(
+  policy: JoinPolicy,
+  ledger: JoinLedger,
+  arrivedCount: number,
+): boolean {
+  if (policy.kind !== 'all')
+    return arrivedCount >= requiredJoinArrivals(policy, arrivedCount);
+  return ledger.every(
+    ({ disposition }) => disposition !== 'failed' && disposition !== 'canceled',
+  );
+}
+
+function expectedUnsatisfiedReason(
+  policy: JoinPolicy,
+  ledger: JoinLedger,
+  arrivedCount: number,
+): JoinState['unsatisfiedReasonCode'] {
+  if (policy.kind === 'all') {
+    if (ledger.some(({ disposition }) => disposition === 'failed'))
+      return 'branch_failed';
+    if (ledger.some(({ disposition }) => disposition === 'canceled'))
+      return 'branch_canceled';
+    return undefined;
+  }
+  return arrivedCount < requiredJoinArrivals(policy, arrivedCount)
+    ? 'insufficient_arrivals'
+    : undefined;
+}
+
 export function parseJoin(value: unknown): JoinState {
   assertCheckpoint(isRecord(value), 'join must be an object');
   assertExactKeys(
@@ -56,11 +97,7 @@ export function parseJoin(value: unknown): JoinState {
     count = value.policy.count;
   }
   const policy: JoinState['policy'] =
-    kind === 'count'
-      ? { kind, count: count ?? 0 }
-      : kind === 'any'
-        ? { kind }
-        : { kind };
+    kind === 'count' ? { kind, count: count ?? 0 } : { kind };
   const ledger = parseLedger(value.ledger);
   assertCheckpoint(
     new Set(ledger.map(({ branchId }) => branchId)).size === ledger.length,
@@ -109,21 +146,12 @@ export function parseJoin(value: unknown): JoinState {
     const arrived = ledger
       .filter(({ disposition }) => disposition === 'arrived')
       .map(({ branchId }) => branchId);
-    const required =
-      kind === 'all'
-        ? arrived.length
-        : kind === 'any'
-          ? 1
-          : policy.kind === 'count'
-            ? policy.count
-            : 0;
-    const satisfiable =
-      kind === 'all'
-        ? ledger.every(
-            ({ disposition }) =>
-              disposition !== 'failed' && disposition !== 'canceled',
-          )
-        : arrived.length >= required;
+    const required = requiredJoinArrivals(policy, arrived.length);
+    const satisfiable = joinSelectionIsSatisfiable(
+      policy,
+      ledger,
+      arrived.length,
+    );
     const expected = satisfiable ? arrived.slice(0, required) : [];
     assertCheckpoint(
       satisfiable &&
@@ -142,22 +170,11 @@ export function parseJoin(value: unknown): JoinState {
     const arrivedCount = ledger.filter(
       ({ disposition }) => disposition === 'arrived',
     ).length;
-    const expectedReason =
-      kind === 'all' &&
-      ledger.some(({ disposition }) => disposition === 'failed')
-        ? 'branch_failed'
-        : kind === 'all' &&
-            ledger.some(({ disposition }) => disposition === 'canceled')
-          ? 'branch_canceled'
-          : kind !== 'all' &&
-              arrivedCount <
-                (kind === 'any'
-                  ? 1
-                  : policy.kind === 'count'
-                    ? policy.count
-                    : 0)
-            ? 'insufficient_arrivals'
-            : undefined;
+    const expectedReason = expectedUnsatisfiedReason(
+      policy,
+      ledger,
+      arrivedCount,
+    );
     assertCheckpoint(
       unsatisfiedReasonCode === expectedReason,
       'persisted join failure is inconsistent',

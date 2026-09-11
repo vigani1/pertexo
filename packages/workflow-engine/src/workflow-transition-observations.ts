@@ -6,6 +6,7 @@ import {
   invocationKey as createInvocationKey,
   recordBranchDisposition,
 } from './scheduling.js';
+import { sameOutputReference } from './output-reference.js';
 import { assertNodeTransition, assertRunTransition } from './transitions.js';
 import type {
   InvocationState,
@@ -19,7 +20,6 @@ import {
   rootInvocationKey,
   sameJoinDeclaration,
   sameLoopDeclaration,
-  sameOutputReference,
   transitionEvent as event,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';

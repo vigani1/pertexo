@@ -5,6 +5,7 @@ import type { parseCheckpoint } from './checkpoint.js';
 import { normalizeBoundedEngineJson } from './executable-workflow.js';
 import { operationError } from './operation-values.js';
 import { compareOrdinal } from './ordering.js';
+import { sameOutputReference } from './output-reference.js';
 import { parsePersistedObservation } from './persisted-observation-parser.js';
 import type { OutputReference, WorkflowObservation } from './types.js';
 
@@ -165,12 +166,7 @@ function samePersistedFact(
     left.invocationKey === right.invocationKey &&
     left.status === right.status &&
     left.reasonCode === right.reasonCode &&
-    left.output?.kind === right.output?.kind &&
-    (left.output?.kind === 'inline' && right.output?.kind === 'inline'
-      ? left.output.attemptId === right.output.attemptId
-      : left.output?.kind === 'artifact' && right.output?.kind === 'artifact'
-        ? left.output.artifactId === right.output.artifactId
-        : left.output === undefined && right.output === undefined)
+    sameOutputReference(left.output, right.output)
   );
 }
 
@@ -212,14 +208,7 @@ function staleFactMatchesCheckpoint(
         declaredLoop !== undefined &&
         (invocation.status === 'waiting' ||
           invocation.status === 'succeeded'))) &&
-    invocation.output?.kind === observation.output?.kind &&
-    (invocation.output?.kind === 'inline' &&
-    observation.output?.kind === 'inline'
-      ? invocation.output.attemptId === observation.output.attemptId
-      : invocation.output?.kind === 'artifact' &&
-          observation.output?.kind === 'artifact'
-        ? invocation.output.artifactId === observation.output.artifactId
-        : invocation.output === undefined && observation.output === undefined)
+    sameOutputReference(invocation.output, observation.output)
   );
 }
 

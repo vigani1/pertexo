@@ -96,6 +96,21 @@ describe('workflow graph validation', () => {
     expect(
       validateWorkflowGraph(
         graph([
+          {
+            ...loop,
+            structured: { ...loop.structured, maxIterations: 0 },
+          },
+        ]),
+      ).issues[0],
+    ).toEqual({
+      code: 'invalid_loop_limit',
+      path: '$.nodes.loop.structured',
+      message:
+        'For Each limits must be positive, bounded, and concurrency cannot exceed iterations',
+    });
+    expect(
+      validateWorkflowGraph(
+        graph([
           { ...loop, structured: { ...loop.structured, maxConcurrency: 11 } },
         ]),
       ).issues[0]?.code,

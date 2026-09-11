@@ -18,6 +18,27 @@ import {
 import { parseJoin } from './checkpoint-v1-join.js';
 import { parseLoop } from './checkpoint-v1-loop.js';
 
+type CheckpointLoop = WorkflowCheckpointV1['loops'][number];
+type CheckpointInvocation = WorkflowCheckpointV1['invocations'][number];
+
+function loopParentStatusIsConsistent(
+  loop: CheckpointLoop,
+  parent: CheckpointInvocation,
+  cancelRequested: boolean,
+  deadlineExpired: boolean,
+): boolean {
+  if (loop.terminalStatus !== undefined)
+    return parent.status === loop.terminalStatus;
+  if (cancelRequested && parent.status === 'canceled') return true;
+  if (deadlineExpired && parent.status === 'timed_out') return true;
+  const loopComplete =
+    loop.nextOrdinal === loop.collectionSize &&
+    loop.activeOrdinals.length === 0;
+  return loopComplete
+    ? parent.status === 'succeeded'
+    : parent.status === 'pending' || parent.status === 'waiting';
+}
+
 export function parseCheckpointV1Boundary(
   value: unknown,
 ): WorkflowCheckpointV1 {
@@ -181,20 +202,13 @@ export function parseCheckpointV1Boundary(
   for (const loop of loops) {
     const parent = invocationByKey.get(loop.controlInvocationKey);
     assertCheckpoint(parent !== undefined, 'loop parent invocation is missing');
-    const loopComplete =
-      loop.nextOrdinal === loop.collectionSize &&
-      loop.activeOrdinals.length === 0;
     assertCheckpoint(
-      loop.terminalStatus !== undefined
-        ? parent.status === loop.terminalStatus
-        : loopComplete
-          ? parent.status === 'succeeded' ||
-            (value.cancelRequested && parent.status === 'canceled') ||
-            (value.deadlineExpired === true && parent.status === 'timed_out')
-          : parent.status === 'pending' ||
-            parent.status === 'waiting' ||
-            (value.cancelRequested && parent.status === 'canceled') ||
-            (value.deadlineExpired === true && parent.status === 'timed_out'),
+      loopParentStatusIsConsistent(
+        loop,
+        parent,
+        value.cancelRequested,
+        value.deadlineExpired === true,
+      ),
       'loop parent invocation is inconsistent',
     );
     const syntheticLegacyLoop =
