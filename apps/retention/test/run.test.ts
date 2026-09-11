@@ -185,6 +185,243 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
   };
 }
 
+type TestResources = ReturnType<typeof resources>;
+type MaintenanceOperation =
+  | 'dry_run'
+  | 'enforcement'
+  | 'operator_rerun'
+  | 'preview'
+  | 'run_artifact'
+  | 'scheduling'
+  | 'transient_data_reap'
+  | 'workspace_purge';
+
+type MaintenanceLoopCase = Readonly<{
+  name: string;
+  operation: MaintenanceOperation;
+  result: unknown;
+  shouldPoll: boolean;
+}>;
+
+const batchIdentity = {
+  batchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  eligibleCount: 3,
+  examinedCount: 3,
+  pageCount: 1,
+  retentionKind: 'workflow_run_input',
+  workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+} as const;
+const lifecycleIdentity = {
+  artifactId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  jobId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  previewRunId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+} as const;
+
+const maintenanceLoopCases: readonly MaintenanceLoopCase[] = [
+  {
+    name: 'operator rerun polls when no command is ready',
+    operation: 'operator_rerun',
+    result: null,
+    shouldPoll: true,
+  },
+  {
+    name: 'operator rerun immediately continues after processing a command',
+    operation: 'operator_rerun',
+    result: {
+      commandId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      outcome: 'completed',
+      targetId: batchIdentity.batchId,
+      targetType: 'retention_batch',
+      workspaceId: batchIdentity.workspaceId,
+    },
+    shouldPoll: false,
+  },
+  {
+    name: 'scheduling polls below capacity',
+    operation: 'scheduling',
+    result: {
+      capacityLimited: false,
+      cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+      scannedCount: 3,
+      scheduledCount: 3,
+    },
+    shouldPoll: true,
+  },
+  {
+    name: 'scheduling immediately continues at capacity',
+    operation: 'scheduling',
+    result: {
+      capacityLimited: true,
+      cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+      scannedCount: 25,
+      scheduledCount: 25,
+    },
+    shouldPoll: false,
+  },
+  {
+    name: 'transient-data reaping polls when no rows are deleted',
+    operation: 'transient_data_reap',
+    result: {
+      idempotencyRecordsDeleted: 0,
+      sessionsDeleted: 0,
+      workspaceCreationRecordsDeleted: 0,
+    },
+    shouldPoll: true,
+  },
+  {
+    name: 'transient-data reaping immediately continues after deletion',
+    operation: 'transient_data_reap',
+    result: {
+      idempotencyRecordsDeleted: 1,
+      sessionsDeleted: 2,
+      workspaceCreationRecordsDeleted: 3,
+    },
+    shouldPoll: false,
+  },
+  ...(['idle'] as const).map((status) => ({
+    name: `dry run polls after ${status}`,
+    operation: 'dry_run' as const,
+    result: { status },
+    shouldPoll: true,
+  })),
+  ...(['completed', 'stale'] as const).map((status) => ({
+    name: `dry run immediately continues after ${status}`,
+    operation: 'dry_run' as const,
+    result: { ...batchIdentity, status },
+    shouldPoll: false,
+  })),
+  ...(['idle', 'paused', 'released', 'stale'] as const).map((status) => ({
+    name: `enforcement polls after ${status}`,
+    operation: 'enforcement' as const,
+    result: status === 'idle' ? { status } : { ...batchIdentity, status },
+    shouldPoll: true,
+  })),
+  {
+    name: 'enforcement immediately continues after completed',
+    operation: 'enforcement',
+    result: { ...batchIdentity, status: 'completed' },
+    shouldPoll: false,
+  },
+  ...(['idle', 'blocked', 'held', 'released', 'waiting'] as const).map(
+    (status) => ({
+      name: `preview retention polls after ${status}`,
+      operation: 'preview' as const,
+      result: status === 'idle' ? { status } : { ...lifecycleIdentity, status },
+      shouldPoll: true,
+    }),
+  ),
+  ...(['completed', 'progressed'] as const).map((status) => ({
+    name: `preview retention immediately continues after ${status}`,
+    operation: 'preview' as const,
+    result: { ...lifecycleIdentity, status },
+    shouldPoll: false,
+  })),
+  ...(
+    ['idle', 'held', 'referenced', 'released', 'stale', 'waiting'] as const
+  ).map((status) => ({
+    name: `run-artifact retention polls after ${status}`,
+    operation: 'run_artifact' as const,
+    result: status === 'idle' ? { status } : { ...lifecycleIdentity, status },
+    shouldPoll: true,
+  })),
+  {
+    name: 'run-artifact retention immediately continues after completed',
+    operation: 'run_artifact',
+    result: { ...lifecycleIdentity, status: 'completed' },
+    shouldPoll: false,
+  },
+  ...(['idle', 'completed', 'released', 'stale'] as const).map((status) => ({
+    name: `workspace purge polls after ${status}`,
+    operation: 'workspace_purge' as const,
+    result: status === 'idle' ? { status } : { ...lifecycleIdentity, status },
+    shouldPoll: true,
+  })),
+  ...(['started', 'progressed'] as const).map((status) => ({
+    name: `workspace purge immediately continues after ${status}`,
+    operation: 'workspace_purge' as const,
+    result: { ...lifecycleIdentity, status },
+    shouldPoll: false,
+  })),
+];
+
+function rejectWhenWorkerStops(signal?: AbortSignal): Promise<never> {
+  if (signal === undefined) return Promise.reject(new Error('signal missing'));
+  const stopError = (): Error =>
+    signal.reason instanceof Error
+      ? signal.reason
+      : new Error('maintenance worker stopped');
+  if (signal.aborted) return Promise.reject(stopError());
+  return new Promise((_resolve, reject) => {
+    signal.addEventListener(
+      'abort',
+      () => {
+        reject(stopError());
+      },
+      { once: true },
+    );
+  });
+}
+
+function isolateMaintenanceOperations(input: TestResources): void {
+  input.database.processOperatorRerun = vi.fn(rejectWhenWorkerStops);
+  input.database.scheduleEnforcement = vi.fn(rejectWhenWorkerStops);
+  input.database.reapTransientData = vi.fn(rejectWhenWorkerStops);
+  input.database.processNext = vi.fn(rejectWhenWorkerStops);
+  input.enforcement.processNext = vi.fn(rejectWhenWorkerStops);
+  input.preview.processNext = vi.fn(rejectWhenWorkerStops);
+  input.runArtifacts.processNext = vi.fn(rejectWhenWorkerStops);
+  input.workspacePurge.processNext = vi.fn(rejectWhenWorkerStops);
+}
+
+function installMaintenanceResult(
+  input: TestResources,
+  operation: MaintenanceOperation,
+  result: unknown,
+): ReturnType<typeof vi.fn> {
+  const execute = vi.fn(() => {
+    if (execute.mock.calls.length === 2)
+      input.controller.abort(new Error(`${operation} matrix complete`));
+    return Promise.resolve(result);
+  });
+  switch (operation) {
+    case 'operator_rerun':
+      input.database.processOperatorRerun =
+        execute as typeof input.database.processOperatorRerun;
+      break;
+    case 'scheduling':
+      input.database.scheduleEnforcement =
+        execute as typeof input.database.scheduleEnforcement;
+      break;
+    case 'transient_data_reap':
+      input.database.reapTransientData =
+        execute as typeof input.database.reapTransientData;
+      break;
+    case 'dry_run':
+      input.database.processNext = execute as typeof input.database.processNext;
+      break;
+    case 'enforcement':
+      input.enforcement.processNext =
+        execute as typeof input.enforcement.processNext;
+      break;
+    case 'preview':
+      input.preview.processNext = execute as typeof input.preview.processNext;
+      break;
+    case 'run_artifact':
+      input.runArtifacts.processNext =
+        execute as typeof input.runArtifacts.processNext;
+      break;
+    case 'workspace_purge':
+      input.workspacePurge.processNext =
+        execute as typeof input.workspacePurge.processNext;
+  }
+  return execute;
+}
+
+async function flushMaintenancePromises(): Promise<void> {
+  for (let index = 0; index < 20; index += 1) await Promise.resolve();
+}
+
 describe('retention worker', () => {
   it('proves authority, drains completed work, records metrics, and closes', async () => {
     const input = resources(['completed', 'idle']);
@@ -286,6 +523,78 @@ describe('retention worker', () => {
       expect.any(Object),
       expect.any(Number),
     );
+  });
+
+  it.each(maintenanceLoopCases)(
+    'preserves the public loop decision: $name',
+    async ({ operation, result, shouldPoll }) => {
+      vi.useFakeTimers();
+      const input = resources([]);
+      input.pollIntervalMs = 10_000;
+      isolateMaintenanceOperations(input);
+      const execute = installMaintenanceResult(input, operation, result);
+      try {
+        const running = runRetentionWorker(input);
+        await flushMaintenancePromises();
+
+        expect(execute).toHaveBeenCalledTimes(shouldPoll ? 1 : 2);
+        if (shouldPoll) {
+          await vi.advanceTimersByTimeAsync(input.pollIntervalMs);
+          await flushMaintenancePromises();
+          expect(execute).toHaveBeenCalledTimes(2);
+        }
+        await running;
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('cancels a polling delay without another operation call', async () => {
+    vi.useFakeTimers();
+    const input = resources([]);
+    input.pollIntervalMs = 10_000;
+    isolateMaintenanceOperations(input);
+    const execute = installMaintenanceResult(input, 'dry_run', {
+      status: 'idle',
+    });
+    try {
+      const running = runRetentionWorker(input);
+      await flushMaintenancePromises();
+      expect(execute).toHaveBeenCalledOnce();
+
+      input.controller.abort(new Error('cancel polling delay'));
+      await running;
+
+      expect(execute).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels a failure backoff without retrying the operation', async () => {
+    vi.useFakeTimers();
+    const input = resources([]);
+    input.pollIntervalMs = 10_000;
+    isolateMaintenanceOperations(input);
+    const execute = vi.fn(() => Promise.reject(new Error('retry later')));
+    input.database.processOperatorRerun = execute;
+    try {
+      const running = runRetentionWorker(input);
+      await flushMaintenancePromises();
+      expect(execute).toHaveBeenCalledOnce();
+      expect(input.metrics.recordFailure).toHaveBeenCalledWith(
+        'operator_rerun',
+        expect.any(Number),
+      );
+
+      input.controller.abort(new Error('cancel failure backoff'));
+      await running;
+
+      expect(execute).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('drains another schedule batch immediately when capacity was reached', async () => {
