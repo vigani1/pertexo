@@ -363,9 +363,9 @@ selected work and final verification are complete.
 - [x] M03 completed with unchanged subprocess/error-policy evidence.
 - [x] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
 - [x] M05 purge and reconciliation slices completed or individually retained with reason.
-- [ ] M06 local comparison recorded; implemented and verified, or retained.
-- [ ] M07 local comparison recorded; implemented and verified, or retained.
-- [ ] M08 local comparison recorded; implemented and verified, or retained.
+- [x] M06 local comparison recorded; implemented and verified, or retained.
+- [x] M07 local comparison recorded; implemented and verified, or retained.
+- [x] M08 local comparison recorded; implemented and verified, or retained.
 - [ ] Final source-bound checks, coverage inheritance, and outcomes recorded.
 
 Implementation and commits are authorized for the current request; pushing is
@@ -416,3 +416,31 @@ discipline, never a fixed commit count or history rewrite.
   coverage cases passed. Source-stable partial qualification
   `2026-09-11t15-46-39-986z-25943-c01bef9e` passed 5 local service cases and
   retained the three named AWS-only exclusions.
+- **M06 — retained:** `AppModule.register` keeps the feature imports as one
+  identity-gated, visibly ordered array. A same-file phase would need another
+  argument/configuration representation while separating module order from the
+  constructors that establish it; it would not make authorization or runtime
+  ownership easier to trace. The existing representative combinations cover
+  identity-only discovery and workflow, webhook, schedule, and artifact
+  composition, readiness, and cleanup. The three focused suites passed 37 cases,
+  API typecheck passed, and all three API coverage configurations passed 626
+  cases without changing the module.
+- **M07 — retained:** the three capacity-sampling fields and three adjacent
+  private methods already keep bounded sampling state in one place. Extracting
+  them would require callbacks for the runtime hook, timeout, and dispatcher
+  lifecycle, or would move lifecycle authority away from the dispatcher.
+  Public tests now additionally prove the 100-pending limit, 1,000-entry
+  oldest-first tracking eviction, and that close drains an in-flight sample
+  before closing the database and producer. The focused suite passed 25 cases,
+  worker typecheck and all 323 coverage cases passed, and source-stable partial
+  qualification `2026-09-11t15-52-21-461z-27252-866e355d` passed the real Redis
+  and PostgreSQL worker-transport resilience cohort.
+- **M08 — retained:** both terminal-replay branches keep the authoritative
+  `sameOutputReference` comparison directly beside their distinct transition
+  and mutation rules. A helper would take the existing and observed
+  status/output fields only to restate the same predicate, without reducing the
+  ordered mutation work in either function. A new public characterization proves
+  an output-identical terminal invocation replay is event-free and a divergent
+  output fails with `transition_invalid`; the loop replay coverage remains in
+  place. The six focused suites passed 89 cases, workflow-engine typecheck
+  passed, and all 307 coverage cases passed.
