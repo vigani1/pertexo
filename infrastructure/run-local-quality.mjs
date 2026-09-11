@@ -854,7 +854,7 @@ async function run() {
     }
   });
 
-  const cleanup = async (release = true) => {
+  const cleanup = async ({ releaseLock: shouldReleaseLock = true } = {}) => {
     const failures = [];
     try {
       await requestOwnedProcessTermination();
@@ -917,7 +917,7 @@ async function run() {
         failures.push(error);
       }
     }
-    if (release && releaseLock)
+    if (shouldReleaseLock && releaseLock)
       try {
         await releaseLock();
         releaseLock = undefined;
@@ -1060,7 +1060,7 @@ async function run() {
           );
           record.evidence = path.relative(repositoryRoot, evidencePath);
         } else if (definition.internal === 'cleanup') {
-          await cleanup(false);
+          await cleanup({ releaseLock: false });
         } else {
           const reportPath = definition.report
             ? path.join(reportsDirectory, `${definition.id}.json`)

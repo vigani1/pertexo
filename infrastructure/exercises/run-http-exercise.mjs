@@ -9,6 +9,13 @@ const MAX_DURATION_SECONDS = 1_800;
 const MAX_REQUESTS_PER_SECOND = 1_000;
 const MAX_IN_FLIGHT = 2_000;
 const MAX_PROBLEM_BYTES = 16_384;
+const MAX_EXPECTED_STATUS_COUNT = 20;
+const MAX_EXPECTED_PROBLEM_CODE_COUNT = 20;
+const MAX_PROBLEM_CODE_LENGTH = 128;
+const MAX_HEADER_NAME_LENGTH = 64;
+const MAX_HEADER_VALUE_LENGTH = 1_024;
+const MINIMUM_SECRET_LENGTH = 16;
+const MAXIMUM_SECRET_LENGTH = 8_192;
 const ENVIRONMENT_NAME = /^PERTEXO_[A-Z0-9_]+$/u;
 const PROBLEM_CODE = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/u;
 
@@ -42,7 +49,7 @@ function parseResponsePolicy(value) {
   if (
     !Array.isArray(value.expectedStatuses) ||
     value.expectedStatuses.length < 1 ||
-    value.expectedStatuses.length > 20 ||
+    value.expectedStatuses.length > MAX_EXPECTED_STATUS_COUNT ||
     value.expectedStatuses.some(
       (status) => !Number.isInteger(status) || status < 200 || status > 599,
     ) ||
@@ -56,11 +63,11 @@ function parseResponsePolicy(value) {
     fail('authentication and authorization failures cannot be expected');
   if (
     !Array.isArray(value.expectedProblemCodes) ||
-    value.expectedProblemCodes.length > 20 ||
+    value.expectedProblemCodes.length > MAX_EXPECTED_PROBLEM_CODE_COUNT ||
     value.expectedProblemCodes.some(
       (code) =>
         typeof code !== 'string' ||
-        code.length > 128 ||
+        code.length > MAX_PROBLEM_CODE_LENGTH ||
         !PROBLEM_CODE.test(code),
     ) ||
     new Set(value.expectedProblemCodes).size !==
@@ -76,6 +83,24 @@ function parseResponsePolicy(value) {
     expectedProblemCodes: Object.freeze([...value.expectedProblemCodes]),
     expectedStatuses: Object.freeze([...value.expectedStatuses]),
   });
+}
+
+function assertProfileHeaders(headers) {
+  if (typeof headers !== 'object' || headers === null || Array.isArray(headers))
+    fail('headers are invalid or contain authentication material');
+  for (const [name, value] of Object.entries(headers)) {
+    const nameIsSafe =
+      name.length >= 1 &&
+      name.length <= MAX_HEADER_NAME_LENGTH &&
+      /^[a-z0-9-]+$/u.test(name) &&
+      !/authorization|cookie|csrf|signature|token|secret/iu.test(name);
+    const valueIsSafe =
+      typeof value === 'string' &&
+      value.length <= MAX_HEADER_VALUE_LENGTH &&
+      !/\$\{(?!requestId\})/u.test(value);
+    if (!nameIsSafe || !valueIsSafe)
+      fail('headers are invalid or contain authentication material');
+  }
 }
 
 export function parseProfile(value) {
@@ -112,20 +137,7 @@ export function parseProfile(value) {
     !/^[a-z0-9][a-z0-9-]{0,63}$/u.test(value.scenario)
   )
     fail('scenario is invalid');
-  if (
-    typeof value.headers !== 'object' ||
-    value.headers === null ||
-    Array.isArray(value.headers) ||
-    Object.entries(value.headers).some(
-      ([name, headerValue]) =>
-        !/^[a-z0-9-]{1,64}$/u.test(name) ||
-        /authorization|cookie|csrf|signature|token|secret/iu.test(name) ||
-        typeof headerValue !== 'string' ||
-        headerValue.length > 1_024 ||
-        /\$\{(?!requestId\})/u.test(headerValue),
-    )
-  )
-    fail('headers are invalid or contain authentication material');
+  assertProfileHeaders(value.headers);
   const objectives = value.objectives;
   if (typeof objectives !== 'object' || objectives === null)
     fail('objectives are required');
@@ -209,8 +221,8 @@ function requiredSecret(environment, name) {
   const value = environment[name];
   if (
     typeof value !== 'string' ||
-    value.length < 16 ||
-    value.length > 8_192 ||
+    value.length < MINIMUM_SECRET_LENGTH ||
+    value.length > MAXIMUM_SECRET_LENGTH ||
     [...value].some((character) => {
       const code = character.charCodeAt(0);
       return code <= 31 || code === 127;

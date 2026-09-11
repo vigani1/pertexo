@@ -9,6 +9,9 @@ const requireDatabaseDependency = createRequire(
 );
 
 const planOptions = 'ANALYZE, BUFFERS, WAL, SETTINGS, FORMAT JSON';
+const POOL_CONTENTION_ROUNDS = 3;
+const POOL_CONTENTION_HOLD_MILLIS = 60;
+const MINIMUM_OBSERVED_CHECKOUT_WAIT_SECONDS = 0.04;
 
 function databaseUrl(baseUrl) {
   const url = new URL(baseUrl);
@@ -35,9 +38,11 @@ export function validatePostgresEvidence(evidence) {
     throw new Error('PostgreSQL performance evidence is unavailable');
   if (
     !Array.isArray(evidence.poolCheckoutWaitSeconds) ||
-    evidence.poolCheckoutWaitSeconds.length < 3 ||
+    evidence.poolCheckoutWaitSeconds.length < POOL_CONTENTION_ROUNDS ||
     evidence.poolCheckoutWaitSeconds.some(
-      (value) => !Number.isFinite(value) || value < 0.04,
+      (value) =>
+        !Number.isFinite(value) ||
+        value < MINIMUM_OBSERVED_CHECKOUT_WAIT_SECONDS,
     )
   )
     throw new Error('Pool checkout wait evidence is incomplete');
@@ -96,11 +101,14 @@ function recordingMeter(metricNames) {
   };
 }
 
-export async function runPoolContentionSamples(pool, wait = () => delay(60)) {
+export async function runPoolContentionSamples(
+  pool,
+  wait = () => delay(POOL_CONTENTION_HOLD_MILLIS),
+) {
   let samplingFailed = false;
   let samplingError;
   try {
-    for (let round = 0; round < 3; round += 1) {
+    for (let round = 0; round < POOL_CONTENTION_ROUNDS; round += 1) {
       const owner = await pool.connect();
       const waiting = pool.connect();
       let waitFailed = false;

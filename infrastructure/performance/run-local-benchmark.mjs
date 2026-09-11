@@ -150,39 +150,70 @@ export function summarize(values) {
   };
 }
 
-const operationTimingMarker = 'PERTEXO_Q11_OPERATION_V2=';
+const OPERATION_TIMING_MARKER = 'PERTEXO_Q11_OPERATION_V2=';
+const OPERATION_TIMING_SCHEMA_VERSION = 2;
+
+function operationTimingMarkerError(line) {
+  return new Error(`Malformed Q11 operation timing marker: ${line}`);
+}
+
+function assertOperationTimingIdentity(parsed, line) {
+  if (
+    parsed?.schemaVersion !== OPERATION_TIMING_SCHEMA_VERSION ||
+    typeof parsed.name !== 'string' ||
+    !/^[a-z0-9][a-z0-9.-]{0,79}$/u.test(parsed.name)
+  )
+    throw operationTimingMarkerError(line);
+}
+
+function assertOperationTimingInterval(parsed, line) {
+  if (
+    !Number.isFinite(parsed.startedAtUnixMs) ||
+    !Number.isFinite(parsed.endedAtUnixMs) ||
+    parsed.endedAtUnixMs <= parsed.startedAtUnixMs
+  )
+    throw operationTimingMarkerError(line);
+}
+
+function assertOperationTimingWorkload(parsed, line) {
+  if (
+    !Number.isSafeInteger(parsed.population) ||
+    parsed.population < 1 ||
+    typeof parsed.boundary !== 'string' ||
+    parsed.boundary.trim().length === 0
+  )
+    throw operationTimingMarkerError(line);
+}
+
+function assertOperationDatabaseIdentity(parsed, line) {
+  if (parsed.databaseIdentity === undefined) return;
+  const identity = parsed.databaseIdentity;
+  if (
+    typeof identity?.database !== 'string' ||
+    typeof identity.role !== 'string' ||
+    typeof identity.applicationName !== 'string'
+  )
+    throw operationTimingMarkerError(line);
+}
 
 export function parseOperationSamples(output) {
   const samples = [];
   for (const line of output.split(/\r?\n/u)) {
-    const markerIndex = line.indexOf(operationTimingMarker);
+    const markerIndex = line.indexOf(OPERATION_TIMING_MARKER);
     if (markerIndex === -1) continue;
-    const remainder = line.slice(markerIndex + operationTimingMarker.length);
+    const remainder = line.slice(markerIndex + OPERATION_TIMING_MARKER.length);
     const closingBrace = remainder.lastIndexOf('}');
     let parsed;
     try {
       parsed = JSON.parse(remainder.slice(0, closingBrace + 1));
     } catch {
-      throw new Error(`Malformed Q11 operation timing marker: ${line}`);
+      throw operationTimingMarkerError(line);
     }
-    if (
-      closingBrace < 1 ||
-      parsed?.schemaVersion !== 2 ||
-      typeof parsed.name !== 'string' ||
-      !/^[a-z0-9][a-z0-9.-]{0,79}$/u.test(parsed.name) ||
-      !Number.isFinite(parsed.startedAtUnixMs) ||
-      !Number.isFinite(parsed.endedAtUnixMs) ||
-      parsed.endedAtUnixMs <= parsed.startedAtUnixMs ||
-      !Number.isSafeInteger(parsed.population) ||
-      parsed.population < 1 ||
-      typeof parsed.boundary !== 'string' ||
-      parsed.boundary.trim().length === 0 ||
-      (parsed.databaseIdentity !== undefined &&
-        (typeof parsed.databaseIdentity.database !== 'string' ||
-          typeof parsed.databaseIdentity.role !== 'string' ||
-          typeof parsed.databaseIdentity.applicationName !== 'string'))
-    )
-      throw new Error(`Malformed Q11 operation timing marker: ${line}`);
+    if (closingBrace < 1) throw operationTimingMarkerError(line);
+    assertOperationTimingIdentity(parsed, line);
+    assertOperationTimingInterval(parsed, line);
+    assertOperationTimingWorkload(parsed, line);
+    assertOperationDatabaseIdentity(parsed, line);
     samples.push(
       Object.freeze({
         name: parsed.name,
@@ -198,7 +229,7 @@ export function parseOperationSamples(output) {
   return samples;
 }
 
-export function validateManifest(manifest) {
+function assertManifestHeader(manifest) {
   if (manifest?.schemaVersion !== 4)
     throw new Error('Unsupported benchmark manifest');
   if (!Number.isInteger(manifest.rounds) || manifest.rounds < 3)
@@ -209,86 +240,116 @@ export function validateManifest(manifest) {
     throw new Error('Benchmark seed must be an integer');
   if (!Array.isArray(manifest.scenarios) || manifest.scenarios.length === 0)
     throw new Error('Benchmark scenarios are required');
+}
+
+function assertScenarioShape(scenario, names) {
+  if (
+    typeof scenario.name !== 'string' ||
+    scenario.name.trim().length === 0 ||
+    names.has(scenario.name)
+  )
+    throw new Error(
+      'Benchmark scenario names must be unique non-empty strings',
+    );
+  names.add(scenario.name);
+  if (!Number.isInteger(scenario.concurrency) || scenario.concurrency < 1)
+    throw new Error(`${scenario.name}: concurrency must be a positive integer`);
+  const hasFixturePopulation =
+    scenario.fixturePopulation !== null &&
+    typeof scenario.fixturePopulation === 'object' &&
+    !Array.isArray(scenario.fixturePopulation) &&
+    Object.keys(scenario.fixturePopulation).length > 0;
+  if (!hasFixturePopulation)
+    throw new Error(`${scenario.name}: fixturePopulation is required`);
+  if (!Array.isArray(scenario.commands) || scenario.commands.length === 0)
+    throw new Error(`${scenario.name}: commands are required`);
+}
+
+function assertExpectedOperation(operation, operationNames, scenarioName) {
+  if (
+    typeof operation.name !== 'string' ||
+    !/^[a-z0-9][a-z0-9.-]{0,79}$/u.test(operation.name)
+  )
+    throw new Error(
+      `${scenarioName}: expected operation contracts are invalid`,
+    );
+  if (
+    !Number.isSafeInteger(operation.count) ||
+    operation.count < 1 ||
+    !Number.isSafeInteger(operation.population) ||
+    operation.population < 1
+  )
+    throw new Error(
+      `${scenarioName}: expected operation contracts are invalid`,
+    );
+  if (
+    typeof operation.boundary !== 'string' ||
+    operation.boundary.trim().length === 0
+  )
+    throw new Error(
+      `${scenarioName}: expected operation contracts are invalid`,
+    );
+  if (
+    operation.databaseScope !== undefined &&
+    operation.databaseScope !== 'runner-owned-shared'
+  )
+    throw new Error(
+      `${scenarioName}: expected operation contracts are invalid`,
+    );
+  if (operationNames.has(operation.name))
+    throw new Error(`${scenarioName}: expected operation names must be unique`);
+  operationNames.add(operation.name);
+}
+
+function assertScenarioCommands(scenario) {
+  const participants = new Set();
+  const operationNames = new Set();
+  for (const command of scenario.commands) {
+    const hasArgvContract =
+      typeof command.file === 'string' &&
+      Array.isArray(command.args) &&
+      Array.isArray(command.expectedOperations) &&
+      command.expectedOperations.length > 0;
+    if (!hasArgvContract)
+      throw new Error(`${scenario.name}: command must use an argv array`);
+    for (const operation of command.expectedOperations)
+      assertExpectedOperation(operation, operationNames, scenario.name);
+    if (scenario.requireOverlap === true) {
+      const hasUniqueParticipant =
+        typeof command.participant === 'string' &&
+        /^[a-z0-9][a-z0-9-]{0,39}$/u.test(command.participant) &&
+        !participants.has(command.participant);
+      if (!hasUniqueParticipant)
+        throw new Error(
+          `${scenario.name}: overlap participants must be unique`,
+        );
+      participants.add(command.participant);
+    }
+  }
+}
+
+function assertScenarioDatabasePolicy(scenario) {
+  if (scenario.requireOverlap === true && scenario.commands.length < 2)
+    throw new Error(`${scenario.name}: overlap requires multiple commands`);
+  if (
+    scenario.databaseScope !== undefined &&
+    !databaseScopes.has(scenario.databaseScope)
+  )
+    throw new Error(`${scenario.name}: database scope is invalid`);
+  if (
+    scenario.requireOverlap === true &&
+    scenario.databaseScope !== 'runner-owned-shared'
+  )
+    throw new Error(`${scenario.name}: overlap requires a shared database`);
+}
+
+export function validateManifest(manifest) {
+  assertManifestHeader(manifest);
   const names = new Set();
   for (const scenario of manifest.scenarios) {
-    if (
-      typeof scenario.name !== 'string' ||
-      scenario.name.trim().length === 0 ||
-      names.has(scenario.name)
-    )
-      throw new Error(
-        'Benchmark scenario names must be unique non-empty strings',
-      );
-    names.add(scenario.name);
-    if (!Number.isInteger(scenario.concurrency) || scenario.concurrency < 1)
-      throw new Error(
-        `${scenario.name}: concurrency must be a positive integer`,
-      );
-    if (
-      scenario.fixturePopulation === null ||
-      typeof scenario.fixturePopulation !== 'object' ||
-      Array.isArray(scenario.fixturePopulation) ||
-      Object.keys(scenario.fixturePopulation).length === 0
-    )
-      throw new Error(`${scenario.name}: fixturePopulation is required`);
-    if (!Array.isArray(scenario.commands) || scenario.commands.length === 0)
-      throw new Error(`${scenario.name}: commands are required`);
-    const participants = new Set();
-    const operationNames = new Set();
-    for (const command of scenario.commands) {
-      if (
-        typeof command.file !== 'string' ||
-        !Array.isArray(command.args) ||
-        !Array.isArray(command.expectedOperations) ||
-        command.expectedOperations.length === 0
-      )
-        throw new Error(`${scenario.name}: command must use an argv array`);
-      for (const operation of command.expectedOperations) {
-        if (
-          typeof operation.name !== 'string' ||
-          !/^[a-z0-9][a-z0-9.-]{0,79}$/u.test(operation.name) ||
-          !Number.isSafeInteger(operation.count) ||
-          operation.count < 1 ||
-          !Number.isSafeInteger(operation.population) ||
-          operation.population < 1 ||
-          typeof operation.boundary !== 'string' ||
-          operation.boundary.trim().length === 0 ||
-          (operation.databaseScope !== undefined &&
-            operation.databaseScope !== 'runner-owned-shared')
-        )
-          throw new Error(
-            `${scenario.name}: expected operation contracts are invalid`,
-          );
-        if (operationNames.has(operation.name))
-          throw new Error(
-            `${scenario.name}: expected operation names must be unique`,
-          );
-        operationNames.add(operation.name);
-      }
-      if (scenario.requireOverlap === true) {
-        if (
-          typeof command.participant !== 'string' ||
-          !/^[a-z0-9][a-z0-9-]{0,39}$/u.test(command.participant) ||
-          participants.has(command.participant)
-        )
-          throw new Error(
-            `${scenario.name}: overlap participants must be unique`,
-          );
-        participants.add(command.participant);
-      }
-    }
-    if (scenario.requireOverlap === true && scenario.commands.length < 2)
-      throw new Error(`${scenario.name}: overlap requires multiple commands`);
-    if (
-      scenario.databaseScope !== undefined &&
-      !databaseScopes.has(scenario.databaseScope)
-    )
-      throw new Error(`${scenario.name}: database scope is invalid`);
-    if (
-      scenario.requireOverlap === true &&
-      scenario.databaseScope !== 'runner-owned-shared'
-    )
-      throw new Error(`${scenario.name}: overlap requires a shared database`);
+    assertScenarioShape(scenario, names);
+    assertScenarioCommands(scenario);
+    assertScenarioDatabasePolicy(scenario);
   }
   return manifest;
 }
@@ -401,23 +462,32 @@ function validateOperationContract(
     );
   for (const expected of command.expectedOperations) {
     const matching = samples.filter(({ name }) => name === expected.name);
-    if (
-      matching.length !== expected.count ||
-      matching.some(
-        ({ population, boundary, databaseIdentity }) =>
+    if (matching.length !== expected.count)
+      throw new Error(
+        `${scenario.name} violated the ${expected.name} operation count or population contract`,
+      );
+    const expectedApplicationName =
+      `q11-${scenario.name}-${command.participant ?? 'foreground'}`.slice(
+        0,
+        63,
+      );
+    const sampleViolatesContract = matching.some(
+      ({ population, boundary, databaseIdentity }) => {
+        if (
           population !== expected.population ||
-          boundary !== expected.boundary ||
-          (expected.databaseScope === 'runner-owned-shared' &&
-            (databaseIdentity === undefined ||
-              databaseIdentity.database !== sharedDatabaseName ||
-              databaseIdentity.role.length === 0 ||
-              databaseIdentity.applicationName !==
-                `q11-${scenario.name}-${command.participant ?? 'foreground'}`.slice(
-                  0,
-                  63,
-                ))),
-      )
-    )
+          boundary !== expected.boundary
+        )
+          return true;
+        if (expected.databaseScope !== 'runner-owned-shared') return false;
+        return (
+          databaseIdentity === undefined ||
+          databaseIdentity.database !== sharedDatabaseName ||
+          databaseIdentity.role.length === 0 ||
+          databaseIdentity.applicationName !== expectedApplicationName
+        );
+      },
+    );
+    if (sampleViolatesContract)
       throw new Error(
         `${scenario.name} violated the ${expected.name} operation count or population contract`,
       );
