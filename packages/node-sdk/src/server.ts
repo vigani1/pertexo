@@ -414,15 +414,21 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     if (pinned === undefined) throw new ExecutorNotFoundError(parsed);
     return pinned;
   };
+  const assertDefinitionExecutorBinding = (
+    definition: PinnedNodeDefinition,
+    executor: ExecutorIdentity,
+  ): void => {
+    if (!sameIdentity(definition.manifest.executor, executor))
+      throw new NodeRegistryCompatibilityError(
+        `definition ${definition.manifest.definition.key}@${String(definition.manifest.definition.version)} is not bound to executor ${executor.key}@${String(executor.version)}`,
+      );
+  };
   const dispatchMode = (
     request: Pick<NodeExecutionRequest, 'definition' | 'executor'>,
   ): 'before_execute' | 'executor_controlled' => {
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
-    if (!sameIdentity(definition.manifest.executor, request.executor))
-      throw new NodeRegistryCompatibilityError(
-        `definition ${request.definition.key}@${String(request.definition.version)} is not bound to executor ${request.executor.key}@${String(request.executor.version)}`,
-      );
+    assertDefinitionExecutorBinding(definition, request.executor);
     return executor.registration.abiVersion ===
       DISPATCH_AWARE_EXECUTOR_ABI_VERSION
       ? 'executor_controlled'
@@ -434,10 +440,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     assertNotAborted(request.signal);
     const executor = resolveExecutor(request.executor);
     const definition = resolveDefinition(request.definition);
-    if (!sameIdentity(definition.manifest.executor, request.executor))
-      throw new NodeRegistryCompatibilityError(
-        `definition ${request.definition.key}@${String(request.definition.version)} is not bound to executor ${request.executor.key}@${String(request.executor.version)}`,
-      );
+    assertDefinitionExecutorBinding(definition, request.executor);
     const bounded = canonicalizeBoundedJson({
       config: request.config,
       input: request.input,

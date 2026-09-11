@@ -1128,4 +1128,115 @@ describe('node-sdk exact server registry', () => {
       }),
     ).rejects.toBeInstanceOf(DefinitionNotFoundError);
   });
+
+  it('preserves definition and executor resolution order across registry entrypoints', async () => {
+    const otherDefinition = { key: 'test.other', version: 1 } as const;
+    const otherExecutor = { key: 'test.other', version: 1 } as const;
+    const otherManifest = {
+      ...manifest,
+      definition: otherDefinition,
+      executor: otherExecutor,
+    } satisfies NodeManifest;
+    const exactRelease = createRegistryRelease({
+      definitions: [manifest, otherManifest],
+      epoch: 1,
+      executors: [
+        release().executors[0]!,
+        {
+          abiVersion: 1,
+          definitions: [otherDefinition],
+          executor: otherExecutor,
+          lifecycle: 'active',
+          policyReferences: [policy],
+        },
+      ],
+      policies: [policy],
+    });
+    const registry = createNodeRegistry({
+      definitions: [manifest, otherManifest].map((item) => ({
+        manifest: item,
+        configSchema,
+        inputSchema: objectSchema,
+        outputSchema: objectSchema,
+      })),
+      executors: [
+        executorRegistration(),
+        {
+          ...executorRegistration(otherExecutor),
+          definitions: Object.freeze([otherDefinition]),
+        },
+      ],
+      release: exactRelease,
+    });
+    const missingDefinition = { key: definition.key, version: 2 } as const;
+    const missingExecutor = { key: executor.key, version: 2 } as const;
+
+    expect(() =>
+      registry.dispatchMode({
+        definition: missingDefinition,
+        executor: missingExecutor,
+      }),
+    ).toThrow(ExecutorNotFoundError);
+    await expect(
+      registry.execute({
+        config: {},
+        definition: missingDefinition,
+        executor: missingExecutor,
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(ExecutorNotFoundError);
+
+    expect(() =>
+      registry.dispatchMode({ definition: missingDefinition, executor }),
+    ).toThrow(DefinitionNotFoundError);
+    await expect(
+      registry.execute({
+        config: {},
+        definition: missingDefinition,
+        executor,
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(DefinitionNotFoundError);
+
+    const bindingError =
+      'definition test.echo@1 is not bound to executor test.other@1';
+    expect(() =>
+      registry.dispatchMode({ definition, executor: otherExecutor }),
+    ).toThrow(bindingError);
+    await expect(
+      registry.execute({
+        config: {},
+        definition,
+        executor: otherExecutor,
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(bindingError);
+
+    const aborted = new AbortController();
+    aborted.abort();
+    await expect(
+      registry.execute({
+        config: {},
+        definition: missingDefinition,
+        executor: missingExecutor,
+        input: {},
+        signal: aborted.signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
+    expect(registry.dispatchMode({ definition, executor })).toBe(
+      'before_execute',
+    );
+    await expect(
+      registry.execute({
+        config: {},
+        definition,
+        executor,
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: {} });
+  });
 });

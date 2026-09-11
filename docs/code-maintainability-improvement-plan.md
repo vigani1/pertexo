@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **proposed; implementation has not started**.
+Status: **in progress; baseline recorded and M01 complete**.
 
 ## Purpose and authority
 
@@ -357,8 +357,8 @@ selected work and final verification are complete.
 
 ## Outcome checklist
 
-- [ ] Working-tree baseline and intended implementation scope recorded.
-- [ ] M01 completed with binding/error-order evidence.
+- [x] Working-tree baseline and intended implementation scope recorded.
+- [x] M01 completed with binding/error-order evidence.
 - [ ] M02 completed with fail-before-query evidence.
 - [ ] M03 completed with unchanged subprocess/error-policy evidence.
 - [ ] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
@@ -368,6 +368,20 @@ selected work and final verification are complete.
 - [ ] M08 local comparison recorded; implemented and verified, or retained.
 - [ ] Final source-bound checks, coverage inheritance, and outcomes recorded.
 
-Only planning has been performed. This checklist does not authorize commits or
-pushes. If those are requested later, use coherent independently verified changes
-and the repository's git discipline, never a fixed commit count or history rewrite.
+Implementation and commits are authorized for the current request; pushing is
+not. Use coherent independently verified changes and the repository's git
+discipline, never a fixed commit count or history rewrite.
+
+## Implementation outcomes
+
+- **Baseline:** the reviewed readability tree was committed as seven coherent
+  changes from `d7ccc492` through `db0a6ee7`. Qualification
+  `2026-09-11t15-12-34-120z-87347-7e1fb885` passed all 21 cohorts against
+  working-tree fingerprint
+  `21daac2ad60d90381db8456e12d2bd2c56cfe7a3a1520f629062f2ad036f2744`.
+- **M01 — implemented:** `createNodeRegistry` now has one private binding
+  invariant used by `dispatchMode` and `execute`. The public matrix covers
+  executor-before-definition failure order, definition failure, exact binding
+  failure text, cancellation precedence, and matching ABI 1/ABI 2 behavior.
+  The two node-sdk tests passed with 39 cases, the node-catalog server-registry
+  suite passed with 4 cases, and node-sdk typecheck passed.
