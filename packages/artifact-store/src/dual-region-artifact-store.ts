@@ -30,6 +30,16 @@ import type {
 
 type ArtifactStoreWithPurge = ArtifactStore & WorkspaceObjectPurgeStore;
 
+function failedRegionRole(
+  primary: PromiseSettledResult<unknown>,
+  recovery: PromiseSettledResult<unknown>,
+): 'both' | 'primary' | 'recovery' {
+  if (primary.status === 'rejected' && recovery.status === 'rejected')
+    return 'both';
+  if (primary.status === 'rejected') return 'primary';
+  return 'recovery';
+}
+
 export interface DualRegionArtifactStoreReadiness extends ArtifactStoreReadiness {
   readonly primary: ArtifactStoreReadiness;
   readonly recovery: ArtifactStoreReadiness;
@@ -136,11 +146,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         'artifact_read_consistency',
         'readiness',
         'unavailable',
-        primary.status === 'rejected' && recovery.status === 'rejected'
-          ? 'both'
-          : primary.status === 'rejected'
-            ? 'primary'
-            : 'recovery',
+        failedRegionRole(primary, recovery),
       );
       throw new ArtifactIntegrityError(
         'Dual-region artifact readiness could not be verified',
@@ -193,11 +199,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         'artifact_replication',
         'delete',
         'partial',
-        deleted.every((result) => result.status === 'rejected')
-          ? 'both'
-          : deleted[0].status === 'rejected'
-            ? 'primary'
-            : 'recovery',
+        failedRegionRole(deleted[0], deleted[1]),
       );
       throw new ArtifactPartialReplicationError();
     }
@@ -226,11 +228,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         'artifact_purge_consistency',
         'purge',
         'unavailable',
-        purged[0].status === 'rejected' && purged[1].status === 'rejected'
-          ? 'both'
-          : purged[0].status === 'rejected'
-            ? 'primary'
-            : 'recovery',
+        failedRegionRole(purged[0], purged[1]),
       );
       throw new ArtifactPartialReplicationError();
     }
@@ -294,11 +292,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         'artifact_read_consistency',
         'verify',
         'unavailable',
-        verified[0].status === 'rejected' && verified[1].status === 'rejected'
-          ? 'both'
-          : verified[0].status === 'rejected'
-            ? 'primary'
-            : 'recovery',
+        failedRegionRole(verified[0], verified[1]),
       );
       throw new ArtifactIntegrityError(
         'Artifact replicas could not both be checksum-validated',
