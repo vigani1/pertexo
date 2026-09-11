@@ -413,7 +413,10 @@ discipline, never a fixed commit count or history rewrite.
   carrier or restate their parameters. Added public assertions pin list/delete
   order, distinct delete failure, invalid-anchor/list no-later-I/O, and the
   existing bounded read count. The 157 focused tests, typecheck, and all 221
-  coverage cases passed. Source-stable partial qualification
+  coverage cases passed. Durable risk-coverage reviews were relocated to their
+  exact post-split branches, including the reconciliation probe helper; the
+  report retains 0 unreviewed and 465 reviewed uncovered branches. Source-stable
+  partial qualification
   `2026-09-11t15-46-39-986z-25943-c01bef9e` passed 5 local service cases and
   retained the three named AWS-only exclusions.
 - **M06 — retained:** `AppModule.register` keeps the feature imports as one
