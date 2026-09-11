@@ -170,7 +170,16 @@ function validateLoopLimits(
   if (
     !Number.isInteger(loop.maxIterations) ||
     loop.maxIterations < 1 ||
-    loop.maxIterations > context.limits.maxLoopIterations ||
+    loop.maxIterations > context.limits.maxLoopIterations
+  ) {
+    context.issue(
+      'invalid_loop_limit',
+      path,
+      'For Each limits must be positive, bounded, and concurrency cannot exceed iterations',
+    );
+    return;
+  }
+  if (
     !Number.isInteger(loop.maxConcurrency) ||
     loop.maxConcurrency < 1 ||
     loop.maxConcurrency > loop.maxIterations ||

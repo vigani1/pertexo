@@ -454,37 +454,21 @@ function immutableExecutorJson(manifest: ExecutorManifest): string {
   void lifecycle;
   return stableJson(behavior);
 }
-
-/**
- * Constructs one audited release successor without reusing an identity for new
- * behavior or skipping a lifecycle gate. Initial/bootstrap and retained-record
- * parsing continue to use createRegistryRelease directly.
- */
-export function createRegistryReleaseSuccessor(
-  input: RegistryReleaseSuccessorInput,
-): RegistryRelease {
-  const { previous: previousInput, ...successorInput } = input;
-  const previous = parseRegistryRelease(previousInput);
-  const next = createRegistryRelease(successorInput);
-  if (next.epoch !== previous.epoch + 1)
-    throw new Error('compatibility release epoch must be contiguous');
-  if (next.fingerprint === previous.fingerprint)
-    throw new Error('compatibility release successor must change');
-
-  const nextDefinitions = new Map(
+function assertDefinitionSuccessors(
+  previous: RegistryRelease,
+  next: RegistryRelease,
+): void {
+  const nextByIdentity = new Map(
     next.definitions.map((manifest) => [
       identityToken(manifest.definition),
       manifest,
     ]),
   );
-  const previousDefinitions = new Map(
-    previous.definitions.map((manifest) => [
-      identityToken(manifest.definition),
-      manifest,
-    ]),
+  const previousIdentities = new Set(
+    previous.definitions.map((manifest) => identityToken(manifest.definition)),
   );
   for (const manifest of previous.definitions) {
-    const successor = nextDefinitions.get(identityToken(manifest.definition));
+    const successor = nextByIdentity.get(identityToken(manifest.definition));
     if (successor === undefined) {
       if (manifest.lifecycle !== 'retired')
         throw new Error('definition cannot be removed before retired');
@@ -505,25 +489,26 @@ export function createRegistryReleaseSuccessor(
   }
   for (const manifest of next.definitions)
     if (
-      !previousDefinitions.has(identityToken(manifest.definition)) &&
+      !previousIdentities.has(identityToken(manifest.definition)) &&
       manifest.lifecycle !== 'active'
     )
       throw new Error('new definition must be active');
-
-  const nextExecutors = new Map(
+}
+function assertExecutorSuccessors(
+  previous: RegistryRelease,
+  next: RegistryRelease,
+): void {
+  const nextByIdentity = new Map(
     next.executors.map((manifest) => [
       identityToken(manifest.executor),
       manifest,
     ]),
   );
-  const previousExecutors = new Map(
-    previous.executors.map((manifest) => [
-      identityToken(manifest.executor),
-      manifest,
-    ]),
+  const previousIdentities = new Set(
+    previous.executors.map((manifest) => identityToken(manifest.executor)),
   );
   for (const manifest of previous.executors) {
-    const successor = nextExecutors.get(identityToken(manifest.executor));
+    const successor = nextByIdentity.get(identityToken(manifest.executor));
     if (successor === undefined) {
       if (manifest.lifecycle !== 'retired')
         throw new Error('executor cannot be removed before retired');
@@ -542,10 +527,24 @@ export function createRegistryReleaseSuccessor(
   }
   for (const manifest of next.executors)
     if (
-      !previousExecutors.has(identityToken(manifest.executor)) &&
+      !previousIdentities.has(identityToken(manifest.executor)) &&
       manifest.lifecycle !== 'staged'
     )
       throw new Error('new executor must be staged');
+}
+export function createRegistryReleaseSuccessor(
+  input: RegistryReleaseSuccessorInput,
+): RegistryRelease {
+  const { previous: previousInput, ...successorInput } = input;
+  const previous = parseRegistryRelease(previousInput);
+  const next = createRegistryRelease(successorInput);
+  if (next.epoch !== previous.epoch + 1)
+    throw new Error('compatibility release epoch must be contiguous');
+  if (next.fingerprint === previous.fingerprint)
+    throw new Error('compatibility release successor must change');
+
+  assertDefinitionSuccessors(previous, next);
+  assertExecutorSuccessors(previous, next);
 
   return next;
 }

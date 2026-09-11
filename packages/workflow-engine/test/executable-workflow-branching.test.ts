@@ -171,6 +171,37 @@ describe('branching production operations', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ checkpoint: { schemaVersion: 2 } });
+
+    for (const branchPath of [
+      [{ nodeId: 'missing', outputPort: 'true' }],
+      [{ nodeId: 'condition', outputPort: 'missing' }],
+    ]) {
+      const invalidBranchScope = structuredClone(checkpoint);
+      const invalidInvocationKey = invocationKey({
+        workflowVersionId,
+        nodeId: 'terminate',
+        branchPath: branchPath.map(
+          ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+        ),
+      });
+      Object.assign(invalidBranchScope.invocations[1], {
+        branchPath,
+        invocationKey: invalidInvocationKey,
+      });
+      Object.assign(invalidBranchScope, { readySet: [invalidInvocationKey] });
+      await expect(
+        advanceWorkflow({
+          runId: 'run-condition',
+          executable,
+          workflowVersionId,
+          checkpoint: invalidBranchScope,
+          occurredAt: '2026-08-24T00:00:00.000Z',
+          maximumAdmissions: 0,
+          observations: [],
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({ code: 'workflow_identity_invalid' });
+    }
   });
 
   it('derives a Condition selection only from its persisted inline output', async () => {

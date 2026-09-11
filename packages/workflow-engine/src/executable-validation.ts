@@ -179,7 +179,10 @@ export function parseIdentity(
   exactKeys(identity, ['key', 'version']);
   if (
     typeof identity.key !== 'string' ||
-    !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u.test(identity.key) ||
+    !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u.test(identity.key)
+  )
+    fail(`${label} is invalid`);
+  if (
     typeof identity.version !== 'number' ||
     !Number.isSafeInteger(identity.version) ||
     identity.version < 1

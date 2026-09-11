@@ -26,10 +26,7 @@ import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,
 } from './coordinator-output.js';
-import {
-  executableNodes,
-  findExecutableNodeContext,
-} from './executable-graph.js';
+import { executableNodes } from './executable-graph.js';
 import {
   assertAuthenticExecutableIdentity,
   normalizeBoundedEngineJson,
@@ -39,17 +36,10 @@ import {
 } from './executable-workflow.js';
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint.js';
-import {
-  configuredParallelOutputPorts,
-  configuredScopedOutputPorts,
-  type SchedulerState,
-} from './graph-scheduler.js';
-import { compareOrdinal } from './ordering.js';
-import { branchPathHasPrefix, sameIterationPath } from './scope.js';
+import type { SchedulerState } from './graph-scheduler.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './persisted-observations.js';
 import { providerIdempotencyKey } from './retries.js';
-import { invocationKey as createInvocationKey } from './scheduling.js';
 import { prepareNodeAttemptInput } from './node-attempt-input.js';
 import type {
   BranchScopePart,
@@ -60,6 +50,7 @@ import {
   isCoreMergeDefinition,
   isTriggerSourceDefinition,
 } from './core-definition-identities.js';
+import { assertCheckpointMatchesExecutable } from './checkpoint-executable-validation.js';
 
 export type {
   AttemptFailureObservation,
@@ -129,175 +120,6 @@ function schedulerState(
   executable: CompiledWorkflowExecutableV2,
 ): SchedulerState {
   return projectSchedulerState(executable.envelope.graph);
-}
-
-function assertCheckpointMatchesExecutable(
-  checkpoint: ReturnType<typeof parseCheckpoint>,
-  executable: CompiledWorkflowExecutableV2,
-  allNodes: readonly WorkflowExecutableNodeV2[],
-): void {
-  const nodeIds = new Set(allNodes.map(({ id }) => id));
-  const nodesById = new Map(allNodes.map((node) => [node.id, node]));
-  for (const join of checkpoint.joins) {
-    const merge = nodesById.get(join.joinId);
-    if (merge === undefined || !isCoreMergeDefinition(merge.definition))
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint join does not belong to a Merge node',
-      );
-    const parallelNodeId = Reflect.get(
-      merge.config,
-      'parallelNodeId',
-    ) as unknown;
-    const parallel =
-      typeof parallelNodeId === 'string'
-        ? nodesById.get(parallelNodeId)
-        : undefined;
-    const branchIds =
-      parallel === undefined
-        ? undefined
-        : configuredParallelOutputPorts(parallel);
-    if (branchIds === undefined)
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint join disagrees with its paired Parallel',
-      );
-    if (
-      join.ledger.length !== branchIds.length ||
-      join.ledger.some(({ branchId }) => !branchIds.includes(branchId))
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint join disagrees with its paired Parallel',
-      );
-    const expectedJoinKey = createInvocationKey({
-      workflowVersionId: checkpoint.workflowVersionId,
-      nodeId: join.joinId,
-      branchPath: (join.branchPath ?? []).map(
-        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-      ),
-      ...(join.iterationPath === undefined
-        ? {}
-        : { iterationPath: join.iterationPath }),
-    });
-    if (
-      join.joinInvocationKey !== expectedJoinKey &&
-      !(
-        join.joinInvocationKey === join.joinId &&
-        (join.branchPath?.length ?? 0) === 0 &&
-        (join.iterationPath?.length ?? 0) === 0
-      )
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint join scope is invalid',
-      );
-  }
-  const invocationKeys = new Set<string>();
-  for (const invocation of checkpoint.invocations) {
-    const branchPath = invocation.branchPath ?? [];
-    const ancestors = findExecutableNodeContext(
-      executable.envelope.graph,
-      invocation.nodeId,
-    )?.ancestors;
-    if (
-      !nodeIds.has(invocation.nodeId) ||
-      ancestors?.length !== (invocation.iterationPath?.length ?? 0) ||
-      ancestors.some(
-        (loopNodeId, index) =>
-          invocation.iterationPath?.[index]?.loopNodeId !== loopNodeId,
-      ) ||
-      branchPath.some(({ nodeId, outputPort }) => {
-        const node = nodesById.get(nodeId);
-        const outputPorts =
-          node === undefined ? undefined : configuredScopedOutputPorts(node);
-        return !outputPorts?.includes(outputPort);
-      }) ||
-      invocation.invocationKey !==
-        createInvocationKey({
-          workflowVersionId: checkpoint.workflowVersionId,
-          nodeId: invocation.nodeId,
-          branchPath: branchPath.map(
-            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-          ),
-          ...(invocation.iterationPath === undefined
-            ? {}
-            : { iterationPath: invocation.iterationPath }),
-        })
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint invocation does not belong to the executable graph',
-      );
-    for (const [index, scope] of (invocation.iterationPath ?? []).entries()) {
-      const enclosingPath = invocation.iterationPath?.slice(0, index) ?? [];
-      const declaredLoop = checkpoint.loops.find(
-        (loop) =>
-          loop.loopId === scope.loopNodeId &&
-          sameIterationPath(loop.iterationPath, enclosingPath) &&
-          branchPathHasPrefix(branchPath, loop.branchPath),
-      );
-      if (
-        declaredLoop === undefined ||
-        (!declaredLoop.activeOrdinals.includes(scope.ordinal) &&
-          !declaredLoop.terminalOrdinals.includes(scope.ordinal))
-      )
-        operationError(
-          'workflow_identity_invalid',
-          'checkpoint invocation iteration scope is not active in its declared loop',
-        );
-    }
-    invocationKeys.add(invocation.invocationKey);
-  }
-  if (
-    checkpoint.admittedInvocationKeys.some(
-      (invocationKey) => !invocationKeys.has(invocationKey),
-    )
-  )
-    operationError(
-      'workflow_identity_invalid',
-      'checkpoint admission does not belong to an executable invocation',
-    );
-  for (const loop of checkpoint.loops) {
-    const node = nodesById.get(loop.loopId);
-    if (
-      node?.definition.key !== 'core.foreach' ||
-      node.definition.version !== 1 ||
-      node.structured?.kind !== 'for_each' ||
-      loop.controlInvocationKey !==
-        createInvocationKey({
-          workflowVersionId: checkpoint.workflowVersionId,
-          nodeId: loop.loopId,
-          branchPath: loop.branchPath.map(
-            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-          ),
-          iterationPath: loop.iterationPath,
-        })
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint loop does not belong to its scoped For Each control',
-      );
-    const body = node.structured.body;
-    const targets = new Set(body.edges.map(({ target }) => target.nodeId));
-    const sources = new Set(body.edges.map(({ source }) => source.nodeId));
-    const expectedRoots = body.nodes
-      .map(({ id }) => id)
-      .filter((id) => !targets.has(id))
-      .sort(compareOrdinal);
-    const expectedSink = body.nodes.find(({ id }) => !sources.has(id))?.id;
-    if (
-      loop.maxIterations !== node.structured.maxIterations ||
-      loop.maxConcurrency !== node.structured.maxConcurrency ||
-      loop.bodyRootNodeIds.length !== expectedRoots.length ||
-      loop.bodyRootNodeIds.some((id, index) => id !== expectedRoots[index]) ||
-      loop.bodySinkNodeId !== expectedSink
-    )
-      operationError(
-        'workflow_identity_invalid',
-        'checkpoint loop topology or bounds disagree with the executable',
-      );
-  }
 }
 
 export async function advanceWorkflow(

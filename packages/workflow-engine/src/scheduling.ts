@@ -1,5 +1,6 @@
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
+import { sameOutputReference } from './output-reference.js';
 import type {
   BranchScopePart,
   BranchLedgerEntry,
@@ -103,13 +104,7 @@ export function recordBranchDisposition(
   if (existing.disposition !== 'pending') {
     if (
       existing.disposition === update.disposition &&
-      existing.output?.kind === update.output?.kind &&
-      (existing.output?.kind === 'inline' && update.output?.kind === 'inline'
-        ? existing.output.attemptId === update.output.attemptId
-        : existing.output?.kind === 'artifact' &&
-            update.output?.kind === 'artifact'
-          ? existing.output.artifactId === update.output.artifactId
-          : existing.output === undefined && update.output === undefined)
+      sameOutputReference(existing.output, update.output)
     ) {
       return [...ledger].sort((left, right) =>
         compareOrdinal(left.branchId, right.branchId),
