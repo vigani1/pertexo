@@ -19,6 +19,28 @@ type RuntimeOptions = Readonly<{
   statementTimeoutMs: number;
 }>;
 
+type OperatorReadinessRow = Readonly<{
+  postgres_major: number;
+  migration_head: string | null;
+  rolsuper: boolean;
+  rolbypassrls: boolean;
+  owner_member: boolean;
+  forbidden_member: boolean;
+  expected_role: boolean;
+  direct_outbox: boolean;
+  direct_audit: boolean;
+  direct_command: boolean;
+  direct_evidence: boolean;
+  direct_execution: boolean;
+  private_command: boolean;
+  can_command: boolean;
+  can_execution_commands: boolean;
+  can_trigger_command: boolean;
+  can_replay_command: boolean;
+  can_maintenance_rerun: boolean;
+  can_get: boolean;
+}>;
+
 export interface OperatorCommandRuntime {
   checkReadiness(signal?: AbortSignal): Promise<void>;
   close(): Promise<void>;
@@ -162,19 +184,38 @@ async function checkReadiness(
   options: RuntimeOptions,
   signal?: AbortSignal,
 ): Promise<void> {
-  const result = await (async () => {
-    const client = await pool.connect();
-    try {
-      await query(client, 'begin', [], signal);
-      await query(
-        client,
-        "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-        [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-        signal,
-      );
-      const response = await query<Record<string, unknown>>(
-        client,
-        `select
+  const row = await loadOperatorReadinessSnapshot(
+    pool,
+    ownerRole,
+    operatorRole,
+    options,
+    signal,
+  );
+  assertOperatorReleaseSupport(row);
+  assertOperatorRoleBoundary(row);
+  assertNoOperatorDirectGrants(row);
+  assertOperatorCapabilities(row);
+}
+
+async function loadOperatorReadinessSnapshot(
+  pool: Pool,
+  ownerRole: string,
+  operatorRole: string,
+  options: RuntimeOptions,
+  signal?: AbortSignal,
+): Promise<OperatorReadinessRow | undefined> {
+  const client = await pool.connect();
+  try {
+    await query(client, 'begin', [], signal);
+    await query(
+      client,
+      "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
+      [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
+      signal,
+    );
+    const response = await query<OperatorReadinessRow>(
+      client,
+      `select
           current_setting('server_version_num')::integer/10000 postgres_major,
           role.rolsuper,role.rolbypassrls,
           pg_has_role(current_user,$1::name,'MEMBER') owner_member,
@@ -205,40 +246,66 @@ async function checkReadiness(
           has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
         from pg_roles role where role.rolname=current_user`,
-        [ownerRole, operatorRole, options.forbiddenRoles],
-        signal,
-      );
-      await query(client, 'commit', [], signal);
-      return response;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  })();
-  const row = result.rows[0];
+      [ownerRole, operatorRole, options.forbiddenRoles],
+      signal,
+    );
+    await query(client, 'commit', [], signal);
+    return response.rows[0];
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function incompatibleOperatorBoundary(): never {
+  throw new Error('Operator command database boundary is incompatible');
+}
+
+function assertOperatorReleaseSupport(
+  row: OperatorReadinessRow | undefined,
+): asserts row is OperatorReadinessRow {
+  if (row === undefined) incompatibleOperatorBoundary();
+  const postgresMajor = z.number().int().parse(row.postgres_major);
   if (
-    row === undefined ||
-    z.number().int().parse(row.postgres_major) < MINIMUM_POSTGRES_MAJOR ||
-    row.migration_head !== EXPECTED_MIGRATION_HEAD ||
-    row.rolsuper === true ||
-    row.rolbypassrls === true ||
-    row.owner_member === true ||
-    row.forbidden_member === true ||
-    row.expected_role !== true ||
-    row.direct_outbox === true ||
-    row.direct_audit === true ||
-    row.direct_command === true ||
-    row.direct_evidence === true ||
-    row.direct_execution === true ||
-    row.private_command === true ||
-    row.can_command !== true ||
-    row.can_execution_commands !== true ||
-    row.can_trigger_command !== true ||
-    row.can_replay_command !== true ||
-    row.can_maintenance_rerun !== true ||
-    row.can_get !== true
+    postgresMajor < MINIMUM_POSTGRES_MAJOR ||
+    row.migration_head !== EXPECTED_MIGRATION_HEAD
   )
-    throw new Error('Operator command database boundary is incompatible');
+    incompatibleOperatorBoundary();
+}
+
+function assertOperatorRoleBoundary(row: OperatorReadinessRow): void {
+  if (
+    row.rolsuper ||
+    row.rolbypassrls ||
+    row.owner_member ||
+    row.forbidden_member ||
+    !row.expected_role
+  )
+    incompatibleOperatorBoundary();
+}
+
+function assertNoOperatorDirectGrants(row: OperatorReadinessRow): void {
+  if (
+    row.direct_outbox ||
+    row.direct_audit ||
+    row.direct_command ||
+    row.direct_evidence ||
+    row.direct_execution ||
+    row.private_command
+  )
+    incompatibleOperatorBoundary();
+}
+
+function assertOperatorCapabilities(row: OperatorReadinessRow): void {
+  if (
+    !row.can_command ||
+    !row.can_execution_commands ||
+    !row.can_trigger_command ||
+    !row.can_replay_command ||
+    !row.can_maintenance_rerun ||
+    !row.can_get
+  )
+    incompatibleOperatorBoundary();
 }

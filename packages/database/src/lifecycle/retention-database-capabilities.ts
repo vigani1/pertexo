@@ -82,16 +82,21 @@ export function createRetentionDryRunCapability(
       .nonnegative()
       .max(examinedDelta)
       .parse(row.eligible_delta);
-    const outcome = standard
-      ? z.enum(['completed', 'progressed', 'stale']).parse(row.outcome)
-      : z.boolean().parse(row.completed)
-        ? 'completed'
-        : examinedDelta === 0 &&
-            eligibleDelta === 0 &&
-            row.cursor_expires_at === null &&
-            row.cursor_id === null
-          ? 'stale'
-          : 'progressed';
+    let outcome: 'completed' | 'progressed' | 'stale';
+    if (standard) {
+      outcome = z.enum(['completed', 'progressed', 'stale']).parse(row.outcome);
+    } else if (z.boolean().parse(row.completed)) {
+      outcome = 'completed';
+    } else if (
+      examinedDelta === 0 &&
+      eligibleDelta === 0 &&
+      row.cursor_expires_at === null &&
+      row.cursor_id === null
+    ) {
+      outcome = 'stale';
+    } else {
+      outcome = 'progressed';
+    }
     return Object.freeze({
       completed: outcome === 'completed',
       cursorExpiresAt:

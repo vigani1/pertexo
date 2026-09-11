@@ -26,6 +26,10 @@ import {
   type CoordinatorEventRow,
   type PersistedCoordinatorEventRow,
 } from './coordinator-run-store-fact-physical-state.js';
+import {
+  appendPendingFailureObservations,
+  type PendingFailureRow,
+} from './coordinator-pending-failure-observations.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -250,6 +254,16 @@ function attemptFact(
   };
 }
 
+function requiredLaterFactType(row: EventRow): string | undefined {
+  if (row.node_status === 'waiting') {
+    if (row.attempt_status === 'succeeded') return 'node.waiting';
+    if (row.attempt_status === 'failed') return 'node.retry_scheduled';
+    return undefined;
+  }
+  return row.attempt_status === row.node_status && row.node_status !== null
+    ? `node.${row.node_status}`
+    : undefined;
+}
 export function validatePersistedFactBatch(rows: readonly EventRow[]): void {
   const laterTypesByAttempt = new Map<string, Set<string>>();
   for (let index = rows.length - 1; index >= 0; index -= 1) {
@@ -271,16 +285,7 @@ export function validatePersistedFactBatch(rows: readonly EventRow[]): void {
       }
       continue;
     }
-    const requiredLaterType =
-      row.node_status === 'waiting'
-        ? row.attempt_status === 'succeeded'
-          ? 'node.waiting'
-          : row.attempt_status === 'failed'
-            ? 'node.retry_scheduled'
-            : undefined
-        : row.attempt_status === row.node_status && row.node_status !== null
-          ? `node.${row.node_status}`
-          : undefined;
+    const requiredLaterType = requiredLaterFactType(row);
     if (
       row.attempt_id === null ||
       requiredLaterType === undefined ||
@@ -449,6 +454,59 @@ function freshSemanticFacts(
   return facts;
 }
 
+type CoordinatorObservation = ReturnType<typeof mapEvent>;
+type CheckpointInvocation = PersistedWorkflowCheckpoint['invocations'][number];
+function assertObservationInvocationBindings(
+  checkpoint: PersistedWorkflowCheckpoint,
+  observations: readonly CoordinatorObservation[],
+): Map<string, CheckpointInvocation> {
+  const checkpointInvocations = new Map<string, CheckpointInvocation>();
+  for (const invocation of checkpoint.invocations)
+    checkpointInvocations.set(invocation.invocationKey, invocation);
+  for (const observation of observations) {
+    const value = record(observation);
+    if (value.kind === 'cancel_requested') continue;
+    if (
+      typeof value.invocationKey !== 'string' ||
+      typeof value.attemptNumber !== 'number'
+    )
+      throw new CoordinatorRunStateCorruptError();
+    const invocation = checkpointInvocations.get(value.invocationKey);
+    if (
+      invocation?.status !== 'running' ||
+      invocation.attemptNumber !== value.attemptNumber
+    )
+      throw new CoordinatorRunStateCorruptError();
+  }
+  return checkpointInvocations;
+}
+function assertPersistedControlState(
+  checkpoint: PersistedWorkflowCheckpoint,
+  observations: readonly CoordinatorObservation[],
+  row: Readonly<{
+    cancel_requested_at: Date | null;
+    deadline_at: Date | null;
+    database_now: Date;
+  }>,
+): boolean {
+  let hasFreshCancellation = false;
+  for (const observation of observations)
+    if (record(observation).kind === 'cancel_requested') {
+      hasFreshCancellation = true;
+      break;
+    }
+  const cancellationEvidenceIsConsistent =
+    (!checkpoint.cancelRequested && !hasFreshCancellation) ||
+    row.cancel_requested_at !== null;
+  if (!cancellationEvidenceIsConsistent)
+    throw new CoordinatorRunStateCorruptError();
+  if (
+    checkpoint.deadlineExpired &&
+    (row.deadline_at === null || row.deadline_at > row.database_now)
+  )
+    throw new CoordinatorRunStateCorruptError();
+  return hasFreshCancellation;
+}
 export async function loadCoordinatorAdvanceState(
   pool: Pool,
   input: LoadAdvanceStateInput,
@@ -540,16 +598,7 @@ export async function loadCoordinatorAdvanceState(
       validatePersistedFactBatch(events);
       const observations = events.map(mapEvent);
       const completedOutputs = events.flatMap(completedInlineOutput);
-      const pendingFailures = await client.query<{
-        attempt_id: string;
-        attempt_number: number;
-        completed_at: Date;
-        executor_error_kind: string;
-        executor_failure_kind: string;
-        executor_possibly_dispatched: boolean;
-        invocation_key: string;
-        safe_error_code: string;
-      }>(
+      const pendingFailures = await client.query<PendingFailureRow>(
         `select attempt.id attempt_id,attempt.attempt_number,
                     attempt.completed_at,attempt.executor_failure_kind,
                     attempt.executor_error_kind,
@@ -567,56 +616,11 @@ export async function loadCoordinatorAdvanceState(
              order by node.invocation_key,attempt.id`,
         [workspaceId, runId],
       );
-      for (const failure of pendingFailures.rows) {
-        if (
-          !['failed', 'canceled', 'retry', 'outcome_unknown'].includes(
-            failure.executor_failure_kind,
-          ) ||
-          ![
-            'authentication',
-            'canceled',
-            'configuration',
-            'internal',
-            'network',
-            'provider',
-            'rate_limit',
-            'timeout',
-          ].includes(failure.executor_error_kind)
-        )
-          throw new CoordinatorRunStateCorruptError();
-        observations.push({
-          kind: 'attempt_failure',
-          occurredAt: failure.completed_at.toISOString(),
-          invocationKey: failure.invocation_key,
-          attemptId: failure.attempt_id,
-          attemptNumber: failure.attempt_number,
-          failureKind: failure.executor_failure_kind,
-          errorKind: failure.executor_error_kind,
-          possiblyDispatched: failure.executor_possibly_dispatched,
-          safeErrorCode: failure.safe_error_code,
-        });
-      }
-      const checkpointInvocations = new Map(
-        checkpoint.invocations.map((invocation) => [
-          invocation.invocationKey,
-          invocation,
-        ]),
+      appendPendingFailureObservations(observations, pendingFailures.rows);
+      const checkpointInvocations = assertObservationInvocationBindings(
+        checkpoint,
+        observations,
       );
-      for (const observation of observations) {
-        const value = record(observation);
-        if (value.kind === 'cancel_requested') continue;
-        if (
-          typeof value.invocationKey !== 'string' ||
-          typeof value.attemptNumber !== 'number'
-        )
-          throw new CoordinatorRunStateCorruptError();
-        const invocation = checkpointInvocations.get(value.invocationKey);
-        if (
-          invocation?.status !== 'running' ||
-          invocation.attemptNumber !== value.attemptNumber
-        )
-          throw new CoordinatorRunStateCorruptError();
-      }
       await validateLoadedCheckpointPhysicalState(
         client,
         workspaceId,
@@ -624,16 +628,11 @@ export async function loadCoordinatorAdvanceState(
         checkpoint,
         freshSemanticFacts(observations),
       );
-      const hasFreshCancellation = observations.some(
-        (observation) => record(observation).kind === 'cancel_requested',
+      const hasFreshCancellation = assertPersistedControlState(
+        checkpoint,
+        observations,
+        row,
       );
-      if (
-        (checkpoint.cancelRequested && row.cancel_requested_at === null) ||
-        (hasFreshCancellation && row.cancel_requested_at === null) ||
-        (checkpoint.deadlineExpired &&
-          (row.deadline_at === null || row.deadline_at > row.database_now))
-      )
-        throw new CoordinatorRunStateCorruptError();
       const artifactIds = observations.flatMap((observation) => {
         const value = record(observation);
         const output = value.output;

@@ -119,7 +119,7 @@ export function isCompatibleMigrationChecksum(
 
 type MigrationTransaction = <T>(work: () => Promise<T>) => Promise<T>;
 
-async function runNonTransactionalMigration(input: {
+type NonTransactionalMigrationInput = Readonly<{
   readonly checksum: string;
   readonly client: PoolClient;
   readonly config: MigrationConfig;
@@ -129,7 +129,11 @@ async function runNonTransactionalMigration(input: {
   readonly name: string;
   readonly rendered: string;
   readonly transaction: MigrationTransaction;
-}): Promise<void> {
+}>;
+
+async function assertMigrationDatabaseSize(
+  input: NonTransactionalMigrationInput,
+): Promise<void> {
   const size = await input.client.query<{ bytes: string }>(
     'select pg_database_size(current_database())::text bytes',
   );
@@ -140,34 +144,40 @@ async function runNonTransactionalMigration(input: {
     );
   if (databaseBytes > input.execution.maximumDatabaseBytes)
     throw new Error(`Migration database-size preflight failed: ${input.name}`);
+}
 
-  if (input.execution.mode === 'online') {
-    if (/\b(?:BEGIN|COMMIT|ROLLBACK)\b/iu.test(input.rendered))
-      throw new Error(
-        `Online migration controls transactions directly: ${input.name}`,
-      );
-    await input.client.query(
-      `set role ${quoteIdentifier(input.config.ownerRole)}`,
+async function runOnlineMigration(
+  input: NonTransactionalMigrationInput,
+): Promise<void> {
+  if (/\b(?:BEGIN|COMMIT|ROLLBACK)\b/iu.test(input.rendered))
+    throw new Error(
+      `Online migration controls transactions directly: ${input.name}`,
     );
-    try {
-      await input.client.query("select set_config('lock_timeout',$1,false)", [
-        `${String(input.lockTimeoutMs)}ms`,
-      ]);
-      await input.client.query(input.rendered);
-    } finally {
-      await input.client.query('reset role').catch(() => undefined);
-    }
-    await input.transaction(() =>
-      input.client.query(
-        'insert into pertexo_internal.schema_migrations (name, checksum) values ($1, $2)',
-        [input.name, input.checksum],
-      ),
-    );
-    return;
+  await input.client.query(
+    `set role ${quoteIdentifier(input.config.ownerRole)}`,
+  );
+  try {
+    await input.client.query("select set_config('lock_timeout',$1,false)", [
+      `${String(input.lockTimeoutMs)}ms`,
+    ]);
+    await input.client.query(input.rendered);
+  } finally {
+    await input.client.query('reset role').catch(() => undefined);
   }
+  await input.transaction(() =>
+    input.client.query(
+      'insert into pertexo_internal.schema_migrations (name, checksum) values ($1, $2)',
+      [input.name, input.checksum],
+    ),
+  );
+}
 
+async function runResumableMigration(
+  input: NonTransactionalMigrationInput,
+  execution: Extract<MigrationExecution, { mode: 'resumable' }>,
+): Promise<void> {
   let completed = false;
-  for (let batch = 0; batch < input.execution.batchLimit; batch += 1) {
+  for (let batch = 0; batch < execution.batchLimit; batch += 1) {
     const progress = await input.transaction(async () => {
       await input.client.query(
         `insert into pertexo_internal.migration_jobs(name,checksum)
@@ -232,7 +242,7 @@ async function runNonTransactionalMigration(input: {
     });
     input.emitProgress({
       batchesCompleted: progress.batchesCompleted,
-      mode: input.execution.mode,
+      mode: execution.mode,
       name: input.name,
       phase: progress.completed ? 'completed' : 'started',
       rowsProcessed: progress.rowsProcessed,
@@ -246,6 +256,38 @@ async function runNonTransactionalMigration(input: {
     throw new Error(
       `Resumable migration requires another bounded run: ${input.name}`,
     );
+}
+
+async function runNonTransactionalMigration(
+  input: NonTransactionalMigrationInput,
+): Promise<void> {
+  await assertMigrationDatabaseSize(input);
+  if (input.execution.mode === 'online') {
+    await runOnlineMigration(input);
+    return;
+  }
+  await runResumableMigration(input, input.execution);
+}
+
+async function loadMigrations(migrationsDirectory: string): Promise<
+  Readonly<{
+    names: readonly string[];
+    executionPlan: Awaited<ReturnType<typeof loadMigrationExecutionPlan>>;
+  }>
+> {
+  const names = (await readdir(migrationsDirectory))
+    .filter((name) => migrationNamePattern.test(name))
+    .sort();
+  const executionPlan = await loadMigrationExecutionPlan(
+    migrationsDirectory,
+    names,
+    {
+      required:
+        path.resolve(migrationsDirectory) ===
+        path.resolve(MIGRATIONS_DIRECTORY),
+    },
+  );
+  return { names, executionPlan };
 }
 
 export async function migrateDatabase(
@@ -297,18 +339,8 @@ export async function migrateDatabase(
 
   let migration = { error: undefined as unknown, failed: false };
   try {
-    const migrationNames = (await readdir(migrationsDirectory))
-      .filter((name) => migrationNamePattern.test(name))
-      .sort();
-    const executionPlan = await loadMigrationExecutionPlan(
-      migrationsDirectory,
-      migrationNames,
-      {
-        required:
-          path.resolve(migrationsDirectory) ===
-          path.resolve(MIGRATIONS_DIRECTORY),
-      },
-    );
+    const { names: migrationNames, executionPlan } =
+      await loadMigrations(migrationsDirectory);
 
     await client.query("select set_config('statement_timeout',$1,false)", [
       `${String(statementTimeoutMs)}ms`,

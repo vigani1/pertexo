@@ -16,6 +16,7 @@ import {
   type MaintenancePool,
 } from './control-ledger-postgres.js';
 import {
+  controlLedgerClientReleaseError,
   ControlLedgerCommandConflictError,
   ControlLedgerReconciliationBoundError,
   ControlLedgerReconciliationError,
@@ -440,13 +441,7 @@ export function createControlLedgerCoordinator(
       }
       signal?.removeEventListener('abort', cancelForAbort);
       client.release(
-        rollbackError instanceof Error
-          ? rollbackError
-          : cancellation.requested
-            ? new Error('Control ledger transaction was canceled')
-            : rollbackError === undefined
-              ? undefined
-              : new Error('Control ledger transaction could not roll back'),
+        controlLedgerClientReleaseError(rollbackError, cancellation.requested),
       );
       throw error;
     }

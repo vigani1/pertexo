@@ -1,3 +1,4 @@
+import type { Pool as PgPool, PoolClient } from 'pg';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -7,8 +8,10 @@ import {
   asRuntime,
   checkDatabaseReadiness,
   checkpoint,
+  createCoordinatorRunStore,
   databaseUrl,
   insertRun,
+  parseDatabaseConfig,
   randomUUID,
   retainedLegacyInvocationKey,
   retainedLegacyNodeRunId,
@@ -20,6 +23,143 @@ import {
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
+
+type ObservedCoordinatorQuery = Readonly<{
+  kind: string;
+  values: readonly unknown[];
+}>;
+
+function coordinatorQueryKind(text: string): string {
+  const normalized = text.replaceAll(/\s+/gu, ' ').trim().toLowerCase();
+  if (normalized.includes("current_setting('app.workspace_id'")) {
+    return normalized.includes("pg_settings where name='statement_timeout'")
+      ? 'verify_workspace_context'
+      : 'empty_tenant_context';
+  }
+  if (normalized === 'begin isolation level repeatable read read only')
+    return 'begin_repeatable_read_only';
+  if (normalized.includes("set_config('app.workspace_id'"))
+    return 'install_workspace_context';
+  if (normalized.includes('from app.workflow_runs run'))
+    return 'run_checkpoint';
+  if (
+    normalized.includes('count(*)::int as fact_count') &&
+    normalized.includes('from app.run_events')
+  )
+    return 'fact_capacity';
+  if (
+    normalized.includes('select event.sequence, event.type') &&
+    normalized.includes('from app.run_events event')
+  )
+    return 'fact_page';
+  if (
+    normalized.includes('from app.node_attempts attempt') &&
+    normalized.includes('attempt.id=any($2::uuid[])')
+  )
+    return 'fact_physical_attempts';
+  if (
+    normalized.includes("attempt.retry_decision='pending'") &&
+    normalized.includes('from app.node_attempts attempt')
+  )
+    return 'pending_failures';
+  if (
+    normalized.includes('from app.node_runs node') &&
+    normalized.includes('left join app.node_attempts attempt')
+  )
+    return 'checkpoint_physical_state';
+  if (normalized.includes('coalesce(retry_due_at, resume_at) as due_at'))
+    return 'due_wakeups';
+  if (normalized === 'commit' || normalized === 'rollback') return normalized;
+  return 'unexpected';
+}
+
+function queryTextAndValues(arguments_: readonly unknown[]): Readonly<{
+  text: string;
+  values: readonly unknown[];
+}> {
+  const request = arguments_[0];
+  if (typeof request === 'string')
+    return {
+      text: request,
+      values: Array.isArray(arguments_[1]) ? arguments_[1] : [],
+    };
+  if (
+    typeof request === 'object' &&
+    request !== null &&
+    'text' in request &&
+    typeof request.text === 'string'
+  )
+    return {
+      text: request.text,
+      values:
+        'values' in request && Array.isArray(request.values)
+          ? request.values
+          : [],
+    };
+  throw new Error('Coordinator test observed an unsupported PostgreSQL query');
+}
+
+function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
+  const originalConnect = Reflect.get(Pool.prototype, 'connect');
+  const connectWithPromise = originalConnect as unknown as (
+    this: PgPool,
+  ) => Promise<PoolClient>;
+  const observedQueries: ObservedCoordinatorQuery[] = [];
+  let clientsAcquired = 0;
+  Pool.prototype.connect = function (
+    this: PgPool,
+    ...arguments_: unknown[]
+  ): unknown {
+    if (arguments_.length > 0)
+      throw new Error('Coordinator test expected promise-based pool checkout');
+    return connectWithPromise.call(this).then((client) => {
+      clientsAcquired += 1;
+      const originalQuery = client.query.bind(client) as unknown as (
+        ...queryArguments: unknown[]
+      ) => unknown;
+      client.query = ((...queryArguments: unknown[]): unknown => {
+        const { text, values } = queryTextAndValues(queryArguments);
+        const kind = coordinatorQueryKind(text);
+        observedQueries.push({ kind, values });
+        const result = originalQuery(...queryArguments);
+        if (afterQuery === undefined) return result;
+        return Promise.resolve(result).then((value) => {
+          afterQuery(kind);
+          return value;
+        });
+      }) as typeof client.query;
+      return client;
+    });
+  } as typeof Pool.prototype.connect;
+  const observedStore = createCoordinatorRunStore(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(workerBaseUrl),
+      max: 1,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    }),
+  );
+  return {
+    close: async (): Promise<void> => {
+      try {
+        await observedStore.close();
+      } finally {
+        Pool.prototype.connect = originalConnect;
+      }
+    },
+    get clientsAcquired(): number {
+      return clientsAcquired;
+    },
+    observedQueries,
+    store: observedStore,
+  };
+}
+
+function observedKinds(
+  queries: readonly ObservedCoordinatorQuery[],
+): readonly string[] {
+  return queries.map(({ kind }) => kind);
+}
 
 describe('Coordinator observation integrity invariants', () => {
   it('preserves legacy invocation keys and admits only canonical engine identities', async () => {
@@ -158,6 +298,171 @@ describe('Coordinator observation integrity invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'not_found' });
+  });
+
+  it('retrospectively characterizes the normal observation query sequence on one repeatable-read client', async () => {
+    const runId = await insertRun({});
+    const observed = observedCoordinatorStore();
+    try {
+      await expect(
+        observed.store.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ kind: 'ready' });
+
+      expect(observed.clientsAcquired).toBe(1);
+      expect(observedKinds(observed.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+        'fact_capacity',
+        'pending_failures',
+        'checkpoint_physical_state',
+        'due_wakeups',
+        'commit',
+        'empty_tenant_context',
+      ]);
+    } finally {
+      await observed.close();
+    }
+  });
+
+  it('retrospectively characterizes 1,000-row observation pagination without extra clients', async () => {
+    const runId = await insertRun({});
+    await asOwner(workspaceA, (client) =>
+      client.query(
+        `update app.workflow_runs
+            set cancel_requested_at=now(), cancel_requested_by='test'
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, runId],
+      ),
+    );
+    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+      await client.query(
+        `insert into app.run_events
+           (workspace_id,workflow_run_id,sequence,type,payload)
+         select $1,$2,sequence,'run.cancel_requested','{"schemaVersion":1}'::jsonb
+           from generate_series(2,1002) sequence`,
+        [workspaceA, runId],
+      );
+    });
+    const observed = observedCoordinatorStore();
+    try {
+      const loaded = await observed.store.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      });
+      expect(loaded).toMatchObject({ kind: 'ready' });
+      if (loaded.kind !== 'ready') throw new Error('expected ready state');
+      expect(loaded.state.observations).toHaveLength(1_001);
+      expect(observed.clientsAcquired).toBe(1);
+      expect(observedKinds(observed.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+        'fact_capacity',
+        'fact_page',
+        'fact_page',
+        'pending_failures',
+        'checkpoint_physical_state',
+        'due_wakeups',
+        'commit',
+        'empty_tenant_context',
+      ]);
+      const pages = observed.observedQueries.filter(
+        ({ kind }) => kind === 'fact_page',
+      );
+      expect(pages.map(({ values }) => values[2])).toEqual([2, 1_002]);
+      expect(pages.map(({ values }) => values[4])).toEqual([1_000, 1_000]);
+    } finally {
+      await observed.close();
+    }
+  });
+
+  it('does not issue observation queries after an early not-found result or checkpoint failure', async () => {
+    const missing = observedCoordinatorStore();
+    try {
+      await expect(
+        missing.store.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId: randomUUID(),
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind: 'not_found' });
+      expect(missing.clientsAcquired).toBe(1);
+      expect(observedKinds(missing.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+        'commit',
+        'empty_tenant_context',
+      ]);
+    } finally {
+      await missing.close();
+    }
+
+    const corruptRun = await insertRun({
+      schedulerState: checkpoint({ workflowVersionId: versionB }),
+    });
+    const corrupt = observedCoordinatorStore();
+    try {
+      await expect(
+        corrupt.store.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId: corruptRun,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+      expect(corrupt.clientsAcquired).toBe(1);
+      expect(observedKinds(corrupt.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+        'rollback',
+        'empty_tenant_context',
+      ]);
+    } finally {
+      await corrupt.close();
+    }
+  });
+
+  it('stops after the active run query when observation loading is canceled', async () => {
+    const runId = await insertRun({});
+    const controller = new AbortController();
+    const observed = observedCoordinatorStore((kind) => {
+      if (kind === 'run_checkpoint')
+        controller.abort(new Error('cancel characterized observation load'));
+    });
+    try {
+      await expect(
+        observed.store.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(observed.clientsAcquired).toBe(1);
+      expect(observedKinds(observed.observedQueries)).toEqual([
+        'empty_tenant_context',
+        'begin_repeatable_read_only',
+        'install_workspace_context',
+        'verify_workspace_context',
+        'run_checkpoint',
+      ]);
+    } finally {
+      await observed.close();
+    }
   });
 
   it('fails closed when checkpoint invocations diverge from physical node state without new facts', async () => {
