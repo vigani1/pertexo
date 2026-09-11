@@ -1,7 +1,5 @@
 import { isIP } from 'node:net';
 
-import { z } from 'zod';
-
 import { boundedRedactedBody } from './stream-redaction.js';
 import {
   SECURE_HTTP_ERROR_CODE,
@@ -21,48 +19,12 @@ import {
   normalizeUrlHostname,
   type ResolvedAddress,
 } from './address-policy.js';
-import { isSerializableHttpHeaderValue } from './header-value.js';
+import {
+  parseRequest,
+  type ParsedSecureHttpRequest,
+} from './secure-http-request.js';
 
 const MAX_URL_BYTES = 2_048;
-const MAX_REQUEST_BODY_BYTES = 1_048_576;
-const MAX_RESPONSE_BYTES = 10_485_760;
-const MAX_HEADER_BYTES = 32_768;
-const MAX_TIMEOUT_MILLIS = 120_000;
-const MAX_REDIRECTS = 5;
-
-const methodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
-const secureHttpRequestSchema = z
-  .object({
-    url: z.string(),
-    method: methodSchema,
-    headers: z.record(z.string(), z.string()).optional(),
-    body: z.instanceof(Uint8Array).optional(),
-    timeoutMillis: z.number(),
-    maxRedirects: z.number(),
-    maxResponseBytes: z.number(),
-    sensitiveValues: z.array(z.string()).optional(),
-    signal: z
-      .custom<AbortSignal>((value) => value instanceof AbortSignal)
-      .optional(),
-    beforeDispatch: z.custom<() => Promise<void>>(
-      (value) => typeof value === 'function',
-    ),
-  })
-  .strict();
-const headerNamePattern = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
-const blockedRequestHeaders = new Set([
-  'accept-encoding',
-  'connection',
-  'content-length',
-  'host',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
 const safeResponseHeaders = new Set([
   'content-language',
   'content-type',
@@ -170,6 +132,124 @@ export interface SecureHttpTransport {
   ): Promise<SecureHttpTransportResponse>;
 }
 
+type RedirectState = Readonly<{
+  url: URL;
+  method: SecureHttpRequest['method'];
+  body?: Uint8Array;
+  headers: Readonly<Record<string, string>>;
+  redirectCount: number;
+}>;
+
+type DispatchFailureContext = Readonly<{
+  possiblyDispatched: boolean;
+  ambiguous: boolean;
+}>;
+
+const POST_DISPATCH_AMBIGUITY: DispatchFailureContext = Object.freeze({
+  possiblyDispatched: true,
+  ambiguous: true,
+});
+
+function assertResponseStatus(response: SecureHttpTransportResponse): void {
+  if (
+    !Number.isInteger(response.status) ||
+    response.status < 100 ||
+    response.status > 599
+  ) {
+    response.close();
+    throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true);
+  }
+}
+
+function redirectTransition(
+  response: SecureHttpTransportResponse,
+  current: RedirectState,
+  request: ParsedSecureHttpRequest,
+  location: string,
+): RedirectState {
+  if (current.redirectCount >= request.maxRedirects)
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+  const nextUrl = parseRedirectUrl(location, current.url);
+  if (current.url.protocol === 'https:' && nextUrl.protocol !== 'https:')
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+  if (
+    request.sensitiveValues.length > 0 &&
+    nextUrl.origin !== current.url.origin
+  )
+    throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+  const nextRequest = redirectRequest(
+    response.status,
+    current.method,
+    current.body,
+    current.headers,
+  );
+  return Object.freeze({
+    ...nextRequest,
+    url: nextUrl,
+    redirectCount: current.redirectCount + 1,
+  });
+}
+
+async function consumeFinalResponse<Body>(
+  response: SecureHttpTransportResponse,
+  state: RedirectState,
+  request: ParsedSecureHttpRequest,
+  executionSignal: AbortSignal,
+  deadline: number,
+  consume: SecureHttpBodyConsumer<Body>,
+): Promise<SecureHttpResponse<Body>> {
+  try {
+    const selectedHeaders = selectResponseHeaders(
+      response.headers,
+      request.sensitiveValues,
+    );
+    const contentEncoding = response.headers['content-encoding'];
+    if (
+      contentEncoding !== undefined &&
+      normalizedHeaderValue(contentEncoding).toLowerCase() !== 'identity'
+    )
+      throw failure(
+        SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
+        true,
+        false,
+      );
+    const textual = isTextualContentType(selectedHeaders['content-type'] ?? '');
+    const bodyEncoding = textual ? ('utf8' as const) : ('base64' as const);
+    const finalUrl = safeFinalUrl(state.url);
+    const body = await raceWithSignal(
+      consume(
+        Object.freeze({
+          status: response.status,
+          headers: selectedHeaders,
+          body: boundedRedactedBody(
+            response.body,
+            request.maxResponseBytes,
+            executionSignal,
+            request.sensitiveValues,
+            deadline,
+          ),
+          bodyEncoding,
+          finalUrl,
+          redirectCount: state.redirectCount,
+          signal: executionSignal,
+        }),
+      ),
+      executionSignal,
+      POST_DISPATCH_AMBIGUITY,
+    );
+    return Object.freeze({
+      status: response.status,
+      headers: selectedHeaders,
+      body,
+      bodyEncoding,
+      finalUrl,
+      redirectCount: state.redirectCount,
+    });
+  } finally {
+    response.close();
+  }
+}
+
 export class SecureHttpClient {
   public constructor(
     private readonly resolver: SecureHttpResolver,
@@ -229,25 +309,31 @@ export class SecureHttpClient {
       parsed.signal === undefined
         ? timeoutSignal
         : AbortSignal.any([parsed.signal, timeoutSignal]);
-    let url = parseTargetUrl(parsed.url);
-    let method = parsed.method;
-    let body = parsed.body;
-    let headers = parsed.headers;
-    let redirectCount = 0;
+    let requestState: RedirectState = Object.freeze({
+      url: parseTargetUrl(parsed.url),
+      method: parsed.method,
+      ...(parsed.body === undefined ? {} : { body: parsed.body }),
+      headers: parsed.headers,
+      redirectCount: 0,
+    });
     let markerCommitted = false;
 
     for (;;) {
-      assertNotAborted(executionSignal, markerCommitted, false);
+      const resolutionFailureContext: DispatchFailureContext = Object.freeze({
+        possiblyDispatched: markerCommitted,
+        ambiguous: false,
+      });
+      assertNotAborted(executionSignal, resolutionFailureContext);
       const address = await this.resolvePublic(
-        url,
-        markerCommitted,
+        requestState.url,
+        resolutionFailureContext,
         executionSignal,
       );
       if (!markerCommitted) {
         try {
           await parsed.beforeDispatch();
           markerCommitted = true;
-          assertNotAborted(executionSignal, true, true);
+          assertNotAborted(executionSignal, POST_DISPATCH_AMBIGUITY);
         } catch (error: unknown) {
           if (error instanceof SecureHttpError) throw error;
           throw failure(
@@ -262,109 +348,50 @@ export class SecureHttpClient {
       try {
         response = await raceWithSignal(
           this.transport.dispatch({
-            url,
+            url: requestState.url,
             address,
-            method,
-            headers,
-            ...(body === undefined ? {} : { body }),
+            method: requestState.method,
+            headers: requestState.headers,
+            ...(requestState.body === undefined
+              ? {}
+              : { body: requestState.body }),
             timeoutMillis: parsed.timeoutMillis,
             signal: executionSignal,
           }),
           executionSignal,
-          true,
-          true,
+          POST_DISPATCH_AMBIGUITY,
         );
       } catch (error: unknown) {
         if (error instanceof SecureHttpError) throw error;
         throw mapTransportError(error, executionSignal);
       }
-      if (
-        !Number.isInteger(response.status) ||
-        response.status < 100 ||
-        response.status > 599
-      ) {
-        response.close();
-        throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true);
-      }
+      assertResponseStatus(response);
 
       const location = redirectLocation(response);
       if (location !== undefined) {
         response.close();
-        if (redirectCount >= parsed.maxRedirects)
-          throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-        const next = parseRedirectUrl(location, url);
-        if (url.protocol === 'https:' && next.protocol !== 'https:')
-          throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-        if (parsed.sensitiveValues.length > 0 && next.origin !== url.origin)
-          throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
-        ({ method, body, headers } = redirectRequest(
-          response.status,
-          method,
-          body,
-          headers,
-        ));
-        url = next;
-        redirectCount += 1;
+        requestState = redirectTransition(
+          response,
+          requestState,
+          parsed,
+          location,
+        );
         continue;
       }
-
-      try {
-        const selectedHeaders = selectResponseHeaders(
-          response.headers,
-          parsed.sensitiveValues,
-        );
-        const contentType = selectedHeaders['content-type'] ?? '';
-        const contentEncoding = response.headers['content-encoding'];
-        if (
-          contentEncoding !== undefined &&
-          normalizedHeaderValue(contentEncoding).toLowerCase() !== 'identity'
-        )
-          throw failure(
-            SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
-            true,
-            false,
-          );
-        const textual = isTextualContentType(contentType);
-        const finalUrl = safeFinalUrl(url);
-        const body = await raceWithSignal(
-          consume(
-            Object.freeze({
-              status: response.status,
-              headers: selectedHeaders,
-              body: boundedRedactedBody(
-                response.body,
-                parsed.maxResponseBytes,
-                executionSignal,
-                parsed.sensitiveValues,
-                deadline,
-              ),
-              bodyEncoding: textual ? ('utf8' as const) : ('base64' as const),
-              finalUrl,
-              redirectCount,
-              signal: executionSignal,
-            }),
-          ),
-          executionSignal,
-          true,
-          true,
-        );
-        return Object.freeze({
-          status: response.status,
-          headers: selectedHeaders,
-          body,
-          bodyEncoding: textual ? ('utf8' as const) : ('base64' as const),
-          finalUrl,
-          redirectCount,
-        });
-      } finally {
-        response.close();
-      }
+      return await consumeFinalResponse(
+        response,
+        requestState,
+        parsed,
+        executionSignal,
+        deadline,
+        consume,
+      );
     }
   }
 
   private async resolvePublic(
     url: URL,
-    possiblyDispatched: boolean,
+    failureContext: DispatchFailureContext,
     signal: AbortSignal,
   ): Promise<ResolvedAddress> {
     const hostname = normalizeUrlHostname(url.hostname);
@@ -376,15 +403,14 @@ export class SecureHttpClient {
           ? await raceWithSignal(
               this.resolver.resolve(hostname),
               signal,
-              possiblyDispatched,
-              false,
+              failureContext,
             )
           : [{ address: hostname, family: literalFamily }];
     } catch (error: unknown) {
       if (error instanceof SecureHttpError) throw error;
       throw failure(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
-        possiblyDispatched,
+        failureContext.possiblyDispatched,
         false,
         error,
       );
@@ -392,7 +418,7 @@ export class SecureHttpClient {
     if (addresses.length === 0 || addresses.length > 16)
       throw failure(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
-        possiblyDispatched,
+        failureContext.possiblyDispatched,
         false,
       );
     const validated: ResolvedAddress[] = [];
@@ -406,7 +432,7 @@ export class SecureHttpClient {
     } catch (error: unknown) {
       throw failure(
         SECURE_HTTP_ERROR_CODE.ssrfBlocked,
-        possiblyDispatched,
+        failureContext.possiblyDispatched,
         false,
         error,
       );
@@ -420,7 +446,7 @@ export class SecureHttpClient {
     if (selected === undefined)
       throw failure(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
-        possiblyDispatched,
+        failureContext.possiblyDispatched,
         false,
       );
     return selected;
@@ -451,51 +477,6 @@ function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
   }
 }
 
-function parseRequest(input: SecureHttpRequest): Required<
-  Omit<SecureHttpRequest, 'body' | 'headers' | 'sensitiveValues' | 'signal'>
-> &
-  Pick<SecureHttpRequest, 'body' | 'signal'> &
-  Readonly<{
-    headers: Readonly<Record<string, string>>;
-    sensitiveValues: readonly string[];
-  }> {
-  try {
-    const parsed = secureHttpRequestSchema.parse(input);
-    const method = parsed.method;
-    if (
-      !Number.isInteger(parsed.timeoutMillis) ||
-      parsed.timeoutMillis < 1 ||
-      parsed.timeoutMillis > MAX_TIMEOUT_MILLIS ||
-      !Number.isInteger(parsed.maxRedirects) ||
-      parsed.maxRedirects < 0 ||
-      parsed.maxRedirects > MAX_REDIRECTS ||
-      !Number.isInteger(parsed.maxResponseBytes) ||
-      parsed.maxResponseBytes < 1 ||
-      parsed.maxResponseBytes > MAX_RESPONSE_BYTES ||
-      (parsed.body?.byteLength ?? 0) > MAX_REQUEST_BODY_BYTES ||
-      ((method === 'GET' || method === 'HEAD') && parsed.body !== undefined)
-    )
-      throw new Error('invalid request limits');
-    return Object.freeze({
-      url: parsed.url,
-      method,
-      headers: parseHeaders(parsed.headers ?? {}),
-      ...(parsed.body === undefined
-        ? {}
-        : { body: new Uint8Array(parsed.body) }),
-      timeoutMillis: parsed.timeoutMillis,
-      maxRedirects: parsed.maxRedirects,
-      maxResponseBytes: parsed.maxResponseBytes,
-      sensitiveValues: parseSensitiveValues(parsed.sensitiveValues ?? []),
-      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
-      beforeDispatch: parsed.beforeDispatch,
-    });
-  } catch (error: unknown) {
-    if (error instanceof SecureHttpError) throw error;
-    throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, false, false, error);
-  }
-}
-
 function parseTargetUrl(value: string): URL {
   try {
     if (new TextEncoder().encode(value).byteLength > MAX_URL_BYTES)
@@ -517,47 +498,6 @@ function parseRedirectUrl(location: string, current: URL): URL {
   } catch (error: unknown) {
     throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false, error);
   }
-}
-
-function parseHeaders(
-  input: Readonly<Record<string, string>>,
-): Readonly<Record<string, string>> {
-  const normalized = new Map<string, string>();
-  let bytes = 0;
-  for (const [name, value] of Object.entries(input)) {
-    const lower = name.toLowerCase();
-    if (
-      !headerNamePattern.test(name) ||
-      blockedRequestHeaders.has(lower) ||
-      value.length < 1 ||
-      value.length > 8_192 ||
-      !isSerializableHttpHeaderValue(value) ||
-      normalized.has(lower)
-    )
-      throw new Error('invalid request header');
-    bytes += new TextEncoder().encode(`${lower}:${value}\r\n`).byteLength;
-    normalized.set(lower, value);
-  }
-  if (normalized.size > 64 || bytes > MAX_HEADER_BYTES)
-    throw new Error('request headers exceed limits');
-  return Object.freeze(
-    Object.fromEntries(
-      [...normalized.entries()].sort(([left], [right]) =>
-        left.localeCompare(right),
-      ),
-    ),
-  );
-}
-
-function parseSensitiveValues(values: readonly string[]): readonly string[] {
-  if (
-    values.length > 32 ||
-    values.some((value) => value.length < 1 || value.length > 8_192)
-  )
-    throw new Error('invalid sensitive values');
-  return Object.freeze(
-    [...new Set(values)].sort((left, right) => right.length - left.length),
-  );
 }
 
 function literalAddressFamily(hostname: string): 4 | 6 | undefined {
@@ -656,11 +596,14 @@ function safeFinalUrl(url: URL): string {
 
 function assertNotAborted(
   signal: AbortSignal | undefined,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
+  failureContext: DispatchFailureContext,
 ): void {
   if (signal?.aborted === true)
-    throw abortFailure(signal, possiblyDispatched, ambiguous);
+    throw abortFailure(
+      signal,
+      failureContext.possiblyDispatched,
+      failureContext.ambiguous,
+    );
 }
 
 function mapTransportError(
@@ -676,15 +619,26 @@ function mapTransportError(
 function raceWithSignal<T>(
   work: Promise<T>,
   signal: AbortSignal,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
+  failureContext: DispatchFailureContext,
 ): Promise<T> {
   if (signal.aborted) void work.catch(() => undefined);
   if (signal.aborted)
-    return Promise.reject(abortFailure(signal, possiblyDispatched, ambiguous));
+    return Promise.reject(
+      abortFailure(
+        signal,
+        failureContext.possiblyDispatched,
+        failureContext.ambiguous,
+      ),
+    );
   return new Promise<T>((resolve, reject) => {
     const aborted = (): void => {
-      reject(abortFailure(signal, possiblyDispatched, ambiguous));
+      reject(
+        abortFailure(
+          signal,
+          failureContext.possiblyDispatched,
+          failureContext.ambiguous,
+        ),
+      );
     };
     signal.addEventListener('abort', aborted, { once: true });
     void work.then(

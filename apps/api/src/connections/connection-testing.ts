@@ -39,6 +39,15 @@ import {
   type ConnectionTestResponse,
 } from './types.js';
 
+const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
+const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
+const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
+
+type ParsedConnectionTestRequest = ReturnType<
+  typeof connectionTestRequestSchema.parse
+>;
+type DecodedConnectionCredential = ReturnType<typeof decodeCredential>;
+
 export type TestConnectionCommand = ConnectionCommandInput &
   Readonly<{
     connectionId: string;
@@ -113,90 +122,25 @@ export class TestConnectionUseCase {
         requestSignal.throwIfAborted();
         const credential = decodeCredential(plaintext);
         try {
-          if (expectedProviderKey === 'email') {
-            if (
-              credential.type !== 'resend_api_key' ||
-              this.emailClient === undefined
-            )
-              throw new ConnectionSecretEncryptionError();
-            const result = await this.emailClient.sendNotification({
-              apiKey: credential.apiKey,
-              fromEmail: credential.fromEmail,
-              toEmail: 'delivered@resend.dev',
-              subject: 'Pertexo Resend connection test',
-              text: 'This message verifies a Pertexo Resend sending connection.',
-              idempotencyKey: connectionTestProviderKey(
-                input.connectionId,
-                input.idempotencyKey,
-              ),
-              timeoutMillis: 15_000,
-              signal: requestSignal,
-              beforeDispatch: () =>
-                this.persistence.markConnectionTestDispatched({
-                  ...common,
-                  secretVersionId: resolved.secretVersionId,
-                }),
-            });
-            return toTestResponse(
-              await this.persistence.completeConnectionTest({
-                ...common,
-                secretVersionId: resolved.secretVersionId,
-                outcome: resendTestOutcome(result),
-              }),
-            );
-          }
-          if (expectedProviderKey === 'slack') {
-            if (
-              credential.type !== 'slack_bot_token' ||
-              this.slackClient === undefined
-            )
-              throw new ConnectionSecretEncryptionError();
-            const result = await this.slackClient.authTest({
-              botToken: credential.botToken,
-              timeoutMillis: 15_000,
-              signal: requestSignal,
-              beforeDispatch: () =>
-                this.persistence.markConnectionTestDispatched({
-                  ...common,
-                  secretVersionId: resolved.secretVersionId,
-                }),
-            });
-            return toTestResponse(
-              await this.persistence.completeConnectionTest({
-                ...common,
-                secretVersionId: resolved.secretVersionId,
-                outcome: slackTestOutcome(result),
-              }),
-            );
-          }
-          if (credential.type !== 'http_headers' || !('url' in request))
-            throw new ConnectionSecretEncryptionError();
-          const response = await this.httpClient.execute({
-            url: request.url,
-            method: 'GET',
-            headers: credential.headers,
-            timeoutMillis: 15_000,
-            maxRedirects: 3,
-            maxResponseBytes: 65_536,
-            sensitiveValues: Object.values(credential.headers),
-            signal: requestSignal,
-            beforeDispatch: () =>
+          const outcome = await this.testProvider(
+            expectedProviderKey,
+            request,
+            credential,
+            input,
+            requestSignal,
+            () =>
               this.persistence.markConnectionTestDispatched({
                 ...common,
                 secretVersionId: resolved.secretVersionId,
               }),
-          });
-          try {
-            return toTestResponse(
-              await this.persistence.completeConnectionTest({
-                ...common,
-                secretVersionId: resolved.secretVersionId,
-                outcome: responseOutcome(response.status),
-              }),
-            );
-          } finally {
-            response.body.fill(0);
-          }
+          );
+          return toTestResponse(
+            await this.persistence.completeConnectionTest({
+              ...common,
+              secretVersionId: resolved.secretVersionId,
+              outcome,
+            }),
+          );
         } catch (error: unknown) {
           if (!(error instanceof SecureHttpError)) throw error;
           if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
@@ -218,6 +162,70 @@ export class TestConnectionUseCase {
         plaintext?.fill(0);
       }
     });
+  }
+
+  private async testProvider(
+    expectedProviderKey: 'email' | 'http' | 'slack',
+    request: ParsedConnectionTestRequest,
+    credential: DecodedConnectionCredential,
+    input: TestConnectionCommand,
+    signal: AbortSignal,
+    beforeDispatch: () => Promise<void>,
+  ): Promise<ConnectionTestOutcome> {
+    if (expectedProviderKey === 'email') {
+      if (
+        credential.type !== 'resend_api_key' ||
+        this.emailClient === undefined
+      )
+        throw new ConnectionSecretEncryptionError();
+      const result = await this.emailClient.sendNotification({
+        apiKey: credential.apiKey,
+        fromEmail: credential.fromEmail,
+        toEmail: 'delivered@resend.dev',
+        subject: 'Pertexo Resend connection test',
+        text: 'This message verifies a Pertexo Resend sending connection.',
+        idempotencyKey: connectionTestProviderKey(
+          input.connectionId,
+          input.idempotencyKey,
+        ),
+        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+        signal,
+        beforeDispatch,
+      });
+      return resendTestOutcome(result);
+    }
+    if (expectedProviderKey === 'slack') {
+      if (
+        credential.type !== 'slack_bot_token' ||
+        this.slackClient === undefined
+      )
+        throw new ConnectionSecretEncryptionError();
+      const result = await this.slackClient.authTest({
+        botToken: credential.botToken,
+        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+        signal,
+        beforeDispatch,
+      });
+      return slackTestOutcome(result);
+    }
+    if (credential.type !== 'http_headers' || !('url' in request))
+      throw new ConnectionSecretEncryptionError();
+    const response = await this.httpClient.execute({
+      url: request.url,
+      method: 'GET',
+      headers: credential.headers,
+      timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+      maxRedirects: CONNECTION_TEST_MAXIMUM_REDIRECTS,
+      maxResponseBytes: CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
+      sensitiveValues: Object.values(credential.headers),
+      signal,
+      beforeDispatch,
+    });
+    try {
+      return responseOutcome(response.status);
+    } finally {
+      response.body.fill(0);
+    }
   }
 }
 
@@ -317,15 +325,17 @@ function responseOutcome(status: number): ConnectionTestOutcome {
       errorCode: 'connection.credential_rejected',
       reauthorizationRequired: true,
     });
+  let errorCode:
+    | 'connection.provider_rate_limited'
+    | 'connection.provider_unavailable'
+    | 'connection.provider_rejected';
+  if (status === 429) errorCode = 'connection.provider_rate_limited';
+  else if (status >= 500) errorCode = 'connection.provider_unavailable';
+  else errorCode = 'connection.provider_rejected';
   return Object.freeze({
     ok: false,
     httpStatus: status,
-    errorCode:
-      status === 429
-        ? 'connection.provider_rate_limited'
-        : status >= 500
-          ? 'connection.provider_unavailable'
-          : 'connection.provider_rejected',
+    errorCode,
     reauthorizationRequired: false,
   });
 }

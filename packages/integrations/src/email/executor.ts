@@ -53,6 +53,24 @@ const NOOP_TELEMETRY: EmailSendNotificationExecutorTelemetry = Object.freeze({
   measure: (work: () => Promise<EmailSendNotificationOutput>) => work(),
 });
 
+type ResolvedEmailConnection = Awaited<
+  ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
+>;
+type EmailCredential = ReturnType<
+  typeof resolvedResendApiKeyCredentialSchema.parse
+>;
+type IdempotentEmailRuntime = NodeExecutionRuntime &
+  Readonly<{ providerIdempotencyKey: string }>;
+
+function hasIdempotentEmailDispatchPolicy(
+  runtime: NodeExecutionRuntime | undefined,
+): runtime is IdempotentEmailRuntime {
+  return (
+    runtime?.sideEffectClass === 'idempotent_with_key' &&
+    runtime.providerIdempotencyKey !== undefined
+  );
+}
+
 function failure(
   kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown',
   errorKind:
@@ -118,6 +136,34 @@ function classifyResult(
   }
 }
 
+async function withEmailCredential<T>(
+  resolved: ResolvedEmailConnection,
+  connectionId: string,
+  work: (credential: EmailCredential) => Promise<T>,
+): Promise<T> {
+  try {
+    if (
+      resolved.connectionId !== connectionId ||
+      resolved.providerKey !== 'email' ||
+      resolved.authType !== 'resend_api_key'
+    )
+      throw failure('failed', 'configuration', false);
+    let credential: EmailCredential;
+    try {
+      credential = resolvedResendApiKeyCredentialSchema.parse(
+        JSON.parse(
+          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
+        ),
+      );
+    } catch {
+      throw failure('failed', 'authentication', false);
+    }
+    return await work(credential);
+  } finally {
+    resolved.secret.fill(0);
+  }
+}
+
 async function execute(
   dependencies: EmailSendNotificationExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -137,8 +183,7 @@ async function execute(
   const connectionId =
     invocation.connectionRefs[RESEND_API_KEY_CONNECTION_SLOT];
   if (
-    runtime?.sideEffectClass !== 'idempotent_with_key' ||
-    runtime.providerIdempotencyKey === undefined ||
+    !hasIdempotentEmailDispatchPolicy(runtime) ||
     connectionId === undefined ||
     Object.keys(invocation.connectionRefs).length !== 1
   )
@@ -175,23 +220,7 @@ async function execute(
       throw failure('canceled', 'canceled', false);
     throw failure('retry', 'provider', false);
   }
-  try {
-    if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'email' ||
-      resolved.authType !== 'resend_api_key'
-    )
-      throw failure('failed', 'configuration', false);
-    let credential;
-    try {
-      credential = resolvedResendApiKeyCredentialSchema.parse(
-        JSON.parse(
-          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
-        ),
-      );
-    } catch {
-      throw failure('failed', 'authentication', false);
-    }
+  return withEmailCredential(resolved, connectionId, async (credential) => {
     let result;
     try {
       result = await dependencies.client.sendNotification({
@@ -240,9 +269,7 @@ async function execute(
     }
     if (result.kind !== 'succeeded') classifyResult(result, runtime);
     return emailSendNotificationOutputSchema.parse({ emailId: result.emailId });
-  } finally {
-    resolved.secret.fill(0);
-  }
+  });
 }
 
 export function createEmailSendNotificationExecutorRegistration(

@@ -16,7 +16,10 @@ import {
   type WorkflowDraftRecord,
 } from '@pertexo/database/api';
 import type { RegistryRelease } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import {
+  canonicalJson,
+  type JsonValue,
+} from '@pertexo/workflow-model/canonical-json';
 import {
   parseWorkflowGraphDraft,
   workflowDraftRepresentationTag,
@@ -57,6 +60,28 @@ export type NodeTestUseCaseInput = Readonly<{
 }>;
 
 type Authorization = WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
+type PreviewOutput = NonNullable<
+  Awaited<ReturnType<NodeTestingPersistence['readPreview']>>
+>['output'];
+
+function validationInputFields(
+  request: NodeTestRequest,
+): Readonly<{ sampleInput?: JsonValue }> | Readonly<{ deferInput: true }> {
+  if (request.mode === 'validate')
+    return request.sampleInput === undefined
+      ? {}
+      : { sampleInput: request.sampleInput as JsonValue };
+  if (request.input.kind === 'manual')
+    return { sampleInput: request.input.value as JsonValue };
+  return { deferInput: true };
+}
+
+function previewOutputResponse(output: PreviewOutput) {
+  if (output === null) return null;
+  if (output.kind === 'inline')
+    return { kind: 'inline' as const, value: output.value };
+  return { kind: 'artifact' as const, artifactId: output.artifactId };
+}
 
 export class TestWorkflowNodeUseCase {
   public constructor(
@@ -94,13 +119,7 @@ export class TestWorkflowNodeUseCase {
       ...(this.expressionEvaluator === undefined
         ? {}
         : { expressionEvaluator: this.expressionEvaluator }),
-      ...(request.mode === 'validate'
-        ? request.sampleInput === undefined
-          ? {}
-          : { sampleInput: request.sampleInput }
-        : request.input.kind === 'manual'
-          ? { sampleInput: request.input.value }
-          : { deferInput: true }),
+      ...validationInputFields(request),
     });
     if (!('disclosure' in prepared))
       throw new NodeTestInvalidError(prepared.issues);
@@ -299,15 +318,7 @@ export class GetPreviewRunUseCase {
           mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
           dryRun: preview.dryRun,
         },
-        output:
-          preview.output === null
-            ? null
-            : preview.output.kind === 'inline'
-              ? { kind: 'inline', value: preview.output.value }
-              : {
-                  kind: 'artifact',
-                  artifactId: preview.output.artifactId,
-                },
+        output: previewOutputResponse(preview.output),
         safeErrorCode: preview.safeErrorCode,
         createdAt: preview.createdAt.toISOString(),
         startedAt: preview.startedAt?.toISOString() ?? null,

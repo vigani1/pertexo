@@ -36,7 +36,7 @@ export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
 );
 
 type ProblemIssue = ApiProblemIssue;
-export type ProblemDetails =
+type ProblemDetails =
   | ApiProblem
   | WorkflowRevisionConflictProblem
   | WorkflowLifecycleConflictProblem;
@@ -345,6 +345,23 @@ function writeProblem(
   }
 }
 
+function problemDetails(
+  normalized: NormalizedProblem,
+  baseProblem: ApiProblem,
+): ProblemDetails {
+  if (normalized.currentLifecycleRevision !== undefined)
+    return workflowLifecycleConflictProblemSchema.parse({
+      ...baseProblem,
+      currentLifecycleRevision: normalized.currentLifecycleRevision,
+    });
+  if (normalized.revisionConflict !== undefined)
+    return workflowRevisionConflictProblemSchema.parse({
+      ...baseProblem,
+      ...normalized.revisionConflict,
+    });
+  return Object.freeze(baseProblem);
+}
+
 // The emitted decorator helper contains a compiler-generated fallback that
 // application code cannot invoke; exclude that synthetic branch from V8 data.
 /* v8 ignore next */
@@ -368,7 +385,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const context = contextFor(this.contexts, request);
     const requestId = context.requestId;
     const instance = instanceFrom(request);
-    const baseProblem = {
+    const baseProblem: ApiProblem = {
       type: APPLICATION_ERROR_CATALOG[normalized.code].type,
       title: normalized.title,
       status: normalized.status,
@@ -378,18 +395,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       requestId,
       ...(normalized.errors === undefined ? {} : { errors: normalized.errors }),
     };
-    const problem: ProblemDetails =
-      normalized.currentLifecycleRevision !== undefined
-        ? workflowLifecycleConflictProblemSchema.parse({
-            ...baseProblem,
-            currentLifecycleRevision: normalized.currentLifecycleRevision,
-          })
-        : normalized.revisionConflict === undefined
-          ? Object.freeze(baseProblem)
-          : workflowRevisionConflictProblemSchema.parse({
-              ...baseProblem,
-              ...normalized.revisionConflict,
-            });
+    const problem = problemDetails(normalized, baseProblem);
 
     if (normalized.revisionConflict !== undefined) {
       setResponseHeader(

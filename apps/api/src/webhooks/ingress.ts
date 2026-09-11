@@ -34,6 +34,7 @@ import {
 } from '../platform/http/index.js';
 
 const MAX_BODY = 256 * 1024;
+const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
@@ -167,26 +168,136 @@ async function acceptWebhook(
   const seconds = Number(timestamp);
   if (
     !Number.isSafeInteger(seconds) ||
-    Math.abs(verification.databaseTime.getTime() / 1000 - seconds) > 300
+    Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
+      WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
   ) {
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
 
+  const verifiedSecretVersionId = await verifyWebhookSecrets(
+    dependencies.encryption,
+    verification,
+    { body, signature, timestamp },
+    encryptionSignal,
+  );
+  if (verifiedSecretVersionId === undefined) {
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true }).decode(body),
+    ) as unknown;
+  } catch {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 400, 'webhook.invalid_json', requestId);
+    return;
+  }
+  const idempotency = optionalIdempotencyKey(request);
+  if (idempotency === null) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
+    await problem(reply, 400, 'request.invalid', requestId);
+    return;
+  }
+  const fingerprint = sha256(
+    `${verification.endpointId}\0${sha256(body)}\0application/json`,
+  );
+  try {
+    const traceparent = telemetry.traceparent();
+    encryptionSignal.throwIfAborted();
+    const result = await dependencies.database.acceptVerifiedDelivery({
+      verification,
+      verifiedSecretVersionId,
+      requestFingerprint: fingerprint,
+      ...(idempotency === undefined
+        ? {}
+        : { idempotencyKeyHash: sha256(idempotency) }),
+      payload,
+      checkpointFactory: dependencies.checkpointFactory,
+      ...(traceparent === undefined ? {} : { traceparent }),
+    });
+    record(() => {
+      telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
+    });
+    record(() => {
+      telemetry.deduplication(result.replayed ? 'replayed' : 'new');
+    });
+    record(() => {
+      telemetry.health('healthy');
+    });
+    await reply.code(202).send(result);
+  } catch (error) {
+    if (error instanceof WebhookDeliveryReplayMismatchError) {
+      record(() => {
+        telemetry.delivery('conflict');
+      });
+      record(() => {
+        telemetry.deduplication('conflict');
+      });
+      await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
+      return;
+    }
+    if (error instanceof WorkspaceRunQuotaExceededError) {
+      record(() => {
+        telemetry.delivery('rate_limited');
+      });
+      reply.header('retry-after', String(error.retryAfterSeconds));
+      await problem(reply, 429, 'webhook.rate_limited', requestId);
+      return;
+    }
+    if (error instanceof RegionalWriteAdmissionPausedError) {
+      record(() => {
+        telemetry.delivery('unavailable');
+      });
+      record(() => {
+        telemetry.health('degraded');
+      });
+      reply.header('retry-after', String(error.retryAfterSeconds));
+      await problem(reply, 503, 'webhook.unavailable', requestId);
+      return;
+    }
+    if (
+      error instanceof WebhookDeliveryIneligibleError ||
+      error instanceof WorkspaceRunAdmissionDeniedError
+    ) {
+      await authenticationFailed(reply, requestId, telemetry);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function verifyWebhookSecrets(
+  encryption: WebhookTriggerEnvelopeEncryption,
+  verification: WebhookVerificationReference,
+  request: Readonly<{
+    body: Uint8Array;
+    signature: string;
+    timestamp: string;
+  }>,
+  signal: AbortSignal,
+): Promise<string | undefined> {
   let current: Uint8Array | undefined;
   let previous: Uint8Array | undefined;
   try {
     current = await openSecret(
-      dependencies.encryption,
+      encryption,
       verification.currentSecret,
       verification,
-      encryptionSignal,
+      signal,
     );
     const currentValid = verifyWebhookSignature({
       secret: current,
-      timestamp,
-      signature,
-      rawBody: body,
+      timestamp: request.timestamp,
+      signature: request.signature,
+      rawBody: request.body,
     });
     const previousReference = verification.previousSecret;
     const previousEligible =
@@ -196,116 +307,20 @@ async function acceptWebhook(
     let previousValid = false;
     if (previousEligible) {
       previous = await openSecret(
-        dependencies.encryption,
+        encryption,
         previousReference,
         verification,
-        encryptionSignal,
+        signal,
       );
       previousValid = verifyWebhookSignature({
         secret: previous,
-        timestamp,
-        signature,
-        rawBody: body,
+        timestamp: request.timestamp,
+        signature: request.signature,
+        rawBody: request.body,
       });
     }
-    if (!currentValid && !previousValid) {
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-
-    let payload: unknown;
-    try {
-      payload = JSON.parse(
-        new TextDecoder('utf-8', { fatal: true }).decode(body),
-      ) as unknown;
-    } catch {
-      record(() => {
-        telemetry.delivery('invalid_request');
-      });
-      await problem(reply, 400, 'webhook.invalid_json', requestId);
-      return;
-    }
-    const idempotency = optionalIdempotencyKey(request);
-    if (idempotency === null) {
-      record(() => {
-        telemetry.delivery('invalid_request');
-      });
-      await problem(reply, 400, 'request.invalid', requestId);
-      return;
-    }
-    const fingerprint = sha256(
-      `${verification.endpointId}\0${sha256(body)}\0application/json`,
-    );
-    try {
-      const traceparent = telemetry.traceparent();
-      const verifiedSecretVersionId = currentValid
-        ? verification.currentSecret.id
-        : previousReference?.id;
-      if (verifiedSecretVersionId === undefined) {
-        await authenticationFailed(reply, requestId, telemetry);
-        return;
-      }
-      encryptionSignal.throwIfAborted();
-      const result = await dependencies.database.acceptVerifiedDelivery({
-        verification,
-        verifiedSecretVersionId,
-        requestFingerprint: fingerprint,
-        ...(idempotency === undefined
-          ? {}
-          : { idempotencyKeyHash: sha256(idempotency) }),
-        payload,
-        checkpointFactory: dependencies.checkpointFactory,
-        ...(traceparent === undefined ? {} : { traceparent }),
-      });
-      record(() => {
-        telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
-      });
-      record(() => {
-        telemetry.deduplication(result.replayed ? 'replayed' : 'new');
-      });
-      record(() => {
-        telemetry.health('healthy');
-      });
-      await reply.code(202).send(result);
-    } catch (error) {
-      if (error instanceof WebhookDeliveryReplayMismatchError) {
-        record(() => {
-          telemetry.delivery('conflict');
-        });
-        record(() => {
-          telemetry.deduplication('conflict');
-        });
-        await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
-        return;
-      }
-      if (error instanceof WorkspaceRunQuotaExceededError) {
-        record(() => {
-          telemetry.delivery('rate_limited');
-        });
-        reply.header('retry-after', String(error.retryAfterSeconds));
-        await problem(reply, 429, 'webhook.rate_limited', requestId);
-        return;
-      }
-      if (error instanceof RegionalWriteAdmissionPausedError) {
-        record(() => {
-          telemetry.delivery('unavailable');
-        });
-        record(() => {
-          telemetry.health('degraded');
-        });
-        reply.header('retry-after', String(error.retryAfterSeconds));
-        await problem(reply, 503, 'webhook.unavailable', requestId);
-        return;
-      }
-      if (
-        error instanceof WebhookDeliveryIneligibleError ||
-        error instanceof WorkspaceRunAdmissionDeniedError
-      ) {
-        await authenticationFailed(reply, requestId, telemetry);
-        return;
-      }
-      throw error;
-    }
+    if (currentValid) return verification.currentSecret.id;
+    return previousValid ? previousReference?.id : undefined;
   } finally {
     current?.fill(0);
     previous?.fill(0);

@@ -11,7 +11,7 @@ export default defineConfig({
       include: [
         'src/app.ts',
         'src/identity/{csrf,oidc,session}.ts',
-        'src/identity-infrastructure/{oidc-adapter,oidc-response-cleanup,oidc-secret-encryption}.ts',
+        'src/identity-infrastructure/{oidc-adapter,oidc-request-validation,oidc-response-cleanup,oidc-secret-encryption}.ts',
         'src/identity-workspace/{module,use-cases}.ts',
         'src/platform/identity/identity-runtime.module.ts',
         'src/workflow-authoring/{lifecycle-use-case,module,preconditions,restore-version-use-case,use-cases}.ts',
