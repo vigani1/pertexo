@@ -30,6 +30,7 @@ import {
   validatePostgresEvidence,
 } from './postgres-evidence.mjs';
 import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
+import { processExists, waitForFile } from '../test-process-observation.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const benchmarkOperationFixture = fileURLToPath(
@@ -38,29 +39,6 @@ const benchmarkOperationFixture = fileURLToPath(
 const overlapWorkloadFixture = fileURLToPath(
   new URL('./fixtures/overlap-workload-fixture.mjs', import.meta.url),
 );
-
-async function waitForFile(file, timeoutMillis = 5_000) {
-  const deadline = Date.now() + timeoutMillis;
-  while (Date.now() < deadline) {
-    try {
-      return await readFile(file, 'utf8');
-    } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
-      await delay(25);
-    }
-  }
-  throw new Error(`Timed out waiting for ${file}`);
-}
-
-function processExists(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (error?.code === 'ESRCH') return false;
-    throw error;
-  }
-}
 
 function manifest(overrides = {}) {
   return {

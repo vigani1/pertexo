@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **in progress; baseline recorded and M01–M02 complete**.
+Status: **in progress; baseline recorded and M01–M03 complete**.
 
 ## Purpose and authority
 
@@ -360,7 +360,7 @@ selected work and final verification are complete.
 - [x] Working-tree baseline and intended implementation scope recorded.
 - [x] M01 completed with binding/error-order evidence.
 - [x] M02 completed with fail-before-query evidence.
-- [ ] M03 completed with unchanged subprocess/error-policy evidence.
+- [x] M03 completed with unchanged subprocess/error-policy evidence.
 - [ ] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
 - [ ] M05 purge and reconciliation slices completed or individually retained with reason.
 - [ ] M06 local comparison recorded; implemented and verified, or retained.
@@ -390,3 +390,9 @@ discipline, never a fixed commit count or history rewrite.
   proves both paths retain the exact error and make zero query calls. The focused
   serving-readiness, readiness-probe, and config suites passed with 18 cases, and
   database typecheck passed.
+- **M03 — implemented:** the two infrastructure suites now import only
+  `waitForFile` and `processExists` from one test-only module. Focused support
+  cases pin propagation of non-`ENOENT` filesystem errors and non-`ESRCH`
+  process errors; the real subprocess suites remain unchanged at their call
+  sites. All 55 owning Node tests, architecture/dependency checks, and focused
+  lint passed.
