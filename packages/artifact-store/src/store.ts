@@ -20,6 +20,12 @@ import type { TransformCallback } from 'node:stream';
 import { z } from 'zod';
 
 import { artifactMetadataMatches } from './artifact-metadata.js';
+import {
+  ArtifactInputIntegrityError,
+  ArtifactIntegrityError,
+  ArtifactNotFoundError,
+  ArtifactStoreClosedError,
+} from './artifact-errors.js';
 import type { ArtifactStoreConfig } from './config.js';
 import {
   createProductionObjectStoreObserver,
@@ -45,6 +51,16 @@ import {
   type DirectDownload,
   type GetObjectPresigner,
 } from './artifact-download.js';
+import {
+  assertWorkspaceVersionListing,
+  validateWorkspaceVersionDeletion,
+  workspaceVersionDeleteObjects,
+} from './workspace-purge-validation.js';
+export {
+  ArtifactIntegrityError,
+  ArtifactNotFoundError,
+  ArtifactStoreClosedError,
+} from './artifact-errors.js';
 export type S3ClientLike = ObjectStoreS3Client;
 export interface ArtifactIdentity {
   readonly artifactId: string;
@@ -133,29 +149,6 @@ export interface WorkspaceObjectPurgeStore {
   purgeWorkspacePage(
     request: PurgeWorkspaceObjectsRequest,
   ): Promise<WorkspaceObjectPurgePage>;
-}
-
-export class ArtifactIntegrityError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ArtifactIntegrityError';
-  }
-}
-
-class ArtifactInputIntegrityError extends ArtifactIntegrityError {}
-
-export class ArtifactNotFoundError extends Error {
-  public constructor() {
-    super('Artifact was not found');
-    this.name = 'ArtifactNotFoundError';
-  }
-}
-
-export class ArtifactStoreClosedError extends Error {
-  public constructor() {
-    super('Artifact store is closed');
-    this.name = 'ArtifactStoreClosedError';
-  }
 }
 
 const identitySchema = z.object({
@@ -685,40 +678,12 @@ class AwsArtifactStore
       ...(listed.Versions ?? []),
       ...(listed.DeleteMarkers ?? []),
     ];
-    if (entries.length > input.maxObjects) {
-      throw new ArtifactIntegrityError(
-        'Object version listing exceeded the requested page bound',
-      );
-    }
+    assertWorkspaceVersionListing(listed, entries, input.maxObjects);
     if (entries.length === 0) {
-      if (listed.IsTruncated === true) {
-        throw new ArtifactIntegrityError(
-          'Object version listing was truncated without entries',
-        );
-      }
       return Object.freeze({ completed: true, deletedCount: 0 });
     }
     const seen = new Set<string>();
-    const objects = entries.map((entry) => {
-      if (
-        typeof entry.Key !== 'string' ||
-        !entry.Key.startsWith(prefix) ||
-        typeof entry.VersionId !== 'string' ||
-        entry.VersionId.length === 0
-      ) {
-        throw new ArtifactIntegrityError(
-          'Object version listing contained an invalid workspace entry',
-        );
-      }
-      const identity = `${entry.Key}\u0000${entry.VersionId}`;
-      if (seen.has(identity)) {
-        throw new ArtifactIntegrityError(
-          'Object version listing contained a duplicate entry',
-        );
-      }
-      seen.add(identity);
-      return { Key: entry.Key, VersionId: entry.VersionId };
-    });
+    const objects = workspaceVersionDeleteObjects(entries, prefix, seen);
     const deleted = await sendS3(
       this.client,
       new DeleteObjectsCommand({
@@ -727,32 +692,14 @@ class AwsArtifactStore
       }),
       { abortSignal: signal },
     );
-    if ((deleted.Errors?.length ?? 0) > 0) {
-      throw new ArtifactIntegrityError(
-        'Object version deletion reported one or more failures',
-      );
-    }
-    const acknowledged = deleted.Deleted;
-    if (acknowledged?.length !== objects.length)
-      throw new ArtifactIntegrityError(
-        'Object version deletion acknowledgements were incomplete',
-      );
-    const acknowledgedIdentities = new Set<string>();
-    for (const entry of acknowledged) {
-      if (typeof entry.Key !== 'string' || typeof entry.VersionId !== 'string')
-        throw new ArtifactIntegrityError(
-          'Object version deletion acknowledgement was malformed',
-        );
-      const identity = `${entry.Key}\u0000${entry.VersionId}`;
-      if (!seen.has(identity) || acknowledgedIdentities.has(identity))
-        throw new ArtifactIntegrityError(
-          'Object version deletion acknowledgement did not match the request',
-        );
-      acknowledgedIdentities.add(identity);
-    }
+    const deletedCount = validateWorkspaceVersionDeletion(
+      deleted,
+      seen,
+      objects.length,
+    );
     return Object.freeze({
       completed: false,
-      deletedCount: acknowledgedIdentities.size,
+      deletedCount,
     });
   }
 

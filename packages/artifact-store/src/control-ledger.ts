@@ -16,6 +16,19 @@ import { Readable } from 'node:stream';
 import { z } from 'zod';
 import { inspectControlLedgerBucketPolicy } from './control-ledger/bucket-policy.js';
 import { requestSignal } from './artifact-request-lifecycle.js';
+import {
+  ControlLedgerClosedError,
+  ControlLedgerConflictError,
+  ControlLedgerIntegrityError,
+  ControlLedgerReadinessError,
+} from './control-ledger/errors.js';
+import {
+  assertEmptyProjectionHash,
+  assertProjectionAnchor,
+  assertReconciliationListing,
+  assertReconciliationProbe,
+} from './control-ledger/reconciliation-validation.js';
+import { recordKey } from './control-ledger/record-key.js';
 
 import type { ControlLedgerConfig } from './control-ledger-config.js';
 import {
@@ -34,7 +47,6 @@ const ZERO_HASH = '0'.repeat(64);
 const MAX_RECORD_BYTES = 4 * 1024;
 const MAX_RECONCILIATION_RECORDS = 100;
 const RECONCILIATION_GET_CONCURRENCY = 8;
-const SEQUENCE_WIDTH = 20;
 const DEFAULT_READINESS_ATTESTATION_TTL_MS = 30_000;
 const MAX_READINESS_ATTESTATION_TTL_MS = 5 * 60_000;
 
@@ -158,34 +170,12 @@ export interface ControlLedger {
 }
 
 export type ControlLedgerS3Client = ObjectStoreS3Client;
-
-export class ControlLedgerReadinessError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ControlLedgerReadinessError';
-  }
-}
-
-export class ControlLedgerConflictError extends Error {
-  public constructor() {
-    super('Control ledger sequence already contains a different record');
-    this.name = 'ControlLedgerConflictError';
-  }
-}
-
-export class ControlLedgerIntegrityError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ControlLedgerIntegrityError';
-  }
-}
-
-export class ControlLedgerClosedError extends Error {
-  public constructor() {
-    super('Control ledger is closed');
-    this.name = 'ControlLedgerClosedError';
-  }
-}
+export {
+  ControlLedgerClosedError,
+  ControlLedgerConflictError,
+  ControlLedgerIntegrityError,
+  ControlLedgerReadinessError,
+} from './control-ledger/errors.js';
 
 function canonicalJson(value: unknown): string {
   if (
@@ -221,10 +211,6 @@ function hashMaterial(material: unknown): string {
   return createHash('sha256')
     .update(canonicalJson(material), 'utf8')
     .digest('hex');
-}
-
-function recordKey(workspaceId: string, sequence: number): string {
-  return `control-ledger/workspaces/${workspaceId}/records/${String(sequence).padStart(SEQUENCE_WIDTH, '0')}.json`;
 }
 
 function hasErrorName(error: unknown, name: string): boolean {
@@ -652,11 +638,7 @@ class AwsControlLedger implements ControlLedger {
         workspaceId: uuidSchema,
       })
       .parse(request);
-    if (parsed.projectedSequence === 0 && parsed.projectedHash !== ZERO_HASH) {
-      throw new ControlLedgerIntegrityError(
-        'Empty projection must use the zero hash',
-      );
-    }
+    assertEmptyProjectionHash(parsed, ZERO_HASH);
 
     if (parsed.projectedSequence > 0) {
       const anchor = await this.read({
@@ -664,20 +646,7 @@ class AwsControlLedger implements ControlLedger {
         ...(request.signal === undefined ? {} : { signal: request.signal }),
         workspaceId: parsed.workspaceId,
       });
-      if (anchor === null) {
-        throw new ControlLedgerIntegrityError(
-          'Control ledger projection anchor is invalid',
-        );
-      }
-      if (
-        anchor.workspaceId !== parsed.workspaceId ||
-        anchor.sequence !== parsed.projectedSequence ||
-        anchor.recordHash !== parsed.projectedHash
-      ) {
-        throw new ControlLedgerIntegrityError(
-          'Control ledger projection anchor is invalid',
-        );
-      }
+      assertProjectionAnchor(anchor, parsed);
     }
 
     const prefix = `control-ledger/workspaces/${parsed.workspaceId}/records/`;
@@ -699,31 +668,7 @@ class AwsControlLedger implements ControlLedger {
       { abortSignal: listSignal },
     );
     const contents = listed.Contents ?? [];
-    if (
-      typeof listed.IsTruncated !== 'boolean' ||
-      listed.KeyCount !== contents.length ||
-      contents.length > parsed.maxRecords + 1 ||
-      (listed.IsTruncated &&
-        (contents.length !== parsed.maxRecords + 1 ||
-          listed.NextContinuationToken === undefined ||
-          listed.NextContinuationToken.length === 0)) ||
-      (!listed.IsTruncated && listed.NextContinuationToken !== undefined)
-    ) {
-      throw new ControlLedgerIntegrityError(
-        'Control ledger reconciliation list contract is invalid',
-      );
-    }
-    for (const [index, item] of contents.entries()) {
-      const expectedSequence = parsed.projectedSequence + index + 1;
-      if (
-        expectedSequence > Number.MAX_SAFE_INTEGER ||
-        item.Key !== recordKey(parsed.workspaceId, expectedSequence)
-      ) {
-        throw new ControlLedgerIntegrityError(
-          'Control ledger reconciliation keys are not consecutive',
-        );
-      }
-    }
+    assertReconciliationListing(listed, contents, parsed);
 
     const records: ControlLedgerRecord[] = [];
     let pageEndSequence = parsed.projectedSequence;
@@ -770,11 +715,7 @@ class AwsControlLedger implements ControlLedger {
         ...(request.signal === undefined ? {} : { signal: request.signal }),
         workspaceId: parsed.workspaceId,
       });
-      if (probe?.previousHash !== pageEndHash) {
-        throw new ControlLedgerIntegrityError(
-          'Control ledger reconciliation probe is invalid',
-        );
-      }
+      assertReconciliationProbe(probe, pageEndHash);
     }
     const reachedHighWater = !hasMore;
     return Object.freeze({

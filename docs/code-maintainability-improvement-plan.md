@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **in progress; baseline recorded and M01–M04 complete**.
+Status: **in progress; baseline recorded and M01–M05 complete**.
 
 ## Purpose and authority
 
@@ -362,7 +362,7 @@ selected work and final verification are complete.
 - [x] M02 completed with fail-before-query evidence.
 - [x] M03 completed with unchanged subprocess/error-policy evidence.
 - [x] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
-- [ ] M05 purge and reconciliation slices completed or individually retained with reason.
+- [x] M05 purge and reconciliation slices completed or individually retained with reason.
 - [ ] M06 local comparison recorded; implemented and verified, or retained.
 - [ ] M07 local comparison recorded; implemented and verified, or retained.
 - [ ] M08 local comparison recorded; implemented and verified, or retained.
@@ -379,7 +379,7 @@ discipline, never a fixed commit count or history rewrite.
   `2026-09-11t15-12-34-120z-87347-7e1fb885` passed all 21 cohorts against
   working-tree fingerprint
   `21daac2ad60d90381db8456e12d2bd2c56cfe7a3a1520f629062f2ad036f2744`.
-- **M01 — implemented:** `createNodeRegistry` now has one private binding
+- **M01 — implemented:** `createNodeRegistry` now uses one package-internal binding
   invariant used by `dispatchMode` and `execute`. The public matrix covers
   executor-before-definition failure order, definition failure, exact binding
   failure text, cancellation precedence, and matching ABI 1/ABI 2 behavior.
@@ -404,3 +404,15 @@ discipline, never a fixed commit count or history rewrite.
   `2026-09-11t15-33-54-639z-19311-0b4e3007` was source-stable and passed all 418
   database integration cases; its JSON report confirms both named cases executed
   and passed. The 297 database coverage cases and merged thresholds also passed.
+- **M05 — implemented:** package-internal modules now name workspace-purge listing admission, entry
+  identity construction, and delete-acknowledgement validation around the same
+  list/delete calls and existing sets. Reconciliation names empty/anchor,
+  listing/key-continuity, and final-probe validation around the same anchor,
+  list, bounded-read, hash-advance, and probe sequence. The ordered read and
+  hash-advance loops remain local because extracting them would add a state
+  carrier or restate their parameters. Added public assertions pin list/delete
+  order, distinct delete failure, invalid-anchor/list no-later-I/O, and the
+  existing bounded read count. The 157 focused tests, typecheck, and all 221
+  coverage cases passed. Source-stable partial qualification
+  `2026-09-11t15-46-39-986z-25943-c01bef9e` passed 5 local service cases and
+  retained the three named AWS-only exclusions.
