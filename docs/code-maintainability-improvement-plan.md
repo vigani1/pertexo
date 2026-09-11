@@ -1,6 +1,6 @@
 # Code maintainability improvement plan
 
-Status: **in progress; baseline recorded and M01 complete**.
+Status: **in progress; baseline recorded and M01–M02 complete**.
 
 ## Purpose and authority
 
@@ -359,7 +359,7 @@ selected work and final verification are complete.
 
 - [x] Working-tree baseline and intended implementation scope recorded.
 - [x] M01 completed with binding/error-order evidence.
-- [ ] M02 completed with fail-before-query evidence.
+- [x] M02 completed with fail-before-query evidence.
 - [ ] M03 completed with unchanged subprocess/error-policy evidence.
 - [ ] M04 two-suite pilot completed, or non-equivalent consumer retained with reason.
 - [ ] M05 purge and reconciliation slices completed or individually retained with reason.
@@ -385,3 +385,8 @@ discipline, never a fixed commit count or history rewrite.
   failure text, cancellation precedence, and matching ABI 1/ABI 2 behavior.
   The two node-sdk tests passed with 39 cases, the node-catalog server-registry
   suite passed with 4 cases, and node-sdk typecheck passed.
+- **M02 — implemented:** both readiness entrypoints now call one same-file
+  ambiguity guard before support validation or SQL. A parameterized public test
+  proves both paths retain the exact error and make zero query calls. The focused
+  serving-readiness, readiness-probe, and config suites passed with 18 cases, and
+  database typecheck passed.

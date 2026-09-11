@@ -39,10 +39,9 @@ export type ReadinessOptions = Readonly<{
   supportedExecutableSchemaVersions?: readonly number[];
 }>;
 
-export async function checkDatabaseReadiness(
-  pool: Pool,
-  options: ReadinessOptions = { ownerRole: 'pertexo_owner' },
-): Promise<DatabaseReadiness> {
+function assertUnambiguousCompatibilityReleaseExpectation(
+  options: ReadinessOptions,
+): void {
   if (
     options.expectedCompatibilityRelease !== undefined &&
     options.expectedCompatibilityReleases !== undefined
@@ -50,6 +49,13 @@ export async function checkDatabaseReadiness(
     throw new Error(
       'Compatibility release readiness configuration is ambiguous',
     );
+}
+
+export async function checkDatabaseReadiness(
+  pool: Pool,
+  options: ReadinessOptions = { ownerRole: 'pertexo_owner' },
+): Promise<DatabaseReadiness> {
+  assertUnambiguousCompatibilityReleaseExpectation(options);
   assertReadinessSupport(options);
   const result = await pool.query<ReadinessRow>(DATABASE_READINESS_SQL, [
     options.ownerRole,
@@ -101,13 +107,7 @@ export async function checkDatabaseServingReadiness(
   pool: Pool,
   options: ReadinessOptions = { ownerRole: 'pertexo_owner' },
 ): Promise<DatabaseReadiness> {
-  if (
-    options.expectedCompatibilityRelease !== undefined &&
-    options.expectedCompatibilityReleases !== undefined
-  )
-    throw new Error(
-      'Compatibility release readiness configuration is ambiguous',
-    );
+  assertUnambiguousCompatibilityReleaseExpectation(options);
 
   const result = await pool.query<{
     current_user: string;
