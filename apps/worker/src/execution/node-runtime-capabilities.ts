@@ -39,6 +39,13 @@ import {
   createProviderConnectionRuntimeFactory,
   type ProviderRateLimiter,
 } from './provider-connection-runtime.js';
+import {
+  artifactExpiry,
+  assertArtifactByteLimit,
+  assertUploadedArtifactMatches,
+  MAXIMUM_ARTIFACT_RETENTION_MILLIS,
+  MINIMUM_ARTIFACT_RETENTION_MILLIS,
+} from './node-artifact-policy.js';
 
 const DEFAULT_ARTIFACT_RETENTION_MILLIS = 30 * 24 * 60 * 60_000;
 
@@ -94,6 +101,11 @@ interface WorkerArtifactPersistence {
     input: ArtifactDescriptor & Readonly<{ signal: AbortSignal }>,
   ): Promise<void>;
 }
+
+type SpooledArtifact = Readonly<{
+  byteLength: number;
+  sha256: string;
+}>;
 function abortError(): DOMException {
   return new DOMException('The operation was aborted', 'AbortError');
 }
@@ -157,6 +169,40 @@ async function completeWithCleanup<T>(
   return result as T;
 }
 
+async function spoolArtifactBody(
+  body: AsyncIterable<Uint8Array>,
+  maxBytes: number,
+  signal: AbortSignal,
+  spoolPath: string,
+  openFile: NonNullable<
+    WorkerNodeRuntimeCapabilityDependencies['artifactSpoolOperations']
+  >['openFile'],
+): Promise<SpooledArtifact> {
+  const digest = createHash('sha256');
+  let byteLength = 0;
+  const file = await openFile(spoolPath);
+  await completeWithCleanup(
+    async () => {
+      for await (const chunk of body) {
+        assertNotAborted(signal);
+        byteLength += chunk.byteLength;
+        if (byteLength > maxBytes)
+          throw new RangeError('Node artifact exceeds its byte limit');
+        try {
+          digest.update(chunk);
+          await writeAll(file, chunk);
+        } finally {
+          chunk.fill(0);
+        }
+      }
+      await file.sync();
+    },
+    () => file.close(),
+    'Artifact spool write and file close both failed',
+  );
+  return Object.freeze({ byteLength, sha256: digest.digest('hex') });
+}
+
 function artifactFactory(
   persistence: WorkerArtifactPersistence,
   store: Pick<ArtifactStore, 'put'>,
@@ -171,109 +217,70 @@ function artifactFactory(
   return (context) =>
     Object.freeze({
       write: async (input: Parameters<NodeArtifactRuntime['write']>[0]) => {
-        if (
-          !Number.isSafeInteger(input.maxBytes) ||
-          input.maxBytes < 1 ||
-          input.maxBytes > 10_485_760
-        )
-          throw new TypeError('Node artifact byte limit is invalid');
+        assertArtifactByteLimit(input.maxBytes);
         assertNotAborted(input.signal);
         const directory = await mkdtemp(
           path.join(spoolDirectory, 'pertexo-node-artifact-'),
         );
         const spoolPath = path.join(directory, 'body');
-        const digest = createHash('sha256');
-        let byteLength = 0;
         return completeWithCleanup(
           async () => {
-            const file = await spoolOperations.openFile(spoolPath);
-            await completeWithCleanup(
-              async () => {
-                for await (const chunk of input.body) {
-                  assertNotAborted(input.signal);
-                  byteLength += chunk.byteLength;
-                  if (byteLength > input.maxBytes)
-                    throw new RangeError(
-                      'Node artifact exceeds its byte limit',
-                    );
-                  try {
-                    digest.update(chunk);
-                    await writeAll(file, chunk);
-                  } finally {
-                    chunk.fill(0);
-                  }
-                }
-                await file.sync();
-              },
-              () => file.close(),
-              'Artifact spool write and file close both failed',
+            const spooled = await spoolArtifactBody(
+              input.body,
+              input.maxBytes,
+              input.signal,
+              spoolPath,
+              spoolOperations.openFile,
             );
             assertNotAborted(input.signal);
             const id = artifactId();
-            const sha256 = digest.digest('hex');
             const storageKey = artifactStorageKey(context.workspaceId, id);
             const createdAt = now();
-            const defaultExpiry = new Date(
-              createdAt.getTime() + retentionMillis,
-            );
-            const retentionDeadline = context.artifactRetentionDeadline;
-            if (
-              retentionDeadline !== undefined &&
-              !Number.isFinite(retentionDeadline.getTime())
-            )
-              throw new TypeError('Artifact retention deadline is invalid');
-            const expiresAt =
-              retentionDeadline !== undefined &&
-              retentionDeadline.getTime() < defaultExpiry.getTime()
-                ? new Date(retentionDeadline.getTime())
-                : defaultExpiry;
-            if (expiresAt.getTime() <= createdAt.getTime())
-              throw new RangeError('Artifact retention deadline has expired');
-            await persistence.createPending({
+            const descriptor: ArtifactDescriptor = Object.freeze({
               artifactId: id,
               workspaceId: context.workspaceId,
-              byteLength,
+              byteLength: spooled.byteLength,
               mediaType: input.mediaType,
-              sha256,
+              sha256: spooled.sha256,
               storageKey,
-              expiresAt,
-              purpose: input.purpose,
               ...(context.previewRunId === undefined
                 ? {}
                 : { previewRunId: context.previewRunId }),
+            });
+            await persistence.createPending({
+              ...descriptor,
+              expiresAt: artifactExpiry(
+                createdAt,
+                retentionMillis,
+                context.artifactRetentionDeadline,
+              ),
+              purpose: input.purpose,
               signal: input.signal,
             });
             const uploaded = await store.put({
-              artifactId: id,
-              workspaceId: context.workspaceId,
-              byteLength,
-              mediaType: input.mediaType,
-              sha256,
+              artifactId: descriptor.artifactId,
+              workspaceId: descriptor.workspaceId,
+              byteLength: descriptor.byteLength,
+              mediaType: descriptor.mediaType,
+              sha256: descriptor.sha256,
               body: createReadStream(spoolPath),
               signal: input.signal,
             });
-            if (
-              uploaded.artifactId !== id ||
-              uploaded.workspaceId !== context.workspaceId ||
-              uploaded.byteLength !== byteLength ||
-              uploaded.mediaType !== input.mediaType ||
-              uploaded.sha256 !== sha256
-            )
-              throw new Error('Artifact store returned incompatible metadata');
+            assertUploadedArtifactMatches(uploaded, descriptor);
             await persistence.finalize({
-              artifactId: id,
-              workspaceId: context.workspaceId,
-              byteLength,
-              mediaType: input.mediaType,
-              sha256,
-              storageKey,
+              artifactId: descriptor.artifactId,
+              workspaceId: descriptor.workspaceId,
+              byteLength: descriptor.byteLength,
+              mediaType: descriptor.mediaType,
+              sha256: descriptor.sha256,
+              storageKey: descriptor.storageKey,
               signal: input.signal,
             });
             return Object.freeze({
               artifactId: id,
-              byteLength,
+              byteLength: spooled.byteLength,
               mediaType: input.mediaType,
-              sha256,
+              sha256: spooled.sha256,
             });
           },
           () => spoolOperations.removeDirectory(directory),
@@ -344,8 +351,8 @@ export async function createWorkerNodeRuntimeCapabilities(
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
   if (
     !Number.isSafeInteger(retentionMillis) ||
-    retentionMillis < 60_000 ||
-    retentionMillis > 365 * 24 * 60 * 60_000
+    retentionMillis < MINIMUM_ARTIFACT_RETENTION_MILLIS ||
+    retentionMillis > MAXIMUM_ARTIFACT_RETENTION_MILLIS
   )
     throw new TypeError('Node artifact retention is invalid');
 

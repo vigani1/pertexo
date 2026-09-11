@@ -32,6 +32,12 @@ import {
 import { transportJobForName } from './transport-job.js';
 import { OutboxPublicationSettlements } from './outbox-publication-settlements.js';
 import {
+  recordOutboxClaim,
+  summarizeDispatchOutcomes,
+  type OutboxDispatchResult as InternalOutboxDispatchResult,
+  type OutboxPublicationOutcome,
+} from './outbox-dispatch-result.js';
+import {
   bounded,
   TransportOperationTimeoutError,
 } from './transport-operation-deadline.js';
@@ -67,13 +73,7 @@ export type OutboxDispatcherRuntimeHooks = Readonly<{
   observeWorkspaceCapacity(workspaceId: string): Promise<void>;
 }>;
 
-export type OutboxDispatchResult = Readonly<{
-  claimed: number;
-  failed: number;
-  outcomeUnknown: number;
-  published: number;
-  stale: number;
-}>;
+export type OutboxDispatchResult = InternalOutboxDispatchResult;
 
 export class OutboxPayloadChecksumError extends Error {
   public constructor(eventId: string) {
@@ -244,33 +244,13 @@ export class OutboxDispatcher {
     });
     const { events } = claim;
     this.observeMetrics(() => {
-      this.metrics.recordOutboxClaim({ batchSize: events.length });
-      if (claim.exhaustedCount > 0) {
-        this.metrics.recordOutboxLeaseEvent(
-          'attempt_exhausted',
-          claim.exhaustedCount,
-        );
-      }
-      for (const event of events) {
-        if (event.publishAttempts > 1) {
-          this.metrics.recordOutboxLeaseEvent('reclaimed');
-        }
-      }
+      recordOutboxClaim(this.metrics, events, claim.exhaustedCount);
     });
     const outcomes = await Promise.all(
-      events.map((event) => this.dispatch(event)),
+      events.map((event) => this.publishAndSettle(event)),
     );
     await Promise.all([this.observeOutbox(), this.observeQueues()]);
-
-    return Object.freeze({
-      claimed: events.length,
-      failed: outcomes.filter((outcome) => outcome === 'failed').length,
-      outcomeUnknown: outcomes.filter(
-        (outcome) => outcome === 'outcome_unknown',
-      ).length,
-      published: outcomes.filter((outcome) => outcome === 'published').length,
-      stale: outcomes.filter((outcome) => outcome === 'stale').length,
-    });
+    return summarizeDispatchOutcomes(events.length, outcomes);
   }
 
   public async checkReadiness(): Promise<void> {
@@ -313,9 +293,9 @@ export class OutboxDispatcher {
     if (rejection !== undefined) throw rejection.reason;
   }
 
-  private async dispatch(
+  private async publishAndSettle(
     event: LeasedOutboxEvent,
-  ): Promise<'failed' | 'outcome_unknown' | 'published' | 'stale'> {
+  ): Promise<OutboxPublicationOutcome> {
     let jobObservation: TransportJob | undefined;
     let queuePublished = false;
     try {
@@ -342,29 +322,7 @@ export class OutboxDispatcher {
           outcome: 'published',
         });
       });
-      const marked = await this.publicationSettlements.markPublished(event);
-      if (marked === 'outcome_unknown') return marked;
-      this.observeMetrics(() => {
-        this.metrics.recordOutboxDispatchLatency({
-          ...currentJob,
-          durationSeconds: Math.max(
-            0,
-            (Date.now() - event.availableAt.getTime()) / 1_000,
-          ),
-          outcome: marked ? 'published' : 'stale',
-        });
-      });
-      if (!marked) {
-        this.observeMetrics(() => {
-          this.metrics.recordOutboxLeaseEvent('expired');
-        });
-      } else if (
-        job.name === JOB_NAME.advanceWorkflowRun ||
-        job.name === JOB_NAME.expireArtifacts
-      ) {
-        this.scheduleWorkspaceCapacityObservation(event.workspaceId);
-      }
-      return marked ? 'published' : 'stale';
+      return await this.settlePublished(event, job.name, currentJob);
     } catch (error: unknown) {
       if (jobObservation !== undefined && !queuePublished) {
         const failedJob = jobObservation;
@@ -376,26 +334,63 @@ export class OutboxDispatcher {
           });
         });
       }
-      const releaseResult = await bounded(
-        this.database.releaseOrFail({
-          errorCode: errorCode(error),
-          id: event.id,
-          leaseToken: event.leaseToken,
-          maxAttempts: this.options.maxAttempts,
-          retryAt: new Date(Date.now() + this.options.retryDelayMillis),
-        }),
-        this.options.operationTimeoutMillis,
-      );
-      if (releaseResult === 'failed') {
-        this.observeMetrics(() => {
-          this.metrics.recordOutboxLeaseEvent('attempt_exhausted');
-        });
-      } else if (releaseResult === 'not_leased') {
-        this.observeMetrics(() => {
-          this.metrics.recordOutboxLeaseEvent('expired');
-        });
-      }
+      await this.releaseFailedPublication(event, error);
       return 'failed';
+    }
+  }
+
+  private async settlePublished(
+    event: LeasedOutboxEvent,
+    jobName: JobName,
+    job: TransportJob,
+  ): Promise<OutboxPublicationOutcome> {
+    const marked = await this.publicationSettlements.markPublished(event);
+    if (marked === 'outcome_unknown') return marked;
+    this.observeMetrics(() => {
+      this.metrics.recordOutboxDispatchLatency({
+        ...job,
+        durationSeconds: Math.max(
+          0,
+          (Date.now() - event.availableAt.getTime()) / 1_000,
+        ),
+        outcome: marked ? 'published' : 'stale',
+      });
+    });
+    if (!marked) {
+      this.observeMetrics(() => {
+        this.metrics.recordOutboxLeaseEvent('expired');
+      });
+    } else if (
+      jobName === JOB_NAME.advanceWorkflowRun ||
+      jobName === JOB_NAME.expireArtifacts
+    ) {
+      this.scheduleWorkspaceCapacityObservation(event.workspaceId);
+    }
+    return marked ? 'published' : 'stale';
+  }
+
+  private async releaseFailedPublication(
+    event: LeasedOutboxEvent,
+    error: unknown,
+  ): Promise<void> {
+    const releaseResult = await bounded(
+      this.database.releaseOrFail({
+        errorCode: errorCode(error),
+        id: event.id,
+        leaseToken: event.leaseToken,
+        maxAttempts: this.options.maxAttempts,
+        retryAt: new Date(Date.now() + this.options.retryDelayMillis),
+      }),
+      this.options.operationTimeoutMillis,
+    );
+    if (releaseResult === 'failed') {
+      this.observeMetrics(() => {
+        this.metrics.recordOutboxLeaseEvent('attempt_exhausted');
+      });
+    } else if (releaseResult === 'not_leased') {
+      this.observeMetrics(() => {
+        this.metrics.recordOutboxLeaseEvent('expired');
+      });
     }
   }
 

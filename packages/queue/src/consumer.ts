@@ -555,63 +555,52 @@ export class BullMqQueueConsumer implements QueueConsumer {
     }
   }
 
-  private async performClose(): Promise<QueueConsumerCloseResult> {
-    if (this.lifecycle === 'closed') {
-      return { abortedJobs: 0, forced: false };
-    }
-
-    this.lifecycle = 'draining';
-    this.ready = false;
-    const deadline = Date.now() + this.drainTimeoutMs;
-    let forced = false;
-
+  private async pauseForDrain(deadline: number): Promise<boolean> {
     try {
       const pauseResult = await bounded(
         this.worker.pause(true),
         Math.max(1, deadline - Date.now()),
       );
-      if (pauseResult === TIMED_OUT) {
-        forced = true;
-      }
+      return pauseResult === TIMED_OUT;
     } catch {
-      forced = true;
+      return true;
     }
-
-    while (!forced && this.activeExecutions.size > 0) {
+  }
+  private async waitForActiveExecutions(deadline: number): Promise<boolean> {
+    while (this.activeExecutions.size > 0) {
       const remainingMs = deadline - Date.now();
-      if (remainingMs <= 0) {
-        forced = true;
-        break;
-      }
+      if (remainingMs <= 0) return false;
       await new Promise<void>((resolve) => {
         setTimeout(resolve, Math.min(10, remainingMs));
       });
     }
-
-    const abortedJobs = forced ? this.activeExecutions.size : 0;
-    if (forced) {
-      const reason = new QueueConsumerDrainError();
-      for (const execution of this.activeExecutions) {
-        execution.abortFailureClass ??= 'drain';
-        execution.controller.abort(reason);
-      }
-      this.worker.cancelAllJobs(reason.message);
+    return true;
+  }
+  private abortActiveExecutions(): number {
+    const abortedJobs = this.activeExecutions.size;
+    const reason = new QueueConsumerDrainError();
+    for (const execution of this.activeExecutions) {
+      execution.abortFailureClass ??= 'drain';
+      execution.controller.abort(reason);
     }
-
-    let workerClosed = false;
+    this.worker.cancelAllJobs(reason.message);
+    return abortedJobs;
+  }
+  private async closeWorker(
+    forced: boolean,
+    deadline: number,
+  ): Promise<boolean> {
     try {
       const closeResult = await bounded(
         this.worker.close(forced),
         forced ? 1_000 : Math.max(1, deadline - Date.now()),
       );
-      workerClosed = closeResult !== TIMED_OUT;
-      if (!workerClosed) {
-        forced = true;
-      }
+      return closeResult !== TIMED_OUT;
     } catch {
-      forced = true;
+      return false;
     }
-
+  }
+  private async closeRedis(workerClosed: boolean): Promise<boolean> {
     if (!workerClosed) {
       try {
         await bounded(this.worker.disconnect(), 1_000);
@@ -621,19 +610,30 @@ export class BullMqQueueConsumer implements QueueConsumer {
         // separately duplicated blocking connection.
       }
       this.redis.disconnect();
-    } else {
-      try {
-        const quitResult = await bounded(this.redis.quit(), 1_000);
-        if (quitResult === TIMED_OUT) {
-          forced = true;
-          this.redis.disconnect();
-        }
-      } catch {
-        forced = true;
-        this.redis.disconnect();
-      }
+      return true;
     }
-
+    try {
+      const quitResult = await bounded(this.redis.quit(), 1_000);
+      if (quitResult !== TIMED_OUT) return true;
+    } catch {
+      // Fall through to the defensive disconnect below.
+    }
+    this.redis.disconnect();
+    return false;
+  }
+  private async performClose(): Promise<QueueConsumerCloseResult> {
+    if (this.lifecycle === 'closed') {
+      return { abortedJobs: 0, forced: false };
+    }
+    this.lifecycle = 'draining';
+    this.ready = false;
+    const deadline = Date.now() + this.drainTimeoutMs;
+    let forced = await this.pauseForDrain(deadline);
+    if (!forced) forced = !(await this.waitForActiveExecutions(deadline));
+    const abortedJobs = forced ? this.abortActiveExecutions() : 0;
+    const workerClosed = await this.closeWorker(forced, deadline);
+    if (!workerClosed) forced = true;
+    if (!(await this.closeRedis(workerClosed))) forced = true;
     this.lifecycle = 'closed';
     this.notifyObserver(() => {
       this.observer?.consumerLifecycle?.({

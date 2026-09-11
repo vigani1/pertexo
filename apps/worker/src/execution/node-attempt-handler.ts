@@ -1,7 +1,5 @@
 import {
   canonicalOutboxPayloadChecksum,
-  NodeAttemptConnectionFenceError,
-  NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
   type NodeAttemptInputs,
   type NodeAttemptLease,
@@ -20,15 +18,15 @@ import type {
 } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import {
-  NodeDispatchEvidenceError,
-  NodeExecutorFailure,
-} from '@pertexo/node-sdk/server';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { waitForAbortableDelay } from '../runtime/abortable-delay.js';
-import type {
-  NodeExecutionCapabilityContext,
-  NodeExecutionCapabilityFactories,
-} from './node-execution-capabilities.js';
+import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
+import {
+  createNodeExecutionEnvironment,
+  type NodeExecutionEnvironment,
+} from './node-attempt-execution-environment.js';
+export { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
+import { NodeAttemptHandlerStateError } from './node-attempt-handler-state-error.js';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -84,13 +82,6 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   workerId: string;
 }>;
 
-export class NodeAttemptHandlerStateError extends Error {
-  public override readonly name = 'NodeAttemptHandlerStateError';
-  public constructor(readonly code: string) {
-    super(`Node attempt delivery cannot execute: ${code}`);
-  }
-}
-
 async function completeControlOutcome(
   dependencies: NodeAttemptHandlerDependencies,
   lease: NodeAttemptLease,
@@ -134,6 +125,170 @@ async function completionResult(
     }
   }
   return Object.freeze({ kind });
+}
+
+type HeartbeatFailure =
+  Readonly<{ failed: false }> | Readonly<{ error: unknown; failed: true }>;
+
+type NodeAttemptHeartbeat = Readonly<{
+  executionSignal: AbortSignal;
+  durableAbortReason(): 'canceled' | 'timed_out' | undefined;
+  failure(): HeartbeatFailure;
+  stop(): Promise<void>;
+}>;
+
+function startNodeAttemptHeartbeat(
+  dependencies: NodeAttemptHandlerDependencies,
+  lease: NodeAttemptLease,
+  contextSignal: AbortSignal,
+): NodeAttemptHeartbeat {
+  const executionAbort = new AbortController();
+  const heartbeatStop = new AbortController();
+  const heartbeatSignal = AbortSignal.any([
+    contextSignal,
+    heartbeatStop.signal,
+  ]);
+  const executionSignal = AbortSignal.any([
+    contextSignal,
+    executionAbort.signal,
+  ]);
+  let abortReason: 'canceled' | 'timed_out' | undefined;
+  let heartbeatFailure: HeartbeatFailure = Object.freeze({ failed: false });
+  const heartbeat = (async (): Promise<void> => {
+    try {
+      while (!heartbeatSignal.aborted) {
+        await waitForAbortableDelay(
+          dependencies.heartbeatIntervalMillis,
+          heartbeatSignal,
+        );
+        const result = await dependencies.runStore.heartbeat({
+          lease,
+          leaseDurationSeconds: dependencies.leaseDurationSeconds,
+          signal: heartbeatSignal,
+        });
+        if (result.abortRequested) {
+          if (result.abortReason === undefined)
+            throw new NodeAttemptHandlerStateError('control_reason_missing');
+          abortReason = result.abortReason;
+          executionAbort.abort();
+          return;
+        }
+      }
+    } catch (error: unknown) {
+      if (!heartbeatStop.signal.aborted && !contextSignal.aborted) {
+        heartbeatFailure = Object.freeze({ error, failed: true });
+        executionAbort.abort();
+      }
+    }
+  })();
+  return Object.freeze({
+    executionSignal,
+    durableAbortReason: () => abortReason,
+    failure: () => heartbeatFailure,
+    stop: async (): Promise<void> => {
+      heartbeatStop.abort();
+      await heartbeat;
+    },
+  });
+}
+
+async function executePreparedNodeAttempt(
+  dependencies: NodeAttemptHandlerDependencies,
+  lease: NodeAttemptLease,
+  prepared: PreparedNodeAttempt,
+  inputs: NodeAttemptInputs,
+  delivery: AttemptDelivery,
+  contextSignal: AbortSignal,
+  heartbeat: NodeAttemptHeartbeat,
+  environment: NodeExecutionEnvironment,
+): Promise<NodeAttemptHandlerResult> {
+  const traceContext =
+    delivery.data.traceparent === undefined
+      ? {}
+      : { traceparent: delivery.data.traceparent };
+  try {
+    const outcome = await prepared.execute({
+      ...inputs,
+      registry: environment.registry,
+      runtime: environment.runtime,
+      signal: heartbeat.executionSignal,
+    });
+    try {
+      const completed = await dependencies.runStore.complete({
+        lease,
+        outcome:
+          prepared.suspensionDurationSeconds === undefined
+            ? { status: 'succeeded', output: outcome.output }
+            : {
+                status: 'suspended',
+                output: outcome.output,
+                durationSeconds: prepared.suspensionDurationSeconds,
+              },
+        ...traceContext,
+        signal: contextSignal,
+      });
+      return await completionResult(dependencies, lease, completed.kind);
+    } catch (error: unknown) {
+      if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
+      const completed = await dependencies.runStore.complete({
+        lease,
+        outcome: {
+          status: 'failed',
+          safeErrorCode: 'execution.output_invalid',
+        },
+        ...traceContext,
+        signal: contextSignal,
+      });
+      return await completionResult(dependencies, lease, completed.kind);
+    }
+  } catch (error: unknown) {
+    const durableAbortReason = heartbeat.durableAbortReason();
+    if (durableAbortReason !== undefined)
+      return await completeControlOutcome(
+        dependencies,
+        lease,
+        durableAbortReason,
+        delivery,
+        contextSignal,
+        hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
+      );
+    const heartbeatFailure = heartbeat.failure();
+    if (heartbeatFailure.failed)
+      throw heartbeatFailure.error instanceof Error
+        ? heartbeatFailure.error
+        : new Error('Node attempt heartbeat failed');
+    if (error instanceof NodeExecutorFailure) {
+      const completed = await dependencies.runStore.complete({
+        lease,
+        outcome: {
+          status: 'executor_failure',
+          failureKind: error.kind,
+          errorKind: error.errorKind,
+          possiblyDispatched: error.possiblyDispatched,
+          safeErrorCode: `execution.${error.errorKind}`,
+        },
+        ...traceContext,
+        signal: contextSignal,
+      });
+      return await completionResult(dependencies, lease, completed.kind);
+    }
+    if (
+      error instanceof WorkflowEngineError &&
+      error.code === 'attempt_invalid'
+    ) {
+      const completed = await dependencies.runStore.complete({
+        lease,
+        outcome: {
+          status: 'failed',
+          safeErrorCode: 'execution.attempt_invalid',
+        },
+        ...traceContext,
+        signal: contextSignal,
+      });
+      return await completionResult(dependencies, lease, completed.kind);
+    }
+    throw error;
+  }
 }
 
 export function createNodeAttemptHandler(
@@ -218,244 +373,33 @@ export function createNodeAttemptHandler(
         });
         return completionResult(dependencies, claimed.lease, completed.kind);
       }
-      const executionAbort = new AbortController();
-      const heartbeatStop = new AbortController();
-      const heartbeatSignal = AbortSignal.any([
+      const heartbeat = startNodeAttemptHeartbeat(
+        dependencies,
+        claimed.lease,
         context.signal,
-        heartbeatStop.signal,
-      ]);
-      const executionSignal = AbortSignal.any([
-        context.signal,
-        executionAbort.signal,
-      ]);
-      let durableAbortReason: 'canceled' | 'timed_out' | undefined;
-      const heartbeatFailure: { error?: unknown } = {};
-      const heartbeat = (async (): Promise<void> => {
-        try {
-          while (!heartbeatSignal.aborted) {
-            await waitForAbortableDelay(
-              dependencies.heartbeatIntervalMillis,
-              heartbeatSignal,
-            );
-            const result = await dependencies.runStore.heartbeat({
-              lease: claimed.lease,
-              leaseDurationSeconds: dependencies.leaseDurationSeconds,
-              signal: heartbeatSignal,
-            });
-            if (result.abortRequested) {
-              if (result.abortReason === undefined)
-                throw new NodeAttemptHandlerStateError(
-                  'control_reason_missing',
-                );
-              durableAbortReason = result.abortReason;
-              executionAbort.abort();
-              return;
-            }
-          }
-        } catch (error: unknown) {
-          if (!heartbeatStop.signal.aborted && !context.signal.aborted) {
-            heartbeatFailure.error = error;
-            executionAbort.abort();
-          }
-        }
-      })();
-      let dispatched = false;
-      const capabilityContext: NodeExecutionCapabilityContext = Object.freeze({
-        workspaceId: claimed.lease.workspaceId,
-        runId: claimed.lease.runId,
-        nodeRunId: claimed.lease.nodeRunId,
-        attemptId: claimed.lease.attemptId,
-        attemptNumber: claimed.lease.attemptNumber,
-        nodeId: claimed.lease.nodeId,
-        invocationKey: claimed.lease.invocationKey,
-        workerId: claimed.lease.workerId,
-      });
-      const connections =
-        dependencies.runtimeCapabilities?.connections?.(capabilityContext);
-      const artifacts =
-        dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
-      const runtime: NodeExecutionRuntime = Object.freeze({
-        workspaceId: claimed.lease.workspaceId,
-        runId: claimed.lease.runId,
-        nodeRunId: claimed.lease.nodeRunId,
-        attemptId: claimed.lease.attemptId,
-        attemptNumber: claimed.lease.attemptNumber,
-        nodeId: claimed.lease.nodeId,
-        invocationKey: claimed.lease.invocationKey,
-        sideEffectClass: claimed.lease.sideEffectClass,
-        ...(claimed.lease.providerIdempotencyKey === undefined
+      );
+      const environment = createNodeExecutionEnvironment({
+        executionSignal: heartbeat.executionSignal,
+        lease: claimed.lease,
+        registry: dependencies.registry,
+        runStore: dependencies.runStore,
+        ...(dependencies.runtimeCapabilities === undefined
           ? {}
-          : {
-              providerIdempotencyKey: claimed.lease.providerIdempotencyKey,
-            }),
-        ...(claimed.lease.providerDispatchBinding === undefined
-          ? {}
-          : {
-              providerDispatchBinding: claimed.lease.providerDispatchBinding,
-            }),
-        ...(claimed.lease.providerDispatchUnresolved === undefined
-          ? {}
-          : { providerDispatchUnresolved: true as const }),
-        ...(connections === undefined ? {} : { connections }),
-        ...(artifacts === undefined ? {} : { artifacts }),
-        beforeDispatch: async (
-          input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
-        ): Promise<void> => {
-          if (dispatched)
-            throw new NodeAttemptHandlerStateError('duplicate_dispatch');
-          try {
-            await dependencies.runStore.markDispatched({
-              lease: claimed.lease,
-              ...(input?.connectionFence === undefined
-                ? {}
-                : { connectionFence: input.connectionFence }),
-              ...(input?.providerDispatchBinding === undefined
-                ? {}
-                : {
-                    providerDispatchBinding: input.providerDispatchBinding,
-                  }),
-              signal: executionSignal,
-            });
-          } catch (error: unknown) {
-            if (error instanceof NodeAttemptConnectionFenceError)
-              throw new NodeDispatchEvidenceError(
-                'provider_connection_fence_failed',
-              );
-            if (error instanceof NodeAttemptDispatchBindingMismatchError)
-              throw new NodeDispatchEvidenceError(
-                'provider_dispatch_binding_mismatch',
-              );
-            throw error;
-          }
-          dispatched = true;
-        },
-      });
-      const registry: NodeExecutionRegistry = Object.freeze({
-        ...(dependencies.registry.dispatchMode === undefined
-          ? {}
-          : { dispatchMode: dependencies.registry.dispatchMode }),
-        execute: async (
-          request: Parameters<NodeExecutionRegistry['execute']>[0],
-        ) => {
-          const mode =
-            dependencies.registry.dispatchMode?.(request) ?? 'before_execute';
-          if (mode === 'before_execute') await runtime.beforeDispatch();
-          const result = await dependencies.registry.execute({
-            ...request,
-            runtime,
-          });
-          if (mode === 'executor_controlled' && !dispatched)
-            throw new NodeAttemptHandlerStateError('dispatch_evidence_missing');
-          return result;
-        },
+          : { runtimeCapabilities: dependencies.runtimeCapabilities }),
       });
       try {
-        const outcome = await prepared.execute({
-          ...inputs,
-          registry,
-          runtime,
-          signal: executionSignal,
-        });
-        try {
-          const completed = await dependencies.runStore.complete({
-            lease: claimed.lease,
-            outcome:
-              prepared.suspensionDurationSeconds === undefined
-                ? { status: 'succeeded', output: outcome.output }
-                : {
-                    status: 'suspended',
-                    output: outcome.output,
-                    durationSeconds: prepared.suspensionDurationSeconds,
-                  },
-            ...(delivery.data.traceparent === undefined
-              ? {}
-              : { traceparent: delivery.data.traceparent }),
-            signal: context.signal,
-          });
-          return await completionResult(
-            dependencies,
-            claimed.lease,
-            completed.kind,
-          );
-        } catch (error: unknown) {
-          if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
-          const completed = await dependencies.runStore.complete({
-            lease: claimed.lease,
-            outcome: {
-              status: 'failed',
-              safeErrorCode: 'execution.output_invalid',
-            },
-            ...(delivery.data.traceparent === undefined
-              ? {}
-              : { traceparent: delivery.data.traceparent }),
-            signal: context.signal,
-          });
-          return await completionResult(
-            dependencies,
-            claimed.lease,
-            completed.kind,
-          );
-        }
-      } catch (error: unknown) {
-        if (durableAbortReason !== undefined)
-          return await completeControlOutcome(
-            dependencies,
-            claimed.lease,
-            durableAbortReason,
-            delivery,
-            context.signal,
-            hasProviderDispatchUncertainty(claimed.lease, dispatched),
-          );
-        if ('error' in heartbeatFailure)
-          throw heartbeatFailure.error instanceof Error
-            ? heartbeatFailure.error
-            : new Error('Node attempt heartbeat failed');
-        if (error instanceof NodeExecutorFailure) {
-          const completed = await dependencies.runStore.complete({
-            lease: claimed.lease,
-            outcome: {
-              status: 'executor_failure',
-              failureKind: error.kind,
-              errorKind: error.errorKind,
-              possiblyDispatched: error.possiblyDispatched,
-              safeErrorCode: `execution.${error.errorKind}`,
-            },
-            ...(delivery.data.traceparent === undefined
-              ? {}
-              : { traceparent: delivery.data.traceparent }),
-            signal: context.signal,
-          });
-          return await completionResult(
-            dependencies,
-            claimed.lease,
-            completed.kind,
-          );
-        }
-        if (
-          error instanceof WorkflowEngineError &&
-          error.code === 'attempt_invalid'
-        ) {
-          const completed = await dependencies.runStore.complete({
-            lease: claimed.lease,
-            outcome: {
-              status: 'failed',
-              safeErrorCode: 'execution.attempt_invalid',
-            },
-            ...(delivery.data.traceparent === undefined
-              ? {}
-              : { traceparent: delivery.data.traceparent }),
-            signal: context.signal,
-          });
-          return await completionResult(
-            dependencies,
-            claimed.lease,
-            completed.kind,
-          );
-        }
-        throw error;
+        return await executePreparedNodeAttempt(
+          dependencies,
+          claimed.lease,
+          prepared,
+          inputs,
+          delivery,
+          context.signal,
+          heartbeat,
+          environment,
+        );
       } finally {
-        heartbeatStop.abort();
-        await heartbeat;
+        await heartbeat.stop();
       }
     },
   });

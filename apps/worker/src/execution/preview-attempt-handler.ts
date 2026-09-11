@@ -14,11 +14,12 @@ import type {
   PreviewDelivery,
 } from '@pertexo/database/execution';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
+import { nodeExecutionOptionalFields } from './node-execution-runtime-fields.js';
 import type {
   PreviewTelemetry,
   PreviewTerminalStatus,
 } from './preview-telemetry.js';
-import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
+import { startPreviewAttemptSupervisor } from './preview-attempt-supervisor.js';
 
 type PreviewQueueDelivery = Extract<
   QueueDelivery,
@@ -264,6 +265,85 @@ function committedTerminal(
   return Object.freeze({ kind: result.kind });
 }
 
+type PreviewExecutionEnvironment = Readonly<{
+  runtime: NodeExecutionRuntime;
+  wasDispatched(): boolean;
+}>;
+
+function createPreviewExecutionEnvironment(
+  dependencies: PreviewAttemptHandlerDependencies,
+  lease: PreviewAttemptLease,
+  contextSignal: AbortSignal,
+): PreviewExecutionEnvironment {
+  const capabilityContext = Object.freeze({
+    artifactRetentionDeadline: lease.retentionExpiresAt,
+    attemptId: lease.previewAttemptId,
+    attemptNumber: 1,
+    invocationKey: `preview:${lease.nodeId}`,
+    nodeId: lease.nodeId,
+    nodeRunId: lease.previewRunId,
+    previewAttemptId: lease.previewAttemptId,
+    previewRunId: lease.previewRunId,
+    runId: lease.previewRunId,
+    workerId: dependencies.workerId,
+    workspaceId: lease.workspaceId,
+  });
+  const connections =
+    dependencies.runtimeCapabilities?.connections?.(capabilityContext);
+  const artifacts =
+    dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
+  let dispatched = false;
+  const runtime: NodeExecutionRuntime = Object.freeze({
+    workspaceId: lease.workspaceId,
+    runId: lease.previewRunId,
+    nodeRunId: lease.previewRunId,
+    attemptId: lease.previewAttemptId,
+    attemptNumber: 1,
+    nodeId: lease.nodeId,
+    invocationKey: `preview:${lease.nodeId}`,
+    sideEffectClass: lease.sideEffectClass,
+    ...nodeExecutionOptionalFields(lease, connections, artifacts),
+    beforeDispatch: async (
+      input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
+    ): Promise<void> => {
+      if (dispatched) throw new PreviewAttemptStateError('duplicate_dispatch');
+      try {
+        await dependencies.runStore.markDispatched({
+          lease,
+          ...(input?.connectionFence === undefined
+            ? {}
+            : { connectionFence: input.connectionFence }),
+          ...(input?.providerDispatchBinding === undefined
+            ? {}
+            : { providerDispatchBinding: input.providerDispatchBinding }),
+          signal: contextSignal,
+          workerId: dependencies.workerId,
+        });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'connection_fence_failed'
+        )
+          throw new NodeDispatchEvidenceError(
+            'provider_connection_fence_failed',
+          );
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'dispatch_binding_mismatch'
+        )
+          throw new NodeDispatchEvidenceError(
+            'provider_dispatch_binding_mismatch',
+          );
+        throw error;
+      }
+      dispatched = true;
+    },
+  });
+  return Object.freeze({ runtime, wasDispatched: () => dispatched });
+}
+
 export function createPreviewAttemptHandler(
   dependencies: PreviewAttemptHandlerDependencies,
 ): PreviewAttemptHandler {
@@ -316,175 +396,29 @@ export function createPreviewAttemptHandler(
           }),
         );
 
-      const capabilityContext = Object.freeze({
-        artifactRetentionDeadline: lease.retentionExpiresAt,
-        attemptId: lease.previewAttemptId,
-        attemptNumber: 1,
-        invocationKey: `preview:${lease.nodeId}`,
-        nodeId: lease.nodeId,
-        nodeRunId: lease.previewRunId,
-        previewAttemptId: lease.previewAttemptId,
-        previewRunId: lease.previewRunId,
-        runId: lease.previewRunId,
-        workerId: dependencies.workerId,
-        workspaceId: lease.workspaceId,
-      });
-      const connections =
-        dependencies.runtimeCapabilities?.connections?.(capabilityContext);
-      const artifacts =
-        dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
-      let dispatched = false;
-      const runtime: NodeExecutionRuntime = Object.freeze({
-        workspaceId: lease.workspaceId,
-        runId: lease.previewRunId,
-        nodeRunId: lease.previewRunId,
-        attemptId: lease.previewAttemptId,
-        attemptNumber: 1,
-        nodeId: lease.nodeId,
-        invocationKey: `preview:${lease.nodeId}`,
-        sideEffectClass: lease.sideEffectClass,
-        ...(lease.providerIdempotencyKey === undefined
-          ? {}
-          : { providerIdempotencyKey: lease.providerIdempotencyKey }),
-        ...(lease.providerDispatchBinding === undefined
-          ? {}
-          : { providerDispatchBinding: lease.providerDispatchBinding }),
-        ...(lease.providerDispatchUnresolved === undefined
-          ? {}
-          : { providerDispatchUnresolved: true as const }),
-        ...(connections === undefined ? {} : { connections }),
-        ...(artifacts === undefined ? {} : { artifacts }),
-        beforeDispatch: async (
-          input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
-        ): Promise<void> => {
-          if (dispatched)
-            throw new PreviewAttemptStateError('duplicate_dispatch');
-          try {
-            await dependencies.runStore.markDispatched({
-              lease,
-              ...(input?.connectionFence === undefined
-                ? {}
-                : { connectionFence: input.connectionFence }),
-              ...(input?.providerDispatchBinding === undefined
-                ? {}
-                : {
-                    providerDispatchBinding: input.providerDispatchBinding,
-                  }),
-              signal: context.signal,
-              workerId: dependencies.workerId,
-            });
-          } catch (error: unknown) {
-            if (
-              error instanceof Error &&
-              'code' in error &&
-              error.code === 'connection_fence_failed'
-            )
-              throw new NodeDispatchEvidenceError(
-                'provider_connection_fence_failed',
-              );
-            if (
-              error instanceof Error &&
-              'code' in error &&
-              error.code === 'dispatch_binding_mismatch'
-            )
-              throw new NodeDispatchEvidenceError(
-                'provider_dispatch_binding_mismatch',
-              );
-            throw error;
-          }
-          dispatched = true;
-        },
-      });
-
-      const executionAbort = new AbortController();
-      const heartbeatStop = new AbortController();
-      const heartbeatSignal = AbortSignal.any([
+      const environment = createPreviewExecutionEnvironment(
+        dependencies,
+        lease,
         context.signal,
-        heartbeatStop.signal,
-      ]);
-      const executionSignal = AbortSignal.any([
-        context.signal,
-        executionAbort.signal,
-      ]);
-      let notifyDeadline: (() => void) | undefined;
-      const deadlineHit = new Promise<'deadline'>((resolve) => {
-        notifyDeadline = (): void => {
-          resolve('deadline');
-        };
-      });
-      const deadlineTimer = setTimeout(
-        () => {
-          executionAbort.abort();
-          notifyDeadline?.();
-        },
-        Math.max(0, lease.executionDeadlineAt.getTime() - Date.now()),
       );
-      type HeartbeatEnd = 'stopped' | 'lease_lost';
-      let endHeartbeat: ((end: HeartbeatEnd) => void) | undefined;
-      const heartbeatDone = new Promise<HeartbeatEnd>((resolve) => {
-        endHeartbeat = resolve;
-      });
-      let notifyLeaseFailure: ((error: unknown) => void) | undefined;
-      const leaseFailure = new Promise<
-        Readonly<{
-          error: unknown;
-          kind: 'lease_failure';
-        }>
-      >((resolve) => {
-        notifyLeaseFailure = (error: unknown): void => {
-          resolve({ error, kind: 'lease_failure' });
-        };
-      });
-      void (async (): Promise<void> => {
-        while (!heartbeatSignal.aborted) {
-          await waitForSupervisorDelay(
-            dependencies.heartbeatIntervalMillis,
-            heartbeatSignal,
-          );
-          let beat: PreviewHeartbeatResult;
-          try {
-            beat = await dependencies.runStore.heartbeat({
-              lease,
-              leaseDurationSeconds: dependencies.leaseDurationSeconds,
-              signal: heartbeatSignal,
-              workerId: dependencies.workerId,
-            });
-          } catch (error: unknown) {
-            // A lost lease cannot be repaired mid-flight; the durable
-            // reconciliation path owns the truthful terminal state.
-            executionAbort.abort();
-            notifyLeaseFailure?.(error);
-            endHeartbeat?.('lease_lost');
-            return;
-          }
-          if (Date.now() >= beat.runExecutionDeadlineAt.getTime()) {
-            executionAbort.abort();
-            notifyDeadline?.();
-            endHeartbeat?.('stopped');
-            return;
-          }
-        }
-        endHeartbeat?.('stopped');
-      })();
-
+      const supervisor =
+        startPreviewAttemptSupervisor<PreviewInvocationOutcome>({
+          contextSignal: context.signal,
+          heartbeatIntervalMillis: dependencies.heartbeatIntervalMillis,
+          lease,
+          leaseDurationSeconds: dependencies.leaseDurationSeconds,
+          runStore: dependencies.runStore,
+          workerId: dependencies.workerId,
+        });
       try {
-        type RaceOutcome =
-          | { error: unknown; kind: 'error' }
-          | { kind: 'outcome'; outcome: PreviewInvocationOutcome }
-          | { error: unknown; kind: 'lease_failure' };
-        const raced = await Promise.race<RaceOutcome | 'deadline'>([
-          dependencies.invoker
-            .invoke({ lease, runtime, signal: executionSignal })
-            .then(
-              (outcome): RaceOutcome => ({
-                kind: 'outcome',
-                outcome,
-              }),
-              (error: unknown): RaceOutcome => ({ error, kind: 'error' }),
-            ),
-          deadlineHit,
-          leaseFailure,
-        ]);
+        const raced = await supervisor.race(
+          dependencies.invoker.invoke({
+            lease,
+            runtime: environment.runtime,
+            signal: supervisor.executionSignal,
+          }),
+        );
+        const dispatched = environment.wasDispatched();
         if (raced === 'deadline')
           return committedTerminal(
             dependencies,
@@ -510,9 +444,7 @@ export function createPreviewAttemptHandler(
           dispatched,
         );
       } finally {
-        clearTimeout(deadlineTimer);
-        heartbeatStop.abort();
-        await heartbeatDone;
+        await supervisor.stop();
       }
     },
   });
