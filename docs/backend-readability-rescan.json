@@ -1,0 +1,4536 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-11T14:02:50.929Z",
+  "methodology": {
+    "source": "docs/backend-readability-inventory.json methodology",
+    "note": "Final-source screening rescan; candidates are discovery evidence, not defects or completion criteria."
+  },
+  "source": {
+    "head": "c5ad9da52be2b53e8e40db7e45afc3d63eb4bb52",
+    "trackedOrNonIgnoredFiles": 1549,
+    "codeFiles": 1235,
+    "codeSourceSha256": "57624205fbee224435541c3ac678b560bc96fac98c51bad9e88d67a3ea2ac9a3"
+  },
+  "summary": {
+    "conditions": 110,
+    "nonTestConditions": 108,
+    "testConditions": 2,
+    "functions": 352,
+    "nonTestFunctions": 95,
+    "testFunctions": 257
+  },
+  "conditions": [
+    {
+      "file": "apps/api/src/workspaces/authorize-workspace.ts",
+      "line": 196,
+      "owner": "assertAuthorizedWorkspaceContext",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+      "line": 200,
+      "owner": "<callback@182>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/src/execution/node-attempt-engine.ts",
+      "line": 160,
+      "owner": "prepareNode",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/execution/node-attempt-runtime.ts",
+      "line": 363,
+      "owner": "createNodeAttemptRuntime",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/triggers/trigger-runtime.ts",
+      "line": 71,
+      "owner": "validateOptions",
+      "ops": 10,
+      "lines": 11,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/exercises/run-http-exercise.mjs",
+      "line": 49,
+      "owner": "parseResponsePolicy",
+      "ops": 6,
+      "lines": 7,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/exercises/run-http-exercise.mjs",
+      "line": 64,
+      "owner": "parseResponsePolicy",
+      "ops": 5,
+      "lines": 10,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/exercises/run-http-exercise.mjs",
+      "line": 222,
+      "owner": "requiredSecret",
+      "ops": 4,
+      "lines": 7,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 19,
+      "owner": "requireSummary",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 67,
+      "owner": "requireSummaryMatches",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 85,
+      "owner": "requireDatabaseWorkload",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 98,
+      "owner": "requireDatabaseObservations",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 109,
+      "owner": "requireDatabaseObservations",
+      "ops": 2,
+      "lines": 9,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 150,
+      "owner": "scenarioMap",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 174,
+      "owner": "operationContracts",
+      "ops": 11,
+      "lines": 15,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 244,
+      "owner": "assertRoundOperationEvidence",
+      "ops": 5,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 262,
+      "owner": "assertRoundOperationEvidence",
+      "ops": 2,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 296,
+      "owner": "assertRoundOperationEvidence",
+      "ops": 4,
+      "lines": 8,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 470,
+      "owner": "sharedRoundParticipants",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/compare-local-benchmark.mjs",
+      "line": 722,
+      "owner": "assertBenchmarkEnvironment",
+      "ops": 10,
+      "lines": 13,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/postgres-evidence.mjs",
+      "line": 39,
+      "owner": "validatePostgresEvidence",
+      "ops": 3,
+      "lines": 7,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/report-risk-coverage.mjs",
+      "line": 156,
+      "owner": "assertSuitesCompletedWithinInterval",
+      "ops": 4,
+      "lines": 8,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "infrastructure/report-risk-coverage.mjs",
+      "line": 283,
+      "owner": "assertIntegrationEvidenceIdentity",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/report-risk-coverage.mjs",
+      "line": 362,
+      "owner": "validatedReviews",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/validate-complexity.mjs",
+      "line": 32,
+      "owner": "branchIncrement",
+      "ops": 8,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/validate-database-schema.mjs",
+      "line": 66,
+      "owner": "validateDatabaseSchemaOwnership",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "infrastructure/verify-mutation-sensitivity.mjs",
+      "line": 279,
+      "owner": "validateMutationDefinitions",
+      "ops": 7,
+      "lines": 8,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/artifact-store/src/control-ledger.ts",
+      "line": 702,
+      "owner": "reconcile",
+      "ops": 8,
+      "lines": 8,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/artifact-store/src/dual-region-control-ledger.ts",
+      "line": 395,
+      "owner": "repairableCommonPrefix",
+      "ops": 9,
+      "lines": 13,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/artifact-store/src/store.ts",
+      "line": 263,
+      "owner": "metadataFromHead",
+      "ops": 7,
+      "lines": 8,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/authoring/workflow-authoring.ts",
+      "line": 391,
+      "owner": "createWorkflowAuthoringDatabase",
+      "ops": 2,
+      "lines": 9,
+      "closures": 2,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/compatibility-release.ts",
+      "line": 212,
+      "owner": "checkCompatibilityReleasePreactivationTarget",
+      "ops": 2,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/persisted-workflow-checkpoint-refinements.ts",
+      "line": 126,
+      "owner": "refineJoinScopes",
+      "ops": 6,
+      "lines": 5,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/persisted-workflow-checkpoint-refinements.ts",
+      "line": 152,
+      "owner": "refineLoopsBudgetAndWaits",
+      "ops": 8,
+      "lines": 19,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+      "line": 193,
+      "owner": "<callback@185>",
+      "ops": 8,
+      "lines": 10,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+      "line": 267,
+      "owner": "refineInvocationIndexes",
+      "ops": 5,
+      "lines": 7,
+      "closures": 2,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+      "line": 385,
+      "owner": "parseInitialWorkflowCheckpoint",
+      "ops": 12,
+      "lines": 13,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-delivery.ts",
+      "line": 60,
+      "owner": "validateAuthoritativeAdvanceDelivery",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "line": 241,
+      "owner": "attemptFact",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "line": 272,
+      "owner": "validatePersistedFactBatch",
+      "ops": 7,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "line": 423,
+      "owner": "completedInlineOutput",
+      "ops": 6,
+      "lines": 5,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-plan.ts",
+      "line": 174,
+      "owner": "validateTransitionDelta",
+      "ops": 6,
+      "lines": 12,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-terminal.ts",
+      "line": 44,
+      "owner": "persistFailureNotificationIntent",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/dispatcher.ts",
+      "line": 184,
+      "owner": "checkDispatcherReadiness",
+      "ops": 16,
+      "lines": 17,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/execution-acceptance.ts",
+      "line": 191,
+      "owner": "resolveWorkflowFailureNotificationPolicy",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/execution-acceptance.ts",
+      "line": 217,
+      "owner": "resolveWorkflowFailureNotificationPolicy",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/failure-notifications.ts",
+      "line": 77,
+      "owner": "<callback@57>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-delivery.ts",
+      "line": 50,
+      "owner": "validateDelivery",
+      "ops": 10,
+      "lines": 11,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+      "line": 40,
+      "owner": "assertPermittedUpstreamInvocationScopes",
+      "ops": 1,
+      "lines": 19,
+      "closures": 2,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+      "line": 182,
+      "owner": "projectStructuredCollection",
+      "ops": 10,
+      "lines": 11,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-outcomes.ts",
+      "line": 111,
+      "owner": "duplicateCompletion",
+      "ops": 10,
+      "lines": 10,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-outcomes.ts",
+      "line": 140,
+      "owner": "assertActiveLease",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-delivery.ts",
+      "line": 125,
+      "owner": "validatePreviewDelivery",
+      "ops": 9,
+      "lines": 10,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-delivery.ts",
+      "line": 175,
+      "owner": "validatePreviewReconciliationDelivery",
+      "ops": 10,
+      "lines": 11,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/stored-execution-value.ts",
+      "line": 57,
+      "owner": "jsonStringBytes",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/stored-execution-value.ts",
+      "line": 223,
+      "owner": "cloneInlineJson",
+      "ops": 6,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/unknown-outcome-reconciliation.ts",
+      "line": 100,
+      "owner": "<callback@77>",
+      "ops": 9,
+      "lines": 10,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 250,
+      "owner": "assertRecord",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 683,
+      "owner": "<callback@673>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 770,
+      "owner": "<callback@752>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 817,
+      "owner": "command",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+      "line": 81,
+      "owner": "validateDelivery",
+      "ops": 8,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+      "line": 154,
+      "owner": "verifyRecord",
+      "ops": 11,
+      "lines": 12,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-purge.ts",
+      "line": 192,
+      "owner": "verifyRecord",
+      "ops": 10,
+      "lines": 12,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-purge.ts",
+      "line": 538,
+      "owner": "processNext",
+      "ops": 5,
+      "lines": 8,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-purge.ts",
+      "line": 738,
+      "owner": "processNext",
+      "ops": 5,
+      "lines": 8,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/operator/operator-command-runtime.ts",
+      "line": 290,
+      "owner": "assertNoOperatorDirectGrants",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/operator/operator-command-runtime.ts",
+      "line": 302,
+      "owner": "assertOperatorCapabilities",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/operator/operator-run-replay.ts",
+      "line": 131,
+      "owner": "<callback@115>",
+      "ops": 10,
+      "lines": 12,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/platform/postgres-telemetry.ts",
+      "line": 278,
+      "owner": "queryOperation",
+      "ops": 8,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/workflow-triggers.ts",
+      "line": 128,
+      "owner": "<callback@98>",
+      "ops": 11,
+      "lines": 15,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/src/http/address-policy.ts",
+      "line": 48,
+      "owner": "ipv4Number",
+      "ops": 3,
+      "lines": 2,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/src/http/secure-http-request.ts",
+      "line": 102,
+      "owner": "parseHeaders",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/src/http/secure-http-request.ts",
+      "line": 126,
+      "owner": "parseSensitiveValues",
+      "ops": 2,
+      "lines": 4,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/src/slack/executor.ts",
+      "line": 170,
+      "owner": "execute",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/node-sdk/src/definitions/schema-document.ts",
+      "line": 61,
+      "owner": "inspectBoundedNodeJson",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/node-sdk/src/definitions/schema-document.ts",
+      "line": 150,
+      "owner": "generateSchemaDocument",
+      "ops": 3,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/node-sdk/src/json-boundary.ts",
+      "line": 161,
+      "owner": "canonicalizeBoundedJson",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/queue/src/consumer.ts",
+      "line": 236,
+      "owner": "parseConsumerOptions",
+      "ops": 8,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/rate-limit/src/distributed-rate-limiter.ts",
+      "line": 103,
+      "owner": "parseScriptResult",
+      "ops": 3,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/advance-workflow.ts",
+      "line": 64,
+      "owner": "advanceWorkflowFromSchedulerState",
+      "ops": 4,
+      "lines": 8,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+      "line": 113,
+      "owner": "assertInvocationBelongsToExecutable",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+      "line": 195,
+      "owner": "assertCheckpointLoopIdentity",
+      "ops": 4,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/coordinator-observations.ts",
+      "line": 47,
+      "owner": "<callback@44>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/coordinator-observations.ts",
+      "line": 100,
+      "owner": "<callback@44>",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-compilation.ts",
+      "line": 48,
+      "owner": "executableNode",
+      "ops": 3,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-foundation.ts",
+      "line": 180,
+      "owner": "validateGlobals",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-boundary.ts",
+      "line": 151,
+      "owner": "validatePin",
+      "ops": 20,
+      "lines": 33,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "line": 164,
+      "owner": "assertBranchesDoNotReconverge",
+      "ops": 2,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "line": 181,
+      "owner": "assertBranchesDoNotReconverge",
+      "ops": 3,
+      "lines": 7,
+      "closures": 2,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "line": 213,
+      "owner": "assertBranchesDoNotReconverge",
+      "ops": 3,
+      "lines": 11,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "line": 231,
+      "owner": "assertBranchesDoNotReconverge",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "line": 246,
+      "owner": "assertExpressionPolicies",
+      "ops": 2,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-validation.ts",
+      "line": 63,
+      "owner": "addString",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-validation.ts",
+      "line": 158,
+      "owner": "assertSafeExecutableJson",
+      "ops": 5,
+      "lines": 5,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/graph-scheduler.ts",
+      "line": 65,
+      "owner": "configuredBranchOutputPorts",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/graph-scheduler.ts",
+      "line": 96,
+      "owner": "configuredParallelOutputPorts",
+      "ops": 3,
+      "lines": 6,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/node-attempt-input.ts",
+      "line": 30,
+      "owner": "assertStructuredScope",
+      "ops": 2,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/persisted-observation-parser.ts",
+      "line": 88,
+      "owner": "parseAttemptFailure",
+      "ops": 9,
+      "lines": 10,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/persisted-observation-parser.ts",
+      "line": 209,
+      "owner": "parseWait",
+      "ops": 6,
+      "lines": 7,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/retries.ts",
+      "line": 87,
+      "owner": "decideRetry",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/scheduling.ts",
+      "line": 192,
+      "owner": "admitLoopIterations",
+      "ops": 2,
+      "lines": 2,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/transition-decisions.ts",
+      "line": 101,
+      "owner": "deriveTerminalRunStatus",
+      "ops": 3,
+      "lines": 5,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
+      "line": 141,
+      "owner": "applyLoopStart",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+      "line": 120,
+      "owner": "buildWorkflowTransitionPlan",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/workflow-transition-state.ts",
+      "line": 100,
+      "owner": "declaredJoin",
+      "ops": 2,
+      "lines": 3,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/src/expressions/evaluator.ts",
+      "line": 55,
+      "owner": "constructor",
+      "ops": 8,
+      "lines": 9,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/src/expressions/policy.ts",
+      "line": 178,
+      "owner": "readJsonataAst",
+      "ops": 2,
+      "lines": 2,
+      "closures": 1,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/src/expressions/policy.ts",
+      "line": 228,
+      "owner": "visit",
+      "ops": 5,
+      "lines": 5,
+      "closures": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/test/package-contract.test.ts",
+      "line": 80,
+      "owner": "<callback@52>",
+      "ops": 5,
+      "lines": 6,
+      "closures": 0,
+      "test": true
+    }
+  ],
+  "functions": [
+    {
+      "file": "apps/api/src/app.module.ts",
+      "line": 73,
+      "name": "register",
+      "lines": 174,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 20,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/app.ts",
+      "line": 107,
+      "name": "createApiApplication",
+      "lines": 164,
+      "catches": 4,
+      "nesting": 2,
+      "branches": 30,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/executions/redis-run-event-source.ts",
+      "line": 64,
+      "name": "observeOperation",
+      "lines": 38,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/executions/run-event-stream.ts",
+      "line": 175,
+      "name": "streamRunEventFrames",
+      "lines": 113,
+      "catches": 1,
+      "nesting": 6,
+      "branches": 12,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+      "line": 165,
+      "name": "exchangeCode",
+      "lines": 130,
+      "catches": 4,
+      "nesting": 2,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/identity-workspace/module.ts",
+      "line": 52,
+      "name": "register",
+      "lines": 162,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 5,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/identity/oidc.ts",
+      "line": 81,
+      "name": "startLogin",
+      "lines": 68,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 6,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/identity/oidc.ts",
+      "line": 150,
+      "name": "completeLogin",
+      "lines": 123,
+      "catches": 5,
+      "nesting": 1,
+      "branches": 19,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/identity/session.ts",
+      "line": 81,
+      "name": "issue",
+      "lines": 58,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 5,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/main.ts",
+      "line": 10,
+      "name": "bootstrap",
+      "lines": 49,
+      "catches": 4,
+      "nesting": 3,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "apps/api/src/webhooks/ingress.ts",
+      "line": 97,
+      "name": "acceptWebhook",
+      "lines": 179,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 24,
+      "test": false
+    },
+    {
+      "file": "apps/api/test/api-bootstrap.test.ts",
+      "line": 166,
+      "name": "<callback>",
+      "lines": 918,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/api-config.test.ts",
+      "line": 5,
+      "name": "<callback>",
+      "lines": 356,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/artifacts/service.test.ts",
+      "line": 117,
+      "name": "<callback>",
+      "lines": 186,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/artifacts/transfer.integration.test.ts",
+      "line": 84,
+      "name": "<callback>",
+      "lines": 588,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/artifacts/transfer.integration.test.ts",
+      "line": 219,
+      "name": "<callback>",
+      "lines": 224,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 3,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/connections/controllers.test.ts",
+      "line": 68,
+      "name": "<callback>",
+      "lines": 163,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/connections/failure-notification-destinations.test.ts",
+      "line": 73,
+      "name": "<callback>",
+      "lines": 286,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/connections/http-stack.test.ts",
+      "line": 86,
+      "name": "connectionRuntime",
+      "lines": 173,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/connections/use-cases.test.ts",
+      "line": 151,
+      "name": "<callback>",
+      "lines": 886,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/executions/redis-run-event-source.test.ts",
+      "line": 44,
+      "name": "<callback>",
+      "lines": 186,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/executions/run-event-stream.resilience.integration.test.ts",
+      "line": 114,
+      "name": "<callback>",
+      "lines": 202,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/executions/run-event-stream.resilience.integration.test.ts",
+      "line": 138,
+      "name": "<callback>",
+      "lines": 177,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/executions/run-event-stream.test.ts",
+      "line": 120,
+      "name": "<callback>",
+      "lines": 295,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/http/problem-details.filter.test.ts",
+      "line": 53,
+      "name": "<callback>",
+      "lines": 770,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity-infrastructure/oidc-adapter.test.ts",
+      "line": 108,
+      "name": "<callback>",
+      "lines": 518,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity-workspace/controllers.test.ts",
+      "line": 41,
+      "name": "<callback>",
+      "lines": 440,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity-workspace/real-api.integration.test.ts",
+      "line": 117,
+      "name": "<callback>",
+      "lines": 924,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity-workspace/real-api.integration.test.ts",
+      "line": 219,
+      "name": "<callback>",
+      "lines": 422,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity-workspace/use-cases.test.ts",
+      "line": 103,
+      "name": "<callback>",
+      "lines": 378,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity/oidc.test.ts",
+      "line": 122,
+      "name": "<callback>",
+      "lines": 278,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/identity/session.test.ts",
+      "line": 54,
+      "name": "<callback>",
+      "lines": 308,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/node-testing/controller.test.ts",
+      "line": 138,
+      "name": "<callback>",
+      "lines": 169,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/node-testing/use-case.test.ts",
+      "line": 144,
+      "name": "<callback>",
+      "lines": 413,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+      "line": 178,
+      "name": "<callback>",
+      "lines": 652,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+      "line": 182,
+      "name": "<callback>",
+      "lines": 647,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 26,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/platform/observability/api-metrics.test.ts",
+      "line": 10,
+      "name": "<callback>",
+      "lines": 214,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/platform/observability/api-metrics.test.ts",
+      "line": 11,
+      "name": "<callback>",
+      "lines": 212,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/rate-limit/interceptor.test.ts",
+      "line": 77,
+      "name": "<callback>",
+      "lines": 223,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/support/artifact-transfer.integration.support.ts",
+      "line": 261,
+      "name": "createArtifactTransferApiFixture",
+      "lines": 345,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/webhooks/direct-webhook.integration.test.ts",
+      "line": 152,
+      "name": "<callback>",
+      "lines": 683,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/webhooks/direct-webhook.integration.test.ts",
+      "line": 283,
+      "name": "<callback>",
+      "lines": 344,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 6,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/webhooks/ingress.test.ts",
+      "line": 43,
+      "name": "<callback>",
+      "lines": 365,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-authoring/controllers.test.ts",
+      "line": 98,
+      "name": "<callback>",
+      "lines": 260,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-authoring/lifecycle.integration.test.ts",
+      "line": 38,
+      "name": "<callback>",
+      "lines": 386,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-authoring/use-cases.test.ts",
+      "line": 130,
+      "name": "<callback>",
+      "lines": 475,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-authoring/version-restore.integration.test.ts",
+      "line": 15,
+      "name": "<callback>",
+      "lines": 163,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-runs/controllers.test.ts",
+      "line": 121,
+      "name": "<callback>",
+      "lines": 251,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-runs/postgres-persistence.test.ts",
+      "line": 196,
+      "name": "<callback>",
+      "lines": 359,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-runs/sse-transport.test.ts",
+      "line": 32,
+      "name": "<callback>",
+      "lines": 541,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workflow-runs/use-cases.test.ts",
+      "line": 86,
+      "name": "<callback>",
+      "lines": 694,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/api/test/workspaces/authorization.test.ts",
+      "line": 42,
+      "name": "<callback>",
+      "lines": 341,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/lifecycle-command/test/main.test.ts",
+      "line": 159,
+      "name": "<callback>",
+      "lines": 212,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/operator-command/test/config.test.ts",
+      "line": 7,
+      "name": "<callback>",
+      "lines": 179,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/recovery/src/main.ts",
+      "line": 11,
+      "name": "bootstrap",
+      "lines": 81,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "apps/retention/src/metrics.ts",
+      "line": 138,
+      "name": "createRetentionMetrics",
+      "lines": 171,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "apps/retention/test/run.test.ts",
+      "line": 14,
+      "name": "resources",
+      "lines": 173,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/retention/test/run.test.ts",
+      "line": 425,
+      "name": "<callback>",
+      "lines": 323,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/src/app.ts",
+      "line": 26,
+      "name": "createWorkerApplication",
+      "lines": 67,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 6,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+      "line": 266,
+      "name": "deliverSlack",
+      "lines": 73,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 3,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+      "line": 340,
+      "name": "deliverEmail",
+      "lines": 102,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 4,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/execution/preview-maintenance-runtime.ts",
+      "line": 47,
+      "name": "createPreviewMaintenanceRuntime",
+      "lines": 167,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 13,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/main.ts",
+      "line": 11,
+      "name": "bootstrap",
+      "lines": 45,
+      "catches": 4,
+      "nesting": 3,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "apps/worker/src/triggers/trigger-runtime.ts",
+      "line": 87,
+      "name": "createTriggerRuntime",
+      "lines": 170,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 8,
+      "test": false
+    },
+    {
+      "file": "apps/worker/test/artifact-reference.integration.test.ts",
+      "line": 77,
+      "name": "<callback>",
+      "lines": 258,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/artifact-reference.integration.test.ts",
+      "line": 78,
+      "name": "<callback>",
+      "lines": 256,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts",
+      "line": 50,
+      "name": "<callback>",
+      "lines": 716,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts",
+      "line": 57,
+      "name": "<callback>",
+      "lines": 708,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 8,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+      "line": 32,
+      "name": "<callback>",
+      "lines": 457,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+      "line": 39,
+      "name": "<callback>",
+      "lines": 449,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+      "line": 112,
+      "name": "runFixture",
+      "lines": 362,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-linear-execution.integration.test.ts",
+      "line": 40,
+      "name": "<callback>",
+      "lines": 348,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-linear-execution.integration.test.ts",
+      "line": 47,
+      "name": "<callback>",
+      "lines": 340,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-parallel-recovery.integration.test.ts",
+      "line": 25,
+      "name": "<callback>",
+      "lines": 200,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-redelivery.integration.test.ts",
+      "line": 24,
+      "name": "<callback>",
+      "lines": 208,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-retry-wait.integration.test.ts",
+      "line": 39,
+      "name": "<callback>",
+      "lines": 439,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-consumer-retry-wait.integration.test.ts",
+      "line": 46,
+      "name": "<callback>",
+      "lines": 431,
+      "catches": 1,
+      "nesting": 3,
+      "branches": 3,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-engine.test.ts",
+      "line": 24,
+      "name": "<callback>",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-handler.test.ts",
+      "line": 58,
+      "name": "<callback>",
+      "lines": 215,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/coordinator-runtime.test.ts",
+      "line": 23,
+      "name": "<callback>",
+      "lines": 192,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/failure-notification-delivery.test.ts",
+      "line": 105,
+      "name": "<callback>",
+      "lines": 870,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "line": 257,
+      "name": "<callback>",
+      "lines": 2350,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "line": 258,
+      "name": "<callback>",
+      "lines": 886,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 17,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "line": 1147,
+      "name": "<callback>",
+      "lines": 288,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 6,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "line": 2029,
+      "name": "<callback>",
+      "lines": 166,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "line": 2198,
+      "name": "<callback>",
+      "lines": 265,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/node-attempt-engine.test.ts",
+      "line": 200,
+      "name": "<callback>",
+      "lines": 266,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/node-attempt-handler-part-2.test.ts",
+      "line": 77,
+      "name": "<callback>",
+      "lines": 571,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/node-attempt-handler.test.ts",
+      "line": 28,
+      "name": "<callback>",
+      "lines": 494,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/node-attempt-runtime.test.ts",
+      "line": 174,
+      "name": "<callback>",
+      "lines": 677,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/node-runtime-capabilities.test.ts",
+      "line": 56,
+      "name": "<callback>",
+      "lines": 1064,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/outbox-dispatcher.test.ts",
+      "line": 158,
+      "name": "<callback>",
+      "lines": 537,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-attempt-handler.test.ts",
+      "line": 158,
+      "name": "<callback>",
+      "lines": 364,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-attempt-runtime.test.ts",
+      "line": 62,
+      "name": "<callback>",
+      "lines": 629,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-consumer-crash-boundaries.integration.test.ts",
+      "line": 37,
+      "name": "<callback>",
+      "lines": 324,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-consumer-crash-boundaries.integration.test.ts",
+      "line": 38,
+      "name": "<callback>",
+      "lines": 322,
+      "catches": 0,
+      "nesting": 4,
+      "branches": 8,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts",
+      "line": 32,
+      "name": "<callback>",
+      "lines": 205,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts",
+      "line": 33,
+      "name": "<callback>",
+      "lines": 203,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/schedule-trigger.integration.test.ts",
+      "line": 220,
+      "name": "<callback>",
+      "lines": 905,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/schedule-trigger.integration.test.ts",
+      "line": 469,
+      "name": "<callback>",
+      "lines": 655,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/support/coordinator-recovery-harness.ts",
+      "line": 59,
+      "name": "createCoordinatorRecoveryHarness",
+      "lines": 248,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/support/http-node-attempt.runtime.ts",
+      "line": 78,
+      "name": "createHttpNodeAttemptProofRuntime",
+      "lines": 316,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 15,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/support/transport.integration.support.ts",
+      "line": 23,
+      "name": "createWorkerTransportTestEnvironment",
+      "lines": 314,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/support/workflow-lifecycle.integration.support.ts",
+      "line": 496,
+      "name": "createWorkflowLifecycleWorkerEnvironment",
+      "lines": 438,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/transport-part-2.integration.test.ts",
+      "line": 138,
+      "name": "<callback>",
+      "lines": 200,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/transport.integration.test.ts",
+      "line": 219,
+      "name": "<callback>",
+      "lines": 444,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/transport.integration.test.ts",
+      "line": 370,
+      "name": "<callback>",
+      "lines": 292,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 2,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/transport.resilience.integration.test.ts",
+      "line": 437,
+      "name": "<callback>",
+      "lines": 311,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/transport.resilience.integration.test.ts",
+      "line": 438,
+      "name": "<callback>",
+      "lines": 309,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 13,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/validate-preview.integration.test.ts",
+      "line": 257,
+      "name": "<callback>",
+      "lines": 246,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/validate-preview.integration.test.ts",
+      "line": 258,
+      "name": "<callback>",
+      "lines": 244,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/worker-bootstrap.test.ts",
+      "line": 187,
+      "name": "<callback>",
+      "lines": 303,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/worker-config.test.ts",
+      "line": 6,
+      "name": "<callback>",
+      "lines": 409,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/worker-readiness-lifecycle.test.ts",
+      "line": 33,
+      "name": "<callback>",
+      "lines": 188,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/workflow-lifecycle.integration.test.ts",
+      "line": 25,
+      "name": "<callback>",
+      "lines": 204,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "apps/worker/test/workflow-lifecycle.integration.test.ts",
+      "line": 37,
+      "name": "<callback>",
+      "lines": 191,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "infrastructure/performance/postgres-evidence.mjs",
+      "line": 104,
+      "name": "runPoolContentionSamples",
+      "lines": 62,
+      "catches": 4,
+      "nesting": 5,
+      "branches": 8,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/run-local-benchmark.mjs",
+      "line": 99,
+      "name": "writeBenchmarkEvidence",
+      "lines": 35,
+      "catches": 3,
+      "nesting": 1,
+      "branches": 4,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/run-local-benchmark.mjs",
+      "line": 764,
+      "name": "executeRound",
+      "lines": 190,
+      "catches": 2,
+      "nesting": 2,
+      "branches": 17,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/run-local-benchmark.mjs",
+      "line": 1113,
+      "name": "benchmark",
+      "lines": 316,
+      "catches": 5,
+      "nesting": 4,
+      "branches": 21,
+      "test": false
+    },
+    {
+      "file": "infrastructure/performance/run-local-benchmark.test.mjs",
+      "line": 624,
+      "name": "<callback>",
+      "lines": 205,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "infrastructure/report-risk-coverage.test.mjs",
+      "line": 518,
+      "name": "<callback>",
+      "lines": 221,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "infrastructure/run-local-quality.mjs",
+      "line": 814,
+      "name": "run",
+      "lines": 420,
+      "catches": 4,
+      "nesting": 10,
+      "branches": 38,
+      "test": false
+    },
+    {
+      "file": "infrastructure/run-local-quality.mjs",
+      "line": 857,
+      "name": "cleanup",
+      "lines": 73,
+      "catches": 5,
+      "nesting": 3,
+      "branches": 5,
+      "test": false
+    },
+    {
+      "file": "infrastructure/validate-built-package-exports.mjs",
+      "line": 109,
+      "name": "validateBuiltPackageExports",
+      "lines": 83,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 15,
+      "test": false
+    },
+    {
+      "file": "packages/artifact-store/test/control-ledger-part-2.test.ts",
+      "line": 26,
+      "name": "<callback>",
+      "lines": 397,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/control-ledger.integration.test.ts",
+      "line": 177,
+      "name": "<callback>",
+      "lines": 236,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/control-ledger.test.ts",
+      "line": 24,
+      "name": "<callback>",
+      "lines": 502,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/dual-region-artifact-store.test.ts",
+      "line": 172,
+      "name": "<callback>",
+      "lines": 232,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/dual-region-control-ledger.test.ts",
+      "line": 155,
+      "name": "<callback>",
+      "lines": 395,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/object-store-telemetry.test.ts",
+      "line": 36,
+      "name": "<callback>",
+      "lines": 239,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/artifact-store/test/store.test.ts",
+      "line": 282,
+      "name": "<callback>",
+      "lines": 903,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/contracts/test/contracts.test.ts",
+      "line": 103,
+      "name": "<callback>",
+      "lines": 735,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/src/authoring/workflow-authoring.ts",
+      "line": 297,
+      "name": "createWorkflowAuthoringDatabase",
+      "lines": 198,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 22,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/connections/connection-management-persistence.ts",
+      "line": 42,
+      "name": "createConnectionManagementPersistence",
+      "lines": 284,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/connections/connection-management-persistence.ts",
+      "line": 46,
+      "name": "createConnection",
+      "lines": 171,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/connections/connection-secret-persistence.ts",
+      "line": 40,
+      "name": "createConnectionSecretPersistence",
+      "lines": 269,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/connections/connection-secret-persistence.ts",
+      "line": 103,
+      "name": "rotateConnectionSecret",
+      "lines": 166,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/connections/connection-test-persistence.ts",
+      "line": 46,
+      "name": "createConnectionTestPersistence",
+      "lines": 430,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-commit-state.ts",
+      "line": 79,
+      "name": "lockCoordinatorCommitState",
+      "lines": 208,
+      "catches": 1,
+      "nesting": 3,
+      "branches": 33,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-commit.ts",
+      "line": 37,
+      "name": "commitCoordinatorAdvancePlan",
+      "lines": 160,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 6,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "line": 510,
+      "name": "loadCoordinatorAdvanceState",
+      "lines": 217,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "line": 521,
+      "name": "<callback>",
+      "lines": 204,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 19,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/coordinator-run-store-terminal.ts",
+      "line": 19,
+      "name": "persistFailureNotificationIntent",
+      "lines": 174,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 19,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/dispatcher.ts",
+      "line": 207,
+      "name": "createOutboxDispatcherDatabase",
+      "lines": 291,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/execution-acceptance.ts",
+      "line": 343,
+      "name": "acceptWorkflowRun",
+      "lines": 203,
+      "catches": 2,
+      "nesting": 2,
+      "branches": 14,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/failure-notification-destination-store.ts",
+      "line": 22,
+      "name": "createFailureNotificationDestinationStore",
+      "lines": 176,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/failure-notification-destinations.ts",
+      "line": 351,
+      "name": "createFailureNotificationDestinationDatabase",
+      "lines": 286,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/failure-notifications.ts",
+      "line": 29,
+      "name": "createFailureNotificationStore",
+      "lines": 195,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/failure-notifications.ts",
+      "line": 36,
+      "name": "claimDelivery",
+      "lines": 168,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 6,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-claim.ts",
+      "line": 63,
+      "name": "claimNodeAttemptDelivery",
+      "lines": 219,
+      "catches": 2,
+      "nesting": 2,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-claim.ts",
+      "line": 79,
+      "name": "<callback>",
+      "lines": 191,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 27,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-completion.ts",
+      "line": 29,
+      "name": "completeNodeAttempt",
+      "lines": 132,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 3,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+      "line": 205,
+      "name": "loadNodeAttemptInputs",
+      "lines": 184,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+      "line": 221,
+      "name": "<callback>",
+      "lines": 166,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-acceptance.ts",
+      "line": 381,
+      "name": "acceptPreviewRun",
+      "lines": 182,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 20,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-claim.ts",
+      "line": 135,
+      "name": "claimPreviewDelivery",
+      "lines": 177,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 3,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-reconciliation.ts",
+      "line": 210,
+      "name": "reconcilePreviewDelivery",
+      "lines": 277,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 3,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/preview-execution-reconciliation.ts",
+      "line": 233,
+      "name": "<callback>",
+      "lines": 236,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 22,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/execution/stored-execution-value.ts",
+      "line": 48,
+      "name": "jsonStringBytes",
+      "lines": 31,
+      "catches": 0,
+      "nesting": 7,
+      "branches": 17,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 329,
+      "name": "createControlLedgerCoordinator",
+      "lines": 590,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 4,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 364,
+      "name": "transact",
+      "lines": 85,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 5,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 613,
+      "name": "reconcileSweep",
+      "lines": 47,
+      "catches": 1,
+      "nesting": 5,
+      "branches": 3,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "line": 661,
+      "name": "command",
+      "lines": 198,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 13,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+      "line": 198,
+      "name": "claimPreviewCleanupDelivery",
+      "lines": 189,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+      "line": 220,
+      "name": "<callback>",
+      "lines": 164,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 14,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/preview-retention.ts",
+      "line": 126,
+      "name": "createPreviewRetentionCoordinator",
+      "lines": 198,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/preview-retention.ts",
+      "line": 139,
+      "name": "processNext",
+      "lines": 183,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/retention-transaction.ts",
+      "line": 173,
+      "name": "withWorkspaceDestructiveOperationLock",
+      "lines": 91,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 12,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/retention.ts",
+      "line": 76,
+      "name": "createRetentionEnforcementCoordinator",
+      "lines": 180,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/run-artifact-retention.ts",
+      "line": 82,
+      "name": "createRunArtifactRetentionCoordinator",
+      "lines": 184,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/run-artifact-retention.ts",
+      "line": 99,
+      "name": "processNext",
+      "lines": 165,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 7,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+      "line": 251,
+      "name": "createWorkspaceLifecycleCommandCoordinator",
+      "lines": 271,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+      "line": 337,
+      "name": "processNext",
+      "lines": 182,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 18,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-purge.ts",
+      "line": 240,
+      "name": "createWorkspacePurgeCoordinator",
+      "lines": 632,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 5,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/lifecycle/workspace-purge.ts",
+      "line": 345,
+      "name": "processNext",
+      "lines": 525,
+      "catches": 3,
+      "nesting": 4,
+      "branches": 42,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/migrations.ts",
+      "line": 293,
+      "name": "migrateDatabase",
+      "lines": 180,
+      "catches": 5,
+      "nesting": 4,
+      "branches": 10,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/operator/operator-commands.ts",
+      "line": 200,
+      "name": "createOperatorCommandDatabase",
+      "lines": 227,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/tenant-access/identity-workspace-identity-store.ts",
+      "line": 78,
+      "name": "createIdentityWorkspaceIdentityStore",
+      "lines": 184,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/tenant-access/identity-workspace.ts",
+      "line": 238,
+      "name": "createIdentityWorkspaceDatabase",
+      "lines": 176,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/tenant-access/workspace.ts",
+      "line": 94,
+      "name": "runTransaction",
+      "lines": 105,
+      "catches": 3,
+      "nesting": 4,
+      "branches": 12,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+      "line": 189,
+      "name": "createScheduleTriggerDatabase",
+      "lines": 217,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+      "line": 223,
+      "name": "setEnabled",
+      "lines": 177,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+      "line": 232,
+      "name": "<callback>",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/schedule-trigger-scanner.ts",
+      "line": 80,
+      "name": "createScheduleTriggerScanner",
+      "lines": 182,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/webhook-triggers.ts",
+      "line": 299,
+      "name": "createWebhookTriggerDatabase",
+      "lines": 354,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/webhook-triggers.ts",
+      "line": 490,
+      "name": "acceptVerifiedDelivery",
+      "lines": 160,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 2,
+      "test": false
+    },
+    {
+      "file": "packages/database/src/triggers/workflow-triggers.ts",
+      "line": 85,
+      "name": "createWorkflowTriggerReconciliationDatabase",
+      "lines": 196,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/database/test/artifact-capacity-readiness.integration.test.ts",
+      "line": 72,
+      "name": "<callback>",
+      "lines": 186,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts",
+      "line": 82,
+      "name": "<callback>",
+      "lines": 257,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts",
+      "line": 83,
+      "name": "<callback>",
+      "lines": 255,
+      "catches": 1,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/artifact-upload.integration.test.ts",
+      "line": 213,
+      "name": "<callback>",
+      "lines": 558,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/artifacts.integration.test.ts",
+      "line": 76,
+      "name": "<callback>",
+      "lines": 290,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/compatibility-release.integration.test.ts",
+      "line": 156,
+      "name": "<callback>",
+      "lines": 588,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/compatibility-release.integration.test.ts",
+      "line": 157,
+      "name": "<callback>",
+      "lines": 187,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/config.test.ts",
+      "line": 13,
+      "name": "<callback>",
+      "lines": 175,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connection-tests.integration.test.ts",
+      "line": 19,
+      "name": "<callback>",
+      "lines": 353,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connection-tests.integration.test.ts",
+      "line": 166,
+      "name": "<callback>",
+      "lines": 205,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connections-compatibility.integration.test.ts",
+      "line": 36,
+      "name": "<callback>",
+      "lines": 385,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connections-compatibility.integration.test.ts",
+      "line": 37,
+      "name": "<callback>",
+      "lines": 161,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connections-compatibility.integration.test.ts",
+      "line": 199,
+      "name": "<callback>",
+      "lines": 199,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connections-concurrency-security.integration.test.ts",
+      "line": 25,
+      "name": "<callback>",
+      "lines": 229,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/connections-lifecycle.integration.test.ts",
+      "line": 24,
+      "name": "<callback>",
+      "lines": 470,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator-part-2.integration.test.ts",
+      "line": 32,
+      "name": "<callback>",
+      "lines": 349,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator-part-2.integration.test.ts",
+      "line": 113,
+      "name": "<callback>",
+      "lines": 204,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 2,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator.integration.test.ts",
+      "line": 35,
+      "name": "<callback>",
+      "lines": 373,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator.test.ts",
+      "line": 160,
+      "name": "fakeDatabase",
+      "lines": 166,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator.test.ts",
+      "line": 176,
+      "name": "query",
+      "lines": 124,
+      "catches": 0,
+      "nesting": 13,
+      "branches": 27,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/control-ledger-coordinator.test.ts",
+      "line": 349,
+      "name": "<callback>",
+      "lines": 453,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-cas.integration.test.ts",
+      "line": 18,
+      "name": "<callback>",
+      "lines": 838,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-cas.integration.test.ts",
+      "line": 650,
+      "name": "<callback>",
+      "lines": 205,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+      "line": 20,
+      "name": "<callback>",
+      "lines": 909,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+      "line": 21,
+      "name": "<callback>",
+      "lines": 172,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+      "line": 422,
+      "name": "<callback>",
+      "lines": 179,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+      "line": 33,
+      "name": "<callback>",
+      "lines": 578,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+      "line": 34,
+      "name": "<callback>",
+      "lines": 279,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+      "line": 314,
+      "name": "<callback>",
+      "lines": 296,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+      "line": 28,
+      "name": "<callback>",
+      "lines": 550,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+      "line": 71,
+      "name": "<callback>",
+      "lines": 169,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+      "line": 241,
+      "name": "<callback>",
+      "lines": 283,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+      "line": 166,
+      "name": "<callback>",
+      "lines": 1054,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+      "line": 212,
+      "name": "<callback>",
+      "lines": 542,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 9,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+      "line": 884,
+      "name": "<callback>",
+      "lines": 335,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 9,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-observations.integration.test.ts",
+      "line": 164,
+      "name": "<callback>",
+      "lines": 1207,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+      "line": 44,
+      "name": "<callback>",
+      "lines": 1032,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+      "line": 231,
+      "name": "<callback>",
+      "lines": 233,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 2,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+      "line": 537,
+      "name": "<callback>",
+      "lines": 538,
+      "catches": 0,
+      "nesting": 5,
+      "branches": 10,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/coordinator-run-store-wakeups.integration.test.ts",
+      "line": 17,
+      "name": "<callback>",
+      "lines": 182,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/execution-acceptance-capacity.integration.test.ts",
+      "line": 30,
+      "name": "<callback>",
+      "lines": 441,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/execution-acceptance-notifications.integration.test.ts",
+      "line": 30,
+      "name": "<callback>",
+      "lines": 369,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/execution-acceptance-persistence.integration.test.ts",
+      "line": 34,
+      "name": "<callback>",
+      "lines": 383,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/execution-acceptance-security.integration.test.ts",
+      "line": 35,
+      "name": "<callback>",
+      "lines": 349,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/execution-value-persistence.integration.test.ts",
+      "line": 240,
+      "name": "<callback>",
+      "lines": 249,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/failure-notification-completion-store.test.ts",
+      "line": 63,
+      "name": "<callback>",
+      "lines": 246,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/identity-workspace.integration.test.ts",
+      "line": 203,
+      "name": "<callback>",
+      "lines": 793,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/persisted-workflow-checkpoint.test.ts",
+      "line": 30,
+      "name": "<callback>",
+      "lines": 294,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/postgres-telemetry.test.ts",
+      "line": 165,
+      "name": "<callback>",
+      "lines": 307,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-execution.integration.test.ts",
+      "line": 236,
+      "name": "<callback>",
+      "lines": 395,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-execution.integration.test.ts",
+      "line": 362,
+      "name": "<callback>",
+      "lines": 160,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-retention-migration.integration.test.ts",
+      "line": 91,
+      "name": "<callback>",
+      "lines": 194,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-retention-migration.integration.test.ts",
+      "line": 92,
+      "name": "<callback>",
+      "lines": 192,
+      "catches": 3,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-worker-artifact-retention.integration.test.ts",
+      "line": 54,
+      "name": "<callback>",
+      "lines": 336,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-worker-artifact-retention.integration.test.ts",
+      "line": 214,
+      "name": "<callback>",
+      "lines": 175,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-worker-attempt-lifecycle.integration.test.ts",
+      "line": 33,
+      "name": "<callback>",
+      "lines": 423,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-worker-attempt-lifecycle.integration.test.ts",
+      "line": 280,
+      "name": "<callback>",
+      "lines": 175,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/preview-worker-reconciliation.integration.test.ts",
+      "line": 27,
+      "name": "<callback>",
+      "lines": 422,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/published-workflow-reader.integration.test.ts",
+      "line": 192,
+      "name": "<callback>",
+      "lines": 217,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/q9-bounded-work.test.ts",
+      "line": 288,
+      "name": "<callback>",
+      "lines": 242,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-artifacts.integration.test.ts",
+      "line": 147,
+      "name": "<callback>",
+      "lines": 896,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-artifacts.integration.test.ts",
+      "line": 316,
+      "name": "<callback>",
+      "lines": 231,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-control-foundation-migration.integration.test.ts",
+      "line": 221,
+      "name": "<callback>",
+      "lines": 513,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-control-foundation-migration.integration.test.ts",
+      "line": 273,
+      "name": "<callback>",
+      "lines": 193,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 1,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-execution-purge.integration.test.ts",
+      "line": 19,
+      "name": "<callback>",
+      "lines": 593,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-execution-purge.integration.test.ts",
+      "line": 20,
+      "name": "<callback>",
+      "lines": 591,
+      "catches": 2,
+      "nesting": 3,
+      "branches": 3,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-inventory.integration.test.ts",
+      "line": 17,
+      "name": "<callback>",
+      "lines": 212,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-legal-hold.integration.test.ts",
+      "line": 17,
+      "name": "<callback>",
+      "lines": 192,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-legal-hold.integration.test.ts",
+      "line": 18,
+      "name": "<callback>",
+      "lines": 190,
+      "catches": 3,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-replay-lineage.integration.test.ts",
+      "line": 220,
+      "name": "<callback>",
+      "lines": 393,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-scheduling.integration.test.ts",
+      "line": 17,
+      "name": "<callback>",
+      "lines": 173,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/retention-scheduling.integration.test.ts",
+      "line": 18,
+      "name": "<callback>",
+      "lines": 171,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/rls.integration.test.ts",
+      "line": 134,
+      "name": "<callback>",
+      "lines": 203,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/schedule-triggers-part-2.integration.test.ts",
+      "line": 61,
+      "name": "<callback>",
+      "lines": 328,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/schedule-triggers.integration.test.ts",
+      "line": 34,
+      "name": "<callback>",
+      "lines": 388,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/stored-execution-value.test.ts",
+      "line": 12,
+      "name": "<callback>",
+      "lines": 351,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/support/control-ledger-coordinator.integration.support.ts",
+      "line": 155,
+      "name": "createControlLedgerCoordinatorTestEnvironment",
+      "lines": 171,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/support/schedule-triggers.integration.support.ts",
+      "line": 20,
+      "name": "createScheduleTriggerTestEnvironment",
+      "lines": 300,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/support/transport.integration.support.ts",
+      "line": 12,
+      "name": "createTransportTestEnvironment",
+      "lines": 170,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/transport-part-2.integration.test.ts",
+      "line": 35,
+      "name": "<callback>",
+      "lines": 303,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/transport.integration.test.ts",
+      "line": 71,
+      "name": "<callback>",
+      "lines": 876,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/webhook-triggers.integration.test.ts",
+      "line": 323,
+      "name": "<callback>",
+      "lines": 1248,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/webhook-triggers.integration.test.ts",
+      "line": 979,
+      "name": "<callback>",
+      "lines": 196,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-atomicity.integration.test.ts",
+      "line": 22,
+      "name": "<callback>",
+      "lines": 261,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-coordination.integration.test.ts",
+      "line": 28,
+      "name": "<callback>",
+      "lines": 388,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-drafts.integration.test.ts",
+      "line": 22,
+      "name": "<callback>",
+      "lines": 394,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-lifecycle.integration.test.ts",
+      "line": 29,
+      "name": "<callback>",
+      "lines": 275,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-lifecycle.integration.test.ts",
+      "line": 131,
+      "name": "<callback>",
+      "lines": 172,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-publication.integration.test.ts",
+      "line": 35,
+      "name": "<callback>",
+      "lines": 465,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-publication.integration.test.ts",
+      "line": 332,
+      "name": "<callback>",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-authoring-version-restore.integration.test.ts",
+      "line": 228,
+      "name": "<callback>",
+      "lines": 466,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workflow-run-api.integration.test.ts",
+      "line": 292,
+      "name": "<callback>",
+      "lines": 469,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-lifecycle-command-intents.integration.test.ts",
+      "line": 75,
+      "name": "<callback>",
+      "lines": 187,
+      "catches": 1,
+      "nesting": 1,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-lifecycle-command-intents.integration.test.ts",
+      "line": 273,
+      "name": "<callback>",
+      "lines": 459,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+      "line": 185,
+      "name": "<callback>",
+      "lines": 751,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+      "line": 284,
+      "name": "<callback>",
+      "lines": 171,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 6,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+      "line": 522,
+      "name": "<callback>",
+      "lines": 294,
+      "catches": 3,
+      "nesting": 2,
+      "branches": 4,
+      "test": true
+    },
+    {
+      "file": "packages/database/test/workspace-transaction-engine.test.ts",
+      "line": 25,
+      "name": "<callback>",
+      "lines": 595,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/integrations/src/http-request/executor.ts",
+      "line": 162,
+      "name": "executeHttpRequest",
+      "lines": 160,
+      "catches": 3,
+      "nesting": 3,
+      "branches": 23,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/src/http-request/executor.ts",
+      "line": 427,
+      "name": "consumeResponseBody",
+      "lines": 51,
+      "catches": 1,
+      "nesting": 5,
+      "branches": 4,
+      "test": false
+    },
+    {
+      "file": "packages/integrations/test/email-send-notification.test.ts",
+      "line": 106,
+      "name": "<callback>",
+      "lines": 761,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/integrations/test/http-outcome-policy.test.ts",
+      "line": 17,
+      "name": "<callback>",
+      "lines": 177,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/integrations/test/http-request.test.ts",
+      "line": 241,
+      "name": "<callback>",
+      "lines": 940,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/integrations/test/secure-http.test.ts",
+      "line": 155,
+      "name": "<callback>",
+      "lines": 902,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/integrations/test/slack-send-message.test.ts",
+      "line": 88,
+      "name": "<callback>",
+      "lines": 668,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/node-catalog/test/release-history.test.ts",
+      "line": 561,
+      "name": "<callback>",
+      "lines": 521,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/node-catalog/test/server-registry.test.ts",
+      "line": 26,
+      "name": "<callback>",
+      "lines": 195,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/node-sdk/src/server.ts",
+      "line": 232,
+      "name": "createNodeRegistry",
+      "lines": 295,
+      "catches": 1,
+      "nesting": 3,
+      "branches": 18,
+      "test": false
+    },
+    {
+      "file": "packages/node-sdk/src/server.ts",
+      "line": 431,
+      "name": "execute",
+      "lines": 84,
+      "catches": 4,
+      "nesting": 1,
+      "branches": 10,
+      "test": false
+    },
+    {
+      "file": "packages/node-sdk/test/registry.test.ts",
+      "line": 108,
+      "name": "<callback>",
+      "lines": 303,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/node-sdk/test/registry.test.ts",
+      "line": 412,
+      "name": "<callback>",
+      "lines": 720,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/node-sdk/test/registry.test.ts",
+      "line": 665,
+      "name": "<callback>",
+      "lines": 160,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/nodes-core/test/orchestration-nodes.test.ts",
+      "line": 32,
+      "name": "<callback>",
+      "lines": 222,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/nodes-core/test/retained-registry.test.ts",
+      "line": 33,
+      "name": "<callback>",
+      "lines": 181,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/nodes-core/test/validate.test.ts",
+      "line": 137,
+      "name": "<callback>",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/observability/src/transport-metrics.ts",
+      "line": 197,
+      "name": "createTransportMetrics",
+      "lines": 216,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 1,
+      "test": false
+    },
+    {
+      "file": "packages/observability/test/logger.test.ts",
+      "line": 37,
+      "name": "<callback>",
+      "lines": 265,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/observability/test/operations-assets.test.ts",
+      "line": 10,
+      "name": "<callback>",
+      "lines": 223,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/observability/test/operations-assets.test.ts",
+      "line": 11,
+      "name": "<callback>",
+      "lines": 221,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 3,
+      "test": true
+    },
+    {
+      "file": "packages/observability/test/telemetry-http-sanitization.test.ts",
+      "line": 93,
+      "name": "<callback>",
+      "lines": 332,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/observability/test/telemetry-http-sanitization.test.ts",
+      "line": 182,
+      "name": "<callback>",
+      "lines": 242,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 2,
+      "test": true
+    },
+    {
+      "file": "packages/observability/test/transport-metrics.test.ts",
+      "line": 67,
+      "name": "<callback>",
+      "lines": 289,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/queue/test/consumer.test.ts",
+      "line": 131,
+      "name": "<callback>",
+      "lines": 475,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/queue/test/contracts.test.ts",
+      "line": 29,
+      "name": "<callback>",
+      "lines": 253,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/queue/test/producer.test.ts",
+      "line": 81,
+      "name": "<callback>",
+      "lines": 283,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/rate-limit/test/policy.test.ts",
+      "line": 24,
+      "name": "<callback>",
+      "lines": 184,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/src/checkpoint-shared.ts",
+      "line": 101,
+      "name": "stringBytes",
+      "lines": 27,
+      "catches": 0,
+      "nesting": 7,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/checkpoint-v1-loop.ts",
+      "line": 14,
+      "name": "parseLoop",
+      "lines": 185,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 20,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/checkpoint-v1.ts",
+      "line": 42,
+      "name": "parseCheckpointV1Boundary",
+      "lines": 248,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 21,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/coordinator-observations.ts",
+      "line": 155,
+      "name": "forEachCoordinatorObservations",
+      "lines": 196,
+      "catches": 0,
+      "nesting": 3,
+      "branches": 34,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/executable-validation.ts",
+      "line": 59,
+      "name": "addString",
+      "lines": 27,
+      "catches": 0,
+      "nesting": 7,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+      "line": 20,
+      "name": "buildWorkflowTransitionPlan",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 2,
+      "branches": 16,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/src/workflow-transition-stops.ts",
+      "line": 14,
+      "name": "applyWorkflowStops",
+      "lines": 152,
+      "catches": 0,
+      "nesting": 5,
+      "branches": 29,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-engine/test/advance-workflow-branching.test.ts",
+      "line": 15,
+      "name": "<callback>",
+      "lines": 698,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/advance-workflow-transitions.test.ts",
+      "line": 18,
+      "name": "<callback>",
+      "lines": 400,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/checkpoint-risk-branches.test.ts",
+      "line": 74,
+      "name": "<callback>",
+      "lines": 323,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/checkpoint-seam.test.ts",
+      "line": 25,
+      "name": "<callback>",
+      "lines": 723,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-branching.test.ts",
+      "line": 19,
+      "name": "<callback>",
+      "lines": 709,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-branching.test.ts",
+      "line": 428,
+      "name": "<callback>",
+      "lines": 221,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 3,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-controls.test.ts",
+      "line": 12,
+      "name": "<callback>",
+      "lines": 473,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+      "line": 19,
+      "name": "<callback>",
+      "lines": 594,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+      "line": 79,
+      "name": "<callback>",
+      "lines": 212,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 5,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+      "line": 292,
+      "name": "<callback>",
+      "lines": 174,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+      "line": 13,
+      "name": "<callback>",
+      "lines": 911,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+      "line": 14,
+      "name": "<callback>",
+      "lines": 909,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 16,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-identity.test.ts",
+      "line": 22,
+      "name": "<callback>",
+      "lines": 694,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-inputs.test.ts",
+      "line": 20,
+      "name": "<callback>",
+      "lines": 523,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-inputs.test.ts",
+      "line": 127,
+      "name": "<callback>",
+      "lines": 278,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/executable-workflow-outcomes.test.ts",
+      "line": 13,
+      "name": "<callback>",
+      "lines": 594,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/nested-parallel-admission.test.ts",
+      "line": 318,
+      "name": "<callback>",
+      "lines": 381,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/operation-risk-branches.test.ts",
+      "line": 55,
+      "name": "<callback>",
+      "lines": 322,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/retry-wait-cancellation.test.ts",
+      "line": 16,
+      "name": "<callback>",
+      "lines": 173,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/skipped-parallel-merge.test.ts",
+      "line": 131,
+      "name": "<callback>",
+      "lines": 172,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/skipped-parallel-merge.test.ts",
+      "line": 361,
+      "name": "runBypass",
+      "lines": 267,
+      "catches": 0,
+      "nesting": 1,
+      "branches": 6,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/state-machine-model.test.ts",
+      "line": 193,
+      "name": "<callback>",
+      "lines": 396,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-engine/test/workflow-transition-risk-behavior.test.ts",
+      "line": 41,
+      "name": "<callback>",
+      "lines": 443,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/src/expressions/evaluator.ts",
+      "line": 201,
+      "name": "#run",
+      "lines": 167,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/src/graph/preflight.ts",
+      "line": 203,
+      "name": "preflightWorkflowGraph",
+      "lines": 74,
+      "catches": 0,
+      "nesting": 6,
+      "branches": 20,
+      "test": false
+    },
+    {
+      "file": "packages/workflow-model/test/expressions.test.ts",
+      "line": 18,
+      "name": "<callback>",
+      "lines": 581,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/test/failure-notification.test.ts",
+      "line": 54,
+      "name": "<callback>",
+      "lines": 189,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/test/graph.test.ts",
+      "line": 37,
+      "name": "<callback>",
+      "lines": 355,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/test/package-contract.test.ts",
+      "line": 13,
+      "name": "<callback>",
+      "lines": 268,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/test/workflow-graph-contract.test.ts",
+      "line": 188,
+      "name": "<callback>",
+      "lines": 298,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    },
+    {
+      "file": "packages/workflow-model/test/workflow-graph-contract.test.ts",
+      "line": 487,
+      "name": "<callback>",
+      "lines": 225,
+      "catches": 0,
+      "nesting": 0,
+      "branches": 0,
+      "test": true
+    }
+  ]
+}

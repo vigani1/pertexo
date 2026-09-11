@@ -1,0 +1,5814 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "inventory": "docs/backend-readability-inventory.json",
+    "schemaVersion": 1,
+    "conditionRange": "C001-C131",
+    "functionRange": "F001-F364",
+    "immutableSnapshotHead": "0710322c3b541000d4c260c1143081278b95315b"
+  },
+  "summary": {
+    "candidates": 495,
+    "changed": 63,
+    "retained": 432,
+    "blocked": 0
+  },
+  "reasonDefinitions": {
+    "changed-ordered-validation": "The mixed predicate was replaced by ordered, domain-named validation phases while preserving the original first failure, bounds, identity binding, and independent evidence checks.",
+    "changed-readiness-proof": "Snapshot acquisition is now separate from named release, role, forbidden-grant, and capability assertions; the same single transaction, SQL order, and fail-closed result remain.",
+    "changed-consistency-phases": "The orchestration now names its typed admission, identity, control-state, or completion-policy phases while retaining one transaction/snapshot and the original query and mutation order.",
+    "changed-workflow-proof": "The coupled workflow proof now exposes join identity, invocation scope, iteration, and loop topology phases while retaining cached traversal, compatibility allowances, bounds, and first failure.",
+    "changed-owned-lifetime": "Resource acquisition, operation, and ordered cleanup are now expressed through owner-local phases with original/cleanup error identity, all-attempted behavior, cancellation, and idempotence preserved.",
+    "changed-provider-lifetime": "Provider-specific admission and outcome policy remain local while credential/body ownership is bounded by an explicit phase that always zeroizes or closes the owned resource.",
+    "changed-moved-q9-owner": "The snapshot locator moved during the preceding Q9 correction; its replacement explicitly owns stream/body cleanup and preserves synchronous throws, rejected writes, bounds, and original error precedence.",
+    "retained-test-suite": "This is a describe/test callback that groups independently named scenarios; setup and oracle values remain visible in each case, and extracting the container would add navigation without reducing behavioral reasoning.",
+    "retained-test-fixture": "This test helper is the local deterministic fixture/emulator owner used by named scenarios; its explicit state and failure injection are part of the test oracle and a generic helper would hide them.",
+    "retained-declarative-composition": "This function is a declarative module, registry, metrics, or capability composition root whose length comes from explicit field-to-owner wiring; splitting it would scatter the dependency map without simplifying control flow.",
+    "retained-transaction-proof": "The function keeps one transaction, lock/lease, query order, and atomic mutation proof visible. Further extraction would pass most of the transaction state through helpers and obscure failure or consistency ordering.",
+    "retained-bounded-parser": "The explicit branches form a bounded parser/traversal with contract-specific diagnostics and first-failure order; a data-driven or shared validator would obscure limits, compatibility, or cached traversal state.",
+    "retained-state-machine": "The branches are the local domain state machine and share evolving checkpoint/lease/coordinator state; extraction would fragment transition precedence or require a callback-heavy descriptor.",
+    "retained-resource-owner": "This is the existing resource owner: acquisition state, primary failure, all required cleanup attempts, and combined-failure ordering are intentionally visible together; a shared lifecycle framework would add indirection.",
+    "retained-security-boundary": "The compound check is one fail-closed cross-field security/identity admission invariant with a single public error contract; splitting it would not remove mental execution and could alter validation precedence.",
+    "retained-independent-policy": "The condition is a domain-local compatibility, integrity, or policy rule with distinct bounds and diagnostics; equal-looking literals or checks elsewhere do not share its authority.",
+    "retained-benchmark-summary-agreement": "The short predicate compares every named statistic with an independently recomputed summary; keeping the metric iteration beside the single mismatch error makes the oracle more explicit than a one-use wrapper.",
+    "retained-benchmark-measurement-shape": "The homogeneous guard admits one bounded SQL or sampled-observation record before later calculations. Its fields, numeric bounds, and one public diagnostic are clearer together than split across one-use predicates.",
+    "retained-benchmark-observation-sample": "The local sample guard applies the same finite, non-negative rule to the four explicitly named database metrics after validating the timestamp; extracting its callback would hide the measured fields without reducing branching.",
+    "retained-scenario-identity": "The predicate is the single scenario-name identity proof: map cardinality detects duplicates while the adjacent callback rejects missing names. A helper would separate the two halves of the same index invariant.",
+    "retained-compatibility-target-identity": "The predicate proves that the exact epoch, fingerprint, and canonical catalog target belongs to the already parsed supported set before any database query. Keeping all three identity fields together preserves the fail-closed preactivation boundary.",
+    "retained-small-wrapper": "The flagged size comes from a cohesive public facade over private operations or explicit result mapping; the wrapper has no mixed lifetime or policy decision that a further split would clarify."
+  },
+  "conditions": [
+    {
+      "id": "C001",
+      "status": "changed",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/app.ts",
+        "line": 376,
+        "symbol": "assertValidRuntimeSources"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C002",
+      "status": "changed",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+        "line": 144,
+        "symbol": "authorizationUrl"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C003",
+      "status": "changed",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+        "line": 185,
+        "symbol": "exchangeCode"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C004",
+      "status": "changed",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+        "line": 382,
+        "symbol": "validateEndpointProtocols"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C005",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/workspaces/authorize-workspace.ts",
+        "line": 196,
+        "symbol": "assertAuthorizedWorkspaceContext"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "C006",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+        "line": 200,
+        "symbol": "<callback@182>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "C007",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/node-attempt-runtime.ts",
+        "line": 363,
+        "symbol": "createNodeAttemptRuntime"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "C008",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/triggers/trigger-runtime.ts",
+        "line": 71,
+        "symbol": "validateOptions"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C009",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/ecs/validate-deployment.mjs",
+        "line": 189,
+        "symbol": "<module>"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C010",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/ecs/validate-deployment.mjs",
+        "line": 273,
+        "symbol": "<module>"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C011",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/ecs/validate-deployment.mjs",
+        "line": 312,
+        "symbol": "<module>"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C012",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/ecs/validate-deployment.mjs",
+        "line": 323,
+        "symbol": "<module>"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C013",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/exercises/run-http-exercise.mjs",
+        "line": 42,
+        "symbol": "parseResponsePolicy"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C014",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/exercises/run-http-exercise.mjs",
+        "line": 57,
+        "symbol": "parseResponsePolicy"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C015",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/exercises/run-http-exercise.mjs",
+        "line": 115,
+        "symbol": "parseProfile"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C016",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/exercises/run-http-exercise.mjs",
+        "line": 210,
+        "symbol": "requiredSecret"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C017",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 19,
+        "symbol": "requireSummary"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C018",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 63,
+        "symbol": "requireSummaryMatches"
+      },
+      "reasonCode": "retained-benchmark-summary-agreement"
+    },
+    {
+      "id": "C019",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 81,
+        "symbol": "requireDatabaseWorkload"
+      },
+      "reasonCode": "retained-benchmark-measurement-shape"
+    },
+    {
+      "id": "C020",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 94,
+        "symbol": "requireDatabaseObservations"
+      },
+      "reasonCode": "retained-benchmark-measurement-shape"
+    },
+    {
+      "id": "C021",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 105,
+        "symbol": "requireDatabaseObservations"
+      },
+      "reasonCode": "retained-benchmark-observation-sample"
+    },
+    {
+      "id": "C022",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 146,
+        "symbol": "scenarioMap"
+      },
+      "reasonCode": "retained-scenario-identity"
+    },
+    {
+      "id": "C023",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 168,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C024",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 230,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C025",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 248,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C026",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 273,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C027",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 302,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C028",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 329,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C029",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 415,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C030",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 446,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C031",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 477,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C032",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 497,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C033",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 562,
+        "symbol": "assertEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C034",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/postgres-evidence.mjs",
+        "line": 36,
+        "symbol": "validatePostgresEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C035",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 168,
+        "symbol": "parseOperationSamples"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C036",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 247,
+        "symbol": "validateManifest"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C037",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 404,
+        "symbol": "validateOperationContract"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C038",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.mjs",
+        "line": 123,
+        "symbol": "assertProducedResultInterval"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C039",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.mjs",
+        "line": 166,
+        "symbol": "produceIntegrationEvidenceArtifact"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C040",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.mjs",
+        "line": 211,
+        "symbol": "validatedIntegrationEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C041",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.mjs",
+        "line": 226,
+        "symbol": "validatedIntegrationEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "C042",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.mjs",
+        "line": 306,
+        "symbol": "validatedReviews"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C043",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/validate-complexity.mjs",
+        "line": 32,
+        "symbol": "branchIncrement"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C044",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/validate-database-schema.mjs",
+        "line": 66,
+        "symbol": "validateDatabaseSchemaOwnership"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C045",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/verify-mutation-sensitivity.mjs",
+        "line": 279,
+        "symbol": "validateMutationDefinitions"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C046",
+      "status": "retained",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/artifact-store/src/control-ledger.ts",
+        "line": 702,
+        "symbol": "reconcile"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C047",
+      "status": "retained",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/artifact-store/src/dual-region-control-ledger.ts",
+        "line": 395,
+        "symbol": "repairableCommonPrefix"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C048",
+      "status": "retained",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/artifact-store/src/store.ts",
+        "line": 263,
+        "symbol": "metadataFromHead"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C049",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/authoring/workflow-authoring.ts",
+        "line": 391,
+        "symbol": "createWorkflowAuthoringDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "C050",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/compatibility/compatibility-release.ts",
+        "line": 212,
+        "symbol": "checkCompatibilityReleasePreactivationTarget"
+      },
+      "reasonCode": "retained-compatibility-target-identity"
+    },
+    {
+      "id": "C051",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/compatibility/persisted-workflow-checkpoint-refinements.ts",
+        "line": 152,
+        "symbol": "refineLoopsBudgetAndWaits"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C052",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+        "line": 193,
+        "symbol": "<callback@185>"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C053",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+        "line": 267,
+        "symbol": "refineInvocationIndexes"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C054",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+        "line": 385,
+        "symbol": "parseInitialWorkflowCheckpoint"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C055",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-delivery.ts",
+        "line": 60,
+        "symbol": "validateAuthoritativeAdvanceDelivery"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C056",
+      "status": "retained",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 237,
+        "symbol": "attemptFact"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C057",
+      "status": "retained",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 258,
+        "symbol": "validatePersistedFactBatch"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C058",
+      "status": "changed",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 571,
+        "symbol": "<callback@463>"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "C059",
+      "status": "changed",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 630,
+        "symbol": "<callback@463>"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "C060",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-plan.ts",
+        "line": 174,
+        "symbol": "validateTransitionDelta"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C061",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-terminal.ts",
+        "line": 44,
+        "symbol": "persistFailureNotificationIntent"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "C062",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/dispatcher.ts",
+        "line": 184,
+        "symbol": "checkDispatcherReadiness"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C063",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/execution-acceptance.ts",
+        "line": 191,
+        "symbol": "resolveWorkflowFailureNotificationPolicy"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C064",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/execution-acceptance.ts",
+        "line": 217,
+        "symbol": "resolveWorkflowFailureNotificationPolicy"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C065",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/failure-notifications.ts",
+        "line": 77,
+        "symbol": "<callback@57>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C066",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-delivery.ts",
+        "line": 50,
+        "symbol": "validateDelivery"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C067",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+        "line": 40,
+        "symbol": "assertPermittedUpstreamInvocationScopes"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C068",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+        "line": 182,
+        "symbol": "projectStructuredCollection"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C069",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-outcomes.ts",
+        "line": 111,
+        "symbol": "duplicateCompletion"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C070",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-outcomes.ts",
+        "line": 140,
+        "symbol": "assertActiveLease"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C071",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-delivery.ts",
+        "line": 125,
+        "symbol": "validatePreviewDelivery"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C072",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-delivery.ts",
+        "line": 175,
+        "symbol": "validatePreviewReconciliationDelivery"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C073",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/stored-execution-value.ts",
+        "line": 57,
+        "symbol": "jsonStringBytes"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C074",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/stored-execution-value.ts",
+        "line": 223,
+        "symbol": "cloneInlineJson"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C075",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/unknown-outcome-reconciliation.ts",
+        "line": 100,
+        "symbol": "<callback@77>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C076",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 249,
+        "symbol": "assertRecord"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C077",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 688,
+        "symbol": "<callback@678>"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C078",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 775,
+        "symbol": "<callback@757>"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C079",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 822,
+        "symbol": "command"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "C080",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+        "line": 81,
+        "symbol": "validateDelivery"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C081",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+        "line": 154,
+        "symbol": "verifyRecord"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C082",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-purge.ts",
+        "line": 192,
+        "symbol": "verifyRecord"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C083",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-purge.ts",
+        "line": 538,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "C084",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-purge.ts",
+        "line": 738,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "C085",
+      "status": "changed",
+      "workstream": "R02",
+      "baselineLocator": {
+        "file": "packages/database/src/operator/operator-command-runtime.ts",
+        "line": 221,
+        "symbol": "checkReadiness"
+      },
+      "reasonCode": "changed-readiness-proof"
+    },
+    {
+      "id": "C086",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/operator/operator-run-replay.ts",
+        "line": 131,
+        "symbol": "<callback@115>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C087",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/platform/postgres-telemetry.ts",
+        "line": 278,
+        "symbol": "queryOperation"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C088",
+      "status": "changed",
+      "workstream": "R02",
+      "baselineLocator": {
+        "file": "packages/database/src/platform/readiness-probe.ts",
+        "line": 197,
+        "symbol": "assertDatabaseReadinessRow"
+      },
+      "reasonCode": "changed-readiness-proof"
+    },
+    {
+      "id": "C089",
+      "status": "changed",
+      "workstream": "R02",
+      "baselineLocator": {
+        "file": "packages/database/src/platform/readiness.ts",
+        "line": 348,
+        "symbol": "checkCompatibilityReleaseSchema"
+      },
+      "reasonCode": "changed-readiness-proof"
+    },
+    {
+      "id": "C090",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/workflow-triggers.ts",
+        "line": 128,
+        "symbol": "<callback@98>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C091",
+      "status": "retained",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http/address-policy.ts",
+        "line": 48,
+        "symbol": "ipv4Number"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "C092",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http/secure-http.ts",
+        "line": 465,
+        "symbol": "parseRequest"
+      },
+      "reasonCode": "changed-provider-lifetime"
+    },
+    {
+      "id": "C093",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http/secure-http.ts",
+        "line": 529,
+        "symbol": "parseHeaders"
+      },
+      "reasonCode": "changed-provider-lifetime",
+      "replacementLocator": {
+        "file": "packages/integrations/src/http/secure-http-request.ts",
+        "symbol": "parseHeaders"
+      }
+    },
+    {
+      "id": "C094",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http/secure-http.ts",
+        "line": 553,
+        "symbol": "parseSensitiveValues"
+      },
+      "reasonCode": "changed-provider-lifetime",
+      "replacementLocator": {
+        "file": "packages/integrations/src/http/secure-http-request.ts",
+        "symbol": "parseSensitiveValues"
+      }
+    },
+    {
+      "id": "C095",
+      "status": "retained",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/slack/executor.ts",
+        "line": 134,
+        "symbol": "execute"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "C096",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/node-sdk/src/definitions/schema-document.ts",
+        "line": 61,
+        "symbol": "inspectBoundedNodeJson"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C097",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/node-sdk/src/definitions/schema-document.ts",
+        "line": 150,
+        "symbol": "generateSchemaDocument"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C098",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/node-sdk/src/json-boundary.ts",
+        "line": 161,
+        "symbol": "canonicalizeBoundedJson"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C099",
+      "status": "retained",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/queue/src/consumer.ts",
+        "line": 236,
+        "symbol": "parseConsumerOptions"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C100",
+      "status": "retained",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/rate-limit/src/distributed-rate-limiter.ts",
+        "line": 103,
+        "symbol": "parseScriptResult"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C101",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/advance-workflow.ts",
+        "line": 64,
+        "symbol": "advanceWorkflowFromSchedulerState"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C102",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/coordinator-observations.ts",
+        "line": 47,
+        "symbol": "<callback@44>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C103",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/coordinator-observations.ts",
+        "line": 100,
+        "symbol": "<callback@44>"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C104",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-compilation.ts",
+        "line": 48,
+        "symbol": "executableNode"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C105",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-foundation.ts",
+        "line": 180,
+        "symbol": "validateGlobals"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C106",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-graph-boundary.ts",
+        "line": 151,
+        "symbol": "validatePin"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C107",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+        "line": 181,
+        "symbol": "assertBranchesDoNotReconverge"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C108",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+        "line": 213,
+        "symbol": "assertBranchesDoNotReconverge"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C109",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+        "line": 231,
+        "symbol": "assertBranchesDoNotReconverge"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C110",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-graph-rules.ts",
+        "line": 246,
+        "symbol": "assertExpressionPolicies"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C111",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-validation.ts",
+        "line": 63,
+        "symbol": "addString"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C112",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-validation.ts",
+        "line": 158,
+        "symbol": "assertSafeExecutableJson"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C113",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/graph-scheduler.ts",
+        "line": 65,
+        "symbol": "configuredBranchOutputPorts"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C114",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/graph-scheduler.ts",
+        "line": 96,
+        "symbol": "configuredParallelOutputPorts"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C115",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/operations.ts",
+        "line": 203,
+        "symbol": "assertCheckpointMatchesExecutable"
+      },
+      "reasonCode": "changed-workflow-proof",
+      "replacementLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+        "symbol": "assertInvocationBelongsToExecutable"
+      }
+    },
+    {
+      "id": "C116",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/operations.ts",
+        "line": 263,
+        "symbol": "assertCheckpointMatchesExecutable"
+      },
+      "reasonCode": "changed-workflow-proof",
+      "replacementLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+        "symbol": "assertInvocationIterationScopes"
+      }
+    },
+    {
+      "id": "C117",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/operations.ts",
+        "line": 289,
+        "symbol": "assertCheckpointMatchesExecutable"
+      },
+      "reasonCode": "changed-workflow-proof",
+      "replacementLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+        "symbol": "assertCheckpointLoopIdentity"
+      }
+    },
+    {
+      "id": "C118",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/persisted-observation-parser.ts",
+        "line": 88,
+        "symbol": "parseAttemptFailure"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C119",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/persisted-observation-parser.ts",
+        "line": 209,
+        "symbol": "parseWait"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C120",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/retries.ts",
+        "line": 87,
+        "symbol": "decideRetry"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C121",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/scheduling.ts",
+        "line": 104,
+        "symbol": "recordBranchDisposition"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C122",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/scheduling.ts",
+        "line": 197,
+        "symbol": "admitLoopIterations"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C123",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/transition-decisions.ts",
+        "line": 101,
+        "symbol": "deriveTerminalRunStatus"
+      },
+      "reasonCode": "retained-independent-policy"
+    },
+    {
+      "id": "C124",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
+        "line": 141,
+        "symbol": "applyLoopStart"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C125",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+        "line": 120,
+        "symbol": "buildWorkflowTransitionPlan"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C126",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/workflow-transition-state.ts",
+        "line": 113,
+        "symbol": "declaredJoin"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "C127",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/expressions/evaluator.ts",
+        "line": 55,
+        "symbol": "<callback@40>"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C128",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/expressions/policy.ts",
+        "line": 178,
+        "symbol": "readJsonataAst"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C129",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/expressions/policy.ts",
+        "line": 228,
+        "symbol": "visit"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "C130",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/graph-validation.ts",
+        "line": 170,
+        "symbol": "validateLoopLimits"
+      },
+      "reasonCode": "changed-workflow-proof"
+    },
+    {
+      "id": "C131",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/package-contract.test.ts",
+        "line": 80,
+        "symbol": "<callback@52>"
+      },
+      "reasonCode": "retained-test-suite"
+    }
+  ],
+  "functions": [
+    {
+      "id": "F001",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/app.module.ts",
+        "line": 73,
+        "symbol": "register"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F002",
+      "status": "retained",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/app.ts",
+        "line": 107,
+        "symbol": "createApiApplication"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F003",
+      "status": "changed",
+      "workstream": "R07",
+      "baselineLocator": {
+        "file": "apps/api/src/connections/connection-testing.ts",
+        "line": 60,
+        "symbol": "execute"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "F004",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/executions/redis-run-event-source.ts",
+        "line": 64,
+        "symbol": "observeOperation"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F005",
+      "status": "changed",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/executions/run-event-stream.ts",
+        "line": 199,
+        "symbol": "streamRunEventFrames"
+      },
+      "reasonCode": "changed-moved-q9-owner",
+      "replacementLocator": {
+        "file": "apps/api/src/executions/run-event-stream.ts",
+        "symbol": "streamRunEventFrames / stream cleanup closures"
+      }
+    },
+    {
+      "id": "F006",
+      "status": "changed",
+      "workstream": "R04/R05",
+      "baselineLocator": {
+        "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+        "line": 178,
+        "symbol": "exchangeCode"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F007",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/identity-workspace/module.ts",
+        "line": 52,
+        "symbol": "register"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F008",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/identity/oidc.ts",
+        "line": 81,
+        "symbol": "startLogin"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "F009",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/identity/oidc.ts",
+        "line": 150,
+        "symbol": "completeLogin"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "F010",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/identity/session.ts",
+        "line": 81,
+        "symbol": "issue"
+      },
+      "reasonCode": "retained-security-boundary"
+    },
+    {
+      "id": "F011",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/api/src/main.ts",
+        "line": 10,
+        "symbol": "bootstrap"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F012",
+      "status": "changed",
+      "workstream": "R07",
+      "baselineLocator": {
+        "file": "apps/api/src/webhooks/ingress.ts",
+        "line": 96,
+        "symbol": "acceptWebhook"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "F013",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/api-bootstrap.test.ts",
+        "line": 166,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F014",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/api-config.test.ts",
+        "line": 5,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F015",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/artifacts/service.test.ts",
+        "line": 117,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F016",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/artifacts/transfer.integration.test.ts",
+        "line": 84,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F017",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/artifacts/transfer.integration.test.ts",
+        "line": 219,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F018",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/connections/controllers.test.ts",
+        "line": 68,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F019",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/connections/failure-notification-destinations.test.ts",
+        "line": 73,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F020",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/connections/http-stack.test.ts",
+        "line": 86,
+        "symbol": "connectionRuntime"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F021",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/connections/use-cases.test.ts",
+        "line": 151,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F022",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/executions/redis-run-event-source.test.ts",
+        "line": 44,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F023",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/executions/run-event-stream.resilience.integration.test.ts",
+        "line": 114,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F024",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/executions/run-event-stream.resilience.integration.test.ts",
+        "line": 138,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F025",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/executions/run-event-stream.test.ts",
+        "line": 120,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F026",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/http/problem-details.filter.test.ts",
+        "line": 53,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F027",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity-infrastructure/oidc-adapter.test.ts",
+        "line": 108,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F028",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity-workspace/controllers.test.ts",
+        "line": 41,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F029",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity-workspace/real-api.integration.test.ts",
+        "line": 117,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F030",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity-workspace/real-api.integration.test.ts",
+        "line": 219,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F031",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity-workspace/use-cases.test.ts",
+        "line": 103,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F032",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity/oidc.test.ts",
+        "line": 122,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F033",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/identity/session.test.ts",
+        "line": 54,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F034",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/node-testing/controller.test.ts",
+        "line": 138,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F035",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/node-testing/use-case.test.ts",
+        "line": 144,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F036",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+        "line": 178,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F037",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/platform/compatibility-rollout.integration.test.ts",
+        "line": 182,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F038",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/platform/observability/api-metrics.test.ts",
+        "line": 10,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F039",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/platform/observability/api-metrics.test.ts",
+        "line": 11,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F040",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/rate-limit/interceptor.test.ts",
+        "line": 77,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F041",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/support/artifact-transfer.integration.support.ts",
+        "line": 261,
+        "symbol": "createArtifactTransferApiFixture"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F042",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/webhooks/direct-webhook.integration.test.ts",
+        "line": 152,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F043",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/webhooks/direct-webhook.integration.test.ts",
+        "line": 283,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F044",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/webhooks/ingress.test.ts",
+        "line": 43,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F045",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-authoring/controllers.test.ts",
+        "line": 98,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F046",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-authoring/lifecycle.integration.test.ts",
+        "line": 38,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F047",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-authoring/use-cases.test.ts",
+        "line": 130,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F048",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-authoring/version-restore.integration.test.ts",
+        "line": 15,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F049",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-runs/controllers.test.ts",
+        "line": 121,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F050",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-runs/postgres-persistence.test.ts",
+        "line": 196,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F051",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-runs/sse-transport.test.ts",
+        "line": 32,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F052",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workflow-runs/use-cases.test.ts",
+        "line": 86,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F053",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/api/test/workspaces/authorization.test.ts",
+        "line": 42,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F054",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/lifecycle-command/test/main.test.ts",
+        "line": 159,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F055",
+      "status": "changed",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/operator-command/src/run.ts",
+        "line": 42,
+        "symbol": "runOperatorCommand"
+      },
+      "reasonCode": "changed-owned-lifetime"
+    },
+    {
+      "id": "F056",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/operator-command/test/config.test.ts",
+        "line": 7,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F057",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/recovery/src/main.ts",
+        "line": 11,
+        "symbol": "bootstrap"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F058",
+      "status": "changed",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/recovery/src/restore-before-serve.ts",
+        "line": 88,
+        "symbol": "restoreBeforeServe"
+      },
+      "reasonCode": "changed-owned-lifetime"
+    },
+    {
+      "id": "F059",
+      "status": "retained",
+      "workstream": "R10",
+      "baselineLocator": {
+        "file": "apps/retention/src/metrics.ts",
+        "line": 138,
+        "symbol": "createRetentionMetrics"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F060",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/retention/test/run.test.ts",
+        "line": 14,
+        "symbol": "resources"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F061",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/retention/test/run.test.ts",
+        "line": 188,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F062",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/app.ts",
+        "line": 26,
+        "symbol": "createWorkerApplication"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F063",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+        "line": 266,
+        "symbol": "deliverSlack"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F064",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+        "line": 340,
+        "symbol": "deliverEmail"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F065",
+      "status": "changed",
+      "workstream": "R06",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/node-attempt-handler.ts",
+        "line": 139,
+        "symbol": "createNodeAttemptHandler"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F066",
+      "status": "changed",
+      "workstream": "R06",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/node-attempt-handler.ts",
+        "line": 152,
+        "symbol": "handle"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F067",
+      "status": "changed",
+      "workstream": "R06",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/preview-attempt-handler.ts",
+        "line": 267,
+        "symbol": "createPreviewAttemptHandler"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F068",
+      "status": "changed",
+      "workstream": "R06",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/preview-attempt-handler.ts",
+        "line": 280,
+        "symbol": "handle"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F069",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/execution/preview-maintenance-runtime.ts",
+        "line": 47,
+        "symbol": "createPreviewMaintenanceRuntime"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F070",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/main.ts",
+        "line": 11,
+        "symbol": "bootstrap"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F071",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "apps/worker/src/triggers/trigger-runtime.ts",
+        "line": 87,
+        "symbol": "createTriggerRuntime"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F072",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/artifact-reference.integration.test.ts",
+        "line": 77,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F073",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/artifact-reference.integration.test.ts",
+        "line": 78,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F074",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts",
+        "line": 50,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F075",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts",
+        "line": 57,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F076",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+        "line": 32,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F077",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+        "line": 39,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F078",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+        "line": 112,
+        "symbol": "runFixture"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F079",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-linear-execution.integration.test.ts",
+        "line": 40,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F080",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-linear-execution.integration.test.ts",
+        "line": 47,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F081",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-parallel-recovery.integration.test.ts",
+        "line": 25,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F082",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-redelivery.integration.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F083",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-retry-wait.integration.test.ts",
+        "line": 39,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F084",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-consumer-retry-wait.integration.test.ts",
+        "line": 46,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F085",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-engine.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F086",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-handler.test.ts",
+        "line": 58,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F087",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/coordinator-runtime.test.ts",
+        "line": 23,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F088",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/failure-notification-delivery.test.ts",
+        "line": 105,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F089",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+        "line": 257,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F090",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+        "line": 258,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F091",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+        "line": 1147,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F092",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+        "line": 2029,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F093",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/http-node-attempt.integration.test.ts",
+        "line": 2198,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F094",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/node-attempt-engine.test.ts",
+        "line": 200,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F095",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/node-attempt-handler-part-2.test.ts",
+        "line": 77,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F096",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/node-attempt-handler.test.ts",
+        "line": 28,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F097",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/node-attempt-runtime.test.ts",
+        "line": 174,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F098",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/node-runtime-capabilities.test.ts",
+        "line": 56,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F099",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/outbox-dispatcher.test.ts",
+        "line": 158,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F100",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-attempt-handler.test.ts",
+        "line": 158,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F101",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-attempt-runtime.test.ts",
+        "line": 62,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F102",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-consumer-crash-boundaries.integration.test.ts",
+        "line": 37,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F103",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-consumer-crash-boundaries.integration.test.ts",
+        "line": 38,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F104",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts",
+        "line": 32,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F105",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts",
+        "line": 33,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F106",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/schedule-trigger.integration.test.ts",
+        "line": 220,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F107",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/schedule-trigger.integration.test.ts",
+        "line": 469,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F108",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/support/coordinator-recovery-harness.ts",
+        "line": 59,
+        "symbol": "createCoordinatorRecoveryHarness"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F109",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/support/http-node-attempt.runtime.ts",
+        "line": 78,
+        "symbol": "createHttpNodeAttemptProofRuntime"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F110",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/support/transport.integration.support.ts",
+        "line": 23,
+        "symbol": "createWorkerTransportTestEnvironment"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F111",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/support/workflow-lifecycle.integration.support.ts",
+        "line": 496,
+        "symbol": "createWorkflowLifecycleWorkerEnvironment"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F112",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/transport-part-2.integration.test.ts",
+        "line": 138,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F113",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/transport.integration.test.ts",
+        "line": 219,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F114",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/transport.integration.test.ts",
+        "line": 370,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F115",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/transport.resilience.integration.test.ts",
+        "line": 437,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F116",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/transport.resilience.integration.test.ts",
+        "line": 438,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F117",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/validate-preview.integration.test.ts",
+        "line": 257,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F118",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/validate-preview.integration.test.ts",
+        "line": 258,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F119",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/worker-bootstrap.test.ts",
+        "line": 187,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F120",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/worker-config.test.ts",
+        "line": 6,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F121",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/worker-readiness-lifecycle.test.ts",
+        "line": 33,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F122",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/workflow-lifecycle.integration.test.ts",
+        "line": 25,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F123",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "apps/worker/test/workflow-lifecycle.integration.test.ts",
+        "line": 37,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F124",
+      "status": "changed",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/compare-local-benchmark.mjs",
+        "line": 157,
+        "symbol": "requireScenarioDatabaseEvidence"
+      },
+      "reasonCode": "changed-ordered-validation"
+    },
+    {
+      "id": "F125",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/postgres-evidence.mjs",
+        "line": 99,
+        "symbol": "runPoolContentionSamples"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F126",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 99,
+        "symbol": "writeBenchmarkEvidence"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F127",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 694,
+        "symbol": "executeRound"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F128",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.mjs",
+        "line": 1043,
+        "symbol": "benchmark"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F129",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "infrastructure/performance/run-local-benchmark.test.mjs",
+        "line": 620,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F130",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "infrastructure/report-risk-coverage.test.mjs",
+        "line": 518,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F131",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/run-local-quality.mjs",
+        "line": 814,
+        "symbol": "run"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F132",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/run-local-quality.mjs",
+        "line": 857,
+        "symbol": "cleanup"
+      },
+      "reasonCode": "retained-resource-owner"
+    },
+    {
+      "id": "F133",
+      "status": "retained",
+      "workstream": "R01/R05/R13/R15",
+      "baselineLocator": {
+        "file": "infrastructure/validate-built-package-exports.mjs",
+        "line": 109,
+        "symbol": "validateBuiltPackageExports"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F134",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/control-ledger-part-2.test.ts",
+        "line": 26,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F135",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/control-ledger.integration.test.ts",
+        "line": 177,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F136",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/control-ledger.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F137",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/dual-region-artifact-store.test.ts",
+        "line": 172,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F138",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/dual-region-control-ledger.test.ts",
+        "line": 155,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F139",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/object-store-telemetry.test.ts",
+        "line": 36,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F140",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/artifact-store/test/store.test.ts",
+        "line": 282,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F141",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/contracts/test/contracts.test.ts",
+        "line": 103,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F142",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/authoring/workflow-authoring.ts",
+        "line": 297,
+        "symbol": "createWorkflowAuthoringDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F143",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/connections/connection-management-persistence.ts",
+        "line": 42,
+        "symbol": "createConnectionManagementPersistence"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F144",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/connections/connection-management-persistence.ts",
+        "line": 46,
+        "symbol": "createConnection"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F145",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/connections/connection-secret-persistence.ts",
+        "line": 40,
+        "symbol": "createConnectionSecretPersistence"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F146",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/connections/connection-secret-persistence.ts",
+        "line": 103,
+        "symbol": "rotateConnectionSecret"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F147",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/connections/connection-test-persistence.ts",
+        "line": 46,
+        "symbol": "createConnectionTestPersistence"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F148",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-commit-state.ts",
+        "line": 79,
+        "symbol": "lockCoordinatorCommitState"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F149",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-commit.ts",
+        "line": 37,
+        "symbol": "commitCoordinatorAdvancePlan"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F150",
+      "status": "changed",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 452,
+        "symbol": "loadCoordinatorAdvanceState"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "F151",
+      "status": "changed",
+      "workstream": "R08",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-observations.ts",
+        "line": 463,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "changed-consistency-phases"
+    },
+    {
+      "id": "F152",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/coordinator-run-store-terminal.ts",
+        "line": 19,
+        "symbol": "persistFailureNotificationIntent"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F153",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/dispatcher.ts",
+        "line": 207,
+        "symbol": "createOutboxDispatcherDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F154",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/execution-acceptance.ts",
+        "line": 343,
+        "symbol": "acceptWorkflowRun"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F155",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/failure-notification-destination-store.ts",
+        "line": 22,
+        "symbol": "createFailureNotificationDestinationStore"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F156",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/failure-notification-destinations.ts",
+        "line": 351,
+        "symbol": "createFailureNotificationDestinationDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F157",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/failure-notifications.ts",
+        "line": 29,
+        "symbol": "createFailureNotificationStore"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F158",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/failure-notifications.ts",
+        "line": 36,
+        "symbol": "claimDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F159",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-claim.ts",
+        "line": 63,
+        "symbol": "claimNodeAttemptDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F160",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-claim.ts",
+        "line": 79,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F161",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-completion.ts",
+        "line": 29,
+        "symbol": "completeNodeAttempt"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F162",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+        "line": 205,
+        "symbol": "loadNodeAttemptInputs"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F163",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+        "line": 221,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F164",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-acceptance.ts",
+        "line": 381,
+        "symbol": "acceptPreviewRun"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F165",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-claim.ts",
+        "line": 135,
+        "symbol": "claimPreviewDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F166",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-reconciliation.ts",
+        "line": 210,
+        "symbol": "reconcilePreviewDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F167",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/preview-execution-reconciliation.ts",
+        "line": 233,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F168",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/execution/stored-execution-value.ts",
+        "line": 48,
+        "symbol": "jsonStringBytes"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F169",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 328,
+        "symbol": "createControlLedgerCoordinator"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F170",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 363,
+        "symbol": "transact"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F171",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 618,
+        "symbol": "reconcileSweep"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F172",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+        "line": 666,
+        "symbol": "command"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F173",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+        "line": 198,
+        "symbol": "claimPreviewCleanupDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F174",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/preview-cleanup.ts",
+        "line": 220,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F175",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/preview-retention.ts",
+        "line": 126,
+        "symbol": "createPreviewRetentionCoordinator"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F176",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/preview-retention.ts",
+        "line": 139,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F177",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/retention-transaction.ts",
+        "line": 173,
+        "symbol": "withWorkspaceDestructiveOperationLock"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F178",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/retention.ts",
+        "line": 76,
+        "symbol": "createRetentionEnforcementCoordinator"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F179",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/run-artifact-retention.ts",
+        "line": 82,
+        "symbol": "createRunArtifactRetentionCoordinator"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F180",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/run-artifact-retention.ts",
+        "line": 99,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F181",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+        "line": 251,
+        "symbol": "createWorkspaceLifecycleCommandCoordinator"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F182",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+        "line": 337,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F183",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-purge.ts",
+        "line": 240,
+        "symbol": "createWorkspacePurgeCoordinator"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F184",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/lifecycle/workspace-purge.ts",
+        "line": 345,
+        "symbol": "processNext"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F185",
+      "status": "changed",
+      "workstream": "R09",
+      "baselineLocator": {
+        "file": "packages/database/src/migrations.ts",
+        "line": 251,
+        "symbol": "migrateDatabase"
+      },
+      "reasonCode": "changed-owned-lifetime",
+      "replacementLocator": {
+        "file": "packages/database/src/migrations.ts",
+        "symbol": "migrateDatabase / migration execution phases"
+      }
+    },
+    {
+      "id": "F186",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/operator/operator-commands.ts",
+        "line": 200,
+        "symbol": "createOperatorCommandDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F187",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/tenant-access/identity-workspace-identity-store.ts",
+        "line": 78,
+        "symbol": "createIdentityWorkspaceIdentityStore"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F188",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/tenant-access/identity-workspace.ts",
+        "line": 238,
+        "symbol": "createIdentityWorkspaceDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F189",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/tenant-access/workspace.ts",
+        "line": 94,
+        "symbol": "runTransaction"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F190",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+        "line": 189,
+        "symbol": "createScheduleTriggerDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F191",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+        "line": 223,
+        "symbol": "setEnabled"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F192",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/schedule-trigger-database.ts",
+        "line": 232,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F193",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/schedule-trigger-scanner.ts",
+        "line": 80,
+        "symbol": "createScheduleTriggerScanner"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F194",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/webhook-triggers.ts",
+        "line": 299,
+        "symbol": "createWebhookTriggerDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F195",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/webhook-triggers.ts",
+        "line": 490,
+        "symbol": "acceptVerifiedDelivery"
+      },
+      "reasonCode": "retained-transaction-proof"
+    },
+    {
+      "id": "F196",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/database/src/triggers/workflow-triggers.ts",
+        "line": 85,
+        "symbol": "createWorkflowTriggerReconciliationDatabase"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F197",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/artifact-capacity-readiness.integration.test.ts",
+        "line": 72,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F198",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts",
+        "line": 82,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F199",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts",
+        "line": 83,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F200",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/artifact-upload.integration.test.ts",
+        "line": 213,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F201",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/artifacts.integration.test.ts",
+        "line": 76,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F202",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/compatibility-release.integration.test.ts",
+        "line": 156,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F203",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/compatibility-release.integration.test.ts",
+        "line": 157,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F204",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/config.test.ts",
+        "line": 13,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F205",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connection-tests.integration.test.ts",
+        "line": 19,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F206",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connection-tests.integration.test.ts",
+        "line": 166,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F207",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connections-compatibility.integration.test.ts",
+        "line": 36,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F208",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connections-compatibility.integration.test.ts",
+        "line": 37,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F209",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connections-compatibility.integration.test.ts",
+        "line": 199,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F210",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connections-concurrency-security.integration.test.ts",
+        "line": 25,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F211",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/connections-lifecycle.integration.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F212",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator-part-2.integration.test.ts",
+        "line": 32,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F213",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator-part-2.integration.test.ts",
+        "line": 113,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F214",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator.integration.test.ts",
+        "line": 35,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F215",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator.test.ts",
+        "line": 160,
+        "symbol": "fakeDatabase"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F216",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator.test.ts",
+        "line": 176,
+        "symbol": "query"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F217",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/control-ledger-coordinator.test.ts",
+        "line": 349,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F218",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-cas.integration.test.ts",
+        "line": 18,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F219",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-cas.integration.test.ts",
+        "line": 650,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F220",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+        "line": 20,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F221",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+        "line": 21,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F222",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+        "line": 422,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F223",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+        "line": 33,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F224",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+        "line": 34,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F225",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+        "line": 314,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F226",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+        "line": 28,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F227",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+        "line": 71,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F228",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+        "line": 241,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F229",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+        "line": 166,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F230",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+        "line": 212,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F231",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+        "line": 884,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F232",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-observations.integration.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F233",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+        "line": 44,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F234",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+        "line": 231,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F235",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+        "line": 537,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F236",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/coordinator-run-store-wakeups.integration.test.ts",
+        "line": 17,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F237",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/execution-acceptance-capacity.integration.test.ts",
+        "line": 30,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F238",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/execution-acceptance-notifications.integration.test.ts",
+        "line": 30,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F239",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/execution-acceptance-persistence.integration.test.ts",
+        "line": 34,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F240",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/execution-acceptance-security.integration.test.ts",
+        "line": 35,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F241",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/execution-value-persistence.integration.test.ts",
+        "line": 240,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F242",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/identity-workspace.integration.test.ts",
+        "line": 203,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F243",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/persisted-workflow-checkpoint.test.ts",
+        "line": 30,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F244",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/postgres-telemetry.test.ts",
+        "line": 165,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F245",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-execution.integration.test.ts",
+        "line": 236,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F246",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-execution.integration.test.ts",
+        "line": 362,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F247",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-retention-migration.integration.test.ts",
+        "line": 91,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F248",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-retention-migration.integration.test.ts",
+        "line": 92,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F249",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-worker-artifact-retention.integration.test.ts",
+        "line": 54,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F250",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-worker-artifact-retention.integration.test.ts",
+        "line": 214,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F251",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-worker-attempt-lifecycle.integration.test.ts",
+        "line": 33,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F252",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-worker-attempt-lifecycle.integration.test.ts",
+        "line": 280,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F253",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/preview-worker-reconciliation.integration.test.ts",
+        "line": 27,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F254",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/published-workflow-reader.integration.test.ts",
+        "line": 192,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F255",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/q9-bounded-work.test.ts",
+        "line": 288,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F256",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-artifacts.integration.test.ts",
+        "line": 147,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F257",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-artifacts.integration.test.ts",
+        "line": 316,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F258",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-control-foundation-migration.integration.test.ts",
+        "line": 221,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F259",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-control-foundation-migration.integration.test.ts",
+        "line": 273,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F260",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-execution-purge.integration.test.ts",
+        "line": 19,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F261",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-execution-purge.integration.test.ts",
+        "line": 20,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F262",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-inventory.integration.test.ts",
+        "line": 17,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F263",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-legal-hold.integration.test.ts",
+        "line": 17,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F264",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-legal-hold.integration.test.ts",
+        "line": 18,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F265",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-replay-lineage.integration.test.ts",
+        "line": 220,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F266",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-scheduling.integration.test.ts",
+        "line": 17,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F267",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/retention-scheduling.integration.test.ts",
+        "line": 18,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F268",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/rls.integration.test.ts",
+        "line": 134,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F269",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/schedule-triggers-part-2.integration.test.ts",
+        "line": 61,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F270",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/schedule-triggers.integration.test.ts",
+        "line": 34,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F271",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/stored-execution-value.test.ts",
+        "line": 12,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F272",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/support/control-ledger-coordinator.integration.support.ts",
+        "line": 155,
+        "symbol": "createControlLedgerCoordinatorTestEnvironment"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F273",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/support/schedule-triggers.integration.support.ts",
+        "line": 20,
+        "symbol": "createScheduleTriggerTestEnvironment"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F274",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/support/transport.integration.support.ts",
+        "line": 12,
+        "symbol": "createTransportTestEnvironment"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F275",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/transport-part-2.integration.test.ts",
+        "line": 35,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F276",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/transport.integration.test.ts",
+        "line": 71,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F277",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/webhook-triggers.integration.test.ts",
+        "line": 323,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F278",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/webhook-triggers.integration.test.ts",
+        "line": 979,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F279",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-atomicity.integration.test.ts",
+        "line": 22,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F280",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-coordination.integration.test.ts",
+        "line": 28,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F281",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-drafts.integration.test.ts",
+        "line": 22,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F282",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-lifecycle.integration.test.ts",
+        "line": 29,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F283",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-lifecycle.integration.test.ts",
+        "line": 131,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F284",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-publication.integration.test.ts",
+        "line": 35,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F285",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-publication.integration.test.ts",
+        "line": 332,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F286",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-authoring-version-restore.integration.test.ts",
+        "line": 228,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F287",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workflow-run-api.integration.test.ts",
+        "line": 292,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F288",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-lifecycle-command-intents.integration.test.ts",
+        "line": 75,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F289",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-lifecycle-command-intents.integration.test.ts",
+        "line": 273,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F290",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+        "line": 185,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F291",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+        "line": 284,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F292",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+        "line": 522,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F293",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/database/test/workspace-transaction-engine.test.ts",
+        "line": 25,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F294",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/email/executor.ts",
+        "line": 121,
+        "symbol": "execute"
+      },
+      "reasonCode": "changed-provider-lifetime"
+    },
+    {
+      "id": "F295",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http-request/executor.ts",
+        "line": 162,
+        "symbol": "executeHttpRequest"
+      },
+      "reasonCode": "changed-moved-q9-owner",
+      "replacementLocator": {
+        "file": "packages/integrations/src/http-request/executor.ts",
+        "symbol": "executeHttpRequest / consumeResponseBody owned cleanup"
+      }
+    },
+    {
+      "id": "F296",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/http-request/executor.ts",
+        "line": 425,
+        "symbol": "consumeResponseBody"
+      },
+      "reasonCode": "changed-moved-q9-owner",
+      "replacementLocator": {
+        "file": "packages/integrations/src/http-request/executor.ts",
+        "symbol": "executeHttpRequest / consumeResponseBody owned cleanup"
+      }
+    },
+    {
+      "id": "F297",
+      "status": "changed",
+      "workstream": "R11",
+      "baselineLocator": {
+        "file": "packages/integrations/src/slack/executor.ts",
+        "line": 116,
+        "symbol": "execute"
+      },
+      "reasonCode": "changed-provider-lifetime"
+    },
+    {
+      "id": "F298",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/integrations/test/email-send-notification.test.ts",
+        "line": 106,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F299",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/integrations/test/http-outcome-policy.test.ts",
+        "line": 17,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F300",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/integrations/test/http-request.test.ts",
+        "line": 241,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F301",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/integrations/test/secure-http.test.ts",
+        "line": 155,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F302",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/integrations/test/slack-send-message.test.ts",
+        "line": 88,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F303",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/node-catalog/test/release-history.test.ts",
+        "line": 561,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F304",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/node-catalog/test/server-registry.test.ts",
+        "line": 26,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F305",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/node-sdk/src/server.ts",
+        "line": 232,
+        "symbol": "createNodeRegistry"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F306",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/node-sdk/src/server.ts",
+        "line": 431,
+        "symbol": "execute"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F307",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/node-sdk/test/registry.test.ts",
+        "line": 108,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F308",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/node-sdk/test/registry.test.ts",
+        "line": 412,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F309",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/node-sdk/test/registry.test.ts",
+        "line": 665,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F310",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/nodes-core/test/orchestration-nodes.test.ts",
+        "line": 32,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F311",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/nodes-core/test/retained-registry.test.ts",
+        "line": 33,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F312",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/nodes-core/test/validate.test.ts",
+        "line": 137,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F313",
+      "status": "retained",
+      "workstream": "R15",
+      "baselineLocator": {
+        "file": "packages/observability/src/transport-metrics.ts",
+        "line": 197,
+        "symbol": "createTransportMetrics"
+      },
+      "reasonCode": "retained-declarative-composition"
+    },
+    {
+      "id": "F314",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/logger.test.ts",
+        "line": 37,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F315",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/operations-assets.test.ts",
+        "line": 10,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F316",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/operations-assets.test.ts",
+        "line": 11,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F317",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/telemetry-http-sanitization.test.ts",
+        "line": 93,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F318",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/telemetry-http-sanitization.test.ts",
+        "line": 182,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F319",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/observability/test/transport-metrics.test.ts",
+        "line": 67,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F320",
+      "status": "changed",
+      "workstream": "R05/R11",
+      "baselineLocator": {
+        "file": "packages/queue/src/consumer.ts",
+        "line": 558,
+        "symbol": "performClose"
+      },
+      "reasonCode": "changed-owned-lifetime"
+    },
+    {
+      "id": "F321",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/queue/test/consumer.test.ts",
+        "line": 131,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F322",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/queue/test/contracts.test.ts",
+        "line": 29,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F323",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/queue/test/producer.test.ts",
+        "line": 81,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F324",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/rate-limit/test/policy.test.ts",
+        "line": 24,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F325",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-shared.ts",
+        "line": 101,
+        "symbol": "stringBytes"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F326",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-v1-join.ts",
+        "line": 13,
+        "symbol": "parseJoin"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F327",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-v1-loop.ts",
+        "line": 14,
+        "symbol": "parseLoop"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F328",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/checkpoint-v1.ts",
+        "line": 21,
+        "symbol": "parseCheckpointV1Boundary"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F329",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/coordinator-observations.ts",
+        "line": 155,
+        "symbol": "forEachCoordinatorObservations"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F330",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/executable-validation.ts",
+        "line": 59,
+        "symbol": "addString"
+      },
+      "reasonCode": "retained-small-wrapper"
+    },
+    {
+      "id": "F331",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/operations.ts",
+        "line": 134,
+        "symbol": "assertCheckpointMatchesExecutable"
+      },
+      "reasonCode": "changed-workflow-proof"
+    },
+    {
+      "id": "F332",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+        "line": 20,
+        "symbol": "buildWorkflowTransitionPlan"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F333",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/src/workflow-transition-stops.ts",
+        "line": 14,
+        "symbol": "applyWorkflowStops"
+      },
+      "reasonCode": "retained-state-machine"
+    },
+    {
+      "id": "F334",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/advance-workflow-branching.test.ts",
+        "line": 15,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F335",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/advance-workflow-transitions.test.ts",
+        "line": 18,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F336",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/checkpoint-risk-branches.test.ts",
+        "line": 74,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F337",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/checkpoint-seam.test.ts",
+        "line": 25,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F338",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-branching.test.ts",
+        "line": 19,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F339",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-branching.test.ts",
+        "line": 397,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F340",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-controls.test.ts",
+        "line": 12,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F341",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+        "line": 19,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F342",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+        "line": 79,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F343",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+        "line": 292,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F344",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+        "line": 13,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F345",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+        "line": 14,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F346",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-identity.test.ts",
+        "line": 22,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F347",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-inputs.test.ts",
+        "line": 20,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F348",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-inputs.test.ts",
+        "line": 127,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F349",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/executable-workflow-outcomes.test.ts",
+        "line": 13,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F350",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/nested-parallel-admission.test.ts",
+        "line": 318,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F351",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/operation-risk-branches.test.ts",
+        "line": 55,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F352",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/retry-wait-cancellation.test.ts",
+        "line": 16,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F353",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/skipped-parallel-merge.test.ts",
+        "line": 131,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F354",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/skipped-parallel-merge.test.ts",
+        "line": 361,
+        "symbol": "runBypass"
+      },
+      "reasonCode": "retained-test-fixture"
+    },
+    {
+      "id": "F355",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/state-machine-model.test.ts",
+        "line": 193,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F356",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-engine/test/workflow-transition-risk-behavior.test.ts",
+        "line": 41,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F357",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/expressions/evaluator.ts",
+        "line": 201,
+        "symbol": "#run"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F358",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "baselineLocator": {
+        "file": "packages/workflow-model/src/graph/preflight.ts",
+        "line": 203,
+        "symbol": "preflightWorkflowGraph"
+      },
+      "reasonCode": "retained-bounded-parser"
+    },
+    {
+      "id": "F359",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/expressions.test.ts",
+        "line": 18,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F360",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/failure-notification.test.ts",
+        "line": 54,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F361",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/graph.test.ts",
+        "line": 37,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F362",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/package-contract.test.ts",
+        "line": 13,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F363",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/workflow-graph-contract.test.ts",
+        "line": 188,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    },
+    {
+      "id": "F364",
+      "status": "retained",
+      "workstream": "R14",
+      "baselineLocator": {
+        "file": "packages/workflow-model/test/workflow-graph-contract.test.ts",
+        "line": 487,
+        "symbol": "<callback>"
+      },
+      "reasonCode": "retained-test-suite"
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "N001",
+      "status": "changed",
+      "workstream": "R06",
+      "locator": "apps/worker/src/execution/node-attempt-handler.ts:startNodeAttemptHeartbeat",
+      "reason": "Production heartbeat start, durable-abort/failure observation, execution cancellation, and joined stop now have one visible owner."
+    },
+    {
+      "id": "N002",
+      "status": "changed",
+      "workstream": "R06",
+      "locator": "apps/worker/src/execution/preview-attempt-supervisor.ts:startPreviewAttemptSupervisor",
+      "reason": "Preview deadline and lease-loss races remain preview-specific but their timer, heartbeat, execution signal, and joined stop are now one phase."
+    },
+    {
+      "id": "N003",
+      "status": "changed",
+      "workstream": "R06",
+      "locator": "apps/worker/src/execution/node-runtime-capabilities.ts:spoolArtifactBody",
+      "reason": "Artifact ownership now reads as bounded spool, pending record, upload verification, finalize, and directory cleanup without extra copies."
+    },
+    {
+      "id": "N004",
+      "status": "changed",
+      "workstream": "R10",
+      "locator": "apps/retention/src/maintenance-loops.ts:runOperationLoop",
+      "reason": "Only repeated timing, recovery logging, failure backoff, cancellation, and polling delay are shared; all eight operation meanings remain in named loops."
+    },
+    {
+      "id": "N005",
+      "status": "changed",
+      "workstream": "R10",
+      "locator": "apps/worker/src/transport/outbox-dispatcher.ts:publishAndSettle",
+      "reason": "Claim observation, publication, settlement, failed-publication release, and batch aggregation are now named local phases with original capacity scheduling and settlement order."
+    },
+    {
+      "id": "N006",
+      "status": "changed",
+      "workstream": "R08",
+      "locator": "packages/database/src/execution/failure-notification-completion-store.ts:completionDecision",
+      "reason": "Retry versus terminal policy is a discriminated decision tested across side-effect, dispatch, prior uncertainty, and exhaustion combinations before the original atomic SQL mutation."
+    },
+    {
+      "id": "N007",
+      "status": "changed",
+      "workstream": "R12",
+      "locator": "packages/node-sdk/src/release.ts:assertDefinitionSuccessors / assertExecutorSuccessors",
+      "reason": "Definition and executor successor rules are separate typed phases preserving authoritative transitions and first failure."
+    },
+    {
+      "id": "N008",
+      "status": "changed",
+      "workstream": "R14",
+      "locator": "infrastructure/performance/fixtures/*.mjs",
+      "reason": "Two opaque inline subprocess programs became readable separate-process fixtures while preserving barriers, timing provenance, environment identity, and failure behavior."
+    },
+    {
+      "id": "N009",
+      "status": "changed",
+      "workstream": "R11/R15",
+      "locator": "packages/integrations/src/http/secure-http.ts:DispatchFailureContext",
+      "reason": "A named context replaces paired dispatch-state booleans at abort and signal-race boundaries, preserving every possibly-dispatched and ambiguity combination."
+    },
+    {
+      "id": "N010",
+      "status": "retained",
+      "workstream": "R06/R15",
+      "locator": "apps/worker/src/execution/node-attempt-engine.ts:prepareNode",
+      "reason": "The remaining mixed predicate is one fail-closed prepared-node identity and scope admission rule; splitting it would not reduce the coupled proof and could change failure precedence."
+    },
+    {
+      "id": "N011",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/performance/compare-local-benchmark.mjs:operationContracts",
+      "reason": "The extracted owner isolates operation population and contract-shape admission from later sample and evidence traversal while preserving short-circuit order."
+    },
+    {
+      "id": "N012",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/performance/compare-local-benchmark.mjs:assertRoundOperationEvidence (three conditions)",
+      "reason": "Three explicit operation-evidence rules now remain together under the round-operation owner, after shape and population admission and before sample comparison."
+    },
+    {
+      "id": "N013",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/performance/compare-local-benchmark.mjs:sharedRoundParticipants",
+      "reason": "Participant-set identity and non-empty overlap are now a named proof separate from environment and timing evidence."
+    },
+    {
+      "id": "N014",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/performance/compare-local-benchmark.mjs:assertBenchmarkEnvironment",
+      "reason": "Runtime, CPU, and database environment identity checks now have one ordered owner after evidence shape admission."
+    },
+    {
+      "id": "N015",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/report-risk-coverage.mjs:assertSuitesCompletedWithinInterval",
+      "reason": "Named-test interval containment is separated from result production and retains the original first invalid suite."
+    },
+    {
+      "id": "N016",
+      "status": "changed",
+      "workstream": "R01/R15",
+      "locator": "infrastructure/report-risk-coverage.mjs:assertIntegrationEvidenceIdentity",
+      "reason": "Producer, result, and source identity binding now precedes interval traversal and hashing in the original failure order."
+    },
+    {
+      "id": "N017",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "locator": "packages/database/src/compatibility/persisted-workflow-checkpoint-refinements.ts:refineJoinScopes",
+      "reason": "This is the bounded compatibility refinement for legacy empty scopes and V2 invocation identities; a generic predicate would obscure version-specific allowances."
+    },
+    {
+      "id": "N018",
+      "status": "retained",
+      "workstream": "R08/R15",
+      "locator": "packages/database/src/execution/coordinator-run-store-observations.ts:completedInlineOutput",
+      "reason": "The condition is the single fact projection rule that distinguishes completed inline output from all other physical observations inside one repeatable-read proof."
+    },
+    {
+      "id": "N019",
+      "status": "changed",
+      "workstream": "R02/R15",
+      "locator": "packages/database/src/operator/operator-command-runtime.ts:assertNoOperatorDirectGrants",
+      "reason": "Forbidden direct grants are now a named readiness assertion over the one acquired privilege snapshot."
+    },
+    {
+      "id": "N020",
+      "status": "changed",
+      "workstream": "R02/R15",
+      "locator": "packages/database/src/operator/operator-command-runtime.ts:assertOperatorCapabilities",
+      "reason": "Required and forbidden operator capabilities are now checked by a named assertion without converting the explicit privilege inventory into a permissive generic loop."
+    },
+    {
+      "id": "N021",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/executable-graph-rules.ts:assertBranchesDoNotReconverge (additional current-source condition)",
+      "reason": "The additional branch condition is part of the existing cached bounded reconvergence traversal and keeps its distinct graph diagnostic and first-failure order."
+    },
+    {
+      "id": "N022",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/node-attempt-input.ts:assertStructuredScope",
+      "reason": "The compound rule is one structured-scope boundary tying collection identity, item index, and invocation scope; extraction would fragment that admission proof."
+    },
+    {
+      "id": "N023",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/checkpoint-executable-validation.ts:assertInvocationBelongsToExecutable",
+      "reason": "Invocation node, ancestor, branch-port, and key membership are now an ordered named phase that reuses the already parsed executable graph."
+    },
+    {
+      "id": "N024",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/checkpoint-executable-validation.ts:assertCheckpointLoopIdentity",
+      "reason": "Loop identity and topology compatibility are now a named phase preserving V1/V2 allowances, bounds, and the original error precedence."
+    },
+    {
+      "id": "N025",
+      "status": "retained",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-model/src/expressions/evaluator.ts:constructor",
+      "reason": "This is baseline C127 reconciled from its callback locator to the inferred constructor owner; its expression-engine admission rule and error contract are unchanged."
+    },
+    {
+      "id": "N026",
+      "status": "retained",
+      "workstream": "R08/R14/R15",
+      "locator": "packages/database/test/failure-notification-completion-store.test.ts:<callback>",
+      "reason": "The new long test callback is the describe container for an explicit completion-policy matrix; cases keep inputs, mutations, and oracles visible rather than hiding them in production-derived helpers."
+    },
+    {
+      "id": "N027",
+      "status": "changed",
+      "workstream": "R11/R15",
+      "locator": "packages/integrations/src/http/secure-http-request.ts:parseHeaders",
+      "reason": "Baseline C093 moved to the request-admission module; its ordered name, blocked-header, value, duplicate, count, and byte rules are preserved under one parser owner."
+    },
+    {
+      "id": "N028",
+      "status": "changed",
+      "workstream": "R11/R15",
+      "locator": "packages/integrations/src/http/secure-http-request.ts:parseSensitiveValues",
+      "reason": "Baseline C094 moved to the request-admission module and retains independent count and value-length policies before deduplication and longest-first ordering."
+    },
+    {
+      "id": "N029",
+      "status": "changed",
+      "workstream": "R06/R15",
+      "locator": "apps/worker/src/execution/node-execution-runtime-fields.ts:nodeExecutionOptionalFields",
+      "reason": "The final duplication pass found one genuinely identical production/preview projection; only optional provider-dispatch and capability fields are shared, while supervision and dispatch policy remain separate."
+    },
+    {
+      "id": "N030",
+      "status": "changed",
+      "workstream": "R08/R15",
+      "locator": "packages/database/src/execution/coordinator-pending-failure-observations.ts:appendPendingFailureObservations",
+      "reason": "Pending failure rows now validate and append directly to the owning observation sequence, preserving database order without an intermediate batch and spread."
+    },
+    {
+      "id": "N031",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/output-reference.ts:sameOutputReference",
+      "reason": "Three identical inline/artifact/absent output comparisons now share one discriminated domain predicate; wait-state logic with intentionally different absent-output semantics remains local."
+    },
+    {
+      "id": "N032",
+      "status": "changed",
+      "workstream": "R04/R07/R15",
+      "locator": "apps/api/src/node-testing/use-case.ts:validationInputFields / previewOutputResponse",
+      "reason": "Request-mode input selection and persisted preview output projection are now two named mappings instead of nested conditional object construction."
+    },
+    {
+      "id": "N033",
+      "status": "changed",
+      "workstream": "R08/R15",
+      "locator": "packages/database/src/execution/coordinator-run-store-observations.ts:requiredLaterFactType",
+      "reason": "The waiting-success, waiting-failure, and terminal fact requirements now read as an ordered domain mapping while retaining the original reverse-scan and first inconsistency."
+    },
+    {
+      "id": "N034",
+      "status": "changed",
+      "workstream": "R10/R15",
+      "locator": "packages/database/src/lifecycle/retention-database-capabilities.ts:createRetentionDryRunCapability",
+      "reason": "Legacy retention outcome derivation now states completed, stale, and progressed precedence explicitly rather than nesting validation and cursor predicates."
+    },
+    {
+      "id": "N035",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/checkpoint-v1-join.ts:requiredJoinArrivals / joinSelectionIsSatisfiable / expectedUnsatisfiedReason",
+      "reason": "Persisted join validation now names required arrivals, satisfiability, and expected failure reason while preserving all/any/count semantics and diagnostic order."
+    },
+    {
+      "id": "N036",
+      "status": "changed",
+      "workstream": "R03/R15",
+      "locator": "packages/workflow-engine/src/checkpoint-v1.ts:loopParentStatusIsConsistent",
+      "reason": "Loop parent validation now exposes terminal, cancellation, deadline, complete, and active-state precedence without a nested conditional expression."
+    },
+    {
+      "id": "N037",
+      "status": "changed",
+      "workstream": "R05/R15",
+      "locator": "packages/database/src/lifecycle/control-ledger-errors.ts:controlLedgerClientReleaseError",
+      "reason": "Client release now derives rollback, cancellation, absent-error, and non-Error rollback outcomes in one ordered cleanup policy."
+    },
+    {
+      "id": "N038",
+      "status": "changed",
+      "workstream": "R05/R15",
+      "locator": "packages/artifact-store/src/dual-region-artifact-store.ts:failedRegionRole",
+      "reason": "Readiness, delete, purge, and verification use one identical two-region failure attribution policy instead of four nested conditional copies."
+    },
+    {
+      "id": "N039",
+      "status": "changed",
+      "workstream": "R07/R15",
+      "locator": "apps/api/src/connections/connection-testing.ts:responseOutcome",
+      "reason": "Provider rate-limit, unavailable, and rejection precedence is now explicit before construction of the normalized connection-test outcome."
+    },
+    {
+      "id": "N040",
+      "status": "changed",
+      "workstream": "R07/R15",
+      "locator": "apps/api/src/webhooks/service.ts:endpointKeyHash",
+      "reason": "Generated, existing, and absent webhook endpoint-key selection now has one named precedence rule instead of nested hashing branches."
+    },
+    {
+      "id": "N041",
+      "status": "changed",
+      "workstream": "R04/R15",
+      "locator": "apps/api/src/platform/http/problem-details.filter.ts:problemDetails",
+      "reason": "Lifecycle conflict, revision conflict, and base problem response construction now has an explicit ordered mapper with its base contract type visible."
+    }
+  ]
+}
