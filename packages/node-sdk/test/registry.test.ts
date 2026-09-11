@@ -1137,11 +1137,14 @@ describe('node-sdk exact server registry', () => {
       definition: otherDefinition,
       executor: otherExecutor,
     } satisfies NodeManifest;
+    const [baseExecutor] = release().executors;
+    if (baseExecutor === undefined)
+      throw new Error('test release is missing its executor');
     const exactRelease = createRegistryRelease({
       definitions: [manifest, otherManifest],
       epoch: 1,
       executors: [
-        release().executors[0]!,
+        baseExecutor,
         {
           abiVersion: 1,
           definitions: [otherDefinition],

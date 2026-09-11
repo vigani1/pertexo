@@ -484,7 +484,7 @@ describe('outbox dispatcher', () => {
     const selected = boundaries(
       Array.from({ length: 102 }, (_, index) => indexedEvent(index)),
     );
-    const firstSample = Promise.withResolvers<void>();
+    const firstSample = Promise.withResolvers<undefined>();
     const observeWorkspaceCapacity = vi
       .fn<(workspaceId: string) => Promise<void>>()
       .mockImplementationOnce(() => firstSample.promise)
@@ -497,7 +497,7 @@ describe('outbox dispatcher', () => {
     });
     expect(observeWorkspaceCapacity).toHaveBeenCalledOnce();
 
-    firstSample.resolve();
+    firstSample.resolve(undefined);
     await vi.waitFor(() => {
       expect(observeWorkspaceCapacity).toHaveBeenCalledTimes(101);
     });
@@ -550,7 +550,7 @@ describe('outbox dispatcher', () => {
 
   it('drains an in-flight workspace capacity sample before closing boundaries', async () => {
     const selected = boundaries([event()]);
-    const sample = Promise.withResolvers<void>();
+    const sample = Promise.withResolvers<undefined>();
     const dispatcher = createDispatcher(selected);
     dispatcher.configureRuntimeHooks({
       observeWorkspaceCapacity: vi.fn(() => sample.promise),
@@ -562,7 +562,7 @@ describe('outbox dispatcher', () => {
     expect(selected.database.close).not.toHaveBeenCalled();
     expect(selected.producer.close).not.toHaveBeenCalled();
 
-    sample.resolve();
+    sample.resolve(undefined);
     await expect(closing).resolves.toBeUndefined();
     expect(selected.database.close).toHaveBeenCalledOnce();
     expect(selected.producer.close).toHaveBeenCalledOnce();
