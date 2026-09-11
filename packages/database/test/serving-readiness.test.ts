@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  checkDatabaseReadiness,
   checkDatabaseServingReadiness,
   EXPECTED_MIGRATION_HEAD,
 } from '../src/platform/readiness.js';
@@ -41,4 +42,30 @@ describe('steady database serving readiness', () => {
     expect(statement).not.toContain('has_function_privilege');
     expect(statement).not.toContain('has_table_privilege');
   });
+
+  it.each([
+    ['startup', checkDatabaseReadiness],
+    ['serving', checkDatabaseServingReadiness],
+  ] as const)(
+    'rejects ambiguous %s expectations before querying',
+    async (_kind, checkReadiness) => {
+      const query = vi.fn();
+      const expectation = {
+        epoch: 1,
+        fingerprint: `node-compat:v1:sha256:${'a'.repeat(64)}`,
+        catalogJson: '{}',
+      };
+
+      await expect(
+        checkReadiness({ query } as unknown as Pool, {
+          ownerRole: 'pertexo_owner',
+          expectedCompatibilityRelease: expectation,
+          expectedCompatibilityReleases: [expectation],
+        }),
+      ).rejects.toThrow(
+        'Compatibility release readiness configuration is ambiguous',
+      );
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
 });
