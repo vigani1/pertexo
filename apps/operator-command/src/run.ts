@@ -18,6 +18,12 @@ export interface OperatorCommandResources {
   readonly telemetry: TelemetryLifecycle;
 }
 
+type OperatorCommandExecutionResult =
+  | OperatorCommandResult
+  | GenericOperatorCommandResult
+  | OperatorCommandRecord
+  | null;
+
 async function boundedCleanup(
   operation: Promise<void>,
   timeoutMs: number,
@@ -39,91 +45,95 @@ async function boundedCleanup(
   }
 }
 
+async function executeConfiguredCommand(
+  resources: OperatorCommandResources,
+): Promise<OperatorCommandExecutionResult> {
+  switch (resources.command.type) {
+    case 'operator.status':
+      return resources.database.getCommand({
+        actorRef: resources.command.actorRef,
+        commandId: resources.command.commandId,
+        reason: resources.command.reason,
+        signal: resources.signal,
+        workspaceId: resources.command.workspaceId,
+      });
+    case 'outbox.redispatch':
+      return resources.database.redispatchFailedOutbox({
+        actorRef: resources.command.actorRef,
+        commandId: resources.command.commandId,
+        dryRun: resources.command.dryRun,
+        outboxEventId: resources.command.outboxEventId,
+        reason: resources.command.reason,
+        signal: resources.signal,
+        workspaceId: resources.command.workspaceId,
+      });
+    case 'attempt.reconcile':
+      return resources.database.reconcileAttempt({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'due-work.resume':
+      return resources.database.resumeDueWork({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'run.cancel':
+      return resources.database.cancelRun({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'unknown-outcome.record-evidence':
+      return resources.database.recordUnknownOutcomeEvidence({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'trigger.reconcile':
+      return resources.database.retryTriggerReconciliation({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'run.replay':
+      return resources.database.replayRun({
+        ...resources.command,
+        signal: resources.signal,
+      });
+    case 'purge.rerun':
+    case 'retention.rerun':
+      return resources.database.requestMaintenanceRerun({
+        ...resources.command,
+        signal: resources.signal,
+      });
+  }
+}
+
+async function cleanupOperatorResources(
+  resources: OperatorCommandResources,
+): Promise<readonly unknown[]> {
+  const cleanupErrors: unknown[] = [];
+  for (const [label, close] of [
+    ['Database', () => resources.database.close()],
+    ['Telemetry', () => resources.telemetry.shutdown()],
+  ] as const) {
+    try {
+      await boundedCleanup(close(), resources.cleanupTimeoutMs, label);
+    } catch (error: unknown) {
+      cleanupErrors.push(error);
+    }
+  }
+  return cleanupErrors;
+}
+
 export async function runOperatorCommand(
   resources: OperatorCommandResources,
-): Promise<
-  | OperatorCommandResult
-  | GenericOperatorCommandResult
-  | OperatorCommandRecord
-  | null
-> {
-  let result:
-    | OperatorCommandResult
-    | GenericOperatorCommandResult
-    | OperatorCommandRecord
-    | null
-    | undefined;
+): Promise<OperatorCommandExecutionResult> {
+  let result: OperatorCommandExecutionResult | undefined;
   let operationFailed = false;
   let operationError: unknown;
   try {
     resources.telemetry.start();
     resources.signal.throwIfAborted();
     await resources.database.checkReadiness(resources.signal);
-    switch (resources.command.type) {
-      case 'operator.status':
-        result = await resources.database.getCommand({
-          actorRef: resources.command.actorRef,
-          commandId: resources.command.commandId,
-          reason: resources.command.reason,
-          signal: resources.signal,
-          workspaceId: resources.command.workspaceId,
-        });
-        break;
-      case 'outbox.redispatch':
-        result = await resources.database.redispatchFailedOutbox({
-          actorRef: resources.command.actorRef,
-          commandId: resources.command.commandId,
-          dryRun: resources.command.dryRun,
-          outboxEventId: resources.command.outboxEventId,
-          reason: resources.command.reason,
-          signal: resources.signal,
-          workspaceId: resources.command.workspaceId,
-        });
-        break;
-      case 'attempt.reconcile':
-        result = await resources.database.reconcileAttempt({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'due-work.resume':
-        result = await resources.database.resumeDueWork({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'run.cancel':
-        result = await resources.database.cancelRun({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'unknown-outcome.record-evidence':
-        result = await resources.database.recordUnknownOutcomeEvidence({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'trigger.reconcile':
-        result = await resources.database.retryTriggerReconciliation({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'run.replay':
-        result = await resources.database.replayRun({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-      case 'purge.rerun':
-      case 'retention.rerun':
-        result = await resources.database.requestMaintenanceRerun({
-          ...resources.command,
-          signal: resources.signal,
-        });
-        break;
-    }
+    result = await executeConfiguredCommand(resources);
     resources.logger.info('operator_command.completed', {
       commandType: resources.command.type,
       ...('dryRun' in resources.command
@@ -150,25 +160,7 @@ export async function runOperatorCommand(
     );
   }
 
-  const cleanupErrors: unknown[] = [];
-  try {
-    await boundedCleanup(
-      resources.database.close(),
-      resources.cleanupTimeoutMs,
-      'Database',
-    );
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
-  try {
-    await boundedCleanup(
-      resources.telemetry.shutdown(),
-      resources.cleanupTimeoutMs,
-      'Telemetry',
-    );
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
+  const cleanupErrors = await cleanupOperatorResources(resources);
   if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
       [...(operationFailed ? [operationError] : []), ...cleanupErrors],

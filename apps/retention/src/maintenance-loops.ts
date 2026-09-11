@@ -100,32 +100,29 @@ function recordRecovery(
   state.consecutiveFailures = 0;
 }
 
-async function runOperatorRerunLoop(
+async function runOperationLoop(
   resources: RetentionMaintenanceResources,
+  operation: RetentionOperation,
   signal: AbortSignal,
+  executeIteration: (
+    startedAt: number,
+    recordOperationRecovery: () => void,
+  ) => Promise<boolean>,
 ): Promise<void> {
   const state: OperationState = { consecutiveFailures: 0 };
   while (!signal.aborted) {
     const startedAt = performance.now();
     try {
-      const result = await resources.database.processOperatorRerun(signal);
-      resources.metrics.recordOperatorRerun(
-        result,
-        (performance.now() - startedAt) / 1_000,
-      );
-      recordRecovery(resources, 'operator_rerun', state);
-      if (result !== null)
-        resources.logger.info('retention.operator_rerun_processed', {
-          outcome: result.outcome,
-          targetType: result.targetType,
-        });
-      if (result === null)
+      const shouldPoll = await executeIteration(startedAt, () => {
+        recordRecovery(resources, operation, state);
+      });
+      if (shouldPoll)
         await waitForAbortableDelay(resources.pollIntervalMs, signal);
     } catch (error: unknown) {
       if (error === signal.reason) return;
       await recordFailure(
         resources,
-        'operator_rerun',
+        operation,
         state,
         startedAt,
         error,
@@ -133,52 +130,68 @@ async function runOperatorRerunLoop(
       );
     }
   }
+}
+
+async function runOperatorRerunLoop(
+  resources: RetentionMaintenanceResources,
+  signal: AbortSignal,
+): Promise<void> {
+  await runOperationLoop(
+    resources,
+    'operator_rerun',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
+      const result = await resources.database.processOperatorRerun(signal);
+      resources.metrics.recordOperatorRerun(
+        result,
+        (performance.now() - startedAt) / 1_000,
+      );
+      recordOperationRecovery();
+      if (result !== null)
+        resources.logger.info('retention.operator_rerun_processed', {
+          outcome: result.outcome,
+          targetType: result.targetType,
+        });
+      return result === null;
+    },
+  );
 }
 
 async function runScheduleLoop(
   resources: RetentionMaintenanceResources,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'schedule',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       const result = await resources.database.scheduleEnforcement(signal);
       resources.metrics.recordSchedule(
         result,
         (performance.now() - startedAt) / 1_000,
       );
-      recordRecovery(resources, 'schedule', state);
-      if (!result.capacityLimited)
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'schedule',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      recordOperationRecovery();
+      return !result.capacityLimited;
+    },
+  );
 }
 
 async function runTransientDataReapLoop(
   resources: RetentionMaintenanceResources,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'transient_data_reap',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       const result = await resources.database.reapTransientData(signal);
       resources.metrics.recordTransientDataReap(
         result,
         (performance.now() - startedAt) / 1_000,
       );
-      recordRecovery(resources, 'transient_data_reap', state);
+      recordOperationRecovery();
       const deletedCount =
         result.idempotencyRecordsDeleted +
         result.workspaceCreationRecordsDeleted +
@@ -191,37 +204,27 @@ async function runTransientDataReapLoop(
           workspaceCreationRecordsDeleted:
             result.workspaceCreationRecordsDeleted,
         });
-      if (deletedCount === 0)
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'transient_data_reap',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return deletedCount === 0;
+    },
+  );
 }
 
 async function runDryRunLoop(
   resources: RetentionMaintenanceResources,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'dry_run',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       const result = await resources.database.processNext(signal);
       resources.metrics.record(
         result,
         (performance.now() - startedAt) / 1_000,
         'dry_run',
       );
-      recordRecovery(resources, 'dry_run', state);
+      recordOperationRecovery();
       if (result.status !== 'idle')
         resources.logger.info('retention.batch_processed', {
           eligibleCount: result.eligibleCount,
@@ -229,20 +232,9 @@ async function runDryRunLoop(
           outcome: result.status,
           pageCount: result.pageCount,
         });
-      if (result.status === 'idle')
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'dry_run',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return result.status === 'idle';
+    },
+  );
 }
 
 async function runEnforcementLoop(
@@ -250,10 +242,11 @@ async function runEnforcementLoop(
   ledgerReady: ReadinessGate,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'enforce',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       await ledgerReady();
       const result = await resources.enforcement.processNext(signal);
       resources.metrics.record(
@@ -261,7 +254,7 @@ async function runEnforcementLoop(
         (performance.now() - startedAt) / 1_000,
         'enforce',
       );
-      recordRecovery(resources, 'enforce', state);
+      recordOperationRecovery();
       if (result.status !== 'idle')
         resources.logger.info('retention.batch_processed', {
           eligibleCount: result.eligibleCount,
@@ -269,20 +262,9 @@ async function runEnforcementLoop(
           outcome: result.status,
           pageCount: result.pageCount,
         });
-      if (result.status !== 'completed')
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'enforce',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return result.status !== 'completed';
+    },
+  );
 }
 
 async function runPreviewLoop(
@@ -291,35 +273,25 @@ async function runPreviewLoop(
   ledgerReady: ReadinessGate,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'preview',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       await Promise.all([artifactsReady(), ledgerReady()]);
       const result = await resources.preview.processNext(signal);
       resources.metrics.recordPreview(
         result,
         (performance.now() - startedAt) / 1_000,
       );
-      recordRecovery(resources, 'preview', state);
+      recordOperationRecovery();
       if (result.status !== 'idle')
         resources.logger.info('retention.preview_processed', {
           outcome: result.status,
         });
-      if (result.status !== 'completed' && result.status !== 'progressed')
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'preview',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return result.status !== 'completed' && result.status !== 'progressed';
+    },
+  );
 }
 
 async function runArtifactLoop(
@@ -328,35 +300,25 @@ async function runArtifactLoop(
   ledgerReady: ReadinessGate,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'run_artifact',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       await Promise.all([artifactsReady(), ledgerReady()]);
       const result = await resources.runArtifacts.processNext(signal);
       resources.metrics.recordRunArtifact(
         result,
         (performance.now() - startedAt) / 1_000,
       );
-      recordRecovery(resources, 'run_artifact', state);
+      recordOperationRecovery();
       if (result.status !== 'idle')
         resources.logger.info('retention.run_artifact_processed', {
           outcome: result.status,
         });
-      if (result.status !== 'completed')
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'run_artifact',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return result.status !== 'completed';
+    },
+  );
 }
 
 async function runWorkspacePurgeLoop(
@@ -365,35 +327,25 @@ async function runWorkspacePurgeLoop(
   ledgerReady: ReadinessGate,
   signal: AbortSignal,
 ): Promise<void> {
-  const state: OperationState = { consecutiveFailures: 0 };
-  while (!signal.aborted) {
-    const startedAt = performance.now();
-    try {
+  await runOperationLoop(
+    resources,
+    'workspace_purge',
+    signal,
+    async (startedAt, recordOperationRecovery) => {
       await Promise.all([artifactsReady(), ledgerReady()]);
       const result = await resources.workspacePurge.processNext(signal);
       resources.metrics.recordWorkspacePurge(
         result,
         (performance.now() - startedAt) / 1_000,
       );
-      recordRecovery(resources, 'workspace_purge', state);
+      recordOperationRecovery();
       if (result.status !== 'idle')
         resources.logger.info('retention.workspace_purge_processed', {
           outcome: result.status,
         });
-      if (result.status !== 'started' && result.status !== 'progressed')
-        await waitForAbortableDelay(resources.pollIntervalMs, signal);
-    } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        'workspace_purge',
-        state,
-        startedAt,
-        error,
-        signal,
-      );
-    }
-  }
+      return result.status !== 'started' && result.status !== 'progressed';
+    },
+  );
 }
 
 export async function runMaintenanceLoops(

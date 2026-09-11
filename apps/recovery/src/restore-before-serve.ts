@@ -40,6 +40,30 @@ export interface RestoreBeforeServeResult {
   readonly ledger: DualRegionControlLedgerReadiness;
 }
 
+async function cleanupRestoreResources(
+  resources: RestoreBeforeServeResources,
+): Promise<readonly unknown[]> {
+  const cleanupErrors: unknown[] = [];
+  const closeInOrder: readonly (() => void | Promise<void>)[] = [
+    () => resources.coordinator.close(),
+    () => {
+      resources.ledger.close();
+    },
+    () => {
+      resources.artifacts.close();
+    },
+    () => resources.telemetry.shutdown(),
+  ];
+  for (const close of closeInOrder) {
+    try {
+      await close();
+    } catch (error: unknown) {
+      cleanupErrors.push(error);
+    }
+  }
+  return cleanupErrors;
+}
+
 async function verifyArtifactInventory(
   resources: RestoreBeforeServeResources,
   readiness: DualRegionArtifactStoreReadiness,
@@ -138,27 +162,7 @@ export async function restoreBeforeServe(
     );
   }
 
-  const cleanupErrors: unknown[] = [];
-  try {
-    await resources.coordinator.close();
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
-  try {
-    resources.ledger.close();
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
-  try {
-    resources.artifacts.close();
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
-  try {
-    await resources.telemetry.shutdown();
-  } catch (error: unknown) {
-    cleanupErrors.push(error);
-  }
+  const cleanupErrors = await cleanupRestoreResources(resources);
 
   if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
