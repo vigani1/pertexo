@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -154,6 +155,58 @@ describe('external control ledger', () => {
     ).rejects.toBeInstanceOf(ControlLedgerConflictError);
   });
 
+  it('forwards cancellation through predecessor validation', async () => {
+    const { client, ledger } = fixture();
+    const first = await ledger.append(command());
+    client.hangGets = true;
+    const controller = new AbortController();
+    const reason = new Error('cancelled during predecessor validation');
+    const pending = ledger.append(
+      command({
+        commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c04',
+        previousHash: first.recordHash,
+        sequence: 2,
+        signal: controller.signal,
+      }),
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(client.getSignals).toHaveLength(1);
+  });
+
+  it('forwards cancellation through conflict-recovery validation', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    client.hangGets = true;
+    const controller = new AbortController();
+    const reason = new Error('cancelled during conflict recovery');
+    const pending = ledger.append(command({ signal: controller.signal }));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(client.getSignals).toHaveLength(1);
+  });
+
+  it('preserves primitive provider failures outside not-found and conflict shapes', async () => {
+    const readFixture = fixture();
+    readFixture.client.getFailure = 'primitive read failure';
+    await expect(
+      readFixture.ledger.read({
+        sequence: 1,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toBe('primitive read failure');
+
+    const appendFixture = fixture();
+    appendFixture.client.putFailure = 'primitive append failure';
+    await expect(appendFixture.ledger.append(command())).rejects.toBe(
+      'primitive append failure',
+    );
+  });
+
   it('fails closed for invalid first/predecessor state and corrupted predecessors', async () => {
     const firstFixture = fixture();
     await expect(
@@ -202,6 +255,170 @@ describe('external control ledger', () => {
     await expect(
       ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
     ).rejects.toThrow('record hash is invalid');
+  });
+
+  it.each([
+    [
+      'noncanonical JSON',
+      (bytes: Buffer) => Buffer.from(` ${bytes.toString('utf8')}`),
+      'not canonical JSON',
+    ],
+    [
+      'schema-invalid JSON',
+      (bytes: Buffer) =>
+        Buffer.from(
+          JSON.stringify({
+            ...JSON.parse(bytes.toString('utf8')),
+            commandType: 'unknown-command',
+          }),
+        ),
+      'contract is invalid',
+    ],
+  ])('rejects %s returned by the provider', async (_name, mutate, message) => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    client.putRaw(key(1), mutate(client.getRequired(key(1))));
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toThrow(message);
+  });
+
+  it('rejects a canonical record whose identity differs from the requested key', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    const parsed = JSON.parse(
+      client.getRequired(key(1)).toString('utf8'),
+    ) as Record<string, unknown>;
+    const material: Record<string, unknown> = { ...parsed, sequence: 2 };
+    delete material.recordHash;
+    const recordHash = createHash('sha256')
+      .update(JSON.stringify(material))
+      .digest('hex');
+    const canonical = Object.fromEntries(
+      Object.entries({ ...material, recordHash }).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    );
+    client.putRaw(key(1), Buffer.from(JSON.stringify(canonical)));
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toThrow('identity is invalid');
+  });
+
+  it('rejects a canonical first record whose previous hash is not the zero hash', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    const parsed = JSON.parse(
+      client.getRequired(key(1)).toString('utf8'),
+    ) as Record<string, unknown>;
+    const material: Record<string, unknown> = {
+      ...parsed,
+      previousHash: '1'.repeat(64),
+    };
+    delete material.recordHash;
+    const recordHash = createHash('sha256')
+      .update(JSON.stringify(material))
+      .digest('hex');
+    const canonical = Object.fromEntries(
+      Object.entries({ ...material, recordHash }).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    );
+    client.putRaw(key(1), Buffer.from(JSON.stringify(canonical)));
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toThrow('First control ledger record does not use the zero hash');
+  });
+
+  it.each([
+    ['missing body', {}, undefined, 'body is not streamable'],
+    ['zero content length', undefined, 0, 'metadata is invalid'],
+    ['short body', undefined, 1_000, 'length is invalid'],
+  ] as const)(
+    'rejects a provider response with %s and cleans up its stream',
+    async (_name, bodyOverride, contentLength, message) => {
+      const { client, ledger } = fixture();
+      await ledger.append(command());
+      const body = bodyOverride ?? Readable.from([client.getRequired(key(1))]);
+      client.getBodyOverride = body;
+      client.getContentLengthOverride = contentLength;
+
+      await expect(
+        ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+      ).rejects.toThrow(message);
+      if (body instanceof Readable) expect(body.destroyed).toBe(true);
+    },
+  );
+
+  it('normalizes a non-Error abort reason while destroying a pending body', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    const body = new Readable({
+      read() {
+        return undefined;
+      },
+    });
+    client.getBodyOverride = body;
+    const controller = new AbortController();
+    const pending = ledger.read({
+      sequence: 1,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    controller.abort('caller stopped');
+
+    await expect(pending).rejects.toThrow('Control ledger read aborted');
+    expect(body.destroyed).toBe(true);
+  });
+
+  it('preserves an Error cancellation reason after read headers arrive', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    const body = new Readable({
+      read() {
+        return undefined;
+      },
+    });
+    client.getBodyOverride = body;
+    const controller = new AbortController();
+    const reason = new Error('cancelled after ledger read headers');
+    const pending = ledger.read({
+      sequence: 1,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(body.destroyed).toBe(true);
+  });
+
+  it('rejects a provider body longer than its declared content length', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    client.getContentLengthOverride = 1;
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toThrow('exceeds its bound');
+    expect(client.getBodyOverride).toBeUndefined();
+  });
+
+  it('destroys a valid provider stream that does not auto-destroy', async () => {
+    const { client, ledger } = fixture();
+    await ledger.append(command());
+    const body = Readable.from([client.getRequired(key(1))], {
+      autoDestroy: false,
+    });
+    client.getBodyOverride = body;
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).resolves.toEqual(expect.objectContaining({ sequence: 1 }));
+    expect(body.destroyed).toBe(true);
   });
 
   it('validates service-provided write and read SHA-256 checksums', async () => {
@@ -326,6 +543,111 @@ describe('external control ledger', () => {
         workspaceId: WORKSPACE_ID,
       }),
     ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
+  });
+
+  it('forwards a reconciliation signal to anchor, batch, and continuation reads', async () => {
+    const { client, ledger } = fixture();
+    const first = await ledger.append(command());
+    const second = await ledger.append(
+      command({
+        commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c04',
+        previousHash: first.recordHash,
+        sequence: 2,
+      }),
+    );
+    await ledger.append(
+      command({
+        commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c05',
+        previousHash: second.recordHash,
+        sequence: 3,
+      }),
+    );
+    client.getSignals.length = 0;
+    const controller = new AbortController();
+
+    await expect(
+      ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: first.recordHash,
+        projectedSequence: 1,
+        signal: controller.signal,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toMatchObject({ hasMore: true, records: [second] });
+    expect(client.getSignals).toHaveLength(3);
+    expect(client.getSignals.every((signal) => signal !== undefined)).toBe(
+      true,
+    );
+  });
+
+  it('treats an omitted provider contents list as an empty page', async () => {
+    const client = new MemoryS3();
+    client.listOutput = { IsTruncated: false, KeyCount: 0 };
+
+    await expect(
+      fixture(client).ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toMatchObject({
+      hasMore: false,
+      pageEndHash: ZERO_HASH,
+      pageEndSequence: 0,
+      records: [],
+    });
+  });
+
+  it('rejects a continuation probe that does not extend the returned page', async () => {
+    const { client, ledger } = fixture();
+    const first = await ledger.append(command());
+    const secondMaterial = {
+      ...command({
+        commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c04',
+        previousHash: ZERO_HASH,
+        sequence: 2,
+      }),
+      schemaVersion: 1,
+    };
+    const canonicalSecondMaterial = Object.fromEntries(
+      Object.entries(secondMaterial).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    );
+    const secondHash = createHash('sha256')
+      .update(JSON.stringify(canonicalSecondMaterial))
+      .digest('hex');
+    client.putRaw(
+      key(2),
+      Buffer.from(
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries({ ...secondMaterial, recordHash: secondHash }).sort(
+              ([left], [right]) => left.localeCompare(right),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await expect(
+      ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toThrow('probe is invalid');
+    await expect(
+      ledger.reconcile({
+        maxRecords: 2,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toThrow('hash chain is invalid');
+    expect(first.recordHash).not.toBe(ZERO_HASH);
   });
 
   it('fails closed when bounded listing exposes an external sequence gap', async () => {

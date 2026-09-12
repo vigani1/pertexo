@@ -8,7 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api/test-results.json && vitest run --config vitest.orchestration-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api-orchestration/test-results.json && vitest run --config vitest.priority-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api-priority/test-results.json",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api/test-results.json && vitest run --config vitest.orchestration-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api-orchestration/test-results.json && vitest run --config vitest.priority-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/api-priority/test-results.json && vitest run --config vitest.run-event-publisher-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=coverage/api-run-event-publisher/test-results.json",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:compatibility-rollout": "vitest run --config vitest.compatibility-rollout.config.ts",
     "test:sse-resilience": "vitest run --config vitest.sse-resilience.config.ts",

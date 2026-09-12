@@ -46,4 +46,9 @@ describe('workflow authoring HTTP preconditions', () => {
       expect(() => parseIdempotencyKey(candidate)).toThrow();
     }
   });
+
+  it('fails closed for a singleton non-string header value', () => {
+    expect(() => parseStrongIfMatch([42])).toThrow(WorkflowHeaderError);
+    expect(() => parseIdempotencyKey([42])).toThrow(WorkflowHeaderError);
+  });
 });

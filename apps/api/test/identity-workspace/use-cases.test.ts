@@ -212,6 +212,22 @@ describe('identity/workspace application use cases', () => {
     expect(vi.mocked(authorization.findAccess)).toHaveBeenCalledTimes(1);
   });
 
+  it('returns non-disclosing not-found when a lifecycle operation is absent', async () => {
+    const store = persistence();
+    store.readWorkspaceLifecycleOperation.mockResolvedValue(null);
+    const app = new WorkspaceLifecycleUseCase(store, {
+      findAccess: vi.fn().mockResolvedValue(activeAccess()),
+    });
+
+    await expect(
+      app.readOperation({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+  });
+
   it('matches persistence workspace name and slug limits exactly', () => {
     expect(
       workspaceCreateRequestSchema.parse({
@@ -318,6 +334,18 @@ describe('identity/workspace application use cases', () => {
     });
   });
 
+  it('preserves omitted optional audit identity for workspace creation', async () => {
+    const store = persistence();
+    await new CreateWorkspaceUseCase(store).execute({
+      actorId,
+      idempotencyKey,
+      request: { name: 'Operations', slug: 'operations' },
+    });
+    const call = vi.mocked(store.createWorkspaceWithOwner).mock.calls[0];
+    expect(Object.hasOwn(call?.[0] as object, 'requestId')).toBe(false);
+    expect(Object.hasOwn(call?.[0] as object, 'traceId')).toBe(false);
+  });
+
   it('authorizes deletion before accepting a lifecycle operation', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
@@ -413,6 +441,29 @@ describe('identity/workspace application use cases', () => {
       }),
     ).rejects.toBe(conflict);
     expect(store.requestWorkspaceLifecycleOperation).toHaveBeenCalledTimes(3);
+  });
+
+  it('returns the bounded result for a completed lifecycle operation', async () => {
+    const store = persistence();
+    store.readWorkspaceLifecycleOperation.mockResolvedValue({
+      ...operation(),
+      status: 'completed',
+      completedAt: new Date('2026-08-20T12:01:00.000Z'),
+    });
+    const app = new WorkspaceLifecycleUseCase(store, {
+      findAccess: vi.fn().mockResolvedValue(activeAccess()),
+    });
+
+    await expect(
+      app.readOperation({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      }),
+    ).resolves.toMatchObject({
+      status: 'completed',
+      result: { workspaceId },
+    });
   });
 
   it('denies lifecycle access to a deleted workspace before persistence', async () => {

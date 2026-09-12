@@ -7,8 +7,10 @@ import type {
 } from '@pertexo/database/testing';
 import {
   RegionalWriteAdmissionPausedError,
+  WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
+  WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '@pertexo/database/testing';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
@@ -80,6 +82,25 @@ describe('generic webhook ingress', () => {
       headers: request(body, currentSecret).headers,
     });
     expect(changed.statusCode).toBe(401);
+  });
+
+  it('accepts delivery without optional idempotency or trace context', async () => {
+    const fixture = setup(undefined, undefined, undefined, false);
+    fixture.database.acceptVerifiedDelivery.mockResolvedValueOnce({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+    });
+    const base = request('{}', currentSecret);
+    const headers = { ...base.headers } as Record<string, string>;
+    delete headers['idempotency-key'];
+    const response = await fixture.application.inject({ ...base, headers });
+
+    expect(response.statusCode).toBe(202);
+    const call = vi.mocked(fixture.database.acceptVerifiedDelivery).mock
+      .calls[0];
+    expect(Object.hasOwn(call?.[0] as object, 'idempotencyKeyHash')).toBe(
+      false,
+    );
   });
 
   it('consumes the durable endpoint limit before opening a signing secret', async () => {
@@ -192,10 +213,17 @@ describe('generic webhook ingress', () => {
     expect(
       (await application.inject(request(accepted, currentSecret))).statusCode,
     ).toBe(202);
-    const body = ' '.repeat(256 * 1024 + 10);
+    const body = ' '.repeat(256 * 1024 + 1);
     const response = await application.inject(request(body, currentSecret));
     expect(response.statusCode).toBe(413);
     expect(response.json<{ code: string }>().code).toBe(
+      'webhook.payload_too_large',
+    );
+    const parserRejected = await application.inject(
+      request(' '.repeat(256 * 1024 + 10), currentSecret),
+    );
+    expect(parserRejected.statusCode).toBe(413);
+    expect(parserRejected.json<{ code: string }>().code).toBe(
       'webhook.payload_too_large',
     );
   });
@@ -243,6 +271,52 @@ describe('generic webhook ingress', () => {
       'webhook.unavailable',
     );
   });
+
+  it('fails closed for missing verification and malformed timestamp material', async () => {
+    const missing = setup();
+    missing.database.resolveVerification.mockResolvedValueOnce(null);
+    const missingResponse = await missing.application.inject(
+      request('{}', currentSecret),
+    );
+    expect(missingResponse.statusCode).toBe(401);
+    expect(missing.openSecret).not.toHaveBeenCalled();
+
+    const malformed = setup();
+    const base = request('{}', currentSecret);
+    const malformedResponse = await malformed.application.inject({
+      ...base,
+      headers: { ...base.headers, 'x-pertexo-timestamp': 'not-a-time' },
+    });
+    expect(malformedResponse.statusCode).toBe(401);
+    expect(malformed.openSecret).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed idempotency headers before delivery admission', async () => {
+    const { application, database } = setup();
+    const base = request('{}', currentSecret);
+    const response = await application.inject({
+      ...base,
+      headers: { ...base.headers, 'idempotency-key': 'one,two' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('request.invalid');
+    expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    new WebhookDeliveryIneligibleError(),
+    new WorkspaceRunAdmissionDeniedError(),
+  ])(
+    'conceals ineligible delivery admission as authentication failure',
+    async (error) => {
+      const { application } = setup(undefined, error);
+      const response = await application.inject(request('{}', currentSecret));
+      expect(response.statusCode).toBe(401);
+      expect(response.json<{ code: string }>().code).toBe(
+        'webhook.authentication_failed',
+      );
+    },
+  );
 
   it('returns the original run reference for an exact completed replay', async () => {
     const replay = setup(undefined, undefined, {
@@ -346,6 +420,7 @@ describe('generic webhook ingress', () => {
       runId: '99999999-9999-4999-8999-999999999999',
       replayed: false,
     },
+    includeTraceparent = true,
   ) {
     const database = {
       resolveVerification: vi.fn().mockResolvedValue(reference),
@@ -377,7 +452,9 @@ describe('generic webhook ingress', () => {
       deduplication,
       health,
       traceparent: () =>
-        '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+        includeTraceparent
+          ? '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01'
+          : undefined,
       trace: async <T>(
         _traceparent: string | undefined,
         work: () => Promise<T>,

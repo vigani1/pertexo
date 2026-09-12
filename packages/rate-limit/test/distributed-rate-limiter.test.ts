@@ -76,6 +76,23 @@ describe('distributed abuse rate limiter', () => {
   });
 
   it.each([
+    [1, 1, 0],
+    [0, -1, 1],
+    [0, 1, 0],
+    [0, 1, 99],
+  ])('rejects a semantically invalid script result %j', async (...result) => {
+    const twoDimensionDecision: RateLimitDecision = {
+      ...decision,
+      dimensions: decision.dimensions.slice(0, 2),
+    };
+    const limiter = new DistributedRateLimiter(new FakeExecutor(result));
+
+    await expect(limiter.consume(twoDimensionDecision)).rejects.toThrow(
+      'Invalid rate-limit script result',
+    );
+  });
+
+  it.each([
     ['empty dimensions', { ...decision, dimensions: [] }],
     ['zero window', { ...decision, windowSeconds: 0 }],
     ['negative window', { ...decision, windowSeconds: -1 }],

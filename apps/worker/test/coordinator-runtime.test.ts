@@ -13,12 +13,64 @@ import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import {
+  createCoordinatorRuntime,
+  type CoordinatorRuntimeOptions,
+} from '../src/execution/coordinator-runtime.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
 const VERSION_ID = '33333333-3333-4333-8333-333333333333';
 const OUTBOX_EVENT_ID = '44444444-4444-4444-8444-444444444444';
+type RuntimeDependencies = NonNullable<
+  Parameters<typeof createCoordinatorRuntime>[1]
+>;
+
+function runtimeOptions(
+  overrides: Partial<CoordinatorRuntimeOptions> = {},
+): CoordinatorRuntimeOptions {
+  return {
+    database: {
+      connectionString:
+        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      max: 5,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    },
+    maximumAdmissions: 32,
+    redisUrl: 'redis://unreachable.invalid:6379/0',
+    ...overrides,
+  };
+}
+
+function runtimeDependencies(
+  consumer: QueueConsumer,
+  dueWakeupScanner: NonNullable<RuntimeDependencies['dueWakeupScanner']>,
+  deadlineWakeupScanner: NonNullable<
+    RuntimeDependencies['deadlineWakeupScanner']
+  >,
+): RuntimeDependencies {
+  return {
+    consumerFactory: () => consumer,
+    engine: { advance: vi.fn() },
+    notifications: {
+      close: vi.fn().mockResolvedValue(undefined),
+      publish: vi.fn(),
+      resync: vi.fn(),
+    },
+    reader: { close: vi.fn(), readForExecution: vi.fn() },
+    runStore: {
+      acknowledgeAdvanceDelivery: vi.fn(),
+      close: vi.fn(),
+      commitAdvancePlan: vi.fn(),
+      loadAdvanceState: vi.fn(),
+    },
+    dueWakeupScanner,
+    deadlineWakeupScanner,
+  };
+}
 
 describe('coordinator runtime', () => {
   it('polls due PostgreSQL wakeups without overlap and drains the scanner on close', async () => {
@@ -84,6 +136,89 @@ describe('coordinator runtime', () => {
     await closing;
     expect(scanner.claimDueWakeups).toHaveBeenCalledTimes(2);
     expect(scanner.close).toHaveBeenCalledOnce();
+  });
+
+  it.each(['due', 'deadline'] as const)(
+    'aborts an in-flight %s wakeup scan and does not start another scan',
+    async (target) => {
+      let observedSignal: AbortSignal | undefined;
+      const aborted = new Error(`${target} scan aborted`);
+      const blockingScanner = {
+        claimDueWakeups: vi.fn(
+          (_limit: number, signal?: AbortSignal): Promise<number> => {
+            observedSignal = signal;
+            return new Promise((_resolve, reject) => {
+              signal?.addEventListener(
+                'abort',
+                () => {
+                  reject(aborted);
+                },
+                { once: true },
+              );
+            });
+          },
+        ),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const idleScanner = {
+        claimDueWakeups: vi.fn().mockResolvedValue(0),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const consumer: QueueConsumer = {
+        close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+        isReady: vi.fn().mockReturnValue(true),
+        waitUntilReady: vi.fn().mockResolvedValue(undefined),
+      };
+      const runtime = await createCoordinatorRuntime(
+        runtimeOptions({ backgroundTaskShutdownTimeoutMillis: 100 }),
+        runtimeDependencies(
+          consumer,
+          target === 'due' ? blockingScanner : idleScanner,
+          target === 'deadline' ? blockingScanner : idleScanner,
+        ),
+      );
+
+      await vi.waitFor(() => {
+        expect(blockingScanner.claimDueWakeups).toHaveBeenCalledOnce();
+      });
+      await expect(runtime.close()).resolves.toBeUndefined();
+      expect(observedSignal).toBeInstanceOf(AbortSignal);
+      expect(observedSignal?.aborted).toBe(true);
+      expect(blockingScanner.claimDueWakeups).toHaveBeenCalledOnce();
+      expect(blockingScanner.close).toHaveBeenCalledOnce();
+      expect(idleScanner.close).toHaveBeenCalledOnce();
+      if (target === 'due')
+        expect(idleScanner.claimDueWakeups).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reports a bounded shutdown failure while still closing every scanner', async () => {
+    const blockingScanner = {
+      claimDueWakeups: vi.fn(() => new Promise<number>(() => undefined)),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const idleScanner = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const runtime = await createCoordinatorRuntime(
+      runtimeOptions({ backgroundTaskShutdownTimeoutMillis: 5 }),
+      runtimeDependencies(consumer, blockingScanner, idleScanner),
+    );
+
+    await vi.waitFor(() => {
+      expect(blockingScanner.claimDueWakeups).toHaveBeenCalledOnce();
+    });
+    await expect(runtime.close()).rejects.toMatchObject({
+      name: 'BackgroundTaskShutdownTimeoutError',
+    });
+    expect(blockingScanner.close).toHaveBeenCalledOnce();
+    expect(idleScanner.close).toHaveBeenCalledOnce();
   });
 
   it('composes one traced coordinator consumer and closes every owned adapter', async () => {

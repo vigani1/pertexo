@@ -152,6 +152,23 @@ function fixture(observer?: ObjectStoreObserver) {
   };
 }
 
+function rejectWhenAborted<TResult>(
+  signal: AbortSignal | undefined,
+  settle: () => void,
+  message: string,
+): Promise<TResult> {
+  return new Promise((_resolve, reject) => {
+    signal?.addEventListener(
+      'abort',
+      () => {
+        settle();
+        reject(new Error(message));
+      },
+      { once: true },
+    );
+  });
+}
+
 describe('dual-region control ledger', () => {
   it('checks both readiness controls concurrently and proves isolation', async () => {
     const { ledger, primary, recovery } = fixture();
@@ -195,6 +212,79 @@ describe('dual-region control ledger', () => {
         region: 'eu-west-1',
       });
     await expect(ledger.checkReadiness()).rejects.toThrow('must be distinct');
+  });
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'classifies %s readiness unavailability at the readiness stage',
+    async (role, failPrimary, failRecovery) => {
+      const observations: unknown[] = [];
+      const { ledger, primary, recovery } = fixture({
+        observeRequest: () => undefined,
+        observeSafetyViolation: (observation) => observations.push(observation),
+      });
+      if (failPrimary) {
+        primary.readinessImplementation = () =>
+          Promise.reject(new Error('primary readiness unavailable'));
+      }
+      if (failRecovery) {
+        recovery.readinessImplementation = () =>
+          Promise.reject(new Error('recovery readiness unavailable'));
+      }
+
+      await expect(ledger.checkReadiness()).rejects.toMatchObject({
+        name: 'ControlLedgerReadinessError',
+        message: 'Dual-region control ledger readiness could not be verified',
+      });
+      expect(observations).toEqual([
+        {
+          check: 'control_ledger_integrity',
+          failedRegionRole: role,
+          operation: 'readiness',
+          outcome: 'unavailable',
+          regionRole: 'primary',
+          surface: 'control_ledger',
+        },
+      ]);
+    },
+  );
+
+  it('preserves cancellation after both readiness checks settle', async () => {
+    const { ledger, primary, recovery } = fixture();
+    const controller = new AbortController();
+    const reason = new Error('cancelled during readiness');
+    let primarySettled = false;
+    let recoverySettled = false;
+    primary.readinessImplementation = (signal) =>
+      rejectWhenAborted<ControlLedgerReadiness>(
+        signal,
+        () => {
+          primarySettled = true;
+        },
+        'regional readiness aborted',
+      );
+    recovery.readinessImplementation = (signal) =>
+      rejectWhenAborted<ControlLedgerReadiness>(
+        signal,
+        () => {
+          recoverySettled = true;
+        },
+        'regional readiness aborted',
+      );
+
+    const pending = ledger.checkReadiness(controller.signal);
+    await vi.waitFor(() => {
+      expect(primary.readinessCalls).toBe(1);
+      expect(recovery.readinessCalls).toBe(1);
+    });
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(primarySettled).toBe(true);
+    expect(recoverySettled).toBe(true);
   });
 
   it('rejects shared config access key IDs before creating clients', () => {
@@ -281,6 +371,127 @@ describe('dual-region control ledger', () => {
     expect(recovery.appendRequests).toEqual([request, request]);
   });
 
+  it.each(['primary', 'recovery'] as const)(
+    'repairs only the missing region when %s alone has the exact record',
+    async (presentRole) => {
+      const { ledger, primary, recovery } = fixture();
+      if (presentRole === 'primary') primary.storedRecord = record();
+      else recovery.storedRecord = record();
+
+      await expect(ledger.append(appendRequest())).resolves.toEqual(record());
+      expect(primary.appendRequests).toHaveLength(
+        presentRole === 'primary' ? 0 : 1,
+      );
+      expect(recovery.appendRequests).toHaveLength(
+        presentRole === 'recovery' ? 0 : 1,
+      );
+    },
+  );
+
+  it.each([
+    ['primary', true, false, ControlLedgerPartialReplicationError],
+    ['recovery', false, true, ControlLedgerPartialReplicationError],
+    ['both', true, true, ControlLedgerIntegrityError],
+  ] as const)(
+    'classifies %s append availability failures without claiming success',
+    async (_role, failPrimary, failRecovery, expectedError) => {
+      const { ledger, primary, recovery } = fixture();
+      if (failPrimary) {
+        primary.appendImplementation = () =>
+          Promise.reject(new Error('primary unavailable'));
+      }
+      if (failRecovery) {
+        recovery.appendImplementation = () =>
+          Promise.reject(new Error('recovery unavailable'));
+      }
+
+      await expect(ledger.append(appendRequest())).rejects.toBeInstanceOf(
+        expectedError,
+      );
+      expect(primary.appendRequests).toHaveLength(1);
+      expect(recovery.appendRequests).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'fails append before writing when %s pre-read state is unavailable',
+    async (role, failPrimary, failRecovery) => {
+      const observations: unknown[] = [];
+      const { ledger, primary, recovery } = fixture({
+        observeRequest: () => undefined,
+        observeSafetyViolation: (observation) => observations.push(observation),
+      });
+      if (failPrimary) {
+        primary.readImplementation = () =>
+          Promise.reject(new Error('primary read unavailable'));
+      }
+      if (failRecovery) {
+        recovery.readImplementation = () =>
+          Promise.reject(new Error('recovery read unavailable'));
+      }
+
+      await expect(ledger.append(appendRequest())).rejects.toMatchObject({
+        name: 'ControlLedgerIntegrityError',
+        message:
+          'Dual-region control ledger append pre-read could not be proven',
+      });
+      expect(primary.readRequests).toHaveLength(1);
+      expect(recovery.readRequests).toHaveLength(1);
+      expect(primary.appendRequests).toHaveLength(0);
+      expect(recovery.appendRequests).toHaveLength(0);
+      expect(observations).toEqual([
+        {
+          check: 'control_ledger_integrity',
+          failedRegionRole: role,
+          operation: 'append',
+          outcome: 'unavailable',
+          regionRole: 'primary',
+          surface: 'control_ledger',
+        },
+      ]);
+    },
+  );
+
+  it('replays equal records already present in both regions without writing', async () => {
+    const { ledger, primary, recovery } = fixture();
+    primary.storedRecord = record();
+    recovery.storedRecord = record();
+
+    await expect(ledger.append(appendRequest())).resolves.toEqual(record());
+    expect(primary.appendRequests).toHaveLength(0);
+    expect(recovery.appendRequests).toHaveLength(0);
+  });
+
+  it('rejects divergent records already present in both regions without writing', async () => {
+    const { ledger, primary, recovery } = fixture();
+    primary.storedRecord = record();
+    recovery.storedRecord = record({ reason: 'divergent stored material' });
+
+    await expect(ledger.append(appendRequest())).rejects.toMatchObject({
+      name: 'ControlLedgerIntegrityError',
+      message:
+        'Dual-region control ledger records differ at the target sequence',
+    });
+    expect(primary.appendRequests).toHaveLength(0);
+    expect(recovery.appendRequests).toHaveLength(0);
+  });
+
+  it('rejects conflicting request material when equal records exist without writing', async () => {
+    const { ledger, primary, recovery } = fixture();
+    primary.storedRecord = record();
+    recovery.storedRecord = record();
+
+    await expect(
+      ledger.append(appendRequest({ reason: 'conflicting request material' })),
+    ).rejects.toBeInstanceOf(ControlLedgerConflictError);
+    expect(primary.appendRequests).toHaveLength(0);
+    expect(recovery.appendRequests).toHaveLength(0);
+  });
+
   it('does not write the missing region for a different command', async () => {
     const { ledger, primary, recovery } = fixture();
     primary.storedRecord = record();
@@ -326,29 +537,22 @@ describe('dual-region control ledger', () => {
     const controller = new AbortController();
     let primarySettled = false;
     let recoverySettled = false;
-    const waitForAbort = (
-      request: AppendControlLedgerRecord,
-      settle: () => void,
-    ): Promise<ControlLedgerRecord> =>
-      new Promise((_resolve, reject) => {
-        request.signal?.addEventListener(
-          'abort',
-          () => {
-            settle();
-            const reason: unknown = request.signal?.reason;
-            reject(reason instanceof Error ? reason : new Error('aborted'));
-          },
-          { once: true },
-        );
-      });
     primary.appendImplementation = (request) =>
-      waitForAbort(request, () => {
-        primarySettled = true;
-      });
+      rejectWhenAborted<ControlLedgerRecord>(
+        request.signal,
+        () => {
+          primarySettled = true;
+        },
+        'regional append aborted',
+      );
     recovery.appendImplementation = (request) =>
-      waitForAbort(request, () => {
-        recoverySettled = true;
-      });
+      rejectWhenAborted<ControlLedgerRecord>(
+        request.signal,
+        () => {
+          recoverySettled = true;
+        },
+        'regional append aborted',
+      );
     const reason = new Error('cancelled by caller');
     const pending = ledger.append(appendRequest({ signal: controller.signal }));
     await vi.waitFor(() => {
@@ -394,6 +598,123 @@ describe('dual-region control ledger', () => {
     await expect(pending).rejects.toBe(reason);
   });
 
+  it('preserves cancellation after both append pre-reads settle', async () => {
+    const { ledger, primary, recovery } = fixture();
+    const controller = new AbortController();
+    const reason = new Error('cancelled during append pre-read');
+    let primarySettled = false;
+    let recoverySettled = false;
+    primary.readImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerRecord | null>(
+        request.signal,
+        () => {
+          primarySettled = true;
+        },
+        'regional read aborted',
+      );
+    recovery.readImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerRecord | null>(
+        request.signal,
+        () => {
+          recoverySettled = true;
+        },
+        'regional read aborted',
+      );
+
+    const pending = ledger.append(appendRequest({ signal: controller.signal }));
+    await vi.waitFor(() => {
+      expect(primary.readRequests).toHaveLength(1);
+      expect(recovery.readRequests).toHaveLength(1);
+    });
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(primarySettled).toBe(true);
+    expect(recoverySettled).toBe(true);
+    expect(primary.appendRequests).toHaveLength(0);
+    expect(recovery.appendRequests).toHaveLength(0);
+  });
+
+  it('preserves cancellation after both public reads settle', async () => {
+    const { ledger, primary, recovery } = fixture();
+    const controller = new AbortController();
+    const reason = new Error('cancelled during public read');
+    let primarySettled = false;
+    let recoverySettled = false;
+    primary.readImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerRecord | null>(
+        request.signal,
+        () => {
+          primarySettled = true;
+        },
+        'regional read aborted',
+      );
+    recovery.readImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerRecord | null>(
+        request.signal,
+        () => {
+          recoverySettled = true;
+        },
+        'regional read aborted',
+      );
+
+    const pending = ledger.read({
+      sequence: 1,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    await vi.waitFor(() => {
+      expect(primary.readRequests).toHaveLength(1);
+      expect(recovery.readRequests).toHaveLength(1);
+    });
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(primarySettled).toBe(true);
+    expect(recoverySettled).toBe(true);
+  });
+
+  it('preserves cancellation after both reconciliations settle', async () => {
+    const { ledger, primary, recovery } = fixture();
+    const controller = new AbortController();
+    const reason = new Error('cancelled during reconciliation');
+    let primarySettled = false;
+    let recoverySettled = false;
+    primary.reconcileImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerReconciliation>(
+        request.signal,
+        () => {
+          primarySettled = true;
+        },
+        'regional reconciliation aborted',
+      );
+    recovery.reconcileImplementation = (request) =>
+      rejectWhenAborted<ControlLedgerReconciliation>(
+        request.signal,
+        () => {
+          recoverySettled = true;
+        },
+        'regional reconciliation aborted',
+      );
+
+    const pending = ledger.reconcile({
+      maxRecords: 10,
+      projectedHash: ZERO_HASH,
+      projectedSequence: 0,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    await vi.waitFor(() => {
+      expect(primary.reconcileRequests).toHaveLength(1);
+      expect(recovery.reconcileRequests).toHaveLength(1);
+    });
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(primarySettled).toBe(true);
+    expect(recoverySettled).toBe(true);
+  });
+
   it('requires reads to be present and exactly equal in both regions', async () => {
     const request = { sequence: 1, workspaceId: WORKSPACE_ID };
     const first = fixture();
@@ -430,6 +751,18 @@ describe('dual-region control ledger', () => {
     };
     await expect(ledger.reconcile(request)).rejects.toThrow('results differ');
     expect(primary.reconcileRequests[0]).toBe(recovery.reconcileRequests[0]);
+  });
+
+  it('returns exactly equal regional reconciliation pages', async () => {
+    const { ledger } = fixture();
+    await expect(
+      ledger.reconcile({
+        maxRecords: 10,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toEqual(reconciliation());
   });
 
   it('fails reconciliation closed during either-region outage', async () => {
@@ -499,6 +832,80 @@ describe('dual-region control ledger', () => {
       ledger.reconcile({ ...request, repairCommandId: crypto.randomUUID() }),
     ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
     expect(primary.reconcileRequests[0]).toBe(recovery.reconcileRequests[0]);
+  });
+
+  it('rejects reverse one-sided reconciliation without the exact repair command', async () => {
+    const { ledger, recovery } = fixture();
+    recovery.reconcileImplementation = () =>
+      Promise.resolve(
+        reconciliation({
+          pageEndHash: ZERO_HASH,
+          pageEndSequence: 0,
+          records: [],
+        }),
+      );
+
+    await expect(
+      ledger.reconcile({
+        maxRecords: 10,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        repairCommandId: crypto.randomUUID(),
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
+  });
+
+  it('accepts a recovery-shorter exact common prefix', async () => {
+    const { ledger, recovery } = fixture();
+    recovery.reconcileImplementation = () =>
+      Promise.resolve(
+        reconciliation({
+          pageEndHash: ZERO_HASH,
+          pageEndSequence: 0,
+          records: [],
+        }),
+      );
+
+    await expect(
+      ledger.reconcile({
+        maxRecords: 10,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        repairCommandId: COMMAND_ID,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toEqual({
+      hasMore: false,
+      pageEndHash: ZERO_HASH,
+      pageEndSequence: 0,
+      reachedHighWater: true,
+      records: [],
+    });
+  });
+
+  it('rejects a structurally incomplete one-sided repair page', async () => {
+    const { ledger, primary } = fixture();
+    primary.reconcileImplementation = () =>
+      Promise.resolve(
+        reconciliation({
+          hasMore: true,
+          pageEndHash: ZERO_HASH,
+          pageEndSequence: 0,
+          reachedHighWater: false,
+          records: [],
+        }),
+      );
+
+    await expect(
+      ledger.reconcile({
+        maxRecords: 10,
+        projectedHash: ZERO_HASH,
+        projectedSequence: 0,
+        repairCommandId: COMMAND_ID,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
   });
 
   it('closes owned ledgers and leaves explicitly borrowed ledgers open', async () => {

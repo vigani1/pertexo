@@ -103,96 +103,101 @@ export function createFailureNotificationCompletionStore(
         result.kind === 'delivered' ? undefined : result.safeErrorCode;
       const providerReference =
         result.kind === 'delivered' ? result.providerReference : undefined;
-      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const locked = await client.query<LockedIntent>(
-          `select status,delivery_attempts,side_effect_class,possibly_dispatched
+      return withTenantScopedClient(
+        pool,
+        { workspaceId },
+        async (client) => {
+          const locked = await client.query<LockedIntent>(
+            `select status,delivery_attempts,side_effect_class,possibly_dispatched
            from app.run_failure_notification_intents
            where workspace_id=$1 and id=$2 for update`,
-          [workspaceId, intentId],
-        );
-        const row = locked.rows[0];
-        if (
-          (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
-          row.delivery_attempts !== raw.attemptNumber
-        )
-          return 'stale' as const;
-        if (
-          row.status === 'claimed' &&
-          (result.kind === 'delivered' ||
-            (result.kind === 'outcome_unknown' &&
-              row.possibly_dispatched !== true))
-        )
-          throw new FailureNotificationStateError(
-            'Predispatch completion result is incompatible',
+            [workspaceId, intentId],
           );
-        const decision = completionDecision(
-          row,
-          result,
-          raw.attemptNumber,
-          raw.maxAttempts,
-        );
-        if (decision.kind === 'retry') {
-          const scheduled = await client.query<{ next_delivery_at: Date }>(
-            `update app.run_failure_notification_intents
+          const row = locked.rows[0];
+          if (
+            (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
+            row.delivery_attempts !== raw.attemptNumber
+          )
+            return 'stale' as const;
+          if (
+            row.status === 'claimed' &&
+            (result.kind === 'delivered' ||
+              (result.kind === 'outcome_unknown' &&
+                row.possibly_dispatched !== true))
+          )
+            throw new FailureNotificationStateError(
+              'Predispatch completion result is incompatible',
+            );
+          const decision = completionDecision(
+            row,
+            result,
+            raw.attemptNumber,
+            raw.maxAttempts,
+          );
+          if (decision.kind === 'retry') {
+            const scheduled = await client.query<{ next_delivery_at: Date }>(
+              `update app.run_failure_notification_intents
              set status='retry',dispatch_marked_at=null,recovery_at=null,
                   next_delivery_at=clock_timestamp()+make_interval(secs=>$3),
                   safe_error_code=$4,possibly_dispatched=$5,updated_at=clock_timestamp()
              where workspace_id=$1 and id=$2
              returning next_delivery_at`,
+              [
+                workspaceId,
+                intentId,
+                raw.retryDelaySeconds,
+                safeErrorCode ?? null,
+                decision.deliveryUnresolved,
+              ],
+            );
+            const due = scheduled.rows[0]?.next_delivery_at;
+            if (due === undefined)
+              throw new FailureNotificationStateError(
+                'Retry schedule was not persisted',
+              );
+            await insertFailureNotificationDeliveryOutbox(client, {
+              workspaceId,
+              intentId,
+              attemptNumber: raw.attemptNumber + 1,
+              availableAt: due,
+            });
+            await auditFailureNotification(client, {
+              workspaceId,
+              intentId,
+              factType: 'retry_scheduled',
+              attemptNumber: raw.attemptNumber,
+              ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
+              possiblyDispatched: decision.deliveryUnresolved,
+            });
+            return 'completed' as const;
+          }
+          await client.query(
+            `update app.run_failure_notification_intents
+           set status=$3,dispatch_marked_at=null,recovery_at=null,next_delivery_at=null,
+               safe_error_code=$4,possibly_dispatched=$5,provider_reference=$6,
+               completed_at=clock_timestamp(),updated_at=clock_timestamp()
+           where workspace_id=$1 and id=$2`,
             [
               workspaceId,
               intentId,
-              raw.retryDelaySeconds,
+              decision.status,
               safeErrorCode ?? null,
               decision.deliveryUnresolved,
+              providerReference ?? null,
             ],
           );
-          const due = scheduled.rows[0]?.next_delivery_at;
-          if (due === undefined)
-            throw new FailureNotificationStateError(
-              'Retry schedule was not persisted',
-            );
-          await insertFailureNotificationDeliveryOutbox(client, {
-            workspaceId,
-            intentId,
-            attemptNumber: raw.attemptNumber + 1,
-            availableAt: due,
-          });
           await auditFailureNotification(client, {
             workspaceId,
             intentId,
-            factType: 'retry_scheduled',
+            factType: completionAuditFactType(decision.status),
             attemptNumber: raw.attemptNumber,
             ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
             possiblyDispatched: decision.deliveryUnresolved,
           });
           return 'completed' as const;
-        }
-        await client.query(
-          `update app.run_failure_notification_intents
-           set status=$3,dispatch_marked_at=null,recovery_at=null,next_delivery_at=null,
-               safe_error_code=$4,possibly_dispatched=$5,provider_reference=$6,
-               completed_at=clock_timestamp(),updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2`,
-          [
-            workspaceId,
-            intentId,
-            decision.status,
-            safeErrorCode ?? null,
-            decision.deliveryUnresolved,
-            providerReference ?? null,
-          ],
-        );
-        await auditFailureNotification(client, {
-          workspaceId,
-          intentId,
-          factType: completionAuditFactType(decision.status),
-          attemptNumber: raw.attemptNumber,
-          ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
-          possiblyDispatched: decision.deliveryUnresolved,
-        });
-        return 'completed' as const;
-      });
+        },
+        raw.signal === undefined ? {} : { signal: raw.signal },
+      );
     },
   });
 }

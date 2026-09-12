@@ -34,6 +34,7 @@ import {
   type UnknownOutcomeReconciliationStore,
 } from './unknown-outcome-reconciliation-runtime.js';
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
+import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
 import {
   createFailureNotificationHandler,
   type FailureNotificationDeliveryCapability,
@@ -48,6 +49,7 @@ export async function createPreviewMaintenanceRuntime(
   options: Readonly<{
     database: DatabaseConfig;
     databaseRuntime?: DatabaseRuntime;
+    backgroundTaskShutdownTimeoutMillis?: number;
     observer?: QueueConsumerObserver;
     redisUrl: string;
     failureNotificationDelivery?: FailureNotificationDeliveryCapability;
@@ -68,6 +70,16 @@ export async function createPreviewMaintenanceRuntime(
     runReplayStore?: OperatorRunReplayStore;
   }> = {},
 ): Promise<PreviewMaintenanceRuntime> {
+  const backgroundTaskShutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+  if (
+    !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
+    backgroundTaskShutdownTimeoutMillis < 1 ||
+    backgroundTaskShutdownTimeoutMillis > 120_000
+  )
+    throw new TypeError(
+      'Background task shutdown timeout must be between 1 and 120000',
+    );
   const reconciliationStore =
     dependencies.reconciliationStore ??
     createDatabasePreviewReconciliationStore(
@@ -184,7 +196,7 @@ export async function createPreviewMaintenanceRuntime(
   const recoveryLoop = (async (): Promise<void> => {
     while (!recoveryAbort.signal.aborted) {
       try {
-        await failureNotificationStore?.recoverDue(25, 3);
+        await failureNotificationStore?.recoverDue(25, 3, recoveryAbort.signal);
       } catch {
         // PostgreSQL authority is retried; dependency readiness remains fail closed.
       }
@@ -196,15 +208,24 @@ export async function createPreviewMaintenanceRuntime(
     close: (): Promise<void> => {
       closePromise ??= (async (): Promise<void> => {
         recoveryAbort.abort();
-        const results = await Promise.allSettled([
-          consumer.close(),
-          recoveryLoop,
+        const consumerResult = await Promise.allSettled([consumer.close()]);
+        const recoveryDrainResult = await Promise.allSettled([
+          boundedBackgroundTask(
+            recoveryLoop,
+            backgroundTaskShutdownTimeoutMillis,
+          ),
+        ]);
+        const adapterResults = await Promise.allSettled([
           reconciliationStore.close?.(),
           unknownOutcomeStore?.close?.(),
           runReplayStore?.close(),
           failureNotificationStore?.close(),
         ]);
-        const failure = results.find((result) => result.status === 'rejected');
+        const failure = [
+          ...consumerResult,
+          ...recoveryDrainResult,
+          ...adapterResults,
+        ].find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;
       })();
       return closePromise;

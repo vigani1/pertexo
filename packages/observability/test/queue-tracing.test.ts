@@ -7,6 +7,7 @@ import {
   type TextMapPropagator,
   type Tracer,
 } from '@opentelemetry/api';
+import { node } from '@opentelemetry/sdk-node';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createQueueTraceRunner } from '../src/queue-tracing.js';
@@ -110,10 +111,146 @@ describe('createQueueTraceRunner', () => {
       ),
     ).rejects.toBe(failure);
     expect(proof.propagator.extract).not.toHaveBeenCalled();
-    expect(proof.span.recordException).toHaveBeenCalledWith(failure);
+    expect(proof.span.recordException).toHaveBeenCalledWith({ name: 'Error' });
     expect(proof.span.setStatus).toHaveBeenCalledWith({
       code: SpanStatusCode.ERROR,
     });
     expect(proof.span.end).toHaveBeenCalledOnce();
+  });
+
+  it('preserves a hostile Proxy rejection when error classification cannot inspect its prototype', async () => {
+    const proof = harness();
+    const classificationFailure = new Error('prototype inspection failed');
+    const rejection = new Proxy(Object.create(null) as object, {
+      getPrototypeOf: () => {
+        throw classificationFailure;
+      },
+    });
+    const runner = createQueueTraceRunner({
+      activeContext: () => proof.activeParent,
+      propagator: proof.propagator,
+      tracer: proof.tracer,
+    });
+
+    await expect(
+      runner.run(
+        undefined,
+        { jobName: 'hostile-rejection', queueName: 'maintenance' },
+        // The runner deliberately preserves legacy non-Error rejection identity.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        () => Promise.reject(rejection),
+      ),
+    ).rejects.toBe(rejection);
+    expect(proof.span.recordException).toHaveBeenCalledWith({
+      name: 'NonError',
+    });
+    expect(proof.span.setStatus).toHaveBeenCalledWith({
+      code: SpanStatusCode.ERROR,
+    });
+    expect(proof.span.end).toHaveBeenCalledOnce();
+  });
+
+  it('exports bounded exception classifications without reading hostile error properties', async () => {
+    const exporter = new node.InMemorySpanExporter();
+    const provider = new node.NodeTracerProvider({
+      spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+    });
+    const runner = createQueueTraceRunner({
+      tracer: provider.getTracer('queue-tracing-test'),
+    });
+    const secrets = [
+      'queue-message-secret',
+      'queue-stack-secret',
+      'queue-cause-secret',
+      'queue-name-secret',
+      'queue-code-secret',
+      'queue-non-error-secret',
+    ];
+    const getterCalls = {
+      cause: 0,
+      code: 0,
+      message: 0,
+      name: 0,
+      stack: 0,
+    };
+    const hostileError = new Error('unused');
+    for (const [property, secret] of [
+      ['cause', secrets[2]],
+      ['code', secrets[4]],
+      ['message', secrets[0]],
+      ['name', secrets[3]],
+      ['stack', secrets[1]],
+    ] as const) {
+      Object.defineProperty(hostileError, property, {
+        configurable: true,
+        get: () => {
+          getterCalls[property] += 1;
+          return secret;
+        },
+      });
+    }
+    const hostileNonError = Object.create(null) as Record<string, unknown>;
+    for (const [property, secret] of [
+      ['cause', secrets[2]],
+      ['code', secrets[4]],
+      ['message', secrets[0]],
+      ['name', secrets[3]],
+      ['stack', secrets[1]],
+    ] as const) {
+      Object.defineProperty(hostileNonError, property, {
+        configurable: true,
+        get: () => {
+          getterCalls[property] += 1;
+          return secret;
+        },
+      });
+    }
+
+    await expect(
+      runner.run(
+        undefined,
+        { jobName: 'queue-error', queueName: 'maintenance' },
+        () => Promise.reject(hostileError),
+      ),
+    ).rejects.toBe(hostileError);
+    await expect(
+      runner.run(
+        undefined,
+        { jobName: 'queue-non-error', queueName: 'maintenance' },
+        // The runner deliberately preserves legacy non-Error rejection identity.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        () => Promise.reject(hostileNonError),
+      ),
+    ).rejects.toBe(hostileNonError);
+
+    const spans = exporter.getFinishedSpans();
+    expect(spans).toHaveLength(2);
+    expect(spans.map((span) => span.status.code)).toEqual([
+      SpanStatusCode.ERROR,
+      SpanStatusCode.ERROR,
+    ]);
+    expect(spans[0]?.events[0]?.attributes).toEqual({
+      'exception.type': 'Error',
+    });
+    expect(spans[1]?.events[0]?.attributes).toEqual({
+      'exception.type': 'NonError',
+    });
+    expect(getterCalls).toEqual({
+      cause: 0,
+      code: 0,
+      message: 0,
+      name: 0,
+      stack: 0,
+    });
+    const serialized = JSON.stringify(
+      spans.map((span) => ({
+        attributes: span.attributes,
+        events: span.events,
+        status: span.status,
+      })),
+    );
+    for (const secret of secrets) {
+      expect(serialized).not.toContain(secret);
+    }
   });
 });

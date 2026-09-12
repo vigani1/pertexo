@@ -453,6 +453,29 @@ describe('BullMQ queue consumer', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it('normalizes a primitive signal that is aborted before processor admission', async () => {
+    const handler = vi.fn<QueueJobHandler>(() => Promise.resolve());
+    createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler,
+    });
+    const controller = new AbortController();
+    controller.abort('transport-stopped');
+
+    await expect(
+      mocks.workerInstances[0]?.processor(
+        validJob,
+        undefined,
+        controller.signal,
+      ),
+    ).rejects.toMatchObject({
+      message: 'Queue handler was aborted',
+      cause: 'transport-stopped',
+    });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('becomes ready only after BullMQ is ready and closes gracefully', async () => {
     const consumer = createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
@@ -479,6 +502,67 @@ describe('BullMQ queue consumer', () => {
     expect(mocks.workerInstances[0]?.pause).toHaveBeenCalledWith(true);
     expect(mocks.workerInstances[0]?.close).toHaveBeenCalledWith(false);
     expect(mocks.redisClient.quit).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects readiness after close and when BullMQ is paused after startup', async () => {
+    const closed = createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: vi.fn(() => Promise.resolve()),
+    });
+    await closed.close();
+    await expect(closed.waitUntilReady()).rejects.toThrow(/not ready/i);
+
+    const paused = createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: vi.fn(() => Promise.resolve()),
+    });
+    const pausedWorker = mocks.workerInstances.at(-1);
+    if (pausedWorker === undefined) throw new Error('Expected worker');
+    pausedWorker.paused = true;
+    await expect(paused.waitUntilReady()).rejects.toThrow(/not ready/i);
+  });
+
+  it('bounds readiness and lets close win a pending readiness attempt', async () => {
+    vi.useFakeTimers();
+    try {
+      const timed = createQueueConsumer({
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl: 'redis://localhost:6379/0',
+        handler: vi.fn(() => Promise.resolve()),
+      });
+      const timedWorker = mocks.workerInstances.at(-1);
+      timedWorker?.waitUntilReady.mockReturnValue(
+        new Promise<void>(() => undefined),
+      );
+      const timeout = expect(timed.waitUntilReady(25)).rejects.toThrow(
+        /not ready/i,
+      );
+      await vi.advanceTimersByTimeAsync(25);
+      await timeout;
+
+      let releaseReady: (() => void) | undefined;
+      const closing = createQueueConsumer({
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl: 'redis://localhost:6379/0',
+        handler: vi.fn(() => Promise.resolve()),
+      });
+      const closingWorker = mocks.workerInstances.at(-1);
+      closingWorker?.waitUntilReady.mockReturnValue(
+        new Promise<void>((resolve) => {
+          releaseReady = resolve;
+        }),
+      );
+      const waiting = closing.waitUntilReady(100);
+      const rejection = expect(waiting).rejects.toThrow(/not ready/i);
+      await closing.close();
+      releaseReady?.();
+      await rejection;
+      expect(closing.isReady()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('bounds drain, aborts active handlers, and forces close', async () => {
@@ -595,6 +679,21 @@ describe('BullMQ queue consumer', () => {
     });
     expect(mocks.workerInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
     expect(mocks.redisClient.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to disconnect when Redis quit rejects during graceful close', async () => {
+    const consumer = createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: vi.fn(() => Promise.resolve()),
+    });
+    mocks.redisClient.quit.mockRejectedValueOnce(new Error('quit failed'));
+
+    await expect(consumer.close()).resolves.toEqual({
+      abortedJobs: 0,
+      forced: true,
+    });
+    expect(mocks.redisClient.disconnect).toHaveBeenCalledOnce();
   });
 
   it('exposes an explicit unrecoverable transport policy seam', () => {

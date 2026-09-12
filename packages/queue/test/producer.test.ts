@@ -225,6 +225,32 @@ describe('BullMQ queue producer', () => {
     expect(producer.isReady()).toBe(true);
   });
 
+  it('bounds readiness, rejects observation while unavailable, and lets close win', async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.redisClient.status = 'connecting';
+      const producer = createQueueProducer({
+        redisUrl: 'redis://localhost:6379/0',
+      });
+
+      await expect(producer.observe()).rejects.toThrow(/not ready/i);
+      const timed = expect(producer.waitUntilReady(25)).rejects.toThrow(
+        /not ready/i,
+      );
+      await vi.advanceTimersByTimeAsync(30);
+      await timed;
+
+      const waiting = producer.waitUntilReady(100);
+      const closed = producer.close();
+      const rejection = expect(waiting).rejects.toThrow(/not ready/i);
+      await vi.advanceTimersByTimeAsync(10);
+      await Promise.all([closed, rejection]);
+      expect(producer.isReady()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('observes bounded queue depth and oldest-job age without reading payloads', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-20T00:00:10.000Z'));
@@ -359,5 +385,26 @@ describe('BullMQ queue producer', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('shares an immediate close rejection and attempts cleanup for every owner', async () => {
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    const failure = new Error('queue close failed');
+    mocks.queueInstances[0]?.close.mockRejectedValue(failure);
+
+    const first = producer.close();
+    const second = producer.close();
+    await expect(first).rejects.toBe(failure);
+    await expect(second).rejects.toBe(failure);
+
+    for (const queue of mocks.queueInstances) {
+      expect(queue.close).toHaveBeenCalledOnce();
+      expect(queue.disconnect).toHaveBeenCalledOnce();
+    }
+    expect(mocks.redisClient.quit).toHaveBeenCalledOnce();
+    expect(mocks.redisClient.disconnect).toHaveBeenCalledOnce();
+    expect(producer.isReady()).toBe(false);
   });
 });

@@ -62,17 +62,6 @@ export type {
   StartWorkflowRunInputRetentionDryRunInput,
   StartWorkflowRunInputRetentionInput,
 } from './retention.js';
-export {
-  claimPreviewCleanupDelivery,
-  completePreviewArtifactDeletion,
-  finishPreviewCleanupDelivery,
-  PreviewCleanupStateError,
-} from './preview-cleanup.js';
-export type {
-  PreviewCleanupArtifact,
-  PreviewCleanupClaimResult,
-  PreviewCleanupFinishResult,
-} from './preview-cleanup.js';
 export { createPreviewRetentionCoordinator } from './preview-retention.js';
 export type {
   PreviewRetentionArtifactStore,

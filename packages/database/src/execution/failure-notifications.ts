@@ -1,13 +1,17 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
+import type { Pool, PoolClient } from 'pg';
 
 import { z } from 'zod';
 import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from '../config.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
-import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import {
+  withPlatformTransaction,
+  withTenantScopedClient,
+} from '../tenant-access/workspace.js';
 import { FailureNotificationStateError } from './failure-notification-errors.js';
 import { createFailureNotificationDestinationStore } from './failure-notification-destination-store.js';
 import { createFailureNotificationCompletionStore } from './failure-notification-completion-store.js';
@@ -25,6 +29,56 @@ import {
 } from './failure-notification-store-support.js';
 
 export { FailureNotificationStateError } from './failure-notification-errors.js';
+
+type FailureNotificationTransaction = Readonly<{
+  pool: Pool;
+  signal?: AbortSignal;
+  workspaceId: string;
+}>;
+
+function withFailureNotificationClient<T>(
+  input: FailureNotificationTransaction,
+  operation: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withTenantScopedClient(
+    input.pool,
+    { workspaceId: input.workspaceId },
+    operation,
+    input.signal === undefined ? {} : { signal: input.signal },
+  );
+}
+
+function createFailureNotificationRecovery(
+  pool: Pool,
+): Pick<FailureNotificationStore, 'recoverDue'> {
+  return Object.freeze({
+    recoverDue: async (
+      limit: number,
+      maxAttempts: number,
+      signal?: AbortSignal,
+    ) => {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+        throw new FailureNotificationStateError('Invalid recovery limit');
+      if (
+        !Number.isSafeInteger(maxAttempts) ||
+        maxAttempts < 1 ||
+        maxAttempts > 10
+      )
+        throw new FailureNotificationStateError('Invalid maximum attempts');
+      return withPlatformTransaction(
+        pool,
+        async (client) => {
+          const result = await client.query<{ recovered: number }>(
+            'select app.recover_due_run_failure_notifications($1,$2) as recovered',
+            [limit, maxAttempts],
+          );
+          return result.rows[0]?.recovered ?? 0;
+        },
+        signal === undefined ? {} : { signal },
+      );
+    },
+  });
+}
 
 export function createFailureNotificationStore(
   config: DatabaseConfig,
@@ -54,7 +108,13 @@ export function createFailureNotificationStore(
         raw.recoverySeconds > 3600
       )
         throw new FailureNotificationStateError('Invalid recovery timeout');
-      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
+      const transaction: FailureNotificationTransaction =
+        raw.signal === undefined
+          ? { pool, workspaceId }
+          : { pool, workspaceId, signal: raw.signal };
+      return withFailureNotificationClient<
+        Awaited<ReturnType<FailureNotificationStore['claimDelivery']>>
+      >(transaction, async (client) => {
         const authoritative = await client.query<{
           aggregate_id: string;
           aggregate_type: string;
@@ -203,21 +263,7 @@ export function createFailureNotificationStore(
     },
     ...createFailureNotificationDestinationStore(pool),
     ...createFailureNotificationCompletionStore(pool),
-    recoverDue: async (limit: number, maxAttempts: number) => {
-      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
-        throw new FailureNotificationStateError('Invalid recovery limit');
-      if (
-        !Number.isSafeInteger(maxAttempts) ||
-        maxAttempts < 1 ||
-        maxAttempts > 10
-      )
-        throw new FailureNotificationStateError('Invalid maximum attempts');
-      const result = await pool.query<{ recovered: number }>(
-        'select app.recover_due_run_failure_notifications($1,$2) as recovered',
-        [limit, maxAttempts],
-      );
-      return result.rows[0]?.recovered ?? 0;
-    },
+    ...createFailureNotificationRecovery(pool),
     close: () => lease.close(),
   });
 }

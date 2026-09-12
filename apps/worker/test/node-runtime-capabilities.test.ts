@@ -746,6 +746,52 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it('rejects a zero-progress spool write without uploading or leaking data', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const put = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put },
+        artifactSpoolOperations: {
+          openFile: async (filePath) => {
+            const file = await open(filePath, 'wx', 0o600);
+            file.write = vi.fn().mockResolvedValue({ bytesWritten: 0 });
+            return file;
+          },
+          removeDirectory: (directory) =>
+            rm(directory, { recursive: true, force: true }),
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('Artifact spool made no write progress');
+    expect(put).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
   it('preserves sole and combined spool file-close failures', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -811,6 +857,59 @@ describe('worker node runtime capabilities', () => {
         closeError,
       ]);
       return true;
+    });
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('normalizes a non-Error spool cleanup rejection', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put: vi.fn() },
+        artifactSpoolOperations: {
+          openFile: async (filePath) => {
+            const file = await open(filePath, 'wx', 0o600);
+            const closeFile = file.close.bind(file);
+            file.close = vi.fn(async () => {
+              await closeFile();
+              // Deliberately model a hostile adapter rejection.
+              // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+              return Promise.reject(undefined);
+            });
+            return file;
+          },
+          removeDirectory: (directory) =>
+            rm(directory, { recursive: true, force: true }),
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({
+      message: 'Artifact cleanup failed with a non-Error value',
+      cause: undefined,
     });
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();

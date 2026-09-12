@@ -3,7 +3,12 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    exclude: ['dist/**', 'node_modules/**', 'test/**/*.integration.test.ts'],
+    exclude: [
+      'dist/**',
+      'node_modules/**',
+      'test/**/*.integration.test.ts',
+      'test/executions/redis-run-event-publisher.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'json'],

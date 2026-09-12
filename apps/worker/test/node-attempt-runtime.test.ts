@@ -247,6 +247,39 @@ describe('node-attempt runtime', () => {
     },
   );
 
+  it('forwards configured artifact, encryption, and shared database resources', async () => {
+    const artifactStore = { put: vi.fn() };
+    const connectionEncryption = { open: vi.fn() };
+    const databaseRuntime = { close: vi.fn() };
+    const createRuntime = vi.fn().mockResolvedValue({
+      consumer: {},
+      close: vi.fn(),
+    });
+    const provider = nodeAttemptRuntimeProvider(
+      {
+        ...activationConfig([JOB_NAME.executeNodeAttempt]),
+        artifactStore,
+        connectionEncryption,
+      } as unknown as WorkerConfig,
+      { databaseRuntime },
+      {
+        createPreviewInvoker: vi.fn(),
+        createPreviewRunStore: vi.fn(),
+        createRuntime,
+      },
+    ) as FactoryProvider;
+
+    await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
+    expect(createRuntime).toHaveBeenCalledOnce();
+    expect(createRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactStore,
+        connectionEncryption,
+        databaseRuntime,
+      }),
+    );
+  });
+
   it('returns no runtime for disabled mode or an external dispatch registry', async () => {
     const createRuntime = vi.fn();
     const factories = {

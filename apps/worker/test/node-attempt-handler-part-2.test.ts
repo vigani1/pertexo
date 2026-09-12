@@ -276,6 +276,21 @@ describe('NodeAttemptHandler', () => {
     },
   );
 
+  it('normalizes a non-Error heartbeat rejection', async () => {
+    const heartbeat = vi.fn<NodeAttemptRunStore['heartbeat']>();
+    // Deliberately model a hostile persistence adapter rejection.
+    heartbeat.mockRejectedValue(undefined);
+    const handler = heartbeatCancellationHandler(executionStore({ heartbeat }));
+
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).rejects.toMatchObject({
+      name: 'Error',
+      message: 'Node attempt heartbeat failed',
+    });
+    expect(heartbeat).toHaveBeenCalledOnce();
+  });
+
   it.each([undefined, TRACEPARENT])(
     'fails a typed invalid attempt without exposing details for trace %s',
     async (traceparent) => {

@@ -120,6 +120,58 @@ function service(
 }
 
 describe('managed OIDC application service', () => {
+  it.each([
+    ['non-string', 42],
+    ['oversized', `https://issuer.example.test/${'x'.repeat(8_193)}`],
+  ])('rejects a %s provider authorization URL', async (_name, value) => {
+    const provider = new FakeProvider();
+    provider.authorizationUrl = () => value as string;
+    const app = new OidcLoginService(
+      configuration,
+      new FakeTransactions(),
+      provider,
+      { mapExternalIdentity: () => Promise.resolve({ userId }) },
+    );
+
+    await expect(app.startLogin()).rejects.toMatchObject({
+      code: 'identity.provider_rejected',
+    });
+  });
+
+  it('preserves approved provider errors and collapses other identity errors', async () => {
+    for (const code of [
+      'identity.provider_rejected',
+      'identity.provider_unavailable',
+    ] as const) {
+      const provider = new FakeProvider();
+      const expected = new IdentityError(code);
+      provider.authorizationUrl = () => {
+        throw expected;
+      };
+      const app = new OidcLoginService(
+        configuration,
+        new FakeTransactions(),
+        provider,
+        { mapExternalIdentity: () => Promise.resolve({ userId }) },
+      );
+      await expect(app.startLogin()).rejects.toBe(expected);
+    }
+
+    const provider = new FakeProvider();
+    provider.authorizationUrl = () => {
+      throw new IdentityError('identity.invalid_input');
+    };
+    const app = new OidcLoginService(
+      configuration,
+      new FakeTransactions(),
+      provider,
+      { mapExternalIdentity: () => Promise.resolve({ userId }) },
+    );
+    await expect(app.startLogin()).rejects.toMatchObject({
+      code: 'identity.provider_rejected',
+    });
+  });
+
   it('starts authorization with random state, nonce, and S256 PKCE while storing only state digest', async () => {
     const setup = service(new FakeClock());
     const start = await setup.app.startLogin();
@@ -182,6 +234,59 @@ describe('managed OIDC application service', () => {
     });
   });
 
+  it('accepts an audience array and preserves absent optional identity fields', async () => {
+    const transactions = new FakeTransactions();
+    const provider = new FakeProvider();
+    const app = new OidcLoginService(
+      configuration,
+      transactions,
+      provider,
+      { mapExternalIdentity: () => Promise.resolve({ userId }) },
+      { clock: new FakeClock() },
+    );
+    const start = await app.startLogin();
+    const transaction = defined(transactions.records.values().next().value);
+    provider.requestVerifier = transaction.codeVerifier;
+    provider.response = {
+      audience: [configuration.clientId, 'resource-server'],
+      displayName: 'Test Person',
+      email: 'person@example.test',
+      issuer: configuration.issuer,
+      nonce: transaction.nonce,
+      subject: 'subject-123',
+    };
+
+    const result = await app.completeLogin(
+      { code: 'one-time-code', state: defined(provider.request).state },
+      start.browserBinding,
+    );
+    expect(result.internalIdentity).toEqual({ userId });
+    expect(result.verifiedProfile).not.toHaveProperty('emailVerified');
+  });
+
+  it('rejects an undefined identity-mapper result', async () => {
+    const transactions = new FakeTransactions();
+    const provider = new FakeProvider();
+    const app = new OidcLoginService(
+      configuration,
+      transactions,
+      provider,
+      { mapExternalIdentity: () => Promise.resolve(undefined) },
+      { clock: new FakeClock() },
+    );
+    const start = await app.startLogin();
+    const transaction = defined(transactions.records.values().next().value);
+    provider.requestVerifier = transaction.codeVerifier;
+    provider.response = { ...provider.response, nonce: transaction.nonce };
+
+    await expect(
+      app.completeLogin(
+        { code: 'one-time-code', state: defined(provider.request).state },
+        start.browserBinding,
+      ),
+    ).rejects.toMatchObject({ code: 'identity.mapping_failed' });
+  });
+
   it.each([
     ['tampered state', 'state', 'identity.transaction_missing'],
     ['expired transaction', 'expired', 'identity.transaction_expired'],
@@ -241,6 +346,76 @@ describe('managed OIDC application service', () => {
         start.browserBinding,
       ),
     ).resolves.toMatchObject({ internalIdentity: { userId } });
+  });
+
+  it.each([undefined, 'b'.repeat(513)])(
+    'rejects a missing or oversized browser binding before transaction consumption',
+    async (browserBinding) => {
+      const transactions = new FakeTransactions();
+      const setup = service(new FakeClock(), transactions);
+      await setup.app.startLogin();
+      await expect(
+        setup.app.completeLogin(
+          {
+            code: 'one-time-code',
+            state: defined(setup.provider.request).state,
+          },
+          browserBinding,
+        ),
+      ).rejects.toMatchObject({ code: 'identity.callback_rejected' });
+      expect(transactions.consumed.size).toBe(0);
+    },
+  );
+
+  it('rejects inconsistent and independently expired successful transaction results', async () => {
+    const clock = new FakeClock();
+    const provider = new FakeProvider();
+    const mapper = { mapExternalIdentity: () => Promise.resolve({ userId }) };
+    const missingTransactionStore = {
+      create: () => Promise.resolve(),
+      consume: () => Promise.resolve({ status: 'ok' as const }),
+    } as unknown as OidcLoginTransactionStore;
+    const missingTransaction = new OidcLoginService(
+      configuration,
+      missingTransactionStore,
+      provider,
+      mapper,
+      { clock },
+    );
+    await expect(
+      missingTransaction.completeLogin(
+        { code: 'one-time-code', state: 'state-value' },
+        'browser-binding',
+      ),
+    ).rejects.toMatchObject({ code: 'identity.transaction_missing' });
+
+    const staleTransactionStore = {
+      create: () => Promise.resolve(),
+      consume: () =>
+        Promise.resolve({
+          status: 'ok' as const,
+          transaction: {
+            stateDigest: 'digest',
+            browserBindingDigest: 'digest',
+            codeVerifier: 'v'.repeat(43),
+            nonce: 'nonce',
+            expiresAt: new Date('2026-08-20T11:59:59.000Z'),
+          },
+        }),
+    } as OidcLoginTransactionStore;
+    const staleTransaction = new OidcLoginService(
+      configuration,
+      staleTransactionStore,
+      provider,
+      mapper,
+      { clock },
+    );
+    await expect(
+      staleTransaction.completeLogin(
+        { code: 'one-time-code', state: 'state-value' },
+        'browser-binding',
+      ),
+    ).rejects.toMatchObject({ code: 'identity.transaction_expired' });
   });
 
   it.each([

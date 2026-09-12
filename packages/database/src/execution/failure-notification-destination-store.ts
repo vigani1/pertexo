@@ -130,24 +130,27 @@ export function createFailureNotificationDestinationStore(
         raw.workspaceId,
       );
       const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-      await withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const parsedBinding =
-          raw.deliveryBinding === undefined
-            ? null
-            : z
-                .string()
-                .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
-                .parse(raw.deliveryBinding);
-        const destination = await client.query<{ ready: boolean }>(
-          `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
-          [workspaceId, intentId, raw.attemptNumber],
-        );
-        if (destination.rows[0]?.ready !== true)
-          throw new FailureNotificationStateError(
-            'Delivery dispatch fence failed',
+      await withTenantScopedClient(
+        pool,
+        { workspaceId },
+        async (client) => {
+          const parsedBinding =
+            raw.deliveryBinding === undefined
+              ? null
+              : z
+                  .string()
+                  .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
+                  .parse(raw.deliveryBinding);
+          const destination = await client.query<{ ready: boolean }>(
+            `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
+            [workspaceId, intentId, raw.attemptNumber],
           );
-        const fenced = await client.query(
-          `update app.run_failure_notification_intents intent
+          if (destination.rows[0]?.ready !== true)
+            throw new FailureNotificationStateError(
+              'Delivery dispatch fence failed',
+            );
+          const fenced = await client.query(
+            `update app.run_failure_notification_intents intent
               set status='dispatching',dispatch_marked_at=clock_timestamp(),
                   delivery_binding=coalesce(intent.delivery_binding,$4),
                   updated_at=clock_timestamp()
@@ -178,20 +181,22 @@ export function createFailureNotificationDestinationStore(
                 case version.kind when 'slack' then 'slack_bot_token' else 'resend_api_key' end,
                 intent.connection_secret_version_id)
             returning intent.id`,
-          [workspaceId, intentId, raw.attemptNumber, parsedBinding],
-        );
-        if (fenced.rowCount !== 1)
-          throw new FailureNotificationStateError(
-            'Delivery dispatch fence failed',
+            [workspaceId, intentId, raw.attemptNumber, parsedBinding],
           );
-        await auditFailureNotification(client, {
-          workspaceId,
-          intentId,
-          factType: 'dispatch_marked',
-          attemptNumber: raw.attemptNumber,
-          possiblyDispatched: false,
-        });
-      });
+          if (fenced.rowCount !== 1)
+            throw new FailureNotificationStateError(
+              'Delivery dispatch fence failed',
+            );
+          await auditFailureNotification(client, {
+            workspaceId,
+            intentId,
+            factType: 'dispatch_marked',
+            attemptNumber: raw.attemptNumber,
+            possiblyDispatched: false,
+          });
+        },
+        raw.signal === undefined ? {} : { signal: raw.signal },
+      );
     },
   });
 }

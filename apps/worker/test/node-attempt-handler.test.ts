@@ -381,6 +381,51 @@ describe('NodeAttemptHandler', () => {
     });
   });
 
+  it('commits a prepared suspension with its exact duration', async () => {
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const runStore = executionStore({ complete });
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({
+          ...registryPreparedAttempt(),
+          suspensionDurationSeconds: 45,
+        }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: {
+        execute: vi.fn().mockResolvedValue({
+          kind: 'succeeded',
+          output: { waiting: true },
+        }),
+      },
+      runStore,
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: {
+          status: 'suspended',
+          output: { waiting: true },
+          durationSeconds: 45,
+        },
+      }),
+    );
+  });
+
   it('lets a dispatch-aware executor mark immediately before provider I/O', async () => {
     const attemptLease = {
       ...lease(),

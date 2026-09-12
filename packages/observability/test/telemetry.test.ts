@@ -51,7 +51,6 @@ describe('createNodeInstrumentations', () => {
       '@opentelemetry/instrumentation-nestjs-core',
       '@opentelemetry/instrumentation-pino',
       '@opentelemetry/instrumentation-pg',
-      '@opentelemetry/instrumentation-ioredis',
       '@opentelemetry/instrumentation-host-metrics',
       '@opentelemetry/instrumentation-runtime-node',
     ]);

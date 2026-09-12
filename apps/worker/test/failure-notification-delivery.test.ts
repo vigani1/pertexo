@@ -478,6 +478,7 @@ describe('provider failure notification delivery', () => {
         deliveryBinding: expect.stringMatching(
           /^email:v1:sha256:[0-9a-f]{64}$/u,
         ),
+        signal: identity.signal,
       }),
     );
     expect(sendNotification).toHaveBeenCalledWith(

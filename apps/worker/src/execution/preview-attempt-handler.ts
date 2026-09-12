@@ -162,6 +162,7 @@ async function completeOutcome(
   outcome: PreviewInvocationOutcome,
   delivery: { outboxEventId: string; payloadChecksum: string },
   dispatched: boolean,
+  completionSignal: AbortSignal,
 ): Promise<PreviewAttemptHandlerResult> {
   if (
     outcome.status === 'canceled' &&
@@ -196,6 +197,7 @@ async function completeOutcome(
             safeErrorCode: 'preview.output_invalid',
             status: 'failed',
           },
+          signal: completionSignal,
           workerId: dependencies.workerId,
         }),
       );
@@ -212,6 +214,7 @@ async function completeOutcome(
           output: stored,
           status: 'succeeded',
         },
+        signal: completionSignal,
         workerId: dependencies.workerId,
       }),
     );
@@ -225,6 +228,7 @@ async function completeOutcome(
       delivery,
       lease,
       outcome,
+      signal: completionSignal,
       workerId: dependencies.workerId,
     }),
   );
@@ -392,6 +396,7 @@ export function createPreviewAttemptHandler(
             delivery: claimDelivery,
             lease,
             outcome: deadlineExceededOutcome(lease, false),
+            signal: context.signal,
             workerId: dependencies.workerId,
           }),
         );
@@ -429,6 +434,7 @@ export function createPreviewAttemptHandler(
               delivery: claimDelivery,
               lease,
               outcome: deadlineExceededOutcome(lease, dispatched),
+              signal: context.signal,
               workerId: dependencies.workerId,
             }),
           );
@@ -442,6 +448,7 @@ export function createPreviewAttemptHandler(
           raced.outcome,
           claimDelivery,
           dispatched,
+          context.signal,
         );
       } finally {
         await supervisor.stop();

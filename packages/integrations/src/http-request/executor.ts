@@ -392,11 +392,10 @@ async function preserveBodyFailureDuringCleanup(
 async function* continueBody(
   buffered: readonly Uint8Array[],
   iterator: AsyncIterator<Uint8Array>,
-  takeOwnership: () => void,
+  markCleanupStarted: () => void,
 ): AsyncGenerator<Uint8Array> {
   let primary: BodyFailure = NO_BODY_FAILURE;
   try {
-    takeOwnership();
     for (const chunk of buffered) {
       try {
         yield chunk;
@@ -418,6 +417,7 @@ async function* continueBody(
     primary = { error, failed: true };
     throw error;
   } finally {
+    markCleanupStarted();
     await preserveBodyFailureDuringCleanup(primary, async () => {
       await iterator.return?.();
     });
@@ -435,7 +435,7 @@ async function consumeResponseBody(
   const iterator = response.body[Symbol.asyncIterator]();
   const buffered: Uint8Array[] = [];
   let byteLength = 0;
-  const bodyOwnership = { transferred: false };
+  const bodyOwnership = { cleanupStarted: false };
   try {
     for (;;) {
       const next = await iterator.next();
@@ -455,7 +455,7 @@ async function consumeResponseBody(
         return await writeArtifact(
           artifacts,
           continueBody(buffered, iterator, () => {
-            bodyOwnership.transferred = true;
+            bodyOwnership.cleanupStarted = true;
           }),
           response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
@@ -465,10 +465,11 @@ async function consumeResponseBody(
     }
   } catch (error: unknown) {
     for (const chunk of buffered) chunk.fill(0);
-    if (!bodyOwnership.transferred)
+    if (!bodyOwnership.cleanupStarted)
       await preserveBodyFailureDuringCleanup(
         { error, failed: true },
         async () => {
+          bodyOwnership.cleanupStarted = true;
           await iterator.return?.();
         },
       );

@@ -465,6 +465,66 @@ describe('node-sdk exact server registry', () => {
     );
   });
 
+  it('keeps browser and server admission aligned for hostile root and nested values', () => {
+    let getterCalls = 0;
+    const accessor = Object.defineProperty({}, 'secret', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 'must-not-run';
+      },
+    });
+    const symbolBearing = { value: true };
+    Object.defineProperty(symbolBearing, Symbol('secret'), {
+      enumerable: true,
+      value: 'must-not-leak',
+    });
+    const nestedAccessor = { nested: accessor };
+    const nestedSymbolBearing = { nested: symbolBearing };
+    const nestedArray: unknown[] & { extra?: string } = [true];
+    nestedArray.extra = 'not-json';
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      1n,
+      () => undefined,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      new Date('2026-08-20T00:00:00.000Z'),
+      symbolBearing,
+      accessor,
+      nestedAccessor,
+      nestedSymbolBearing,
+      { nested: undefined },
+      { nested: 1n },
+      { nested: () => undefined },
+      { nested: Number.NEGATIVE_INFINITY },
+      { nested: new Map() },
+      { nested: nestedArray },
+    ];
+
+    for (const value of invalidValues) {
+      expect(boundedNodeJsonSchema.safeParse(value).success).toBe(false);
+      expect(() => canonicalizeBoundedJson(value)).toThrow(
+        InvalidBoundedJsonError,
+      );
+    }
+    expect(getterCalls).toBe(0);
+  });
+
+  it('accepts null-prototype JSON and normalizes negative zero on the server', () => {
+    const nullPrototype = Object.assign(Object.create(null) as object, {
+      nested: { value: true },
+    });
+    expect(boundedNodeJsonSchema.safeParse(nullPrototype).success).toBe(true);
+    expect(canonicalizeBoundedJson(nullPrototype)).toEqual({
+      nested: { value: true },
+    });
+    expect(boundedNodeJsonSchema.safeParse(-0).success).toBe(true);
+    const normalized = canonicalizeBoundedJson(-0);
+    expect(normalized).toBe(0);
+    expect(Object.is(normalized, -0)).toBe(false);
+  });
+
   it('preserves hostile JSON property names as own data', () => {
     const input = JSON.parse(
       '{"__proto__":{"polluted":true},"nested":{"constructor":1,"prototype":2}}',

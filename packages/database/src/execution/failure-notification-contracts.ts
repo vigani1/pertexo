@@ -50,6 +50,7 @@ export interface FailureNotificationStore {
       delivery: FailureNotificationDelivery;
       recoverySeconds: number;
       maxAttempts: number;
+      signal?: AbortSignal;
     }>,
   ): Promise<FailureNotificationClaimResult>;
   completeDelivery(
@@ -60,6 +61,7 @@ export interface FailureNotificationStore {
       maxAttempts: number;
       retryDelaySeconds: number;
       result: FailureNotificationDeliveryResultV1;
+      signal?: AbortSignal;
     }>,
   ): Promise<'completed' | 'stale'>;
   loadDestination(
@@ -77,8 +79,13 @@ export interface FailureNotificationStore {
       intentId: string;
       attemptNumber: number;
       deliveryBinding?: string;
+      signal?: AbortSignal;
     }>,
   ): Promise<void>;
-  recoverDue(limit: number, maxAttempts: number): Promise<number>;
+  recoverDue(
+    limit: number,
+    maxAttempts: number,
+    signal?: AbortSignal,
+  ): Promise<number>;
   close(): Promise<void>;
 }
