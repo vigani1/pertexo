@@ -103,8 +103,8 @@ services:
     stop_grace_period: 30s
 
   control-ledger-primary:
-    # minio/minio:RELEASE.2025-09-07T16-13-09Z; manifest digest resolved 2026-08-30
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    # Official Quay mirror; unchanged manifest digest verified 2026-09-12.
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: unless-stopped
     command:
       - server
@@ -133,7 +133,7 @@ services:
     stop_grace_period: 30s
 
   control-ledger-primary-bootstrap:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: 'no'
     depends_on:
       control-ledger-primary:
@@ -152,7 +152,7 @@ services:
       - ./infrastructure/minio:/bootstrap:ro
 
   control-ledger-recovery:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: unless-stopped
     command:
       - server
@@ -181,7 +181,7 @@ services:
     stop_grace_period: 30s
 
   control-ledger-recovery-bootstrap:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: 'no'
     depends_on:
       control-ledger-recovery:
