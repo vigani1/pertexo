@@ -165,6 +165,131 @@ describe('AWS KMS envelope-key adapter', () => {
     expect(failure).not.toHaveProperty('cause');
   });
 
+  it.each([
+    ['null response', null],
+    ['primitive response', 'not-a-record'],
+    ['missing plaintext', { CiphertextBlob: randomBytes(96) }],
+    [
+      'short plaintext',
+      { Plaintext: randomBytes(31), CiphertextBlob: randomBytes(96) },
+    ],
+    ['missing ciphertext', { Plaintext: randomBytes(32) }],
+    [
+      'empty ciphertext',
+      { Plaintext: randomBytes(32), CiphertextBlob: new Uint8Array() },
+    ],
+    [
+      'invalid returned key reference',
+      {
+        Plaintext: randomBytes(32),
+        CiphertextBlob: randomBytes(96),
+        KeyId: '',
+      },
+    ],
+  ])(
+    'fails closed for a malformed GenerateDataKey %s',
+    async (_name, reply) => {
+      const provider = new AwsKmsEnvelopeKeyProvider(
+        { send: () => Promise.resolve(reply) },
+        'alias/pertexo',
+      );
+
+      await expect(provider.generateDataKey(context())).rejects.toEqual(
+        expect.objectContaining({
+          name: 'ConnectionSecretEncryptionError',
+          message: 'Connection secret encryption failed',
+        }),
+      );
+    },
+  );
+
+  it.each([
+    ['null response', null],
+    ['primitive response', 17],
+    ['missing plaintext', {}],
+    ['short plaintext', { Plaintext: randomBytes(31) }],
+  ])('fails closed for a malformed Decrypt %s', async (_name, reply) => {
+    const provider = new AwsKmsEnvelopeKeyProvider(
+      { send: () => Promise.resolve(reply) },
+      'alias/pertexo',
+    );
+
+    await expect(
+      provider.decryptDataKey(randomBytes(96), 'alias/pertexo', context()),
+    ).rejects.toBeInstanceOf(ConnectionSecretEncryptionError);
+  });
+
+  it('uses the configured key reference when KMS omits KeyId', async () => {
+    const provider = new AwsKmsEnvelopeKeyProvider(
+      {
+        send: () =>
+          Promise.resolve({
+            Plaintext: randomBytes(32),
+            CiphertextBlob: randomBytes(96),
+          }),
+      },
+      'alias/pertexo',
+    );
+
+    await expect(provider.generateDataKey(context())).resolves.toMatchObject({
+      keyReference: 'alias/pertexo',
+    });
+  });
+
+  it('bounds key references by their UTF-8 byte length', async () => {
+    const validMultibyteReference = '€'.repeat(682);
+    const provider = new AwsKmsEnvelopeKeyProvider(
+      {
+        send: () =>
+          Promise.resolve({
+            Plaintext: randomBytes(32),
+            CiphertextBlob: randomBytes(96),
+          }),
+      },
+      validMultibyteReference,
+    );
+
+    await expect(provider.generateDataKey(context())).resolves.toMatchObject({
+      keyReference: validMultibyteReference,
+    });
+    expect(
+      () =>
+        new AwsKmsEnvelopeKeyProvider(
+          { send: () => Promise.resolve({}) },
+          '€'.repeat(683),
+        ),
+    ).toThrow('KMS key reference is invalid');
+  });
+
+  it('omits KMS request options when no abort signal is supplied', async () => {
+    const options: unknown[] = [];
+    const provider = new AwsKmsEnvelopeKeyProvider(
+      {
+        send: (command: KmsCommand, requestOptions?: unknown) => {
+          options.push(requestOptions);
+          return Promise.resolve(
+            command instanceof GenerateDataKeyCommand
+              ? {
+                  Plaintext: randomBytes(32),
+                  CiphertextBlob: randomBytes(96),
+                }
+              : { Plaintext: randomBytes(32) },
+          );
+        },
+      },
+      'alias/pertexo',
+    );
+    const identity = context();
+    const generated = await provider.generateDataKey(identity);
+    await provider.decryptDataKey(
+      generated.encryptedDataKey,
+      generated.keyReference,
+      identity,
+    );
+
+    expect(options).toEqual([undefined, undefined]);
+  });
+
   it('forwards abort to KMS and zeroes plaintext returned after abort', async () => {
     const controller = new AbortController();
     const latePlaintext = randomBytes(32);

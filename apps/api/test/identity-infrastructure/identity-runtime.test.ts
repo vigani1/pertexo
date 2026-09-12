@@ -69,6 +69,34 @@ function transactionStore(close = vi.fn().mockResolvedValue(undefined)) {
 }
 
 describe('identity runtime composition', () => {
+  it('owns and closes the production database resources when none are injected', async () => {
+    const runtime = createApiIdentityRuntime(identityConfig, databaseConfig);
+    expect(runtime.dependencies.persistence).toBe(
+      runtime.dependencies.authorization,
+    );
+    await runtime.close();
+  });
+
+  it('forwards confidential-client and clock configuration through the public runtime', async () => {
+    const clock = { now: () => new Date('2026-08-20T12:00:00.000Z') };
+    const runtime = createApiIdentityRuntime(
+      {
+        ...identityConfig,
+        oidc: { ...identityConfig.oidc, clientSecret: 'client-secret' },
+      },
+      databaseConfig,
+      {
+        clock,
+        database: identityDatabase(),
+        transactions: transactionStore(),
+      },
+    );
+
+    expect(runtime.dependencies.clock).toBe(clock);
+    expect(runtime.dependencies.provider).toBeDefined();
+    await runtime.close();
+  });
+
   it('retains the provider injection seam and closes both pools once', async () => {
     const databaseClose = vi.fn().mockResolvedValue(undefined);
     const transactionClose = vi.fn().mockResolvedValue(undefined);

@@ -40,6 +40,18 @@ const TRACE_CARRIER_GETTER: TextMapGetter<Record<string, string>> = {
   },
 };
 
+function classifyQueueException(exception: unknown): {
+  readonly name: 'Error' | 'NonError';
+} {
+  try {
+    return exception instanceof Error
+      ? { name: 'Error' }
+      : { name: 'NonError' };
+  } catch {
+    return { name: 'NonError' };
+  }
+}
+
 /** Extracts the validated W3C parent and activates one bounded consumer span. */
 export function createQueueTraceRunner(
   options: QueueTraceRunnerOptions = {},
@@ -81,11 +93,7 @@ export function createQueueTraceRunner(
             span.setStatus({ code: SpanStatusCode.OK });
             return value;
           } catch (error: unknown) {
-            span.recordException(
-              error instanceof Error
-                ? error
-                : new Error('Queue handler failed'),
-            );
+            span.recordException(classifyQueueException(error));
             span.setStatus({ code: SpanStatusCode.ERROR });
             throw error;
           } finally {

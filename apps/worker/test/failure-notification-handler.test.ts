@@ -85,14 +85,19 @@ describe('failure notification handler', () => {
       retryDelaySeconds: 1,
     });
 
-    await handler.handle(delivery, { signal: new AbortController().signal });
+    const queueContext = { signal: new AbortController().signal };
+    await handler.handle(delivery, queueContext);
 
     expect(deliver).toHaveBeenCalledWith(
       expect.objectContaining({ context, destinationConfigVersion: 2 }),
     );
+    expect(repository.claimDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: queueContext.signal }),
+    );
     expect(repository.completeDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         result: expect.objectContaining({ kind: 'delivered' }),
+        signal: queueContext.signal,
       }),
     );
   });
@@ -138,6 +143,12 @@ describe('failure notification handler', () => {
       expect(releaseClaim).toBeTypeOf('function');
     });
     controller.abort(new Error('worker stopping'));
+    expect(vi.mocked(repository.claimDelivery).mock.calls[0]?.[0].signal).toBe(
+      controller.signal,
+    );
+    expect(
+      vi.mocked(repository.claimDelivery).mock.calls[0]?.[0].signal?.aborted,
+    ).toBe(true);
     releaseClaim?.();
     await pending;
 
@@ -165,7 +176,8 @@ describe('failure notification handler', () => {
       maxAttempts: 3,
       retryDelaySeconds: 1,
     });
-    await handler.handle(delivery, { signal: new AbortController().signal });
+    const queueContext = { signal: new AbortController().signal };
+    await handler.handle(delivery, queueContext);
     expect(repository.completeDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         result: {
@@ -174,7 +186,50 @@ describe('failure notification handler', () => {
           safeErrorCode: 'delivery.timeout',
           possiblyDispatched: true,
         },
+        signal: queueContext.signal,
       }),
     );
+  });
+
+  it('cancels a deferred terminal write with the transport signal', async () => {
+    const repository = store();
+    const controller = new AbortController();
+    const reason = new Error('worker stopping during completion');
+    vi.mocked(repository.completeDelivery).mockImplementation(
+      ({ signal }) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener(
+            'abort',
+            () => {
+              reject(reason);
+            },
+            { once: true },
+          );
+        }),
+    );
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: {
+        deliver: vi.fn().mockResolvedValue({
+          schemaVersion: 1,
+          kind: 'delivered',
+          possiblyDispatched: true,
+          providerReference: 'opaque-ref',
+        }),
+      },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+    const pending = handler.handle(delivery, { signal: controller.signal });
+
+    await vi.waitFor(() => {
+      expect(repository.completeDelivery).toHaveBeenCalledOnce();
+    });
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
+    expect(
+      vi.mocked(repository.completeDelivery).mock.calls[0]?.[0].signal,
+    ).toBe(controller.signal);
   });
 });

@@ -567,6 +567,65 @@ describe('shared workspace transaction engine', () => {
     );
   });
 
+  it('releases an acquired client when abort wins before transaction setup', async () => {
+    let resolveConnection: ((client: PoolClient) => void) | undefined;
+    const connection = new Promise<PoolClient>((resolve) => {
+      resolveConnection = resolve;
+    });
+    const query = vi.fn();
+    const release = vi.fn();
+    const operation = vi.fn(() => Promise.resolve());
+    const controller = new AbortController();
+    const transaction = withTenantScopedClient(
+      { connect: () => connection } as unknown as Pool,
+      { workspaceId },
+      operation,
+      { signal: controller.signal },
+    );
+
+    resolveConnection?.({ query, release } as unknown as PoolClient);
+    queueMicrotask(() => {
+      controller.abort();
+    });
+
+    await expect(transaction).rejects.toMatchObject({ name: 'AbortError' });
+    expect(query).not.toHaveBeenCalled();
+    expect(operation).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'AbortError' }),
+    );
+  });
+
+  it('closes the synchronous abort window opened while acquiring a client', async () => {
+    const query = vi.fn();
+    const release = vi.fn();
+    const operation = vi.fn(() => Promise.resolve());
+    const controller = new AbortController();
+    const client = { query, release } as unknown as PoolClient;
+    const connect = vi.fn(() => {
+      controller.abort();
+      return Promise.resolve(client);
+    });
+
+    await expect(
+      withTenantScopedClient(
+        { connect } as unknown as Pool,
+        { workspaceId },
+        operation,
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    await Promise.resolve();
+
+    expect(query).not.toHaveBeenCalled();
+    expect(operation).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'AbortError' }),
+    );
+  });
+
   it('does not acquire a client for an already-aborted transaction', async () => {
     const controller = new AbortController();
     controller.abort();

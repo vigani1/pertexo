@@ -3,6 +3,12 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 
 import { NodeAttemptReconciliationRequiredError } from '../src/testing.js';
+import {
+  UnknownOutcomeReconciliationMismatchError,
+  UnknownOutcomeReconciliationStateError,
+  createWorkspaceDatabase,
+  reconcileUnknownOutcomeEvidence,
+} from '../src/testing.js';
 
 import {
   NodeAttemptConnectionFenceError,
@@ -164,6 +170,161 @@ function dispatchBinding(
 }
 
 describe('Coordinator node-attempt persistence invariants', () => {
+  it('reconciles durable unknown-outcome evidence exactly once and rejects mismatches and stale state', async () => {
+    const workerDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 2,
+      }),
+    );
+    const prepareEvidence = async (suffix: string) => {
+      const lease = await claimDispatchAttempt(
+        `unknown-evidence-${suffix}-${randomUUID()}`,
+      );
+      await nodeAttemptStore.markDispatched({
+        lease,
+        signal: new AbortController().signal,
+      });
+      await expect(
+        nodeAttemptStore.complete({
+          lease,
+          outcome: {
+            status: 'outcome_unknown',
+            safeErrorCode: 'execution.outcome_unknown',
+          },
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ kind: 'committed' });
+
+      const evidenceCommandId = randomUUID();
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `select * from app.record_operator_unknown_outcome_evidence(
+             $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::jsonb,$6::varchar,$7::varchar
+           )`,
+          [
+            evidenceCommandId,
+            workspaceA,
+            lease.attemptId,
+            'provider_receipt',
+            JSON.stringify({ reference: `receipt-${suffix}` }),
+            'operator:test',
+            'verify durable provider evidence',
+          ],
+        ),
+      );
+      const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ id: string; payload_checksum: string }>(
+          `select id,payload_checksum from app.outbox_events
+             where workspace_id=$1 and aggregate_id=$2
+               and job_name='reconcile-unknown-outcome'
+             order by created_at desc limit 1`,
+          [workspaceA, lease.attemptId],
+        ),
+      );
+      const delivery = outbox.rows[0];
+      if (delivery === undefined)
+        throw new Error('Unknown-outcome reconciliation delivery missing');
+      return { delivery, evidenceCommandId, lease };
+    };
+
+    try {
+      const current = await prepareEvidence('current');
+      const input = {
+        attemptId: current.lease.attemptId,
+        delivery: {
+          outboxEventId: current.delivery.id,
+          payloadChecksum: current.delivery.payload_checksum,
+        },
+        evidenceCommandId: current.evidenceCommandId,
+        workspaceId: workspaceA,
+      };
+      await expect(
+        reconcileUnknownOutcomeEvidence(workerDatabase, input),
+      ).resolves.toEqual({ kind: 'processed' });
+      await expect(
+        reconcileUnknownOutcomeEvidence(workerDatabase, input),
+      ).resolves.toEqual({ kind: 'duplicate' });
+
+      const commandMismatch = await prepareEvidence('command-mismatch');
+      await expect(
+        reconcileUnknownOutcomeEvidence(workerDatabase, {
+          attemptId: commandMismatch.lease.attemptId,
+          delivery: {
+            outboxEventId: commandMismatch.delivery.id,
+            payloadChecksum: commandMismatch.delivery.payload_checksum,
+          },
+          evidenceCommandId: randomUUID(),
+          workspaceId: workspaceA,
+        }),
+      ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationMismatchError);
+
+      const checksumMismatch = await prepareEvidence('checksum-mismatch');
+      await expect(
+        reconcileUnknownOutcomeEvidence(workerDatabase, {
+          attemptId: checksumMismatch.lease.attemptId,
+          delivery: {
+            outboxEventId: checksumMismatch.delivery.id,
+            payloadChecksum: 'f'.repeat(64),
+          },
+          evidenceCommandId: checksumMismatch.evidenceCommandId,
+          workspaceId: workspaceA,
+        }),
+      ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationMismatchError);
+
+      const mismatchReceipts = await asRuntime(
+        workerBaseUrl,
+        workspaceA,
+        (client) =>
+          client.query<{ completed: number; message_id: string }>(
+            `select message_id,count(completed_at)::int completed
+               from app.inbox_receipts
+              where workspace_id=$1 and consumer_name='unknown-outcome-reconciler'
+                and message_id=any($2::uuid[])
+              group by message_id`,
+            [
+              workspaceA,
+              [commandMismatch.delivery.id, checksumMismatch.delivery.id],
+            ],
+          ),
+      );
+      expect(mismatchReceipts.rows).toEqual([]);
+
+      const stale = await prepareEvidence('stale');
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.node_attempts set status='succeeded'
+             where workspace_id=$1 and id=$2`,
+          [workspaceA, stale.lease.attemptId],
+        ),
+      );
+      await expect(
+        reconcileUnknownOutcomeEvidence(workerDatabase, {
+          attemptId: stale.lease.attemptId,
+          delivery: {
+            outboxEventId: stale.delivery.id,
+            payloadChecksum: stale.delivery.payload_checksum,
+          },
+          evidenceCommandId: stale.evidenceCommandId,
+          workspaceId: workspaceA,
+        }),
+      ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationStateError);
+
+      const receipts = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ completed: number }>(
+          `select count(completed_at)::int completed
+               from app.inbox_receipts
+              where workspace_id=$1 and consumer_name='unknown-outcome-reconciler'
+                and message_id=$2`,
+          [workspaceA, stale.delivery.id],
+        ),
+      );
+      expect(receipts.rows).toEqual([{ completed: 0 }]);
+    } finally {
+      await workerDatabase.close();
+    }
+  });
+
   it('rejects completion when only the durable attempt fence is stale', async () => {
     const lease = await claimDispatchAttempt(
       `stale-completion-${randomUUID()}`,

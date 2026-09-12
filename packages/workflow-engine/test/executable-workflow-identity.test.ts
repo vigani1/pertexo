@@ -496,6 +496,176 @@ describe('workflow executable V2 identity', () => {
     expect(trapCalls).toBe(0);
   });
 
+  it('preserves escaped, control, and Unicode JSON while normalizing negative zero', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const source = structuredClone(graph());
+    const set = source.nodes.find(({ id }) => id === 'set');
+    if (set === undefined) throw new Error('fixture set node missing');
+    Object.assign(set.inputMappings, {
+      literal: {
+        kind: 'literal',
+        value: {
+          escaped: 'line\n"quoted"\\slash',
+          control: '\u0001',
+          euro: '€',
+          loneHighSurrogate: '\ud800',
+          loneLowSurrogate: '\udc00',
+          unicode: 'Živjo 🙂',
+          negativeZero: -0,
+        },
+      },
+    });
+
+    const compiled = buildWorkflowExecutableV2({ graph: source, release });
+    const parsed = parseWorkflowExecutableV2({
+      envelope: compiled.envelope,
+      admissionRelease: release,
+    });
+    const parsedSet = parsed.graph.nodes.find(({ id }) => id === 'set');
+    const literal = parsedSet?.inputMappings.literal;
+    expect(literal).toMatchObject({
+      kind: 'literal',
+      value: {
+        escaped: 'line\n"quoted"\\slash',
+        control: '\u0001',
+        euro: '€',
+        loneHighSurrogate: '\ud800',
+        loneLowSurrogate: '\udc00',
+        unicode: 'Živjo 🙂',
+        negativeZero: 0,
+      },
+    });
+    if (literal?.kind !== 'literal' || typeof literal.value !== 'object')
+      throw new Error('fixture literal mapping missing');
+    expect(
+      Object.is((literal.value as { negativeZero: number }).negativeZero, -0),
+    ).toBe(false);
+  });
+
+  it('rejects hostile raw executable JSON without invoking accessors', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+    let getterCalls = 0;
+    const accessor = Object.defineProperty({}, 'secret', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 'must-not-run';
+      },
+    });
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const hidden = Object.defineProperty({}, 'hidden', {
+      enumerable: false,
+      value: true,
+    });
+    const withSymbol = { value: true };
+    Object.defineProperty(withSymbol, Symbol('secret'), {
+      enumerable: true,
+      value: 'must-not-leak',
+    });
+    const sparse = new Array<unknown>(1);
+    const inheritedArray: unknown[] = [];
+    Object.setPrototypeOf(inheritedArray, { inherited: true });
+    const extraArray = Object.assign([], { extra: true });
+    const deep: Record<string, unknown> = {};
+    let cursor = deep;
+    for (let depth = 0; depth < 65; depth += 1) {
+      const next: Record<string, unknown> = {};
+      cursor.next = next;
+      cursor = next;
+    }
+    const oversizedArray = new Array<unknown>(10_001).fill(null);
+    const tooManyMembers = Object.fromEntries(
+      Array.from({ length: 10_001 }, (_, index) => [
+        `key${String(index)}`,
+        null,
+      ]),
+    );
+    const proxy = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          getterCalls += 1;
+          return [];
+        },
+      },
+    );
+
+    for (const hostile of [
+      accessor,
+      cycle,
+      new Date('2026-08-20T00:00:00.000Z'),
+      hidden,
+      withSymbol,
+      sparse,
+      inheritedArray,
+      extraArray,
+      deep,
+      oversizedArray,
+      tooManyMembers,
+      proxy,
+      undefined,
+      1n,
+      () => undefined,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      const envelope = structuredClone(compiled.envelope);
+      const set = envelope.graph.nodes.find(({ id }) => id === 'set');
+      if (set === undefined) throw new Error('fixture set node missing');
+      Object.assign(set.inputMappings, {
+        literal: { kind: 'literal', value: hostile },
+      });
+      expect(() =>
+        parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+      ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    }
+    expect(getterCalls).toBe(0);
+  });
+
+  it('rejects malformed raw envelope and policy records at the public parser', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
+
+    expect(() =>
+      parseWorkflowExecutableV2({ envelope: null, admissionRelease: release }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+
+    for (const mutate of [
+      (envelope: Record<string, unknown>) => {
+        const policies = envelope.runtimePolicies as Record<string, unknown>;
+        policies.scheduler = { key: 'Invalid.Key', version: 1 };
+      },
+      (envelope: Record<string, unknown>) => {
+        const policies = envelope.runtimePolicies as Record<string, unknown>;
+        policies.scheduler = { key: 'engine.scheduler', version: 0 };
+      },
+      (envelope: Record<string, unknown>) => {
+        const graphRecord = envelope.graph as Record<string, unknown>;
+        const nodes = graphRecord.nodes as Record<string, unknown>[];
+        if (nodes[0] === undefined) throw new Error('fixture node missing');
+        nodes[0].policyReferences = 'not-an-array';
+      },
+      (envelope: Record<string, unknown>) => {
+        const graphRecord = envelope.graph as Record<string, unknown>;
+        const nodes = graphRecord.nodes as Record<string, unknown>[];
+        if (nodes[0] === undefined) throw new Error('fixture node missing');
+        const policy = { key: 'engine.bounded_json', version: 1 };
+        nodes[0].policyReferences = [policy, policy];
+      },
+    ]) {
+      const envelope = structuredClone(compiled.envelope) as unknown as Record<
+        string,
+        unknown
+      >;
+      mutate(envelope);
+      expect(() =>
+        parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+      ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    }
+  });
+
   it('deduplicates repeated definition identities in selection', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const base = graph();

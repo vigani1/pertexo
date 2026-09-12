@@ -4,9 +4,6 @@ import type { IncomingMessage, RequestOptions } from 'node:http';
 import type { UndiciRequest } from '@opentelemetry/instrumentation-undici';
 
 const REDACTED_EXCEPTION = '[Redacted exception]';
-const SAFE_ERROR_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
-const SAFE_ERROR_NAME = /^[A-Z][A-Za-z0-9]{0,63}$/u;
-const MAX_ERROR_CODE = 2_147_483_647;
 
 function safePath(value: unknown): string {
   const candidate = typeof value === 'string' && value.length > 0 ? value : '/';
@@ -74,56 +71,28 @@ function safePort(value: unknown): string | undefined {
   return numericPort <= 65_535 ? port : undefined;
 }
 
-function safeErrorCode(value: unknown): string | number | undefined {
-  if (typeof value === 'string') {
-    return SAFE_ERROR_CODE.test(value) ? value : undefined;
-  }
-
-  if (
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    Math.abs(value) <= MAX_ERROR_CODE
-  ) {
-    return value;
-  }
-
-  return undefined;
-}
-
-function safeErrorName(value: unknown): string | undefined {
-  return typeof value === 'string' && SAFE_ERROR_NAME.test(value)
-    ? value
-    : undefined;
-}
-
 function sanitizeException(exception: unknown): Exception {
   if (typeof exception === 'string') {
     return REDACTED_EXCEPTION;
   }
 
-  if (exception === null || typeof exception !== 'object') {
-    return REDACTED_EXCEPTION;
+  try {
+    return exception instanceof Error
+      ? { name: 'Error' }
+      : { name: 'NonError' };
+  } catch {
+    return { name: 'NonError' };
   }
-
-  const safeCode = safeErrorCode(
-    'code' in exception ? exception.code : undefined,
-  );
-  const safeName = safeErrorName(
-    'name' in exception ? exception.name : undefined,
-  );
-
-  if (safeCode !== undefined) {
-    return { code: safeCode };
-  }
-
-  if (typeof safeName === 'string') {
-    return { name: safeName };
-  }
-
-  return REDACTED_EXCEPTION;
 }
 
-function installErrorSanitizer(span: Span): void {
+const sanitizedSpans = new WeakSet<Span>();
+
+export function installErrorSanitizer(span: Span): void {
+  if (sanitizedSpans.has(span)) {
+    return;
+  }
+  sanitizedSpans.add(span);
+
   const recordException = span.recordException.bind(span);
   span.recordException = (exception, time) => {
     recordException(sanitizeException(exception), time);
@@ -134,13 +103,7 @@ function installErrorSanitizer(span: Span): void {
     if (status.message === undefined) {
       return setStatus(status);
     }
-
-    const safeMessage = safeErrorCode(status.message);
-    if (safeMessage === undefined || typeof safeMessage === 'number') {
-      return setStatus({ code: status.code });
-    }
-
-    return setStatus({ ...status, message: safeMessage });
+    return setStatus({ code: status.code });
   };
 }
 

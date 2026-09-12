@@ -21,7 +21,10 @@ import type {
   WorkflowRecord,
   WorkflowVersionRecord,
 } from '@pertexo/database/testing';
-import { WorkflowRevisionConflictError } from '@pertexo/database/testing';
+import {
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from '@pertexo/database/testing';
 import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
 import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/restore-version-use-case.js';
 
@@ -160,6 +163,63 @@ describe('workflow authoring application seams', () => {
     expect(result.representationTag).not.toBe(representationTag);
     expect(store.getDraft).not.toHaveBeenCalled();
     expect(store.publishWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('forwards preauthorization and trace context for restore and lifecycle commands', async () => {
+    const store = persistence();
+    const access = authorization();
+    const tracedActor = { ...actor, traceId: 'trace-42' };
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor: tracedActor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:update',
+      access,
+      disclosure: 'not_found',
+    });
+    const representationTag = createDraftRepresentationTag({
+      workflowId,
+      revision: 1,
+      schemaVersion: 1,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    });
+
+    await new RestoreWorkflowVersionUseCase(store, access).execute({
+      actor: tracedActor,
+      authorizedWorkspace,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      versionId: version().id,
+      representationTag,
+      request: {},
+    });
+    const lifecycleAuthorization = await authorizeWorkspace({
+      actor: tracedActor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:publish',
+      access,
+      disclosure: 'not_found',
+    });
+    await new TransitionWorkflowLifecycleUseCase(store, access).execute({
+      actor: tracedActor,
+      authorizedWorkspace: lifecycleAuthorization,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      command: 'archive',
+      request: { expectedLifecycleRevision: 1 },
+      idempotencyKey: 'lifecycle-trace',
+      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+    });
+
+    expect(store.restoreWorkflowVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ traceId: 'trace-42' }),
+    );
+    expect(store.transitionWorkflowLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        traceId: 'trace-42',
+        traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+      }),
+    );
   });
 
   it.each(
@@ -325,6 +385,105 @@ describe('workflow authoring application seams', () => {
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     expect(store.getDraft).not.toHaveBeenCalled();
     expect(access.findAccess).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when each draft read seam reports no visible workflow', async () => {
+    const store = persistence({ getDraft: vi.fn().mockResolvedValue(null) });
+    const access = authorization();
+    const common = { actor, routeWorkspaceId: workspaceId, workflowId };
+
+    await expect(
+      new GetWorkflowDraftUseCase(store, access).execute(common),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    await expect(
+      new SaveWorkflowDraftUseCase(store, access).execute({
+        ...common,
+        representationTag:
+          '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+        graph,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    await expect(
+      new ValidateWorkflowDraftUseCase(store, access).execute(common),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    expect(store.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it('forwards optional bounds and request trace context through public use cases', async () => {
+    const store = persistence();
+    const access = authorization();
+    const representationTag = createDraftRepresentationTag({
+      workflowId,
+      revision: 1,
+      schemaVersion: 1,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    });
+
+    await new ListWorkflowsUseCase(store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      limit: 10,
+    });
+    await new CreateWorkflowUseCase(store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      request: { name: 'Operations' },
+      idempotencyKey: 'create-optional-context',
+      requestId: 'request-create',
+      traceId: 'trace-create',
+    });
+    await new SaveWorkflowDraftUseCase(store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      representationTag,
+      graph,
+      requestId: 'request-save',
+      traceId: 'trace-save',
+    });
+    await new PublishWorkflowUseCase(store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      representationTag,
+      idempotencyKey: 'publish-optional-context',
+      requestId: 'request-publish',
+      traceId: 'trace-publish',
+      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+    });
+    await new ListWorkflowVersionsUseCase(store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      limit: 5,
+    });
+
+    expect(store.listWorkflows).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 10 }),
+    );
+    expect(store.createWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-create',
+        traceId: 'trace-create',
+      }),
+    );
+    expect(store.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-save',
+        traceId: 'trace-save',
+      }),
+    );
+    expect(store.publishWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-publish',
+        traceId: 'trace-publish',
+        traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+      }),
+    );
+    expect(store.listVersions).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 5 }),
+    );
   });
 
   it('returns a strong ETag on draft reads and uses the same codec for a matching save', async () => {

@@ -110,28 +110,6 @@
         },
         {
           "files": [
-            "packages/database/src/lifecycle/preview-cleanup.ts",
-            "packages/database/src/lifecycle/preview-cleanup.ts"
-          ],
-          "classification": "intentional-scenario-local",
-          "reason": "Cleanup retry branches repeat clock and delivery construction beside distinct lease, quiescence, and terminal-state transitions to preserve review order.",
-          "clones": [
-            {
-              "hash": "26cd4f5535767e9b472683b611fb82f73c7d1f5d24d1c7dd8668e22f16776b1c",
-              "maxLines": 18
-            },
-            {
-              "hash": "53879b3289bf04e8a17f77a82f86f436359ef624a50e8170a12d4dccb113ab42",
-              "maxLines": 19
-            },
-            {
-              "hash": "f72faf29b45be63f19c83d9abd391121c6cdabab3140b5a9ee5db8bc82963467",
-              "maxLines": 18
-            }
-          ]
-        },
-        {
-          "files": [
             "packages/database/src/execution/execution-acceptance.ts",
             "packages/database/src/execution/preview-execution-acceptance.ts"
           ],

@@ -2,7 +2,13 @@ import type * as httpTypes from 'node:http';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
 
-import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
+import {
+  SpanKind,
+  SpanStatusCode,
+  type Exception,
+  type Span,
+  type SpanStatus,
+} from '@opentelemetry/api';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { node } from '@opentelemetry/sdk-node';
@@ -91,6 +97,76 @@ function spansFor(
 }
 
 describe('HTTP telemetry URL privacy', () => {
+  it('sanitizes exceptions and status messages through the configured HTTP hook', () => {
+    const instrumentation = createNodeInstrumentations().find(
+      (candidate) => candidate instanceof HttpInstrumentation,
+    );
+    const hook = instrumentation?.getConfig().requestHook;
+    if (hook === undefined) {
+      throw new Error('Expected the configured HTTP request hook');
+    }
+    const exceptions: Exception[] = [];
+    const statuses: SpanStatus[] = [];
+    const span = {
+      recordException: (exception: Exception) => {
+        exceptions.push(exception);
+      },
+      setStatus: (status: SpanStatus) => {
+        statuses.push(status);
+        return span;
+      },
+    } as Span;
+    hook(span, {} as never);
+    hook(span, {} as never);
+
+    const hostileException = new Proxy(Object.create(null) as object, {
+      has: () => {
+        throw new Error('hostile-exception-inspection-secret');
+      },
+    });
+
+    for (const exception of [
+      'string-secret',
+      null,
+      42,
+      {},
+      { code: 1.5, message: 'fractional-secret' },
+      { code: Number.POSITIVE_INFINITY, message: 'infinite-secret' },
+      { code: 2_147_483_648, message: 'range-secret' },
+      hostileException,
+    ]) {
+      span.recordException(exception as Exception);
+    }
+    span.recordException({ name: 'TypeError', message: 'name-secret' });
+    span.recordException({ code: 'ECONNRESET', message: 'code-secret' });
+    const customError = new Error('custom-error-secret');
+    customError.name = 'SyntheticSecretType';
+    span.recordException(customError);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: 'status-secret' });
+    span.setStatus({ code: SpanStatusCode.ERROR, message: 'ETIMEDOUT' });
+    span.setStatus({ code: SpanStatusCode.OK });
+
+    expect(exceptions).toEqual([
+      '[Redacted exception]',
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'NonError' },
+      { name: 'Error' },
+    ]);
+    expect(statuses).toEqual([
+      { code: SpanStatusCode.ERROR },
+      { code: SpanStatusCode.ERROR },
+      { code: SpanStatusCode.OK },
+    ]);
+    expect(JSON.stringify({ exceptions, statuses })).not.toContain('secret');
+  });
+
   it.each(['', 'not a URL', 'ftp://user:secret@example.test'])(
     'uses a safe fallback for an invalid Undici origin: %s',
     (origin) => {
@@ -332,7 +408,7 @@ describe('HTTP telemetry URL privacy', () => {
       );
       expect(httpErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(httpErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'ECONNREFUSED' }),
+        expect.objectContaining({ 'exception.type': 'Error' }),
       );
       expect(httpErrorSpans[0]?.status.message).toBeUndefined();
       expect(httpErrorSpans[0]?.attributes).toEqual(
@@ -364,7 +440,7 @@ describe('HTTP telemetry URL privacy', () => {
       );
       expect(undiciErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(undiciErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({ 'exception.type': 'ECONNREFUSED' }),
+        expect.objectContaining({ 'exception.type': 'Error' }),
       );
       expect(undiciErrorSpans[0]?.status.message).toBeUndefined();
       expect(undiciErrorSpans[0]?.attributes).toEqual(

@@ -1,8 +1,8 @@
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import type { Tracer, TracerProvider } from '@opentelemetry/api';
 import { HostMetricsInstrumentation } from '@opentelemetry/instrumentation-host-metrics';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
 import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
@@ -19,11 +19,42 @@ import './server-only.js';
 
 import type { ObservabilityConfig } from './config.js';
 import {
+  installErrorSanitizer,
   sanitizeHttpSpan,
   sanitizeIncomingHttpRequest,
   sanitizeOutgoingHttpRequest,
   sanitizeUndiciRequest,
 } from './telemetry-sanitization.js';
+
+function errorSanitizingTracerProvider(
+  provider: TracerProvider,
+): TracerProvider {
+  return {
+    getTracer(name, version, options): Tracer {
+      const tracer = provider.getTracer(name, version, options);
+      return {
+        startActiveSpan: tracer.startActiveSpan.bind(tracer),
+        startSpan(spanName, spanOptions, spanContext) {
+          const span = tracer.startSpan(spanName, spanOptions, spanContext);
+          installErrorSanitizer(span);
+          return span;
+        },
+      };
+    },
+  };
+}
+
+class ErrorSanitizingNestInstrumentation extends NestInstrumentation {
+  public override setTracerProvider(provider: TracerProvider): void {
+    super.setTracerProvider(errorSanitizingTracerProvider(provider));
+  }
+}
+
+class ErrorSanitizingPgInstrumentation extends PgInstrumentation {
+  public override setTracerProvider(provider: TracerProvider): void {
+    super.setTracerProvider(errorSanitizingTracerProvider(provider));
+  }
+}
 
 export interface TelemetryLifecycle {
   readonly enabled: boolean;
@@ -52,10 +83,9 @@ export function createNodeInstrumentations() {
       requestHook: sanitizeHttpSpan,
       startSpanHook: sanitizeUndiciRequest,
     }),
-    new NestInstrumentation(),
+    new ErrorSanitizingNestInstrumentation(),
     new PinoInstrumentation(),
-    new PgInstrumentation(),
-    new IORedisInstrumentation(),
+    new ErrorSanitizingPgInstrumentation(),
     new HostMetricsInstrumentation({
       metricGroups: ['process.cpu', 'process.memory'],
     }),

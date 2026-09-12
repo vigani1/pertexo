@@ -76,6 +76,7 @@ interface StoreCalls {
   connectionFences: unknown[];
   claims: number;
   completions: PreviewTerminalOutcome[];
+  completionSignals: (AbortSignal | undefined)[];
   dispatches: number;
 }
 
@@ -92,6 +93,7 @@ function fakeStore(
     connectionFences: [],
     claims: 0,
     completions: [],
+    completionSignals: [],
     dispatches: 0,
   };
   const store: PreviewAttemptRunStore = {
@@ -104,8 +106,9 @@ function fakeStore(
         lease: overrides.lease ?? leaseFixture(),
       });
     },
-    complete: ({ outcome }) => {
+    complete: ({ outcome, signal }) => {
       calls.completions.push(outcome);
+      calls.completionSignals.push(signal);
       return Promise.resolve({ kind: 'committed' });
     },
     heartbeat: () => {
@@ -160,13 +163,15 @@ describe('preview attempt handler', () => {
     const { calls, store } = fakeStore();
     const { invoker } = succeededInvoker({ ok: true });
     const recordTerminal = vi.fn();
+    const queueContext = context();
     const result = await createPreviewAttemptHandler({
       ...deps(store, invoker),
       telemetry: { recordReconciliation: vi.fn(), recordTerminal },
-    }).handle(deliveryFixture(), context());
+    }).handle(deliveryFixture(), queueContext);
     expect(result).toEqual({ kind: 'committed' });
     expect(calls.claims).toBe(1);
     expect(calls.completions[0]?.status).toBe('succeeded');
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
     const stored = calls.completions[0] as unknown as {
       output: { value: { ok: boolean } };
     };
@@ -182,6 +187,40 @@ describe('preview attempt handler', () => {
       source: 'execution',
       usesConnection: false,
     });
+  });
+
+  it('cancels a deferred terminal write with the transport signal', async () => {
+    const { store } = fakeStore();
+    const completionStarted = Promise.withResolvers<AbortSignal>();
+    const reason = new Error('queue delivery revoked during completion');
+    const complete = vi.fn(
+      ({ signal }: Parameters<PreviewAttemptRunStore['complete']>[0]) =>
+        new Promise<never>((_resolve, reject) => {
+          if (signal === undefined) {
+            reject(new Error('completion signal missing'));
+            return;
+          }
+          completionStarted.resolve(signal);
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(reason);
+            },
+            { once: true },
+          );
+        }),
+    );
+    const controller = new AbortController();
+    const pending = createPreviewAttemptHandler({
+      ...deps({ ...store, complete }, succeededInvoker({ ok: true }).invoker),
+    }).handle(deliveryFixture(), { signal: controller.signal });
+
+    const completionSignal = await completionStarted.promise;
+    expect(completionSignal).toBe(controller.signal);
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(complete).toHaveBeenCalledOnce();
   });
 
   it('passes retained preview expiry to the artifact capability', async () => {
@@ -292,11 +331,13 @@ describe('preview attempt handler', () => {
     const invoker: PreviewNodeInvoker = {
       invoke: () => Promise.resolve(expected as PreviewInvocationOutcome),
     };
+    const queueContext = context();
     await createPreviewAttemptHandler(deps(store, invoker)).handle(
       deliveryFixture(),
-      context(),
+      queueContext,
     );
     expect(calls.completions[0]).toMatchObject(expected);
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
   });
 
   it.each(['unsafe', 'idempotent_with_key'] as const)(
@@ -387,14 +428,16 @@ describe('preview attempt handler', () => {
     const { invoker } = succeededInvoker({
       broken: (): number => 1,
     });
+    const queueContext = context();
     await createPreviewAttemptHandler(deps(store, invoker)).handle(
       deliveryFixture(),
-      context(),
+      queueContext,
     );
     expect(calls.completions[0]).toMatchObject({
       safeErrorCode: 'preview.output_invalid',
       status: 'failed',
     });
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
   });
 
   it('completes timed_out when the durable execution deadline passes', async () => {
@@ -413,14 +456,17 @@ describe('preview attempt handler', () => {
           );
         }),
     };
+    const queueContext = context();
     const result = await createPreviewAttemptHandler(
       deps(store, invoker),
-    ).handle(deliveryFixture(), context());
+    ).handle(deliveryFixture(), queueContext);
     expect(result).toEqual({ kind: 'committed' });
     expect(calls.completions[0]).toMatchObject({
       safeErrorCode: 'preview.deadline_exceeded',
       status: 'timed_out',
     });
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
+    expect(queueContext.signal.aborted).toBe(false);
   });
 
   it('does not invoke work after the durable deadline already expired', async () => {
@@ -431,15 +477,17 @@ describe('preview attempt handler', () => {
       },
     });
     const invoke = vi.fn();
+    const queueContext = context();
     await createPreviewAttemptHandler(deps(store, { invoke })).handle(
       deliveryFixture(),
-      context(),
+      queueContext,
     );
     expect(invoke).not.toHaveBeenCalled();
     expect(calls.completions[0]).toMatchObject({
       safeErrorCode: 'preview.deadline_exceeded',
       status: 'timed_out',
     });
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
   });
 
   it('records unknown when an unsafe dispatch crosses its deadline', async () => {
@@ -465,15 +513,47 @@ describe('preview attempt handler', () => {
         });
       },
     };
+    const queueContext = context();
     await createPreviewAttemptHandler(deps(store, invoker)).handle(
       deliveryFixture(),
-      context(),
+      queueContext,
     );
     expect(calls.dispatches).toBe(1);
     expect(calls.completions[0]).toMatchObject({
       safeErrorCode: 'preview.outcome_unknown',
       status: 'outcome_unknown',
     });
+    expect(calls.completionSignals).toEqual([queueContext.signal]);
+    expect(queueContext.signal.aborted).toBe(false);
+  });
+
+  it('does not terminalize after transport cancellation revokes the delivery', async () => {
+    const { calls, store } = fakeStore();
+    const controller = new AbortController();
+    const reason = new Error('queue delivery revoked');
+    const invoker: PreviewNodeInvoker = {
+      invoke: ({ signal }) =>
+        new Promise<PreviewInvocationOutcome>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(reason);
+            },
+            { once: true },
+          );
+        }),
+    };
+    const pending = createPreviewAttemptHandler(deps(store, invoker)).handle(
+      deliveryFixture(),
+      { signal: controller.signal },
+    );
+
+    await vi.waitFor(() => {
+      expect(calls.claims).toBe(1);
+    });
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
+    expect(calls.completions).toHaveLength(0);
   });
 
   it('does not manufacture cancellation after heartbeat authority fails', async () => {

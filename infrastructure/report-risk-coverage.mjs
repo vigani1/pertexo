@@ -24,6 +24,7 @@ export const RISK_COVERAGE_COHORTS = [
   'database',
   'worker',
   'api',
+  'api-priority',
   'api-orchestration',
   'lifecycle-command',
 ];
@@ -36,16 +37,59 @@ const LIFECYCLE_COMMAND_RISK_FILES = [
 ];
 
 export const RISK_COVERAGE_POLICIES = Object.freeze({
-  'artifact-store': { mode: 'debt-ceiling', maximumUnreviewed: 8 },
-  contracts: { mode: 'debt-ceiling', maximumUnreviewed: 1 },
-  integrations: { mode: 'debt-ceiling', maximumUnreviewed: 2 },
-  'workflow-engine': { mode: 'debt-ceiling', maximumUnreviewed: 11 },
+  'artifact-store': { mode: 'strict' },
+  contracts: { mode: 'strict' },
+  integrations: { mode: 'strict' },
+  'workflow-engine': { mode: 'strict' },
   database: { mode: 'strict' },
   worker: { mode: 'strict' },
   api: { mode: 'strict' },
+  'api-priority': { mode: 'strict' },
   'api-orchestration': { mode: 'strict' },
   'lifecycle-command': { mode: 'strict' },
 });
+
+function coverageInstrumentation(coverage) {
+  return {
+    path: coverage.path,
+    statementMap: coverage.statementMap,
+    fnMap: coverage.fnMap,
+    branchMap: coverage.branchMap,
+    meta: coverage.meta,
+  };
+}
+
+export function partitionApiPriorityCoverage(reports) {
+  const api = reports.get('api');
+  const priority = reports.get('api-priority');
+  if (api === undefined) throw new Error('Missing api risk-coverage input');
+  if (priority === undefined)
+    throw new Error('Missing api-priority risk-coverage input');
+
+  const uniquePriority = {};
+  for (const [file, coverage] of Object.entries(priority)) {
+    const existing = api[file];
+    if (existing === undefined) {
+      uniquePriority[file] = coverage;
+      continue;
+    }
+    if (
+      JSON.stringify(coverageInstrumentation(existing)) !==
+      JSON.stringify(coverageInstrumentation(coverage))
+    )
+      throw new Error(
+        `Mismatched API risk-coverage instrumentation for overlapping source: ${file}`,
+      );
+    if (
+      JSON.stringify({ s: existing.s, f: existing.f, b: existing.b }) !==
+      JSON.stringify({ s: coverage.s, f: coverage.f, b: coverage.b })
+    )
+      throw new Error(
+        `Mismatched API risk-coverage hits for overlapping source: ${file}`,
+      );
+  }
+  reports.set('api-priority', uniquePriority);
+}
 
 function branchKey(branch) {
   return [
@@ -559,6 +603,7 @@ export function createRiskCoverageReport(
   const unreviewedCount = classifiedBranches.length - reviewedCount;
   return {
     schemaVersion: 7,
+    ...(sourceRevision === undefined ? {} : { sourceRevision }),
     scope: {
       kind: 'selected-critical-module-files',
       cohorts: selections,
@@ -645,6 +690,7 @@ async function main(environment = process.env) {
       }),
     );
   }
+  partitionApiPriorityCoverage(reports);
   const reviewManifest = JSON.parse(
     await readFile('infrastructure/risk-coverage-reviews.json', 'utf8'),
   );

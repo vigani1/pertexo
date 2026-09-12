@@ -6,6 +6,14 @@ const migrationUrl = new URL(
   '../migrations/0053_preview_retention_enforcement.sql',
   import.meta.url,
 );
+const legacyDeliveryUrl = new URL(
+  '../src/lifecycle/preview-cleanup.ts',
+  import.meta.url,
+);
+const lifecycleTestingUrl = new URL(
+  '../src/lifecycle/testing.ts',
+  import.meta.url,
+);
 
 describe('preview retention enforcement migration', () => {
   it('moves bounded preview destruction behind maintenance authority', async () => {
@@ -27,6 +35,15 @@ describe('preview retention enforcement migration', () => {
     );
     expect(migration).not.toMatch(
       /GRANT EXECUTE ON FUNCTION[\s\S]*preview_artifact_cleanup[\s\S]*TO \{\{worker_runtime_role\}\}/u,
+    );
+  });
+
+  it('does not retain the revoked delivery implementation as a testing export', async () => {
+    await expect(readFile(legacyDeliveryUrl, 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    await expect(readFile(lifecycleTestingUrl, 'utf8')).resolves.not.toContain(
+      './preview-cleanup.js',
     );
   });
 });

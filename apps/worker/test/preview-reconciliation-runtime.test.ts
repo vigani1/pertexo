@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,
   parseDatabaseConfig,
+  type FailureNotificationStore,
 } from '@pertexo/database/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
@@ -30,6 +31,32 @@ function delivery() {
       jobId: jobIdForOutboxEvent(data.outboxEventId),
     },
   } as const;
+}
+
+function maintenanceRuntime(
+  failureNotificationStore: FailureNotificationStore,
+  backgroundTaskShutdownTimeoutMillis: number,
+) {
+  return createPreviewMaintenanceRuntime(
+    {
+      backgroundTaskShutdownTimeoutMillis,
+      database: parseDatabaseConfig({
+        connectionString:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      }),
+      failureNotificationDelivery: { deliver: vi.fn() },
+      redisUrl: 'redis://localhost:6379/0',
+    },
+    {
+      consumerFactory: vi.fn().mockReturnValue({
+        close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+        isReady: vi.fn().mockReturnValue(true),
+        waitUntilReady: vi.fn().mockResolvedValue(undefined),
+      }),
+      failureNotificationStore,
+      reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
+    },
+  );
 }
 
 describe('preview reconciliation handler', () => {
@@ -153,5 +180,70 @@ describe('preview reconciliation handler', () => {
     await Promise.all([runtime.close(), runtime.close()]);
     expect(consumerClose).toHaveBeenCalledOnce();
     expect(storeClose).toHaveBeenCalledOnce();
+  });
+
+  it('aborts in-flight notification recovery and prevents another recovery pass', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const recovery = vi.fn(
+      (_limit: number, _maxAttempts: number, signal?: AbortSignal) => {
+        observedSignal = signal;
+        return new Promise<number>((_resolve, reject) => {
+          signal?.addEventListener(
+            'abort',
+            () => {
+              reject(new Error('recovery aborted'));
+            },
+            { once: true },
+          );
+        });
+      },
+    );
+    const notificationClose = vi.fn().mockResolvedValue(undefined);
+    const notificationStore: FailureNotificationStore = {
+      claimDelivery: vi.fn(),
+      close: notificationClose,
+      completeDelivery: vi.fn(),
+      fenceDispatch: vi.fn(),
+      loadDestination: vi.fn(),
+      recoverDue: recovery,
+    };
+    const runtime = await maintenanceRuntime(notificationStore, 100);
+
+    await vi.waitFor(() => {
+      expect(recovery).toHaveBeenCalledOnce();
+    });
+    await expect(runtime.close()).resolves.toBeUndefined();
+    expect(observedSignal).toBeInstanceOf(AbortSignal);
+    expect(observedSignal?.aborted).toBe(true);
+    expect(recovery).toHaveBeenCalledOnce();
+    expect(notificationClose).toHaveBeenCalledOnce();
+  });
+
+  it('reports a bounded recovery shutdown failure before closing its store', async () => {
+    const events: string[] = [];
+    const recoverDue = vi.fn(() => {
+      events.push('recovery-start');
+      return new Promise<number>(() => undefined);
+    });
+    const notificationStore: FailureNotificationStore = {
+      claimDelivery: vi.fn(),
+      close: vi.fn(() => {
+        events.push('store-close');
+        return Promise.resolve();
+      }),
+      completeDelivery: vi.fn(),
+      fenceDispatch: vi.fn(),
+      loadDestination: vi.fn(),
+      recoverDue,
+    };
+    const runtime = await maintenanceRuntime(notificationStore, 5);
+
+    await vi.waitFor(() => {
+      expect(recoverDue).toHaveBeenCalledOnce();
+    });
+    await expect(runtime.close()).rejects.toMatchObject({
+      name: 'BackgroundTaskShutdownTimeoutError',
+    });
+    expect(events).toEqual(['recovery-start', 'store-close']);
   });
 });

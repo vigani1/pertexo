@@ -75,6 +75,18 @@ describe('OIDC AES-256-GCM secret encryption', () => {
     expectSealingError(() =>
       adapter.open({ ...sealed, keyVersion: 'unknown' }, associatedData),
     );
+    expectSealingError(() =>
+      adapter.open(
+        { ...sealed, nonce: randomBytes(11).toString('base64url') },
+        associatedData,
+      ),
+    );
+    expectSealingError(() =>
+      adapter.open(
+        { ...sealed, tag: randomBytes(15).toString('base64url') },
+        associatedData,
+      ),
+    );
   });
 
   it('reads previous key versions while always writing with the current key', () => {
@@ -97,7 +109,11 @@ describe('OIDC AES-256-GCM secret encryption', () => {
 
   it('rejects malformed key configuration without exposing key material', () => {
     for (const config of [
+      null,
+      { current: { version: 'v1', key: '' } },
+      { current: { version: 'v1', key: 42 } },
       { current: { version: 'v1', key: randomBytes(31).toString('base64') } },
+      { current: { version: 'v1', key: '!' } },
       { current: { version: 'v1', key: 'not-base64' } },
       {
         current: { version: 'v1', key: currentKey },
@@ -105,7 +121,54 @@ describe('OIDC AES-256-GCM secret encryption', () => {
       },
       { current: { version: 'bad version', key: currentKey } },
     ]) {
-      expectSealingError(() => new Aes256GcmOidcSecretEncryption(config));
+      expectSealingError(
+        () => new Aes256GcmOidcSecretEncryption(config as never),
+      );
+    }
+  });
+
+  it('rejects a non-canonical base64url key with unused trailing bits', () => {
+    const canonical = Buffer.alloc(32).toString('base64url');
+    const nonCanonical = `${canonical.slice(0, -1)}B`;
+    expect(Buffer.from(nonCanonical, 'base64url')).toEqual(
+      Buffer.from(canonical, 'base64url'),
+    );
+    expectSealingError(
+      () =>
+        new Aes256GcmOidcSecretEncryption({
+          current: { version: 'v1', key: nonCanonical },
+        }),
+    );
+  });
+
+  it('accepts base64url key material and one defensive previous-key entry', () => {
+    const adapter = new Aes256GcmOidcSecretEncryption({
+      current: { version: 'v2', key: randomBytes(32).toString('base64url') },
+      previous: {
+        version: 'v1',
+        key: previousKey,
+      } as unknown as readonly { version: string; key: string }[],
+    });
+    expect(adapter.seal('verifier plaintext', associatedData).keyVersion).toBe(
+      'v2',
+    );
+  });
+
+  it('fails closed for malformed persisted sealed-record shapes', () => {
+    const adapter = new Aes256GcmOidcSecretEncryption({
+      current: { version: 'v1', key: currentKey },
+    });
+    const sealed = adapter.seal('verifier plaintext', associatedData);
+    for (const malformed of [
+      null,
+      { ...sealed, keyVersion: 'bad version' },
+      { ...sealed, nonce: 42 },
+      { ...sealed, tag: '' },
+      { ...sealed, ciphertext: 'x'.repeat(32_769) },
+    ]) {
+      expectSealingError(() =>
+        adapter.open(malformed as never, associatedData),
+      );
     }
   });
 
@@ -119,5 +182,6 @@ describe('OIDC AES-256-GCM secret encryption', () => {
     expectSealingError(() =>
       adapter.seal('verifier plaintext', 'x'.repeat(513)),
     );
+    expectSealingError(() => adapter.seal(42 as never, associatedData));
   });
 });

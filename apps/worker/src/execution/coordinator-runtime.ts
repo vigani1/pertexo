@@ -47,6 +47,7 @@ import {
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
+import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
 
 export interface CoordinatorRuntime {
   readonly consumer: QueueConsumer;
@@ -56,6 +57,7 @@ export interface CoordinatorRuntime {
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
+  backgroundTaskShutdownTimeoutMillis?: number;
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
@@ -122,6 +124,8 @@ export async function createCoordinatorRuntime(
   const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
   const dueWakeupPollIntervalMillis =
     options.dueWakeupPollIntervalMillis ?? 250;
+  const backgroundTaskShutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   if (
     !Number.isSafeInteger(dueWakeupBatchSize) ||
     dueWakeupBatchSize < 1 ||
@@ -135,6 +139,14 @@ export async function createCoordinatorRuntime(
   )
     throw new TypeError(
       'Due wakeup poll interval must be between 10 and 60000',
+    );
+  if (
+    !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
+    backgroundTaskShutdownTimeoutMillis < 1 ||
+    backgroundTaskShutdownTimeoutMillis > 120_000
+  )
+    throw new TypeError(
+      'Background task shutdown timeout must be between 1 and 120000',
     );
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(options.releaseCohort ?? 'core').map(
@@ -209,8 +221,17 @@ export async function createCoordinatorRuntime(
   const scannerLoop = (async (): Promise<void> => {
     while (!scannerAbort.signal.aborted) {
       try {
-        await dueWakeupScanner.claimDueWakeups(dueWakeupBatchSize);
-        await deadlineWakeupScanner.claimDueWakeups(dueWakeupBatchSize);
+        await dueWakeupScanner.claimDueWakeups(
+          dueWakeupBatchSize,
+          scannerAbort.signal,
+        );
+        // The signal can change while the scanner promise is awaiting I/O.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (scannerAbort.signal.aborted) break;
+        await deadlineWakeupScanner.claimDueWakeups(
+          dueWakeupBatchSize,
+          scannerAbort.signal,
+        );
       } catch {
         // A transient database outage must not terminate the coordinator process.
       }
@@ -228,7 +249,12 @@ export async function createCoordinatorRuntime(
       closePromise ??= (async (): Promise<void> => {
         scannerAbort.abort();
         const consumerResult = await Promise.allSettled([consumer.close()]);
-        const scannerDrainResult = await Promise.allSettled([scannerLoop]);
+        const scannerDrainResult = await Promise.allSettled([
+          boundedBackgroundTask(
+            scannerLoop,
+            backgroundTaskShutdownTimeoutMillis,
+          ),
+        ]);
         const scannerCloseResult = await Promise.allSettled([
           dueWakeupScanner.close(),
           deadlineWakeupScanner.close(),

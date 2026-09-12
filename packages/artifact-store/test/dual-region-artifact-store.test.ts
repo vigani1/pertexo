@@ -50,6 +50,8 @@ class FakeArtifactStore
   public deleteError: Error | undefined;
   public directDownloadCalls = 0;
   public failNextPut = false;
+  public readonly getRequests: ArtifactRequest[] = [];
+  public readonly headRequests: ArtifactRequest[] = [];
   public purgeError: Error | undefined;
   public purgeResult: WorkspaceObjectPurgePage = {
     completed: true,
@@ -57,6 +59,10 @@ class FakeArtifactStore
   };
   public stored: { body: Buffer; metadata: ArtifactMetadata } | undefined;
   public readinessError: Error | undefined;
+  public readonly putRequests: PutArtifactRequest[] = [];
+  public validateError: Error | undefined;
+  public readonly validateRequests: ValidateDirectUploadRequest[] = [];
+  public validateResult: ArtifactMetadata | undefined;
 
   public constructor(
     private readonly bucket: string,
@@ -109,7 +115,7 @@ class FakeArtifactStore
   }
 
   public getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
-    void request;
+    this.getRequests.push(request);
     if (this.stored === undefined) throw new Error('not found');
     return Promise.resolve({
       body: Readable.from([this.stored.body]),
@@ -118,7 +124,7 @@ class FakeArtifactStore
   }
 
   public head(request: ArtifactRequest): Promise<ArtifactMetadata | null> {
-    void request;
+    this.headRequests.push(request);
     return Promise.resolve(this.stored?.metadata ?? null);
   }
 
@@ -132,6 +138,7 @@ class FakeArtifactStore
   }
 
   public async put(request: PutArtifactRequest): Promise<ArtifactMetadata> {
+    this.putRequests.push(request);
     const chunks: Buffer[] = [];
     for await (const chunk of request.body) {
       chunks.push(Buffer.from(chunk as Uint8Array));
@@ -147,6 +154,11 @@ class FakeArtifactStore
   public validateDirectUpload(
     expected: ValidateDirectUploadRequest,
   ): Promise<ArtifactMetadata> {
+    this.validateRequests.push(expected);
+    if (this.validateError !== undefined)
+      return Promise.reject(this.validateError);
+    if (this.validateResult !== undefined)
+      return Promise.resolve(this.validateResult);
     if (
       this.stored?.metadata.sha256 !== expected.sha256 ||
       !this.stored.body.equals(Buffer.from('hello'))
@@ -196,6 +208,38 @@ describe('dual-region artifact store', () => {
     ).resolves.toEqual(metadata);
   });
 
+  it('rejects immutable conflicts before writing or replicating', async () => {
+    const { primary, recovery, store } = fixture();
+    primary.stored = {
+      body: Buffer.from('HELLO'),
+      metadata: { ...metadata, sha256: 'a'.repeat(64) },
+    };
+
+    await expect(
+      store.put({ ...metadata, body: Readable.from(['hello']) }),
+    ).rejects.toMatchObject({
+      name: 'ArtifactIntegrityError',
+      message:
+        'Primary artifact conflicts with the requested immutable artifact',
+    });
+    expect(recovery.stored).toBeUndefined();
+  });
+
+  it('rejects a conflicting recovery replica without overwriting it', async () => {
+    const { primary, recovery, store } = fixture();
+    primary.stored = { body: Buffer.from('hello'), metadata };
+    recovery.stored = {
+      body: Buffer.from('HELLO'),
+      metadata: { ...metadata, sha256: 'a'.repeat(64) },
+    };
+
+    await expect(store.validateDirectUpload(metadata)).rejects.toMatchObject({
+      name: 'ArtifactIntegrityError',
+      message: 'Recovery artifact conflicts with the primary artifact',
+    });
+    expect(recovery.stored.body).toEqual(Buffer.from('HELLO'));
+  });
+
   it('replicates a primary direct upload before validation succeeds', async () => {
     const { primary, recovery, store } = fixture();
     primary.stored = { body: Buffer.from('hello'), metadata };
@@ -235,6 +279,112 @@ describe('dual-region artifact store', () => {
         workspaceId: metadata.workspaceId,
       }),
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+  });
+
+  it.each([
+    ['bucket', 'artifacts-primary', 'eu-west-1'],
+    ['region', 'artifacts-recovery', 'eu-central-1'],
+  ] as const)(
+    'rejects a shared provider-reported %s',
+    async (_identity, recoveryBucket, recoveryRegion) => {
+      const primary = new FakeArtifactStore(
+        'artifacts-primary',
+        'eu-central-1',
+      );
+      const recovery = new FakeArtifactStore(recoveryBucket, recoveryRegion);
+      const store = createDualRegionArtifactStore(primary, recovery, {
+        artifactOwnership: 'borrowed',
+      });
+
+      await expect(store.checkReadiness()).rejects.toThrow('must be distinct');
+    },
+  );
+
+  it('rejects replica metadata divergence after both checksum validations succeed', async () => {
+    const { primary, recovery, store } = fixture();
+    primary.validateResult = metadata;
+    recovery.validateResult = { ...metadata, mediaType: 'application/json' };
+
+    await expect(store.verifyReplicas(metadata)).rejects.toMatchObject({
+      name: 'ArtifactIntegrityError',
+      message: 'Artifact replica metadata differs',
+    });
+  });
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'reports %s replica checksum-validation unavailability',
+    async (role, failPrimary, failRecovery) => {
+      const observations: unknown[] = [];
+      const { primary, recovery, store } = fixture({
+        observeRequest: () => undefined,
+        observeSafetyViolation: (observation) => observations.push(observation),
+      });
+      primary.validateResult = metadata;
+      recovery.validateResult = metadata;
+      primary.validateError = failPrimary
+        ? new Error('primary validation unavailable')
+        : undefined;
+      recovery.validateError = failRecovery
+        ? new Error('recovery validation unavailable')
+        : undefined;
+
+      await expect(store.verifyReplicas(metadata)).rejects.toMatchObject({
+        name: 'ArtifactIntegrityError',
+        message: 'Artifact replicas could not both be checksum-validated',
+      });
+      expect(primary.validateRequests).toEqual([metadata]);
+      expect(recovery.validateRequests).toEqual([metadata]);
+      expect(observations).toEqual([
+        {
+          check: 'artifact_read_consistency',
+          failedRegionRole: role,
+          operation: 'verify',
+          outcome: 'unavailable',
+          regionRole: 'primary',
+          surface: 'artifact',
+        },
+      ]);
+    },
+  );
+
+  it('forwards the exact caller signal through direct-upload replication', async () => {
+    const { primary, recovery, store } = fixture();
+    const controller = new AbortController();
+    primary.stored = { body: Buffer.from('hello'), metadata };
+
+    await expect(
+      store.validateDirectUpload({ ...metadata, signal: controller.signal }),
+    ).resolves.toEqual(metadata);
+
+    expect(recovery.headRequests).toHaveLength(1);
+    expect(primary.getRequests).toHaveLength(1);
+    expect(recovery.putRequests).toHaveLength(1);
+    expect(recovery.headRequests[0]?.signal).toBe(controller.signal);
+    expect(primary.getRequests[0]?.signal).toBe(controller.signal);
+    expect(recovery.putRequests[0]?.signal).toBe(controller.signal);
+  });
+
+  it('preserves an integrity failure raised while streaming the primary replica', async () => {
+    const { primary, store } = fixture();
+    const integrityFailure = new ArtifactIntegrityError('corrupt primary body');
+    primary.stored = { body: Buffer.from('hello'), metadata };
+    primary.getStream = () => Promise.reject(integrityFailure);
+
+    await expect(store.validateDirectUpload(metadata)).rejects.toBe(
+      integrityFailure,
+    );
+  });
+
+  it('leaves borrowed regional stores open when the coordinator closes', () => {
+    const { primary, recovery, store } = fixture();
+    store.close();
+
+    expect(primary.closeCalls).toBe(0);
+    expect(recovery.closeCalls).toBe(0);
   });
 
   it('keeps successful delete, purge, and owned close paths symmetric', async () => {
@@ -358,6 +508,26 @@ describe('dual-region artifact store', () => {
     expect(() => createDualRegionArtifactStore(primary, recovery)).toThrow(
       'explicit ownership',
     );
+  });
+
+  it('rejects mixed configured and injected regional stores', () => {
+    const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
+    expect(() =>
+      createDualRegionArtifactStore(
+        primary,
+        {
+          accessKeyId: 'recovery-access',
+          bucket: 'artifacts-recovery',
+          endpoint: 'https://s3.eu-west-1.amazonaws.com',
+          forcePathStyle: false,
+          maxObjectBytes: 10 * 1024 * 1024,
+          region: 'eu-west-1',
+          requestTimeoutMs: 5_000,
+          secretAccessKey: 'recovery-secret',
+        },
+        { artifactOwnership: 'borrowed' },
+      ),
+    ).toThrow('both be configs or both be stores');
   });
 
   it('rejects direct download when the primary omits that capability', () => {

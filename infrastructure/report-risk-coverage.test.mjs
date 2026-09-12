@@ -11,6 +11,7 @@ import {
   coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
+  partitionApiPriorityCoverage,
   produceIntegrationEvidenceArtifact,
   RISK_COVERAGE_COHORTS,
   riskCoverageSourceRevision,
@@ -18,54 +19,119 @@ import {
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
 
-test('enforces strict cohorts and freezes staged unreviewed debt', () => {
+test('enforces strict cohorts and rejects new unreviewed debt independently', () => {
   assert.ok(RISK_COVERAGE_COHORTS.includes('api-orchestration'));
+  assert.ok(RISK_COVERAGE_COHORTS.includes('api-priority'));
+  for (const cohort of [
+    'artifact-store',
+    'contracts',
+    'integrations',
+    'workflow-engine',
+    'api-priority',
+  ]) {
+    assert.doesNotThrow(() =>
+      assertRiskCoveragePolicies({ uncoveredBranches: [] }),
+    );
+    assert.throws(
+      () =>
+        assertRiskCoveragePolicies({
+          uncoveredBranches: [{ cohort, reviewStatus: 'unreviewed' }],
+        }),
+      new RegExp(`Unreviewed ${cohort} risk-coverage branches`),
+    );
+  }
   assert.doesNotThrow(() =>
     assertRiskCoveragePolicies({
-      uncoveredBranches: [
-        ...Array.from({ length: 8 }, () => ({
-          cohort: 'artifact-store',
-          reviewStatus: 'unreviewed',
-        })),
-        { cohort: 'api', reviewStatus: 'reviewed' },
-      ],
+      uncoveredBranches: [{ cohort: 'api', reviewStatus: 'reviewed' }],
     }),
   );
+});
+
+test('requires and partitions source-identical API priority coverage', () => {
+  const coverage = (hits = 0) => ({
+    path: '/repo/apps/api/src/shared.ts',
+    statementMap: { 0: { start: { line: 1 } } },
+    fnMap: {},
+    branchMap: {
+      0: {
+        type: 'if',
+        locations: [{ start: { line: 1, column: 0 } }],
+      },
+    },
+    s: { 0: hits },
+    f: {},
+    b: { 0: [hits] },
+    meta: { lastBranch: 1 },
+  });
   assert.throws(
-    () =>
-      assertRiskCoveragePolicies({
-        uncoveredBranches: [{ cohort: 'api', reviewStatus: 'unreviewed' }],
-      }),
-    /Unreviewed api risk-coverage branches/u,
+    () => partitionApiPriorityCoverage(new Map([['api', {}]])),
+    /Missing api-priority risk-coverage input/u,
   );
-  assert.throws(
-    () =>
-      assertRiskCoveragePolicies({
-        uncoveredBranches: Array.from({ length: 9 }, () => ({
-          cohort: 'artifact-store',
-          reviewStatus: 'unreviewed',
-        })),
-      }),
-    /debt exceeds ceiling 8/u,
+
+  const reports = new Map([
+    ['api', { '/repo/apps/api/src/shared.ts': coverage() }],
+    [
+      'api-priority',
+      {
+        '/repo/apps/api/src/shared.ts': coverage(),
+        '/repo/apps/api/src/priority.ts': {
+          ...coverage(),
+          path: '/repo/apps/api/src/priority.ts',
+        },
+      },
+    ],
+  ]);
+  partitionApiPriorityCoverage(reports);
+  const output = createRiskCoverageReport(reports, '/repo');
+  assert.deepEqual(
+    output.scope.cohorts.map(({ cohort, files }) => ({ cohort, files })),
+    [
+      { cohort: 'api', files: ['apps/api/src/shared.ts'] },
+      { cohort: 'api-priority', files: ['apps/api/src/priority.ts'] },
+    ],
   );
-  assert.doesNotThrow(() =>
-    assertRiskCoveragePolicies({
-      uncoveredBranches: Array.from({ length: 2 }, () => ({
-        cohort: 'integrations',
-        reviewStatus: 'unreviewed',
-      })),
-    }),
+  assert.equal(output.uncoveredBranches.length, 2);
+  assert.deepEqual(
+    output.uncoveredBranches.map(({ cohort, file }) => ({ cohort, file })),
+    [
+      { cohort: 'api', file: 'apps/api/src/shared.ts' },
+      { cohort: 'api-priority', file: 'apps/api/src/priority.ts' },
+    ],
   );
-  assert.throws(
-    () =>
-      assertRiskCoveragePolicies({
-        uncoveredBranches: Array.from({ length: 3 }, () => ({
-          cohort: 'integrations',
-          reviewStatus: 'unreviewed',
-        })),
-      }),
-    /debt exceeds ceiling 2/u,
-  );
+});
+
+test('rejects mismatched coverage or instrumentation for an API overlap', () => {
+  const shared = {
+    path: '/repo/apps/api/src/shared.ts',
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: { 0: 1 },
+    f: {},
+    b: {},
+    meta: {},
+  };
+  for (const mismatch of [
+    { ...shared, s: { 0: 0 } },
+    { ...shared, path: '/repo/apps/api/src/different.ts' },
+    {
+      ...shared,
+      branchMap: {
+        0: { type: 'if', locations: [{ start: { line: 2, column: 0 } }] },
+      },
+    },
+  ]) {
+    assert.throws(
+      () =>
+        partitionApiPriorityCoverage(
+          new Map([
+            ['api', { [shared.path]: shared }],
+            ['api-priority', { [shared.path]: mismatch }],
+          ]),
+        ),
+      /Mismatched API risk-coverage/u,
+    );
+  }
 });
 
 test('keeps lifecycle executable files in the enforced risk cohort', () => {
@@ -166,9 +232,25 @@ test('publishes exact coverable-line denominators beside percentages', () => {
 });
 
 test('binds execution evidence to the exact selected source contents', () => {
+  const sourceRevision = riskCoverageSourceRevision(
+    new Map([['/repo/a.ts', 'one\n']]),
+  );
   assert.notEqual(
-    riskCoverageSourceRevision(new Map([['/repo/a.ts', 'one\n']])),
+    sourceRevision,
     riskCoverageSourceRevision(new Map([['/repo/a.ts', 'two\n']])),
+  );
+  assert.equal(
+    createRiskCoverageReport(
+      new Map([['api', {}]]),
+      '/repo',
+      new Date(0),
+      [],
+      {},
+      new Map(),
+      new Map(),
+      sourceRevision,
+    ).sourceRevision,
+    sourceRevision,
   );
 });
 

@@ -124,6 +124,16 @@ describe('external control ledger', () => {
     });
   });
 
+  it('rejects default compliance retention with neither days nor years', async () => {
+    const client = new MemoryS3();
+    client.retentionDays = undefined;
+    client.retentionYears = undefined;
+
+    await expect(fixture(client).ledger.checkReadiness()).rejects.toThrow(
+      'default retention is below the configured minimum',
+    );
+  });
+
   it('accepts exact absent lifecycle and wildcard or split delete denies', async () => {
     const wildcard = new MemoryS3();
     wildcard.policy = bucketPolicy(

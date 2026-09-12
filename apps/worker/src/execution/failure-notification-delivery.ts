@@ -26,9 +26,7 @@ import type {
   FailureNotificationContextV1,
   FailureNotificationDeliveryResultV1,
 } from '@pertexo/workflow-model/failure-notification';
-
 import type { FailureNotificationDeliveryCapability } from './failure-notification-handler.js';
-
 const TIMEOUT_MILLIS = 30_000;
 
 function localFailure(
@@ -319,6 +317,7 @@ async function deliverSlack(
               workspaceId: input.workspaceId,
               intentId: input.intentId,
               attemptNumber: input.attemptNumber,
+              signal: input.signal,
             }),
         }),
       );
@@ -410,6 +409,7 @@ async function deliverEmail(
                 intentId: input.intentId,
                 attemptNumber: input.attemptNumber,
                 deliveryBinding: binding,
+                signal: input.signal,
               }),
           }),
         ),

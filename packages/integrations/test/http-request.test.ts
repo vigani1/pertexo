@@ -478,6 +478,53 @@ describe('http.request@1 server executor', () => {
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
   });
 
+  it('closes an owned response body when artifact writing rejects after one chunk', async () => {
+    const writeError = new Error('artifact write rejected after iteration');
+    const state = runtime();
+    const providerBody = new Uint8Array(70_000).fill(7);
+    const closeBody = vi.fn().mockResolvedValue({
+      done: true as const,
+      value: undefined,
+    });
+    state.write.mockImplementation(async (input) => {
+      const iterator = input.body[Symbol.asyncIterator]();
+      await iterator.next();
+      throw writeError;
+    });
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: {
+        executeStreaming: async (request, consume) => {
+          await request.beforeDispatch();
+          const body = await consume({
+            ...response(new Uint8Array()),
+            body: {
+              [Symbol.asyncIterator]: () => ({
+                next: () =>
+                  Promise.resolve({
+                    done: false as const,
+                    value: providerBody,
+                  }),
+                return: closeBody,
+              }),
+            },
+            signal: request.signal ?? new AbortController().signal,
+          });
+          return { ...response(new Uint8Array()), body };
+        },
+      },
+    });
+
+    const failure = await registration
+      .execute(invocation(state.value))
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(HttpRequestExecutorError);
+    expect((failure as HttpRequestExecutorError).cause).toBe(writeError);
+    expect(state.write).toHaveBeenCalledOnce();
+    expect(closeBody).toHaveBeenCalledOnce();
+    expect(providerBody.every((byte) => byte === 0)).toBe(true);
+  });
+
   it.each([
     ['Error', new Error('response body cleanup failed')],
     ['non-Error', 'response body cleanup rejected'],

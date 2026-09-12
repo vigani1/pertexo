@@ -327,6 +327,10 @@ describe('secure HTTP client', () => {
     { headers: { 'Accept-Encoding': 'gzip' } },
     { headers: { 'X-Test': 'valid\r\nInjected: value' } },
     { method: 'GET' as const, body: encoder.encode('unexpected') },
+    { timeoutMillis: 0 },
+    { timeoutMillis: 120_001 },
+    { timeoutMillis: 1.5 },
+    { body: new Uint8Array(1_048_577), method: 'POST' as const },
     { maxRedirects: 6 },
     { maxResponseBytes: 10_485_761 },
     { sensitiveValues: [42 as never] },
@@ -560,6 +564,45 @@ describe('secure HTTP client', () => {
     });
   });
 
+  it.each([307, 308])(
+    'preserves a same-origin POST method and body across a %s redirect',
+    async (status) => {
+      const resolver = new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      });
+      const redirect = transportResponse(status, { location: '/final' });
+      const final = transportResponse(204, {}, []);
+      const bodies: string[] = [];
+      const transport = new FakeTransport((transportRequest, index) => {
+        bodies.push(decoder.decode(transportRequest.body));
+        return Promise.resolve(
+          index === 0 ? redirect.response : final.response,
+        );
+      });
+      const marker = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        new SecureHttpClient(resolver, transport).execute(
+          request({
+            method: 'POST',
+            body: encoder.encode('request-body'),
+            beforeDispatch: marker,
+          }),
+        ),
+      ).resolves.toMatchObject({ status: 204, redirectCount: 1 });
+      expect(
+        transport.requests.map(({ method, url }) => [method, url.pathname]),
+      ).toEqual([
+        ['POST', '/v1/resource'],
+        ['POST', '/final'],
+      ]);
+      expect(bodies).toEqual(['request-body', 'request-body']);
+      expect(marker).toHaveBeenCalledOnce();
+      expect(redirect.close).toHaveBeenCalledOnce();
+      expect(final.close).toHaveBeenCalledOnce();
+    },
+  );
+
   it('blocks a redirect whose fresh DNS result becomes private after possible dispatch', async () => {
     const resolver = new FakeResolver({
       'first.example.test': [{ address: '8.8.8.8', family: 4 }],
@@ -713,6 +756,40 @@ describe('secure HTTP client', () => {
         possiblyDispatched: true,
       },
     );
+  });
+
+  it('normalizes array-valued content encoding before admitting a response', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const identity = transportResponse(200, {
+      'content-type': 'text/plain',
+      'content-encoding': ['identity'],
+    });
+    await expect(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(identity.response)),
+      ).execute(request()),
+    ).resolves.toMatchObject({ bodyEncoding: 'utf8' });
+    expect(identity.close).toHaveBeenCalledOnce();
+
+    const unsupported = transportResponse(200, {
+      'content-type': 'text/plain',
+      'content-encoding': ['gzip'],
+    });
+    await expectSecureFailure(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(unsupported.response)),
+      ).execute(request()),
+      {
+        code: SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
+        classification: 'definite_failure',
+        possiblyDispatched: true,
+      },
+    );
+    expect(unsupported.close).toHaveBeenCalledOnce();
   });
 
   it('rejects excessive DNS answers and invalid HTTP status before accepting output', async () => {
@@ -1006,6 +1083,141 @@ describe('secure HTTP client', () => {
         possiblyDispatched: true,
       },
     );
+  });
+
+  it.each([
+    [Object.assign(new Error('socket timeout secret'), { code: 'ETIMEDOUT' })],
+    [
+      Object.assign(new Error('request timeout secret'), {
+        name: 'TimeoutError',
+      }),
+    ],
+  ])(
+    'classifies transport timeout errors as ambiguous timeouts',
+    async (error) => {
+      const client = new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        new FakeTransport(() => Promise.reject(error)),
+      );
+
+      await expectSecureFailure(client.execute(request()), {
+        code: SECURE_HTTP_ERROR_CODE.timedOut,
+        classification: 'ambiguous',
+        possiblyDispatched: true,
+      });
+    },
+  );
+
+  it.each([null, 42, 'transport-secret'])(
+    'normalizes a primitive transport rejection: %s',
+    async (error) => {
+      const client = new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        // Deliberately model an untrusted transport rejection.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        new FakeTransport(() => Promise.reject(error)),
+      );
+
+      await expectSecureFailure(client.execute(request()), {
+        code: SECURE_HTTP_ERROR_CODE.networkFailed,
+        classification: 'ambiguous',
+        possiblyDispatched: true,
+      });
+    },
+  );
+
+  it('lets cancellation win after transport dispatch has started', async () => {
+    const controller = new AbortController();
+    let dispatchStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      dispatchStarted = resolve;
+    });
+    const transport = new FakeTransport(() => {
+      dispatchStarted?.();
+      return new Promise(() => undefined);
+    });
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
+    ).execute(request({ signal: controller.signal }));
+    await started;
+    controller.abort(new Error('caller-secret'));
+
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      classification: 'ambiguous',
+      possiblyDispatched: true,
+    });
+    expect(transport.requests).toHaveLength(1);
+  });
+
+  it('maps a transport rejection as cancellation when abort wins before catch resumes', async () => {
+    const controller = new AbortController();
+    let dispatchStarted: (() => void) | undefined;
+    let rejectTransport: ((error: Error) => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      dispatchStarted = resolve;
+    });
+    const transport = new FakeTransport(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectTransport = reject;
+          dispatchStarted?.();
+        }),
+    );
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
+    ).execute(request({ signal: controller.signal }));
+    await started;
+
+    rejectTransport?.(new Error('transport failed during cancellation'));
+    queueMicrotask(() => {
+      controller.abort(new Error('caller-secret'));
+    });
+
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      classification: 'ambiguous',
+      possiblyDispatched: true,
+    });
+  });
+
+  it('ignores empty response chunks without emitting spurious content', async () => {
+    const empty = new Uint8Array();
+    const close = vi.fn();
+    const response: SecureHttpTransportResponse = {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+      close,
+      body: {
+        async *[Symbol.asyncIterator]() {
+          await Promise.resolve();
+          yield empty;
+          yield encoder.encode('sec');
+          yield new Uint8Array();
+          yield encoder.encode('ret');
+        },
+      },
+    };
+    const result = await new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      new FakeTransport(() => Promise.resolve(response)),
+    ).execute(request({ sensitiveValues: ['secret'] }));
+
+    expect(decoder.decode(result.body)).toBe('[Redacted]');
+    expect(empty).toHaveLength(0);
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it('does not report definite pre-dispatch cancellation while the marker can still commit', async () => {

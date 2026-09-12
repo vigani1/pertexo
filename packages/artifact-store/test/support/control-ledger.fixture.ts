@@ -65,11 +65,12 @@ export class MemoryS3 implements ControlLedgerS3Client {
   public retentionMode = 'COMPLIANCE';
   public retentionYears: number | undefined;
   public versioningEnabled = true;
-  public getFailure: Error | undefined;
+  public getFailure: unknown;
+  public readonly getSignals: (AbortSignal | undefined)[] = [];
   public getDelayMs = 0;
   public maxConcurrentGets = 0;
   public getChecksumOverride: string | undefined;
-  public headFailure: Error | undefined;
+  public headFailure: unknown;
   public hangReadiness = false;
   public lifecycleFailure: Error | undefined = Object.assign(
     new Error('no lifecycle'),
@@ -78,11 +79,14 @@ export class MemoryS3 implements ControlLedgerS3Client {
   public lifecycleRules: readonly unknown[] | undefined;
   public locationConstraint: string | null | undefined = null;
   public listOutput: unknown;
+  public getBodyOverride: unknown;
+  public getContentLengthOverride: number | undefined;
   public policy: string | undefined = bucketPolicy(
     DELETE_DENY,
     MISSING_IF_NONE_MATCH_DENY,
   );
   public putChecksumOverride: string | undefined;
+  public putFailure: unknown;
   public streamFailure: Error | undefined;
   private readonly objects = new Map<string, StoredObject>();
   private activeGets = 0;
@@ -103,7 +107,11 @@ export class MemoryS3 implements ControlLedgerS3Client {
     this.commands.push(command);
     if (command instanceof HeadBucketCommand) {
       if (this.hangReadiness) await this.waitForAbort(options?.abortSignal);
-      if (this.headFailure !== undefined) throw this.headFailure;
+      if (this.headFailure !== undefined) {
+        // Deliberately model an untrusted provider throwing a foreign value.
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw this.headFailure;
+      }
       return {};
     }
     if (command instanceof GetBucketLocationCommand) {
@@ -153,6 +161,11 @@ export class MemoryS3 implements ControlLedgerS3Client {
       };
     }
     if (command instanceof PutObjectCommand) {
+      if (this.putFailure !== undefined) {
+        // Deliberately model an untrusted provider throwing a foreign value.
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw this.putFailure;
+      }
       const key = String(command.input.Key);
       const body = bytes(command.input.Body);
       if (command.input.IfNoneMatch === '*' && this.objects.has(key)) {
@@ -171,7 +184,12 @@ export class MemoryS3 implements ControlLedgerS3Client {
           this.putChecksumOverride ?? command.input.ChecksumSHA256,
       };
     }
-    if (this.getFailure !== undefined) throw this.getFailure;
+    this.getSignals.push(options?.abortSignal);
+    if (this.getFailure !== undefined) {
+      // Deliberately model an untrusted provider throwing a foreign value.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw this.getFailure;
+    }
     if (this.hangGets) await this.waitForAbort(options?.abortSignal);
     this.activeGets += 1;
     this.maxConcurrentGets = Math.max(this.maxConcurrentGets, this.activeGets);
@@ -189,14 +207,15 @@ export class MemoryS3 implements ControlLedgerS3Client {
     const streamFailure = this.streamFailure;
     return {
       Body:
-        streamFailure === undefined
+        this.getBodyOverride ??
+        (streamFailure === undefined
           ? Readable.from([object.body])
           : new Readable({
               read() {
                 this.destroy(streamFailure);
               },
-            }),
-      ContentLength: object.body.byteLength,
+            })),
+      ContentLength: this.getContentLengthOverride ?? object.body.byteLength,
       ContentType: object.contentType,
       ChecksumSHA256: this.getChecksumOverride ?? object.checksumSha256,
     };

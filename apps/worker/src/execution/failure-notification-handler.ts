@@ -72,6 +72,7 @@ export function createFailureNotificationHandler(
             Math.ceil(dependencies.timeoutMillis / 1_000) + 1,
           ),
           maxAttempts: dependencies.maxAttempts,
+          signal: queueContext.signal,
         });
         if (claim.kind !== 'ready' || controller.signal.aborted) return;
         const timeout = setTimeout(() => {
@@ -114,6 +115,7 @@ export function createFailureNotificationHandler(
           maxAttempts: dependencies.maxAttempts,
           retryDelaySeconds: dependencies.retryDelaySeconds,
           result,
+          signal: queueContext.signal,
         });
       } finally {
         queueContext.signal.removeEventListener('abort', onQueueAbort);

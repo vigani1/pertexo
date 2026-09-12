@@ -171,6 +171,22 @@ describe('API bootstrap', () => {
     application = undefined;
   });
 
+  it('accepts both empty and populated trusted-proxy CIDR configuration', async () => {
+    application = await createApiApplication(
+      { ...config, trustedProxyCidrs: [] },
+      dependencies(),
+    );
+    await application.close();
+    application = await createApiApplication(
+      { ...config, trustedProxyCidrs: ['127.0.0.1/32'] },
+      dependencies(),
+    );
+    expect(
+      (await application.inject({ method: 'GET', url: '/health/live' }))
+        .statusCode,
+    ).toBe(200);
+  });
+
   it.each([
     '/v1/workspaces/nonexistent',
     '/v1/workspaces/workspace-a/workflows/nonexistent/nested',
@@ -330,6 +346,76 @@ describe('API bootstrap', () => {
     ).rejects.toBe(constructionFailure);
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('preserves construction and every runtime cleanup failure', async () => {
+    const identityFailure = new Error('identity close failed');
+    const workflowFailure = new Error('workflow close failed');
+    const selectedIdentity = identityRuntime(
+      vi.fn().mockRejectedValue(identityFailure),
+    );
+    const selectedWorkflow = createStubApiWorkflowRuntime(
+      selectedIdentity.dependencies.authorization,
+      vi.fn().mockRejectedValue(workflowFailure),
+    );
+    const constructionFailure = new Error('connection construction failed');
+    const connectionOverrides = Object.defineProperty({}, 'database', {
+      enumerable: true,
+      get: () => {
+        throw constructionFailure;
+      },
+    });
+
+    const failure = await createApiApplication(
+      {
+        ...config,
+        connections: { kmsKeyReference: 'test-key', region: 'test-region' },
+      },
+      {
+        ...dependencies(),
+        connectionOverrides,
+        identityRuntime: selectedIdentity,
+        workflowRuntime: selectedWorkflow,
+      },
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      constructionFailure,
+      identityFailure,
+      workflowFailure,
+    ]);
+  });
+
+  it('rejects artifact overrides when configured artifacts have no identity source', async () => {
+    const regionalStore = (name: string, region: string) => ({
+      accessKeyId: name,
+      bucket: `${name}-bucket`,
+      endpoint: `https://${name}.example.test`,
+      forcePathStyle: true,
+      maxObjectBytes: 100,
+      region,
+      requestTimeoutMs: 1_000,
+      secretAccessKey: 'secret',
+    });
+
+    await expect(
+      createApiApplication(
+        {
+          ...config,
+          artifacts: {
+            primary: regionalStore('primary', 'eu-central-1'),
+            recovery: regionalStore('recovery', 'eu-west-1'),
+          },
+        },
+        {
+          ...dependencies(),
+          artifactOverrides: {},
+        },
+      ),
+    ).rejects.toThrow(
+      'artifact overrides require configured artifact runtime creation',
+    );
   });
 
   it('preserves readiness and cleanup failures when application close rejects', async () => {
