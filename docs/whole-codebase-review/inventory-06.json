@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "docs/adr/033-truthful-workflow-activation-projection.md",
+      "sha256": "2ed4966c44abe55dd1fd7fb6236d761b93c14fd7c00b0520a1e14db8c362d55d",
+      "lines": 26
+    },
+    {
+      "path": "docs/adr/034-workflow-archive-restore-and-activation.md",
+      "sha256": "f364ca287b8b45ecb70686f8a7d225125372ca1d4c6b7e9df8c9bca57d11102a",
+      "lines": 108
+    },
+    {
+      "path": "docs/adr/035-public-artifact-upload-and-capacity.md",
+      "sha256": "b492b23a0b84c0931f59f9c03cc1adf9d9f3b28b12f301b8ef388b4073b54553",
+      "lines": 103
+    },
+    {
+      "path": "docs/audits/README.md",
+      "sha256": "fc79a50051858ddcb3467640de8b35f1292e383fa0262666fae871867812bee7",
+      "lines": 110
+    },
+    {
+      "path": "docs/audits/apps/lifecycle-command.md",
+      "sha256": "c09b42fa760894a9a7c16c47de15d21c2517ccb758048bf7031912441a53d65f",
+      "lines": 189
+    },
+    {
+      "path": "docs/audits/low-value-code-file-ledger.tsv",
+      "sha256": "093c849532b83094de5739c3997e760d1ed61c2d720c7a10a0306773fcf04baf",
+      "lines": 1432
+    },
+    {
+      "path": "docs/audits/packages/artifact-store.md",
+      "sha256": "0f9bda2b844f48b1b3abedbf2b8ebae6b5cfc1ec10081df2bccf6d4e055b5c5b",
+      "lines": 799
+    },
+    {
+      "path": "docs/audits/packages/contracts.md",
+      "sha256": "37b6b177942af936eb5cd53fbd0cab211845c5b5e1007304e54deb40b9dfb554",
+      "lines": 618
+    },
+    {
+      "path": "docs/audits/packages/database.md",
+      "sha256": "88e3d84364c4c5d5dc66772d5074447882bff9f4f323ed9af08ce85582d82e99",
+      "lines": 1256
+    },
+    {
+      "path": "docs/audits/packages/integrations.md",
+      "sha256": "70393901a39da826182108771ef0642836bd8820270dbc0b98d55d222bbe741e",
+      "lines": 1024
+    },
+    {
+      "path": "docs/audits/packages/node-catalog.md",
+      "sha256": "d0a905f32d5963a28d3fdcaaefbb5db2c4f097980b7dfa5563511449004aa221",
+      "lines": 390
+    },
+    {
+      "path": "docs/audits/packages/node-sdk.md",
+      "sha256": "389057ff1f6713705a8611f7395584af60e71a2f221a2cd330bdccb0839173a9",
+      "lines": 856
+    },
+    {
+      "path": "docs/audits/packages/nodes-core.md",
+      "sha256": "45d15ec3e2b9dd4570da36bc40fa37640f552ae242327d189b159dfe2a7c0fbd",
+      "lines": 620
+    },
+    {
+      "path": "docs/audits/packages/observability.md",
+      "sha256": "4c763386df4de2ff459ecdb995988d4ea6607fc99ffb03531a05fd3a41e23a48",
+      "lines": 643
+    },
+    {
+      "path": "docs/audits/packages/queue.md",
+      "sha256": "8c8591d501c325302fc7bc325ac11428b2b9d52115327b03dbb8f971f997d118",
+      "lines": 669
+    },
+    {
+      "path": "docs/audits/packages/rate-limit.md",
+      "sha256": "e15c45d9901c380301dcad7ce2e9424596eddfe25602f9f7f263b1df2ca42f34",
+      "lines": 463
+    },
+    {
+      "path": "docs/audits/packages/workflow-engine.md",
+      "sha256": "261ec06edad18c07382aff7d2a541b83ce3210ac8addba14082b8cd4432146a3",
+      "lines": 1128
+    },
+    {
+      "path": "docs/audits/packages/workflow-model.md",
+      "sha256": "8f0c6e00321f2724b9b2aa9a7a60b40e5b4e431ba1bbef83417256f0134ed3b8",
+      "lines": 711
+    },
+    {
+      "path": "docs/backend-code-quality-9-implementation.md",
+      "sha256": "414e746b67fa7a7c8252fec3c5adfc8ccb5ea796fc1641fb0f07623b6ebe6c6b",
+      "lines": 406
+    },
+    {
+      "path": "docs/backend-code-quality-9-plan.md",
+      "sha256": "f764872a25aa800a09a9514fde26245a4f195f5e0f693179f3b587603cf2eef2",
+      "lines": 976
+    },
+    {
+      "path": "docs/backend-quality-improvement-plan.md",
+      "sha256": "fef9b219324b195239663f8145074b03a8d9a68305ee669e9b22b47c7118471f",
+      "lines": 1012
+    },
+    {
+      "path": "docs/backend-quality-next-stage-plan.md",
+      "sha256": "fe839b099905a41b563553963806803f15bc09dd1df18f478e5b746b74b334e4",
+      "lines": 754
+    },
+    {
+      "path": "docs/backend-readability-dispositions.json",
+      "sha256": "9d8afc164cdf829b2e707b2937c93fb24277776e962bdd07b49a66db1852d5c2",
+      "lines": 5815
+    },
+    {
+      "path": "docs/backend-readability-implementation.md",
+      "sha256": "8cb215ac47dc9117eac6c81850805d9d876b27fe822eb70c659d854f69b70e70",
+      "lines": 322
+    },
+    {
+      "path": "docs/backend-readability-inventory.json",
+      "sha256": "2a477ae1ce0c60dbee17df6ad2f79ce280bbebacc906fd805919b7f15f49fed5",
+      "lines": 8944
+    },
+    {
+      "path": "docs/backend-readability-plan.md",
+      "sha256": "f5a04bd693115a32beb63430dd4707551b243ccd312ee1a4b3221a2c1ff00afe",
+      "lines": 717
+    },
+    {
+      "path": "docs/backend-readability-rescan.json",
+      "sha256": "14305037f15b5779603233834a4aa7a3b1b490225cb3f9fc3ccfc432e839c80a",
+      "lines": 4537
+    },
+    {
+      "path": "docs/ci-image-update-procedure.md",
+      "sha256": "624cc8e8e9b6cde610cefef38e5b27102db046e84d2e2f276a4cf4c028da4906",
+      "lines": 25
+    },
+    {
+      "path": "docs/code-audit.md",
+      "sha256": "f6977bc8e6f2b3917b26f2653e51e3baa9701f29be88f819c9fe85009ff7f7ca",
+      "lines": 1626
+    },
+    {
+      "path": "docs/code-maintainability-improvement-plan.md",
+      "sha256": "5e66a8aa2d1076b480d0ee54b96b48c60ad3cce334d9c447675042a08b5f7940",
+      "lines": 458
+    },
+    {
+      "path": "docs/codebase-map.md",
+      "sha256": "dfe56cd6fa2500518290cc2121faf42e2eb7bcfd78a6769492901fbba3db938d",
+      "lines": 149
+    },
+    {
+      "path": "docs/coverage-audit-implementation.md",
+      "sha256": "55ba1c80657f87ca8fb26abd97d8e54aca4373e7aaf30bbb89d9ce0a5bc1984e",
+      "lines": 346
+    },
+    {
+      "path": "docs/current-implementation-status.md",
+      "sha256": "677668627ddde8bececa0bb2107a326619224aff74b77c6dcdecc8aebdc79b29",
+      "lines": 181
+    },
+    {
+      "path": "docs/implementation-progress.md",
+      "sha256": "668087dfa41e88b4c59533274191b9d80d6715c8c3c72f425ba735065b1c02b3",
+      "lines": 6565
+    },
+    {
+      "path": "docs/independent-whole-repository-audit.md",
+      "sha256": "1c600e03137f6151d8cb517b2b68c8129b4ac82d1095e92f532ec58e03d67556",
+      "lines": 2346
+    },
+    {
+      "path": "docs/low-value-code-audit.md",
+      "sha256": "c2d70975c7f00353f296e3ba5bc663759d49324867edbf0ec2d230d502ee1bf2",
+      "lines": 475
+    },
+    {
+      "path": "docs/operations/compatibility-retirement-inventory.md",
+      "sha256": "c93eed1ffae0dcde666c337a2b099944b66057969c33e6b87df559caecaedc1b",
+      "lines": 133
+    },
+    {
+      "path": "docs/operations/complexity-hotspot-retention.md",
+      "sha256": "95d47c77c929dd40491137614f7ca049b2854dd75ceb0d8b10caf90e43938718",
+      "lines": 167
+    },
+    {
+      "path": "docs/operations/complexity-refactor-performance.md",
+      "sha256": "076be0e1683447e438cbd341fe400ada17e7664e3b6c3a3d15be4946636b0099",
+      "lines": 70
+    },
+    {
+      "path": "docs/operations/credential-boundaries.md",
+      "sha256": "2f02c6fbb340ef682f83a336712cbf4814edb65e8aabde5a5266bff6c71071de",
+      "lines": 27
+    },
+    {
+      "path": "docs/operations/database-function-readiness.md",
+      "sha256": "930bfc4c99d51e7ac1a3fd591c7840d07a466adb9c8491f8b0109997917a22a5",
+      "lines": 69
+    },
+    {
+      "path": "docs/operations/dependency-updates.md",
+      "sha256": "eb58e2222fd52d86548dc1af4f81cf7f4dcdfc5611807faa1da8a6a64df05d39",
+      "lines": 28
+    },
+    {
+      "path": "docs/operations/external-platform-contract.md",
+      "sha256": "46c3aa9758276411ed3f5f7eed002dd83c61eb90c0919940ffe0fc3e8a9dca12",
+      "lines": 436
+    },
+    {
+      "path": "docs/operations/immutability-policy.md",
+      "sha256": "ba651e1d0a60dc3fd02a46aab2f5930382f4e36b3f2e30cae3811e6b66125509",
+      "lines": 27
+    },
+    {
+      "path": "docs/operations/local-performance-evidence.md",
+      "sha256": "75846f6eda4a642ff6db82d80d005592fab8747946cb0d7af6f73baca9994c9c",
+      "lines": 238
+    },
+    {
+      "path": "docs/operations/local-quality-verification.md",
+      "sha256": "9ed0dc195cb557e24477844e0053c611b566eb12f50196985d0de0d0a220cdca",
+      "lines": 53
+    },
+    {
+      "path": "docs/operations/observability-alerts.md",
+      "sha256": "75d7863c192a6f8acdfe15c7dcbcd06db6c083795728ba1e6737a29091654280",
+      "lines": 223
+    },
+    {
+      "path": "docs/operations/persisted-identifiers.md",
+      "sha256": "e688b8624a4fdc5a58c282a14f0eb0a285017660462ba08aab9820e31dbd954e",
+      "lines": 35
+    },
+    {
+      "path": "docs/operations/phase-terminology-compatibility.md",
+      "sha256": "bc33365052ccad72d682314719a7b3408243086b3f76c7ee7dfae2d2c6817976",
+      "lines": 82
+    },
+    {
+      "path": "docs/operations/production-data-policy.md",
+      "sha256": "bb96604c0d1a115ba384c4cde5c8c908a4992cfa22a6793e9fae69a384f36e2e",
+      "lines": 70
+    },
+    {
+      "path": "docs/operations/regional-recovery.md",
+      "sha256": "7dca16d95f9d675093815920f2d76c856e5b9ce8155c18aeebbd6df34ea2439b",
+      "lines": 62
+    },
+    {
+      "path": "docs/operations/release-security-gate.md",
+      "sha256": "992790fd3a862733451a504660ba4567ec0921e2d51b5120caaa6aaa24e70c3a",
+      "lines": 105
+    },
+    {
+      "path": "docs/operations/repository-governance.md",
+      "sha256": "bc66b96ea521fc1da8930c20f5d2fa6312990a395fd7923fe60423c24cd4d891",
+      "lines": 47
+    },
+    {
+      "path": "docs/operations/supported-export-surface.md",
+      "sha256": "171b399c6211a7d738e17ee325741b5ff530a5be6ae2df1e972e1fef6b394835",
+      "lines": 48
+    },
+    {
+      "path": "docs/operations/test-confidence.md",
+      "sha256": "2429bf05beec2a2e8ce2afd42ff64b48892ceb37deb531ea044c17dee4d4f67e",
+      "lines": 135
+    },
+    {
+      "path": "docs/operations/test-duplication-review.md",
+      "sha256": "ae426e72fd44b31617391725805515ea119a80f8a2a76dab0a78185bb3558358",
+      "lines": 48
+    },
+    {
+      "path": "docs/package-by-package-coding-audit.md",
+      "sha256": "770d4dbf0f7d0e34456eb081c1894fadbb09b17ed0045dcdde783056054b8b27",
+      "lines": 2215
+    },
+    {
+      "path": "docs/post-fix-follow-up-audit.md",
+      "sha256": "7f5aa72347cd7d4434a5a04b4f4b6149cd4477e0a633434828275ab11333737c",
+      "lines": 351
+    },
+    {
+      "path": "docs/remaining-work-plan.md",
+      "sha256": "aeb4f2a7dbd3d6dcfed76ab5a58a8f5648a5045aa970df07004d1ef90cedc775",
+      "lines": 701
+    },
+    {
+      "path": "docs/remaining-work/apps.md",
+      "sha256": "c1dbba50f2ad25e7fa414ff70ec001826f91ed489718b630f7a7e33cc1636438",
+      "lines": 339
+    },
+    {
+      "path": "docs/remaining-work/database.md",
+      "sha256": "0ce09cfd9582e40894db108bc547a2d616e812e7d1a71cf2a7318fcda1199f28",
+      "lines": 457
+    },
+    {
+      "path": "docs/remaining-work/foundation.md",
+      "sha256": "0f457af4bb53a2e423ed86f4c968f49879f030a3ae383df8eb40031f1077b824",
+      "lines": 129
+    },
+    {
+      "path": "docs/remaining-work/risk-snapshot.json",
+      "sha256": "7e8dec4f9757b0eb47bbde9d2e45f400c82dc1ccdd66a82a0099864ec64434e3",
+      "lines": 5618
+    },
+    {
+      "path": "docs/remaining-work/source-inventory.json",
+      "sha256": "af3a9104277ca37a93ad1c013bf6bdfaf69860e4910a1e6f9844c65c36f69a78",
+      "lines": 11457
+    },
+    {
+      "path": "docs/remaining-work/workflow.md",
+      "sha256": "2a28d188542add43a718f0ca5359ddf0e6af3604e927a5af80b456f5cf6a46d6",
+      "lines": 974
+    },
+    {
+      "path": "docs/repository-governance.md",
+      "sha256": "c482d536d1e23e203ac826544eeda53197e46d8b0a1202b335af136221390722",
+      "lines": 39
+    },
+    {
+      "path": "docs/repository-structure-audit.md",
+      "sha256": "be4e52deb345c3a9e9b8b137886cddcb22791ea88366883303d86aabd8ca1ec4",
+      "lines": 170
+    },
+    {
+      "path": "docs/structural-follow-up-plan.md",
+      "sha256": "b586ccf3022b4b5461ecaa93feaaadaf3bfc0901afd1b9a4751a1daad4e87bb1",
+      "lines": 1392
+    },
+    {
+      "path": "docs/structural-inventory-database.md",
+      "sha256": "189298df61243a34c84d38a1728c95dd178ece4ec739bb58c0195d9759bc49dd",
+      "lines": 359
+    },
+    {
+      "path": "docs/structural-inventory-workflow.md",
+      "sha256": "9ec7f2f371f52f3b55abebb71beaf39ecd1768f70036bd35ba97f4eca4b0da76",
+      "lines": 264
+    },
+    {
+      "path": "docs/structural-inventory.md",
+      "sha256": "b03e0903c3b43c5db0b98b22200ead9dd76b9ba4577e450709b465cd79e8d5f1",
+      "lines": 178
+    },
+    {
+      "path": "docs/whole-repository-audit.md",
+      "sha256": "010f6b410aa129997b0feb11636ddbd5ef3ad73b2245657e05014311e537119c",
+      "lines": 1485
+    },
+    {
+      "path": "docs/workflow-platform-backend-plan.md",
+      "sha256": "4be58f69bcdc1adcd28e63649ac8bc93d3502f9caf4e661739a90cf63c023110",
+      "lines": 2460
+    },
+    {
+      "path": "docs/workflow-platform-backend-research.md",
+      "sha256": "f921cb17fd35e03ee4f044c8c28e2932c70ac40fc8c632e393b8fe553e4129c0",
+      "lines": 290
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "06e1eccd2ca4719228e921eb173d8624328601a5999714d3c81450acf451bc66",
+      "lines": 550
+    },
+    {
+      "path": "infrastructure/browser-entry-dependencies.mjs",
+      "sha256": "4b39b8aef720da5631f42bdbabada0dbfe6bdca8bc716f4fa9b9201f06e6af61",
+      "lines": 205
+    },
+    {
+      "path": "infrastructure/browser-entry-dependencies.test.mjs",
+      "sha256": "9bf868a6f83ba2a5f7ccef0546547007a5cc578901c4a6fb6b69ce4207e489ed",
+      "lines": 100
+    },
+    {
+      "path": "infrastructure/complexity-baseline.json",
+      "sha256": "eed140c2fb54ae087a5cd80ec193668232e27c8c7a1a3dfb9da503001c936152",
+      "lines": 174
+    },
+    {
+      "path": "infrastructure/create-image-provenance.mjs",
+      "sha256": "9a20b0aaa3103bdf9afc6cdf5793612b8b5840bb14468f53bb170df7539753e2",
+      "lines": 79
+    },
+    {
+      "path": "infrastructure/create-image-provenance.test.mjs",
+      "sha256": "28035e0cca718d38d57c20e9e6c3d967f625727c8e0b44bc79afddad3c4e4ff5",
+      "lines": 41
+    },
+    {
+      "path": "infrastructure/documentation-git-isolation.test.mjs",
+      "sha256": "ee7caa482a33a3a55545d733a74c6adb5efdc473a6e2e3821dc71befafec9303",
+      "lines": 77
+    },
+    {
+      "path": "infrastructure/ecs/autoscaling.json",
+      "sha256": "04993fac60db313f8ff29db12bc34ca7a478081ab590bfe530629322cc2c29c9",
+      "lines": 66
+    },
+    {
+      "path": "infrastructure/ecs/database-connection-budget.json",
+      "sha256": "2e776cc3fc0ac68260bb66799be449c944b6bbc93cebd54d807b71cdeed06a20",
+      "lines": 55
+    },
+    {
+      "path": "infrastructure/ecs/external-platform-contract.json",
+      "sha256": "aa9b58555db5692c69ed91365ed2f5dc1efd3652134a3a76ded4a5296db65dee",
+      "lines": 135
+    },
+    {
+      "path": "infrastructure/ecs/render-task-definitions.mjs",
+      "sha256": "a8ed39a062dc789ea17b323ddcc00857c5843fbc62833ad407185f01a25a6100",
+      "lines": 107
+    },
+    {
+      "path": "infrastructure/ecs/rendered-task-startup-smoke.mjs",
+      "sha256": "ee8460691e48b82e916c3d43e339908a34d0e019e5e9a7db0fac415607dc1cb2",
+      "lines": 722
+    },
+    {
+      "path": "infrastructure/ecs/run-release-job.sh",
+      "sha256": "b6fa8d7db81c9d95b8768945a2c5021a49e71ee4db7a7afd996a4850416cfdd2",
+      "lines": 50
+    },
+    {
+      "path": "infrastructure/ecs/tsconfig.runtime-closure.json",
+      "sha256": "5bec5421285663626ff9d87dc23ff9e6e2a0fb8d51ab0d241143366a7754a008",
+      "lines": 15
+    },
+    {
+      "path": "infrastructure/ecs/validate-database-connection-budget.mjs",
+      "sha256": "1707573ddaf0d90a83085d7922f258d06c36c6941f7007eaf0a1a707d2e92c73",
+      "lines": 152
+    },
+    {
+      "path": "infrastructure/ecs/validate-database-connection-budget.test.mjs",
+      "sha256": "dac563e9d42e4b22688e55fa31927a4b83c4bc884b913aafed9ad5d4a392cf53",
+      "lines": 200
+    },
+    {
+      "path": "infrastructure/ecs/validate-deployment.mjs",
+      "sha256": "25e563e5944d7975011a34f5fef1309fbb98c6f2265fe7c9f4fd23400be21581",
+      "lines": 366
+    },
+    {
+      "path": "infrastructure/ecs/validate-external-platform-evidence.mjs",
+      "sha256": "f70e095ba3dbbcdc013e1de41ea47ef70af47f80ee4da5e1fe5f29ee6e1843ba",
+      "lines": 402
+    },
+    {
+      "path": "infrastructure/ecs/validate-external-platform-evidence.test.mjs",
+      "sha256": "b72eb35e41db5d7ca2448db89ecb270aca6008ba7f311a83ebcd3c82314d8cff",
+      "lines": 276
+    },
+    {
+      "path": "infrastructure/ecs/validate-readiness-health-check.mjs",
+      "sha256": "c22517be8b86731df45f9f26fa4d2304716315a87b19b2aacc9d46a0ee3b33e1",
+      "lines": 13
+    },
+    {
+      "path": "infrastructure/ecs/validate-readiness-health-check.test.mjs",
+      "sha256": "af6267d508744b0501ec0870bf6b6f278295402df630c49baca06b01cef46642",
+      "lines": 32
+    },
+    {
+      "path": "infrastructure/ecs/validate-render-runtime-config.test.mjs",
+      "sha256": "c8e2ee3ed874acf8ebf5ab045d78d2dc4cb774ccf7873ea0ebf9e258d54b709b",
+      "lines": 252
+    },
+    {
+      "path": "infrastructure/ecs/validate-render.mjs",
+      "sha256": "9a49c49a12af576ce4f3c826547add987ee40ca5a4e39a2fb5b330f267db203d",
+      "lines": 130
+    },
+    {
+      "path": "infrastructure/ecs/validate-runtime-closure.mjs",
+      "sha256": "56bc7c83b874fa81b2b18ba79060e50aa7da207b0e542f0c1e9019d5bcf29200",
+      "lines": 91
+    },
+    {
+      "path": "infrastructure/ecs/validate-runtime-closure.test.mjs",
+      "sha256": "a1ff58d70b9649cb998e0bbfbd21def929fa98e94e1f2f3573fefeaac18fdbe4",
+      "lines": 94
+    },
+    {
+      "path": "infrastructure/ecs/workloads.json",
+      "sha256": "1ef4c037149fb483c63aac1bfec9b0a27f3d0f06c8417427ae9f946784ed70cc",
+      "lines": 252
+    }
+  ]
+}

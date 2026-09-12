@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "apps/worker/test/failure-notification-handler.test.ts",
+      "sha256": "0b5b65af928441cc12e04373a7c5c68f179d9e6760a2d5332b37e1322dc2f9d2",
+      "lines": 236
+    },
+    {
+      "path": "apps/worker/test/fixtures/retained-core-workflow-v2.json",
+      "sha256": "e3ac2c1cb93b7f3b6f2f3ef12f1cdcb20fa71c2f5249dd82fc1544263066c7ba",
+      "lines": 164
+    },
+    {
+      "path": "apps/worker/test/for-each-worker-process-fixture.ts",
+      "sha256": "6811f45976de3c58445ef067a3eff4477dbc5a4e7fbea78cde0b72b5529be902",
+      "lines": 61
+    },
+    {
+      "path": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "sha256": "7750c47b447d7b2bbecc356ab3c10f2528a1df6749661a60c65020e6088ee4a7",
+      "lines": 2607
+    },
+    {
+      "path": "apps/worker/test/http-provider-telemetry.test.ts",
+      "sha256": "f29615d425559bf05332aeb3f9588355df848947bbeb2a4c37d4e90533d5eb59",
+      "lines": 155
+    },
+    {
+      "path": "apps/worker/test/lifecycle-coverage-config.test.ts",
+      "sha256": "fa56b23d9770852333dd62abdc17315bbd7f23682fc549fe20592b2266765968",
+      "lines": 28
+    },
+    {
+      "path": "apps/worker/test/node-attempt-engine.test.ts",
+      "sha256": "a2485cd1a372f7d14e2b0c1d7398682993e81b93b3e2683b86ea32d4963c2a1d",
+      "lines": 466
+    },
+    {
+      "path": "apps/worker/test/node-attempt-handler-part-2.test.ts",
+      "sha256": "287ebc4beb6607ed0cc7ddd5c55096a5b126ddf74b92c4d037789236b626f1d1",
+      "lines": 663
+    },
+    {
+      "path": "apps/worker/test/node-attempt-handler.test.ts",
+      "sha256": "199571c5f9a5f5ca34c46948bb8be19b5e9b2f59b43bb4f952a844ff80dc1673",
+      "lines": 567
+    },
+    {
+      "path": "apps/worker/test/node-attempt-runtime.test.ts",
+      "sha256": "d48a0501371bf2d5039cf7e1db3dfb8b66cc252febb6e6759a197df2162cd0d7",
+      "lines": 884
+    },
+    {
+      "path": "apps/worker/test/node-runtime-capabilities.test.ts",
+      "sha256": "c81eb75e70c7141353f7653ef1ccbba3f901fef9e57625785221683460ef0446",
+      "lines": 1219
+    },
+    {
+      "path": "apps/worker/test/outbox-dispatcher.test.ts",
+      "sha256": "7a9e0e7e12c8dd737130c86eac3394e5e6ffdcc34b555979f73822ff2dfe6932",
+      "lines": 794
+    },
+    {
+      "path": "apps/worker/test/preview-attempt-handler.test.ts",
+      "sha256": "d1da65a8ab7c33a9d318636e33e7f970c2c17ce6ac13b5420b1d2b95004ab89e",
+      "lines": 602
+    },
+    {
+      "path": "apps/worker/test/preview-attempt-runtime.test.ts",
+      "sha256": "4c7596ec8e43cc4dae2d469e5fe05db904d2379c6fccd2a5ea4237ae8714008e",
+      "lines": 691
+    },
+    {
+      "path": "apps/worker/test/preview-consumer-artifact-retention.integration.test.ts",
+      "sha256": "842d0340f171fd3f9cdfeaf8e4e7195ab3ec8066c2516231392154ebc557071e",
+      "lines": 181
+    },
+    {
+      "path": "apps/worker/test/preview-consumer-crash-boundaries.integration.test.ts",
+      "sha256": "0decbf3e7cab7692d19e8623ed121f74c826125cb5bcb43813db411895f8aa11",
+      "lines": 361
+    },
+    {
+      "path": "apps/worker/test/preview-consumer-delivery.integration.test.ts",
+      "sha256": "c2471e0fd97e4c4f92fe44a17e86ac53a373b266b86597b6e218cdd8d3977b56",
+      "lines": 120
+    },
+    {
+      "path": "apps/worker/test/preview-consumer-reconciliation.integration.test.ts",
+      "sha256": "07834ec25345d6212cbae3ff657ffe77d588cdf30d3deded1727d40d0c350c8e",
+      "lines": 129
+    },
+    {
+      "path": "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts",
+      "sha256": "dd86ec0ad15d102899d7800464bad0496e7b725865f75539f8c5141fa0895c16",
+      "lines": 237
+    },
+    {
+      "path": "apps/worker/test/preview-reconciliation-process-fixture.mjs",
+      "sha256": "76b37af1b1ec8a5dc579604e6968b92a880dac74060eef57b1143d6113c82c21",
+      "lines": 161
+    },
+    {
+      "path": "apps/worker/test/preview-reconciliation-runtime.test.ts",
+      "sha256": "fdc71e958c6449e65f429a5f70a02cf30e998997f0f03c4ca8096b6381fd8c7c",
+      "lines": 250
+    },
+    {
+      "path": "apps/worker/test/preview-telemetry.test.ts",
+      "sha256": "8159764c1295977710bd7e4f3b38ee0d09f89ebf38f055f9001fbe8ad3c2d84d",
+      "lines": 105
+    },
+    {
+      "path": "apps/worker/test/retained-core-workflow-v2.test.ts",
+      "sha256": "cd7e3b697203ac280e27c60961b345ec445e65a0e1f940fcbcf9417fe06d64dc",
+      "lines": 108
+    },
+    {
+      "path": "apps/worker/test/schedule-trigger.integration.test.ts",
+      "sha256": "550e9c77bd9444280b6a4eb87df019fb8bc085b4e517d85115b1784e7f34812f",
+      "lines": 1125
+    },
+    {
+      "path": "apps/worker/test/slack-provider-telemetry.test.ts",
+      "sha256": "c340c02ce1af2fede5fdb135c584a9f41c242135fefe9999489625ff51374fd7",
+      "lines": 118
+    },
+    {
+      "path": "apps/worker/test/support/compatibility-release.fixture.ts",
+      "sha256": "5267daae1995165616e78a938ebf3b34f00408c6ddacf634138d7087242dccb1",
+      "lines": 107
+    },
+    {
+      "path": "apps/worker/test/support/compose-service-control.ts",
+      "sha256": "53bfdb34f0eee910f6cfbe9b0a313314be5acb8a72d62b55f7d4703ae8582c89",
+      "lines": 199
+    },
+    {
+      "path": "apps/worker/test/support/coordinator-dispatch-fixtures.ts",
+      "sha256": "33cd50913756178eab7167d1866d91bc38a0b9894203ec071fbfcf370a4518b7",
+      "lines": 99
+    },
+    {
+      "path": "apps/worker/test/support/coordinator-recovery-harness.ts",
+      "sha256": "d920bc72d636b3a18cc69775b01339045a04bc8cc8d72bf2a43289dcb758cb93",
+      "lines": 307
+    },
+    {
+      "path": "apps/worker/test/support/coordinator-run-fixtures.ts",
+      "sha256": "c898e7a57e73ba4f7dbee2fbd1ad325ae769ae80435e089da54667bee1e822ea",
+      "lines": 505
+    },
+    {
+      "path": "apps/worker/test/support/coordinator-workflow-fixtures.ts",
+      "sha256": "1d54b62709b964a1c0ddf27c1b8462aaf24754fac7c16b5e533f62ca3421c388",
+      "lines": 514
+    },
+    {
+      "path": "apps/worker/test/support/disposable-database.ts",
+      "sha256": "e10f56571dfa9b5f3c14ccec1fb01812bdf6033e8921073225156b443a4dc75d",
+      "lines": 34
+    },
+    {
+      "path": "apps/worker/test/support/execution-engine.fixture.ts",
+      "sha256": "a7739aaccd4da345e0e2ff3a087b144aa8368e3704d135f6b93ab21e02bd9ca5",
+      "lines": 41
+    },
+    {
+      "path": "apps/worker/test/support/http-node-attempt.fixture.ts",
+      "sha256": "7c588c0e095924d4da87c950630281f88f248a27e2d30707851082257c064870",
+      "lines": 769
+    },
+    {
+      "path": "apps/worker/test/support/http-node-attempt.runtime.ts",
+      "sha256": "484d27dcd471edcb13bf52ebcf09ba01afdf34d8f8a7a994614981498fb15b57",
+      "lines": 394
+    },
+    {
+      "path": "apps/worker/test/support/node-attempt-handler.fixture.ts",
+      "sha256": "e5d36bb306eb20c898fe66986c79143c8b27405ab6179bf786325692f91d2c68",
+      "lines": 146
+    },
+    {
+      "path": "apps/worker/test/support/preview-consumer-crash-process.support.ts",
+      "sha256": "6a1c09748dd80653519ab0fff35b4b64aa73037cc38d3ba20f287eefd0535f03",
+      "lines": 113
+    },
+    {
+      "path": "apps/worker/test/support/preview-consumer.integration.support.ts",
+      "sha256": "bf8e95c0a8c4ded0b24cce42381e73647a9c27130d0b7a9d1d829c9251d0892b",
+      "lines": 817
+    },
+    {
+      "path": "apps/worker/test/support/transport.integration.support.ts",
+      "sha256": "51cf881fe89ec2aff4f126c344c6868fd29c012f01aac3086025c34b02e489d7",
+      "lines": 337
+    },
+    {
+      "path": "apps/worker/test/support/workflow-lifecycle.integration.support.ts",
+      "sha256": "584344abdc074caa17f14ea66f4686f5b66175ece701095cc5ec7beade61c5e1",
+      "lines": 937
+    },
+    {
+      "path": "apps/worker/test/support/workspace-query.ts",
+      "sha256": "c9a0bef930f6ac2ffcf043e10b6aa3914419d0bfedbca7807d8c518c04fb9359",
+      "lines": 25
+    },
+    {
+      "path": "apps/worker/test/transport-metrics-adapter.test.ts",
+      "sha256": "25ef6dc0304b8394b800059a46b2e5012bceabb65f02534133d9bf19e454e05f",
+      "lines": 135
+    },
+    {
+      "path": "apps/worker/test/transport-part-2.integration.test.ts",
+      "sha256": "5a7843c3fe19120436447b38dd53585e827db38ab82e3105e498970bb147e966",
+      "lines": 339
+    },
+    {
+      "path": "apps/worker/test/transport.integration.test.ts",
+      "sha256": "c70a6112719118aaed05f0766a8443d733f7bf4b9fe8d626b6c23d5703078409",
+      "lines": 664
+    },
+    {
+      "path": "apps/worker/test/transport.resilience.integration.test.ts",
+      "sha256": "5750aa793366d4f9291c4bad654334f0e1d7a551869bfab0f13aaa192b121bda",
+      "lines": 749
+    },
+    {
+      "path": "apps/worker/test/trigger-consumer.integration.test.ts",
+      "sha256": "42bc186711e132f0780e5184117eecee9ee0f03d7adbc84e697dbee7767bf98a",
+      "lines": 142
+    },
+    {
+      "path": "apps/worker/test/trigger-handler.test.ts",
+      "sha256": "cd369d1318efbcd41c7800f08e1232c803da206ab289218749617c1571c47de6",
+      "lines": 135
+    },
+    {
+      "path": "apps/worker/test/trigger-runtime.test.ts",
+      "sha256": "9383759612286bc1e3f5434f0aaa946d8764dc81568a81fc1279f6cdad446736",
+      "lines": 246
+    },
+    {
+      "path": "apps/worker/test/unknown-outcome-reconciliation-runtime.test.ts",
+      "sha256": "e35375f8cb1bbbd7d13e82c24ca7c3e87e34ad63ada72b72028d3b3f326b0eda",
+      "lines": 53
+    },
+    {
+      "path": "apps/worker/test/validate-preview.integration.test.ts",
+      "sha256": "9b03e9a133d14614c3efa04b0a4358172d8e4771001ce5c25b318e241c2bbc8c",
+      "lines": 503
+    },
+    {
+      "path": "apps/worker/test/worker-bootstrap.test.ts",
+      "sha256": "8887713e13bfa08290642c5c0a286e0bd1bdc6f3c4c4abd0873fc87e351737bc",
+      "lines": 490
+    },
+    {
+      "path": "apps/worker/test/worker-config.test.ts",
+      "sha256": "30958de340a8e568485fb3d80340dccfc956099eb7818fb5a60bc96d248c26c2",
+      "lines": 415
+    },
+    {
+      "path": "apps/worker/test/worker-process-keepalive.test.ts",
+      "sha256": "7731fee18dc3856ebc3b232f71ff8d971c8f7981e12768099c48e94a2af5e1c2",
+      "lines": 24
+    },
+    {
+      "path": "apps/worker/test/worker-process-lifecycle.fixture.mjs",
+      "sha256": "7900995c67b587d08b29135ee839e24c698fcb16e81af756cf755dc1ac8ed8d3",
+      "lines": 175
+    },
+    {
+      "path": "apps/worker/test/worker-process-lifecycle.test.ts",
+      "sha256": "bfe13a928dacb4a225332913b7749b6394e44dabf9da8af9d779504c67349808",
+      "lines": 141
+    },
+    {
+      "path": "apps/worker/test/worker-process-shutdown.test.ts",
+      "sha256": "c7dec4ea217cc53a50474d7471d9cbec4b36cf96d3d270ee74ca74288e63bcf7",
+      "lines": 75
+    },
+    {
+      "path": "apps/worker/test/worker-readiness-lifecycle.test.ts",
+      "sha256": "76ce95eb8db2efb5a22eea047b0b438d8d6e95f9890e7410400c0fd9059beae5",
+      "lines": 221
+    },
+    {
+      "path": "apps/worker/test/worker-resource-monitor.test.ts",
+      "sha256": "1180ac0ef5c4e358c2ae0b147b1f0f90ab6edcf404962dbe7679cef2b86fdf3b",
+      "lines": 57
+    },
+    {
+      "path": "apps/worker/test/workflow-lifecycle.integration.test.ts",
+      "sha256": "ee27a1a11258cceb97ab868ed6120c2d4f31d27f812b5b9825c7bb6d55cffea9",
+      "lines": 367
+    },
+    {
+      "path": "apps/worker/test/workflow-publish-transport-contract.test.ts",
+      "sha256": "001744b7bdf728621dc16df0fd4a39684732aab1474282558422ab8c902d985d",
+      "lines": 17
+    },
+    {
+      "path": "apps/worker/tsconfig.json",
+      "sha256": "6e5724f34aed7be43ea4dd55304f5b220fb7093fbee5acdcd9f94f5a73009841",
+      "lines": 56
+    },
+    {
+      "path": "apps/worker/tsconfig.test.json",
+      "sha256": "a31f66f9dc31cb383b31edb30c5b90107ce86a53b48cca57f39f5fe235fd4ad2",
+      "lines": 11
+    },
+    {
+      "path": "apps/worker/vitest.config.ts",
+      "sha256": "9b80d1e5ed0394965b52389ec18d951fbbb1926e331717107d0bbfed8b1ad6bc",
+      "lines": 20
+    },
+    {
+      "path": "apps/worker/vitest.coverage.config.ts",
+      "sha256": "7a3d2e7a34745c9ee9c499a68163fe105c8f6ff3ed2c3960a7c9e9e7292badfa",
+      "lines": 43
+    },
+    {
+      "path": "apps/worker/vitest.integration.config.ts",
+      "sha256": "6d24f4953e4622b23762cb8f45be014510b88354afbbf7f9cc415e88c210ce5c",
+      "lines": 14
+    },
+    {
+      "path": "apps/worker/vitest.lifecycle-coverage.config.ts",
+      "sha256": "6eca3746532002c0f0ca11f40b0379bca0233180fc5f0c06b295e5341ddd3b25",
+      "lines": 54
+    },
+    {
+      "path": "apps/worker/vitest.resilience.config.ts",
+      "sha256": "3a7aaf3dbc1534e69718e4cba9d766e37d3137979f1a7337b11367f5b6cc5b27",
+      "lines": 14
+    },
+    {
+      "path": "compose.yaml",
+      "sha256": "c113dbf4676b51054bc4d7111e22f66c1f4818a8ee70b5b49235c91a47baf9b4",
+      "lines": 208
+    },
+    {
+      "path": "docs/adr/001-modular-monolith-monorepo-api-worker.md",
+      "sha256": "db41998f4e6c5ed9e9983ddd219646aba89607e93a5cdacd3d9af58f1fb76714",
+      "lines": 128
+    },
+    {
+      "path": "docs/adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md",
+      "sha256": "4b368a4355e500e0996a2c126fa2f5731930906ba1838f399a993f720da5ed6b",
+      "lines": 486
+    },
+    {
+      "path": "docs/adr/003-workspace-tenancy-rls-runtime-roles.md",
+      "sha256": "c52e3e4c1a566a41faa4db1d264ba1a3a464640bcf52521733c795d9ebbbcfce",
+      "lines": 304
+    },
+    {
+      "path": "docs/adr/004-managed-oidc-and-internal-authorization.md",
+      "sha256": "7c8e313b877bc6053f9b69910c7159da5f17fc5f24a97e899f1807e523a69020",
+      "lines": 269
+    },
+    {
+      "path": "docs/adr/005-postgresql-authority-bullmq-outbox-engine-gate.md",
+      "sha256": "7876c7a3404d4eb16865cbb57e621a542c88aaa1b2a25a9ba5f2476b307c99ca",
+      "lines": 338
+    },
+    {
+      "path": "docs/adr/006-coordinator-checkpoint-and-node-attempt-jobs.md",
+      "sha256": "c627f8db35d596f7498c29368d1473d39c31e11ea85ce5da2247161d81d220f7",
+      "lines": 46
+    },
+    {
+      "path": "docs/adr/007-run-node-state-retry-idempotency.md",
+      "sha256": "2020342a0346d717b5a89044ec764bf19452b720e8d66c73bb9c73ea7ae2b070",
+      "lines": 238
+    },
+    {
+      "path": "docs/adr/008-structured-bounded-loops.md",
+      "sha256": "09feb9e56027c01b87f3017609c5ff976fa4de03d1dbc0e0e3881facee300117",
+      "lines": 114
+    },
+    {
+      "path": "docs/adr/009-restricted-jsonata.md",
+      "sha256": "aec6660db079a83a2b94ba1c25ecd4ae36e853676046a78fa496f4c72b4a8754",
+      "lines": 216
+    },
+    {
+      "path": "docs/adr/010-node-executor-compatibility-retirement.md",
+      "sha256": "e95c9d9e5b9c2e18d276a51bdabb0d43b111c23d36889724b808c67debd24b47",
+      "lines": 293
+    },
+    {
+      "path": "docs/adr/011-optimistic-draft-concurrency.md",
+      "sha256": "0bc97cffe8c0fdec4d1aa121ff925010ad9cea600eb852de210018bafdd58aa5",
+      "lines": 331
+    },
+    {
+      "path": "docs/adr/012-fair-admission-backpressure-entitlements.md",
+      "sha256": "31b67ac30370933ec39e078bbd17b653422b1d04f4b7da8b7987157c35c9a107",
+      "lines": 126
+    },
+    {
+      "path": "docs/adr/013-retention-workspace-deletion-legal-hold.md",
+      "sha256": "36a5f6b764fdb7596f8253603aa07b681ac9f5d290b8029397893ede4741e6c8",
+      "lines": 133
+    },
+    {
+      "path": "docs/adr/014-schedule-timezone-dst-misfire.md",
+      "sha256": "25ab6f20597a5dddd61a3a317c6b9d00ffd11ef32cc0a6d4688034d1bf5940fc",
+      "lines": 73
+    },
+    {
+      "path": "docs/adr/015-production-slo-region-and-recovery.md",
+      "sha256": "4001901650bff3f2fe948d9e9b6d5f2426a42fe803335b39658bbefd9e41ab23",
+      "lines": 146
+    },
+    {
+      "path": "docs/adr/016-node-preview-testing-semantics.md",
+      "sha256": "be8c1c57436bad4de3b3e283858d2912b00f2a1ec4427f0c03ad065c22157af8",
+      "lines": 131
+    },
+    {
+      "path": "docs/adr/017-condition-branch-selection.md",
+      "sha256": "797643e6dd66e7642a2c30a2a9e282e31b8b0c5cf7213dd3425df27fe52a5e16",
+      "lines": 127
+    },
+    {
+      "path": "docs/adr/018-switch-ordered-case-selection.md",
+      "sha256": "c988e757f88aeb3e420688ce5aa3f46063c0e9591bb60c773c58e9c93e9ff8ad",
+      "lines": 90
+    },
+    {
+      "path": "docs/adr/019-bounded-parallel-and-merge.md",
+      "sha256": "83acb46b6a367213242e50e2fe983ea5e5de551ddd2456f0265eb254f2742560",
+      "lines": 99
+    },
+    {
+      "path": "docs/adr/020-bounded-for-each.md",
+      "sha256": "32b818f63fee627e29947d806a9717e3d4c3260ee8d6644288666696ee4256a8",
+      "lines": 129
+    },
+    {
+      "path": "docs/adr/021-durable-wait.md",
+      "sha256": "68c7b3524f51cd51bc254759bdff57784bd5d0e730748dd0dfd263e2ef44a4c4",
+      "lines": 91
+    },
+    {
+      "path": "docs/adr/022-run-failure-notification.md",
+      "sha256": "9d394b94ece9ac5c5a009b7ea2947595623decc5f7aa7e0097db1a7f32d24fe2",
+      "lines": 127
+    },
+    {
+      "path": "docs/adr/023-slack-send-message-provider.md",
+      "sha256": "47e0be62623f2b54d21d8db1ab2ccc50de759b045b40914c94d38b39403dd91b",
+      "lines": 87
+    },
+    {
+      "path": "docs/adr/024-resend-email-notification-provider.md",
+      "sha256": "1934eb3990198513733f48cfc3d565c1681fd480608629ed359242c033ad925b",
+      "lines": 99
+    },
+    {
+      "path": "docs/adr/025-provider-failure-notification-destinations.md",
+      "sha256": "33cfd6a5f0dded00b812038af4600e0c019d6758fe8db44b0ccb99f3c164cdb7",
+      "lines": 110
+    },
+    {
+      "path": "docs/adr/026-generic-webhook-signature-replay.md",
+      "sha256": "78877c3f3c0f4d63210d4ba9ee1b33d73a673aaa414124e8e5fd666373cd5f8b",
+      "lines": 145
+    },
+    {
+      "path": "docs/adr/027-workspace-lifecycle-command-dispatch.md",
+      "sha256": "0c7d3e2893f62272e5a3fbf405e95d03db7f647f3e7a598c9265fbb8e0a94817",
+      "lines": 95
+    },
+    {
+      "path": "docs/adr/028-ecs-deployment-manifest.md",
+      "sha256": "96c89a3227fc5eadbd804e34c3088eeffa8d235e88ade37bc4493af28ff70f8a",
+      "lines": 66
+    },
+    {
+      "path": "docs/adr/029-operator-command-execution-boundary.md",
+      "sha256": "585d52f96efb86e454d60c47648c9e91642fb2416a170668823c6a4b67df83b1",
+      "lines": 58
+    },
+    {
+      "path": "docs/adr/030-autoscaling-input-contract.md",
+      "sha256": "3e361c574c69ed790732bf778466e45ebaf41a2a059f5de09cd814205fcf7df7",
+      "lines": 28
+    },
+    {
+      "path": "docs/adr/031-authenticated-user-run-replay.md",
+      "sha256": "acfffc3783fcc5650588b5edd4f42db0375918594906cf4caca65198ff4949dc",
+      "lines": 74
+    },
+    {
+      "path": "docs/adr/032-validate-node-semantics.md",
+      "sha256": "6ffea384339a026d3dac67b5941b565709c12f0047f4c586b5d3adc3db92bcc2",
+      "lines": 75
+    }
+  ]
+}

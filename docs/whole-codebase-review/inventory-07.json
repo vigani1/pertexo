@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "infrastructure/exercises/README.md",
+      "sha256": "8eb6cc9f208bdc7d7298a5c37a17410612f9c9fb1cde10057d361d493d13ac47",
+      "lines": 89
+    },
+    {
+      "path": "infrastructure/exercises/profiles/api-steady.json",
+      "sha256": "8b678131b735b1d4a3a459a88d800178cce495ead7cfac9d5cf90f90e354ab1b",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/profiles/large-fan-out.json",
+      "sha256": "3968d441c340e97e485016afcffda759baa0a8d92427ef41b77b11512277a4d6",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/profiles/long-wait.json",
+      "sha256": "f8bc1c5e296cb9c18e57ba2e465ce66e93c9bf11932ad7c0a3482fea139db0ea",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/profiles/noisy-tenant-control.json",
+      "sha256": "a45b6b3d6c66b405c5190d2d91ab735a47cca0bbf2a5070d6864db62fe2bb836",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/profiles/noisy-tenant-load.json",
+      "sha256": "1a3ca2a84a473d18637f098adb558265e250b63381b9666bc0eb6b69973b89d0",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/profiles/webhook-burst.json",
+      "sha256": "2735846d6423dcda8f13e6adb03e34cc7c3d5efe9dc68e532525cb91e87185ee",
+      "lines": 26
+    },
+    {
+      "path": "infrastructure/exercises/run-http-exercise.mjs",
+      "sha256": "e245588e628e4f92473cc575e563efcdf48451784778f9735b9bfc9fca05b925",
+      "lines": 507
+    },
+    {
+      "path": "infrastructure/exercises/run-http-exercise.test.mjs",
+      "sha256": "23073936d6f5053dd32e42184f3eae707ffce671cf90e63e263a02b6f1d00b05",
+      "lines": 166
+    },
+    {
+      "path": "infrastructure/exercises/validate-exercises.mjs",
+      "sha256": "49cff500c0f5216b8814f531504f6d335fedd505fce934d5f590efdc06732a6d",
+      "lines": 48
+    },
+    {
+      "path": "infrastructure/generate-coverage-evidence.mjs",
+      "sha256": "db1cf5c8f56e8a78a72dd2e900b8a91f1a3870333a454a563ac7abded12b83f1",
+      "lines": 446
+    },
+    {
+      "path": "infrastructure/generate-coverage-evidence.test.mjs",
+      "sha256": "cddd0a35e673443ca8132c1535583040710ef9939fffd4d1ea00d82a109febaa",
+      "lines": 131
+    },
+    {
+      "path": "infrastructure/git-environment.mjs",
+      "sha256": "ed014e586b5364f863eabe4b17e484f5f69dd3d4af7592c1b54b84cc9ba70331",
+      "lines": 10
+    },
+    {
+      "path": "infrastructure/install-git-hooks.mjs",
+      "sha256": "4c70170d1cb39b7b79852ef36bad5dbb7ec5778a22b013f648dd2c62348eae16",
+      "lines": 35
+    },
+    {
+      "path": "infrastructure/merge-istanbul-coverage.mjs",
+      "sha256": "12a5fdedb2a0b8775019986c74f85711915d272a235cff40be121d24eaf29abb",
+      "lines": 76
+    },
+    {
+      "path": "infrastructure/merge-istanbul-coverage.test.mjs",
+      "sha256": "0251e9f771115224a68e4b4e3b677612513eb9a1e1f9b7101d1c0c38820e4fa0",
+      "lines": 33
+    },
+    {
+      "path": "infrastructure/minio/bootstrap-ledger.sh",
+      "sha256": "b0b181231346aac98f3587dc69a1900d9094bd79178abd0cd24e8b9e06e86fb4",
+      "lines": 8
+    },
+    {
+      "path": "infrastructure/minio/primary-ledger-policy.json",
+      "sha256": "8e5f4173dc6057f1bfd04686f10fc34aab2f3d29c7fb14371e3e6c8fac8ea3ec",
+      "lines": 33
+    },
+    {
+      "path": "infrastructure/minio/recovery-ledger-policy.json",
+      "sha256": "df5d141f3ab8e3d131c9911db84a8fec74830e241424cb728f5dc514270a7b67",
+      "lines": 37
+    },
+    {
+      "path": "infrastructure/observability/compose.yaml",
+      "sha256": "b0a9df6337c17d91eef8e5d54b89b21341e1e4e8cf13f80896a49ba557395398",
+      "lines": 39
+    },
+    {
+      "path": "infrastructure/observability/grafana-dashboard.json",
+      "sha256": "9bceb3219d502027a79ade6e138ffd41ce5e7314d594d2c0fd34bbb74ea43f5e",
+      "lines": 467
+    },
+    {
+      "path": "infrastructure/observability/grafana-dashboards.yaml",
+      "sha256": "5154b066f5b78189b1bdc1d4a6f28e5a9ea15559a1e10ec53eba9fdf5444bde6",
+      "lines": 9
+    },
+    {
+      "path": "infrastructure/observability/grafana-datasource.yaml",
+      "sha256": "77f4223ba8fb2394f9ed2dcff30e9d650e9dfa74fac049dad4ea18b344ea1313",
+      "lines": 9
+    },
+    {
+      "path": "infrastructure/observability/otel-collector.yaml",
+      "sha256": "bce9c04ea81b190c6df098cd2c42fec2d48a97d276d2690264517ba6f93e99fe",
+      "lines": 60
+    },
+    {
+      "path": "infrastructure/observability/pertexo-alerts.yaml",
+      "sha256": "a43d5e3fdae60ba8fb5df0a945c320cce801b5d3de61b4f6f308d9a869e827a0",
+      "lines": 338
+    },
+    {
+      "path": "infrastructure/observability/prometheus.yaml",
+      "sha256": "b4fca10944cecf8a2d0c012477c252fafcf55dbcab7b5fca336aff7d2e5a6896",
+      "lines": 12
+    },
+    {
+      "path": "infrastructure/observability/validate-config.mjs",
+      "sha256": "c8a0ae5fb3101612fb2f80b44efa6639353f512080e22929c5418237859a7de3",
+      "lines": 75
+    },
+    {
+      "path": "infrastructure/operational-documentation.mjs",
+      "sha256": "a2a89315c10f9ee810dc43a1c8754846408d78ca3fdb6634210efcc20eeed1b3",
+      "lines": 84
+    },
+    {
+      "path": "infrastructure/operational-documentation.test.mjs",
+      "sha256": "117b9a77327c61005568e4e14a28e642cfc4ccb9ba329a9001b1a8f09d39259f",
+      "lines": 87
+    },
+    {
+      "path": "infrastructure/owned-process-tree.mjs",
+      "sha256": "039728da648aae4c066ca854a6586d4b43f3fb5a5c0e2a28106d1a75468dd7a8",
+      "lines": 204
+    },
+    {
+      "path": "infrastructure/performance/compare-local-benchmark.mjs",
+      "sha256": "bb684a613dcdec285ea39ecab5d717b5630f451cce15105b22f676ec27ba9868",
+      "lines": 952
+    },
+    {
+      "path": "infrastructure/performance/compare-local-benchmark.test.mjs",
+      "sha256": "e5bc96adb74078d7abe6e210cac99aeabdd81639ae3c71949787bfd32f7f150a",
+      "lines": 734
+    },
+    {
+      "path": "infrastructure/performance/fixtures/benchmark-operation-fixture.mjs",
+      "sha256": "08bc0d32cbf578fae4a146e992beebcce45af435d7a28f07484bfe2030cc6b0d",
+      "lines": 34
+    },
+    {
+      "path": "infrastructure/performance/fixtures/overlap-workload-fixture.mjs",
+      "sha256": "bd289060a239f4ab138b1be9934610c8738b1583ac49a965c53010a05e41a0d2",
+      "lines": 45
+    },
+    {
+      "path": "infrastructure/performance/local-benchmark-manifest.json",
+      "sha256": "0c666494eccc243bfd777de59f4403065972c8fce3011fed6a32abad75a608b3",
+      "lines": 348
+    },
+    {
+      "path": "infrastructure/performance/postgres-evidence.mjs",
+      "sha256": "75fda173806b3908c4c8e6371c1fe50a852e7a19a63f9f94931fb553f77d196e",
+      "lines": 434
+    },
+    {
+      "path": "infrastructure/performance/run-local-benchmark.mjs",
+      "sha256": "c91ddf8aff44da2d83677edb25fedcdcb1c092bd16a6660912590aff388b4838",
+      "lines": 1492
+    },
+    {
+      "path": "infrastructure/performance/run-local-benchmark.test.mjs",
+      "sha256": "34bb8832a1744571cb61454f153d60ba11fb497630d4a9852e64f304e75d7cd8",
+      "lines": 1145
+    },
+    {
+      "path": "infrastructure/postgres/init/10-roles.sh",
+      "sha256": "7f366b7a514ceeb866925bf84f3764fceeb4f164e194223d2de52ce8852ebce5",
+      "lines": 118
+    },
+    {
+      "path": "infrastructure/postgres/provision-operator-role.mjs",
+      "sha256": "9a418e1a70aa6ae8360e66ed64c6f12520c93cc720808ea54b3471e34924aa0e",
+      "lines": 103
+    },
+    {
+      "path": "infrastructure/report-risk-coverage.mjs",
+      "sha256": "3da677efbf0fd26269013613d6d42d7aaf5020b0eeba31987de9a2d81883eaf1",
+      "lines": 800
+    },
+    {
+      "path": "infrastructure/report-risk-coverage.test.mjs",
+      "sha256": "3f0d2a0954be76d5c8b484b20ae73354a35e2ecf038552192f1229e9969b3e54",
+      "lines": 902
+    },
+    {
+      "path": "infrastructure/risk-coverage-reviews.json",
+      "sha256": "892cfc49fe927be2f13aa67daf1b734c124394fc91f3a5e6a3ce70e26bf0ea19",
+      "lines": 3982
+    },
+    {
+      "path": "infrastructure/run-local-quality.mjs",
+      "sha256": "1b2124bacfd9b80b0d91f6f2d0a64ca1f791c88071b4b8391a143ccc8cf71066",
+      "lines": 1245
+    },
+    {
+      "path": "infrastructure/run-local-quality.test.mjs",
+      "sha256": "070fa5d2f82a9c53f06f855b77d254f265d4006192682dcd7a328889a634ba7e",
+      "lines": 658
+    },
+    {
+      "path": "infrastructure/temporary-directory-cleanup.mjs",
+      "sha256": "c347cff89c48f694e0c054d132a34a2c380685c502362c3637645cf026c5997e",
+      "lines": 17
+    },
+    {
+      "path": "infrastructure/test-duplication-baseline.json",
+      "sha256": "f8aff8ee8faf7b6f050f08009bd4c610e151d42f00701f8a44904b95e4d96a1d",
+      "lines": 338
+    },
+    {
+      "path": "infrastructure/test-process-observation.mjs",
+      "sha256": "030917ccc15bb56908990255042c841bb49611b7cdfc7bbb52fd640ec9bde561",
+      "lines": 27
+    },
+    {
+      "path": "infrastructure/test-process-observation.test.mjs",
+      "sha256": "2663385927e84f6ff46016af7a1f045d35876f723f7e101b669adf83e3fe769a",
+      "lines": 20
+    },
+    {
+      "path": "infrastructure/validate-built-package-exports.mjs",
+      "sha256": "08e579be674730b078da6331cf9aa085b6826169460f0357309867f14bfba447",
+      "lines": 206
+    },
+    {
+      "path": "infrastructure/validate-built-package-exports.test.mjs",
+      "sha256": "b5d955512370ed40abf3534ecf39af11dc2d90f8145cebb7c6ccf0b6f8664114",
+      "lines": 114
+    },
+    {
+      "path": "infrastructure/validate-complexity.mjs",
+      "sha256": "97860b36b2a63cbbeefa6b5a1b3d97dec92822bf869c5ad5f2501e268843825b",
+      "lines": 222
+    },
+    {
+      "path": "infrastructure/validate-complexity.test.mjs",
+      "sha256": "9341eab541b5b7b3eb80a9f0ff22a8414eae3828b2de34e95f52523a6c83ec55",
+      "lines": 57
+    },
+    {
+      "path": "infrastructure/validate-database-schema.mjs",
+      "sha256": "fea1a0cba15ea4924cf7017e58c494d840f774352d4fe160b25a951e9e5715f6",
+      "lines": 138
+    },
+    {
+      "path": "infrastructure/validate-database-schema.test.mjs",
+      "sha256": "6486aa7264fe4c8f699d3979d89007f83279c21b944468da846c96e4ec977624",
+      "lines": 13
+    },
+    {
+      "path": "infrastructure/validate-documentation.mjs",
+      "sha256": "627f709ccdc69a7f2ba261ac4c7a0d0dc287191e7398f1a767bbcbee74a2a9f9",
+      "lines": 239
+    },
+    {
+      "path": "infrastructure/validate-documentation.test.mjs",
+      "sha256": "a0acb66a604af0b6545684c1b04184a9de7a0990355917af52ed3ac2832a8959",
+      "lines": 187
+    },
+    {
+      "path": "infrastructure/validate-iana-address-registry.mjs",
+      "sha256": "a6524cf8b0b8fc6cea92e57b5f2f40bd24e5a1ef7d920c725f71ac5f33abf780",
+      "lines": 61
+    },
+    {
+      "path": "infrastructure/validate-iana-address-registry.test.mjs",
+      "sha256": "70520816496d1e0ec27feaf5dfb420f2d900c067f57d16ea858878c57e3d9a82",
+      "lines": 31
+    },
+    {
+      "path": "infrastructure/validate-image-pins.mjs",
+      "sha256": "e76efa65f77d74d24c887a3c8c6a78a532cab4f0bb0d0e1ff1da7ecbdb10064d",
+      "lines": 67
+    },
+    {
+      "path": "infrastructure/validate-image-pins.test.mjs",
+      "sha256": "84b70482630a4f1841d5b52ba1d58b71859d483e0f7b3758f051c71aab64acf4",
+      "lines": 53
+    },
+    {
+      "path": "infrastructure/validate-module-imports.mjs",
+      "sha256": "2572207e63957c0b191693b8ed1ecd381fc8f6644ffe66bf3043203da5bc013b",
+      "lines": 160
+    },
+    {
+      "path": "infrastructure/validate-module-imports.test.mjs",
+      "sha256": "54024b75f2759823ec117ad8bbbb7bff2d4f93d5299289bbf1baba828570a71c",
+      "lines": 102
+    },
+    {
+      "path": "infrastructure/validate-project-references.mjs",
+      "sha256": "f11474c92f5020df6fcd008d2078638e85100c03ccf043d4dd1473d8f0bc275a",
+      "lines": 126
+    },
+    {
+      "path": "infrastructure/validate-project-references.test.mjs",
+      "sha256": "e79e29b919e14b729c2f9eeca0cc58469866aaa753d3db59dca3ea0760c15b19",
+      "lines": 75
+    },
+    {
+      "path": "infrastructure/validate-runtime-major.mjs",
+      "sha256": "fcc1e1fcc8030921d79279aa00a92d1c77dda804073801bd18f99f741ffd73a5",
+      "lines": 165
+    },
+    {
+      "path": "infrastructure/validate-runtime-major.test.mjs",
+      "sha256": "e0d4b675f7c742a92ba5d46f08a4fef3241f31de7eaa7a60998be6dff92b2d19",
+      "lines": 276
+    },
+    {
+      "path": "infrastructure/validate-test-duplication.mjs",
+      "sha256": "bd44020ba96d5f42bee9775275925b1483a51fba6e9a814a168325cf16df483a",
+      "lines": 174
+    },
+    {
+      "path": "infrastructure/validate-test-duplication.test.mjs",
+      "sha256": "0c0e27ac14de004e024fd2e60f3b85f268805bae7bf25a0547cd09f44b8a1963",
+      "lines": 102
+    },
+    {
+      "path": "infrastructure/validate-vitest-gate-report.mjs",
+      "sha256": "b4a8a150ca80cb0f516125bddfac2c8ac03ba65b693305e1af679a3fa809a904",
+      "lines": 75
+    },
+    {
+      "path": "infrastructure/validate-vitest-gate-report.test.mjs",
+      "sha256": "37473a0c23d91ccbd84ab0897975e7123608ba45699dda7c95aec942e10db13d",
+      "lines": 101
+    },
+    {
+      "path": "infrastructure/verify-mutation-sensitivity.mjs",
+      "sha256": "cc9bd43258728e9a29b25c0ffb7cdb4d31604b058d60990bb46618ba3877894d",
+      "lines": 409
+    },
+    {
+      "path": "infrastructure/verify-mutation-sensitivity.test.mjs",
+      "sha256": "6e325ffa649ace2c0ab6cd95641752b6ea5b3b59b8dce6962e6bb0bff83120c0",
+      "lines": 75
+    },
+    {
+      "path": "package.json",
+      "sha256": "7c992c4a29f9cab6e3244d04968a5a19bc4c477f3d45e40407a30aaa04dfb0b3",
+      "lines": 99
+    },
+    {
+      "path": "packages/artifact-store/package.json",
+      "sha256": "53ef230fb92c0a0f78c03c12d780fac907cd957265f20b195b28ecc1cf226239",
+      "lines": 30
+    },
+    {
+      "path": "packages/artifact-store/src/artifact-download.ts",
+      "sha256": "5e503f7fa1e70cb6ae291a7a98712a55eadd20ea9a014590d0d4555db4310f09",
+      "lines": 96
+    },
+    {
+      "path": "packages/artifact-store/src/artifact-errors.ts",
+      "sha256": "b0e24530c77b88b96cf8d516fa8c4284b85b3abaa2cd5779bf2e6aeb191225b4",
+      "lines": 23
+    },
+    {
+      "path": "packages/artifact-store/src/artifact-metadata.ts",
+      "sha256": "ceb62a349f54865b742b50b24dc6f7bcbb7e17ecadf1062f1276558b38eb6872",
+      "lines": 21
+    },
+    {
+      "path": "packages/artifact-store/src/artifact-request-lifecycle.ts",
+      "sha256": "14d2943ade54797f6cfc6be3a95cd05124d515b5f2716829822f63aa1000c702",
+      "lines": 43
+    },
+    {
+      "path": "packages/artifact-store/src/config-primitives.ts",
+      "sha256": "e60021d19a4b5bc156f45e6be827a20793bac0337a50175c597e14ea23f7a3d1",
+      "lines": 33
+    },
+    {
+      "path": "packages/artifact-store/src/config.ts",
+      "sha256": "9f4939b1985b0255d667b82329d7a70cb688ed5c131e0064bab7f5fa8a834ff7",
+      "lines": 92
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger-config.ts",
+      "sha256": "9f87de0aede5fb8c1e46d75d38f4837756b5b88fa8ccffc8fcc979f3b2d8b8d7",
+      "lines": 123
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger.ts",
+      "sha256": "e2421d487ac0dde023caa7cbdae0d581e34e0af7c8f8ec5a1127aeb6ee149444",
+      "lines": 851
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger/bucket-policy.ts",
+      "sha256": "3fc6d5c7283c9e172717288c1ed0a0de501e908c9b42ae738bc462a0466732fa",
+      "lines": 109
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger/errors.ts",
+      "sha256": "acfc919c1435c2cbcf734a6ad1edab4229d38ad0490e7f5503f55bf217454d8b",
+      "lines": 28
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger/reconciliation-validation.ts",
+      "sha256": "73f6f169caea1b49629471755ba2cc88e93810ba69c8dcff74f6769913080539",
+      "lines": 85
+    },
+    {
+      "path": "packages/artifact-store/src/control-ledger/record-key.ts",
+      "sha256": "1d0ea8b57579c494254d41747fb6babbc11f247f2d30e504af5c795eb95a3680",
+      "lines": 6
+    },
+    {
+      "path": "packages/artifact-store/src/dual-region-artifact-store.ts",
+      "sha256": "490f89d4b300ade08247a1349136b809a0076b0ef6055b30c4347a2dabaf43f2",
+      "lines": 385
+    },
+    {
+      "path": "packages/artifact-store/src/dual-region-control-ledger.ts",
+      "sha256": "c36bf0f26558c73a62d29e590983ca80d05b603f871e873b1e599f7c109667fd",
+      "lines": 493
+    },
+    {
+      "path": "packages/artifact-store/src/index.ts",
+      "sha256": "a3955c0c68555a1e862ac78559adfa8d89d6f66e930cbf8fa0c8bc21e7934648",
+      "lines": 96
+    },
+    {
+      "path": "packages/artifact-store/src/object-store-telemetry.ts",
+      "sha256": "ec3c22d892049b75927a5e753b0f295ec1c0d1242337172950d557484d846104",
+      "lines": 286
+    },
+    {
+      "path": "packages/artifact-store/src/s3-client-contract.ts",
+      "sha256": "102d1fb0de18c364602355263ec588f1cad9f8e23073598e4ee20ca7449c9c65",
+      "lines": 126
+    },
+    {
+      "path": "packages/artifact-store/src/server-only.ts",
+      "sha256": "faaa789e2940235e4ab4b2064b6143898c944fb078ae84b68bbf7bb46713bbf1",
+      "lines": 6
+    },
+    {
+      "path": "packages/artifact-store/src/store.ts",
+      "sha256": "4af34ac70d4255543ddf455d911212e42b086545938a3d5d14c3f8b482241895",
+      "lines": 933
+    },
+    {
+      "path": "packages/artifact-store/src/workspace-purge-validation.ts",
+      "sha256": "1e6564760326573af66a1dba1108d22f5372d12670c0853f5763e377c6568cf9",
+      "lines": 90
+    },
+    {
+      "path": "packages/artifact-store/test/artifact-request-lifecycle.test.ts",
+      "sha256": "6aa1591e6772b3499cf2e4ce8f84af74167fb00c39d6ac5baf5ace749b1f77c3",
+      "lines": 38
+    },
+    {
+      "path": "packages/artifact-store/test/config.test.ts",
+      "sha256": "9d05fa8a156120b72d48898c57d7107bbeb8b6d12d05a95fc222c5a55b92a6d9",
+      "lines": 102
+    },
+    {
+      "path": "packages/artifact-store/test/control-ledger-bucket-policy.test.ts",
+      "sha256": "0bf4763f1d21c1fd03a208b05aa0fc02a43c2cc8d985608ffb793a8dbce63f55",
+      "lines": 90
+    },
+    {
+      "path": "packages/artifact-store/test/control-ledger-config.test.ts",
+      "sha256": "8418cd25adcdc8a912dd8f1ea4d35ad64cd026b17a2a73d3ccc6da346ed36d3f",
+      "lines": 154
+    },
+    {
+      "path": "packages/artifact-store/test/control-ledger-part-2.test.ts",
+      "sha256": "b976d90e543ce718c6b0ebfd8955959c4cbe2a0737e1dc7f2e4a76421571002a",
+      "lines": 438
+    }
+  ]
+}

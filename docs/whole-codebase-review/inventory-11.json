@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/database/src/platform/readiness-probe-sql.ts",
+      "sha256": "afcdc86f72fbabcd821b2972e81c6bdee78e111d85bbd7645ed59898f1730e8b",
+      "lines": 12
+    },
+    {
+      "path": "packages/database/src/platform/readiness-probe.ts",
+      "sha256": "998dbfe6c345c99cb2056958fb70faa4c6f64327ef904f906841b688ab75debb",
+      "lines": 211
+    },
+    {
+      "path": "packages/database/src/platform/readiness.ts",
+      "sha256": "348844a0f58514816ffd587ef1567cba4da0046e83ca015210389f6f1a6305ee",
+      "lines": 358
+    },
+    {
+      "path": "packages/database/src/recovery.ts",
+      "sha256": "5183b519e115d9ec3f5062e635723247a8e9fcc9eefcb90e4702223ce522dc04",
+      "lines": 8
+    },
+    {
+      "path": "packages/database/src/schema.ts",
+      "sha256": "734d4618099fa43cc488b727ad97c3916562d34f74678b488e9b286110f9d4e7",
+      "lines": 168
+    },
+    {
+      "path": "packages/database/src/schema/app-schema.ts",
+      "sha256": "4966cbe6244652df3abcb07d209230c7170a01745d616ff7414fd429325ec366",
+      "lines": 4
+    },
+    {
+      "path": "packages/database/src/schema/authoring.ts",
+      "sha256": "5db65965367ebe64913c43cd4d9df9dc63bfd4778fedcf488b4b2db7d51ce71d",
+      "lines": 215
+    },
+    {
+      "path": "packages/database/src/schema/compatibility.ts",
+      "sha256": "6d71a751c3a4ff5b2af910ac9c559f9902230784bb262f36df3c034ff455206f",
+      "lines": 187
+    },
+    {
+      "path": "packages/database/src/schema/connections.ts",
+      "sha256": "c3f4c798e4dd8956370cf370bb9a5694b34f970ab40b9f1bbf582f98d34c2e9f",
+      "lines": 128
+    },
+    {
+      "path": "packages/database/src/schema/execution-support.ts",
+      "sha256": "b8cba1fdf1bc3d52c0a37599537f291261024495f80bfcf4f1b8505cb5de1e2a",
+      "lines": 125
+    },
+    {
+      "path": "packages/database/src/schema/execution.ts",
+      "sha256": "f218e40229a5f580b5320c3a294be4f42e184c873cc6de2890061e9de47a71c5",
+      "lines": 409
+    },
+    {
+      "path": "packages/database/src/schema/foundation.ts",
+      "sha256": "aa182c4cbc12a46eea0aece8fc0382622f134fe8e84b5947ab991ceedb3b3509",
+      "lines": 273
+    },
+    {
+      "path": "packages/database/src/schema/retention.ts",
+      "sha256": "5854860117c461b55163eb18fab543e9f7e0d69cb0223a9f0b4dd4bf76a59393",
+      "lines": 292
+    },
+    {
+      "path": "packages/database/src/schema/transport.ts",
+      "sha256": "5527b8ea4e209efd1eb1ec34503c85b04cd053200aa7742a1ec12fe8aec62456",
+      "lines": 173
+    },
+    {
+      "path": "packages/database/src/schema/triggers.ts",
+      "sha256": "3b19a92d3e0cdb629441aa05e594f88f7a34213fa75fe2fc0594b912347dc438",
+      "lines": 222
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-contracts.ts",
+      "sha256": "cbdb1ace0b7b2833f44d0328592a38c828df683e1148c687dbc12ef26ce19653",
+      "lines": 195
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-errors.ts",
+      "sha256": "466272bfe5d3e9e7144f154fc8e6a44f1a816259a38fdfbd53119810470773af",
+      "lines": 39
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-identity-store.ts",
+      "sha256": "a4a6c05606c64ad6876bc1de92d4dfeeed23189700930501d4e3b84c0cba4bd6",
+      "lines": 262
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-member-store.ts",
+      "sha256": "7f464ee1dec5b229cf60fcd3470d5d65a6afa99131d1ef66c35f5fc01831f52d",
+      "lines": 171
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-rows.ts",
+      "sha256": "92ca15f7996322b362b1db4be90dd8b5766c9b22921a2cf814c5c3de536c05d6",
+      "lines": 159
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-session-store.ts",
+      "sha256": "b6a75f98b2422de1116aacd99fab8dbdd54e77855aaa946db18d6a73b71943ca",
+      "lines": 114
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace-support.ts",
+      "sha256": "38fa9516f0874d3fab5a715ede31e78c2015c9587472b9acac163c3c0852f7c1",
+      "lines": 79
+    },
+    {
+      "path": "packages/database/src/tenant-access/identity-workspace.ts",
+      "sha256": "2a6ed0e8c6994f84ed56dc4fe8ec6bbb0f88fb76162caa8c3d10f0b041d3ab42",
+      "lines": 414
+    },
+    {
+      "path": "packages/database/src/tenant-access/oidc-login-transactions.ts",
+      "sha256": "a7634b76c3a6f030241340aefdcb43b76a1b010f001e3e9cd7dd3cc6fe854b71",
+      "lines": 256
+    },
+    {
+      "path": "packages/database/src/tenant-access/testing.ts",
+      "sha256": "1e55a01340aa6d121e3524f3c1e716fa8f85b166a6c38dfc640ad0b533e99ebb",
+      "lines": 59
+    },
+    {
+      "path": "packages/database/src/tenant-access/workspace-policy.ts",
+      "sha256": "1a05683ef282c7dc6ff327524c0c45ee95cfbdc987e40fefaaee84bf5a48bfae",
+      "lines": 116
+    },
+    {
+      "path": "packages/database/src/tenant-access/workspace.ts",
+      "sha256": "6eefd55d07bb36a2cd445b8435dcd3e64f8690ecd17e3837a7078078c3bad057",
+      "lines": 316
+    },
+    {
+      "path": "packages/database/src/testing.ts",
+      "sha256": "0ad498b95c7e23b1a540a98c072aca247b7bfe260f751330cc1e2be0c9a035b9",
+      "lines": 87
+    },
+    {
+      "path": "packages/database/src/triggers/schedule-recurrence.ts",
+      "sha256": "66b63d76f4ebb33fb6210300777702bdedd55ba784bfa0cbac827675acc00ef0",
+      "lines": 278
+    },
+    {
+      "path": "packages/database/src/triggers/schedule-trigger-database.ts",
+      "sha256": "72507a0d35e03692a5fe29738a944761cfe817018a20e1b87fe55d962ca501d5",
+      "lines": 406
+    },
+    {
+      "path": "packages/database/src/triggers/schedule-trigger-errors.ts",
+      "sha256": "e05d462d027ed45a49883ba59277418a0faef9ae08297cb9eebcde9c13d68160",
+      "lines": 13
+    },
+    {
+      "path": "packages/database/src/triggers/schedule-trigger-scanner.ts",
+      "sha256": "d27746190ea52d87b1419798636e2e6e111e133dc21deae1fea048152e20128c",
+      "lines": 262
+    },
+    {
+      "path": "packages/database/src/triggers/schedule-triggers.ts",
+      "sha256": "dc58f8c8fd6c06b2d8da03e73d2514a5921c3014a7187e4058b77b9705519f47",
+      "lines": 17
+    },
+    {
+      "path": "packages/database/src/triggers/testing.ts",
+      "sha256": "584f8fd25146922931c0304020de092eda9ea59a6562cb984264e7c69814f0f9",
+      "lines": 42
+    },
+    {
+      "path": "packages/database/src/triggers/trigger-management-access.ts",
+      "sha256": "b20748255c55c98d7886583924551d5823d641123a0b0f7961dc981e970827b8",
+      "lines": 31
+    },
+    {
+      "path": "packages/database/src/triggers/webhook-triggers.ts",
+      "sha256": "ea56886fb2e97c2e5903a8c1b094d3976639b0ef3ca06b2e2c26b17c7ad778ec",
+      "lines": 653
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-trigger-activation.ts",
+      "sha256": "395adb23c3825fef9be2d91e4a34b58b97c528a409fc91d09eb3be31fbc331b0",
+      "lines": 48
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-trigger-errors.ts",
+      "sha256": "2b23f84594bd5a739fc87148b882bc3f1fa7c5ee96e13975f0aabb8f4db031cf",
+      "lines": 8
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-trigger-health.ts",
+      "sha256": "44aa7da693934ddadb7266730ebdb994a0c6720d28cff800e46cbc875d54759e",
+      "lines": 103
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-trigger-materialization.ts",
+      "sha256": "831bc1830e1cc12ca87f0a47e41ba035dc8e788335b02721611cbe42a3c65735",
+      "lines": 163
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-trigger-projection.ts",
+      "sha256": "013788db8fb6ee977900c67e5f45471aec91b20c4a4d61ec304519cb435932f9",
+      "lines": 110
+    },
+    {
+      "path": "packages/database/src/triggers/workflow-triggers.ts",
+      "sha256": "068a56198047596d90df9754d83afe8d28b286ff8de608a06fd8e49883530277",
+      "lines": 283
+    },
+    {
+      "path": "packages/database/src/validation/persisted-primitives.ts",
+      "sha256": "ee3c9f56ef002d4ff5b04033014b7f1a1678d89bfcc975fa06acd10385976597",
+      "lines": 5
+    },
+    {
+      "path": "packages/database/test/artifact-capacity-readiness.integration.test.ts",
+      "sha256": "73b776b64de4fc3c124e72defb5445af82f27fc7eead3a44662837fd0352b6db",
+      "lines": 258
+    },
+    {
+      "path": "packages/database/test/artifact-finalization-retention-deadline-migration.integration.test.ts",
+      "sha256": "3bfec70df32170df9cf928f773104840a5dd2eecda07bcdd7ee98d7df626379d",
+      "lines": 326
+    },
+    {
+      "path": "packages/database/test/artifact-finalization-retention-deadline-migration.test.ts",
+      "sha256": "83e080f0ea0cf869e410353c151412fd05a0645c6d7101844cd8d640498cd347",
+      "lines": 26
+    },
+    {
+      "path": "packages/database/test/artifact-media-type-http-safety-migration.integration.test.ts",
+      "sha256": "da518e9a35c2250d6f1c6a9faef6a071794cbd29430a708769b9f78c1b6ba373",
+      "lines": 127
+    },
+    {
+      "path": "packages/database/test/artifact-media-type-http-safety-migration.test.ts",
+      "sha256": "46726386f6a2e62499df2c5ad494acf4c3d859215650d94aa9dba01001a27325",
+      "lines": 29
+    },
+    {
+      "path": "packages/database/test/artifact-upload-contract.test.ts",
+      "sha256": "79eb13d1c02dd73ef4d786cd671a0a33d3e3c7765da3dbe3c3c0a05e5062a4eb",
+      "lines": 70
+    },
+    {
+      "path": "packages/database/test/artifact-upload-runtime.test.ts",
+      "sha256": "055a52416426b2504bc1ffabc77f8b0ef4b8f6371a2d5c8e0ba79f2e93e020fd",
+      "lines": 139
+    },
+    {
+      "path": "packages/database/test/artifact-upload.integration.test.ts",
+      "sha256": "9abf5f180d9b329263c0c08756c7d59db22980eaf8578a24bc1334bd569a9a17",
+      "lines": 771
+    },
+    {
+      "path": "packages/database/test/artifacts-validation.test.ts",
+      "sha256": "87603abd92b297e46ed96d92b6786a1085eece74598657304817a24df299f930",
+      "lines": 40
+    },
+    {
+      "path": "packages/database/test/artifacts.integration.test.ts",
+      "sha256": "1379a87194c7735c0f0e2b2bae2b9323cd68cb9de5e80bbaedb9df14d82ba2b5",
+      "lines": 366
+    },
+    {
+      "path": "packages/database/test/baseline-compatibility-fixture.ts",
+      "sha256": "ac4b8b000e37b9717b70acd4144b02d6634a6049cf83bf2c18bb85e0fd7505fe",
+      "lines": 22
+    },
+    {
+      "path": "packages/database/test/compatibility-release.integration.test.ts",
+      "sha256": "f0045a1965c691c3dec1a3e0fc1c5dd4d7ba285a811ab2ffa37ae20368cf7a06",
+      "lines": 744
+    },
+    {
+      "path": "packages/database/test/compatibility-release.test.ts",
+      "sha256": "03e65f3338da24483d1a30cf8dd694287950729f35fdebd46ec314a4c47f1b2b",
+      "lines": 142
+    },
+    {
+      "path": "packages/database/test/config.test.ts",
+      "sha256": "bd70878df2f9d19ebd41fb738555fd52548bbbf9b5cc646887faaa6cb04aa747",
+      "lines": 188
+    },
+    {
+      "path": "packages/database/test/connection-tests.integration.test.ts",
+      "sha256": "c1c125bec4ee0426f482f7fa1cd656a0a06d39aac11049e410fa38fec6bd4079",
+      "lines": 372
+    },
+    {
+      "path": "packages/database/test/connections-compatibility.integration.test.ts",
+      "sha256": "2346ae63d620b76ab3285781b4b376d79dbbc3d88ce6fdf98095a5015b4f5177",
+      "lines": 421
+    },
+    {
+      "path": "packages/database/test/connections-concurrency-security.integration.test.ts",
+      "sha256": "190503cc69bb3911fef2f640e218751e18885bd698c0b07fd9fd7f1ea93f193c",
+      "lines": 254
+    },
+    {
+      "path": "packages/database/test/connections-lifecycle.integration.test.ts",
+      "sha256": "ac07cf5956310004a52ed9ad014ee28f0f6ea4d9aa9fe091551b2153b3b5c37f",
+      "lines": 494
+    },
+    {
+      "path": "packages/database/test/control-ledger-command-lock-migration.test.ts",
+      "sha256": "7812fcbe9431f58bcfd009982125bdddc68da448c4a311df312b85c1a4628235",
+      "lines": 26
+    },
+    {
+      "path": "packages/database/test/control-ledger-coordinator-part-2.integration.test.ts",
+      "sha256": "e9cf46da03e0438aadbd31fa6c7caf7e281b93378fd6d57a21d25d0380b84f44",
+      "lines": 381
+    },
+    {
+      "path": "packages/database/test/control-ledger-coordinator.integration.test.ts",
+      "sha256": "85905aa89eb3049f817b78c51ebee6ac68995d97a8f7a56881917e7f5d38b854",
+      "lines": 408
+    },
+    {
+      "path": "packages/database/test/control-ledger-coordinator.test.ts",
+      "sha256": "09ac1f334b7681c8f04daaf024cd20aa9d4e7b45ef0c62eecb761b25740ee448",
+      "lines": 802
+    },
+    {
+      "path": "packages/database/test/coordinator-retry-migration.test.ts",
+      "sha256": "2987ee96fc3ea8fc8a7aa3fc04c72c93201ff579e9493167daa5afab9ce0ab0a",
+      "lines": 32
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-cas.integration.test.ts",
+      "sha256": "9c2295b993a35a0242b9f0b7d30adf92d54a9d1855350daf7f8f86ce90b18c5c",
+      "lines": 856
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-commit-output.integration.test.ts",
+      "sha256": "ba53a32b74bb69d6094fad0acf2d06f12620d4767085857dbc377af2790c6e7a",
+      "lines": 929
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-foreach.integration.test.ts",
+      "sha256": "ca29bddeb3deabf88c84d1324a48e43b6151b8cc8f0e9e37a9a837f09effeb38",
+      "lines": 611
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-migrations.integration.test.ts",
+      "sha256": "5f7457b79ff28e558273df30ab6806614efa33d99e61dbe5ac1e60c2323fec2f",
+      "lines": 578
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-node-attempts.integration.test.ts",
+      "sha256": "0930da9e5f6d90c33889d66805b41a17cfbd17db4181bc9e80937538974cd66a",
+      "lines": 1381
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-observations.integration.test.ts",
+      "sha256": "fac88d6f88debc2fe4d68f12ca5f8563ab007601a39c01a10b34f0c6bd4c8873",
+      "lines": 1371
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-parallel-output.integration.test.ts",
+      "sha256": "6a2356269f72954bdcad2b4141a7ccbbcc40ac1255d3a46de144310b51102287",
+      "lines": 81
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-pending-failures.integration.test.ts",
+      "sha256": "636d0f747964e054b3f7cb471137ff12cfcfddd6902cd11944d48b1b29f03a31",
+      "lines": 147
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-scheduling.integration.test.ts",
+      "sha256": "a0309f3e7b9327f5e98ff51055968f2ce1bac41f79a9b5ba880e4db4e2f5fa47",
+      "lines": 1076
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store-wakeups.integration.test.ts",
+      "sha256": "227fd5965f1c29145ff0a69e51768acb75a15f75eabc7377230f196dbcd7d22f",
+      "lines": 199
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store.fixtures.ts",
+      "sha256": "c5e076ac25520244036506f12da6cc8d51d7e975ef9cb683a3a0d46727d9088b",
+      "lines": 714
+    },
+    {
+      "path": "packages/database/test/coordinator-run-store.test.ts",
+      "sha256": "c8bacbfacd5fc7f799b431767bbaa5d391938a9693648a1b978c5528c856c925",
+      "lines": 120
+    },
+    {
+      "path": "packages/database/test/database-runtime.integration.test.ts",
+      "sha256": "b5113eee4b76bcf2f22330a345624fbe1a964ad13331289cbb7436afe697b4fa",
+      "lines": 105
+    },
+    {
+      "path": "packages/database/test/database-runtime.test.ts",
+      "sha256": "98c6730b291f59138d941a9388004c5dfd20dd110b3b83f43bde5a803b77753a",
+      "lines": 67
+    },
+    {
+      "path": "packages/database/test/due-node-wakeup-migration.test.ts",
+      "sha256": "27e85b740b240f329c92b35a87cfb6744b7693e75ca366e43806f8bd4a761564",
+      "lines": 31
+    },
+    {
+      "path": "packages/database/test/durable-wait-migration.test.ts",
+      "sha256": "599120e81e0601b8ac7ea312ef6bea61deb340e7251365eae5b8fa8d2281b484",
+      "lines": 41
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-capacity.integration.test.ts",
+      "sha256": "72567fbf80328eabb1b198fc88c880086aee458774676eb46981e1ae338db799",
+      "lines": 471
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-lifecycle.integration.test.ts",
+      "sha256": "4a278fd5827a30f82db5904786c8f456da4c0d97a23cdf9cc1a4119abb836ec1",
+      "lines": 160
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-notifications.integration.test.ts",
+      "sha256": "b06451e5140fb0fe08a56be8995254b4ead2515ec475236277c5d928bd742cce",
+      "lines": 399
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-persistence.integration.test.ts",
+      "sha256": "b8620703d7461b7e84f332d575ff47e28fbaaae58b05a7831a33ea749f2ae7af",
+      "lines": 417
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-regional.integration.test.ts",
+      "sha256": "b12f2df5460aae3c12ee4d241668ebc99491e78dbaa8ff67f71d2acc5fbd7841",
+      "lines": 94
+    },
+    {
+      "path": "packages/database/test/execution-acceptance-security.integration.test.ts",
+      "sha256": "a343aefcf23235fd126855763bfc319d8e71c0ddb29d2c5e176038d5a43112c3",
+      "lines": 384
+    },
+    {
+      "path": "packages/database/test/execution-acceptance.fixtures.ts",
+      "sha256": "c93c0d9c63fe7d6a95f286422457a9f65c82bfeb8cc4dbeda6d23c57530a6725",
+      "lines": 440
+    },
+    {
+      "path": "packages/database/test/execution-acceptance.test.ts",
+      "sha256": "48313d6885af75bab7777a06d6273cd956541647d47bee7e1b171581dda844d5",
+      "lines": 47
+    },
+    {
+      "path": "packages/database/test/execution-admission-migration.test.ts",
+      "sha256": "6943bbaee1e95d0431f20cd06133bf881b6dd3358497c9525bd7322b4f0150f0",
+      "lines": 57
+    },
+    {
+      "path": "packages/database/test/execution-value-persistence.integration.test.ts",
+      "sha256": "ab64c3bd5fbf8d46b5b019ddb9d1784e150a3eb3c6e53a53087632eac1d4dd57",
+      "lines": 489
+    },
+    {
+      "path": "packages/database/test/execution-value-persistence.test.ts",
+      "sha256": "a6f4800a2ad14b46486b6c440daf6d0899138b6868052565ba83d74ec1ffb1a6",
+      "lines": 44
+    },
+    {
+      "path": "packages/database/test/expired-artifact-upload-retention-migration.test.ts",
+      "sha256": "56c93be3732a67e98d6b6333e72a83274c7f4c5eab9b4bcac3e510f2ea62c595",
+      "lines": 24
+    },
+    {
+      "path": "packages/database/test/failure-notification-completion-store.test.ts",
+      "sha256": "251a8edbd822ecfe022915695677ffdd3b81ffee1423276621f7fc9edc9cb919",
+      "lines": 309
+    },
+    {
+      "path": "packages/database/test/fixtures/migration-history-v1.json",
+      "sha256": "d2ddc4b2458a4618d5c100b0717da09363bd14551ddb6e0f31355880f6faca30",
+      "lines": 69
+    },
+    {
+      "path": "packages/database/test/fixtures/queue-duplicate-proof.sql",
+      "sha256": "1d8a215425a472a49022c91ab3a4ff476e0b3b1c61efe7f674ce0a46621f8ed9",
+      "lines": 131
+    },
+    {
+      "path": "packages/database/test/for-each-barrier-migration.test.ts",
+      "sha256": "0dbecc2385b82bb6d81498ed7c373086dec74bd2d76f1fa349b425c4334a9408",
+      "lines": 23
+    },
+    {
+      "path": "packages/database/test/identity-workspace-session-cancellation.test.ts",
+      "sha256": "e0a550840e53165589dd38fd4f4be49e034f8108fec226f0316baa6e07a7408b",
+      "lines": 35
+    },
+    {
+      "path": "packages/database/test/identity-workspace.integration.test.ts",
+      "sha256": "4e72e68de183fbc41b89798873f8d0c67a1141852f986b8698351c8c0e194ca6",
+      "lines": 996
+    }
+  ]
+}

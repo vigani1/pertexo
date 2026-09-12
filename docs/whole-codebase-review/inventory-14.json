@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/node-sdk/src/compatibility-canonical.ts",
+      "sha256": "ce740264708ba9314db5399bd01052ea8ccd596ef9dd7f9a6e3f17707f5b6522",
+      "lines": 246
+    },
+    {
+      "path": "packages/node-sdk/src/definitions/schema-document.ts",
+      "sha256": "3a310202412b4496c0ff558b62c52396b9849c7bc28297a667ca0c4b9d7a259f",
+      "lines": 179
+    },
+    {
+      "path": "packages/node-sdk/src/executor-contracts.ts",
+      "sha256": "87a7d34d3dd657124851f7e5a638a4fff051fa58babdded71e25ee9b07c75282",
+      "lines": 144
+    },
+    {
+      "path": "packages/node-sdk/src/executor-errors.ts",
+      "sha256": "13e01647b8424591618e532d8c5c2ba8540c3ba312a93d539f440dd0fe3b0777",
+      "lines": 186
+    },
+    {
+      "path": "packages/node-sdk/src/identity.ts",
+      "sha256": "5c608c05f35e8f28b84103c89a46c9ed23b72454c844234cd1881cb7ad437e6a",
+      "lines": 31
+    },
+    {
+      "path": "packages/node-sdk/src/index.ts",
+      "sha256": "9bf73b28ff8d2acdb893fde012114241b72205f7567f350d19766e60eefb23e9",
+      "lines": 2
+    },
+    {
+      "path": "packages/node-sdk/src/json-boundary.ts",
+      "sha256": "36d7bc2c1d9dd88f5dd1dfdffa0c2c4a3ceaf650902bf184fae037a31a4ec284",
+      "lines": 179
+    },
+    {
+      "path": "packages/node-sdk/src/registry-binding.ts",
+      "sha256": "9472adf5bcf331f3b8756d221850806a934123f0a67c120508f88bb2c72d4d8d",
+      "lines": 14
+    },
+    {
+      "path": "packages/node-sdk/src/release.ts",
+      "sha256": "1346c6868ae0c5ecd04e89fb1678f478aea8a28b5cceb159586ced87753e2e3c",
+      "lines": 551
+    },
+    {
+      "path": "packages/node-sdk/src/server-only.ts",
+      "sha256": "d257ba4917e8f9ce730db9979b05d8d92d457527daf2c35021094a812da8ec84",
+      "lines": 5
+    },
+    {
+      "path": "packages/node-sdk/src/server.ts",
+      "sha256": "d76ca7034a5b0f1ec686dde414261c555128aa84e6fc28e7d875684ce5b449b4",
+      "lines": 524
+    },
+    {
+      "path": "packages/node-sdk/test/package-contract.test.ts",
+      "sha256": "054b19ce22892070e73e96704c1d637d78e5ed224ed60205b63a3a322cecab74",
+      "lines": 69
+    },
+    {
+      "path": "packages/node-sdk/test/registry.test.ts",
+      "sha256": "5d6ed3d6217049cda7690a0e2376ee406a49ea71c9a66b46d192641f8496cb91",
+      "lines": 1306
+    },
+    {
+      "path": "packages/node-sdk/tsconfig.json",
+      "sha256": "3d49625a4eb4c22e8b5017114685ac05b1be693fecbe8183e74457de6f68e408",
+      "lines": 22
+    },
+    {
+      "path": "packages/node-sdk/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/node-sdk/vitest.config.ts",
+      "sha256": "ca2f78a3a95b6c1e8bd85dec7d07f4255261f7ffbd912c81d0748df2498b50f5",
+      "lines": 7
+    },
+    {
+      "path": "packages/node-sdk/vitest.coverage.config.ts",
+      "sha256": "23f2b6d49abd01e28362b536a9b4e99de80a434b8f5c65483716e90f9cc8c15b",
+      "lines": 17
+    },
+    {
+      "path": "packages/nodes-core/package.json",
+      "sha256": "d0035cee79137a83c3b3239418f23701024ca8b0a8b1233980de2833c89fd24d",
+      "lines": 36
+    },
+    {
+      "path": "packages/nodes-core/src/condition/definition.ts",
+      "sha256": "02509859cd71979ba75ce5b2e07e6a05f6afa5559ef7911add54f56e6e1504af",
+      "lines": 44
+    },
+    {
+      "path": "packages/nodes-core/src/condition/executor.ts",
+      "sha256": "3db595a8fec2d8d9c3ed0ce61412d80105d4f6dcac4cc93c5efe6fd62155dcfe",
+      "lines": 28
+    },
+    {
+      "path": "packages/nodes-core/src/condition/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/condition/validation.ts",
+      "sha256": "7bea66d0142aee8340fd85d8171a4c512a5650193508d79d97daa214a003667e",
+      "lines": 10
+    },
+    {
+      "path": "packages/nodes-core/src/definitions.ts",
+      "sha256": "41cf07afd93208a66b956c52ae9f07d7a021d397bc2764e274bfac937f3aa09e",
+      "lines": 199
+    },
+    {
+      "path": "packages/nodes-core/src/for-each/definition.ts",
+      "sha256": "d88278ec7eb959d192f63c14ecef3b2bf63b8e370a74fd95f2c9e348d3cd0367",
+      "lines": 41
+    },
+    {
+      "path": "packages/nodes-core/src/for-each/executor.ts",
+      "sha256": "9469562b04e545a46cc1f7957e98ae967d257c018de7fcd46c46ad2974ef69c9",
+      "lines": 27
+    },
+    {
+      "path": "packages/nodes-core/src/for-each/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/for-each/validation.ts",
+      "sha256": "efab281e2f4e6d3cc1daee0d766a3ec35c71e9903a308f465e1fe843b9c40279",
+      "lines": 39
+    },
+    {
+      "path": "packages/nodes-core/src/index.ts",
+      "sha256": "52e02af2504e44e763a056903c3493e4c26bfb4b12b186630db7b77058e4c6be",
+      "lines": 16
+    },
+    {
+      "path": "packages/nodes-core/src/manual/definition.ts",
+      "sha256": "343210b408010eb917d6b3cbcb96e21729cf66ee0b26a101be24e3179f7b80ac",
+      "lines": 41
+    },
+    {
+      "path": "packages/nodes-core/src/manual/executor.ts",
+      "sha256": "1e00ed4f252b8b2b043aeb43b88614168b417ae4964f3b3b11ffc8ea952e2c96",
+      "lines": 18
+    },
+    {
+      "path": "packages/nodes-core/src/manual/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/manual/validation.ts",
+      "sha256": "9012eee04104f842232223b55cd5a500d5e7852488fe0fe8ed0b96a112a97256",
+      "lines": 7
+    },
+    {
+      "path": "packages/nodes-core/src/merge/definition.ts",
+      "sha256": "457ecb29eff7e97d64892f5b48ccb52553774b626b4c44aab760fefc27bfd75b",
+      "lines": 93
+    },
+    {
+      "path": "packages/nodes-core/src/merge/executor.ts",
+      "sha256": "eab2c913a3bd71987c983ba9585536d5106710c9b495b38aad2ec624027817e4",
+      "lines": 37
+    },
+    {
+      "path": "packages/nodes-core/src/merge/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/merge/validation.ts",
+      "sha256": "c01e5a8ed1e9042d8fa27f34b5913bbcb5a1162d0a4e85395a6a47b811b1081b",
+      "lines": 110
+    },
+    {
+      "path": "packages/nodes-core/src/parallel/definition.ts",
+      "sha256": "8eca5756f04098ea339e4e59cad2846771f12360d3870102b7475397f28f22fc",
+      "lines": 89
+    },
+    {
+      "path": "packages/nodes-core/src/parallel/executor.ts",
+      "sha256": "b3980b69184088bf576a5b3f0db9e2c85947ddf4243e607b2b24f764fa493b26",
+      "lines": 42
+    },
+    {
+      "path": "packages/nodes-core/src/parallel/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/parallel/validation.ts",
+      "sha256": "61ce1ebfc42357f63ee2c1a9c9135eeabc23163784b8c9b40864a8cc9946696d",
+      "lines": 77
+    },
+    {
+      "path": "packages/nodes-core/src/policies.ts",
+      "sha256": "0f48778846c46b72fd6b1df337989162b58801b3389c98c7b2e6db947153f7ce",
+      "lines": 10
+    },
+    {
+      "path": "packages/nodes-core/src/registrations.ts",
+      "sha256": "f1cf96743e3e3d4b43c84dfea8a48ff430b490fb5b6a13e3ce896ef096dcca8b",
+      "lines": 99
+    },
+    {
+      "path": "packages/nodes-core/src/registry.ts",
+      "sha256": "b98c429ee24d35a8ae62c33d4108d4cc096652037d8201bb3cc261ed7142b47d",
+      "lines": 68
+    },
+    {
+      "path": "packages/nodes-core/src/schedule/definition.ts",
+      "sha256": "ca2229b972fe88cb4c5fb84e63089ae917285c182a6537a9f557229d3c8fd089",
+      "lines": 88
+    },
+    {
+      "path": "packages/nodes-core/src/schedule/executor.ts",
+      "sha256": "46ea5dd054880eef95a3ec5651233eed179e86ed37f8af902b41523fdc9a59c1",
+      "lines": 37
+    },
+    {
+      "path": "packages/nodes-core/src/schedule/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/schedule/validation.ts",
+      "sha256": "41ff73edc2983b369baf329d59f1b17da2bf676d67558645e701ed2fe5c00c46",
+      "lines": 126
+    },
+    {
+      "path": "packages/nodes-core/src/server-only.ts",
+      "sha256": "915e5e180d0eb3b6096574ed74b2cb8eff3e2688b7071fa522432ee6c72b0048",
+      "lines": 5
+    },
+    {
+      "path": "packages/nodes-core/src/server.ts",
+      "sha256": "b9a8e051bb89089b891386488d24daa1e50549ce4283073377f28d4b91f58d97",
+      "lines": 100
+    },
+    {
+      "path": "packages/nodes-core/src/set/definition.ts",
+      "sha256": "b712b46885af44cce71212ca397c98f187a939b7196a1be1307299a102b6838d",
+      "lines": 41
+    },
+    {
+      "path": "packages/nodes-core/src/set/executor.ts",
+      "sha256": "790333dc777e8d9df220aa97341986e2c1196dc25f06452031e3883eae33d1f8",
+      "lines": 21
+    },
+    {
+      "path": "packages/nodes-core/src/set/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/set/validation.ts",
+      "sha256": "4576743fcb5b9a24fce61ca127c30ebdb81c95a752ea6470834337ce689c00d0",
+      "lines": 7
+    },
+    {
+      "path": "packages/nodes-core/src/switch/definition.ts",
+      "sha256": "138980c493c7d6eafd10ce361c8f9b45469f056b0a1e4d37b0fbc55513165910",
+      "lines": 45
+    },
+    {
+      "path": "packages/nodes-core/src/switch/executor.ts",
+      "sha256": "0c388871a917186faae762b4bd8e489dcf0d0a5701b907a38858ed94cf516a11",
+      "lines": 28
+    },
+    {
+      "path": "packages/nodes-core/src/switch/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/switch/validation.ts",
+      "sha256": "b32d3ba170f228617db25aa54c236cf9a5ac7646ec456b34cb8bdd1b702a6d6b",
+      "lines": 69
+    },
+    {
+      "path": "packages/nodes-core/src/terminate/definition.ts",
+      "sha256": "61f417cc406ac139b38a065f8328d1177a1ce6f8c8ff2aeb9a1b22307257ab1d",
+      "lines": 45
+    },
+    {
+      "path": "packages/nodes-core/src/terminate/executor.ts",
+      "sha256": "094f3e2c58b1a9b30b95a7c24751f3398b1ee8f9f2470a7d4b5f2ec00db89683",
+      "lines": 21
+    },
+    {
+      "path": "packages/nodes-core/src/terminate/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/terminate/validation.ts",
+      "sha256": "e13bd51c293160ce7bbd0a25900b93cad9ed2a2dad6838efc6bcd7027c0a6b78",
+      "lines": 7
+    },
+    {
+      "path": "packages/nodes-core/src/validate/definition.ts",
+      "sha256": "0876b06880138ed1773f2cf68f949d6b0c59e04e1b0a26d9e0f7e168670f9bb7",
+      "lines": 55
+    },
+    {
+      "path": "packages/nodes-core/src/validate/executor.ts",
+      "sha256": "3016c4db6ea1afb347e40f62ce3d9ef10b35f355da8ffb54063bfd417cd41c6a",
+      "lines": 45
+    },
+    {
+      "path": "packages/nodes-core/src/validate/index.ts",
+      "sha256": "60f1d3073140a3bfafd5a543f88a359802dc9fb5b168a0c9609605d4417d97c6",
+      "lines": 4
+    },
+    {
+      "path": "packages/nodes-core/src/validate/issue-metadata.ts",
+      "sha256": "25bbe970b225df0d8272e6cb15b64887aae3af868e668a32d6b34425c0fcee12",
+      "lines": 97
+    },
+    {
+      "path": "packages/nodes-core/src/validate/semantics.ts",
+      "sha256": "92fee3e2e7ecb07bff46191bcd1089a37f8d5de58061a2c3f7031b69b6c70e13",
+      "lines": 131
+    },
+    {
+      "path": "packages/nodes-core/src/validate/validation.ts",
+      "sha256": "a5fcc035119eb6e0853f390a04532da7ec06c0e18671200845107f37da543fce",
+      "lines": 287
+    },
+    {
+      "path": "packages/nodes-core/src/wait/definition.ts",
+      "sha256": "b2af4eb3a8e08b1429df35951ae2bbce12bbb685daeb5e8d867f1c84c4702f1c",
+      "lines": 40
+    },
+    {
+      "path": "packages/nodes-core/src/wait/executor.ts",
+      "sha256": "e3d4c633d5642bce88db9ef267001b36bbded19f913938b8ffcc34d6c50ab7ee",
+      "lines": 18
+    },
+    {
+      "path": "packages/nodes-core/src/wait/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/wait/validation.ts",
+      "sha256": "6921d3545c8d407d7271e3d810234367e7bae55aebf976e4188d52ce55e2d849",
+      "lines": 19
+    },
+    {
+      "path": "packages/nodes-core/src/webhook/definition.ts",
+      "sha256": "4fce336fdad2f0297d37ed16496bf9c7f7374c4184b594d7c16b6c733fae5d2c",
+      "lines": 40
+    },
+    {
+      "path": "packages/nodes-core/src/webhook/executor.ts",
+      "sha256": "77ec9cee2a24a9a109d581c6e0f42ef20af3e4da1206470f8c3abac9aac458da",
+      "lines": 21
+    },
+    {
+      "path": "packages/nodes-core/src/webhook/index.ts",
+      "sha256": "afc66613ac055b3e5908570eccdec2c1a7a81911117e4cd404fd51aacf59060f",
+      "lines": 3
+    },
+    {
+      "path": "packages/nodes-core/src/webhook/validation.ts",
+      "sha256": "9dc7866413ff9a61b7a7087126761393094f067cbaea64b6794c3eaddd54969b",
+      "lines": 8
+    },
+    {
+      "path": "packages/nodes-core/test/data-nodes.test.ts",
+      "sha256": "4e10505740e2f02067a052915744524146dd137f4a4ad78bfac05ff59ecbbcb2",
+      "lines": 156
+    },
+    {
+      "path": "packages/nodes-core/test/node-execution.test.ts",
+      "sha256": "581aa4016eebbf3b9ea0dbaeb791453593435baa4f432e8bcca27c572b0c9caa",
+      "lines": 193
+    },
+    {
+      "path": "packages/nodes-core/test/orchestration-nodes.test.ts",
+      "sha256": "c31d34dd3f59505123e00306ef37d78df1284acef5028c793ab620d8f77be716",
+      "lines": 254
+    },
+    {
+      "path": "packages/nodes-core/test/package-contract.test.ts",
+      "sha256": "58e126b4973de51402ab9e2e03ee322655513b9448ddc3069becb334c938b748",
+      "lines": 94
+    },
+    {
+      "path": "packages/nodes-core/test/retained-registry.test.ts",
+      "sha256": "a91d39fcf1f47526c7d78d50240b5c1e84685d13e2d65ca48d3cebc98165bda2",
+      "lines": 214
+    },
+    {
+      "path": "packages/nodes-core/test/trigger-nodes.test.ts",
+      "sha256": "48167a22f5e069c6307efae042fdf3a4d8a1fa9e28dadc7a3fd141156f0b0109",
+      "lines": 78
+    },
+    {
+      "path": "packages/nodes-core/test/validate.test.ts",
+      "sha256": "f5c7ff2ba1355741c9c691f87cfae3c4bc79cab383c92989cef9d8205afc3e5d",
+      "lines": 552
+    },
+    {
+      "path": "packages/nodes-core/tsconfig.json",
+      "sha256": "01c5d0f8f60eac04506c62f9ea684257720ec6f42d6472447ca45d0af185ffba",
+      "lines": 30
+    },
+    {
+      "path": "packages/nodes-core/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/nodes-core/vitest.config.ts",
+      "sha256": "ca2f78a3a95b6c1e8bd85dec7d07f4255261f7ffbd912c81d0748df2498b50f5",
+      "lines": 7
+    },
+    {
+      "path": "packages/nodes-core/vitest.coverage.config.ts",
+      "sha256": "277d26440bc922cf45f2e96fa543990d4c02a44d749faef29d79447e07c02cb8",
+      "lines": 17
+    },
+    {
+      "path": "packages/observability/package.json",
+      "sha256": "f38756474c9a85b20a52064c44aae0c64dfc75b131fb24fcb168d322da793b25",
+      "lines": 85
+    },
+    {
+      "path": "packages/observability/src/config.ts",
+      "sha256": "bdc33cc14ba2fca83453a61368218b728267df94a710727d424472441bea282f",
+      "lines": 68
+    },
+    {
+      "path": "packages/observability/src/index.ts",
+      "sha256": "e8f1a00fd2dc7c9a54c561ea86653740d227086961bb07fc4dab2d4cb6d50e2a",
+      "lines": 30
+    },
+    {
+      "path": "packages/observability/src/logger.ts",
+      "sha256": "cd6857dc42ec6848530eed9f3f928f3bc0b58990f3c750cc883318bd8359a0eb",
+      "lines": 393
+    },
+    {
+      "path": "packages/observability/src/maintenance-metrics.ts",
+      "sha256": "86e3d5cabbdd39e9a7ef1215d34e8f3e254f5f6d3ee3156f8ecad40e15d6422f",
+      "lines": 78
+    },
+    {
+      "path": "packages/observability/src/nest-runtime.ts",
+      "sha256": "f3e174fea80312120a16c4f647df515c906e31da0eb8b8c4a2bb7cd468b6dfad",
+      "lines": 181
+    },
+    {
+      "path": "packages/observability/src/queue-tracing.ts",
+      "sha256": "85cc28a2914b81eb6e4a6a2debba51e315f32f0af98d50516ccf1692ddcd2372",
+      "lines": 107
+    },
+    {
+      "path": "packages/observability/src/runtime.ts",
+      "sha256": "2a5ac448a9504f7317befe3c2b630f68507f1463f6f2e0265463aa5369ec312c",
+      "lines": 24
+    },
+    {
+      "path": "packages/observability/src/server-only.ts",
+      "sha256": "0fb13ee77ca6c3e61845a8e64f0b5db2163cc9b1dbde673e1b07456ad4dcd911",
+      "lines": 6
+    },
+    {
+      "path": "packages/observability/src/telemetry-sanitization.ts",
+      "sha256": "3a84372e47bcb5c00e60a1b25df8a734f6161ed8ccda7e605fbd6cc5f0807ce9",
+      "lines": 163
+    },
+    {
+      "path": "packages/observability/src/telemetry.ts",
+      "sha256": "9ffa7addf9a4ae7efae336b981f3ca4d97a34d9cd7173924193681857b7b38dd",
+      "lines": 200
+    },
+    {
+      "path": "packages/observability/src/transport-metrics.ts",
+      "sha256": "90afeb434a5ec97e9e17e5b7a12ed23e6106ab175c28b536fa9e16060ede8772",
+      "lines": 413
+    },
+    {
+      "path": "packages/observability/test/config.test.ts",
+      "sha256": "8f072ac0eb7aae9ee1f3a3817c851179dbde04390740792bb2f5eac447e5bca1",
+      "lines": 58
+    },
+    {
+      "path": "packages/observability/test/logger.test.ts",
+      "sha256": "f58b4e650909ad67dc1c5580b05f70ed94cea3e16b69026cd9474ff98167a774",
+      "lines": 302
+    }
+  ]
+}

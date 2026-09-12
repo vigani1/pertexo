@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-commit-state.ts",
+      "sha256": "8182d17429b75ae1d314d9a913781fe36650e0ffd43c6f3914cfed533b71cfd1",
+      "lines": 287
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-commit.ts",
+      "sha256": "e161ad2746f4e1d4c260c7e1e356a3f48df73ec2e5020ebf8b18c40a2f7ad716",
+      "lines": 197
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-contract.ts",
+      "sha256": "c8d5def11ce1cebd61f5fd83a18e2ba0f66e582f2915d4937bfd82acb860b4d6",
+      "lines": 117
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-delivery.ts",
+      "sha256": "69b9774d16a3632b39c2ed634e5fe8c75e66c077d8e044a29e5409d5db656d61",
+      "lines": 263
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-execution.ts",
+      "sha256": "d22f18012322b83d5027c49ff0205acba8f0e93a44bee68db5d2634f3fe0087e",
+      "lines": 481
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-fact-physical-state.ts",
+      "sha256": "d1fa9943ff7af7ffaa2b6413cfb6d94a5b02bd3d13a0b00ff90b822579fb833a",
+      "lines": 99
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-observations.ts",
+      "sha256": "eace71701a885602eb65523934bc17ed9a7ed277bcb5a342e6983f32e79c5893",
+      "lines": 727
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-physical-state.ts",
+      "sha256": "54294f8068419a789fce75b2c69b509d9a82ebd94784d8ba55c5678af910a88b",
+      "lines": 263
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-plan-validation.ts",
+      "sha256": "555cac2be8cf229a6eb14da4a75ed5bb6a4fd598d1eb8a994e7a0de4e087f65c",
+      "lines": 224
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-plan.ts",
+      "sha256": "3e665401c1d1caaf950dd1d095ae6780330adb4d509475ac1723212ee109a90e",
+      "lines": 444
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-run-transition.ts",
+      "sha256": "0abb4044b28a1e46edf9e1979cd988cacdd40c005680effa4601f2effbcfc454",
+      "lines": 124
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-settlement.ts",
+      "sha256": "34cba65d5e055e4002a5cb9a1d9a2d23839e68cf10d11ca4486e9d2bae1b8009",
+      "lines": 96
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-status-validation.ts",
+      "sha256": "70bee0781d5aaed18a840924d16d599c00a430aba239f294adb97be77a167f09",
+      "lines": 397
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-terminal.ts",
+      "sha256": "f29e071edaa92436fe32118e8799cc9d66cdecdaf92950bc19d80bc1203a5d09",
+      "lines": 193
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-transactions.ts",
+      "sha256": "008190677ad658fccf208950c1d28f22a8556b0e9f5e1950a7584ad6fece7058",
+      "lines": 34
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store-validation-values.ts",
+      "sha256": "f7777fd4aff9033634c90af1fe358f99fd74269802c4c46209e6d8873cef57f5",
+      "lines": 14
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-run-store.ts",
+      "sha256": "6036af2c4dc1e694ef8fd91c7a8033abea5d759483f78bbd98b5535bc3676842",
+      "lines": 58
+    },
+    {
+      "path": "packages/database/src/execution/deadline-wakeup-scanner.ts",
+      "sha256": "4b8bf4a1ef21a3ee197513377759bc46f7288a835811e01ea58b6ea3dad27d48",
+      "lines": 40
+    },
+    {
+      "path": "packages/database/src/execution/dispatcher-contracts.ts",
+      "sha256": "3ad094242ecaaca660ba205a81e5e9411e99feeee15f57e8d57f20d3d37e797a",
+      "lines": 16
+    },
+    {
+      "path": "packages/database/src/execution/dispatcher-rows.ts",
+      "sha256": "3a3e5e0cdbb0baecf0d126e27472a14701969143fce2e26bc08cc25f73620485",
+      "lines": 51
+    },
+    {
+      "path": "packages/database/src/execution/dispatcher.ts",
+      "sha256": "e17af5dfbbbc4f0d02c3e162723f942949a97b12a2508fe7e5ee2e2bc21dc468",
+      "lines": 498
+    },
+    {
+      "path": "packages/database/src/execution/due-node-wakeup-scanner.ts",
+      "sha256": "fc72725c3dd9e4f389d2c3ee4eb340cd4146ff5a04642fcb90ba48fbebae4b0f",
+      "lines": 40
+    },
+    {
+      "path": "packages/database/src/execution/execution-acceptance.ts",
+      "sha256": "5105d214711b5665ec71257bccc3c2e3bd36011307ee8d34a4f931d71af629c5",
+      "lines": 546
+    },
+    {
+      "path": "packages/database/src/execution/execution-state.ts",
+      "sha256": "f8944b9d0ed5165bea4233e05892dd603423866a891aaaca8cd7d8a1b3d3393f",
+      "lines": 12
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-completion-store.ts",
+      "sha256": "10c124c128a24f502ab5f3a74b4405a736b78fb83e2153fb456a6c98826de51d",
+      "lines": 204
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-contracts.ts",
+      "sha256": "2fd23c991f35e13a4fa8c6e49605a52790d6e4da2ebb815977d1bda71b53e0b5",
+      "lines": 92
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-destination-errors.ts",
+      "sha256": "1aaf7507c90542044d417156226c5dfcff7e4620deb7e9f6625c4cfe9a58b210",
+      "lines": 13
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-destination-store.ts",
+      "sha256": "8ed4c258f92319c2319db784642e70f370e78d50c956cba3f11d864dfe785e1b",
+      "lines": 203
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-destinations.ts",
+      "sha256": "47a73930133237f650024b48d9ece888890be994adaca3d844493a09f06ecb40",
+      "lines": 637
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-errors.ts",
+      "sha256": "0323e84ff066129a96d54bf4368feee831e4ef295b78cdb21ad4c0dd2abc4319",
+      "lines": 4
+    },
+    {
+      "path": "packages/database/src/execution/failure-notification-store-support.ts",
+      "sha256": "bff2a902effe2bb7b59f7732263e2ab750bfc39939f7c218cb852ac7294784a1",
+      "lines": 78
+    },
+    {
+      "path": "packages/database/src/execution/failure-notifications.ts",
+      "sha256": "e9156937f9e9cf5e07fe1f029920d7fd10f04f6523d92323a2e1f1ef2fcb2429",
+      "lines": 270
+    },
+    {
+      "path": "packages/database/src/execution/inbox.ts",
+      "sha256": "625128c4f36c31fc0ae9a586e603ef92df77556d7a19284d89aa832ec0335c56",
+      "lines": 130
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-claim.ts",
+      "sha256": "abf0708f89780197ad89083f073bcaae38e71e7dc6631f7d53f704e21e6e667d",
+      "lines": 282
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-completion.ts",
+      "sha256": "181f0647e4c8354c61af5620888b565bb2a8ab59203e69b885b0fbceef1f1144",
+      "lines": 161
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-contract.ts",
+      "sha256": "2734ccac684474ef40ed5cb68c6f185d448ba9c1e078319a7be3842b1b0df66e",
+      "lines": 376
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-delivery.ts",
+      "sha256": "69af3ec4942ae85cb771a52869e86903bf40183e27afc578639d93d16d23e530",
+      "lines": 142
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-dispatch.ts",
+      "sha256": "6ea5671b4c74c7a4ceaa37508dce00175e7596b1da7911a042ad27301b8a35b6",
+      "lines": 134
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-heartbeat.ts",
+      "sha256": "0f2cf25ad78178d9e1ad47be69f5807dfb0777d8c87214c94628d076817eb808",
+      "lines": 91
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-inputs.ts",
+      "sha256": "27a92af181d85b4956aafb65293c08d067acb2adb615f1b15449f777d70f4a0e",
+      "lines": 389
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-outcomes.ts",
+      "sha256": "95269eabc34aa376702d965376f464db4f2426d210226623add7c5c5695c591f",
+      "lines": 369
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store-transactions.ts",
+      "sha256": "040a6610c862891f35b13ba56d831ff31b4707765a44d6151098cececac57678",
+      "lines": 54
+    },
+    {
+      "path": "packages/database/src/execution/node-attempt-run-store.ts",
+      "sha256": "70acad033e9a88b480242dae8c370184fc7fde24cd9e78309648f2105a8fda5d",
+      "lines": 67
+    },
+    {
+      "path": "packages/database/src/execution/outbox.ts",
+      "sha256": "a94335d532f1efe6203818e6e5a5ee2d3b1602560426f89affa4a53265b6c2c9",
+      "lines": 100
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-acceptance.ts",
+      "sha256": "06e4b89ebc39b85ec3a107cbb3668707d71fafc76f1492ee5d5bd6a969fa4a0f",
+      "lines": 563
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-claim.ts",
+      "sha256": "c3eb062a3122722d1f77a46ba10223b5b0580c4e57ed82ce6033e6de4558f48f",
+      "lines": 312
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-completion.ts",
+      "sha256": "b3ff8bfd5d454ef2d433a7a7dcb13cb5c02da6aa033525425cffd7bdc45896ee",
+      "lines": 249
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-contract.ts",
+      "sha256": "1614eb17c385f68282de094509ca41a768c1b2bc1bc7d5fb79c13e541eeddb23",
+      "lines": 136
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-delivery.ts",
+      "sha256": "c3dbbd420e529708986a94ced83cb34d54799867df095e4425567ebc382f220a",
+      "lines": 277
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-dispatch.ts",
+      "sha256": "cd69908b83d7e5f3f4cdde16ceff96f0acae8194b92510ff8cf5fb9d184941be",
+      "lines": 131
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-heartbeat.ts",
+      "sha256": "a6a103279212720a207387092c0d3dab89d77b073a35c16b152e15ebe10518d8",
+      "lines": 81
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution-reconciliation.ts",
+      "sha256": "38eab747f78d7188243dfce50f25131ebf152bd96e657f0725438a3df9e1d69d",
+      "lines": 487
+    },
+    {
+      "path": "packages/database/src/execution/preview-execution.ts",
+      "sha256": "db551b54c47722055853070497f445933fe1c37be42188db845ba13c9723f060",
+      "lines": 58
+    },
+    {
+      "path": "packages/database/src/execution/published-workflow-reader.ts",
+      "sha256": "275c382caf161697ca26a1a71f4bc72c160fbbc0795c604b7c35530e04886ed0",
+      "lines": 221
+    },
+    {
+      "path": "packages/database/src/execution/run-events.ts",
+      "sha256": "f356fdd55e3b44aa0429026eb8826e948d556b4e4799242e7302c2e9136953f9",
+      "lines": 196
+    },
+    {
+      "path": "packages/database/src/execution/stored-execution-value.ts",
+      "sha256": "c56e4747306ec370a12653288c17d5ed3420dd585ef9c2aec76c3c5650e4eb55",
+      "lines": 362
+    },
+    {
+      "path": "packages/database/src/execution/testing.ts",
+      "sha256": "a4d6b6e4107c756e0f3215d36fb1c2b0893dc7240f8dc3c5fa578d8e20473a16",
+      "lines": 215
+    },
+    {
+      "path": "packages/database/src/execution/unknown-outcome-reconciliation.ts",
+      "sha256": "0c90c9052acdea44c4917198b3f26bbad1536ce52eec005cbe8c455264c6dd64",
+      "lines": 131
+    },
+    {
+      "path": "packages/database/src/execution/workflow-run-api.ts",
+      "sha256": "14f74012a73a9f70e831e244f2cd46141f8d4ca461ed7835070b67eb55ed558b",
+      "lines": 451
+    },
+    {
+      "path": "packages/database/src/execution/workflow-run-cancellation.ts",
+      "sha256": "15c9d5c510c2917b156edb2285b44724e5ce37d0efbe772743a405d03f2c117a",
+      "lines": 91
+    },
+    {
+      "path": "packages/database/src/execution/workflow-run-errors.ts",
+      "sha256": "26d20d0da3a6fad0d6b631ee253bd11fe44f17e3e8ff856254df850c6319d086",
+      "lines": 12
+    },
+    {
+      "path": "packages/database/src/execution/workflow-run-persistence-support.ts",
+      "sha256": "b2178e222b44beecbfabe81abe2ba28b190499c73628e89056195a09c17de7c8",
+      "lines": 161
+    },
+    {
+      "path": "packages/database/src/execution/workflow-run-replay.ts",
+      "sha256": "d258a8e85ac1efa1ff3c14d9d9a905dff099c76bbce69bbab7e6f2a3db4e0a35",
+      "lines": 137
+    },
+    {
+      "path": "packages/database/src/lifecycle.ts",
+      "sha256": "2c99ee5a96991fa7f50c37427878654017c956ffd02f7efde3e489e3c5d5c7d9",
+      "lines": 5
+    },
+    {
+      "path": "packages/database/src/lifecycle/control-ledger-coordinator.ts",
+      "sha256": "b414aeac7e2c6ac10e993c773cb5350483525035f3ecde4259d736167db78f81",
+      "lines": 921
+    },
+    {
+      "path": "packages/database/src/lifecycle/control-ledger-errors.ts",
+      "sha256": "69be9c5da3bcab066299b6903fb72d1c62b6f6885bc339340b3bea0657e43fce",
+      "lines": 31
+    },
+    {
+      "path": "packages/database/src/lifecycle/control-ledger-postgres.ts",
+      "sha256": "8399a468fea940b75e219a3e0acfb56cc3ac90fb2c5dfebc4316282ab62c4384",
+      "lines": 146
+    },
+    {
+      "path": "packages/database/src/lifecycle/control-ledger-read-side.ts",
+      "sha256": "e3202195acb83363d10c973778c02c3978b8925ac8842e826d3cb1450df60235",
+      "lines": 186
+    },
+    {
+      "path": "packages/database/src/lifecycle/preview-retention.ts",
+      "sha256": "0798c4f7a3c978d07f0780a1deec7f111876760fe8a77e4323b8414babf6392c",
+      "lines": 324
+    },
+    {
+      "path": "packages/database/src/lifecycle/retention-contracts.ts",
+      "sha256": "5567b681ccd5469f1b3788d9e29ec31e9d7b84c9a3a8773a85e191c1656d843a",
+      "lines": 144
+    },
+    {
+      "path": "packages/database/src/lifecycle/retention-database-capabilities.ts",
+      "sha256": "b2165bdc3a9539bbfde297546c63f5fd9a8fd89a80423f2f2d06c5a563ca8f35",
+      "lines": 385
+    },
+    {
+      "path": "packages/database/src/lifecycle/retention-support.ts",
+      "sha256": "e56485a10d2a4f139c71fa42accbc7e47c52ab85c809a4803fd47835412f8633",
+      "lines": 97
+    },
+    {
+      "path": "packages/database/src/lifecycle/retention-transaction.ts",
+      "sha256": "915f140a3c7f6ca00b04c029e8f5bc1d67b7eec7a5ff98e4f25eeea02f081e1b",
+      "lines": 338
+    },
+    {
+      "path": "packages/database/src/lifecycle/retention.ts",
+      "sha256": "e9466b4c9ae0e1ac4e5ed32b5fb0c737558d2d8302996bf823ad6f2b87aa3240",
+      "lines": 256
+    },
+    {
+      "path": "packages/database/src/lifecycle/run-artifact-retention.ts",
+      "sha256": "7cca2905885093270aa133d5be56e6cf9542df73b61805fa653f992089d4adc2",
+      "lines": 266
+    },
+    {
+      "path": "packages/database/src/lifecycle/testing.ts",
+      "sha256": "7fe452c0649679a3f2ebd3eb5c55a50034472aa87c383a6e0f25dbfc61db191e",
+      "lines": 72
+    },
+    {
+      "path": "packages/database/src/lifecycle/transient-data-retention.ts",
+      "sha256": "24e8da24d733deb76063a2be392106390c71aab03808292ab64b8e0c3208d0e9",
+      "lines": 40
+    },
+    {
+      "path": "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+      "sha256": "848f0a7505cae0e7bff9e86d1d0b39ffd325fed134b73bfa1a640f02e66600bf",
+      "lines": 522
+    },
+    {
+      "path": "packages/database/src/lifecycle/workspace-purge.ts",
+      "sha256": "e0a8272ed0e6443b7f2bc04ced7834ce0bd9fb3b0ad836e1861dfac17c8b8ebb",
+      "lines": 872
+    },
+    {
+      "path": "packages/database/src/maintenance.ts",
+      "sha256": "b55692cb9225600369f0594745b58710d96d697e0443b9d3c10da464bc34293c",
+      "lines": 34
+    },
+    {
+      "path": "packages/database/src/migrate.ts",
+      "sha256": "f4277ff3d60b5af613880ad34702cc539e7b47fb3fdb2f7712163aafcff524bc",
+      "lines": 17
+    },
+    {
+      "path": "packages/database/src/migration-execution-plan.ts",
+      "sha256": "88e4b1e8ec2864bc4a9256e42a63835caf14def713863847a0d5b0012b7cff8e",
+      "lines": 112
+    },
+    {
+      "path": "packages/database/src/migrations.ts",
+      "sha256": "634dce6b874385ae513dae9c85fe8a0378b3b0584788aee6b38699482e216deb",
+      "lines": 473
+    },
+    {
+      "path": "packages/database/src/operator.ts",
+      "sha256": "af4968a689a1b1266d329083eda7a840510de9af20095127771062f778b4d759",
+      "lines": 12
+    },
+    {
+      "path": "packages/database/src/operator/operator-command-contracts.ts",
+      "sha256": "ead092264bca890081570f9c6661ab5af53e9933b34ac182eda2965799d1a999",
+      "lines": 14
+    },
+    {
+      "path": "packages/database/src/operator/operator-command-errors.ts",
+      "sha256": "b55dc52ee8ade6b9206bae3ff1762d938cbc0801a9a07f122febbb208d9ccc85",
+      "lines": 7
+    },
+    {
+      "path": "packages/database/src/operator/operator-command-runtime.ts",
+      "sha256": "fe0f696740b8476866a8c0c12f90952453a5db3b5b2596ed057b9d3948cfb6eb",
+      "lines": 312
+    },
+    {
+      "path": "packages/database/src/operator/operator-commands.ts",
+      "sha256": "a97e44412f1c87a034a4a66983d9bee12b759ac46ed2371aeab499ec19f7e0bc",
+      "lines": 427
+    },
+    {
+      "path": "packages/database/src/operator/operator-run-replay.ts",
+      "sha256": "0b14bd8dc67381102894fdb887cce28a3f1c0ffa014a8db8989a205e00f9ac47",
+      "lines": 236
+    },
+    {
+      "path": "packages/database/src/operator/testing.ts",
+      "sha256": "896b667d2f8ead34ec205a2b98ea3801ba09f9a9abeac9faff3bb725e1da437c",
+      "lines": 26
+    },
+    {
+      "path": "packages/database/src/platform/database-runtime.ts",
+      "sha256": "29291a2809a44fe728d7fd59bd4b1cdd7d5505eebcb9c938912c3da6767f9627",
+      "lines": 83
+    },
+    {
+      "path": "packages/database/src/platform/persisted-id.ts",
+      "sha256": "4d09615de1b1b7f29ed4dd586d36a05bfcd69f95fd966167b449ddf960d787d8",
+      "lines": 7
+    },
+    {
+      "path": "packages/database/src/platform/postgres-pool-checkout-telemetry.ts",
+      "sha256": "633ed638e9b20cd0884b4762dbf741cbcfb1baecb66f6b5a260e3e0feea245f2",
+      "lines": 57
+    },
+    {
+      "path": "packages/database/src/platform/postgres-pool-policy.ts",
+      "sha256": "968cf25b80352ffa0c9f1ffff0b2635616aef5ba3854383049f75ab923a05b06",
+      "lines": 111
+    },
+    {
+      "path": "packages/database/src/platform/postgres-telemetry.ts",
+      "sha256": "02297643b1950b2519101b2f2641f04e7f1b1bfb18eb1dc1b0e8eb1a21e0a605",
+      "lines": 605
+    },
+    {
+      "path": "packages/database/src/platform/readiness-artifact-capacity.sql.ts",
+      "sha256": "667826219f4678354f196ab6f301876d2ae56e5932cca092d1912399d53ce09a",
+      "lines": 346
+    },
+    {
+      "path": "packages/database/src/platform/readiness-probe-1.sql.ts",
+      "sha256": "08e1477283b92bba2efdcfa0b0452b762700a3273781d522cbac3b5dcedb7c20",
+      "lines": 380
+    },
+    {
+      "path": "packages/database/src/platform/readiness-probe-2.sql.ts",
+      "sha256": "327151f343556ec2ab13e82553868c59f6d4ddf9f329ece112bb8593712e47ec",
+      "lines": 399
+    },
+    {
+      "path": "packages/database/src/platform/readiness-probe-3.sql.ts",
+      "sha256": "303c8ae5da2e2c5af72d07cc7494c6ea0841854dff2b1f614d332810a90a22d4",
+      "lines": 437
+    },
+    {
+      "path": "packages/database/src/platform/readiness-probe-4.sql.ts",
+      "sha256": "3469527016d0fa368a5528f4c00d2117ec5e91ce6bcefda1bf07a141fc9f7146",
+      "lines": 390
+    }
+  ]
+}

@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": ".dockerignore",
+      "sha256": "888c7e767417dd9f8af3ff6da64e92654142287a99b4351f9fb423c5cd7c1b71",
+      "lines": 10
+    },
+    {
+      "path": ".env.example",
+      "sha256": "bd760574d6d642c13f672d0b00d38763f8f09ca43bf8e4852dc16a0591550f16",
+      "lines": 155
+    },
+    {
+      "path": ".githooks/pre-push",
+      "sha256": "64610c37ded755c4cc4122ffecd193854166487fa389037b461c74a9a63a2b8d",
+      "lines": 14
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "sha256": "9a9a7dd5886ddcee6df9c18646761b747cd52f22bbfc50a3988d2331f4f612c1",
+      "lines": 13
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "sha256": "acb6c57a947ead1847767dcb301338bb38ee6b3f5b1cf732c0a047eaf6187861",
+      "lines": 88
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "7ed48d9c00ee579426825829a42ea1b637436cd1cae5aa02a7d0e715808b4453",
+      "lines": 572
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "sha256": "2d767829a349e8217e67161fb96358e47c328affd530124f5c615863f4bd8a43",
+      "lines": 34
+    },
+    {
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "4f99535c895a6637c011e7c2849774954a265338486251bc378de1cf328dfca3",
+      "lines": 42
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "1a22c3e6ece25f3832b6a6358c3c85e1e02265005c9765b7a7bbdc139b0ba8b6",
+      "lines": 9
+    },
+    {
+      "path": ".mailmap",
+      "sha256": "18f7ae33067189eea0515f8941270a54b1da4103cf977705d21ab710e1d1a58a",
+      "lines": 3
+    },
+    {
+      "path": ".node-version",
+      "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+      "lines": 2
+    },
+    {
+      "path": ".prettierignore",
+      "sha256": "019117041840bbbd569fb89b40044d24ade2e915e25222019666bc86e9abbb2c",
+      "lines": 8
+    },
+    {
+      "path": ".prettierrc.json",
+      "sha256": "db47dfec30ef346669026bfddb7ccca9218dad420d1a8716226999e324d7c30b",
+      "lines": 7
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "ad246630eb647652aebc48208523a53a92933b1d20cb911cd1034ca4292f03dd",
+      "lines": 104
+    },
+    {
+      "path": "CONTEXT.md",
+      "sha256": "5f395eea22b45bb6b8a18a9eac28b0b59708482c69cd861b201cd360a3b76284",
+      "lines": 27
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "356fa1eab9c58ada9a545b96e77270d49fce26770c54abc5a18a5f20855d7c5d",
+      "lines": 37
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "4e0e6ae8f331bebec0d3a0aab6b6b7ea0df8106d4fc828ef1446710d133e1dc5",
+      "lines": 53
+    },
+    {
+      "path": "README.md",
+      "sha256": "c5b5747f91f2c24696534af3db7f6b3691287a665f0c47a2773309d927f0b8ed",
+      "lines": 160
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "37ba43d78d6abd5173213737bf3241e6fecee2adc1fe7c9cee5e584ad4309bb6",
+      "lines": 31
+    },
+    {
+      "path": "apps/api/package.json",
+      "sha256": "29ccbe968b751179d8088cb1e19f4503e65e690f076150f00c54348de89dac3e",
+      "lines": 47
+    },
+    {
+      "path": "apps/api/src/app.module.ts",
+      "sha256": "6ce2b4b6ac2f63bd91762d0b00c25be552d906156f077385a82545db86cb7287",
+      "lines": 260
+    },
+    {
+      "path": "apps/api/src/app.ts",
+      "sha256": "9cb8d3746f9e19d8c975d557555a351f47ddf83f23e810bd183dd613ab2b0b2c",
+      "lines": 400
+    },
+    {
+      "path": "apps/api/src/application-error-mappers.ts",
+      "sha256": "db73aa47072cc6b925cadb78ad81d61810a0a5f5d0d87b7fe2311d414538cbd3",
+      "lines": 77
+    },
+    {
+      "path": "apps/api/src/artifacts/controllers.ts",
+      "sha256": "231d5473385fdedfcbc064235a22e183627e8225ab5c10c2eae9b10819958c14",
+      "lines": 158
+    },
+    {
+      "path": "apps/api/src/artifacts/errors.ts",
+      "sha256": "7bc0c06cbaf75884b2ae58d7e7d431ac70aebb36839cabb5f17603b970063bd8",
+      "lines": 90
+    },
+    {
+      "path": "apps/api/src/artifacts/guards.ts",
+      "sha256": "efdf4d33bf312072c8b3ab3dcb80b45fd9473857e65dd2875fc6c3369c78d325",
+      "lines": 29
+    },
+    {
+      "path": "apps/api/src/artifacts/index.ts",
+      "sha256": "5cc631d58bdf3ae32b4f75dec51a35462ae4c7c24e7b7dc34b6709073de57b51",
+      "lines": 9
+    },
+    {
+      "path": "apps/api/src/artifacts/module.ts",
+      "sha256": "e13051bc36a6f940855cfd8f5f24711c3a44efd9c1d5011c653e1e0a7e9f4920",
+      "lines": 48
+    },
+    {
+      "path": "apps/api/src/artifacts/ports.ts",
+      "sha256": "7031383d7f9202468bbee99763c1054531486f510af3b50de98e4604379ef847",
+      "lines": 41
+    },
+    {
+      "path": "apps/api/src/artifacts/service.ts",
+      "sha256": "43d0a6b42525dc72744189e9b7318e3277e52171fc334c837a3d4b0893229913",
+      "lines": 305
+    },
+    {
+      "path": "apps/api/src/artifacts/store-port.ts",
+      "sha256": "d39866a14817aa04604463eda8724be375b8410624c8f76d56f5ac2c7e373aae",
+      "lines": 12
+    },
+    {
+      "path": "apps/api/src/artifacts/tokens.ts",
+      "sha256": "bdc24e1111920a89c805456f1f623fe0a817b7e13abe17539a37829c35a1eabd",
+      "lines": 4
+    },
+    {
+      "path": "apps/api/src/catalog/controllers.ts",
+      "sha256": "0088b57bf521983ca7389df51ef60b02ce9ca2515d0fd7ee1b70e1dc5bd5cf3b",
+      "lines": 34
+    },
+    {
+      "path": "apps/api/src/catalog/index.ts",
+      "sha256": "ae416b47a75e50f9c0bca37c06839666c197ca9dea79b2739c70a7ccdade8271",
+      "lines": 2
+    },
+    {
+      "path": "apps/api/src/catalog/module.ts",
+      "sha256": "c39cca4b56b1845162657784aeab878d7d6b352ac50de2e5713c0cfdc68fbdda",
+      "lines": 39
+    },
+    {
+      "path": "apps/api/src/catalog/use-cases.ts",
+      "sha256": "0c232de585d9b6a0e09f6ec161e71a3a6d484f4d644b7de952a833f136694b76",
+      "lines": 123
+    },
+    {
+      "path": "apps/api/src/connections/authorization.ts",
+      "sha256": "cd2d916691c20e778970d87200079f873de2cee18bad5406e7866ba159859d27",
+      "lines": 49
+    },
+    {
+      "path": "apps/api/src/connections/connection-testing.ts",
+      "sha256": "1e3fabed66a4ff147ec4127a4ac6d9fd5fd303d078477d1f4ae1bbd90bfd3c23",
+      "lines": 351
+    },
+    {
+      "path": "apps/api/src/connections/controllers.ts",
+      "sha256": "dfe73058965483db48cff3179907b6e6fceea5168088fd892173465c050bc3d5",
+      "lines": 177
+    },
+    {
+      "path": "apps/api/src/connections/errors.ts",
+      "sha256": "0f6fd10e773f00088c8c7a81cc708a749e77cde13e88c6fd99c56e86605ad8f6",
+      "lines": 81
+    },
+    {
+      "path": "apps/api/src/connections/failure-notification-destinations.ts",
+      "sha256": "3b6f61aec25cbcb4b3df9851fca11e124bf92e5c20f48fb614b8d9e20c8dbcc8",
+      "lines": 399
+    },
+    {
+      "path": "apps/api/src/connections/guards.ts",
+      "sha256": "b9732dfdbed74e0b1fe3c091fbfa929371b6eb078f9412cac4e4ea549604caee",
+      "lines": 42
+    },
+    {
+      "path": "apps/api/src/connections/index.ts",
+      "sha256": "2c970e746842c57575ae52f618aba929b0fbb69c2ffbbdc80289280c623e5336",
+      "lines": 11
+    },
+    {
+      "path": "apps/api/src/connections/module.ts",
+      "sha256": "b014cb0214713078e4ab5ba35d564bbefefc825ace748299771a75f9ccc95b23",
+      "lines": 107
+    },
+    {
+      "path": "apps/api/src/connections/ports.ts",
+      "sha256": "09f0aef916042a7a019a95e693d94ac0f7eb0b5ca5f94cc06bbcc6678309561c",
+      "lines": 51
+    },
+    {
+      "path": "apps/api/src/connections/telemetry.ts",
+      "sha256": "c85077e9effac578f1866b05f646168e1d94670e2323fb75b4939b0b62514eee",
+      "lines": 92
+    },
+    {
+      "path": "apps/api/src/connections/tokens.ts",
+      "sha256": "ba56235b9c42cc0e3d58db3d1f92f5730a9317a080398ec7ee1c978cd30bba83",
+      "lines": 2
+    },
+    {
+      "path": "apps/api/src/connections/types.ts",
+      "sha256": "a422add5ebb12a561f83384869a59d9385f42169438386da24fc1563d7bba0e1",
+      "lines": 31
+    },
+    {
+      "path": "apps/api/src/connections/use-case-support.ts",
+      "sha256": "404754dd3c2b6333d1dc0ab17106f504e5653a609a04ef221e880bd260a17db8",
+      "lines": 84
+    },
+    {
+      "path": "apps/api/src/connections/use-cases.ts",
+      "sha256": "5845d380be6e807d81914c7781eae19b6893906378d4ca2d922b3c59fc11f9e8",
+      "lines": 193
+    },
+    {
+      "path": "apps/api/src/executions/index.ts",
+      "sha256": "8e17d7b45283cb172ad398c2e15be8561a97f780ced63c8a880560e98743839c",
+      "lines": 13
+    },
+    {
+      "path": "apps/api/src/executions/initial-workflow-checkpoint.ts",
+      "sha256": "522bd8363aad8036d35e28a8036971d0a418b0977cebc6056af0972dd20c87f7",
+      "lines": 90
+    },
+    {
+      "path": "apps/api/src/executions/postgres-run-event-reader.ts",
+      "sha256": "ecc7b97abad41149d74fe4874f57ffca6f642499828fde2ae8801a9e899f60c8",
+      "lines": 55
+    },
+    {
+      "path": "apps/api/src/executions/redis-run-event-publisher.ts",
+      "sha256": "76a2f532c0498e1ced122b8c2644e685a045e6f5d1ba92ca1262d1b54cbb938b",
+      "lines": 8
+    },
+    {
+      "path": "apps/api/src/executions/redis-run-event-source.ts",
+      "sha256": "d364442dbddc75f99f78f83ab79b1b284dafe1a4d21b4f42ce3bc63081b249e2",
+      "lines": 382
+    },
+    {
+      "path": "apps/api/src/executions/run-event-stream.ts",
+      "sha256": "ef80b69001926e87a9651e64bf4bd337cdcd8a858839f68f2ce2f5bd0c071d0b",
+      "lines": 288
+    },
+    {
+      "path": "apps/api/src/identity-infrastructure/index.ts",
+      "sha256": "d666592e5ed845f229e659d8f4d1bf1ef033c3e777fd61dbe06f150baee2b919",
+      "lines": 6
+    },
+    {
+      "path": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
+      "sha256": "bf26a6f3f36b89cee1941d842f069b3f0671537fe7ec5f130439a2b96f9f952b",
+      "lines": 484
+    },
+    {
+      "path": "apps/api/src/identity-infrastructure/oidc-request-validation.ts",
+      "sha256": "69d0b7fb66eb88bb24493332c455799acbda44d4a63f0dafa314a0ad07754cf2",
+      "lines": 87
+    },
+    {
+      "path": "apps/api/src/identity-infrastructure/oidc-response-cleanup.ts",
+      "sha256": "4a81007dfcf88b2d5109d8e68ab5256d1c054a9a7fb1a77cbbf66502206d9604",
+      "lines": 27
+    },
+    {
+      "path": "apps/api/src/identity-infrastructure/oidc-secret-encryption.ts",
+      "sha256": "3e227b9c78a2cb081fea3b095edacbf01eac38c4426c00d707eb2be6998e258d",
+      "lines": 225
+    },
+    {
+      "path": "apps/api/src/identity-workspace/authenticated-command-context-error.ts",
+      "sha256": "d406e8e55e8ea32913fff4e41f22fc2b25d10e0ed433931ab5b54f828bf2d467",
+      "lines": 4
+    },
+    {
+      "path": "apps/api/src/identity-workspace/authenticated-command-context.ts",
+      "sha256": "02dc8e16daa7683551c4f4a24ab1f90556f14bcf4b5103ab885b298203ca1194",
+      "lines": 71
+    },
+    {
+      "path": "apps/api/src/identity-workspace/contracts.ts",
+      "sha256": "d0cc73df37be1c1fdad83852bdf5c9471f772f535dbe48f24b73ea493496512e",
+      "lines": 5
+    },
+    {
+      "path": "apps/api/src/identity-workspace/controllers.ts",
+      "sha256": "f7972eb93e2ffd956e211236dffdcb359030eeb5bec426cf88234543ef6893db",
+      "lines": 433
+    },
+    {
+      "path": "apps/api/src/identity-workspace/cursor.ts",
+      "sha256": "c8a7c760f0d7c08064370cd29b281d056622faddade093cfb43f92a79fb58da4",
+      "lines": 55
+    },
+    {
+      "path": "apps/api/src/identity-workspace/database-adapter.ts",
+      "sha256": "56ac0263d68236f8b3c6a252704ce08b74c171bee8a0965ad400dafc51e60bae",
+      "lines": 170
+    },
+    {
+      "path": "apps/api/src/identity-workspace/errors.ts",
+      "sha256": "95466ad514fec7c00d3e0f3a497bfa76c714ca7bc7d99eafbb87d24a88a91326",
+      "lines": 94
+    },
+    {
+      "path": "apps/api/src/identity-workspace/guards.ts",
+      "sha256": "4ce61c11fd790d799934de90d9feaa2b10de1c7654dc4c55d05b8ef36b83f38c",
+      "lines": 225
+    },
+    {
+      "path": "apps/api/src/identity-workspace/index.ts",
+      "sha256": "e1b00463441a8fba5f0d59dd4159c014890fb9317d685528ff09a8580aba88ff",
+      "lines": 47
+    },
+    {
+      "path": "apps/api/src/identity-workspace/module.ts",
+      "sha256": "aecea9c3889100e859528c47b56ae8291a99ed4303de84e918d62654aad918ff",
+      "lines": 242
+    },
+    {
+      "path": "apps/api/src/identity-workspace/ports.ts",
+      "sha256": "7a2c87a794e6eb28d58d36d0c3ce740ad02e07981dfbdde19884ea290df20c9d",
+      "lines": 140
+    },
+    {
+      "path": "apps/api/src/identity-workspace/request-identifiers.ts",
+      "sha256": "5a522c2be8f823236460a9b964d418ca0217d42459c067b19d354ce8ae0872d7",
+      "lines": 27
+    },
+    {
+      "path": "apps/api/src/identity-workspace/telemetry.ts",
+      "sha256": "2e40d6bc7eb357fdfe449c1a517f458c82699cf687b1486ab721bc2102bc5d97",
+      "lines": 192
+    },
+    {
+      "path": "apps/api/src/identity-workspace/tokens.ts",
+      "sha256": "c4ba9512850d0eb44b7101f8bc6758464a3ed6c1a7fac069910dfe21dd816474",
+      "lines": 15
+    },
+    {
+      "path": "apps/api/src/identity-workspace/types.ts",
+      "sha256": "e852a7cbaec504649510d0959d26e39ef3ebb4fbcd296af0f0dcfd4214d00ec2",
+      "lines": 46
+    },
+    {
+      "path": "apps/api/src/identity-workspace/use-cases.ts",
+      "sha256": "c816058953264007fbe208d1dc9cbf8977f2b1519ca5bfeea0d742c5e1ef121d",
+      "lines": 431
+    },
+    {
+      "path": "apps/api/src/identity/crypto.ts",
+      "sha256": "4f2a62b699fc73218da1d62fee8e7fb3ce2ac718b7bb973dcc9a92018794fcbc",
+      "lines": 55
+    },
+    {
+      "path": "apps/api/src/identity/csrf.ts",
+      "sha256": "d81849ea9c98eff72a7818a27f4c664d40efe1c56bd9be28a6319fbbc90040ad",
+      "lines": 42
+    },
+    {
+      "path": "apps/api/src/identity/errors.ts",
+      "sha256": "f420ab45a030d2d5e3b7703f0d9a19f89fce804552cba11c36691c1164a952db",
+      "lines": 73
+    },
+    {
+      "path": "apps/api/src/identity/index.ts",
+      "sha256": "e4b30a681c6caf756bc19603b515918c8623806e5480897e362fff8b574c4bf2",
+      "lines": 26
+    },
+    {
+      "path": "apps/api/src/identity/oidc.ts",
+      "sha256": "e0d64b7b961c64946a4486d663911a9657412f847d2b6d0f42a74ef427652579",
+      "lines": 289
+    },
+    {
+      "path": "apps/api/src/identity/ports.ts",
+      "sha256": "efa4dc913506870f88d2080c4142bf1f008ec3acfb9369268a23ec7c3e9d8f15",
+      "lines": 97
+    },
+    {
+      "path": "apps/api/src/identity/session.ts",
+      "sha256": "f4fff43a816b2c88cb8cd2eb5e8369aaf2fa4e7bbcc9f4d8326b7a8d32df7cd0",
+      "lines": 242
+    },
+    {
+      "path": "apps/api/src/identity/types.ts",
+      "sha256": "869e2ce804f41f4f0b51a8230c7f303d1a548af891e3b0d4862f98b2f714149c",
+      "lines": 139
+    },
+    {
+      "path": "apps/api/src/main.ts",
+      "sha256": "202a2f674f3ff1e95ad04693f64644bdf0eeb6b4b716cb43e12a55ab24a78634",
+      "lines": 70
+    },
+    {
+      "path": "apps/api/src/node-testing/controller.ts",
+      "sha256": "366ed11b0bd17d4557919c642c94062df6e501ba6b7a5184384fb094cb41556f",
+      "lines": 126
+    },
+    {
+      "path": "apps/api/src/node-testing/errors.ts",
+      "sha256": "25fc41c34c5d4439ce467fec316906eb16f2a78405e8f7089cf8517f220bcbe0",
+      "lines": 94
+    },
+    {
+      "path": "apps/api/src/node-testing/guards.ts",
+      "sha256": "31c2f5d09648050c0e91a32f3504f7407438ec5ca95170e268952257740b9520",
+      "lines": 18
+    },
+    {
+      "path": "apps/api/src/node-testing/index.ts",
+      "sha256": "43b97d141d7b75e3d80b3c9dc8b3cc91279ac5dddb7a6d86a4552bce5fadee16",
+      "lines": 9
+    },
+    {
+      "path": "apps/api/src/node-testing/module.ts",
+      "sha256": "bf924bc896f1edc955162c33ede0436248059a984c2e527e0af1c9c9ea982ad1",
+      "lines": 51
+    },
+    {
+      "path": "apps/api/src/node-testing/ports.ts",
+      "sha256": "abc741fb0cba9a1ef560657e8230a9625bd67c7ea3dcac9a1063a9ccb1d56550",
+      "lines": 19
+    },
+    {
+      "path": "apps/api/src/node-testing/tokens.ts",
+      "sha256": "6e930a25a0aa3016171d9014f6c0b79c36f84a9422beb743d029b8a5ac4b618c",
+      "lines": 4
+    },
+    {
+      "path": "apps/api/src/node-testing/use-case.ts",
+      "sha256": "bba9a4c3aed0411c1d37fc8299159387ad34af2150c51a90dbe3bbab684d8c5d",
+      "lines": 340
+    },
+    {
+      "path": "apps/api/src/node-testing/validation.ts",
+      "sha256": "b29c8829a372f4cf290ca6ac1b2223acf60a8b2c1ee423920781afd5a9595b2e",
+      "lines": 222
+    },
+    {
+      "path": "apps/api/src/platform/artifacts/artifact-runtime.module.ts",
+      "sha256": "8bee37bed0cdba7493b4317254235aa04dcd9d01d02c20ffbcd2bf03d8467c70",
+      "lines": 132
+    },
+    {
+      "path": "apps/api/src/platform/config/api-config.ts",
+      "sha256": "311b073e2359ee6f7e7c0d7c80081cae2e2b26672ae260197e8dc29e3fc9b509",
+      "lines": 462
+    },
+    {
+      "path": "apps/api/src/platform/connections/connection-runtime.module.ts",
+      "sha256": "84867626efbd398149dd06786cb9274b26c98deb7612ed41aedecaac8a9ec7bd",
+      "lines": 179
+    },
+    {
+      "path": "apps/api/src/platform/database/database.module.ts",
+      "sha256": "5f887f4e33457705f4b23bd8790d0e977261cae5da8a770d9e7633e55d89e675",
+      "lines": 100
+    },
+    {
+      "path": "apps/api/src/platform/health/drain-state.ts",
+      "sha256": "c1a8a12165795af6649598037fbe8e9d4caf0416a4f3d98b5f0101333d04c0da",
+      "lines": 40
+    }
+  ]
+}

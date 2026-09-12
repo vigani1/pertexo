@@ -1,0 +1,442 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/workflow-engine/src/transition-decisions.ts",
+      "sha256": "9f25b544f7c5e258aaf92c8b688144ae0d2d3ee394c26553e232b4b62dc4dea4",
+      "lines": 111
+    },
+    {
+      "path": "packages/workflow-engine/src/transitions.ts",
+      "sha256": "0633bbf8c8e83910a9aad51ccac06153a033141f231d3baf487aa5bf7a50cc74",
+      "lines": 100
+    },
+    {
+      "path": "packages/workflow-engine/src/types.ts",
+      "sha256": "11435988fd897d232111484b6f11f92980ef921097c970cd18011bfea1a9d2ff",
+      "lines": 304
+    },
+    {
+      "path": "packages/workflow-engine/src/workflow-transition-derived.ts",
+      "sha256": "206d4f4df7e576594bebfcb093c3cee40be4396f484edfe512b3bb673eff2ca6",
+      "lines": 297
+    },
+    {
+      "path": "packages/workflow-engine/src/workflow-transition-observations.ts",
+      "sha256": "7f2c4ea2b35ee078e22ceef21539cfed311b2f5d26e535517b46cc19f0da4b56",
+      "lines": 528
+    },
+    {
+      "path": "packages/workflow-engine/src/workflow-transition-plan.ts",
+      "sha256": "558337df99f4c16f1327579d49300a531e235fe2ed67203fb5095e011597cf41",
+      "lines": 187
+    },
+    {
+      "path": "packages/workflow-engine/src/workflow-transition-state.ts",
+      "sha256": "02589e0c0d71b2feb5b75cae679c8e89878ff4cff4296d47431bd4e9e27cc4c0",
+      "lines": 303
+    },
+    {
+      "path": "packages/workflow-engine/src/workflow-transition-stops.ts",
+      "sha256": "cbd4e3f33ec40d9a73a220d04adeeed24e8f8dc1aa42ec01035cb589183cd68e",
+      "lines": 166
+    },
+    {
+      "path": "packages/workflow-engine/test/advance-workflow-branching.test.ts",
+      "sha256": "74db346efe203e7af4f3d1cb9d35a9f3e046b545de5f7beaa231a2b9865e6eaf",
+      "lines": 713
+    },
+    {
+      "path": "packages/workflow-engine/test/advance-workflow-risk-branches.test.ts",
+      "sha256": "0552220b1ea51291ecc4be085c6a6b655e93194a2b98e4ed45947666100ed891",
+      "lines": 67
+    },
+    {
+      "path": "packages/workflow-engine/test/advance-workflow-transitions.test.ts",
+      "sha256": "d8b4fa5476954a55df458e0e8df1d94671e3a552777f3e0129a7a5212a5f6946",
+      "lines": 418
+    },
+    {
+      "path": "packages/workflow-engine/test/branch-join-scheduling.test.ts",
+      "sha256": "5a009d7e4089c430688d51a5482809712632346073d48c8b9c86334ad027f5db",
+      "lines": 99
+    },
+    {
+      "path": "packages/workflow-engine/test/checkpoint-risk-branches.test.ts",
+      "sha256": "310ad00da473d211d824c26ae1f746568cda62c4f492cab6a64db58c247de283",
+      "lines": 397
+    },
+    {
+      "path": "packages/workflow-engine/test/checkpoint-seam.test.ts",
+      "sha256": "6c04ee68f2e694d152a05b57f506a464bd76bda013c2d4376a2802d2bfd3ec39",
+      "lines": 748
+    },
+    {
+      "path": "packages/workflow-engine/test/coverage-config.test.ts",
+      "sha256": "fb302694c1a29e0daf85d161fcc559c19799adb750ec7221e2f792da987fed70",
+      "lines": 26
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-branching.test.ts",
+      "sha256": "2e5dfb13b6d482778076cc08a4be3ec63f18d55ab9c3a8445fe67eaabb5144d0",
+      "lines": 728
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-controls.test.ts",
+      "sha256": "21ca81d7fc555a37edbfa6abee0a99af26f1c6173f0c55c7d405df6c060850e8",
+      "lines": 485
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-foreach-part-2.test.ts",
+      "sha256": "ccf849fe1752c8d9410260e352942b7f8666219422fb3c997e5727257a2ef868",
+      "lines": 613
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+      "sha256": "751edb36abe8f081301e4a8ee97e7655b30d2f25ffe6b762e6617eb414612152",
+      "lines": 924
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-identity.test.ts",
+      "sha256": "d2c02605095c89bb6568311bc4607bc7e922585e190cd218856acfaf4ab7edaf",
+      "lines": 886
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-inputs.test.ts",
+      "sha256": "7554d9cf91bb081b67806b7218153cf997b21fc105e9169ca72c08de6792723b",
+      "lines": 543
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow-outcomes.test.ts",
+      "sha256": "522f9cb675e9eaa80ca481a2594c059a53e8061c4865f9c3c48d63f2e6e438a6",
+      "lines": 607
+    },
+    {
+      "path": "packages/workflow-engine/test/executable-workflow.fixtures.ts",
+      "sha256": "34ffecb4be92fad8026f808028b6c5cc0304497670eea9629bb59808743a2af6",
+      "lines": 679
+    },
+    {
+      "path": "packages/workflow-engine/test/expanded-public-boundary-coverage.test.ts",
+      "sha256": "19408027ec9516a1eb40031a6c0279c348c176b759d8543d193ca19bc2a5b04c",
+      "lines": 325
+    },
+    {
+      "path": "packages/workflow-engine/test/foreach-scheduling.test.ts",
+      "sha256": "df441240524118af07e32fb766c7c02f7669ae7929a82611dff1747c9355a8fb",
+      "lines": 98
+    },
+    {
+      "path": "packages/workflow-engine/test/nested-parallel-admission.test.ts",
+      "sha256": "fd4e2c752c2832c2dbf67fdd8d72fc2313090913fbfd6d8d059331abc4e3fe2c",
+      "lines": 699
+    },
+    {
+      "path": "packages/workflow-engine/test/operation-risk-branches.test.ts",
+      "sha256": "917335e4313f0115b45c5b8ca0687e74e216b00d2fc56251bfa0f5ffcd738b3e",
+      "lines": 645
+    },
+    {
+      "path": "packages/workflow-engine/test/package-contract.test.ts",
+      "sha256": "348a65c4e8ac423391d5239d8fef87df120699d0afc32c1eef14934bf08d389c",
+      "lines": 45
+    },
+    {
+      "path": "packages/workflow-engine/test/parallel-output-assurance.test.ts",
+      "sha256": "95016cab842f4d70557838304c51f04052d8d6b63a6a3f713c2a79579e453b64",
+      "lines": 144
+    },
+    {
+      "path": "packages/workflow-engine/test/q9-bounded-work.test.ts",
+      "sha256": "e5efe78f322c7cda14aa42c913194bf8b7e921ab82682b342c666dcca7835675",
+      "lines": 90
+    },
+    {
+      "path": "packages/workflow-engine/test/retry-policy-mutation.test.ts",
+      "sha256": "e917ff24a3b7dfb75e14481a9d94149f2e481b527a8444a3368bde4244f78011",
+      "lines": 156
+    },
+    {
+      "path": "packages/workflow-engine/test/retry-wait-cancellation.test.ts",
+      "sha256": "8929fdd16509935825d2d307e142674f339c612348362eab898bf11e4c2e6d4f",
+      "lines": 189
+    },
+    {
+      "path": "packages/workflow-engine/test/scheduler-projection.test.ts",
+      "sha256": "49f00d85da350f03ef737495de3385e2e528111c444168f85c67706ad3213ff3",
+      "lines": 60
+    },
+    {
+      "path": "packages/workflow-engine/test/scope.test.ts",
+      "sha256": "3ca308a317eb68b4e223d4ea8c51dbd550a27994c5e909f482d2625ced0a192b",
+      "lines": 38
+    },
+    {
+      "path": "packages/workflow-engine/test/serialized-boundary-matrices.test.ts",
+      "sha256": "396891e1e6ad6124e5df279fe60510c1dc7d932c8406c1e5c2436e2c91fd91d7",
+      "lines": 364
+    },
+    {
+      "path": "packages/workflow-engine/test/skipped-parallel-merge.test.ts",
+      "sha256": "8209e46f178e2474c6c93268e658588c396f5017e1a937f381ee5fe0074bd81d",
+      "lines": 641
+    },
+    {
+      "path": "packages/workflow-engine/test/state-machine-model.test.ts",
+      "sha256": "3ffdbcb97b35508910c1c109232cd172f14d1c73c7df878ed1de5af1e7f60855",
+      "lines": 589
+    },
+    {
+      "path": "packages/workflow-engine/test/support/advance-workflow.fixture.ts",
+      "sha256": "07fa50e1640ba755f6a7a6484549cf4cde9e59c087336c148db4beab31aba421",
+      "lines": 72
+    },
+    {
+      "path": "packages/workflow-engine/test/transition-policy-mutation.test.ts",
+      "sha256": "27a2e66ee9f16d8a9ea0914c88586529a56140850aa87a35a88e59480cca59db",
+      "lines": 111
+    },
+    {
+      "path": "packages/workflow-engine/test/workflow-transition-risk-behavior.test.ts",
+      "sha256": "0563c4aa63c8e922942127456084e9aaeb1af1748097fcf987a40928a23a1754",
+      "lines": 516
+    },
+    {
+      "path": "packages/workflow-engine/tsconfig.json",
+      "sha256": "4ea4fa1e179bdcd01f9519c5c4c2aa83e756637bccd982d9b7de79bf9ff6fab1",
+      "lines": 29
+    },
+    {
+      "path": "packages/workflow-engine/tsconfig.test.json",
+      "sha256": "0ff33f552f1a8383a89173cde6c18c79b5fe4e7eeb6bca23b6f22d271c85bd61",
+      "lines": 18
+    },
+    {
+      "path": "packages/workflow-engine/vitest.config.ts",
+      "sha256": "c7e478661abaace39c596f21a47550c906cfaeb1416301df050ab1775b7eafe3",
+      "lines": 10
+    },
+    {
+      "path": "packages/workflow-engine/vitest.coverage.config.ts",
+      "sha256": "d2cb081c757a58e19d424b60728eb811ca12d88d84db086bf15b48e689cb13d4",
+      "lines": 56
+    },
+    {
+      "path": "packages/workflow-model/package.json",
+      "sha256": "39de9b3f6d16dff9fb3ef599411efb5fa51ee41762bee48baa6d3f237c5ab8db",
+      "lines": 76
+    },
+    {
+      "path": "packages/workflow-model/src/assert-never.ts",
+      "sha256": "382e2451bf5bbaaf031fcd0c7c3789add8bf1848e565b2ae324b86698ab0af21",
+      "lines": 4
+    },
+    {
+      "path": "packages/workflow-model/src/canonical-json.ts",
+      "sha256": "b9ad43d6852f549b9536c9ce13a8bf3ff3d2a976fb428c1d5b94104154749cf5",
+      "lines": 138
+    },
+    {
+      "path": "packages/workflow-model/src/expression-worker-runtime.ts",
+      "sha256": "38897ceeb82fa495d8d896c5b3edbb12ea586479ea7171109d9b6b60d78e1649",
+      "lines": 52
+    },
+    {
+      "path": "packages/workflow-model/src/expressions.ts",
+      "sha256": "71e0298d685b90555d153342633cfbbe99dc81004482f50babf9e84e8de08cc3",
+      "lines": 24
+    },
+    {
+      "path": "packages/workflow-model/src/expressions/evaluator.ts",
+      "sha256": "eb0e8aa7caa3bcacf4917615b85534f15e3ba1a32f4a65d6d35728f60f9faf0b",
+      "lines": 369
+    },
+    {
+      "path": "packages/workflow-model/src/expressions/policy.ts",
+      "sha256": "5cd3a6b744dfb71523e5bdcbbb228f52be538d7e7284a1e6386728a708b6be3f",
+      "lines": 352
+    },
+    {
+      "path": "packages/workflow-model/src/failure-notification.ts",
+      "sha256": "e8355b2bb0b6491eb3020288b803ca0139f202d4fb8270488abba8eb7bbdfe7a",
+      "lines": 129
+    },
+    {
+      "path": "packages/workflow-model/src/graph-contract.ts",
+      "sha256": "8a336a0ac17d4803f518a018e904a16130659796eb58ed0adaba719a78c3cce3",
+      "lines": 297
+    },
+    {
+      "path": "packages/workflow-model/src/graph-validation.ts",
+      "sha256": "f674ae4079078a4c9916d74b1206d2d4d199dc69f236438b0a6fd3d979a52158",
+      "lines": 350
+    },
+    {
+      "path": "packages/workflow-model/src/graph.ts",
+      "sha256": "a0369389834dcace2764dfd191049239959a734d9782927780ec8fffba35fcf1",
+      "lines": 69
+    },
+    {
+      "path": "packages/workflow-model/src/graph/aggregate.ts",
+      "sha256": "8d43d787ec567edb286343198a93f1db3e0b736c2761f0039679a4ddb2cd9969",
+      "lines": 66
+    },
+    {
+      "path": "packages/workflow-model/src/graph/identity.ts",
+      "sha256": "899baf90277c393b6759e96f9fc8c749698553ad43f412236cc118863f3aeaae",
+      "lines": 391
+    },
+    {
+      "path": "packages/workflow-model/src/graph/preflight.ts",
+      "sha256": "dc37cab4af78938599d0c6db1f42437296cf778d68acb9e42e5d9a59dc2510f7",
+      "lines": 332
+    },
+    {
+      "path": "packages/workflow-model/src/graph/validation-contract.ts",
+      "sha256": "7b969ac59642fd991ab47543017506d58b8a39d1aadb5dda55c84d15efadb808",
+      "lines": 78
+    },
+    {
+      "path": "packages/workflow-model/src/graph/validation.ts",
+      "sha256": "bb236b0882c22beeae599b7cf6ba7b08b67b7138fa31c540fc407b6515d6d936",
+      "lines": 120
+    },
+    {
+      "path": "packages/workflow-model/src/index.ts",
+      "sha256": "e12d9abd5aab8aef9699dd37875c5f4d6002501fa29d6d8f68f9cf2c41b902e7",
+      "lines": 77
+    },
+    {
+      "path": "packages/workflow-model/src/invocation-identity.ts",
+      "sha256": "e0fa54eee46096ec21868acfc89d55f492232aec9fd1e68b1f1a3f0a07bfa70e",
+      "lines": 94
+    },
+    {
+      "path": "packages/workflow-model/src/json-path.ts",
+      "sha256": "f3daab1767b83280c8e144dd03fc81e68e13da3786156721a2e70c5472fbaa78",
+      "lines": 89
+    },
+    {
+      "path": "packages/workflow-model/src/lifecycle.ts",
+      "sha256": "4defa94769a6e1e0d647730825f845d686664977d789bbbab7e648f93c24a3b7",
+      "lines": 98
+    },
+    {
+      "path": "packages/workflow-model/src/mapping.ts",
+      "sha256": "f4cac96c64e8ceb2e63ab65e6004c6c73333dc3bbb70e1d53c45bd1877c24518",
+      "lines": 71
+    },
+    {
+      "path": "packages/workflow-model/src/observation-window.ts",
+      "sha256": "6b417c74e3d2649655c220eff021e9fcce21d6e7e5cdff572b56a695366abc2c",
+      "lines": 10
+    },
+    {
+      "path": "packages/workflow-model/src/server-only.ts",
+      "sha256": "39a0a90ebe298fe3abb2dc862294040fd0ba0563c3f43877bddec3900b31eedb",
+      "lines": 4
+    },
+    {
+      "path": "packages/workflow-model/test/canonical-json.test.ts",
+      "sha256": "dfe58b96dc8d6ca566ab461231e7004f0c2003b4f6912036223d0f63a556186f",
+      "lines": 62
+    },
+    {
+      "path": "packages/workflow-model/test/expressions.test.ts",
+      "sha256": "078def58399beceb7578ab69e1755ff909ea8841276e990e9e494ebdf3a22f67",
+      "lines": 599
+    },
+    {
+      "path": "packages/workflow-model/test/failure-notification.test.ts",
+      "sha256": "86e083bbcf0e2e65134246204e28a28eba61b7fba4dc1a8fb9563ed5bebb06ec",
+      "lines": 243
+    },
+    {
+      "path": "packages/workflow-model/test/fixtures/failure-notification-context-candidate-v1.json",
+      "sha256": "5c98ac9a43f3dba0d3511c65b4e7579bf37c6150afcc543fcca75041c221d619",
+      "lines": 18
+    },
+    {
+      "path": "packages/workflow-model/test/fixtures/failure-notification-context-predecessor-v1.json",
+      "sha256": "2a14daa1645fb64d2b2585beb347abe70648ee3a8732106e8fc6dab1d1951071",
+      "lines": 20
+    },
+    {
+      "path": "packages/workflow-model/test/fixtures/retained-workflow-v1.json",
+      "sha256": "6d0c08d8656a3e12e4d88af303f1f87688771fdfb61f972e631b7e38b548e49e",
+      "lines": 14
+    },
+    {
+      "path": "packages/workflow-model/test/graph.test.ts",
+      "sha256": "257959351740a69dd7b13df0d9af414c1c1158bba7f2a1113c0ecf9a3ead940b",
+      "lines": 392
+    },
+    {
+      "path": "packages/workflow-model/test/lifecycle.test.ts",
+      "sha256": "393f7861d6120397073dd6252bea45d17c3fcb8ee4b5688e0d6c529ca3227084",
+      "lines": 149
+    },
+    {
+      "path": "packages/workflow-model/test/mapping.test.ts",
+      "sha256": "5a6bbe6b39c167f339c5373a05d2dd1f0f543f4f77bccb3d7dc51c96062e7109",
+      "lines": 102
+    },
+    {
+      "path": "packages/workflow-model/test/package-contract.test.ts",
+      "sha256": "db7addcd5d296007682e81acce3d56a1781a0e4fbe6bc351a8d82c144f9f04c6",
+      "lines": 281
+    },
+    {
+      "path": "packages/workflow-model/test/retained-workflow-v1.test.ts",
+      "sha256": "f529f2e89a456552fe74bf7dd5a34fa42b3ac553b910232e20c2a713b55fb2ce",
+      "lines": 87
+    },
+    {
+      "path": "packages/workflow-model/test/workflow-graph-contract.test.ts",
+      "sha256": "96ab5119581acc1943c7e1e55059589256ae6e2b6cb6a7c2a8a5fbb51d10e89c",
+      "lines": 752
+    },
+    {
+      "path": "packages/workflow-model/tsconfig.json",
+      "sha256": "9205d22b2a95a7610f98bf4d902158858666cfc993b7eaa55f30bfb1f6d6eefe",
+      "lines": 22
+    },
+    {
+      "path": "packages/workflow-model/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/workflow-model/vitest.config.ts",
+      "sha256": "127a9ff721821eebb8941d53c2f491d815948e0650e2529abf01d466fcc2e756",
+      "lines": 6
+    },
+    {
+      "path": "packages/workflow-model/vitest.coverage.config.ts",
+      "sha256": "20185abdb62d8a542cb5361c59ec451942b2c2d7ca095f5285c4b128c85ba88f",
+      "lines": 17
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "42c8d6a25f3c8bcac8735da56448bfcbb7d0e0ed8ffacc09582d38d8c4790cf9",
+      "lines": 5715
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "97fa285e2f8daa192bba5130c3ab89002cf0a6f9ab1927b57cf8a3356c385089",
+      "lines": 15
+    },
+    {
+      "path": "tsconfig.base.json",
+      "sha256": "c0266aaad0fb5a28c475a20024b052dea92faa30ec60aa07d14593c96490afd9",
+      "lines": 21
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "011958ed5c896d85a19782cf3bf0eb672df1522680f34f9376191f6dbfe0f3c9",
+      "lines": 61
+    }
+  ]
+}
