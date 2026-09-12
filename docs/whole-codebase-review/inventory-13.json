@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/database/test/workflow-authoring-version-restore.integration.test.ts",
+      "sha256": "11445c938adff944c87fbd7ccb391a8b7a2579095846ef81552fe7406281a29d",
+      "lines": 694
+    },
+    {
+      "path": "packages/database/test/workflow-authoring.test.ts",
+      "sha256": "c390b3d914c6ee3f27dba2992c480bb064f39f80b13bfc916a14c6df0279703f",
+      "lines": 127
+    },
+    {
+      "path": "packages/database/test/workflow-run-api.integration.test.ts",
+      "sha256": "926843fca5f6cfe275c9a4a3435b1098128c823f9842010dd5acc0628c7bc340",
+      "lines": 761
+    },
+    {
+      "path": "packages/database/test/workflow-run-input-retention-dry-run-migration.test.ts",
+      "sha256": "2d7d73f1047b82e72255565fe43dc3281abc04236859c9e9a2f434c1bc4ef101",
+      "lines": 24
+    },
+    {
+      "path": "packages/database/test/workflow-run-input-retention-enforcement-migration.test.ts",
+      "sha256": "301063af743e44c6939c9de4b0cc181c4f3f4cbe8f2e2830c7a860c05476f462",
+      "lines": 32
+    },
+    {
+      "path": "packages/database/test/workflow-run-input-retention-migration.integration.test.ts",
+      "sha256": "1ad627902557b782b856c02fc511ec366710ed2a08896166e424f54209311770",
+      "lines": 177
+    },
+    {
+      "path": "packages/database/test/workflow-run-input-retention-migration.test.ts",
+      "sha256": "7872e34c217083f6d043513c6081876bbb0de53019dd207406b9b21a23a2f33d",
+      "lines": 21
+    },
+    {
+      "path": "packages/database/test/workflow-run-input-retention-scheduling-migration.test.ts",
+      "sha256": "a303b76de8bd574455e83c4c49759f665c8ac28a7639d9306d7032658b9803f1",
+      "lines": 24
+    },
+    {
+      "path": "packages/database/test/workflow-trigger-projection.test.ts",
+      "sha256": "f77faed59772705048d18e9dd7aec0e3dc3a2bee36e42788fe5286e2ab749ebb",
+      "lines": 137
+    },
+    {
+      "path": "packages/database/test/workspace-authorization-policy.test.ts",
+      "sha256": "da2691c027af0705430411ba28e7b5b2e804a155dc6947fba4ad6c45369e93a2",
+      "lines": 97
+    },
+    {
+      "path": "packages/database/test/workspace-deletion-control-projection-migration.test.ts",
+      "sha256": "f07409e5c83a7dc63f8809c324c60716a2cd76de0ba3a74861c939a2c636311c",
+      "lines": 41
+    },
+    {
+      "path": "packages/database/test/workspace-deletion-side-effects-migration.test.ts",
+      "sha256": "1e03072e6700618cb9ed8d66998236dd465731e6f094d368cfc156b496243ca5",
+      "lines": 34
+    },
+    {
+      "path": "packages/database/test/workspace-lifecycle-api-authority-migration.test.ts",
+      "sha256": "efdb7d140433cbd35c43d2b4eb37e3dd3f4c422d83eddcbc91cbe44a044b420b",
+      "lines": 22
+    },
+    {
+      "path": "packages/database/test/workspace-lifecycle-command-hardening-migration.test.ts",
+      "sha256": "6472a3575f8e3fe9a39c3d2edc37eacfe8353c6393ed7f20de6670eb68919960",
+      "lines": 27
+    },
+    {
+      "path": "packages/database/test/workspace-lifecycle-command-intents-migration.test.ts",
+      "sha256": "f0007ef9a287f9cb07a864a0b966297250a0de24acf496dc1c0d99d63a88b1fe",
+      "lines": 34
+    },
+    {
+      "path": "packages/database/test/workspace-lifecycle-command-intents.integration.test.ts",
+      "sha256": "924b3dbd7a25eb9d228fa277242ed6e8398aa4db59423387a1707511b5565c39",
+      "lines": 732
+    },
+    {
+      "path": "packages/database/test/workspace-object-versions-purge-migration.test.ts",
+      "sha256": "9a49e67757666376a297270cbda329ea220362863e2fc5fc93267343b52451d7",
+      "lines": 38
+    },
+    {
+      "path": "packages/database/test/workspace-purge-cancellation.test.ts",
+      "sha256": "2d8abc8f606ba730422cd0e36cd9a223e8e2b16e8b453799b6bcf220a61455fe",
+      "lines": 154
+    },
+    {
+      "path": "packages/database/test/workspace-purge-completion-migration.test.ts",
+      "sha256": "243e5ab5ff34a5ba476aca8ae142102885c8df7b0d4dec4631c1162a1d63ac94",
+      "lines": 45
+    },
+    {
+      "path": "packages/database/test/workspace-purge-foundation-migration.test.ts",
+      "sha256": "7ce6d38495d4fa98f95052a9d1e2f4e8a26ea54796db0e4b5bef809cefaa23a3",
+      "lines": 38
+    },
+    {
+      "path": "packages/database/test/workspace-purge-foundation.integration.test.ts",
+      "sha256": "ddb4e89f85fc3135460d193d81401ace1f05767ea5d28ef6039ef3deeac72a89",
+      "lines": 936
+    },
+    {
+      "path": "packages/database/test/workspace-purge-step-release-migration.test.ts",
+      "sha256": "39e4fab7953f3cf33307770cacb882cda5f08b044e9b915dc491c4c88df06405",
+      "lines": 24
+    },
+    {
+      "path": "packages/database/test/workspace-tenant-rows-purge-migration.test.ts",
+      "sha256": "3e044d5081e1084462981b4b536e7853b7a15c66f0c1ab6ee37796f1567c64ff",
+      "lines": 35
+    },
+    {
+      "path": "packages/database/test/workspace-transaction-engine.test.ts",
+      "sha256": "7b7ce953526e22cfcaec9c00be81672363e700e24d89bf44812d51c5dddfa3cf",
+      "lines": 679
+    },
+    {
+      "path": "packages/database/tsconfig.json",
+      "sha256": "96a77fc262b66e94aa88c98ef0c12e5f4b77c18807b718d1286b9fa1ac9726c8",
+      "lines": 23
+    },
+    {
+      "path": "packages/database/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/database/vitest.config.ts",
+      "sha256": "bc0ef7b33040f561c9ab8f23347e527ec20dffc805c32cba4cad4f50294a5f84",
+      "lines": 9
+    },
+    {
+      "path": "packages/database/vitest.coverage.config.ts",
+      "sha256": "5c5112be4430f0829764b85f5d77d4ff1a87840c3cde6641e532477397b3ac69",
+      "lines": 28
+    },
+    {
+      "path": "packages/database/vitest.integration-coverage.config.ts",
+      "sha256": "0dfe3700935f33cb21dbb855441e937aa15111fbb5ac8bcbd9959edc8907efe0",
+      "lines": 23
+    },
+    {
+      "path": "packages/database/vitest.integration.config.ts",
+      "sha256": "95c95f44ec7534dc2f2b93dd8b29f268d118f704e5873ba6b2ac3133d81e4186",
+      "lines": 11
+    },
+    {
+      "path": "packages/integrations/package.json",
+      "sha256": "22295b446e1a83f8c6f8196f61772edcf9ee5cb60e2a85b9ed562ade094f1d9c",
+      "lines": 36
+    },
+    {
+      "path": "packages/integrations/src/credentials/aws-envelope-runtime.ts",
+      "sha256": "9e1756de2213bb79ca890ab898ae47bae975cd4bc2c085121b011e0799a8a5b4",
+      "lines": 40
+    },
+    {
+      "path": "packages/integrations/src/credentials/envelope-encryption.ts",
+      "sha256": "03ef5ec041a1a4b4fca5c6e8d2935644a96879d1c777e1369d698c46a10c44f4",
+      "lines": 182
+    },
+    {
+      "path": "packages/integrations/src/credentials/kms-client.ts",
+      "sha256": "62121ad04ec366d7083b87ed8d540a398e17cb82f1361eaae91cdab25c485500",
+      "lines": 28
+    },
+    {
+      "path": "packages/integrations/src/crypto/envelope-cipher.ts",
+      "sha256": "f3d64b12b1b522dc55ba3a82c605e75b43101886d918791150efe44d0a9c7766",
+      "lines": 410
+    },
+    {
+      "path": "packages/integrations/src/email/client.ts",
+      "sha256": "e6ba21a15995ee5b49b549cbe1d2e2459e7b96b0dbc46af6896856a48d09edc3",
+      "lines": 121
+    },
+    {
+      "path": "packages/integrations/src/email/definition.ts",
+      "sha256": "0f35ffee23daa3554b7ee07180900687a91c8e2099a9a9b2e2879c7409b54bf9",
+      "lines": 56
+    },
+    {
+      "path": "packages/integrations/src/email/executor.ts",
+      "sha256": "26aada8003913e3e26d5fa7d0e74a072abc59c73c6852ab7de3a550ade21b282",
+      "lines": 291
+    },
+    {
+      "path": "packages/integrations/src/email/index.ts",
+      "sha256": "4da3715955025eca2ef352aaffc2074ff77476eee2da5f9ae96915ed4b12770b",
+      "lines": 18
+    },
+    {
+      "path": "packages/integrations/src/email/validation.ts",
+      "sha256": "5cb7cc4eec8ec428f1b584bc9d9007a1e28cff3bd73e523ccbc36f82744acd33",
+      "lines": 105
+    },
+    {
+      "path": "packages/integrations/src/http-request/definition.ts",
+      "sha256": "9d812f00342909ccb5dbda7b99ce62c3c654d68cb2614cd4dc0c86d0c79c6844",
+      "lines": 67
+    },
+    {
+      "path": "packages/integrations/src/http-request/executor.ts",
+      "sha256": "66acaf816cd5dfe353b7127cfdcb43b7921d18e5d7e84d12c46358d545e25ccf",
+      "lines": 499
+    },
+    {
+      "path": "packages/integrations/src/http-request/index.ts",
+      "sha256": "4670143562c63fc7b4963a54cc1f7e551fabc1f85c9e1a1af64f0df88a829c11",
+      "lines": 23
+    },
+    {
+      "path": "packages/integrations/src/http-request/validation.ts",
+      "sha256": "1b844f7dd3a74614af05d32e248bd237946b51d020a0e6c779f11d61eb400390",
+      "lines": 237
+    },
+    {
+      "path": "packages/integrations/src/http/address-policy.ts",
+      "sha256": "636ff8db3bdaa30098e5dd39de386a5d70421a2e4e29c22fe8edb733ed3e3f77",
+      "lines": 123
+    },
+    {
+      "path": "packages/integrations/src/http/header-value.ts",
+      "sha256": "3102e0cfdcfc4eb1b754889b6316f5826a29fa82fa429aeaa8c288003bc96d11",
+      "lines": 7
+    },
+    {
+      "path": "packages/integrations/src/http/iana-address-policy-snapshot.ts",
+      "sha256": "431cb77129a40828ac0a54f06bd60c354c13363d5a1a40fac090a41b751d3cfa",
+      "lines": 43
+    },
+    {
+      "path": "packages/integrations/src/http/node-transport.ts",
+      "sha256": "8f8ac0a588ba5132a944cb4bc5277522901ed3695af5a6db128d488b7251ed1a",
+      "lines": 81
+    },
+    {
+      "path": "packages/integrations/src/http/outcome-policy.ts",
+      "sha256": "ffb74c83e64a010185f12d2cd190590bf63b53745f97dd821240d29a09d0a062",
+      "lines": 178
+    },
+    {
+      "path": "packages/integrations/src/http/retry-after.ts",
+      "sha256": "248589ffe5a7147ec845da26a66c977a010738e7d4e5967f48720bce560fdc76",
+      "lines": 15
+    },
+    {
+      "path": "packages/integrations/src/http/secure-http-error.ts",
+      "sha256": "2430ecf1740ec7ab06fd96dd6e035d5b15399518be29a5b8fa741dd39d96c4a2",
+      "lines": 68
+    },
+    {
+      "path": "packages/integrations/src/http/secure-http-request.ts",
+      "sha256": "635df97beadea340d601db5fa7270c63f70a453fc7c00f6034aa0f586347f6ce",
+      "lines": 164
+    },
+    {
+      "path": "packages/integrations/src/http/secure-http.ts",
+      "sha256": "8ef6115a837f5bc2da47c6868a850046b25395ab8f1a3a050f6ef2f9a96ccbc1",
+      "lines": 664
+    },
+    {
+      "path": "packages/integrations/src/http/stream-redaction.ts",
+      "sha256": "8b04ea068cfa139a61cfb124e3923b697ace19825130094efe80e6cd0cd8359c",
+      "lines": 202
+    },
+    {
+      "path": "packages/integrations/src/index.ts",
+      "sha256": "ce7247f2a140c0d3687c8e7ef1879e802ce81b1e5639d775e6752aff70d413fe",
+      "lines": 4
+    },
+    {
+      "path": "packages/integrations/src/provider-dispatch-fence.ts",
+      "sha256": "7e730102785622bc9bf1ec4a5d8ef36c207b24e8f4fecea8503f8da1d4d1505c",
+      "lines": 88
+    },
+    {
+      "path": "packages/integrations/src/server-only.ts",
+      "sha256": "ca65d303d64e2e21d459619ca3a502a85b057659f8b97157570d6b69ba4db4e3",
+      "lines": 5
+    },
+    {
+      "path": "packages/integrations/src/server.ts",
+      "sha256": "21b0793a81650afd767f6d2886083dc2c6badf2be7fb9d5ebfc4da0b5964ff87",
+      "lines": 99
+    },
+    {
+      "path": "packages/integrations/src/slack/client.ts",
+      "sha256": "0220d7d8a0001e10c85a3e86f658bbdb88608c7aa6883abafed697a4cbad4226",
+      "lines": 203
+    },
+    {
+      "path": "packages/integrations/src/slack/definition.ts",
+      "sha256": "bbea40d28e1ffc817cab31c335c68f82753a8e07e8902cb577feb77318caf9cf",
+      "lines": 56
+    },
+    {
+      "path": "packages/integrations/src/slack/executor.ts",
+      "sha256": "63ccd768fc6395436f596997a8060c9987f382bbfb3648c1ae6f6f7bc982a3bb",
+      "lines": 288
+    },
+    {
+      "path": "packages/integrations/src/slack/index.ts",
+      "sha256": "038da28884598a4d59702f6a737059fc11a8fed16608fc3ddd85275d76bf833c",
+      "lines": 19
+    },
+    {
+      "path": "packages/integrations/src/slack/validation.ts",
+      "sha256": "1960f735ada45a7d85229304fc3471241f14e9dc2e55fe3430ff438064884499",
+      "lines": 67
+    },
+    {
+      "path": "packages/integrations/src/webhooks/crypto.ts",
+      "sha256": "53308e4217dfb393485051aff26b07bb0d2cac84fd2f1c7613e49b3866c8c345",
+      "lines": 233
+    },
+    {
+      "path": "packages/integrations/test/aws-envelope-runtime.test.ts",
+      "sha256": "cf0726b39e69d2d2b3da51f95e7f737a57f5f51c0b28bec024b96cb501794762",
+      "lines": 90
+    },
+    {
+      "path": "packages/integrations/test/email-send-notification.test.ts",
+      "sha256": "6cc63efa410fc10fcf5ea2645a2c542e714063d8738e1f0a6ae742e179016223",
+      "lines": 867
+    },
+    {
+      "path": "packages/integrations/test/envelope-encryption.test.ts",
+      "sha256": "0facd6fb270a7dbd524a3bcd32f9e6c966671ed63a1a703f40e26ae0ea5d0d3d",
+      "lines": 330
+    },
+    {
+      "path": "packages/integrations/test/http-outcome-policy.test.ts",
+      "sha256": "b408bb4af21f5bd6c0508b7b4047bc56c824c09e730ea24bc2c96b03676ae7ef",
+      "lines": 194
+    },
+    {
+      "path": "packages/integrations/test/http-request.test.ts",
+      "sha256": "eba9dac9db18e6de0e8eba6437f3c1217279be3312661ff17695016e00c1091c",
+      "lines": 1228
+    },
+    {
+      "path": "packages/integrations/test/kms-client.test.ts",
+      "sha256": "3b6a675acc594cc420a2a949c9d72a0604f88655854064208a876295511d46ac",
+      "lines": 56
+    },
+    {
+      "path": "packages/integrations/test/node-transport.test.ts",
+      "sha256": "53ca78a5a3296d7f44518e07648d74de88f5a118c8bfbe3ec140d3852c92c148",
+      "lines": 196
+    },
+    {
+      "path": "packages/integrations/test/package-contract.test.ts",
+      "sha256": "4e2cfca4094c1740599b90583bd616cf5f2bc473b4987a7495d133ed11416969",
+      "lines": 38
+    },
+    {
+      "path": "packages/integrations/test/retry-after.test.ts",
+      "sha256": "53f090350db74c496d80fc2ab4eba7155090d9d2ec8248e00d789bf5d4ea47e6",
+      "lines": 35
+    },
+    {
+      "path": "packages/integrations/test/secure-http.test.ts",
+      "sha256": "31b7903d50f5923b43a762cbe525c31798708f107d357c5ff43dbd2b1de40123",
+      "lines": 1327
+    },
+    {
+      "path": "packages/integrations/test/slack-send-message.test.ts",
+      "sha256": "737a66b1450b1be8129ac08ac5eb313a91685f986a3683ccf8060c1e480bf0f0",
+      "lines": 756
+    },
+    {
+      "path": "packages/integrations/test/stream-redaction.test.ts",
+      "sha256": "e1fdbddc43ddc85baeadd909aff665de0ddf0bd491c0c4b0695401e1e5f91845",
+      "lines": 124
+    },
+    {
+      "path": "packages/integrations/test/support/provider-credential-failure-cases.ts",
+      "sha256": "eea961e1632bb2a8e72b7d79c9a990ed6b160994e384e1d2fde3008be37f4282",
+      "lines": 47
+    },
+    {
+      "path": "packages/integrations/test/webhook-crypto.test.ts",
+      "sha256": "ccc4c6e0d7531afb99d08a0021adfa2dd4fa039a63242b0359f5a79f75f47073",
+      "lines": 204
+    },
+    {
+      "path": "packages/integrations/tsconfig.json",
+      "sha256": "4d32a9cd5cb9c7fe596b90b702fc3566879aac1c76d3af29992c1ad580c016d9",
+      "lines": 21
+    },
+    {
+      "path": "packages/integrations/tsconfig.test.json",
+      "sha256": "8995c95b93d793c42f5776a9c9e045e8b81db3dc01ad1b57f461f47dfe952964",
+      "lines": 14
+    },
+    {
+      "path": "packages/integrations/vitest.config.ts",
+      "sha256": "c7e478661abaace39c596f21a47550c906cfaeb1416301df050ab1775b7eafe3",
+      "lines": 10
+    },
+    {
+      "path": "packages/integrations/vitest.coverage.config.ts",
+      "sha256": "fe01c7cbecd0a3fb1147f0b48f9fd535f1d4e9c134c3295f26bf8d39728c1da8",
+      "lines": 17
+    },
+    {
+      "path": "packages/node-catalog/package.json",
+      "sha256": "a8c8a00295fd582ddb4fc293ffa9fe32e080223d2eacbafecd3f8bbe877b1a56",
+      "lines": 35
+    },
+    {
+      "path": "packages/node-catalog/src/definition-resolution.ts",
+      "sha256": "3bebed82d0803a2025bd13dd06cf184deeb25ab8582ad59d403c2644fbf3443d",
+      "lines": 198
+    },
+    {
+      "path": "packages/node-catalog/src/index.ts",
+      "sha256": "4fe064d6b0df2a71221a255df1a5a6129fa8966f196540c594d53a0573821635",
+      "lines": 9
+    },
+    {
+      "path": "packages/node-catalog/src/registry.ts",
+      "sha256": "6f49e78bab095db7ee340f981be7c4d343a3c04f2bed0219679854bb62d31290",
+      "lines": 646
+    },
+    {
+      "path": "packages/node-catalog/src/server-only.ts",
+      "sha256": "c53039c6b22fd822986fe003a3d01994246c96dd7a841c9d736b273805f69cb2",
+      "lines": 5
+    },
+    {
+      "path": "packages/node-catalog/src/server.ts",
+      "sha256": "e617ce035e1dec9e8a783e4c5911f6571b06e57e183c99130310eefbd899c383",
+      "lines": 176
+    },
+    {
+      "path": "packages/node-catalog/test/browser-projection.test.ts",
+      "sha256": "03e364d5f48546449d4188c4a836e5edc9d9921e42112b3fb0a5e25e98ba1ed5",
+      "lines": 60
+    },
+    {
+      "path": "packages/node-catalog/test/coverage-config.test.ts",
+      "sha256": "67bd2df21939e61d122d61dba403ef4e9363ad91541624fb7d30702daee9b0a8",
+      "lines": 19
+    },
+    {
+      "path": "packages/node-catalog/test/definition-resolution.test.ts",
+      "sha256": "3165889841e22b7e8a1d60542294f8c445adf125a33d1d6608cdc6e9a3e2728c",
+      "lines": 36
+    },
+    {
+      "path": "packages/node-catalog/test/package-contract.test.ts",
+      "sha256": "d825b7cb9e56f76002cf040ef5222caa97d7ffeb3440a0261c24656b6b4f132d",
+      "lines": 42
+    },
+    {
+      "path": "packages/node-catalog/test/release-history.golden.ts",
+      "sha256": "25a1ef225dbe6ae2a356a40830ab49f876143f360a0c23c2adb297b9c882a981",
+      "lines": 42
+    },
+    {
+      "path": "packages/node-catalog/test/release-history.test.ts",
+      "sha256": "3de2a714b60a204f3ee943661b2561c97b3263863470de6d8035aca53994f3c6",
+      "lines": 1082
+    },
+    {
+      "path": "packages/node-catalog/test/server-registry.test.ts",
+      "sha256": "cc6b21459162c1f15eb2945b96a0b874f2552cb4f99ee732c0386dd620090ec0",
+      "lines": 221
+    },
+    {
+      "path": "packages/node-catalog/tsconfig.json",
+      "sha256": "05515b463142542d4b5e91d90902f81bf81086fe352264d9e942399cfb050b1a",
+      "lines": 33
+    },
+    {
+      "path": "packages/node-catalog/tsconfig.test.json",
+      "sha256": "0ff33f552f1a8383a89173cde6c18c79b5fe4e7eeb6bca23b6f22d271c85bd61",
+      "lines": 18
+    },
+    {
+      "path": "packages/node-catalog/vitest.config.ts",
+      "sha256": "ca2f78a3a95b6c1e8bd85dec7d07f4255261f7ffbd912c81d0748df2498b50f5",
+      "lines": 7
+    },
+    {
+      "path": "packages/node-catalog/vitest.coverage.config.ts",
+      "sha256": "674ad509d6d28e46fa1754668da4064dd16dff8175f56c0206caed358a09222f",
+      "lines": 25
+    },
+    {
+      "path": "packages/node-sdk/package.json",
+      "sha256": "e143cc2b7df101963de3f3fba353245eb48094e526abcb02128020dcbc0fbd69",
+      "lines": 39
+    }
+  ]
+}

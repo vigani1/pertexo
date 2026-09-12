@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/observability/test/maintenance-metrics.test.ts",
+      "sha256": "1c04e95a76c73e739ccf9bb4444f8acfbdc87ad282af033fa66d2c736e4fd18b",
+      "lines": 63
+    },
+    {
+      "path": "packages/observability/test/nest-runtime.test.ts",
+      "sha256": "2341a1c0eab3876ed8aae0cb9afe1e5199112f7483ff2dae16dd9c3571248042",
+      "lines": 178
+    },
+    {
+      "path": "packages/observability/test/operations-assets.test.ts",
+      "sha256": "8a7a079d822a4541e9d5b0278ecf92d73fe1cedc1282da7afe8ea88b6a2432c2",
+      "lines": 233
+    },
+    {
+      "path": "packages/observability/test/package-contract.test.ts",
+      "sha256": "7b63cb194f353090b6ec58e344a7d9ebb860115a1e2ff12b23caa5a365dd44ed",
+      "lines": 46
+    },
+    {
+      "path": "packages/observability/test/queue-tracing.test.ts",
+      "sha256": "507942aac1bfe9877486bce33197d57f4be7cc4a024242d1360351eac2b3cba6",
+      "lines": 257
+    },
+    {
+      "path": "packages/observability/test/runtime.test.ts",
+      "sha256": "f11cf526cc846470337b6e1073fb4c1d5afa46bfe92deac1a1eeb2bb20c7e567",
+      "lines": 45
+    },
+    {
+      "path": "packages/observability/test/telemetry-http-sanitization.test.ts",
+      "sha256": "4aaad51c7edb338f64febb91fef9ffd221136183914aa03ae7ae9a9a23a2735a",
+      "lines": 501
+    },
+    {
+      "path": "packages/observability/test/telemetry-non-http-sanitization.test.ts",
+      "sha256": "8aee4f2273b577fe4052340883fd91b608ab2449b3f6125fe4693752a903554a",
+      "lines": 179
+    },
+    {
+      "path": "packages/observability/test/telemetry.test.ts",
+      "sha256": "582ea9c7bc46743fe7b758caa36e41916d56e116bba66e38c4c7e0cc0cd2fa04",
+      "lines": 122
+    },
+    {
+      "path": "packages/observability/test/transport-metrics.test.ts",
+      "sha256": "3cd85e9c357cee32d44d7ccd2214f0598f403888a4bea0ac0943b6f23ef7993e",
+      "lines": 356
+    },
+    {
+      "path": "packages/observability/tsconfig.json",
+      "sha256": "a9c251039335dae5d1b23125b8f2f422c2b70181143bda17bbff50a79a96cab9",
+      "lines": 15
+    },
+    {
+      "path": "packages/observability/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/observability/vitest.config.ts",
+      "sha256": "c7e478661abaace39c596f21a47550c906cfaeb1416301df050ab1775b7eafe3",
+      "lines": 10
+    },
+    {
+      "path": "packages/observability/vitest.coverage.config.ts",
+      "sha256": "407660181c2a87b196d28975f516eb26d03001624ca0ce59e4371013bda84af4",
+      "lines": 17
+    },
+    {
+      "path": "packages/queue/package.json",
+      "sha256": "d4f5360bd58dbbb5bc6f7b642572e96324eff84fa4cc7941b32d91af03c80442",
+      "lines": 30
+    },
+    {
+      "path": "packages/queue/src/consumer.ts",
+      "sha256": "37fbbbd048aadee1401336d77cbf01d810381140a53a235858d4c79d3840fb58",
+      "lines": 653
+    },
+    {
+      "path": "packages/queue/src/contracts.ts",
+      "sha256": "a842bca63d7976f1d25966412410a89f085635e0b71c827d8661ab68a14b804b",
+      "lines": 291
+    },
+    {
+      "path": "packages/queue/src/defaults.ts",
+      "sha256": "dd34183c15a10e8d572bf394af28037a9bb04f8860cbf598f179ffc7311dee0e",
+      "lines": 96
+    },
+    {
+      "path": "packages/queue/src/delivery-admission.ts",
+      "sha256": "4aa0ba03df33322afe8b4ec13299b35271dd10d72926154c10b84a21a6852bce",
+      "lines": 38
+    },
+    {
+      "path": "packages/queue/src/index.ts",
+      "sha256": "64a3fbfdbb30c3ded3ce875175f63c2240b145ed0209343aba5daa68662e87f8",
+      "lines": 111
+    },
+    {
+      "path": "packages/queue/src/names.ts",
+      "sha256": "4c15658ae1fac2dc3ad1876ecc2c8e150a92d6f707ace54b1d2846b4cce6ce89",
+      "lines": 39
+    },
+    {
+      "path": "packages/queue/src/producer.ts",
+      "sha256": "906da894b39ea345943cad6ef56b8999da4c8e9ce9481b54a461888a9b022e26",
+      "lines": 467
+    },
+    {
+      "path": "packages/queue/src/redis-endpoint.ts",
+      "sha256": "2a9bcfca6e1ccdb9a6827215c70b1b3ecc4304bb4b8c6169d8c08cd4e9a6366c",
+      "lines": 23
+    },
+    {
+      "path": "packages/queue/src/redis-telemetry-contracts.ts",
+      "sha256": "fced06526b43c1e0aa66272506eef7216b4627e217c3c9b69e2c69aeb5f236fb",
+      "lines": 173
+    },
+    {
+      "path": "packages/queue/src/redis-telemetry.ts",
+      "sha256": "ceb43362a0dff4b17435d40f28cc6a37aa6f6411466efbf5478d00a4393de651",
+      "lines": 79
+    },
+    {
+      "path": "packages/queue/src/run-event-notifications.ts",
+      "sha256": "3969583f05ed6ad354e1dee474608871e618ebcba3d93835e905d76a323702e8",
+      "lines": 208
+    },
+    {
+      "path": "packages/queue/src/server-only.ts",
+      "sha256": "d3b28fb93ea77d2c714b6b2523d12059d7dc999fd39c0296941482574d8dd038",
+      "lines": 6
+    },
+    {
+      "path": "packages/queue/test/compatibility.test.ts",
+      "sha256": "47a043505ae08768be7595f8e0b84293d34afc6c386d19d38c5c18b7b1c79661",
+      "lines": 24
+    },
+    {
+      "path": "packages/queue/test/consumer.test.ts",
+      "sha256": "75ae10e2f813fb8ac21225fd07081d3e599eb44ad7d1b1df842ea8cb02ea81ef",
+      "lines": 705
+    },
+    {
+      "path": "packages/queue/test/contracts.test.ts",
+      "sha256": "b85775b04eb1845134147f8bce696303cb5e395a01e6bdf03139bc948b9bfa6d",
+      "lines": 282
+    },
+    {
+      "path": "packages/queue/test/defaults.test.ts",
+      "sha256": "2d0b99d3fad279e848544fa6e52400e41785f8679b1bf01ad3c0907e8e0c6298",
+      "lines": 41
+    },
+    {
+      "path": "packages/queue/test/fixtures/queue-jobs-v1.json",
+      "sha256": "d468348dde44b638fb2cfffedaf141f95a7b062b9c74aaa1621e56286c1da267",
+      "lines": 101
+    },
+    {
+      "path": "packages/queue/test/names.test.ts",
+      "sha256": "c18579854d86cb8a851a53e75953b2643da4a90b7ac70b2504c3f5a215212849",
+      "lines": 55
+    },
+    {
+      "path": "packages/queue/test/package-contract.test.ts",
+      "sha256": "6785340adaf7b3f3db406e859bf22554f53d81eba71f0ccadc30cdd650da527d",
+      "lines": 37
+    },
+    {
+      "path": "packages/queue/test/producer.test.ts",
+      "sha256": "63b1f59a11077b00edf0f021f433c096051ff272fc1a4d8adc5dd2d37ef37300",
+      "lines": 411
+    },
+    {
+      "path": "packages/queue/test/public-surface.test.ts",
+      "sha256": "d466339b9c0fadb6d6f65aaf6c7eb5055e7c55d3a4a46c978222f131b7ba24f7",
+      "lines": 55
+    },
+    {
+      "path": "packages/queue/test/redis-endpoint.test.ts",
+      "sha256": "e0e41d26919b2d02e9c183c49898bd39c45023a04ae0aef1bbf85957398ce7ba",
+      "lines": 45
+    },
+    {
+      "path": "packages/queue/test/redis-telemetry.integration.test.ts",
+      "sha256": "5295dfd0370fd1435d2a635749063f1c9c01a336e13d8d125fcd5f2b876df37a",
+      "lines": 48
+    },
+    {
+      "path": "packages/queue/test/redis-telemetry.test.ts",
+      "sha256": "b01331ab9d9219fed3a3b8c8c20f81636a46b29600f9f6c2ca09047752dff7ca",
+      "lines": 107
+    },
+    {
+      "path": "packages/queue/test/run-event-notifications.test.ts",
+      "sha256": "478d5423db72195c9144203daad360e5613e462bb2e96a5dfd5d8254f8555c6d",
+      "lines": 33
+    },
+    {
+      "path": "packages/queue/tsconfig.json",
+      "sha256": "9205d22b2a95a7610f98bf4d902158858666cfc993b7eaa55f30bfb1f6d6eefe",
+      "lines": 22
+    },
+    {
+      "path": "packages/queue/tsconfig.test.json",
+      "sha256": "9323b23bfb37837eb1bd6ff2bc98a98bc02f79d4bb14c9f324100b5ac427e8fd",
+      "lines": 13
+    },
+    {
+      "path": "packages/queue/vitest.config.ts",
+      "sha256": "c7e478661abaace39c596f21a47550c906cfaeb1416301df050ab1775b7eafe3",
+      "lines": 10
+    },
+    {
+      "path": "packages/queue/vitest.coverage.config.ts",
+      "sha256": "836f6d865b28632dcc6c9f7682376e27137c9630f8af0b98e542ecd3c715fa8e",
+      "lines": 17
+    },
+    {
+      "path": "packages/queue/vitest.integration.config.ts",
+      "sha256": "95c95f44ec7534dc2f2b93dd8b29f268d118f704e5873ba6b2ac3133d81e4186",
+      "lines": 11
+    },
+    {
+      "path": "packages/rate-limit/package.json",
+      "sha256": "d7e2e91b0baa60182299b01aeff61340e630e90b26549b00b5fca6007c632b26",
+      "lines": 23
+    },
+    {
+      "path": "packages/rate-limit/src/distributed-rate-limiter.ts",
+      "sha256": "001f38da48aa5ee25461244b759416751124e2723ce79a09f84e0cfaf137c136",
+      "lines": 153
+    },
+    {
+      "path": "packages/rate-limit/src/index.ts",
+      "sha256": "36afb142a8eca91e425b4712a1d368aea54aae790f8d44c43c4fbb588399d9b5",
+      "lines": 21
+    },
+    {
+      "path": "packages/rate-limit/src/policy.ts",
+      "sha256": "1c3ca2a556c7e15e559a9c2684fc5573952d3a3599c8883c39e0107f92f8f49e",
+      "lines": 201
+    },
+    {
+      "path": "packages/rate-limit/src/redis-runtime.ts",
+      "sha256": "95ce306c9bd0f88d2b9ca7479270a95a72ce0466a6eee45a1fccc6fed7e76bd0",
+      "lines": 113
+    },
+    {
+      "path": "packages/rate-limit/test/distributed-rate-limiter.test.ts",
+      "sha256": "3c1f40ad62542285b5170e5a076ecb4b2a7d24c094d3e833afe035085b5d04f5",
+      "lines": 152
+    },
+    {
+      "path": "packages/rate-limit/test/policy.test.ts",
+      "sha256": "e06af1faa794f47836678cb9538f02220616f4352ad4826be3a5e482074c2d76",
+      "lines": 208
+    },
+    {
+      "path": "packages/rate-limit/test/redis-runtime.test.ts",
+      "sha256": "10e8ffc34643d80ceb26910225650a4b3e68f2a6815f56b56df8c7ecc3320596",
+      "lines": 177
+    },
+    {
+      "path": "packages/rate-limit/tsconfig.json",
+      "sha256": "9205d22b2a95a7610f98bf4d902158858666cfc993b7eaa55f30bfb1f6d6eefe",
+      "lines": 22
+    },
+    {
+      "path": "packages/rate-limit/tsconfig.test.json",
+      "sha256": "0ff33f552f1a8383a89173cde6c18c79b5fe4e7eeb6bca23b6f22d271c85bd61",
+      "lines": 18
+    },
+    {
+      "path": "packages/rate-limit/vitest.config.ts",
+      "sha256": "cd619ebdc14fdca0194da05e035a43bdbc50d58b7d6d4f4d5ff5a2c22384c726",
+      "lines": 6
+    },
+    {
+      "path": "packages/rate-limit/vitest.coverage.config.ts",
+      "sha256": "735b480c9cd235db25fdb6782d5bcb9018c32cd244f13ad8b62f862b86126b78",
+      "lines": 22
+    },
+    {
+      "path": "packages/workflow-engine/package.json",
+      "sha256": "2ac7476b902090eaa4ca852423c4ae9741c4825a72646e08b53f8a15fbbf0dc3",
+      "lines": 37
+    },
+    {
+      "path": "packages/workflow-engine/src/advance-workflow.ts",
+      "sha256": "fc5d3a973563dd10af6b639e1d2180d646bf67374cde61ae223c5271404acb0e",
+      "lines": 143
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-executable-validation.ts",
+      "sha256": "fe56679d6188baf81ebdf4f5728a8584dc79d7c984426b35d20f9a34a56dddf2",
+      "lines": 241
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-identity.ts",
+      "sha256": "0a5a0da05805b0aa7a0a81be2bbfafceeba805825697dc7d6d347b17eb89a544",
+      "lines": 37
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-shared.ts",
+      "sha256": "3a8318e6db63198001801d975a7b61c3efb359e853ef28f492a80c4043d57264",
+      "lines": 479
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-v1-join.ts",
+      "sha256": "eea907addfa6a312ccdbc2b0c777dc6842fac8de2bbc066019987176c783d6a5",
+      "lines": 194
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-v1-loop.ts",
+      "sha256": "876e81dd9d0eba6ff345a5796e6efc0c7ca3fc45084cca44e8a120309798a1d5",
+      "lines": 199
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-v1.ts",
+      "sha256": "b332396f6afbf3023b2cc08caccb501f0d30869d395b751e8867ee719ed1f69d",
+      "lines": 290
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint-v2.ts",
+      "sha256": "5b27aeb7828680bb6ac7a3d7a9cdd3a5841ede8511e10c7a0fbfedb09b9e10ec",
+      "lines": 144
+    },
+    {
+      "path": "packages/workflow-engine/src/checkpoint.ts",
+      "sha256": "49e1b71fc1c35b875797f1e40128a3144baf8c0d97210d902eb9f9bc87cb9810",
+      "lines": 101
+    },
+    {
+      "path": "packages/workflow-engine/src/coordinator-failures.ts",
+      "sha256": "58f48de5fcae01899026940090909d3594f7734d7d331a925924b633ce0c3b77",
+      "lines": 107
+    },
+    {
+      "path": "packages/workflow-engine/src/coordinator-observations.ts",
+      "sha256": "bc3ee51339265a5f15453c4d6cd76534e451129d13df36d549c9ee83b7239e87",
+      "lines": 501
+    },
+    {
+      "path": "packages/workflow-engine/src/coordinator-output.ts",
+      "sha256": "d241ce54c35c98fe2dda6b1d16663932a75fdae3465fcbe13de119ed7dfe4169",
+      "lines": 63
+    },
+    {
+      "path": "packages/workflow-engine/src/core-definition-identities.ts",
+      "sha256": "559ffea9fb6b9753fa729a844fad630c551ef1fcb29b819ae568550e9863ad60",
+      "lines": 42
+    },
+    {
+      "path": "packages/workflow-engine/src/errors.ts",
+      "sha256": "b7cf486f78045a8615f28eb1b365fb8d548cecc86d1446f9f51cc7bd175258b8",
+      "lines": 25
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-boundary.ts",
+      "sha256": "2ee065b7bdb8d942de6833cc62727045d4d05fb8a6813c53f855ee40d4f85d3c",
+      "lines": 139
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-compatibility.ts",
+      "sha256": "bcafdcc990d9c927426149d201afcc25ac5e63745e6524ec2095c0ca574dd707",
+      "lines": 131
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-compilation.ts",
+      "sha256": "abbb477c85462b89e8e38d6560e098c3f3032cced7b1828fcb7e19e5315b0d2e",
+      "lines": 161
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-foundation.ts",
+      "sha256": "fa087aa98869e7cc0dfe8d2c174eace609d1048c6db5de33c648fa68e025f995",
+      "lines": 192
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-graph-boundary.ts",
+      "sha256": "dddf9db54d9190baebbc049f8f61f49ae65a2751f2231d3aae2c6a7b916dc801",
+      "lines": 261
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-graph-rules.ts",
+      "sha256": "f52b9b9d8afcdd3471d96795bc30696fe738aaadffed8ce755921e2863e640b8",
+      "lines": 256
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-graph-validation-index.ts",
+      "sha256": "73e0f7cec8dbd41ca62603c6388117d6d33d445d70f41159423bc215b24c3252",
+      "lines": 71
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-graph.ts",
+      "sha256": "037b1d77e898d121aabcef3bc07a318061c670b2535ea4b52fe8024ed29583a6",
+      "lines": 52
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-identity.ts",
+      "sha256": "0d6a688776f5d43d31a5442af462ed74dd50598e46e2e4795ddc359abd35553d",
+      "lines": 72
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-validation.ts",
+      "sha256": "6d6abd25058b3bff73c1dab81a81897084c7f2ca1aeeb110f9262251b9ef1686",
+      "lines": 288
+    },
+    {
+      "path": "packages/workflow-engine/src/executable-workflow.ts",
+      "sha256": "745e1fa6d549390ecca103069e5661e248b86d24f2d5c2c67c9060b78eecb692",
+      "lines": 31
+    },
+    {
+      "path": "packages/workflow-engine/src/graph-scheduler-indexes.ts",
+      "sha256": "65bf36af5ce614c693b43f565d42fcd282f624dd7dad23174a7689a01ba32f54",
+      "lines": 67
+    },
+    {
+      "path": "packages/workflow-engine/src/graph-scheduler.ts",
+      "sha256": "06ac1f4e4c812b1d9f74ce136c545616fdcfc29c6ede04271f3d6ed778b1ceb3",
+      "lines": 451
+    },
+    {
+      "path": "packages/workflow-engine/src/index.ts",
+      "sha256": "9f407f572ee34de604123768ce10883131d1fadb78823be4b163340d9ab455ca",
+      "lines": 52
+    },
+    {
+      "path": "packages/workflow-engine/src/node-attempt-input.ts",
+      "sha256": "61a0415c580019c4dd734d51d6768e2174e36da4e201e64697f9d939159a0b61",
+      "lines": 251
+    },
+    {
+      "path": "packages/workflow-engine/src/operation-values.ts",
+      "sha256": "cd69a6cb4678e408bcbcf96744f8e7dbc0791f5a214eee5a9c226587ca85f1b8",
+      "lines": 44
+    },
+    {
+      "path": "packages/workflow-engine/src/operations.ts",
+      "sha256": "0cdea6f7ff8a881e62f2145b366d367eec62472b3970738364f244644e6ad396",
+      "lines": 489
+    },
+    {
+      "path": "packages/workflow-engine/src/ordering.ts",
+      "sha256": "381774f7d4ef42bbe1c1f6b92769fb154e85a7eda2137b82250a8bf011ba0c36",
+      "lines": 3
+    },
+    {
+      "path": "packages/workflow-engine/src/output-reference.ts",
+      "sha256": "46b0a1329d320a8021163597ed8c1fdef5ded6c85915bf2bf08067ef5cc8a91c",
+      "lines": 14
+    },
+    {
+      "path": "packages/workflow-engine/src/persisted-observation-parser.ts",
+      "sha256": "55d0c2aba09107a4ff706b506536fe705100757c9ee6336bfeec876a2123b5b6",
+      "lines": 362
+    },
+    {
+      "path": "packages/workflow-engine/src/persisted-observations.ts",
+      "sha256": "b7a80a9c75abd8e48dfecd84109247b78da643b28c934998365b177e1d438fd4",
+      "lines": 359
+    },
+    {
+      "path": "packages/workflow-engine/src/retries.ts",
+      "sha256": "fb1ade6b80c81363a0500cf5c14da81ce03bf5d50b7f1a6b3f53b836bc9d4cc1",
+      "lines": 165
+    },
+    {
+      "path": "packages/workflow-engine/src/runtime.ts",
+      "sha256": "0837b89a6b4fbb1c06bc8e7054cf335b66513f91670eda7a47ecd32ad8ed2e27",
+      "lines": 73
+    },
+    {
+      "path": "packages/workflow-engine/src/scheduling.ts",
+      "sha256": "9def30f120bb38414981782ea84969b12e71784323a526ff87b579b5fd592b91",
+      "lines": 253
+    },
+    {
+      "path": "packages/workflow-engine/src/scope.ts",
+      "sha256": "4c14698991a55cdc760d74e4ae7dd62ec16e379645239eb80852e85653c65726",
+      "lines": 41
+    },
+    {
+      "path": "packages/workflow-engine/src/server-only.ts",
+      "sha256": "bc1706826beb72f558d9430397f309418ffe075b54e27f61e08bfaafca47151a",
+      "lines": 5
+    },
+    {
+      "path": "packages/workflow-engine/src/testing-graph.ts",
+      "sha256": "67def2c4eca1b440b2d36130fc074207fe127c895b40daf4162b13577109d7f3",
+      "lines": 40
+    },
+    {
+      "path": "packages/workflow-engine/src/testing.ts",
+      "sha256": "acf9bde3d474c73c4e8cf8584b4679b5eb98bb0deff23e849f15ca097a517dad",
+      "lines": 87
+    }
+  ]
+}

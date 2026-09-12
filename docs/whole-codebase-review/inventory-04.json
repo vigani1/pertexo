@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "apps/recovery/tsconfig.json",
+      "sha256": "578d2a41fac265bd7f3b5d8d1cec107c1530031daac8b8b7408d4ceaf1be750f",
+      "lines": 25
+    },
+    {
+      "path": "apps/recovery/tsconfig.test.json",
+      "sha256": "8cbc299ca4c789097e9e2243bb5cd819be52f6b5cbace2e0f440f4835fb51921",
+      "lines": 11
+    },
+    {
+      "path": "apps/recovery/vitest.config.ts",
+      "sha256": "fd9b5e11dad7b99d2aff3f22e8ac2f56a1ac0482c82990d1260c70d254e904d4",
+      "lines": 9
+    },
+    {
+      "path": "apps/retention/package.json",
+      "sha256": "1a260fe5a0ed35cc7b3a1ae480a73dc459ca7edf81a37616af562ce8067a144c",
+      "lines": 20
+    },
+    {
+      "path": "apps/retention/src/config.ts",
+      "sha256": "db684e26084f0d3be01b3166c3e74a86c05db3f08ff412482de9927d90348ba3",
+      "lines": 176
+    },
+    {
+      "path": "apps/retention/src/main.ts",
+      "sha256": "719ef67ccc39ab41c69292343b06cfa405b49f686dad3ccfcfe83e05b3b6c902",
+      "lines": 162
+    },
+    {
+      "path": "apps/retention/src/maintenance-loops.ts",
+      "sha256": "c447f6601fb309240d15467fd12bed961781d16483c588f2661c39c3543474ce",
+      "lines": 372
+    },
+    {
+      "path": "apps/retention/src/metrics.ts",
+      "sha256": "91fbcc2c722f14568aa67369a61bb3cb0443a390ef1103c930e66dd27aa92be8",
+      "lines": 309
+    },
+    {
+      "path": "apps/retention/src/run.ts",
+      "sha256": "c40d41b59e59df92e5b64b8a63c433aa1b75f8f282c7fbc0f781ffbb4a85be7e",
+      "lines": 138
+    },
+    {
+      "path": "apps/retention/test/config.test.ts",
+      "sha256": "d7798e7204e33094e07e48fc360c652f9e37098ed7e76963f9c4d703a0e7a49e",
+      "lines": 89
+    },
+    {
+      "path": "apps/retention/test/metrics.test.ts",
+      "sha256": "6f69c4f947e3ae9ab5e0fc29a5c07219d75b8ec52ffc121d8dbfe22b30049f58",
+      "lines": 84
+    },
+    {
+      "path": "apps/retention/test/run.test.ts",
+      "sha256": "a86e832fd813181a852e1ec13e487648134392dce8f1ce50534b3cb6fb5b4f17",
+      "lines": 748
+    },
+    {
+      "path": "apps/retention/tsconfig.json",
+      "sha256": "578d2a41fac265bd7f3b5d8d1cec107c1530031daac8b8b7408d4ceaf1be750f",
+      "lines": 25
+    },
+    {
+      "path": "apps/retention/tsconfig.test.json",
+      "sha256": "8cbc299ca4c789097e9e2243bb5cd819be52f6b5cbace2e0f440f4835fb51921",
+      "lines": 11
+    },
+    {
+      "path": "apps/retention/vitest.config.ts",
+      "sha256": "fd9b5e11dad7b99d2aff3f22e8ac2f56a1ac0482c82990d1260c70d254e904d4",
+      "lines": 9
+    },
+    {
+      "path": "apps/worker/package.json",
+      "sha256": "ec06e9615ed37e1ca21ab52b4fa98071f55fc86457391770a8b2362146dd2a60",
+      "lines": 44
+    },
+    {
+      "path": "apps/worker/src/app.ts",
+      "sha256": "a658b0b038d09be5522963e4c566cb5753893ed2aa2432a341daaea000439b7b",
+      "lines": 93
+    },
+    {
+      "path": "apps/worker/src/config/worker-config.ts",
+      "sha256": "3a9375da6dc751551851e4da228717f89e9a62dfac57b55daefb6d721ae0f17f",
+      "lines": 480
+    },
+    {
+      "path": "apps/worker/src/execution/coordinator-engine.ts",
+      "sha256": "7daeedda2a2f6d2f0ea624ee3b1b1ceabf6b779c0b2df67ec1a1bf0dd7790575",
+      "lines": 59
+    },
+    {
+      "path": "apps/worker/src/execution/coordinator-handler.ts",
+      "sha256": "bd933b7d273a3c98b46edaa967d7f4db474c1552128e5bfd62ad14e8314e8cec",
+      "lines": 194
+    },
+    {
+      "path": "apps/worker/src/execution/coordinator-runtime.ts",
+      "sha256": "9aeeef154f20a9af949ce3ef00fa8699103d3354fe14a71ea0fe3dd8d3129669",
+      "lines": 279
+    },
+    {
+      "path": "apps/worker/src/execution/coordinator-telemetry.ts",
+      "sha256": "bf7ca98cf6ca5ecb5f1da1f030becd81b0d4ab4758b0f06f9ce967772da35f8f",
+      "lines": 32
+    },
+    {
+      "path": "apps/worker/src/execution/core-definition-identities.ts",
+      "sha256": "1e4151d9e899370e3e3401d244950d57e67537a2970bdf17a1cff1c8ced25bd1",
+      "lines": 60
+    },
+    {
+      "path": "apps/worker/src/execution/email-provider-telemetry.ts",
+      "sha256": "f3d7f97ab3b347b915375d19eee0e6ef1bf131359e6fcdb20c459952c48d495d",
+      "lines": 29
+    },
+    {
+      "path": "apps/worker/src/execution/failure-notification-delivery.ts",
+      "sha256": "e7020771f0deee52604cd1f092cb5eff829089bca59d57f0e0dbd735a6f30bc3",
+      "lines": 508
+    },
+    {
+      "path": "apps/worker/src/execution/failure-notification-handler.ts",
+      "sha256": "d2512ae7908244288ecc5b1f5111e1cd7443fc4e8f76f8fec953996031051a05",
+      "lines": 126
+    },
+    {
+      "path": "apps/worker/src/execution/http-provider-telemetry.ts",
+      "sha256": "2a88a5b768559c8b1b26e58a7d6b4eeab23d23b23252d3b7aa5cea5b0a7a422f",
+      "lines": 203
+    },
+    {
+      "path": "apps/worker/src/execution/node-artifact-policy.ts",
+      "sha256": "28af640dc6a6423f97e5141bfc3d6f44a8cf7a68d0f6e6a52c95af7639f7f149",
+      "lines": 56
+    },
+    {
+      "path": "apps/worker/src/execution/node-attempt-engine.ts",
+      "sha256": "922618bbe4cb40a77c2092a8e0ef39ae6ec257255fff2d1d6a7da51f13e16026",
+      "lines": 311
+    },
+    {
+      "path": "apps/worker/src/execution/node-attempt-execution-environment.ts",
+      "sha256": "1c464a7a6d7a4c8200fa3bdbf1e336afeabeaebec5cffc3fcc72a09758b283e1",
+      "lines": 105
+    },
+    {
+      "path": "apps/worker/src/execution/node-attempt-handler-state-error.ts",
+      "sha256": "5197702296bd86b0a8ab1d53d5f15aca6bdd41c9a535e56f54184d79191ef465",
+      "lines": 7
+    },
+    {
+      "path": "apps/worker/src/execution/node-attempt-handler.ts",
+      "sha256": "fa134c60efc5e5f1f6fcb582450d092d4c24e49f7cc3d3fda0d89814d8f11fb7",
+      "lines": 414
+    },
+    {
+      "path": "apps/worker/src/execution/node-attempt-runtime.ts",
+      "sha256": "07420071d3f11812763c9786c01043bf77d8d24aa74cfa6e94dc92a573eaf46b",
+      "lines": 444
+    },
+    {
+      "path": "apps/worker/src/execution/node-execution-capabilities.ts",
+      "sha256": "2f20ee174325a85c05aeec365e0087e9fa02aedc953f4c96c576a807eaa87bfd",
+      "lines": 27
+    },
+    {
+      "path": "apps/worker/src/execution/node-execution-runtime-fields.ts",
+      "sha256": "a25a8bf2291afb134bb02b2838d7f59553a57ec368c93cf20adfd7b5cd81a2c8",
+      "lines": 29
+    },
+    {
+      "path": "apps/worker/src/execution/node-runtime-capabilities.ts",
+      "sha256": "fb680e4e54877aa4ad0d8619ab104cb675636ab992f335a56ac4629ea75c08ee",
+      "lines": 484
+    },
+    {
+      "path": "apps/worker/src/execution/operator-run-replay-runtime.ts",
+      "sha256": "7e977f9eaa26823d3495dc399dd5fe7ee269f4cc73f6a3a297c79161d31f91c6",
+      "lines": 138
+    },
+    {
+      "path": "apps/worker/src/execution/persisted-workflow-projection.ts",
+      "sha256": "61c42cb3a5673c09e7e9b03579f7c7211881194694889a9560ef9a1e788e966b",
+      "lines": 57
+    },
+    {
+      "path": "apps/worker/src/execution/preview-attempt-handler.ts",
+      "sha256": "8002e7512d4753cc391fdded600dcf62d724f3a572c4a24ab80f0a472aeeaeec",
+      "lines": 459
+    },
+    {
+      "path": "apps/worker/src/execution/preview-attempt-runtime.ts",
+      "sha256": "b4b169dc893290b61ea0d9e939112a641be2aecadfa7653f4c25f070cb184f2a",
+      "lines": 307
+    },
+    {
+      "path": "apps/worker/src/execution/preview-attempt-supervisor.ts",
+      "sha256": "035e1c31be4b2df0804fc11b4ac0c179f2086bb44dc62c325ef86c9227aa5ba4",
+      "lines": 130
+    },
+    {
+      "path": "apps/worker/src/execution/preview-maintenance-runtime.ts",
+      "sha256": "a6fed6e680e97aa17c491522ffc77f04fad05096a5f829343e23d65ec152627e",
+      "lines": 235
+    },
+    {
+      "path": "apps/worker/src/execution/preview-reconciliation-runtime.ts",
+      "sha256": "188afee5bd5d0178f7c4ff2e0e8f392ea31923d3af249b73b11cd9268e9bc8b9",
+      "lines": 124
+    },
+    {
+      "path": "apps/worker/src/execution/preview-telemetry.ts",
+      "sha256": "4dc35ed01e4928e5466199c182c85ad5629abab0adb23c6f7266b47a308719c7",
+      "lines": 129
+    },
+    {
+      "path": "apps/worker/src/execution/provider-connection-runtime.ts",
+      "sha256": "479c1b2ce53c57c58f318175e4ffaf9fd286c96c4cb29a1e7c796faa58b55950",
+      "lines": 123
+    },
+    {
+      "path": "apps/worker/src/execution/provider-telemetry.ts",
+      "sha256": "17ae19173c49c3162f4318fef6271289f9a2da9136c7571c3a6ee59f9dae7c85",
+      "lines": 95
+    },
+    {
+      "path": "apps/worker/src/execution/slack-provider-telemetry.ts",
+      "sha256": "a4c954f69f5757246e18c7924309e55eb0d13d5255e7c2131264f4dd91ce0c82",
+      "lines": 29
+    },
+    {
+      "path": "apps/worker/src/execution/unknown-outcome-reconciliation-runtime.ts",
+      "sha256": "5a15742a6eace0638ae9673704851e7ca5796ce4d40a307d85dca84aa0b61694",
+      "lines": 91
+    },
+    {
+      "path": "apps/worker/src/main.ts",
+      "sha256": "dfbdaa172a06d544e1a8d57c7ae6ad8a3ff2068ea3dd50db92a6d1d829766060",
+      "lines": 67
+    },
+    {
+      "path": "apps/worker/src/platform/database/database.module.ts",
+      "sha256": "5776a05e14a472e91162dd429703ca865e91096aaefe68bcb3bb0527ee582591",
+      "lines": 110
+    },
+    {
+      "path": "apps/worker/src/platform/observability/observability.module.ts",
+      "sha256": "d435cf9d1744db9c65ab612db30baf3162d544a780c897e154713e992e86675a",
+      "lines": 34
+    },
+    {
+      "path": "apps/worker/src/runtime/abortable-delay.ts",
+      "sha256": "3403766bb1f86537e4283e7f74309a9f384edb79e0289308955ee81081910d99",
+      "lines": 54
+    },
+    {
+      "path": "apps/worker/src/runtime/artifact-metrics.ts",
+      "sha256": "661fe5d99545cd5b47781c732092fdac386e966bdb67821a825be0fc58cbb3cc",
+      "lines": 29
+    },
+    {
+      "path": "apps/worker/src/runtime/background-task-deadline.ts",
+      "sha256": "fd87bbb99b6f5721d3ed9051e0365801dcc227cb854c4600a8c727dfc555641f",
+      "lines": 32
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-drain-state.ts",
+      "sha256": "552e8cbb488a3068f38c50ed42f85f4f888b94aa554ab1e149144beab11be9b6",
+      "lines": 20
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-process-keepalive.ts",
+      "sha256": "b031a79cdb61ed1d0ee9f86d543eb66914545ca7b7f2ca9b90a65012790f08e3",
+      "lines": 26
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-process-shutdown.ts",
+      "sha256": "b434e21c4c7b95ee58317494a0c14d25431d62ec66d3fa71f7ce72967703b4db",
+      "lines": 53
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-readiness-monitor.ts",
+      "sha256": "601dc00668a73fd36d7cd84204cbfa306a6e3429414af4e11980e84e428b6cce",
+      "lines": 159
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-readiness.ts",
+      "sha256": "a8347e79bd80316a4f0358e1d6e151440e56519a4b2df4fc6ce3955a0a17a74b",
+      "lines": 53
+    },
+    {
+      "path": "apps/worker/src/runtime/worker-resource-monitor.ts",
+      "sha256": "ea25cf9073e866a4ab4947c636c0b7668ce9c1fb685fab788c95dd5673fcae12",
+      "lines": 95
+    },
+    {
+      "path": "apps/worker/src/testing.ts",
+      "sha256": "8ea5dd5ecd2f8d028d9791af977139df76122397c7cf64e0c89ddd817c94c4d2",
+      "lines": 22
+    },
+    {
+      "path": "apps/worker/src/transport/coordinator-runtime-provider.ts",
+      "sha256": "9dd4e9be78bb05260f7313b594904ea2306b62080d41a846ed51bd8a86281a10",
+      "lines": 52
+    },
+    {
+      "path": "apps/worker/src/transport/dispatch-consumer-capabilities.ts",
+      "sha256": "47f55772bf46545eb4e1c982601fb435f0ea090f09a8d71dd35d1a78e6d0cb4c",
+      "lines": 82
+    },
+    {
+      "path": "apps/worker/src/transport/dispatch-providers.ts",
+      "sha256": "f0af3cf4a5ac0b9916b02fb95df95813bc8ab0bcef60e1bd77b975cea27f5487",
+      "lines": 172
+    },
+    {
+      "path": "apps/worker/src/transport/node-attempt-runtime-provider.ts",
+      "sha256": "f54a6dd9255763b36184b19f382c135c2db3f0a9092e758b45880def59a1a5ec",
+      "lines": 158
+    },
+    {
+      "path": "apps/worker/src/transport/outbox-dispatch-result.ts",
+      "sha256": "0069f60e66cd63be2b1e9e762592f56630dde4b7d35af36c74b25e9c895c6cf1",
+      "lines": 40
+    },
+    {
+      "path": "apps/worker/src/transport/outbox-dispatcher.ts",
+      "sha256": "09d521792d2f77d5eb32a7ac97e2c190ac9b939335621694521ecba14b839c5c",
+      "lines": 529
+    },
+    {
+      "path": "apps/worker/src/transport/outbox-publication-settlements.ts",
+      "sha256": "6d5f0163cb72187bb75e514aa89e1a9bd1cf905b093987f207d44d5dffd5fc49",
+      "lines": 62
+    },
+    {
+      "path": "apps/worker/src/transport/preview-maintenance-runtime-provider.ts",
+      "sha256": "2d85d8f050e58113d22ee839ffcaf167d5d2aba986276c667c09ca9e736366c6",
+      "lines": 139
+    },
+    {
+      "path": "apps/worker/src/transport/transport-job.ts",
+      "sha256": "904c41aa5c5437900645baf583cc5d939b1299624e534112bad8c8897f2b6936",
+      "lines": 61
+    },
+    {
+      "path": "apps/worker/src/transport/transport-lifecycle.ts",
+      "sha256": "e98185f6952ff4d043c370bfa7a9a097896ba1097437dcd705d680de7dc43751",
+      "lines": 64
+    },
+    {
+      "path": "apps/worker/src/transport/transport-metrics-adapter.ts",
+      "sha256": "8fffd42b71e352fb8e9090932f7f3fcfbba060031125449717e621f6579928b4",
+      "lines": 69
+    },
+    {
+      "path": "apps/worker/src/transport/transport-operation-deadline.ts",
+      "sha256": "d0bff51eda8f19988a4e5b63964f373084598a98d2eac0a8384a9779d26c8256",
+      "lines": 34
+    },
+    {
+      "path": "apps/worker/src/transport/transport-tokens.ts",
+      "sha256": "6cbb8abc163e7445c3f07f202dac040fe349277719bafd5a8549e9a71d76b453",
+      "lines": 43
+    },
+    {
+      "path": "apps/worker/src/transport/transport.module.ts",
+      "sha256": "413ace833ce1a100c1e1281f0f9c94e46da9ff621e4dea6f1b5675cfbc5e60fc",
+      "lines": 67
+    },
+    {
+      "path": "apps/worker/src/transport/trigger-runtime-provider.ts",
+      "sha256": "0d7053b536940fa5790936fb241ddf948a6922e00b4e73bd9d36fe4c482c499e",
+      "lines": 52
+    },
+    {
+      "path": "apps/worker/src/triggers/trigger-handler.ts",
+      "sha256": "603ba7b5c8936de241a3f30291aa18f681c0e4574ecdf3d19db394dc6ed3bb7f",
+      "lines": 86
+    },
+    {
+      "path": "apps/worker/src/triggers/trigger-runtime.ts",
+      "sha256": "37d9818f4e3585e3e60e7c57495b51d3c25747be4a190e6aa6fc11c6b62107a3",
+      "lines": 265
+    },
+    {
+      "path": "apps/worker/src/triggers/trigger-telemetry.ts",
+      "sha256": "50631d169526a19422f19c10a0f2ac784c473ceb8ab83a610695d6ad9d29831b",
+      "lines": 57
+    },
+    {
+      "path": "apps/worker/src/worker.module.ts",
+      "sha256": "5a5605e568c97c13ff28350a7f64bc2c0717fd8928bc9a400f6610e8ee4363d9",
+      "lines": 165
+    },
+    {
+      "path": "apps/worker/test/abortable-delay.test.ts",
+      "sha256": "ed50eab932221a6e437fdfc27b93fdb7403313f014cb4149603988d948e7cadb",
+      "lines": 48
+    },
+    {
+      "path": "apps/worker/test/artifact-reference.integration.test.ts",
+      "sha256": "552aae0131220b4ca50860771a043610b5c09228e7bf6c4a8ab4bb36ab2d20e2",
+      "lines": 422
+    },
+    {
+      "path": "apps/worker/test/compatibility-rollout.test.ts",
+      "sha256": "9ccff6468eedc1fe454cc5a5aa25dac56fcb5f0f7556e673ccb3697318cf4cc1",
+      "lines": 67
+    },
+    {
+      "path": "apps/worker/test/compose-service-control.test.ts",
+      "sha256": "431699bd611570febb937b7059b07ce8fe93bde5af4c307f55b3832b4f89ea9d",
+      "lines": 117
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-failure-notification.integration.test.ts",
+      "sha256": "7d205a2ec5df08cd9cd1df61997acbbf5993026548f4062d4a6246fd0214863a",
+      "lines": 766
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-foreach-cancellation.integration.test.ts",
+      "sha256": "b22cbe2ead5969bd4d4528188e1ff1502749bb026f083e96ae40f9a087307f7d",
+      "lines": 489
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-identity-mismatch.integration.test.ts",
+      "sha256": "1ed27e4b3c127415f2e1727fc9717c78107e5357901c589606494fb029f7a8ec",
+      "lines": 121
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-linear-execution.integration.test.ts",
+      "sha256": "e889cc3f7acc7308d5cf159040a89f03be45411dd1ae3e490b81fc02a1dc197c",
+      "lines": 388
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-parallel-recovery.integration.test.ts",
+      "sha256": "174cafa7aa8732b892c7f38cfb9b258f7e0bf80992993881ba936e7abebc812c",
+      "lines": 225
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-redelivery.integration.test.ts",
+      "sha256": "e35c353a116bff9f9280c3e7d39000e0da1072924c5b146b6d2c2ed2ad5d1340",
+      "lines": 232
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer-retry-wait.integration.test.ts",
+      "sha256": "0b7c0e238350f7daa4bcfb636ac0c87403708dc9f3aa35555f3862c9a5d7c41a",
+      "lines": 478
+    },
+    {
+      "path": "apps/worker/test/coordinator-consumer.fixtures.ts",
+      "sha256": "5803db60d16e6446526ea8610be325b8f1373fa06df7d17601291e72ab22254f",
+      "lines": 500
+    },
+    {
+      "path": "apps/worker/test/coordinator-engine.test.ts",
+      "sha256": "a7ce7b0cf1f0c13e4fe291605fcbf0f346da42fddfa8194ba95c72a8fbbc167a",
+      "lines": 191
+    },
+    {
+      "path": "apps/worker/test/coordinator-handler.test.ts",
+      "sha256": "84136f37c90ef39aaff794da2da679a3ca045f871457fc35a9444c0dc02da77c",
+      "lines": 273
+    },
+    {
+      "path": "apps/worker/test/coordinator-runtime.test.ts",
+      "sha256": "8397437f1ad6a58e7f550081dacfc834354edf02b9d4a87013710d50f4d15070",
+      "lines": 350
+    },
+    {
+      "path": "apps/worker/test/coordinator-telemetry.test.ts",
+      "sha256": "bfea5fefe6e17963ff8f172eeb674437bacee6a6c470204f5def837ab849ac59",
+      "lines": 28
+    },
+    {
+      "path": "apps/worker/test/core-definition-identities.test.ts",
+      "sha256": "f30e263673b2fbb52c4fb5f79c1215393f3b8ffb8c46cb43e76b4b12bba06da2",
+      "lines": 30
+    },
+    {
+      "path": "apps/worker/test/email-provider-telemetry.test.ts",
+      "sha256": "e5beae595309c59b6bf77511c884bcb03074e42199fd95440aecc1256f1a978a",
+      "lines": 65
+    },
+    {
+      "path": "apps/worker/test/execution-import-boundaries.test.ts",
+      "sha256": "fb5d31e84a15730efc17bd741726f37e0b638717e612ba818aeb1a43a103d4cf",
+      "lines": 25
+    },
+    {
+      "path": "apps/worker/test/failure-notification-delivery.test.ts",
+      "sha256": "960ca216c125136d304b100b97da533b0ddaf7a9c28c8ee71bb69bbfcfff2275",
+      "lines": 976
+    }
+  ]
+}

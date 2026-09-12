@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "reviewed",
+  "reviewEvidence": "See the exact-path area ledgers and reconciliation.md; reviewed does not mean defect-free or runtime-qualified.",
+  "files": [
+    {
+      "path": "packages/database/migrations/0026_preview_cleanup_terminal_guard.sql",
+      "sha256": "d09cc60e8b3f682f2ce0ef7b22059b5458e52509afb29db9ba5d936d46e902fe",
+      "lines": 93
+    },
+    {
+      "path": "packages/database/migrations/0027_preview_terminal_facts.sql",
+      "sha256": "60825401861cf468bba240ef1e4d4853244651c074a18d0c56ed1e3692edc86b",
+      "lines": 143
+    },
+    {
+      "path": "packages/database/migrations/0028_preview_terminal_fact_corrections.sql",
+      "sha256": "6f89b2f7d2d846f1197e4fdb576e6fa4c8f46d36926c7cee473bc97cd4516cf6",
+      "lines": 90
+    },
+    {
+      "path": "packages/database/migrations/0029_provider_idempotency_key_invariants.sql",
+      "sha256": "2ceef2391ff2cabdda9162d94e06a7140d3e03992d47003c65d0b150ce25ceb1",
+      "lines": 19
+    },
+    {
+      "path": "packages/database/migrations/0030_coordinator_retry_decisions.sql",
+      "sha256": "b0240982e3b5a10007175fd950eb2dc18e83abbb3a6d06dd34a5e0306ecdcef3",
+      "lines": 31
+    },
+    {
+      "path": "packages/database/migrations/0031_due_node_wakeups.sql",
+      "sha256": "076bf2f33caa6ff26d5d24d6fbe15e9d45514a2d473d7767295e9d1e8532ec85",
+      "lines": 91
+    },
+    {
+      "path": "packages/database/migrations/0032_for_each_barriers.sql",
+      "sha256": "614275b50ce356436f3b5425d3c776565ab83c97a4d65396a188c50016b9b399",
+      "lines": 28
+    },
+    {
+      "path": "packages/database/migrations/0033_durable_wait.sql",
+      "sha256": "eb0a3feea2462063732c4232751feda233088640ad8fbf27e6282400baf1f0ea",
+      "lines": 111
+    },
+    {
+      "path": "packages/database/migrations/0034_run_failure_notifications.sql",
+      "sha256": "d9f585624b60130df2c6cd97bfbb2c01a86e8e167d53e992d2a1f8a720c8cb3a",
+      "lines": 224
+    },
+    {
+      "path": "packages/database/migrations/0035_slack_bot_token_connections.sql",
+      "sha256": "a4c8ffb6d77a86563c3d79f8d0073eda8a8d25c0ee330dc7b7c5e8fd0c092237",
+      "lines": 5
+    },
+    {
+      "path": "packages/database/migrations/0036_resend_api_key_connections.sql",
+      "sha256": "4ca4660b2236511b1ba1c9063c37861a25af363538df79782a47f724d9aef82c",
+      "lines": 83
+    },
+    {
+      "path": "packages/database/migrations/0037_failure_notification_destinations.sql",
+      "sha256": "395a2d51c1fe08a628ebc45a92c2bc00ec8f36d79c01eaf813f01ce9bd982782",
+      "lines": 497
+    },
+    {
+      "path": "packages/database/migrations/0038_execution_admission.sql",
+      "sha256": "ab805fef7ef9d369161a20efb6c9e178cc5bed022c49dc095e3237bfe0cd41dc",
+      "lines": 640
+    },
+    {
+      "path": "packages/database/migrations/0039_webhook_triggers.sql",
+      "sha256": "b89e3185b10ba06c45226936c1a2f98973beface0b53c9d20a77f9e208e87dd8",
+      "lines": 255
+    },
+    {
+      "path": "packages/database/migrations/0040_schedule_triggers.sql",
+      "sha256": "76258b48cb42a7da97d44b1c5dc8a9c11ba423fbb07764457175153fbe9e5680",
+      "lines": 209
+    },
+    {
+      "path": "packages/database/migrations/0041_trigger_hardening.sql",
+      "sha256": "09223ee1a6cba075aa5014a93af049530b010bb706c3770b6cb203be414a7ebf",
+      "lines": 220
+    },
+    {
+      "path": "packages/database/migrations/0042_worker_run_admission_lock.sql",
+      "sha256": "fea36125291ce8139371184e46f919b0062d438702be11f679308d8b285a2b69",
+      "lines": 53
+    },
+    {
+      "path": "packages/database/migrations/0043_workflow_run_input_retention.sql",
+      "sha256": "6b0f6fde1e28af13e449835e431bde952340d025c7bbd1877acfaad3d2685dc6",
+      "lines": 21
+    },
+    {
+      "path": "packages/database/migrations/0044_retention_control_foundation.sql",
+      "sha256": "4ea1e7f0fe7a237e889f4b6f3179ec945b10e9c9cc1a17d8cdc36154141d1853",
+      "lines": 560
+    },
+    {
+      "path": "packages/database/migrations/0045_control_ledger_command_lock.sql",
+      "sha256": "5ddba50d630dcfc92666a0e03c787ac638529d0ceeefe8be9684415a59897d94",
+      "lines": 74
+    },
+    {
+      "path": "packages/database/migrations/0046_workspace_deletion_control_projection.sql",
+      "sha256": "93b2ab69e8d3677bae884a081738761c9b0ee583c7a339818625f113b220c5c5",
+      "lines": 271
+    },
+    {
+      "path": "packages/database/migrations/0047_workspace_lifecycle_command_intents.sql",
+      "sha256": "48fdcc088b2252daea624979d3bc3c170f23084f79d10e624630b3dc5e80ed88",
+      "lines": 388
+    },
+    {
+      "path": "packages/database/migrations/0048_workspace_lifecycle_command_hardening.sql",
+      "sha256": "6fa8011c52158b1c810122a31898aff71941d1ad4477e0a38dc0480fd63b82c6",
+      "lines": 305
+    },
+    {
+      "path": "packages/database/migrations/0049_workspace_deletion_side_effects.sql",
+      "sha256": "5c7275a0f5141f36e88a4ce4f64452d576dc634f38bf46bbe6a050785db4317e",
+      "lines": 188
+    },
+    {
+      "path": "packages/database/migrations/0050_workspace_lifecycle_api_authority.sql",
+      "sha256": "393906b063b3558ad611fb2777ee056eeed2f978c5070bbd6106b94be7610bb8",
+      "lines": 8
+    },
+    {
+      "path": "packages/database/migrations/0051_workflow_run_input_retention_dry_run.sql",
+      "sha256": "95623a999893dd164830e27433d9e72dfed6f10c0f22427edb25ce979b71781b",
+      "lines": 134
+    },
+    {
+      "path": "packages/database/migrations/0052_workflow_run_input_retention_enforcement.sql",
+      "sha256": "e1cf3e0b4297542ed0f5c6edb25845385bba3f61bde7b6d7d7ebf819cf68a003",
+      "lines": 264
+    },
+    {
+      "path": "packages/database/migrations/0053_preview_retention_enforcement.sql",
+      "sha256": "d4160e7f79e3cead408130d0eb2e93b8f3c7103070cdce365c68de3bafd46cc6",
+      "lines": 270
+    },
+    {
+      "path": "packages/database/migrations/0054_workflow_run_input_retention_scheduling.sql",
+      "sha256": "b42cdf46ca166993516e320515882e5bfdff1e34156672fd085a723c6fbb122d",
+      "lines": 101
+    },
+    {
+      "path": "packages/database/migrations/0055_standard_retention_classes.sql",
+      "sha256": "58b4a5bed4ba47772d57dbbcef6e35bc0d928f2ffdfaab5c976031d3a8d6fb65",
+      "lines": 633
+    },
+    {
+      "path": "packages/database/migrations/0056_workspace_purge_foundation.sql",
+      "sha256": "b9c0194b33348d5ba1a9e7972b3c08c11debdc35a04f60698605525fcd5a7479",
+      "lines": 311
+    },
+    {
+      "path": "packages/database/migrations/0057_workspace_tenant_rows_purge.sql",
+      "sha256": "fe4f6ec0e0893f55a2c19188da125a78871cd6242eb861bd1ff5228d059a95bc",
+      "lines": 356
+    },
+    {
+      "path": "packages/database/migrations/0058_workspace_object_versions_purge.sql",
+      "sha256": "88d08272952fc40c17c7c53a15b143a23d78a9107ebba4104443a6a486a00289",
+      "lines": 192
+    },
+    {
+      "path": "packages/database/migrations/0059_workspace_purge_completion.sql",
+      "sha256": "88687715e1baa5d5830f1d7d4ca37ca5bc0c1c5b5e05feb89427b14ab841e37f",
+      "lines": 305
+    },
+    {
+      "path": "packages/database/migrations/0060_standard_retention_dry_run.sql",
+      "sha256": "127112537a6ab49b2683fe76666407fa0aa3e9259498469832738f02250a75fa",
+      "lines": 334
+    },
+    {
+      "path": "packages/database/migrations/0061_operator_outbox_redispatch.sql",
+      "sha256": "e6d7fdd8ce7a6ca6d6cdb06685bca916cc7ae3443ba3342a95033fe670fc72f0",
+      "lines": 231
+    },
+    {
+      "path": "packages/database/migrations/0062_operator_command_ledger.sql",
+      "sha256": "5304344b1e6a19f6901991892ed635d4ef3bf9ee71c5ad6b8a4909e3821ea021",
+      "lines": 117
+    },
+    {
+      "path": "packages/database/migrations/0063_operator_execution_recovery.sql",
+      "sha256": "fd105f808ce6330151b381563f88ef82ce7a59453029ff2e631b6804620ea30f",
+      "lines": 347
+    },
+    {
+      "path": "packages/database/migrations/0064_operator_trigger_reconciliation.sql",
+      "sha256": "abf3ff5ef879a487f109495df179050f67487f53ef5a7700509f34ff6c438c7c",
+      "lines": 139
+    },
+    {
+      "path": "packages/database/migrations/0065_operator_run_replay.sql",
+      "sha256": "71835e58fe1ea8b94834d31c45a063902b3f1a15a6d24cb286d7c01ad94a0666",
+      "lines": 319
+    },
+    {
+      "path": "packages/database/migrations/0066_operator_maintenance_rerun.sql",
+      "sha256": "f29ea27cf378d1f88085026fa0d6211d78f352e4814bd74d4670b9ca4eb8a942",
+      "lines": 231
+    },
+    {
+      "path": "packages/database/migrations/0067_reconcile_published_migration_repairs.sql",
+      "sha256": "b0eb64b7ab90209f8f98913d0168ef6c81abf256585e7d2422fc860d73d026fe",
+      "lines": 524
+    },
+    {
+      "path": "packages/database/migrations/0068_restore_artifact_inventory.sql",
+      "sha256": "717865e42479f584f1efb217ec3a6eaa715da88e4c960d086e6cfa33d33f1ea7",
+      "lines": 44
+    },
+    {
+      "path": "packages/database/migrations/0069_regional_write_admission.sql",
+      "sha256": "d15abe51019ee39045d767bd6c11345cd7a7992a0a6ac68abe6f0dbbf11222c9",
+      "lines": 80
+    },
+    {
+      "path": "packages/database/migrations/0070_preview_execution_deadline.sql",
+      "sha256": "ef9975514029e1debf56e777acdb8e9f3fe8be305d73eaa0d9fd82b81add8f7a",
+      "lines": 62
+    },
+    {
+      "path": "packages/database/migrations/0071_oidc_browser_binding.sql",
+      "sha256": "f034fc64b65d986149ef4855481618f77d8054536b9662b4a22d975f76f8ad8a",
+      "lines": 16
+    },
+    {
+      "path": "packages/database/migrations/0072_regional_replica_identity.sql",
+      "sha256": "63a50b5309982537e99831d6aa0599b88706341e947e7cbcd90fc29857a0b6c7",
+      "lines": 87
+    },
+    {
+      "path": "packages/database/migrations/0073_transient_data_retention.sql",
+      "sha256": "c25ddfa394a6b364efbe08fc2869f9d2d43ea2dc9d7a48b80b46cd91784bcb37",
+      "lines": 120
+    },
+    {
+      "path": "packages/database/migrations/0074_retention_schedule_state_rls.sql",
+      "sha256": "de0219e87f14a7de8b93f3f952e25b90444f80473359023bfce2493fbba1988c",
+      "lines": 21
+    },
+    {
+      "path": "packages/database/migrations/0075_workspace_purge_step_release.sql",
+      "sha256": "00963c8c0aeb225e6c557eb6bc841ec08fdd92b6f7ff92291d1433bd7e250275",
+      "lines": 26
+    },
+    {
+      "path": "packages/database/migrations/0076_replay_lineage_retention.sql",
+      "sha256": "6efa96f40501d20fc5c15dbbc1ec4ed6f226b76267ece1c5bcd0a1d8212c538b",
+      "lines": 296
+    },
+    {
+      "path": "packages/database/migrations/0077_replay_read_locks.sql",
+      "sha256": "9e1c15065fdc54e832de30390ca1a43d89114f0076603832a59af06f86c005df",
+      "lines": 101
+    },
+    {
+      "path": "packages/database/migrations/0078_workflow_lifecycle_revision.sql",
+      "sha256": "440ec1853656a12231d43b93cc0489ea7ec5ebcde8ae87065d21c9fe7b921274",
+      "lines": 15
+    },
+    {
+      "path": "packages/database/migrations/0079_artifact_upload_capacity.sql",
+      "sha256": "30bdc2fc0fd5db61e7bca3fadbdb8b4a4662de50b09f505987a7a151f4ce4b57",
+      "lines": 212
+    },
+    {
+      "path": "packages/database/migrations/0080_expired_artifact_upload_retention.sql",
+      "sha256": "001d837c999bab9c5b395f36a4362ced2ce4bbff86c7110e5844302bda56ef4c",
+      "lines": 114
+    },
+    {
+      "path": "packages/database/migrations/0081_schedule_claim_concurrency.sql",
+      "sha256": "df78d1c82e35cd3579989d000816b29ecae922a262586e4d316771d161d14895",
+      "lines": 52
+    },
+    {
+      "path": "packages/database/migrations/0082_legal_hold_destruction_serialization.sql",
+      "sha256": "42ebef74a5c7939b0737f190274590e492a83438d035316fbfe7a2efda0b5835",
+      "lines": 94
+    },
+    {
+      "path": "packages/database/migrations/0083_artifact_finalization_retention_deadline.sql",
+      "sha256": "8e866c90a8775d35bb48962e7947696081ab355cf9c930801d4f05ce85b45ecf",
+      "lines": 29
+    },
+    {
+      "path": "packages/database/migrations/0084_workspace_member_discovery_index.sql",
+      "sha256": "5fd2889ced19f355764c75d096279c3cd84d51ceb6c21dbff9accf44fa869663",
+      "lines": 6
+    },
+    {
+      "path": "packages/database/migrations/0085_artifact_media_type_http_safety.sql",
+      "sha256": "48afd23adfc97445dd497170fa545f176ce9e86df81462c9fea326d4328baae1",
+      "lines": 19
+    },
+    {
+      "path": "packages/database/migrations/0086_operator_attempt_reclaim_state.sql",
+      "sha256": "42bcd2cbd92509f611a355355112b62c6c47f52e1159f76a13599a73ee385efd",
+      "lines": 59
+    },
+    {
+      "path": "packages/database/migrations/migration-execution-plan.json",
+      "sha256": "78a99ce02f36cf1e65f6840db44afb7a9750992c09aa981574883b7218bd1726",
+      "lines": 6
+    },
+    {
+      "path": "packages/database/package.json",
+      "sha256": "c18676ec56dcec2f447bdf96356e82c79e8b6c15acf19ec1af0c3061fb9d5676",
+      "lines": 59
+    },
+    {
+      "path": "packages/database/raw-sql-table-registry.json",
+      "sha256": "a53092998dd934d11701f21d8e222dd5028a2e55c8b4fe1d29a3c15ef7fae8e9",
+      "lines": 141
+    },
+    {
+      "path": "packages/database/src/api.ts",
+      "sha256": "b23e7d7df352cee8567fd307c811e9d15b1c115290badadf36e701c564552904",
+      "lines": 140
+    },
+    {
+      "path": "packages/database/src/authoring/testing.ts",
+      "sha256": "4fd5572cfc4be10b7ccea4e7dea52ddec4eefada92f1c1ed47bab9cb6fd798d5",
+      "lines": 28
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-contracts.ts",
+      "sha256": "a202ad58ba20d5c09b8a93f403fea4dc9a17602d9535cc4f59c54917495568a8",
+      "lines": 134
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-drafts.ts",
+      "sha256": "71d5e2a97ea4bb4c1b831d7ea041c6b2cf3cc73c806f80931d9302d3a0bb0b5d",
+      "lines": 249
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-errors.ts",
+      "sha256": "a30e2646fd7c543cc54aca55f21419085d7f1737fd816b1ce493f2b62974a7e4",
+      "lines": 25
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-lifecycle.ts",
+      "sha256": "efbad68a88f1423f90415407f7ac6b58f4a000fb85680580ab5bf4980bbafabc",
+      "lines": 343
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-reads.ts",
+      "sha256": "ac76803b197126af999b5681319ff697187d6c3886c412bc407fba6f49ed0dbd",
+      "lines": 174
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-records.ts",
+      "sha256": "08d31ecfc3668d7f730508ba221aa7bc14213ae7e709941d5b5bb91a8521f162",
+      "lines": 45
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-rows.ts",
+      "sha256": "518f3bb199af380e8de121e2c35f828daf927f7662ef0ebca6a0e51a18b01a1c",
+      "lines": 137
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-types.ts",
+      "sha256": "a86d88ac4709526c4bf92ec430141a9a59915acfa8dd4d9b2e91afba6986e6d7",
+      "lines": 60
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring-version-restore.ts",
+      "sha256": "b10e59b2384f1629690b14ccd99db58d9c407a4ba40004edd351c801ac89fc17",
+      "lines": 195
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-authoring.ts",
+      "sha256": "14baf9c990a3dc7f1a900d780d5aebff9e77636ac7628939c18f4ae1eb5435b6",
+      "lines": 495
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-publication.ts",
+      "sha256": "838d469a30680ba4e55d3cbc6b0808bd9eabb288cc62ea6eb37b8a32977567d8",
+      "lines": 482
+    },
+    {
+      "path": "packages/database/src/authoring/workflow-trigger-reconciliation.ts",
+      "sha256": "38f6c945a02835d071456ac760653d5ff75c08de8e888c6a99c6348e0ca3b301",
+      "lines": 30
+    },
+    {
+      "path": "packages/database/src/compatibility/compatibility-release-maintenance.ts",
+      "sha256": "c0c2cf5d4f2e5d358ff11bb94de3892b6ad67aae7240b1eae80c219d056c02e1",
+      "lines": 223
+    },
+    {
+      "path": "packages/database/src/compatibility/compatibility-release-readiness.ts",
+      "sha256": "39e0b7c478d4a71fa7d8257eb9e71c32c192e9915d65ef32af2132d18d63af32",
+      "lines": 48
+    },
+    {
+      "path": "packages/database/src/compatibility/compatibility-release.ts",
+      "sha256": "3f1cd0614110df923b22f0d977ef232945b10d4d0c6148195305c2a176f123b4",
+      "lines": 255
+    },
+    {
+      "path": "packages/database/src/compatibility/persisted-workflow-checkpoint-refinements.ts",
+      "sha256": "99149b311ea5d6b3be7891472e227cadb476d7536d906366d7ed95773e6fa0c1",
+      "lines": 215
+    },
+    {
+      "path": "packages/database/src/compatibility/persisted-workflow-checkpoint.ts",
+      "sha256": "f79786237c32ceed31b3f1ba67da77a9fab2fd9a0bb509e39397b8fa760238fd",
+      "lines": 409
+    },
+    {
+      "path": "packages/database/src/compatibility/testing.ts",
+      "sha256": "9c3b5619c4fb4e0528be7b36b6491589d273a6fb56b008e55560137200fac992",
+      "lines": 21
+    },
+    {
+      "path": "packages/database/src/config.ts",
+      "sha256": "c63adba5390863ff82fa14bd7d4332f1b82970e4809482a87773f28f536b0123",
+      "lines": 211
+    },
+    {
+      "path": "packages/database/src/connections/connection-health-persistence.ts",
+      "sha256": "c1aa220a726ccb2dab549ff6b7928c97b21bcaa5f140c2dc696f0ce498d12e70",
+      "lines": 114
+    },
+    {
+      "path": "packages/database/src/connections/connection-management-persistence.ts",
+      "sha256": "d29c0b326aa359fd22f5af75966fccbac2146f6f03e454ade59455c8b9253472",
+      "lines": 326
+    },
+    {
+      "path": "packages/database/src/connections/connection-persistence.ts",
+      "sha256": "93465bc9a2008bcb3b70dcd9bd760befaf01b988e1ce369ce80038eacf40c1af",
+      "lines": 651
+    },
+    {
+      "path": "packages/database/src/connections/connection-resolution-persistence.ts",
+      "sha256": "0771bf979b66671b23f3cf230465d0e7057532595325ffdc06fccc15c973f770",
+      "lines": 107
+    },
+    {
+      "path": "packages/database/src/connections/connection-secret-persistence.ts",
+      "sha256": "ce8c232750e8959ea8470d35baf366946079934bbe3454d9701efcaba47a2004",
+      "lines": 309
+    },
+    {
+      "path": "packages/database/src/connections/connection-test-persistence.ts",
+      "sha256": "e4f20178591e35a802c286bdb50b9e8fc223c8cf60e157117865bcf9b0b8a6c4",
+      "lines": 476
+    },
+    {
+      "path": "packages/database/src/connections/connections.ts",
+      "sha256": "447d71bc1fd05cb3d2f5b02ac1ea17e4c9393ce6bee605a428c936babef23511",
+      "lines": 109
+    },
+    {
+      "path": "packages/database/src/connections/testing.ts",
+      "sha256": "1344efcdbce8f548835a1eb764c53e6ef8e817781f55423ee6b3105f685b47c9",
+      "lines": 52
+    },
+    {
+      "path": "packages/database/src/connections/workflow-integration-usage.ts",
+      "sha256": "b19164bd692d0d0ac91ac300a694a776c59bdbd4cef94c97f6392ea7ad0fae1f",
+      "lines": 167
+    },
+    {
+      "path": "packages/database/src/database.ts",
+      "sha256": "fcdb0d3cc1426e50ace9b32c4c7536c6df9e969f867d0421e5a05efb8a4fdddd",
+      "lines": 71
+    },
+    {
+      "path": "packages/database/src/execution.ts",
+      "sha256": "56db3fc3c7377674fd4533ab5c386a9d10f1d918f55b91bd6d0c5b8eb683be46",
+      "lines": 140
+    },
+    {
+      "path": "packages/database/src/execution/artifact-upload-contract.ts",
+      "sha256": "3ebd0b8725a71ceed92e7dbec2659e0bd25c11e7e155dabfdcf7f11940c4f80a",
+      "lines": 247
+    },
+    {
+      "path": "packages/database/src/execution/artifact-upload.ts",
+      "sha256": "6e21639cc3739b15a0a7b2f706e8c2fc5a0d3f0bd8d28c1a7ece6d6947a0b149",
+      "lines": 394
+    },
+    {
+      "path": "packages/database/src/execution/artifacts.ts",
+      "sha256": "abbc4874b13261cdc5a1fcec00ce6ea72977d7a328c52275e5e20a5dbbbd17a8",
+      "lines": 439
+    },
+    {
+      "path": "packages/database/src/execution/coordinator-pending-failure-observations.ts",
+      "sha256": "ea7cf58edc182538492c0e32f1b758934e64106b8d496964d492dae10cd64708",
+      "lines": 53
+    }
+  ]
+}
