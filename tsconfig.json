@@ -3,6 +3,9 @@
   "files": [],
   "references": [
     {
+      "path": "./apps/web/tsconfig.json"
+    },
+    {
       "path": "./apps/api/tsconfig.json"
     },
     {

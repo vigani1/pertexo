@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Pertexo — Codebase map</title>
+    <style>
+      :root {
+        --paper: #f5f8fc;
+        --paper-deep: #eaf1f9;
+        --ink: #14243a;
+        --ink-soft: #344962;
+        --muted: #60738b;
+        --line: #cbd8e8;
+        --line-strong: #aebfd4;
+        --blue: #1e5fca;
+        --blue-dark: #124493;
+        --blue-wash: #e4eefb;
+        --white: #ffffff;
+        --danger: #9b3030;
+        --content-width: 900px;
+        --rail-width: 238px;
+        --shadow: 0 14px 36px rgba(25, 53, 88, 0.07);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--paper);
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 0;
+        background-color: var(--paper);
+        background-image:
+          linear-gradient(rgba(74, 117, 164, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(74, 117, 164, 0.045) 1px, transparent 1px);
+        background-size: 32px 32px;
+        color: var(--ink);
+        font-size: 1rem;
+        line-height: 1.65;
+      }
+
+      a {
+        color: var(--blue-dark);
+        text-decoration-thickness: 0.08em;
+        text-underline-offset: 0.18em;
+      }
+
+      a:hover {
+        color: var(--blue);
+      }
+
+      :focus-visible {
+        outline: 3px solid #f0b429;
+        outline-offset: 3px;
+      }
+
+      .skip-link {
+        position: fixed;
+        z-index: 10;
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: 0.25rem;
+        background: var(--ink);
+        color: var(--white);
+        transform: translateY(-180%);
+        transition: transform 120ms ease-out;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .page-shell {
+        width: min(100% - 2rem, 1440px);
+        margin: 0 auto;
+      }
+
+      .site-header {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1.5rem;
+        align-items: end;
+        padding: 2rem 0 1.5rem;
+        border-bottom: 1px solid var(--line-strong);
+      }
+
+      .site-header::before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4.5rem;
+        height: 0.35rem;
+        background: var(--blue);
+        content: '';
+      }
+
+      .header-copy {
+        max-width: 48rem;
+      }
+
+      .wordmark {
+        margin: 0 0 0.35rem;
+        color: var(--blue-dark);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        color: var(--ink);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+
+      h1,
+      .page-title {
+        max-width: 24ch;
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 2.75rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        line-height: 1.05;
+      }
+
+      .lede {
+        max-width: 56ch;
+        margin: 1rem 0 0;
+        color: var(--ink-soft);
+        font-size: 1.06rem;
+        line-height: 1.55;
+      }
+
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.65rem 0.8rem;
+        align-items: center;
+        max-width: 19rem;
+      }
+
+      .action-button,
+      .source-link {
+        display: inline-flex;
+        min-height: 2.5rem;
+        align-items: center;
+        justify-content: center;
+        padding: 0.48rem 0.78rem;
+        border: 1px solid var(--line-strong);
+        border-radius: 0.28rem;
+        background: var(--white);
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 650;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .action-button:hover,
+      .source-link:hover {
+        border-color: var(--blue);
+        background: var(--blue-wash);
+        color: var(--blue-dark);
+      }
+
+      .source-meta {
+        flex-basis: 100%;
+        margin: 0;
+        color: var(--muted);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.73rem;
+        line-height: 1.45;
+        text-align: right;
+      }
+
+      .source-meta code {
+        color: var(--ink-soft);
+        font-size: inherit;
+      }
+
+      .regen-line {
+        margin: 1rem 0 0;
+        color: var(--muted);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.78rem;
+      }
+
+      .regen-line code {
+        padding: 0.18rem 0.38rem;
+        border: 1px solid var(--line);
+        border-radius: 0.2rem;
+        background: var(--paper-deep);
+        color: var(--ink-soft);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: var(--rail-width) minmax(
+            0,
+            var(--content-width)
+          );
+        gap: clamp(2rem, 6vw, 5.5rem);
+        align-items: start;
+        justify-content: center;
+        padding: 2.2rem 0 4rem;
+      }
+
+      .sidebar {
+        min-width: 0;
+        position: sticky;
+        top: 1.25rem;
+      }
+
+      .contents {
+        border-left: 2px solid var(--line-strong);
+      }
+
+      .contents summary {
+        padding: 0.2rem 0 0.55rem 0.9rem;
+        color: var(--ink);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        list-style: none;
+        cursor: pointer;
+      }
+
+      .contents summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .contents summary::after {
+        display: none;
+        margin-left: 0.45rem;
+        color: var(--muted);
+        content: '+';
+        font-size: 1rem;
+        font-weight: 400;
+      }
+
+      .contents:not([open]) summary::after {
+        display: inline;
+      }
+
+      .contents ol {
+        display: grid;
+        gap: 0.18rem;
+        margin: 0;
+        padding: 0 0 0.1rem 0.9rem;
+        list-style: none;
+      }
+
+      .contents li {
+        margin: 0;
+        line-height: 1.35;
+      }
+
+      .contents a {
+        display: block;
+        padding: 0.3rem 0.4rem 0.3rem 0;
+        color: var(--muted);
+        font-size: 0.87rem;
+        text-decoration: none;
+      }
+
+      .contents a:hover {
+        color: var(--blue-dark);
+      }
+
+      .document {
+        min-width: 0;
+        width: 100%;
+        max-width: var(--content-width);
+        padding: clamp(1.3rem, 3vw, 2.4rem) clamp(1rem, 3vw, 3rem)
+          clamp(2.2rem, 4vw, 4rem);
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: var(--shadow);
+      }
+
+      .markdown {
+        min-width: 0;
+      }
+
+      .markdown > :first-child {
+        margin-top: 0;
+      }
+
+      .markdown h2 {
+        margin: 2.8rem 0 0.9rem;
+        padding-top: 1.45rem;
+        border-top: 1px solid var(--line);
+        font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+        line-height: 1.25;
+        scroll-margin-top: 1rem;
+      }
+
+      .markdown h3 {
+        margin: 2rem 0 0.65rem;
+        font-size: 1.18rem;
+        line-height: 1.3;
+        scroll-margin-top: 1rem;
+      }
+
+      .markdown h4 {
+        margin: 1.5rem 0 0.45rem;
+        font-size: 1rem;
+        line-height: 1.35;
+        scroll-margin-top: 1rem;
+      }
+
+      .markdown p,
+      .markdown ul,
+      .markdown ol,
+      .markdown blockquote {
+        max-width: 78ch;
+      }
+
+      .markdown p {
+        margin: 0.75rem 0;
+      }
+
+      .markdown li + li {
+        margin-top: 0.25rem;
+      }
+
+      .markdown blockquote {
+        margin: 1.2rem 0;
+        padding: 0.7rem 1rem;
+        border-left: 3px solid var(--blue);
+        background: var(--blue-wash);
+        color: var(--ink-soft);
+      }
+
+      .markdown code,
+      .markdown kbd {
+        padding: 0.12em 0.32em;
+        border: 1px solid var(--line);
+        border-radius: 0.22rem;
+        background: var(--paper-deep);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.88em;
+      }
+
+      .markdown pre:not(.mermaid) {
+        max-width: 100%;
+        margin: 1.15rem 0;
+        padding: 1rem;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 0.24rem;
+        background: #172b43;
+        color: #eff6ff;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.84rem;
+        line-height: 1.55;
+        tab-size: 2;
+      }
+
+      .markdown pre:not(.mermaid) code {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: inherit;
+      }
+
+      .table-scroll {
+        max-width: 100%;
+        margin: 1.1rem 0;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        border: 1px solid var(--line);
+        background: var(--white);
+      }
+
+      .table-scroll table {
+        width: 100%;
+        min-width: 38rem;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      .table-scroll th,
+      .table-scroll td {
+        padding: 0.62rem 0.75rem;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .table-scroll th {
+        background: var(--paper-deep);
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .table-scroll tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .diagram {
+        max-width: 100%;
+        margin: 1.4rem 0;
+        padding: clamp(0.7rem, 2vw, 1.25rem);
+        overflow-x: auto;
+        border: 1px solid var(--line-strong);
+        background: #fbfdff;
+      }
+
+      .diagram pre.mermaid {
+        min-width: 0;
+        margin: 0;
+        color: var(--ink);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        white-space: pre;
+      }
+
+      .diagram svg {
+        display: block;
+        max-width: none;
+        height: auto;
+      }
+
+      .diagram details {
+        margin-top: 0.85rem;
+        border-top: 1px solid var(--line);
+      }
+
+      .diagram summary {
+        padding-top: 0.65rem;
+        color: var(--blue-dark);
+        font-size: 0.85rem;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      .diagram details pre {
+        max-width: 100%;
+        margin: 0.65rem 0 0;
+        padding: 0.7rem;
+        overflow: auto;
+        background: var(--paper-deep);
+        color: var(--ink-soft);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', monospace;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .diagram-error {
+        margin: 0 0 0.85rem;
+        padding: 0.65rem 0.8rem;
+        border-left: 3px solid var(--danger);
+        background: #fff2f1;
+        color: var(--danger);
+        font-size: 0.88rem;
+      }
+
+      .site-footer {
+        padding: 1.1rem 0 2.5rem;
+        border-top: 1px solid var(--line-strong);
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      @media (max-width: 860px) {
+        .sidebar {
+          position: static;
+        }
+
+        .site-header {
+          grid-template-columns: 1fr;
+          align-items: start;
+        }
+
+        .header-actions {
+          justify-content: flex-start;
+          max-width: none;
+        }
+
+        .source-meta {
+          flex-basis: auto;
+          text-align: left;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+          gap: 1.35rem;
+          padding-top: 1.35rem;
+        }
+
+        .contents {
+          position: static;
+          border: 1px solid var(--line);
+          background: rgba(255, 255, 255, 0.72);
+        }
+
+        .contents summary {
+          padding: 0.7rem 0.85rem;
+        }
+
+        .contents ol {
+          padding: 0 0.85rem 0.75rem;
+        }
+
+        .document {
+          padding: 1.2rem 1rem 2.4rem;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .page-shell {
+          width: min(100% - 1rem, 1440px);
+        }
+
+        .site-header {
+          padding-top: 2.7rem;
+        }
+
+        .header-actions {
+          align-items: stretch;
+        }
+
+        .action-button,
+        .source-link {
+          flex: 1 1 auto;
+        }
+
+        .source-meta {
+          flex-basis: 100%;
+        }
+
+        .markdown h2 {
+          margin-top: 2.2rem;
+        }
+      }
+
+      @media print {
+        :root {
+          --ink: #000000;
+          --ink-soft: #222222;
+          --muted: #444444;
+          --line: #a9a9a9;
+          --line-strong: #666666;
+          --paper: #ffffff;
+          --paper-deep: #f0f0f0;
+        }
+
+        html,
+        body {
+          background: #ffffff;
+        }
+
+        body {
+          font-size: 10.5pt;
+        }
+
+        .page-shell {
+          width: 100%;
+        }
+
+        .site-header {
+          display: block;
+          padding: 0 0 1rem;
+        }
+
+        .site-header::before,
+        .header-actions,
+        .regen-line,
+        .sidebar,
+        .skip-link {
+          display: none;
+        }
+
+        .lede {
+          max-width: none;
+        }
+
+        .layout {
+          display: block;
+          padding: 1rem 0 0;
+        }
+
+        .document {
+          max-width: none;
+          padding: 0;
+          border: 0;
+          box-shadow: none;
+        }
+
+        .markdown h2 {
+          break-after: avoid;
+        }
+
+        .diagram,
+        .table-scroll,
+        .markdown pre {
+          break-inside: avoid;
+        }
+
+        .diagram {
+          overflow: visible;
+        }
+
+        .diagram svg {
+          max-width: 100%;
+        }
+
+        .site-footer {
+          padding-bottom: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .skip-link {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="header-copy">
+          <p class="wordmark">Pertexo engineering reference</p>
+          <p class="page-title">Pertexo</p>
+          <p class="lede">
+            A readable guide to the features, parts, and flow of the backend.
+          </p>
+          <p class="regen-line">Regenerate with <code>pnpm docs:html</code></p>
+        </div>
+        <div class="header-actions" aria-label="Document actions">
+          <button class="action-button" id="print-action" type="button">
+            Print
+          </button>
+          <a class="source-link" href="../../docs/codebase-map.md"
+            >View source</a
+          >
+          <p class="source-meta">Source hash: <code>{{SOURCE_HASH}}</code></p>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <nav aria-label="Document contents">
+            <details class="contents" open>
+              <summary>Contents</summary>
+              <ol>
+                {{NAV}}
+              </ol>
+            </details>
+          </nav>
+        </aside>
+
+        <main class="document" id="content">
+          <div class="markdown">{{CONTENT}}</div>
+        </main>
+      </div>
+
+      <footer class="site-footer">
+        Generated documentation for the Pertexo codebase.
+      </footer>
+    </div>
+
+    <script src="data:text/javascript;base64,{{MERMAID}}"></script>
+    <script>
+      const compactNavigation = window.matchMedia('(max-width: 860px)');
+      const contents = document.querySelector('.contents');
+      contents.open = !compactNavigation.matches;
+      compactNavigation.addEventListener('change', (event) => {
+        contents.open = !event.matches;
+      });
+
+      document
+        .getElementById('print-action')
+        .addEventListener('click', () => window.print());
+
+      const showDiagramError = () => {
+        document.querySelectorAll('.diagram').forEach((diagram) => {
+          if (diagram.querySelector('.diagram-error')) return;
+          const error = document.createElement('p');
+          error.className = 'diagram-error';
+          error.setAttribute('role', 'alert');
+          error.textContent =
+            'Diagram preview unavailable. The diagram source remains available below.';
+          diagram.insertBefore(error, diagram.firstChild);
+        });
+      };
+
+      const renderDiagrams = async () => {
+        if (
+          typeof mermaid === 'undefined' ||
+          typeof mermaid.run !== 'function'
+        ) {
+          showDiagramError();
+          return;
+        }
+
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: 'base',
+          flowchart: { htmlLabels: false },
+          themeVariables: {
+            primaryColor: '#e4eefb',
+            primaryTextColor: '#14243a',
+            primaryBorderColor: '#1e5fca',
+            lineColor: '#4d6b8b',
+            secondaryColor: '#f5f8fc',
+            tertiaryColor: '#ffffff',
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          },
+        });
+
+        try {
+          await mermaid.run({ querySelector: '.mermaid' });
+          document.querySelectorAll('.diagram svg').forEach((svg) => {
+            // Keep labels readable on phones; scroll the diagram, not the page.
+            svg.style.minWidth = `${svg.viewBox.baseVal.width * 0.8}px`;
+          });
+        } catch (error) {
+          console.error('Mermaid diagram rendering failed', error);
+          showDiagramError();
+        }
+      };
+
+      renderDiagrams();
+    </script>
+  </body>
+</html>

@@ -52,8 +52,9 @@
   architectural contract.
 - Use `code-review` only for a fixed-point diff review. A whole-repository audit
   or ordinary implementation check is not a fixed-point review.
-- Do not use React, Next.js, TanStack, shadcn, frontend-design, or Prisma skills
-  unless those technologies exist in the relevant checkout and task scope.
+- Use React, TanStack, shadcn, and frontend-design skills for `apps/web` or
+  explicitly requested frontend scaffolding. Follow `apps/web/AGENTS.md` there.
+  Use Next.js or Prisma skills only when those technologies exist in task scope.
 - Use subagents only for substantial independent work with non-overlapping
   ownership when parallelism is likely to improve speed or coverage after
   accounting for coordination and token cost. Keep tightly coupled decisions,

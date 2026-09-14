@@ -44,8 +44,7 @@ required check was failing. Repository-local tests cannot substitute for that
 external evidence.
 
 `pnpm docs:check` validates repository-local Markdown targets and heading
-anchors, keeps the audited implementation tree synchronized across the audit,
-tracker, and current-status documents, and proves that tree occurs in the
-publication ancestry. Tree identity remains stable when the supported rebase
-merge recreates a commit. The command intentionally does not make
+anchors and checks selected operational documentation against its current
+source-of-truth contracts. It does not require historical audit records or
+verify Git publication ancestry. The command intentionally does not make
 network-dependent external-link availability part of deterministic CI.
