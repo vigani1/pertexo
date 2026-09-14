@@ -6,12 +6,20 @@ focuses on the backend foundations that make workflow execution reliable:
 immutable published versions, resumable runs, idempotent side effects, tenant
 isolation, and observable API and worker processes.
 
-This repository deliberately contains the backend platform only. A web client is
-deferred and is not part of this repository's current delivery scope; an empty
-`apps/web` workspace should not be created to satisfy an old diagram.
+The backend is accompanied by a minimal
+[React web foundation](./apps/web/README.md). It includes tooling, theme and a
+placeholder page, not product screens or API integration. Start it with
+`pnpm dev:web`; no backend services are needed yet.
 
-For developer navigation and code placement, start with the
-[codebase map](./docs/codebase-map.md).
+For a feature overview, system diagrams, execution flow, and code navigation,
+start with the [codebase map](./docs/codebase-map.md).
+
+Prefer a browser view? Run `pnpm docs:html`, then open
+`docs/dist/codebase-map.html`. The generator downloads a pinned,
+integrity-checked diagram renderer; the resulting page works offline. Markdown
+remains the source of truth: rerun the command after editing the map. Generated
+HTML is ignored by Git. Source-code links require the local checkout alongside
+the page.
 
 ## What Is Implemented
 
@@ -42,6 +50,7 @@ credentials, or large payloads.
 
 ```text
 apps/
+  web/                 React/Vite frontend foundation (no product features yet)
   api/                 NestJS control-plane API
   worker/              coordination, node attempts, previews, and triggers
   retention/           retention and purge processing
@@ -71,6 +80,8 @@ backend plan and product vocabulary live in
 ## Stack
 
 - TypeScript and pnpm workspaces
+- React, Vite, TanStack Router/Query, Tailwind and shadcn/Base UI for the web
+  foundation
 - NestJS API with separately deployable workers
 - PostgreSQL with explicit SQL and row-level security
 - Redis and BullMQ

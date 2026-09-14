@@ -179,7 +179,7 @@ jobs:
           - group: services
             packages:
               '@pertexo/api @pertexo/lifecycle-command @pertexo/operator-command
-              @pertexo/recovery @pertexo/retention @pertexo/worker'
+              @pertexo/recovery @pertexo/retention @pertexo/worker @pertexo/web'
           - group: persistence
             packages: '@pertexo/artifact-store @pertexo/database'
     steps:

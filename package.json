@@ -18,6 +18,12 @@
       ]
     },
     "workspaces": {
+      "apps/web": {
+        "ignoreDependencies": [
+          "@xyflow/react",
+          "zustand"
+        ]
+      },
       "packages/workflow-model": {
         "entry": [
           "src/expression-worker-runtime.ts"
@@ -26,7 +32,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --build --pretty false",
+    "build": "tsc --build --pretty false && pnpm --filter @pertexo/web build",
     "built-exports:check": "node --test infrastructure/checks/validate-built-package-exports.test.mjs && node infrastructure/checks/validate-built-package-exports.mjs",
     "ci:gates:check": "node --test infrastructure/checks/validate-ci-gates.test.mjs && node infrastructure/checks/validate-ci-gates.mjs",
     "architecture:check": "node --test infrastructure/checks/validate-project-references.test.mjs infrastructure/checks/validate-module-imports.test.mjs && node infrastructure/checks/validate-project-references.mjs && node infrastructure/checks/validate-module-imports.mjs",
@@ -35,6 +41,7 @@
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "dev:api": "pnpm --filter @pertexo/api dev",
+    "dev:web": "pnpm --filter @pertexo/web dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
     "dependencies:check": "knip",
     "deployment:check": "pnpm deployment:runtime:typecheck && node --test infrastructure/ecs/rendered-task-startup-smoke-ownership.test.mjs infrastructure/ecs/validate-database-connection-budget.test.mjs infrastructure/ecs/validate-deployment.test.mjs infrastructure/ecs/validate-external-platform-evidence.test.mjs infrastructure/ecs/validate-readiness-health-check.test.mjs infrastructure/ecs/validate-render-runtime-config.test.mjs infrastructure/ecs/validate-runtime-closure.test.mjs && node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs",
@@ -42,7 +49,8 @@
     "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "deployment:startup:smoke": "node infrastructure/ecs/rendered-task-startup-smoke.mjs",
-    "docs:check": "node --test infrastructure/documentation/validate-documentation.test.mjs infrastructure/documentation/operational-documentation.test.mjs && node infrastructure/documentation/validate-documentation.mjs",
+    "docs:check": "node --test infrastructure/documentation/validate-documentation.test.mjs infrastructure/documentation/operational-documentation.test.mjs infrastructure/documentation/generate-overview.test.mjs && node infrastructure/documentation/validate-documentation.mjs",
+    "docs:html": "node infrastructure/documentation/generate-overview.mjs",
     "duplication:check": "node --test infrastructure/quality/validate-test-duplication.test.mjs && node infrastructure/quality/validate-test-duplication.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
