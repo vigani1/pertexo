@@ -234,11 +234,21 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  for (const name of databaseNames) await dropIsolatedDatabase(name);
+  const outcomes = await Promise.allSettled(
+    databaseNames.map((name) => dropIsolatedDatabase(name)),
+  );
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Execution-value database cleanup failed',
+    );
 });
 
 describe('execution value persistence migration', () => {
-  it('migrates clean zero to 0014 with role-aware readiness', async () => {
+  it('bootstraps the current migration head with role-aware readiness', async () => {
     for (const [base, expectedRole] of [
       [apiBaseUrl, 'pertexo_api'],
       [workerBaseUrl, 'pertexo_worker'],
@@ -254,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0086_operator_attempt_reclaim_state.sql',
+          migrationHead: '0089_oidc_capacity_lock_time.sql',
           role: expectedRole,
         });
       } finally {
@@ -357,7 +367,7 @@ describe('execution value persistence migration', () => {
     ).rejects.toSatisfy(pgCode('23514'));
   });
 
-  it('persists an engine-range checkpoint above the legacy bound and rejects a clearly over-limit body', async () => {
+  it('applies only the SQL size backstop to an engine-range-shaped body and rejects a clearly over-limit body', async () => {
     const engineRangeCheckpoint = JSON.stringify({
       schemaVersion: 1,
       engineVersion: `oversized-${'x'.repeat(32_768)}`,

@@ -84,6 +84,7 @@ export {
 export {
   acceptPreviewRun,
   readPreviewRun,
+  resolvePreviewReplay,
   claimPreviewDelivery,
   markPreviewDispatched,
   heartbeatPreviewLease,
@@ -100,6 +101,8 @@ export {
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
+  PreviewReplayRecord,
+  ResolvePreviewReplayInput,
   PreviewStatus,
   PreviewRunRecord,
   PreviewDelivery,

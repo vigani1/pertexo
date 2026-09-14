@@ -33,7 +33,6 @@ export function planDurableWait(input: {
 }
 
 export type CancellationDecision =
-  | { readonly kind: 'stop_scheduling' }
   | {
       readonly kind: 'await_reconciliation';
       readonly invocationKeys: readonly string[];

@@ -16,6 +16,15 @@ export type PreviewAttemptSupervisor<T> = Readonly<{
   stop(): Promise<void>;
 }>;
 
+type SupervisorDelay = (
+  milliseconds: number,
+  signal: AbortSignal,
+) => Promise<void>;
+
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
 type HeartbeatStore = Readonly<{
   heartbeat(
     input: Readonly<{
@@ -42,9 +51,27 @@ export function startPreviewAttemptSupervisor<T>(
     runStore: HeartbeatStore;
     workerId: string;
   }>,
+  delay: SupervisorDelay = waitForSupervisorDelay,
 ): PreviewAttemptSupervisor<T> {
   const executionAbort = new AbortController();
   const heartbeatStop = new AbortController();
+  const heartbeatStopReason = new Error('Preview heartbeat stopped');
+  let notifyContextFailure: ((error: unknown) => void) | undefined;
+  const contextFailure = new Promise<
+    Readonly<{ error: unknown; kind: 'error' }>
+  >((resolve) => {
+    notifyContextFailure = (error: unknown): void => {
+      resolve({ error, kind: 'error' });
+    };
+  });
+  const contextAborted = (): void => {
+    notifyContextFailure?.(input.contextSignal.reason);
+  };
+  if (input.contextSignal.aborted) contextAborted();
+  else
+    input.contextSignal.addEventListener('abort', contextAborted, {
+      once: true,
+    });
   const heartbeatSignal = AbortSignal.any([
     input.contextSignal,
     heartbeatStop.signal,
@@ -61,16 +88,11 @@ export function startPreviewAttemptSupervisor<T>(
   });
   const deadlineTimer = setTimeout(
     () => {
-      executionAbort.abort();
       notifyDeadline?.();
+      executionAbort.abort();
     },
     Math.max(0, input.lease.executionDeadlineAt.getTime() - Date.now()),
   );
-  type HeartbeatEnd = 'stopped' | 'lease_lost';
-  let endHeartbeat: ((end: HeartbeatEnd) => void) | undefined;
-  const heartbeatDone = new Promise<HeartbeatEnd>((resolve) => {
-    endHeartbeat = resolve;
-  });
   let notifyLeaseFailure: ((error: unknown) => void) | undefined;
   const leaseFailure = new Promise<
     Readonly<{ error: unknown; kind: 'lease_failure' }>
@@ -79,51 +101,58 @@ export function startPreviewAttemptSupervisor<T>(
       resolve({ error, kind: 'lease_failure' });
     };
   });
-  void (async (): Promise<void> => {
-    while (!heartbeatSignal.aborted) {
-      await waitForSupervisorDelay(
-        input.heartbeatIntervalMillis,
-        heartbeatSignal,
-      );
-      let beat: PreviewHeartbeatResult;
-      try {
-        beat = await input.runStore.heartbeat({
+  const heartbeatLoop = (async (): Promise<void> => {
+    try {
+      while (!heartbeatSignal.aborted) {
+        await delay(input.heartbeatIntervalMillis, heartbeatSignal);
+        if (isAborted(heartbeatSignal)) return;
+        const beat: PreviewHeartbeatResult = await input.runStore.heartbeat({
           lease: input.lease,
           leaseDurationSeconds: input.leaseDurationSeconds,
           signal: heartbeatSignal,
           workerId: input.workerId,
         });
-      } catch (error: unknown) {
-        // Durable reconciliation owns the truthful terminal state after lease loss.
-        executionAbort.abort();
-        notifyLeaseFailure?.(error);
-        endHeartbeat?.('lease_lost');
-        return;
+        if (isAborted(heartbeatSignal)) return;
+        if (Date.now() >= beat.runExecutionDeadlineAt.getTime()) {
+          notifyDeadline?.();
+          executionAbort.abort();
+          return;
+        }
       }
-      if (Date.now() >= beat.runExecutionDeadlineAt.getTime()) {
-        executionAbort.abort();
-        notifyDeadline?.();
-        endHeartbeat?.('stopped');
-        return;
-      }
+    } catch (error: unknown) {
+      if (heartbeatSignal.aborted && error === heartbeatSignal.reason) return;
+      // Durable reconciliation owns the truthful terminal state after lease loss.
+      notifyLeaseFailure?.(error);
+      executionAbort.abort();
     }
-    endHeartbeat?.('stopped');
   })();
+  let invocationSettlement: Promise<PreviewRaceOutcome<T>> | undefined;
+  let stopPromise: Promise<void> | undefined;
   return Object.freeze({
     executionSignal,
-    race: async (invocation: Promise<T>): Promise<PreviewRaceOutcome<T>> =>
-      await Promise.race<PreviewRaceOutcome<T>>([
-        invocation.then(
-          (outcome): PreviewRaceOutcome<T> => ({ kind: 'outcome', outcome }),
-          (error: unknown): PreviewRaceOutcome<T> => ({ error, kind: 'error' }),
-        ),
+    race: async (invocation: Promise<T>): Promise<PreviewRaceOutcome<T>> => {
+      if (invocationSettlement !== undefined)
+        throw new TypeError('Preview supervisor can own only one invocation');
+      invocationSettlement = invocation.then(
+        (outcome): PreviewRaceOutcome<T> => ({ kind: 'outcome', outcome }),
+        (error: unknown): PreviewRaceOutcome<T> => ({ error, kind: 'error' }),
+      );
+      return await Promise.race<PreviewRaceOutcome<T>>([
+        invocationSettlement,
+        contextFailure,
         deadlineHit,
         leaseFailure,
-      ]),
-    stop: async (): Promise<void> => {
-      clearTimeout(deadlineTimer);
-      heartbeatStop.abort();
-      await heartbeatDone;
+      ]);
+    },
+    stop: (): Promise<void> => {
+      stopPromise ??= (async (): Promise<void> => {
+        clearTimeout(deadlineTimer);
+        input.contextSignal.removeEventListener('abort', contextAborted);
+        heartbeatStop.abort(heartbeatStopReason);
+        await heartbeatLoop;
+        if (invocationSettlement !== undefined) await invocationSettlement;
+      })();
+      return stopPromise;
     },
   });
 }

@@ -1,0 +1,172 @@
+rule_files:
+  - /etc/prometheus/pertexo-alerts.yaml
+
+evaluation_interval: 15s
+
+tests:
+  - name: no traffic does not manufacture an API error-budget alert
+    interval: 15s
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PertexoApiEligibleErrorBudgetBurn
+        exp_alerts: []
+
+  - name: five recent worker starts remain below the existing threshold
+    interval: 15s
+    input_series:
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-1"}
+        values: 60+0x40
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-2"}
+        values: 60+0x40
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-3"}
+        values: 60+0x40
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-4"}
+        values: 60+0x40
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-5"}
+        values: 60+0x40
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: PertexoWorkerRestartBurst
+        exp_alerts: []
+
+  - name:
+      six recent writer starts honor the five-minute for duration and age out
+    interval: 15s
+    input_series:
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-1"}
+        values: 60+0x80
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-2"}
+        values: 60+0x80
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-3"}
+        values: 60+0x80
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-4"}
+        values: 60+0x80
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-5"}
+        values: 60+0x80
+      - series: pertexo_worker_process_start_time_seconds{service_instance_id="worker-6"}
+        values: 60+0x80
+    alert_rule_test:
+      - eval_time: 4m45s
+        alertname: PertexoWorkerRestartBurst
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: PertexoWorkerRestartBurst
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: Worker process starts indicate elevated churn
+              description:
+                More than five distinct worker telemetry writers reported a
+                start time in the last fifteen minutes.
+              runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerrestartburst
+      - eval_time: 16m15s
+        alertname: PertexoWorkerRestartBurst
+        exp_alerts: []
+
+  - name:
+      cached but stale replica observations honor source age and for duration
+    interval: 15s
+    input_series:
+      - series: pertexo_regional_replica_admission_blocked{service_instance_id="retention-1",status="open"}
+        values: 0+0x20
+      - series: pertexo_regional_replica_replay_lag_seconds{service_instance_id="retention-1",status="open"}
+        values: 299+0x20
+      - series: pertexo_regional_replica_observation_timestamp_seconds{service_instance_id="retention-1",status="open"}
+        values: 0+0x20
+    alert_rule_test:
+      - eval_time: 2m30s
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts: []
+      - eval_time: 2m45s
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: Regional replica state has fenced durable writes
+              description:
+                Cross-region replay is unavailable, stale, or outside the
+                five-minute recovery-point bound; new durable run admission must
+                remain paused.
+              runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoregionalwriteadmissionpaused
+
+  - name: fresh below-threshold replica evidence remains healthy
+    interval: 15s
+    input_series:
+      - series: pertexo_regional_replica_admission_blocked{service_instance_id="retention-1",status="open"}
+        values: 0+0x20
+      - series: pertexo_regional_replica_replay_lag_seconds{service_instance_id="retention-1",status="open"}
+        values: 299+0x20
+      - series: pertexo_regional_replica_observation_timestamp_seconds{service_instance_id="retention-1",status="open"}
+        values: 0+15x20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts: []
+
+  - name: a newer healthy writer supersedes a cached paused writer
+    interval: 15s
+    input_series:
+      - series: pertexo_regional_replica_admission_blocked{service_instance_id="retention-old"}
+        values: 1+0x20
+      - series: pertexo_regional_replica_replay_lag_seconds{service_instance_id="retention-old"}
+        values: 400+0x20
+      - series: pertexo_regional_replica_observation_timestamp_seconds{service_instance_id="retention-old"}
+        values: 0+0x20
+      - series: pertexo_regional_replica_admission_blocked{service_instance_id="retention-new"}
+        values: 0+0x20
+      - series: pertexo_regional_replica_replay_lag_seconds{service_instance_id="retention-new"}
+        values: 10+0x20
+      - series: pertexo_regional_replica_observation_timestamp_seconds{service_instance_id="retention-new"}
+        values: 120+0x20
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts: []
+
+  - name: missing source timestamp fails closed despite partial replica series
+    interval: 15s
+    input_series:
+      - series: pertexo_regional_replica_admission_blocked{service_instance_id="retention-1",status="open"}
+        values: 0+0x20
+      - series: pertexo_regional_replica_replay_lag_seconds{service_instance_id="retention-1",status="open"}
+        values: 10+0x20
+    alert_rule_test:
+      - eval_time: 45s
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts: []
+      - eval_time: 1m
+        alertname: PertexoRegionalWriteAdmissionPaused
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: Regional replica state has fenced durable writes
+              description:
+                Cross-region replay is unavailable, stale, or outside the
+                five-minute recovery-point bound; new durable run admission must
+                remain paused.
+              runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoregionalwriteadmissionpaused
+
+  - name: a counter reset does not erase an observed webhook outage
+    interval: 1m
+    input_series:
+      - series: pertexo_webhook_delivery_count_total{outcome="unavailable"}
+        values: 0 1 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PertexoWebhookUnavailable
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: PertexoWebhookUnavailable
+        exp_alerts:
+          - exp_labels:
+              outcome: unavailable
+              severity: page
+            exp_annotations:
+              summary: Webhook durable acceptance is unavailable
+              description:
+                At least one webhook delivery was rejected as unavailable during
+                the last ten minutes.
+              runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexowebhookunavailable

@@ -19,6 +19,7 @@ export type {
   OidcLoginTransactionStore,
   OidcProviderPort,
   OidcTokenResponse,
+  OidcTransactionConsumeResult,
   SessionCookieBoundary,
   SessionIssueResult,
   SessionStorePort,

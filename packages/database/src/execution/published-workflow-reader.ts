@@ -155,13 +155,13 @@ export function createPublishedWorkflowReader(
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): PublishedWorkflowReader {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
         parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
       ]);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
 
   return Object.freeze({
     readForExecution: async (

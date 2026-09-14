@@ -218,7 +218,11 @@ describe('core.validate configuration contract', () => {
     ]);
   });
 
-  it.each(invalidCases)('rejects %s', (candidate) => {
+  it.each(
+    invalidCases.map(
+      ([candidate, description]) => [description, candidate] as const,
+    ),
+  )('rejects %s', (_description, candidate) => {
     expect(CORE_VALIDATE_CONFIG_SCHEMA.safeParse(candidate).success).toBe(
       false,
     );
@@ -397,6 +401,90 @@ describe('core.validate deterministic evaluation', () => {
       issues: [],
       truncated: false,
     });
+  });
+
+  it.each([
+    {
+      description: 'zero maximum accepts empty',
+      value: '',
+      minLength: undefined,
+      maxLength: 0,
+      expectedCode: undefined,
+    },
+    {
+      description: 'zero maximum rejects one code point',
+      value: 'a',
+      minLength: undefined,
+      maxLength: 0,
+      expectedCode: 'max_length',
+    },
+    {
+      description: 'exact maximum succeeds',
+      value: 'abc',
+      minLength: undefined,
+      maxLength: 3,
+      expectedCode: undefined,
+    },
+    {
+      description: 'one over maximum fails',
+      value: 'abcd',
+      minLength: undefined,
+      maxLength: 3,
+      expectedCode: 'max_length',
+    },
+    {
+      description: 'minimum-only succeeds at its bound',
+      value: 'abc',
+      minLength: 3,
+      maxLength: undefined,
+      expectedCode: undefined,
+    },
+    {
+      description: 'both constraints preserve minimum precedence',
+      value: 'a',
+      minLength: 2,
+      maxLength: 4,
+      expectedCode: 'min_length',
+    },
+    {
+      description: 'astral symbols count as one code point',
+      value: '😀😀',
+      minLength: 2,
+      maxLength: 2,
+      expectedCode: undefined,
+    },
+    {
+      description: 'combining marks count separately',
+      value: 'e\u0301',
+      minLength: 2,
+      maxLength: 2,
+      expectedCode: undefined,
+    },
+    {
+      description: 'lone surrogates count as one code point',
+      value: '\ud800',
+      minLength: 1,
+      maxLength: 1,
+      expectedCode: undefined,
+    },
+    {
+      description: 'no length constraint accepts a long string',
+      value: 'x'.repeat(100_000),
+      minLength: undefined,
+      maxLength: undefined,
+      expectedCode: undefined,
+    },
+  ])('$description', ({ value, minLength, maxLength, expectedCode }) => {
+    const rule = {
+      id: 'length',
+      path: '$.value',
+      type: 'string',
+      ...(minLength === undefined ? {} : { minLength }),
+      ...(maxLength === undefined ? {} : { maxLength }),
+    };
+    const result = evaluateCoreValidate(config([rule]), { value });
+    expect(result.issues[0]?.code).toBe(expectedCode);
+    expect(result.valid).toBe(expectedCode === undefined);
   });
 
   it('resolves root, quoted own properties and array paths without echoing input', () => {

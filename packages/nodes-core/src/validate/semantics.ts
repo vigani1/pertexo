@@ -35,6 +35,17 @@ function sameScalar(left: unknown, right: unknown): boolean {
   return typeof left === typeof right && left === right;
 }
 
+function countCodePointsUpTo(value: string, stopAfter: number): number {
+  let length = 0;
+  for (let offset = 0; offset < value.length;) {
+    const codePoint = value.codePointAt(offset);
+    offset += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
+    length += 1;
+    if (length >= stopAfter) break;
+  }
+  return length;
+}
+
 function issue(
   rule: CoreValidateRule,
   code: CoreValidateIssue['code'],
@@ -74,19 +85,12 @@ function evaluateRule(
       return issue(rule, CORE_VALIDATE_ISSUE_CODES.maximum);
   }
   if (typeof value === 'string') {
-    let length = 0;
-    for (let offset = 0; offset < value.length;) {
-      const codePoint = value.codePointAt(offset);
-      offset += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
-      length += 1;
-      if (
-        (rule.maxLength !== undefined && length > rule.maxLength) ||
-        (rule.maxLength === undefined &&
-          rule.minLength !== undefined &&
-          length >= rule.minLength)
-      )
-        break;
-    }
+    const stopAfter =
+      rule.maxLength === undefined
+        ? rule.minLength
+        : Math.min(rule.maxLength + 1, Number.MAX_SAFE_INTEGER);
+    if (stopAfter === undefined) return undefined;
+    const length = countCodePointsUpTo(value, stopAfter);
     if (rule.minLength !== undefined && length < rule.minLength)
       return issue(rule, CORE_VALIDATE_ISSUE_CODES.minLength);
     if (rule.maxLength !== undefined && length > rule.maxLength)

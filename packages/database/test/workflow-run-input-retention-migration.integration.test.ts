@@ -116,15 +116,28 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await owner?.end();
-  if (priorDirectory !== '')
-    await rm(priorDirectory, { recursive: true, force: true });
+  const failures: unknown[] = [];
+  const preliminary = await Promise.allSettled([
+    owner?.end(),
+    priorDirectory === ''
+      ? Promise.resolve()
+      : rm(priorDirectory, { recursive: true, force: true }),
+  ]);
+  for (const outcome of preliminary)
+    if (outcome.status === 'rejected') failures.push(outcome.reason);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
+  } catch (error: unknown) {
+    failures.push(error);
   } finally {
-    await admin.end();
+    await admin.end().catch((error: unknown) => failures.push(error));
   }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Workflow-run-input migration fixture cleanup failed',
+    );
 });
 
 describe('workflow run input retention prior-head migration', () => {

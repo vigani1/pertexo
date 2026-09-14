@@ -59,7 +59,7 @@ export async function reconcileUnknownOutcomeEvidence(
         })
         .strict(),
       evidenceCommandId: z.uuid(),
-      signal: z.custom<AbortSignal>().optional(),
+      signal: z.instanceof(AbortSignal).optional(),
       workspaceId: z.uuid(),
     })
     .strict()

@@ -1,6 +1,6 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-10
+Updated: 2026-09-13
 
 ## Delivery state
 
@@ -37,6 +37,14 @@ assertions and 520 local-service assertions at one stable candidate
 fingerprint; its risk report records 477 reviewed and zero unreviewed selected
 branches. The six Q9 scores are final. This completion does not replace
 separately gated AWS/deployment evidence or change backend phase status.
+
+The subsequent [whole-codebase review](./whole-codebase-review/implementation-order.md) and
+its [live implementation record](./whole-codebase-implementation-progress.md)
+are the current repository-quality entrypoint. They preserve the Q9 run above
+as dated evidence rather than relabeling it. Q05–Q41 and the Q42 documentation
+reconciliation are verified locally; Q01–Q04 still have explicit final
+producer/isolation or stable-source evidence gates, so the whole review is not
+yet complete.
 
 The platform is **not production-ready**. The follow-up cron traversal bound,
 artifact policy/contract corrections, and lifecycle-command CI coverage

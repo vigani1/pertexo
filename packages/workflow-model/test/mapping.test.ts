@@ -29,6 +29,23 @@ describe('value sources', () => {
       kind: 'missing',
     });
   });
+  it('resolves only dense own array indices and preserves present null', () => {
+    const inherited = new Array<unknown>(1);
+    Object.setPrototypeOf(inherited, ['not-json-data']);
+
+    expect(resolveJsonPath(inherited as never, '$[0]')).toEqual({
+      kind: 'missing',
+    });
+    expect(resolveJsonPath(['json-data'], '$[0]')).toEqual({
+      kind: 'value',
+      value: 'json-data',
+    });
+    expect(resolveJsonPath([null], '$[0]')).toEqual({
+      kind: 'value',
+      value: null,
+    });
+    expect(resolveJsonPath([], '$[0]')).toEqual({ kind: 'missing' });
+  });
   it('resolves literal, run, node, and structured input through one seam', async () => {
     const context = {
       runInput: { name: 'Ada' },

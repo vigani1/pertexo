@@ -20,6 +20,9 @@ export type FakeOidcProviderOptions = Readonly<{
 export function createFakeOidcProvider(
   options: FakeOidcProviderOptions,
 ): OidcProviderPort {
+  // This deliberately small provider retains one latest request. Callers must
+  // complete each login before starting the next; it is not a provider/PKCE
+  // conformance fake.
   let latestRequest: OidcAuthorizationRequest | undefined;
   const issuerHost = new URL(options.issuer).hostname;
   return Object.freeze({
@@ -76,7 +79,7 @@ export async function loginThroughOidc(
   const state = start.json<{ authorizationUrl: string }>().authorizationUrl;
   const stateValue = new URL(state).searchParams.get('state');
   if (stateValue === null) throw new Error('OIDC state was not returned');
-  const browserBinding = cookieValue(
+  const browserBinding = readSetCookieValue(
     [String(start.headers['set-cookie'])],
     'pertexo_oidc_binding',
   );
@@ -91,16 +94,16 @@ export async function loginThroughOidc(
     throw new Error(
       `OIDC callback failed: ${String(callback.statusCode)} ${callback.payload}`,
     );
-  return sessionCookies(callback.headers['set-cookie']);
+  return parseSessionCookies(callback.headers['set-cookie']);
 }
 
-function sessionCookies(
+export function parseSessionCookies(
   header: string | string[] | undefined,
 ): HttpSessionCookies {
   const values = Array.isArray(header) ? header : [header ?? ''];
   const flattened = values.flatMap((value) => value.split(/,(?=[^;]+?=)/u));
-  const rawSession = cookieValue(flattened, 'pertexo_session');
-  const csrf = cookieValue(flattened, 'pertexo_csrf');
+  const rawSession = readSetCookieValue(flattened, 'pertexo_session');
+  const csrf = readSetCookieValue(flattened, 'pertexo_csrf');
   return {
     rawSession,
     csrf,
@@ -108,7 +111,10 @@ function sessionCookies(
   };
 }
 
-function cookieValue(values: readonly string[], name: string): string {
+export function readSetCookieValue(
+  values: readonly string[],
+  name: string,
+): string {
   const prefix = `${name}=`;
   for (const value of values) {
     const pair = value.split(';', 1)[0]?.trim();

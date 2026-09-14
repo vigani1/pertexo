@@ -12,13 +12,16 @@ import {
   deferred,
   draftNode,
   emptyGraph,
+  finishTransactionClient,
   otherActorId,
   otherVersionId,
   parseDatabaseConfig,
   queryAsOwner,
   randomUUID,
+  saveCurrentDraft,
   testDefinitionCatalog,
   waitForPostgresLock,
+  waitForOperationEntry,
   workflowDraftRepresentationTag,
   workspaceId,
   withApplicationName,
@@ -74,7 +77,7 @@ async function createRestoreFixture(
     workspaceId,
   });
   const firstGraph = graphWithDuration(1_000);
-  await database.saveDraft({
+  await saveCurrentDraft(database, {
     actorId,
     expectedRevision: 1,
     graphJson: firstGraph,
@@ -95,7 +98,7 @@ async function createRestoreFixture(
     workspaceId,
   });
   const currentGraph = graphWithDuration(2_000);
-  await database.saveDraft({
+  await saveCurrentDraft(database, {
     actorId,
     expectedRevision: 2,
     graphJson: currentGraph,
@@ -181,8 +184,11 @@ async function insertSucceededRun(
 ): Promise<string> {
   const runId = randomUUID();
   const client = await apiPool.connect();
+  let transactionOpen = false;
+  let primaryError: unknown;
   try {
     await client.query('begin');
+    transactionOpen = true;
     await client.query("select set_config('app.workspace_id', $1, true)", [
       workspaceId,
     ]);
@@ -194,19 +200,26 @@ async function insertSucceededRun(
       [runId, workspaceId, scopedWorkflowId, versionId],
     );
     await client.query('commit');
-    return runId;
+    transactionOpen = false;
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
+    primaryError = error;
   }
+  await finishTransactionClient(client, {
+    label: 'Succeeded-run fixture insert',
+    primaryError,
+    transactionOpen,
+  });
+  return runId;
 }
 
 async function persistedRun(runId: string): Promise<string> {
   const client = await apiPool.connect();
+  let transactionOpen = false;
+  let primaryError: unknown;
+  let value: string | undefined;
   try {
     await client.query('begin');
+    transactionOpen = true;
     await client.query("select set_config('app.workspace_id',$1,true)", [
       workspaceId,
     ]);
@@ -215,14 +228,21 @@ async function persistedRun(runId: string): Promise<string> {
       [runId],
     );
     await client.query('commit');
+    transactionOpen = false;
     expect(result.rows).toHaveLength(1);
     const row = result.rows[0];
     if (row === undefined) throw new Error('Expected nonempty retained run');
-    return row.value;
-  } finally {
-    await client.query('rollback');
-    client.release();
+    value = row.value;
+  } catch (error: unknown) {
+    primaryError = error;
   }
+  await finishTransactionClient(client, {
+    label: 'Persisted-run fixture query',
+    primaryError,
+    transactionOpen,
+  });
+  if (value === undefined) throw new Error('Persisted run is missing');
+  return value;
 }
 
 describe('workflow version restoration persistence', () => {
@@ -449,7 +469,7 @@ describe('workflow version restoration persistence', () => {
           },
         ],
       };
-      await sourceAuthoring.saveDraft({
+      await saveCurrentDraft(sourceAuthoring, {
         actorId,
         expectedRevision: 1,
         graphJson: blockedGraph,
@@ -470,7 +490,7 @@ describe('workflow version restoration persistence', () => {
         workflowId: created.workflowId,
         workspaceId,
       });
-      await sourceAuthoring.saveDraft({
+      await saveCurrentDraft(sourceAuthoring, {
         actorId,
         expectedRevision: 2,
         graphJson: emptyGraph,
@@ -568,8 +588,12 @@ describe('workflow version restoration persistence', () => {
       const restore = restoreFirst.restoreWorkflowVersion(
         await restoreInput(restoreFirstFixture, restoreFirst, tag),
       );
-      await restoreLocked.promise;
-      const save = saveAfterRestore.saveDraft({
+      await waitForOperationEntry(
+        restoreLocked.promise,
+        restore,
+        'restore-first command',
+      );
+      const save = saveCurrentDraft(saveAfterRestore, {
         actorId,
         expectedRevision: 3,
         graphJson: graphWithDuration(3_000),
@@ -626,14 +650,18 @@ describe('workflow version restoration persistence', () => {
         saveFirstFixture.workflowId,
         actorId,
       );
-      const save = saveFirst.saveDraft({
+      const save = saveCurrentDraft(saveFirst, {
         actorId,
         expectedRevision: 3,
         graphJson: graphWithDuration(3_000),
         workflowId: saveFirstFixture.workflowId,
         workspaceId,
       });
-      await saveLocked.promise;
+      await waitForOperationEntry(
+        saveLocked.promise,
+        save,
+        'save-first command',
+      );
       const restore = restoreAfterSave.restoreWorkflowVersion(
         await restoreInput(saveFirstFixture, restoreAfterSave, tag),
       );

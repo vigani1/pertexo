@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
 
-import { validateDocumentationRepository } from './validate-documentation.mjs';
+import {
+  localTarget,
+  validateDocumentationRepository,
+} from './validate-documentation.mjs';
 import { isolatedGitEnvironment } from './git-environment.mjs';
 
 const execute = promisify(execFile);
@@ -17,8 +20,13 @@ async function command(root, ...args) {
   });
 }
 
-async function createRepository() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'pertexo-docs-'));
+async function createRepository(t, options = {}) {
+  const root = await mkdtemp(
+    path.join(options.parent ?? os.tmpdir(), 'pertexo-docs-'),
+  );
+  t.after(() => rm(root, { force: true, recursive: true }));
+  if (options.failAfterAllocation === true)
+    throw new Error('injected documentation fixture setup failure');
   await mkdir(path.join(root, 'docs'));
   await command(root, 'init', '--quiet');
   await command(root, 'config', 'user.email', 'documentation@example.test');
@@ -51,8 +59,8 @@ async function createRepository() {
   return { root, auditedTree };
 }
 
-test('accepts local links, anchors, and aligned audit trees', async () => {
-  const { root, auditedTree } = await createRepository();
+test('accepts local links, anchors, and aligned audit trees', async (t) => {
+  const { root, auditedTree } = await createRepository(t);
   const result = await validateDocumentationRepository(root);
   assert.deepEqual(result, {
     auditedTree,
@@ -61,8 +69,8 @@ test('accepts local links, anchors, and aligned audit trees', async () => {
   });
 });
 
-test('rejects a missing local target while ignoring examples and external links', async () => {
-  const { root } = await createRepository();
+test('rejects a missing local target while ignoring examples and external links', async (t) => {
+  const { root } = await createRepository(t);
   await writeFile(
     path.join(root, 'README.md'),
     '[Missing](./docs/missing.md)\n\n' +
@@ -75,8 +83,8 @@ test('rejects a missing local target while ignoring examples and external links'
   );
 });
 
-test('rejects a missing heading anchor', async () => {
-  const { root } = await createRepository();
+test('rejects a missing heading anchor', async (t) => {
+  const { root } = await createRepository(t);
   await writeFile(
     path.join(root, 'README.md'),
     '[Audit](./docs/whole-repository-audit.md#not-a-heading)\n',
@@ -87,8 +95,41 @@ test('rejects a missing heading anchor', async () => {
   );
 });
 
-test('rejects tracker drift from the audited implementation tree', async () => {
-  const { root } = await createRepository();
+test('resolves fragment-only, query, encoded, repeated, and empty local links against the source document', async (t) => {
+  const { root } = await createRepository(t);
+  await writeFile(
+    path.join(root, 'README.md'),
+    '# Local heading\n\n' +
+      '## Repeated\n\n## Repeated\n\n' +
+      '[Local](#local-heading)\n' +
+      '[Query](?view=compact#local-heading)\n' +
+      '[Encoded](#local%2Dheading)\n' +
+      '[Second repeated](#repeated-1)\n' +
+      '[Empty]()\n',
+  );
+  await assert.doesNotReject(validateDocumentationRepository(root));
+});
+
+test('rejects missing local fragments, invalid encoding, and repository escape', async (t) => {
+  const { root } = await createRepository(t);
+  for (const [href, pattern] of [
+    [
+      '#absent',
+      /README\.md: heading anchor does not exist: README\.md#absent/u,
+    ],
+    ['../outside.md', /README\.md: local link escapes the repository/u],
+  ]) {
+    await writeFile(path.join(root, 'README.md'), `[Invalid](${href})\n`);
+    await assert.rejects(validateDocumentationRepository(root), pattern);
+  }
+  assert.throws(
+    () => localTarget(root, path.join(root, 'README.md'), '#bad%ZZ'),
+    /link contains invalid percent encoding/u,
+  );
+});
+
+test('rejects tracker drift from the audited implementation tree', async (t) => {
+  const { root } = await createRepository(t);
   await writeFile(
     path.join(root, 'docs/implementation-progress.md'),
     '# Progress\n\n' +
@@ -100,8 +141,8 @@ test('rejects tracker drift from the audited implementation tree', async () => {
   );
 });
 
-test('rejects an audit tree that does not occur in publication ancestry', async () => {
-  const { root } = await createRepository();
+test('rejects an audit tree that does not occur in publication ancestry', async (t) => {
+  const { root } = await createRepository(t);
   const missingTree = '0123456789abcdef0123456789abcdef01234567';
   for (const file of [
     'docs/whole-repository-audit.md',
@@ -122,8 +163,8 @@ test('rejects an audit tree that does not occur in publication ancestry', async 
   );
 });
 
-test('accepts a matching implementation tree recreated by a rebase-style merge', async () => {
-  const { root } = await createRepository();
+test('accepts a matching implementation tree recreated by a rebase-style merge', async (t) => {
+  const { root } = await createRepository(t);
   const { stdout: seedOutput } = await command(
     root,
     'rev-list',
@@ -183,4 +224,23 @@ test('accepts a matching implementation tree recreated by a rebase-style merge',
 
   const result = await validateDocumentationRepository(root);
   assert.equal(result.auditedTree, auditedTree);
+});
+
+test('removes only its owned repository after success and setup failure', async (t) => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'pertexo-docs-parent-'));
+  t.after(() => rm(parent, { force: true, recursive: true }));
+  await writeFile(path.join(parent, 'unrelated.txt'), 'retained\n');
+
+  await t.test('successful setup', async (child) => {
+    await createRepository(child, { parent });
+  });
+  assert.deepEqual(await readdir(parent), ['unrelated.txt']);
+
+  await t.test('failed setup', async (child) => {
+    await assert.rejects(
+      createRepository(child, { failAfterAllocation: true, parent }),
+      /injected documentation fixture setup failure/u,
+    );
+  });
+  assert.deepEqual(await readdir(parent), ['unrelated.txt']);
 });

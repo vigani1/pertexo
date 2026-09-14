@@ -1,23 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  DoubleSubmitCsrfPolicy,
-  IdentityError,
-  nodeIdentityCrypto,
-  OpaqueSessionService,
-} from '../../src/identity/index.js';
-import type { OidcLoginService } from '../../src/identity/index.js';
-import {
-  OidcController,
-  SessionController,
+  CreateWorkspaceUseCase,
+  GetCurrentUserUseCase,
+  ListWorkspaceMembersUseCase,
   UserController,
   WorkspaceMembersController,
   WorkspaceController,
   type CookieResponse,
+  type IdentityWorkspaceRequest,
+  type WorkspaceLifecycleUseCase,
 } from '../../src/identity-workspace/index.js';
-import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/index.js';
-import { mapIdentityWorkspaceError } from '../../src/identity-workspace/errors.js';
-import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
@@ -38,17 +31,32 @@ function workspaceRequest() {
   } as const;
 }
 
-describe('identity/workspace controllers', () => {
-  it('projects absent and guarded workspace context through the lifecycle controller', async () => {
+function lifecycleController(lifecycle: object): WorkspaceController {
+  return new WorkspaceController(
+    { execute: vi.fn() } as unknown as CreateWorkspaceUseCase,
+    lifecycle as unknown as WorkspaceLifecycleUseCase,
+  );
+}
+
+describe('identity workspace-route controllers', () => {
+  it('projects absent and guard-established context through lifecycle commands', async () => {
     const lifecycle = {
-      requestDeletion: vi.fn().mockResolvedValue({ accepted: true }),
+      requestDeletion: vi.fn().mockResolvedValue({
+        id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        workspaceId,
+        commandType: 'deletion_requested',
+        status: 'pending',
+        submittedAt: '2026-08-20T12:00:00.000Z',
+        updatedAt: '2026-08-20T12:00:00.000Z',
+        completedAt: null,
+        errorCode: null,
+        result: null,
+      }),
       restore: vi.fn(),
       readOperation: vi.fn(),
     };
-    const controller = new WorkspaceController(
-      { execute: vi.fn() } as never,
-      lifecycle as never,
-    );
+    const controller = lifecycleController(lifecycle);
+
     await controller.requestDeletion(
       workspaceRequest(),
       { workspaceId },
@@ -56,7 +64,7 @@ describe('identity/workspace controllers', () => {
     );
     expect(lifecycle.requestDeletion).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher verifies the nested actor projection.
         actor: expect.objectContaining({
           actorId,
           requestId: 'request-identity',
@@ -98,19 +106,16 @@ describe('identity/workspace controllers', () => {
     );
   });
 
-  it('maps an invalid lifecycle actor from the controller to request.invalid status 400', async () => {
-    const lifecycle = {
-      requestDeletion: vi.fn(),
+  it('rejects an invalid lifecycle actor before invoking the use case', async () => {
+    const requestDeletion = vi.fn();
+    const controller = lifecycleController({
+      requestDeletion,
       restore: vi.fn(),
       readOperation: vi.fn(),
-    };
-    const controller = new WorkspaceController(
-      { execute: vi.fn() } as never,
-      lifecycle as never,
-    );
-    let thrown: unknown;
-    try {
-      await controller.requestDeletion(
+    });
+
+    await expect(
+      controller.requestDeletion(
         {
           ...workspaceRequest(),
           identitySession: {
@@ -120,31 +125,35 @@ describe('identity/workspace controllers', () => {
         },
         { workspaceId },
         { reason: 'operator request' },
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(mapIdentityWorkspaceError(thrown)).toMatchObject({
-      code: 'request.invalid',
+      ),
+    ).rejects.toMatchObject({
+      name: 'InvalidAuthenticatedWorkspaceContextError',
+      message: 'actorId must be a canonical UUID',
     });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(lifecycle.requestDeletion).not.toHaveBeenCalled();
+    expect(requestDeletion).not.toHaveBeenCalled();
   });
-  it('returns the current profile with private cache policy', async () => {
+
+  it('returns a complete current profile with private cache policy', async () => {
     const response: CookieResponse = { header: vi.fn() };
-    const controller = new UserController({
-      execute: vi.fn().mockResolvedValue({ id: 'user' }),
-    } as never);
-    const request = {
-      identitySession: {
-        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        expiresAt: new Date(),
-        clientMetadata: {},
-      },
-    } satisfies IdentityWorkspaceRequest;
+    const profile = {
+      id: actorId,
+      email: 'person@example.test',
+      displayName: 'Person',
+      status: 'active' as const,
+      createdAt: new Date('2026-08-20T12:00:00.000Z'),
+      updatedAt: new Date('2026-08-20T12:00:00.000Z'),
+    };
+    const controller = new UserController(
+      new GetCurrentUserUseCase({
+        findUserById: vi.fn().mockResolvedValue(profile),
+      }),
+    );
+    const request = workspaceRequest() satisfies IdentityWorkspaceRequest;
+
     await expect(controller.me(request, response)).resolves.toEqual({
-      id: 'user',
+      ...profile,
+      createdAt: '2026-08-20T12:00:00.000Z',
+      updatedAt: '2026-08-20T12:00:00.000Z',
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(response.header)).toHaveBeenCalledWith(
@@ -155,28 +164,31 @@ describe('identity/workspace controllers', () => {
 
   it('parses bounded member pagination and applies private cache policy', async () => {
     const response: CookieResponse = { header: vi.fn() };
-    const execute = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
-    const controller = new WorkspaceMembersController({ execute } as never);
-    const request = {
-      identitySession: {
-        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        expiresAt: new Date(),
-        clientMetadata: {},
-      },
-    } satisfies IdentityWorkspaceRequest;
+    const listWorkspaceMembers = vi.fn().mockResolvedValue({ items: [] });
+    const controller = new WorkspaceMembersController(
+      new ListWorkspaceMembersUseCase(
+        { listWorkspaceMembers },
+        {
+          findAccess: vi.fn().mockResolvedValue({
+            actorId,
+            workspaceId,
+            role: 'owner',
+            membershipStatus: 'active',
+            workspaceStatus: 'active',
+          }),
+        },
+      ),
+    );
+
     await controller.list(
-      request,
-      { workspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+      workspaceRequest(),
+      { workspaceId },
       { limit: '2' },
       response,
     );
-    expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-        limit: 2,
-      }),
-    );
+    expect(listWorkspaceMembers).toHaveBeenCalledWith(workspaceId, actorId, {
+      limit: 2,
+    });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(response.header)).toHaveBeenCalledWith(
       'Cache-Control',
@@ -184,297 +196,70 @@ describe('identity/workspace controllers', () => {
     );
     await expect(
       controller.list(
-        request,
-        { workspaceId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+        workspaceRequest(),
+        { workspaceId },
         { limit: '101' },
         response,
       ),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
-  it('sets a narrow HttpOnly OIDC binding cookie without exposing its value in the body', async () => {
-    const oidc = {
-      startLogin: vi.fn().mockResolvedValue({
-        authorizationUrl: 'https://issuer.example.test/authorize?state=opaque',
-        expiresAt: new Date(Date.now() + 300_000),
-        browserBindingMaxAgeSeconds: 300,
-        browserBinding: 'raw-browser-binding',
-      }),
-    } as unknown as OidcLoginService;
-    const response: CookieResponse = { header: vi.fn() };
-    const controller = new OidcController(
-      oidc,
-      { issue: vi.fn() } as never,
-      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
-      { secure: true, sameSite: 'lax' },
-    );
-
-    const body = await controller.start(response);
-
-    expect(JSON.stringify(body)).not.toContain('raw-browser-binding');
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'set-cookie',
-      expect.stringMatching(
-        /^pertexo_oidc_binding=raw-browser-binding; Path=\/v1\/auth\/oidc\/callback; HttpOnly; Secure; SameSite=Lax; Expires=.+; Max-Age=300$/u,
-      ),
-    );
-  });
-
-  it('writes session and CSRF cookies in one aligned response header', async () => {
-    const oidc = {
-      completeLogin: vi.fn().mockResolvedValue({
-        externalIdentity: {
-          issuer: 'https://issuer.example.test',
-          subject: 'subject',
-        },
-        internalIdentity: {
-          userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        },
-        verifiedProfile: {
-          email: 'person@example.test',
-          displayName: 'Person',
-        },
-      }),
-    } as unknown as OidcLoginService;
-    const sessions = {
-      issue: vi.fn(
-        (
-          _input: unknown,
-          boundary: {
-            writeSessionCookie: (
-              token: string,
-              options: Readonly<{
-                httpOnly: true;
-                secure: boolean;
-                sameSite: 'lax' | 'strict' | 'none';
-                path: '/';
-                maxAgeSeconds: number;
-              }>,
-            ) => void;
-          },
-        ) => {
-          boundary.writeSessionCookie('opaque-session-token', {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'strict',
-            path: '/',
-            maxAgeSeconds: 900,
-          });
-          return {
-            sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-            expiresAt: new Date('2026-08-20T20:00:00.000Z'),
-            cookieOptions: {
-              httpOnly: true,
-              secure: true,
-              sameSite: 'strict' as const,
-              path: '/',
-              maxAgeSeconds: 900,
-            },
-          };
-        },
-      ),
-    };
-    const response: CookieResponse = { header: vi.fn() };
-    const controller = new OidcController(
-      oidc,
-      sessions as never,
-      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
-      { secure: true, sameSite: 'strict' },
-    );
-
-    await controller.callback(
-      { code: 'authorization-code', state: 'state-value-123456' },
-      { cookies: { pertexo_oidc_binding: 'browser-binding' } },
-      response,
-    );
-
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(oidc.completeLogin).toHaveBeenCalledWith(
-      { code: 'authorization-code', state: 'state-value-123456' },
-      'browser-binding',
-    );
-
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledTimes(1);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'set-cookie',
-      expect.arrayContaining([
-        expect.stringContaining('pertexo_session=opaque-session-token'),
-        expect.stringContaining(
-          'pertexo_oidc_binding=; Path=/v1/auth/oidc/callback; Max-Age=0',
-        ),
-        expect.stringMatching(
-          /^pertexo_csrf=[^;]+; Path=\/; Secure; SameSite=Strict; Max-Age=900$/,
-        ),
-      ]),
-    );
-  });
-
-  it('revokes the persisted session when the combined cookie header fails', async () => {
-    let revokedAt: Date | undefined;
-    const store = {
-      create: (): Promise<void> => Promise.resolve(),
-      findByDigest: (): Promise<undefined> => Promise.resolve(undefined),
-      revokeByDigest: (_digest: string, at: Date): Promise<boolean> => {
-        revokedAt = at;
-        return Promise.resolve(true);
-      },
-    };
-    const sessions = new OpaqueSessionService(store);
-    const oidc = {
-      completeLogin: () =>
-        Promise.resolve({
-          externalIdentity: {
-            issuer: 'https://issuer.example.test',
-            subject: 'subject',
-          },
-          internalIdentity: {
-            userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-          },
-          verifiedProfile: {
-            email: 'person@example.test',
-            displayName: 'Person',
-          },
-        }),
-    } as unknown as OidcLoginService;
-    const response: CookieResponse = {
-      header: () => {
-        throw new Error('response header unavailable');
-      },
-    };
-    const controller = new OidcController(
-      oidc,
-      sessions,
-      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
-      { secure: true, sameSite: 'lax' },
-    );
-
-    await expect(
-      controller.callback(
-        { code: 'authorization-code', state: 'state-value-123456' },
-        { cookies: { pertexo_oidc_binding: 'browser-binding' } },
-        response,
-      ),
-    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
-    expect(revokedAt).toBeInstanceOf(Date);
-  });
-
-  it('clears cookies using the configured policy after logout revocation', async () => {
-    let revoked = false;
-    const sessions = new OpaqueSessionService({
-      create: (): Promise<void> => Promise.resolve(),
-      findByDigest: (): Promise<undefined> => Promise.resolve(undefined),
-      revokeByDigest: (): Promise<boolean> => {
-        revoked = true;
-        return Promise.resolve(true);
-      },
-    });
-    const response: CookieResponse = { header: vi.fn() };
-    const controller = new SessionController(sessions, {
-      secure: false,
-      sameSite: 'strict',
-    });
-
-    await controller.logout(
+  it('validates workspace creation body with a valid idempotency key', async () => {
+    const createWorkspaceWithOwner = vi.fn();
+    const controller = new WorkspaceController(
+      new CreateWorkspaceUseCase({ createWorkspaceWithOwner }),
       {
-        cookies: { pertexo_session: 'opaque-session-token-123456789012345678' },
-      },
-      response,
+        requestDeletion: vi.fn(),
+        restore: vi.fn(),
+        readOperation: vi.fn(),
+      } as unknown as WorkspaceLifecycleUseCase,
     );
 
-    expect(revoked).toBe(true);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith('set-cookie', [
-      'pertexo_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict',
-      'pertexo_csrf=; Path=/; Max-Age=0; SameSite=Strict',
-    ]);
+    await expect(
+      controller.create(workspaceRequest(), {
+        name: '',
+        slug: 'not valid',
+      }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(createWorkspaceWithOwner).not.toHaveBeenCalled();
   });
 
-  it('maps malformed query, body, and route inputs to request.invalid', async () => {
-    const oidc = {
-      completeLogin: vi.fn(),
-    } as unknown as OidcLoginService;
-    const oidcController = new OidcController(
-      oidc,
-      { issue: vi.fn() } as never,
-      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
-      { secure: true, sameSite: 'lax' },
-    );
-    const malformedResponse: CookieResponse = { header: vi.fn() };
-    await expect(
-      oidcController.callback(
-        { code: 'authorization-code', state: 'short' },
-        {},
-        malformedResponse,
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(malformedResponse.header)).toHaveBeenCalledWith(
-      'set-cookie',
-      expect.stringContaining('pertexo_oidc_binding=;'),
+  it.each([
+    ['missing idempotency key', { ...workspaceRequest(), headers: {} }],
+    [
+      'repeated idempotency key',
+      {
+        ...workspaceRequest(),
+        headers: { 'idempotency-key': ['one', 'two'] },
+      },
+    ],
+  ])('rejects a workspace create with %s', async (_case, request) => {
+    const execute = vi.fn();
+    const controller = new WorkspaceController(
+      { execute } as unknown as CreateWorkspaceUseCase,
+      {} as WorkspaceLifecycleUseCase,
     );
 
-    const workspaceController = new WorkspaceController(
-      { execute: vi.fn() } as never,
-      { requestDeletion: vi.fn(), restore: vi.fn() } as never,
-    );
-    const request = {
-      identitySession: {
-        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        expiresAt: new Date(),
-        clientMetadata: {},
-      },
-    } satisfies IdentityWorkspaceRequest;
     await expect(
-      workspaceController.create(request, { name: '', slug: 'not valid' }),
+      controller.create(request as IdentityWorkspaceRequest, {
+        name: 'Operations',
+        slug: 'operations',
+      }),
     ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid workspace route before invoking lifecycle behavior', async () => {
+    const requestDeletion = vi.fn();
+    const controller = lifecycleController({ requestDeletion });
+
     await expect(
-      workspaceController.requestDeletion(
-        request,
+      controller.requestDeletion(
+        workspaceRequest(),
         { workspaceId: 'not-a-uuid' },
         { reason: 'retire it' },
       ),
     ).rejects.toMatchObject({ name: 'ZodError' });
-
-    await expect(
-      workspaceController.create(request, {
-        name: 'Missing key',
-        slug: 'missing-key',
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    await expect(
-      workspaceController.create(
-        {
-          ...request,
-          headers: { 'idempotency-key': ['one', 'two'] },
-        },
-        { name: 'Ambiguous key', slug: 'ambiguous-key' },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-  });
-
-  it('maps an OIDC provider outage to the stable application error', async () => {
-    const oidc = {
-      completeLogin: vi
-        .fn()
-        .mockRejectedValue(new IdentityError('identity.provider_unavailable')),
-    } as unknown as OidcLoginService;
-    const controller = new OidcController(
-      oidc,
-      { issue: vi.fn() } as never,
-      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
-      { secure: true, sameSite: 'lax' },
-    );
-
-    await expect(
-      controller.callback(
-        { code: 'authorization-code', state: 'state-value-123456' },
-        { cookies: { pertexo_oidc_binding: 'browser-binding' } },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
+    expect(requestDeletion).not.toHaveBeenCalled();
   });
 });

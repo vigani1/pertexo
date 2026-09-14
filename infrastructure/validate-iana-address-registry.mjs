@@ -1,5 +1,3 @@
-/* global AbortSignal, URL, console, fetch, process */
-
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 

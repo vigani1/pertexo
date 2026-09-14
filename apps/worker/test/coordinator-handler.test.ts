@@ -55,7 +55,252 @@ function projection(): PublishedWorkflowV2Projection {
   };
 }
 
+function handlerFixture(
+  overrides: {
+    loaded?: unknown;
+    published?: unknown;
+    advanced?: unknown;
+    committed?: unknown;
+    acknowledgeFailure?: unknown;
+    notificationFailure?: unknown;
+  } = {},
+) {
+  const loadAdvanceState = vi.fn().mockResolvedValue(
+    overrides.loaded ?? {
+      kind: 'ready',
+      state: {
+        runId: RUN_ID,
+        workflowVersionId: VERSION_ID,
+        checkpoint: { revision: 0 },
+        observations: [],
+      },
+    },
+  );
+  const readForExecution = vi.fn().mockResolvedValue(
+    overrides.published ?? {
+      kind: 'v2_projection',
+      workflowVersion: projection(),
+    },
+  );
+  const advance = vi.fn().mockResolvedValue(
+    overrides.advanced ?? {
+      kind: 'transition',
+      plan: { expectedRevision: 0 },
+    },
+  );
+  const commitAdvancePlan = vi.fn().mockResolvedValue(
+    overrides.committed ?? {
+      kind: 'committed',
+      revision: 1,
+      admittedAttempts: [],
+    },
+  );
+  const acknowledgeAdvanceDelivery =
+    overrides.acknowledgeFailure === undefined
+      ? vi.fn().mockResolvedValue({ kind: 'acknowledged' })
+      : vi.fn().mockRejectedValue(overrides.acknowledgeFailure);
+  const resync =
+    overrides.notificationFailure === undefined
+      ? vi.fn().mockResolvedValue(undefined)
+      : vi.fn().mockRejectedValue(overrides.notificationFailure);
+  const handler = createCoordinatorHandler({
+    clock: { now: () => '2026-08-21T00:00:00.000Z' },
+    engine: { advance },
+    maximumAdmissions: 32,
+    notifications: {
+      close: vi.fn().mockResolvedValue(undefined),
+      publish: vi.fn(),
+      resync,
+    },
+    reader: {
+      close: vi.fn().mockResolvedValue(undefined),
+      readForExecution,
+    },
+    runStore: {
+      acknowledgeAdvanceDelivery,
+      close: vi.fn().mockResolvedValue(undefined),
+      commitAdvancePlan,
+      loadAdvanceState,
+    },
+  });
+  return {
+    acknowledgeAdvanceDelivery,
+    advance,
+    commitAdvancePlan,
+    handler,
+    loadAdvanceState,
+    readForExecution,
+    resync,
+  };
+}
+
 describe('coordinator handler', () => {
+  it.each([
+    'not_found',
+    'not_executable',
+    'unsupported_checkpoint',
+    'capacity_exceeded',
+  ] as const)('stops after a %s loaded-state result', async (kind) => {
+    const selected = handlerFixture({ loaded: { kind } });
+    await expect(
+      selected.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: kind });
+    expect(selected.readForExecution).not.toHaveBeenCalled();
+    expect(selected.advance).not.toHaveBeenCalled();
+    expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['not_found', 'workflow_not_found'],
+    ['non_executable', 'workflow_non_executable'],
+  ] as const)('maps published %s and does not advance', async (kind, code) => {
+    const selected = handlerFixture({
+      published:
+        kind === 'not_found'
+          ? { kind }
+          : { kind, workflowVersion: projection() },
+    });
+    await expect(
+      selected.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code });
+    expect(selected.advance).not.toHaveBeenCalled();
+    expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['run', { runId: crypto.randomUUID(), workflowVersionId: VERSION_ID }],
+    ['version', { runId: RUN_ID, workflowVersionId: crypto.randomUUID() }],
+  ] as const)(
+    'rejects a loaded %s identity mismatch before later work',
+    async (field, identity) => {
+      const selected = handlerFixture({
+        loaded: {
+          kind: 'ready',
+          state: {
+            ...identity,
+            checkpoint: {},
+            observations: [],
+          },
+        },
+      });
+      await expect(
+        selected.handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({ code: 'identity_mismatch' });
+      if (field === 'run')
+        expect(selected.readForExecution).not.toHaveBeenCalled();
+      else expect(selected.readForExecution).toHaveBeenCalledOnce();
+      expect(selected.advance).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['version', { id: crypto.randomUUID(), workspaceId: WORKSPACE_ID }],
+    ['workspace', { id: VERSION_ID, workspaceId: crypto.randomUUID() }],
+  ] as const)(
+    'rejects a published %s identity mismatch before advancement',
+    async (_field, identity) => {
+      const selected = handlerFixture({
+        published: {
+          kind: 'v2_projection',
+          workflowVersion: { ...projection(), ...identity },
+        },
+      });
+      await expect(
+        selected.handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({ code: 'identity_mismatch' });
+      expect(selected.advance).not.toHaveBeenCalled();
+      expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['already_committed', 'deferred', 'stale'] as const)(
+    'returns a %s commit without publishing a resync hint',
+    async (kind) => {
+      const selected = handlerFixture({
+        committed: { kind, revision: 9 },
+      });
+      await expect(
+        selected.handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind, revision: 9 });
+      expect(selected.resync).not.toHaveBeenCalled();
+    },
+  );
+
+  it('maps commit not-found and contains rejected post-commit notification', async () => {
+    const missing = handlerFixture({ committed: { kind: 'not_found' } });
+    await expect(
+      missing.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'commit_not_found' });
+    expect(missing.resync).not.toHaveBeenCalled();
+
+    const notificationFailure = new Error('notification unavailable');
+    const committed = handlerFixture({ notificationFailure });
+    await expect(
+      committed.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'committed', revision: 1 });
+    expect(committed.resync).toHaveBeenCalledOnce();
+  });
+
+  it('forwards completed outputs and omits absent trace context', async () => {
+    const selected = handlerFixture({
+      loaded: {
+        kind: 'ready',
+        state: {
+          runId: RUN_ID,
+          workflowVersionId: VERSION_ID,
+          checkpoint: {},
+          observations: [],
+          completedOutputs: [{ invocationKey: 'node', output: { ok: true } }],
+        },
+      },
+    });
+    const withoutTrace = delivery();
+    delete (withoutTrace.data as { traceparent?: string }).traceparent;
+
+    await expect(
+      selected.handler.handle(withoutTrace, {
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'committed', revision: 1 });
+    expect(selected.advance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        completedOutputs: [{ invocationKey: 'node', output: { ok: true } }],
+      }),
+    );
+    expect(selected.commitAdvancePlan.mock.calls[0]?.[0]).not.toHaveProperty(
+      'traceparent',
+    );
+  });
+
+  it('preserves an acknowledgement failure without attempting a commit', async () => {
+    const acknowledgementFailure = new Error('acknowledgement failed');
+    const selected = handlerFixture({
+      advanced: { kind: 'no_change', revision: 4 },
+      acknowledgeFailure: acknowledgementFailure,
+    });
+
+    await expect(
+      selected.handler.handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(acknowledgementFailure);
+    expect(selected.commitAdvancePlan).not.toHaveBeenCalled();
+  });
+
   it('loads, verifies, advances, and atomically commits one delivery', async () => {
     const signal = new AbortController().signal;
     const checkpoint = { schemaVersion: 1, revision: 0 };

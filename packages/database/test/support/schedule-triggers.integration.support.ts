@@ -17,7 +17,9 @@ import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/
 import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
-export function createScheduleTriggerTestEnvironment() {
+export function createScheduleTriggerTestEnvironment(
+  options: Readonly<{ includeOperator?: boolean; scannerCount?: 1 | 2 }> = {},
+) {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -65,24 +67,16 @@ export function createScheduleTriggerTestEnvironment() {
     connectionString: url(workerBaseUrl),
     max: 8,
   });
-  const identity = createIdentityWorkspaceDatabase(apiConfig);
-  const reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
-  const schedules = createScheduleTriggerDatabase(apiConfig);
-  const scannerOne = createScheduleTriggerScanner(
-    workerConfig,
-    BASELINE_COMPATIBILITY_EXPECTATION,
-    apiConfig,
-  );
-  const scannerTwo = createScheduleTriggerScanner(
-    workerConfig,
-    BASELINE_COMPATIBILITY_EXPECTATION,
-    apiConfig,
-  );
-  const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
-  const worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
-  const operator = createOperatorCommandDatabase(
-    parseDatabaseConfig({ connectionString: url(operatorBaseUrl), max: 1 }),
-  );
+  let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+  let reconciliation: ReturnType<
+    typeof createWorkflowTriggerReconciliationDatabase
+  >;
+  let schedules: ReturnType<typeof createScheduleTriggerDatabase>;
+  let scannerOne: ReturnType<typeof createScheduleTriggerScanner>;
+  let scannerTwo: ReturnType<typeof createScheduleTriggerScanner> | undefined;
+  let owner: Pool;
+  let worker: Pool;
+  let operator: ReturnType<typeof createOperatorCommandDatabase> | undefined;
 
   async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
     statement: string,
@@ -90,6 +84,9 @@ export function createScheduleTriggerTestEnvironment() {
     scopedWorkspaceId = workspaceId,
   ) {
     const client = await owner.connect();
+    let releaseClient = (): void => {
+      client.release();
+    };
     try {
       await client.query('begin');
       await client.query('set local role pertexo_owner');
@@ -100,19 +97,32 @@ export function createScheduleTriggerTestEnvironment() {
       await client.query('commit');
       return result;
     } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
+      try {
+        await client.query('rollback');
+      } catch (rollbackError: unknown) {
+        releaseClient = () => undefined;
+        try {
+          client.release(
+            new Error('Schedule fixture owner rollback failed', {
+              cause: rollbackError,
+            }),
+          );
+        } catch {
+          // Preserve the scenario failure after attempting client disposal.
+        }
+      }
       throw error;
     } finally {
-      client.release();
+      releaseClient();
     }
   }
 
-  const checkpointFactory = () => ({
+  const checkpointFactory = (projection?: { id: string }) => ({
     engineVersion: 'schedule-test-engine',
     checkpoint: {
       schemaVersion: 1,
       engineVersion: 'schedule-test-engine',
-      workflowVersionId: versionId,
+      workflowVersionId: projection?.id ?? versionId,
       revision: 0,
       runStatus: 'queued',
       nextEventSequence: 2,
@@ -126,12 +136,8 @@ export function createScheduleTriggerTestEnvironment() {
       deadlineExpired: false,
     },
   });
-  const replayStore = createOperatorRunReplayStore(
-    workerConfig,
-    [BASELINE_COMPATIBILITY_EXPECTATION],
-    checkpointFactory,
-  );
-  const sourceRunDatabase = createWorkspaceDatabase(apiConfig);
+  let replayStore: ReturnType<typeof createOperatorRunReplayStore> | undefined;
+  let sourceRunDatabase: ReturnType<typeof createWorkspaceDatabase> | undefined;
 
   const initialize = async (): Promise<string> => {
     const admin = new Pool({ connectionString: adminUrl, max: 1 });
@@ -147,6 +153,36 @@ export function createScheduleTriggerTestEnvironment() {
       await admin.end();
     }
     await migrateDatabase(migrationConfig);
+    owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
+    worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+    identity = createIdentityWorkspaceDatabase(apiConfig);
+    reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
+    schedules = createScheduleTriggerDatabase(apiConfig);
+    scannerOne = createScheduleTriggerScanner(
+      workerConfig,
+      BASELINE_COMPATIBILITY_EXPECTATION,
+      apiConfig,
+    );
+    if (options.scannerCount === 2)
+      scannerTwo = createScheduleTriggerScanner(
+        workerConfig,
+        BASELINE_COMPATIBILITY_EXPECTATION,
+        apiConfig,
+      );
+    if (options.includeOperator === true) {
+      operator = createOperatorCommandDatabase(
+        parseDatabaseConfig({
+          connectionString: url(operatorBaseUrl),
+          max: 1,
+        }),
+      );
+      replayStore = createOperatorRunReplayStore(
+        workerConfig,
+        [BASELINE_COMPATIBILITY_EXPECTATION],
+        checkpointFactory,
+      );
+      sourceRunDatabase = createWorkspaceDatabase(apiConfig);
+    }
     await identity.createUser({
       id: actorId,
       email: `schedule-${actorId}@example.test`,
@@ -250,6 +286,7 @@ export function createScheduleTriggerTestEnvironment() {
         [id, workspaceId, policy, fingerprint, age],
       );
     }
+    if (sourceRunDatabase === undefined) return '';
     const source = await sourceRunDatabase.withWorkspace(
       workspaceId,
       (transaction) =>
@@ -275,44 +312,82 @@ export function createScheduleTriggerTestEnvironment() {
   };
 
   const close = async (): Promise<void> => {
-    await scannerOne.close();
-    await scannerTwo.close();
-    await reconciliation.close();
-    await schedules.close();
-    await identity.close();
-    await operator.close();
-    await replayStore.close();
-    await sourceRunDatabase.close();
-    await worker.end();
-    await owner.end();
+    const settle = <Resource>(
+      resource: Resource | undefined,
+      operation: (value: Resource) => Promise<unknown>,
+    ): Promise<unknown> | undefined =>
+      resource === undefined ? undefined : operation(resource);
+    const cleanup = await Promise.allSettled([
+      settle(scannerOne, (resource) => resource.close()),
+      settle(scannerTwo, (resource) => resource.close()),
+      settle(reconciliation, (resource) => resource.close()),
+      settle(schedules, (resource) => resource.close()),
+      settle(identity, (resource) => resource.close()),
+      settle(operator, (resource) => resource.close()),
+      settle(replayStore, (resource) => resource.close()),
+      settle(sourceRunDatabase, (resource) => resource.close()),
+      settle(worker, (resource) => resource.end()),
+      settle(owner, (resource) => resource.end()),
+    ]);
     const admin = new Pool({ connectionString: adminUrl, max: 1 });
     try {
       await dropDisconnectedDatabase(admin, databaseName);
     } finally {
       await admin.end();
     }
+    const failures: unknown[] = [];
+    for (const result of cleanup)
+      if (result.status === 'rejected') failures.push(result.reason);
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Schedule fixture cleanup failed');
   };
 
   return {
     actorId,
     checkpointFactory,
     close,
-    identity,
+    get identity() {
+      return identity;
+    },
     initialize,
     notificationDestinationId,
     notificationSecretVersionId,
-    operator,
+    get operator() {
+      if (operator === undefined)
+        throw new Error('Operator resources were not requested');
+      return operator;
+    },
     ownerQuery,
-    reconciliation,
-    replayStore,
-    scannerOne,
-    scannerTwo,
-    schedules,
+    get reconciliation() {
+      return reconciliation;
+    },
+    get replayStore() {
+      if (replayStore === undefined)
+        throw new Error('Operator replay resources were not requested');
+      return replayStore;
+    },
+    get scannerOne() {
+      return scannerOne;
+    },
+    get scannerTwo() {
+      if (scannerTwo === undefined)
+        throw new Error('A second scanner was not requested');
+      return scannerTwo;
+    },
+    get schedules() {
+      return schedules;
+    },
     skipTriggerId,
-    sourceRunDatabase,
+    get sourceRunDatabase() {
+      if (sourceRunDatabase === undefined)
+        throw new Error('Operator source-run resources were not requested');
+      return sourceRunDatabase;
+    },
     triggerId,
     versionId,
-    worker,
+    get worker() {
+      return worker;
+    },
     workflowId,
     workspaceId,
   };

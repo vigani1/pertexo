@@ -115,6 +115,18 @@ describe('identity/workspace application use cases', () => {
     });
   });
 
+  it.each([
+    ['missing', null],
+    ['suspended', { ...user(), status: 'suspended' as const }],
+  ])('rejects a %s current user as unauthenticated', async (_case, profile) => {
+    const store = persistence();
+    vi.mocked(store.findUserById).mockResolvedValue(profile);
+
+    await expect(
+      new GetCurrentUserUseCase(store).execute(actorId),
+    ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
+  });
+
   it('authorizes and passes an opaque member cursor to the bounded persistence page', async () => {
     const store = persistence();
     const member = {
@@ -147,7 +159,12 @@ describe('identity/workspace application use cases', () => {
       after: cursor,
     });
     expect(result.items).toHaveLength(1);
-    expect(result.nextCursor).toBeTruthy();
+    expect(result.nextCursor).toBe(
+      encodeWorkspaceMemberCursor({
+        createdAt: '2026-08-20T12:00:00.654321Z',
+        userId: actorId,
+      }),
+    );
     expect(store.listWorkspaceMembers).toHaveBeenCalledWith(
       workspaceId,
       actorId,
@@ -156,6 +173,36 @@ describe('identity/workspace application use cases', () => {
         after: { createdAt: '2026-08-20T12:00:00.123456Z', userId: actorId },
       },
     );
+  });
+
+  it('returns a null member cursor when persistence has no next page', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess('owner')),
+    };
+
+    await expect(
+      new ListWorkspaceMembersUseCase(store, authorization).execute({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+      }),
+    ).resolves.toEqual({ items: [], nextCursor: null });
+  });
+
+  it('rejects malformed member cursor encoding before persistence', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess('owner')),
+    };
+
+    await expect(
+      new ListWorkspaceMembersUseCase(store, authorization).execute({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        after: 'not-a-canonical-cursor',
+      }),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    expect(store.listWorkspaceMembers).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -290,7 +337,11 @@ describe('identity/workspace application use cases', () => {
     const cookieBoundary = { writeSessionCookie: vi.fn() };
 
     const result = await app.complete(
-      { code: 'code', state: 'state-value-123456' },
+      {
+        code: 'code',
+        state: 'state-value-123456',
+        provider_extension: 'ignored',
+      },
       'browser-binding-secret',
       cookieBoundary,
     );
@@ -304,6 +355,39 @@ describe('identity/workspace application use cases', () => {
       { userId: actorId },
       cookieBoundary,
     );
+  });
+
+  it.each([
+    [
+      'repeated code',
+      { code: ['first', 'second'], state: 'state-value-123456' },
+    ],
+    ['repeated state', { code: 'code', state: ['first', 'second'] }],
+    ['missing code', { state: 'state-value-123456' }],
+    ['missing state', { code: 'code' }],
+    ['empty code', { code: '', state: 'state-value-123456' }],
+    ['short state', { code: 'code', state: 'short' }],
+    [
+      'oversized code',
+      { code: 'x'.repeat(4_097), state: 'state-value-123456' },
+    ],
+    ['oversized state', { code: 'code', state: 'x'.repeat(513) }],
+  ] as const)('rejects OIDC callback %s before login', async (_case, input) => {
+    const oidc = {
+      startLogin: vi.fn(),
+      completeLogin: vi.fn(),
+    };
+    const sessions = { issue: vi.fn() };
+
+    await expect(
+      new OidcApplicationService(oidc, sessions).complete(
+        input,
+        'browser-binding',
+        { writeSessionCookie: vi.fn() },
+      ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(oidc.completeLogin).not.toHaveBeenCalled();
+    expect(sessions.issue).not.toHaveBeenCalled();
   });
 
   it('creates a workspace with owner and request/trace audit identity atomically through one persistence port', async () => {
@@ -460,8 +544,15 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
         operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       }),
-    ).resolves.toMatchObject({
+    ).resolves.toEqual({
+      id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      workspaceId,
+      commandType: 'deletion_requested',
       status: 'completed',
+      submittedAt: '2026-08-20T12:00:00.000Z',
+      updatedAt: '2026-08-20T12:00:00.000Z',
+      completedAt: '2026-08-20T12:01:00.000Z',
+      errorCode: null,
       result: { workspaceId },
     });
   });

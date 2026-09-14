@@ -6,6 +6,7 @@ import type {
 } from '@pertexo/database/operator';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { classifyProcessError } from '@pertexo/observability/process-error-classification';
 
 import type { OperatorCommandConfig } from './config.js';
 
@@ -129,6 +130,7 @@ export async function runOperatorCommand(
   let result: OperatorCommandExecutionResult | undefined;
   let operationFailed = false;
   let operationError: unknown;
+  const diagnosticErrors: unknown[] = [];
   try {
     resources.telemetry.start();
     resources.signal.throwIfAborted();
@@ -147,23 +149,31 @@ export async function runOperatorCommand(
   } catch (error: unknown) {
     operationFailed = true;
     operationError = error;
-    resources.logger.error(
-      'operator_command.failed',
-      {
-        commandType: resources.command.type,
-        ...('dryRun' in resources.command
-          ? { dryRun: resources.command.dryRun }
-          : {}),
-        errorType: error instanceof Error ? error.name : typeof error,
-      },
-      error,
-    );
+    try {
+      resources.logger.error(
+        'operator_command.failed',
+        {
+          commandType: resources.command.type,
+          ...('dryRun' in resources.command
+            ? { dryRun: resources.command.dryRun }
+            : {}),
+          errorType: classifyProcessError(error),
+        },
+        error,
+      );
+    } catch (diagnosticError: unknown) {
+      diagnosticErrors.push(diagnosticError);
+    }
   }
 
   const cleanupErrors = await cleanupOperatorResources(resources);
   if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
-      [...(operationFailed ? [operationError] : []), ...cleanupErrors],
+      [
+        ...(operationFailed ? [operationError] : []),
+        ...diagnosticErrors,
+        ...cleanupErrors,
+      ],
       'Operator command did not complete cleanly',
     );
   }

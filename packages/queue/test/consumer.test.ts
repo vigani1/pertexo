@@ -134,6 +134,10 @@ describe('BullMQ queue consumer', () => {
     mocks.workerInstances.length = 0;
     mocks.workerListeners.clear();
     mocks.redisClient.status = 'ready';
+    mocks.redisClient.quit.mockReset().mockResolvedValue('OK');
+    mocks.redisClient.disconnect
+      .mockReset()
+      .mockImplementation(() => undefined);
   });
 
   it('maps queue defaults to BullMQ worker and dedicated blocking Redis options', () => {
@@ -365,33 +369,94 @@ describe('BullMQ queue consumer', () => {
   });
 
   it('enforces the queue timeout and aborts the handler signal', async () => {
-    let deliveredSignal: AbortSignal | undefined;
-    const observer = {
-      handlerFinished: vi.fn(),
-      handlerStarted: vi.fn(),
-    } satisfies QueueConsumerObserver;
-    createQueueConsumer({
-      queueName: QUEUE_NAME.workflowCoordinator,
-      redisUrl: 'redis://localhost:6379/0',
-      handler: (_job, context) => {
-        deliveredSignal = context.signal;
-        return new Promise<void>(() => undefined);
-      },
-      observer,
-      timeoutMs: 2,
-    });
+    vi.useFakeTimers();
+    try {
+      let deliveredSignal: AbortSignal | undefined;
+      const observer = {
+        handlerFinished: vi.fn(),
+        handlerStarted: vi.fn(),
+      } satisfies QueueConsumerObserver;
+      createQueueConsumer({
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl: 'redis://localhost:6379/0',
+        handler: (_job, context) => {
+          deliveredSignal = context.signal;
+          return new Promise<void>(() => undefined);
+        },
+        observer,
+        timeoutMs: 25,
+      });
 
-    await expect(
-      mocks.workerInstances[0]?.processor(validJob),
-    ).rejects.toBeInstanceOf(QueueJobTimeoutError);
-    expect(deliveredSignal?.aborted).toBe(true);
-    expect(observer.handlerStarted).toHaveBeenCalledOnce();
-    expect(observer.handlerFinished).toHaveBeenCalledWith(
-      expect.objectContaining({
-        failureClass: 'timeout',
-        outcome: 'failed',
-      }),
-    );
+      const processing = mocks.workerInstances[0]?.processor(validJob);
+      const rejection =
+        expect(processing).rejects.toBeInstanceOf(QueueJobTimeoutError);
+      await vi.advanceTimersByTimeAsync(25);
+      await rejection;
+      expect(deliveredSignal?.aborted).toBe(true);
+      expect(observer.handlerStarted).toHaveBeenCalledOnce();
+      expect(observer.handlerFinished).toHaveBeenCalledWith(
+        expect.objectContaining({
+          failureClass: 'timeout',
+          outcome: 'failed',
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('observes late handler settlement once and admits the following delivery', async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseFirst: (() => void) | undefined;
+      let handlerCalls = 0;
+      const observer = {
+        handlerFinished: vi.fn(),
+        handlerStarted: vi.fn(),
+      } satisfies QueueConsumerObserver;
+      createQueueConsumer({
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl: 'redis://localhost:6379/0',
+        handler: () => {
+          handlerCalls += 1;
+          return handlerCalls === 1
+            ? new Promise<void>((resolve) => {
+                releaseFirst = resolve;
+              })
+            : Promise.resolve();
+        },
+        observer,
+        timeoutMs: 25,
+      });
+      const processor = mocks.workerInstances[0]?.processor;
+      const first = processor?.(validJob);
+      const firstRejection =
+        expect(first).rejects.toBeInstanceOf(QueueJobTimeoutError);
+      await vi.advanceTimersByTimeAsync(25);
+      await firstRejection;
+      expect(observer.handlerFinished).toHaveBeenCalledTimes(1);
+
+      releaseFirst?.();
+      await Promise.resolve();
+      expect(observer.handlerFinished).toHaveBeenCalledTimes(1);
+
+      await expect(processor?.(validJob)).resolves.toBeUndefined();
+      expect(handlerCalls).toBe(2);
+      expect(observer.handlerFinished).toHaveBeenCalledTimes(2);
+      expect(observer.handlerFinished).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          outcome: 'failed',
+          failureClass: 'timeout',
+        }),
+      );
+      expect(observer.handlerFinished).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ outcome: 'completed' }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('propagates BullMQ cancellation to the typed handler signal', async () => {
@@ -566,48 +631,57 @@ describe('BullMQ queue consumer', () => {
   });
 
   it('bounds drain, aborts active handlers, and forces close', async () => {
-    let deliveredSignal: AbortSignal | undefined;
-    const observer = {
-      handlerFinished: vi.fn(),
-      handlerStarted: vi.fn(),
-    } satisfies QueueConsumerObserver;
-    const consumer = createQueueConsumer({
-      queueName: QUEUE_NAME.workflowCoordinator,
-      redisUrl: 'redis://localhost:6379/0',
-      drainTimeoutMs: 2,
-      handler: (_job, context) => {
-        deliveredSignal = context.signal;
-        return new Promise<void>((_resolve, reject) => {
-          context.signal.addEventListener(
-            'abort',
-            () => {
-              reject(
-                context.signal.reason instanceof Error
-                  ? context.signal.reason
-                  : new Error('Queue handler aborted'),
-              );
-            },
-            { once: true },
-          );
-        });
-      },
-      observer,
-    });
-    const processing = mocks.workerInstances[0]?.processor(validJob);
+    vi.useFakeTimers();
+    try {
+      let deliveredSignal: AbortSignal | undefined;
+      const observer = {
+        handlerFinished: vi.fn(),
+        handlerStarted: vi.fn(),
+      } satisfies QueueConsumerObserver;
+      const consumer = createQueueConsumer({
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl: 'redis://localhost:6379/0',
+        drainTimeoutMs: 25,
+        handler: (_job, context) => {
+          deliveredSignal = context.signal;
+          return new Promise<void>((_resolve, reject) => {
+            context.signal.addEventListener(
+              'abort',
+              () => {
+                reject(
+                  context.signal.reason instanceof Error
+                    ? context.signal.reason
+                    : new Error('Queue handler aborted'),
+                );
+              },
+              { once: true },
+            );
+          });
+        },
+        observer,
+      });
+      const processing = mocks.workerInstances[0]?.processor(validJob);
+      const processingRejection = expect(processing).rejects.toBeInstanceOf(
+        QueueConsumerDrainError,
+      );
+      const closing = consumer.close();
+      await vi.advanceTimersByTimeAsync(25);
+      const result = await closing;
 
-    const result = await consumer.close();
-
-    await expect(processing).rejects.toBeInstanceOf(QueueConsumerDrainError);
-    expect(result).toEqual({ abortedJobs: 1, forced: true });
-    expect(deliveredSignal?.aborted).toBe(true);
-    expect(mocks.workerInstances[0]?.cancelAllJobs).toHaveBeenCalledTimes(1);
-    expect(mocks.workerInstances[0]?.close).toHaveBeenCalledWith(true);
-    expect(observer.handlerFinished).toHaveBeenCalledWith(
-      expect.objectContaining({
-        failureClass: 'drain',
-        outcome: 'failed',
-      }),
-    );
+      await processingRejection;
+      expect(result).toEqual({ abortedJobs: 1, forced: true });
+      expect(deliveredSignal?.aborted).toBe(true);
+      expect(mocks.workerInstances[0]?.cancelAllJobs).toHaveBeenCalledTimes(1);
+      expect(mocks.workerInstances[0]?.close).toHaveBeenCalledWith(true);
+      expect(observer.handlerFinished).toHaveBeenCalledWith(
+        expect.objectContaining({
+          failureClass: 'drain',
+          outcome: 'failed',
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not admit a delivery after drain starts', async () => {

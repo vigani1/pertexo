@@ -1,5 +1,3 @@
-/* global Buffer, process */
-
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';

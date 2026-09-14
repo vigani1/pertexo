@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { PreviewAttemptLease } from '@pertexo/database/testing';
+import {
+  PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
+  type PreviewAttemptLease,
+} from '@pertexo/database/testing';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
@@ -18,12 +22,33 @@ import {
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  createPlatformPreviewNodeInvoker,
+  createPlatformPreviewNodeInvoker as createUnownedPlatformPreviewNodeInvoker,
   mapPreviewHandlerError,
 } from '../src/testing.js';
+import {
+  PreviewAttemptHandlerStateError,
+  type PreviewNodeInvoker,
+} from '../src/execution/preview-attempt-handler.js';
+
+const ownedInvokers = new Set<PreviewNodeInvoker>();
+
+function createPlatformPreviewNodeInvoker(
+  ...input: Parameters<typeof createUnownedPlatformPreviewNodeInvoker>
+): ReturnType<typeof createUnownedPlatformPreviewNodeInvoker> {
+  const invoker = createUnownedPlatformPreviewNodeInvoker(...input);
+  ownedInvokers.add(invoker);
+  return invoker;
+}
+
+afterEach(async () => {
+  await Promise.all(
+    [...ownedInvokers].map(async (invoker) => invoker.close?.()),
+  );
+  ownedInvokers.clear();
+});
 
 function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],
@@ -451,6 +476,123 @@ describe('platform preview node invoker', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['config version', { configVersion: 999 }, {}],
+    ['executor key', {}, { executorKey: 'core.manual' }],
+    ['executor version', {}, { executorVersion: 999 }],
+  ] as const)(
+    'rejects an unsupported pinned %s before input evaluation or execution',
+    async (_label, nodeOverride, leaseOverride) => {
+      const execute = vi.fn();
+      const invoker = createPlatformPreviewNodeInvoker({
+        registry: { execute } as never,
+        releaseCohort: 'core',
+      });
+      const lease = leaseFixture({
+        config: {},
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.set', version: 1 },
+        id: 'node-1',
+        inputMappings: {
+          value: {
+            expression: 'missing(',
+            kind: 'expression',
+            language: 'jsonata',
+            policyVersion: 1,
+          },
+        },
+        ...nodeOverride,
+      });
+
+      await expect(
+        invoker.invoke({
+          lease: { ...lease, ...leaseOverride },
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({
+        safeErrorCode: 'preview.executable_invalid',
+        status: 'failed',
+      });
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a mismatched config version through the real core registry path', async () => {
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: createPlatformNodeRegistryForRelease(
+        platformServingRegistryRelease('core'),
+      ),
+      releaseCohort: 'core',
+    });
+    const lease = leaseFixture({
+      config: {},
+      configVersion: 999,
+      connectionRefs: {},
+      definition: { key: 'core.set', version: 1 },
+      id: 'node-1',
+      inputMappings: {},
+    });
+
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'preview.executable_invalid',
+      status: 'failed',
+    });
+  });
+
+  it('closes only after active invocation work settles and refuses later invocations', async () => {
+    const executionStarted = Promise.withResolvers<undefined>();
+    const finishExecution = Promise.withResolvers<undefined>();
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: {
+        execute: async () => {
+          executionStarted.resolve(undefined);
+          await finishExecution.promise;
+          return { kind: 'succeeded' as const, output: { ok: true } };
+        },
+      } as never,
+      releaseCohort: 'core',
+    });
+    const lease = leaseFixture({
+      config: {},
+      configVersion: 1,
+      connectionRefs: {},
+      definition: { key: 'core.set', version: 1 },
+      id: 'node-1',
+      inputMappings: {},
+    });
+    const invocation = invoker.invoke({
+      lease,
+      signal: new AbortController().signal,
+    });
+    await executionStarted.promise;
+
+    const close = invoker.close?.();
+    expect(close).toBeDefined();
+    expect(invoker.close?.()).toBe(close);
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'preview.invoker_closed',
+      status: 'failed',
+    });
+    let closeSettled = false;
+    void close?.then(() => {
+      closeSettled = true;
+    });
+    await Promise.resolve();
+    expect(closeSettled).toBe(false);
+
+    finishExecution.resolve(undefined);
+    await expect(invocation).resolves.toEqual({
+      output: { ok: true },
+      status: 'succeeded',
+    });
+    await close;
+  });
+
   it('preserves cancellation while resolving preview input mappings', async () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({
@@ -674,17 +816,61 @@ describe('platform preview node invoker', () => {
     });
   });
 
-  it('maps only durable preview-state errors to unrecoverable queue failures', () => {
-    for (const name of [
-      'PreviewDeliveryMismatchError',
-      'PreviewAttemptStateError',
+  it('fails closed for hostile executor rejections', async () => {
+    const revoked = Proxy.revocable(new Error('revoked'), {});
+    revoked.revoke();
+    const errors = [
+      new Proxy(new Error('hostile'), {
+        getPrototypeOf: () => {
+          throw new Error('hostile prototype');
+        },
+      }),
+      revoked.proxy,
+    ];
+    for (const error of errors) {
+      const invoker = createPlatformPreviewNodeInvoker({
+        registry: { execute: () => Promise.reject(error) } as never,
+        releaseCohort: 'core',
+      });
+      const lease = leaseFixture({
+        config: {},
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.set', version: 1 },
+        id: 'node-1',
+        inputMappings: {},
+      });
+      await expect(
+        invoker.invoke({ lease, signal: new AbortController().signal }),
+      ).resolves.toEqual({
+        safeErrorCode: 'preview.executor_failed',
+        status: 'failed',
+      });
+    }
+  });
+
+  it('maps only genuine durable preview-state errors to unrecoverable queue failures', () => {
+    for (const error of [
+      new PreviewDeliveryMismatchError(),
+      new PreviewAttemptStateError('durable_mismatch'),
+      new PreviewAttemptHandlerStateError('duplicate_dispatch'),
     ]) {
-      const error = Object.assign(new Error('durable mismatch'), { name });
       expect(mapPreviewHandlerError(error)).toMatchObject({
         name: 'UnrecoverableError',
       });
     }
     const ordinary = new Error('ordinary');
     expect(mapPreviewHandlerError(ordinary)).toBe(ordinary);
+    for (const name of [
+      'PreviewDeliveryMismatchError',
+      'PreviewAttemptStateError',
+      'PreviewAttemptHandlerStateError',
+    ]) {
+      const impostor = Object.assign(new Error('hostile'), { name });
+      expect(mapPreviewHandlerError(impostor)).toBe(impostor);
+    }
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
+    expect(mapPreviewHandlerError(revoked.proxy)).toBe(revoked.proxy);
   });
 });

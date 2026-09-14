@@ -37,6 +37,14 @@ export type SlackApiResult =
   | Readonly<{ kind: 'http_failure'; status: number }>
   | Readonly<{ kind: 'invalid_response' }>;
 
+type SlackApiFailure = Exclude<SlackApiResult, { kind: 'succeeded' }>;
+type SlackAcceptedEnvelope = Readonly<{
+  kind: 'accepted';
+  channelId?: string;
+  messageTs?: string;
+}>;
+type SlackEnvelopeResult = SlackApiFailure | SlackAcceptedEnvelope;
+
 export type SlackClient = Readonly<{
   sendMessage(
     input: Readonly<{
@@ -67,11 +75,11 @@ export function createSlackClient(
   const execute = async (
     endpoint: string,
     token: string,
-    body: Uint8Array,
+    body: Uint8Array | undefined,
     timeoutMillis: number,
-    signal: AbortSignal,
+    signal: AbortSignal | undefined,
     beforeDispatch: () => Promise<void>,
-  ): Promise<SlackApiResult> => {
+  ): Promise<SlackEnvelopeResult> => {
     const request: SecureHttpRequest = {
       url: endpoint,
       method: 'POST',
@@ -80,12 +88,12 @@ export function createSlackClient(
         authorization: `Bearer ${token}`,
         'content-type': 'application/json; charset=utf-8',
       }),
-      body,
+      ...(body === undefined ? {} : { body }),
       timeoutMillis,
       maxRedirects: 0,
       maxResponseBytes: SLACK_SEND_MESSAGE_LIMITS.maxResponseBytes,
       sensitiveValues: [token],
-      signal,
+      ...(signal === undefined ? {} : { signal }),
       beforeDispatch,
     };
     const response = await httpClient.execute(request);
@@ -114,12 +122,12 @@ export function createSlackClient(
         return parsed.data.error === undefined
           ? Object.freeze({ kind: 'invalid_response' })
           : Object.freeze({ kind: 'rejected', error: parsed.data.error });
-      if (parsed.data.channel === undefined || parsed.data.ts === undefined)
-        return Object.freeze({ kind: 'invalid_response' });
       return Object.freeze({
-        kind: 'succeeded',
-        channelId: parsed.data.channel,
-        messageTs: parsed.data.ts,
+        kind: 'accepted',
+        ...(parsed.data.channel === undefined
+          ? {}
+          : { channelId: parsed.data.channel }),
+        ...(parsed.data.ts === undefined ? {} : { messageTs: parsed.data.ts }),
       });
     } finally {
       response.body.fill(0);
@@ -127,7 +135,7 @@ export function createSlackClient(
   };
 
   return Object.freeze({
-    sendMessage: (input) => {
+    sendMessage: async (input) => {
       const body = new TextEncoder().encode(
         JSON.stringify({
           channel: input.channelId,
@@ -136,67 +144,39 @@ export function createSlackClient(
           unfurl_media: false,
         }),
       );
-      return execute(
-        SLACK_API_ENDPOINTS.sendMessage,
+      try {
+        const result = await execute(
+          SLACK_API_ENDPOINTS.sendMessage,
+          input.botToken,
+          body,
+          input.timeoutMillis,
+          input.signal,
+          input.beforeDispatch,
+        );
+        if (result.kind !== 'accepted') return result;
+        if (result.channelId === undefined || result.messageTs === undefined)
+          return Object.freeze({ kind: 'invalid_response' });
+        return Object.freeze({
+          kind: 'succeeded',
+          channelId: result.channelId,
+          messageTs: result.messageTs,
+        });
+      } finally {
+        body.fill(0);
+      }
+    },
+    authTest: async (input) => {
+      const result = await execute(
+        SLACK_API_ENDPOINTS.authTest,
         input.botToken,
-        body,
+        undefined,
         input.timeoutMillis,
         input.signal,
         input.beforeDispatch,
-      ).finally(() => body.fill(0));
-    },
-    authTest: async (input) => {
-      const response = await httpClient.execute({
-        url: SLACK_API_ENDPOINTS.authTest,
-        method: 'POST',
-        headers: Object.freeze({
-          accept: 'application/json',
-          authorization: `Bearer ${input.botToken}`,
-          'content-type': 'application/json; charset=utf-8',
-        }),
-        timeoutMillis: input.timeoutMillis,
-        maxRedirects: 0,
-        maxResponseBytes: SLACK_SEND_MESSAGE_LIMITS.maxResponseBytes,
-        sensitiveValues: [input.botToken],
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-        beforeDispatch: input.beforeDispatch,
-      });
-      try {
-        if (response.status === 429)
-          return Object.freeze({
-            kind: 'rate_limited' as const,
-            retryAfterMillis: parseBoundedRetryAfterMillis(
-              response.headers['retry-after'],
-              SLACK_SEND_MESSAGE_LIMITS.maxRetryAfterMillis,
-            ),
-          });
-        if (response.status < 200 || response.status > 299)
-          return Object.freeze({
-            kind: 'http_failure' as const,
-            status: response.status,
-          });
-        let decoded: unknown;
-        try {
-          decoded = JSON.parse(
-            new TextDecoder('utf-8', { fatal: true }).decode(response.body),
-          );
-        } catch {
-          return Object.freeze({ kind: 'invalid_response' as const });
-        }
-        const parsed = slackResponseSchema.safeParse(decoded);
-        if (!parsed.success)
-          return Object.freeze({ kind: 'invalid_response' as const });
-        if (parsed.data.ok)
-          return Object.freeze({ kind: 'succeeded' as const });
-        return parsed.data.error === undefined
-          ? Object.freeze({ kind: 'invalid_response' as const })
-          : Object.freeze({
-              kind: 'rejected' as const,
-              error: parsed.data.error,
-            });
-      } finally {
-        response.body.fill(0);
-      }
+      );
+      return result.kind === 'accepted'
+        ? Object.freeze({ kind: 'succeeded' as const })
+        : result;
     },
   });
 }

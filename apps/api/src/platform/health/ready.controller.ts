@@ -44,6 +44,8 @@ export class ReadyController {
         this.database.checkReadiness(),
         this.runtimeReadiness?.checkReadiness(),
       ]);
+      if (this.drainState.isDraining())
+        throw new ServiceUnavailableException({ status: 'not_ready' });
       return READY_RESPONSE;
     } catch {
       throw new ServiceUnavailableException({ status: 'not_ready' });

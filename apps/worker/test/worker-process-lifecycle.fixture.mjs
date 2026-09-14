@@ -66,6 +66,9 @@ const telemetry = {
     return Promise.resolve();
   },
 };
+const readinessMarker = {
+  setReady: () => Promise.resolve(),
+};
 
 const activeTimer =
   mode === 'active' ? setInterval(() => undefined, 60_000) : undefined;
@@ -148,10 +151,12 @@ try {
     dispatcherDatabase,
     logger,
     queueProducer,
+    readinessMarker,
     telemetry,
     ...(mode === 'active'
       ? {
           coordinatorRuntime: {
+            checkReadiness: () => Promise.resolve(),
             consumer: activeConsumer,
             close: () => activeConsumer.close().then(() => undefined),
           },

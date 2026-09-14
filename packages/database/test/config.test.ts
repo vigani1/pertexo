@@ -34,6 +34,48 @@ describe('database configuration', () => {
     expect(() => parseWorkspaceId('not-a-workspace-id')).toThrow();
   });
 
+  it.each([
+    { connectionTimeoutMillis: 0 },
+    { connectionTimeoutMillis: 1.5 },
+    { connectionTimeoutMillis: 2_147_483_648 },
+    { idleTimeoutMillis: 0 },
+    { idleTimeoutMillis: 1.5 },
+    { idleTimeoutMillis: 2_147_483_648 },
+    { max: 0 },
+    { max: 101 },
+    { ownerRole: 'invalid-role' },
+    { ownerRole: '1invalid' },
+    { workerRuntimeRole: 'invalid role' },
+  ])('rejects invalid direct runtime boundary %#', (override) => {
+    expect(() =>
+      parseDatabaseConfig({
+        connectionString: 'postgresql://runtime:secret@localhost/pertexo',
+        ...override,
+      }),
+    ).toThrow();
+  });
+
+  it.each([
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', '0'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', '1.5'],
+    ['DATABASE_CONNECTION_TIMEOUT_MILLIS', '2147483648'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '0'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', 'not-a-number'],
+    ['DATABASE_IDLE_TIMEOUT_MILLIS', '2147483648'],
+    ['DATABASE_MAINTENANCE_POOL_MAX', '0'],
+    ['DATABASE_MAINTENANCE_POOL_MAX', '11'],
+    ['POSTGRES_OWNER_USER', 'invalid-role'],
+    ['POSTGRES_WORKER_RUNTIME_USER', 'invalid role'],
+  ] as const)('rejects invalid maintenance environment %s=%s', (key, value) => {
+    expect(() =>
+      parseMaintenanceDatabaseConfig({
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://runtime:secret@localhost/pertexo',
+        [key]: value,
+      }),
+    ).toThrow();
+  });
+
   it('parses the migration role boundary', () => {
     expect(
       parseMigrationConfig({
@@ -77,6 +119,26 @@ describe('database configuration', () => {
         REGIONAL_WRITE_ADMISSION_ENFORCED: 'true',
       }).regionalWriteAdmissionEnforced,
     ).toBe(true);
+  });
+
+  it.each([
+    ['DATABASE_MIGRATION_URL', 'https://example.test/pertexo'],
+    ['POSTGRES_API_RUNTIME_USER', 'invalid-role'],
+    ['POSTGRES_DISPATCHER_RUNTIME_USER', 'invalid role'],
+    ['POSTGRES_MAINTENANCE_USER', '1maintenance'],
+    ['POSTGRES_OPERATOR_USER', 'operator-role'],
+    ['POSTGRES_LIFECYCLE_COMMAND_USER', 'lifecycle role'],
+    ['POSTGRES_OWNER_USER', 'owner-role'],
+    ['POSTGRES_WORKER_RUNTIME_USER', 'worker-role'],
+    ['REGIONAL_WRITE_ADMISSION_ENFORCED', 'yes'],
+  ] as const)('rejects invalid migration environment %s=%s', (key, value) => {
+    expect(() =>
+      parseMigrationConfig({
+        DATABASE_MIGRATION_URL:
+          'postgresql://migration:secret@localhost/pertexo',
+        [key]: value,
+      }),
+    ).toThrow();
   });
 
   it('parses a dedicated conservative maintenance pool', () => {

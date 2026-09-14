@@ -18,8 +18,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0086_operator_attempt_reclaim_state.sql';
+export const EXPECTED_MIGRATION_HEAD = '0089_oidc_capacity_lock_time.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

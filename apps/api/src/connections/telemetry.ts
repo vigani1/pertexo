@@ -48,6 +48,7 @@ export function createConnectionTelemetry(
       operation: ConnectionOperation,
       work: () => Promise<T>,
     ): Promise<T> => {
+      let operationPromise: Promise<T> | undefined;
       const measured = async (): Promise<T> => {
         const startedAt = safeNow(now);
         try {
@@ -59,15 +60,29 @@ export function createConnectionTelemetry(
           throw error;
         }
       };
+      const runOperationOnce = (): Promise<T> => {
+        operationPromise ??= measured();
+        return operationPromise;
+      };
+      let tracePromise: Promise<T> | undefined;
       try {
-        return options.trace(operation, measured);
+        tracePromise = options.trace(operation, runOperationOnce);
       } catch {
-        return measured();
+        return runOperationOnce();
       }
+      // The trace adapter is diagnostic, not the authority for the command.
+      // It gets the same lazy promise on every callback, while a trace that
+      // omits, duplicates, or rejects its callback cannot replace or repeat it.
+      void Promise.resolve(tracePromise).catch(() => undefined);
+      return operationPromise ?? runOperationOnce();
 
       function record(outcome: ConnectionOutcome, startedAt: number): void {
         try {
           options.count(operation, outcome);
+        } catch {
+          // Each diagnostic sink is independent of command truth and its peer.
+        }
+        try {
           options.duration(
             operation,
             outcome,

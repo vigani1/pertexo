@@ -109,6 +109,58 @@ describe('workflow trigger projection', () => {
     },
   );
 
+  it.each([
+    ['webhook', 'core.webhook', 1, {}],
+    [
+      'schedule-v1',
+      'core.schedule',
+      1,
+      {
+        kind: 'interval',
+        intervalMinutes: 5,
+        misfirePolicy: 'catch_up_once',
+      },
+    ],
+    [
+      'schedule-v2',
+      'core.schedule',
+      2,
+      {
+        kind: 'interval',
+        intervalMinutes: 5,
+        misfirePolicy: 'catch_up_once',
+      },
+    ],
+    [
+      'schedule-v3',
+      'core.schedule',
+      3,
+      {
+        kind: 'interval',
+        intervalMinutes: 5,
+        misfirePolicy: 'catch_up_once',
+      },
+    ],
+  ] as const)(
+    'treats graph-disabled %s as execution-only external trigger state',
+    (id, key, version, config) => {
+      const projections = [undefined, false, true].map((disabled) => {
+        const triggerNode = node(id, key, config, version);
+        if (disabled !== undefined) triggerNode.disabled = disabled;
+        return workflowTriggerProjection({
+          schemaVersion: 1,
+          settings: {},
+          nodes: [triggerNode],
+          edges: [],
+        });
+      });
+
+      expect(projections[1]).toEqual(projections[0]);
+      expect(projections[2]).toEqual(projections[0]);
+      expect(projections[0]).toHaveLength(1);
+    },
+  );
+
   it('rejects trigger config outside the published contracts', () => {
     expect(() =>
       workflowTriggerProjection({

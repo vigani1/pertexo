@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import {
   withPlatformTransaction,
   withTenantScopedClient,
@@ -23,6 +23,17 @@ const apiBaseUrl =
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 
 const databaseName = `pertexo_test_tenant_hygiene_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
 
 function databaseUrl(base: string): string {
   const url = new URL(base);
@@ -32,8 +43,48 @@ function databaseUrl(base: string): string {
 
 const apiPool = new Pool({
   connectionString: databaseUrl(apiBaseUrl),
-  max: 3,
+  max: 1,
 });
+const admin = new Pool({ connectionString: adminUrl, max: 1 });
+
+async function backendId(client: Pick<Pool, 'query'>): Promise<number> {
+  const result = await client.query<{ pid: number }>(
+    'select pg_backend_pid() pid',
+  );
+  const pid = result.rows[0]?.pid;
+  if (pid === undefined)
+    throw new Error('PostgreSQL backend identity is absent');
+  return pid;
+}
+
+async function waitForBackendAbsent(pid: number): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  do {
+    const result = await admin.query<{ present: boolean }>(
+      `select exists(select 1 from pg_stat_activity
+        where datname=$1 and pid=$2) present`,
+      [databaseName, pid],
+    );
+    if (result.rows[0]?.present === false) return;
+    await admin.query('select pg_sleep(0.02)');
+  } while (Date.now() < deadline);
+  throw new Error(`PostgreSQL backend ${String(pid)} did not disconnect`);
+}
+
+async function waitForSlowQuery(pid: number): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  do {
+    const result = await admin.query<{ entered: boolean }>(
+      `select exists(select 1 from pg_stat_activity
+        where datname=$1 and pid=$2 and state='active'
+          and query like '%pg_sleep(5)%') entered`,
+      [databaseName, pid],
+    );
+    if (result.rows[0]?.entered === true) return;
+    await admin.query('select pg_sleep(0.02)');
+  } while (Date.now() < deadline);
+  throw new Error(`PostgreSQL backend ${String(pid)} did not enter slow query`);
+}
 
 async function currentSettings(
   client: Pick<Pool, 'query'>,
@@ -63,17 +114,7 @@ async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
-    );
-  } finally {
-    await admin.end();
-  }
+  await fixture.create();
   await migrateDatabase({
     connectionString: databaseUrl(migrationBaseUrl),
     ownerRole: 'pertexo_owner',
@@ -87,13 +128,24 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await apiPool.end();
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  const failures: unknown[] = [];
   try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
+    await apiPool.end();
+  } catch (error: unknown) {
+    failures.push(error);
   }
+  try {
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await admin.end();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Tenant hygiene fixture cleanup failed');
 });
 
 describe('tenant-scoped transaction hygiene', () => {
@@ -105,8 +157,10 @@ describe('tenant-scoped transaction hygiene', () => {
     ).resolves.toEqual({ workspaceId: null, actorId: null });
 
     const leakedWorkspaceId = randomUUID();
+    let contaminatedBackend: number | undefined;
     const error = (await captureRejection(() =>
       withPlatformTransaction(apiPool, async (client) => {
+        contaminatedBackend = await backendId(client);
         await client.query("select set_config('app.workspace_id', $1, false)", [
           leakedWorkspaceId,
         ]);
@@ -114,6 +168,8 @@ describe('tenant-scoped transaction hygiene', () => {
     )) as AggregateError;
     expect(error).toBeInstanceOf(AggregateError);
     expect(error.message).toBe('Platform context cleanup failed');
+    expect(contaminatedBackend).toBeDefined();
+    await waitForBackendAbsent(contaminatedBackend ?? -1);
 
     const fresh = await apiPool.connect();
     try {
@@ -121,6 +177,7 @@ describe('tenant-scoped transaction hygiene', () => {
         workspaceId: null,
         actorId: null,
       });
+      await expect(backendId(fresh)).resolves.not.toBe(contaminatedBackend);
     } finally {
       fresh.release();
     }
@@ -128,11 +185,13 @@ describe('tenant-scoped transaction hygiene', () => {
 
   it('destroys a pooled client that leaks workspace context through the commit path', async () => {
     const workspaceId = randomUUID();
+    let contaminatedBackend: number | undefined;
     const error = (await captureRejection(() =>
       withTenantScopedClient(apiPool, { workspaceId }, async (client) => {
         // A session-level setting (local = false) survives COMMIT and must be
         // detected after the transaction instead of returning the client to
         // the pool contaminated.
+        contaminatedBackend = await backendId(client);
         await client.query("select set_config('app.workspace_id', $1, false)", [
           workspaceId,
         ]);
@@ -142,6 +201,8 @@ describe('tenant-scoped transaction hygiene', () => {
     expect(error).toBeInstanceOf(AggregateError);
     expect(error.message).toBe('Tenant context cleanup failed');
     expect(error.errors).toHaveLength(2);
+    expect(contaminatedBackend).toBeDefined();
+    await waitForBackendAbsent(contaminatedBackend ?? -1);
 
     // The destroyed client must not be reused: the next checkout is clean.
     const fresh = await apiPool.connect();
@@ -150,6 +211,7 @@ describe('tenant-scoped transaction hygiene', () => {
         workspaceId: null,
         actorId: null,
       });
+      await expect(backendId(fresh)).resolves.not.toBe(contaminatedBackend);
     } finally {
       fresh.release();
     }
@@ -161,8 +223,10 @@ describe('tenant-scoped transaction hygiene', () => {
     // The contract here is therefore: original error surfaces untouched,
     // no spurious AggregateError, and the pool client stays usable.
     const workspaceId = randomUUID();
+    let rolledBackBackend: number | undefined;
     const error = await captureRejection(() =>
       withTenantScopedClient(apiPool, { workspaceId }, async (client) => {
+        rolledBackBackend = await backendId(client);
         await client.query("select set_config('app.actor_id', $1, true)", [
           'hygiene-probe',
         ]);
@@ -178,6 +242,7 @@ describe('tenant-scoped transaction hygiene', () => {
         workspaceId: null,
         actorId: null,
       });
+      await expect(backendId(fresh)).resolves.toBe(rolledBackBackend);
     } finally {
       fresh.release();
     }
@@ -186,21 +251,45 @@ describe('tenant-scoped transaction hygiene', () => {
   it('aborts an in-flight query through the wire-level cancellation seam', async () => {
     const workspaceId = randomUUID();
     const controller = new AbortController();
+    let reportBackend!: (pid: number) => void;
+    const backendReported = new Promise<number>((resolve) => {
+      reportBackend = resolve;
+    });
     const startedAt = Date.now();
     const slow = withTenantScopedClient(
       apiPool,
       { workspaceId },
       async (client) => {
+        reportBackend(await backendId(client));
         await client.query('select pg_sleep(5)');
         return 'finished';
       },
       { signal: controller.signal },
     );
-    setTimeout(() => {
+    void slow.catch(() => undefined);
+    let entryTimer: ReturnType<typeof setTimeout> | undefined;
+    const entryTimeout = new Promise<never>((_resolve, reject) => {
+      entryTimer = setTimeout(() => {
+        reject(
+          new Error('Tenant cancellation callback did not acquire a backend'),
+        );
+      }, 2_000);
+    });
+    let canceledBackend: number;
+    try {
+      canceledBackend = await Promise.race([backendReported, entryTimeout]);
+    } catch (error: unknown) {
       controller.abort();
-    }, 100);
+      await slow.catch(() => undefined);
+      throw error;
+    } finally {
+      if (entryTimer !== undefined) clearTimeout(entryTimer);
+    }
+    await waitForSlowQuery(canceledBackend);
+    controller.abort();
     await expect(slow).rejects.toMatchObject({ name: 'AbortError' });
     expect(Date.now() - startedAt).toBeLessThan(2_000);
+    await waitForBackendAbsent(canceledBackend);
 
     const fresh = await apiPool.connect();
     try {
@@ -208,6 +297,7 @@ describe('tenant-scoped transaction hygiene', () => {
         workspaceId: null,
         actorId: null,
       });
+      await expect(backendId(fresh)).resolves.not.toBe(canceledBackend);
     } finally {
       fresh.release();
     }

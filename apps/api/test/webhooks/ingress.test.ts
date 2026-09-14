@@ -103,6 +103,124 @@ describe('generic webhook ingress', () => {
     );
   });
 
+  it.each([
+    {
+      name: 'a synchronous trace failure before the callback',
+      trace: <T>(_parent: string | undefined, _work: () => Promise<T>) => {
+        void _parent;
+        void _work;
+        throw new Error('trace failed before callback');
+      },
+    },
+    {
+      name: 'a trace rejection before the callback',
+      trace: <T>(
+        _parent: string | undefined,
+        _work: () => Promise<T>,
+      ): Promise<T> => {
+        void _parent;
+        void _work;
+        return Promise.reject(new Error('trace rejected before callback'));
+      },
+    },
+    {
+      name: 'a synchronous trace failure after the callback',
+      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
+        void work();
+        throw new Error('trace failed after callback');
+      },
+    },
+    {
+      name: 'a trace rejection after the callback',
+      trace: <T>(
+        _parent: string | undefined,
+        work: () => Promise<T>,
+      ): Promise<T> => {
+        void work();
+        return Promise.reject(new Error('trace rejected after callback'));
+      },
+    },
+  ] satisfies readonly Readonly<{
+    name: string;
+    trace: WebhookIngressTelemetry['trace'];
+  }>[])('accepts exactly once through $name', async ({ trace }) => {
+    const fixture = setup(undefined, undefined, undefined, true, { trace });
+
+    const response = await fixture.application.inject(
+      request('{}', currentSecret),
+    );
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+    });
+    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+    expect(fixture.openedSecrets).toHaveLength(2);
+    for (const secret of fixture.openedSecrets)
+      expect(secret).toEqual(new Uint8Array(32));
+  });
+
+  it('returns one authoritative acceptance when tracing invokes its callback twice', async () => {
+    let firstPromise: Promise<unknown> | undefined;
+    const fixture = setup(undefined, undefined, undefined, true, {
+      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
+        const first = work();
+        const second = work();
+        firstPromise = first;
+        expect(second).toBe(first);
+        return first;
+      },
+    });
+
+    const response = await fixture.application.inject(
+      request('{}', currentSecret),
+    );
+
+    expect(response.statusCode).toBe(202);
+    expect(firstPromise).toBeDefined();
+    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+    expect(fixture.delivery).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats unavailable diagnostic trace context as absent', async () => {
+    const fixture = setup(undefined, undefined, undefined, true, {
+      traceparent: () => {
+        throw new Error('active trace context is unavailable');
+      },
+    });
+
+    const response = await fixture.application.inject(
+      request('{}', currentSecret),
+    );
+
+    expect(response.statusCode).toBe(202);
+    const input: unknown =
+      fixture.database.acceptVerifiedDelivery.mock.calls[0]?.[0];
+    expect(Object.hasOwn(input as object, 'traceparent')).toBe(false);
+    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+  });
+
+  it('preserves a failed acceptance while the trace promise also rejects', async () => {
+    const workFailure = new Error('database unavailable');
+    const fixture = setup(undefined, workFailure, undefined, true, {
+      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
+        void work();
+        return Promise.reject(new Error('trace export unavailable'));
+      },
+    });
+
+    const response = await fixture.application.inject(
+      request('{}', currentSecret),
+    );
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json<{ code: string }>().code).toBe('webhook.unavailable');
+    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+    for (const secret of fixture.openedSecrets)
+      expect(secret).toEqual(new Uint8Array(32));
+  });
+
   it('consumes the durable endpoint limit before opening a signing secret', async () => {
     const { application, database, openSecret } = setup();
     database.consumeIngressLimit.mockRejectedValueOnce(
@@ -131,6 +249,141 @@ describe('generic webhook ingress', () => {
     expect(invalid.statusCode).toBe(401);
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
+
+  it('rejects validly signed malformed UTF-8 after authentication', async () => {
+    const { application, database } = setup();
+    const body = new Uint8Array([0xc3, 0x28]);
+
+    const response = await application.inject({
+      method: 'POST',
+      url: `/hooks/${endpointKey}`,
+      headers: {
+        'content-type': 'application/json',
+        'x-pertexo-timestamp': timestamp,
+        'x-pertexo-signature': signature(body, currentSecret),
+      },
+      payload: Buffer.from(body),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('webhook.invalid_json');
+    expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'missing timestamp',
+      headers: () => removeRawHeader(rawHeaders('{}'), 'x-pertexo-timestamp'),
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'duplicate timestamp',
+      headers: () => [...rawHeaders('{}'), 'x-pertexo-timestamp', timestamp],
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'comma-folded timestamp',
+      headers: () =>
+        replaceRawHeader(
+          rawHeaders('{}'),
+          'x-pertexo-timestamp',
+          `${timestamp},${timestamp}`,
+        ),
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'missing signature',
+      headers: () => removeRawHeader(rawHeaders('{}'), 'x-pertexo-signature'),
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'duplicate signature',
+      headers: () => [
+        ...rawHeaders('{}'),
+        'x-pertexo-signature',
+        signature('{}', currentSecret),
+      ],
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'comma-folded signature',
+      headers: () =>
+        replaceRawHeader(
+          rawHeaders('{}'),
+          'x-pertexo-signature',
+          `${signature('{}', currentSecret)},${signature('{}', currentSecret)}`,
+        ),
+      status: 401,
+      code: 'webhook.authentication_failed',
+    },
+    {
+      name: 'missing content type',
+      headers: () => removeRawHeader(rawHeaders('{}'), 'content-type'),
+      status: 415,
+      code: 'webhook.unsupported_media_type',
+    },
+    {
+      name: 'duplicate content type',
+      headers: () => [...rawHeaders('{}'), 'content-type', 'application/json'],
+      status: 415,
+      code: 'webhook.unsupported_media_type',
+    },
+    {
+      name: 'comma-folded content type',
+      headers: () =>
+        replaceRawHeader(
+          rawHeaders('{}'),
+          'content-type',
+          'application/json,application/json',
+        ),
+      status: 415,
+      code: 'webhook.unsupported_media_type',
+    },
+    {
+      name: 'missing optional idempotency key',
+      headers: () => removeRawHeader(rawHeaders('{}'), 'idempotency-key'),
+      status: 202,
+      code: undefined,
+    },
+    {
+      name: 'duplicate idempotency key',
+      headers: () => [...rawHeaders('{}'), 'idempotency-key', 'delivery-2'],
+      status: 400,
+      code: 'request.invalid',
+    },
+    {
+      name: 'comma-folded idempotency key',
+      headers: () =>
+        replaceRawHeader(
+          rawHeaders('{}'),
+          'idempotency-key',
+          'delivery-1,delivery-2',
+        ),
+      status: 400,
+      code: 'request.invalid',
+    },
+  ])(
+    'handles $name through raw HTTP headers',
+    async ({ headers, status, code }) => {
+      const { application, database } = setup();
+
+      const response = await sendRawWebhook(application, headers(), '{}');
+
+      expect(response.statusCode).toBe(status);
+      if (code !== undefined)
+        expect(JSON.parse(response.body) as { code: string }).toMatchObject({
+          code,
+        });
+      expect(database.acceptVerifiedDelivery).toHaveBeenCalledTimes(
+        status === 202 ? 1 : 0,
+      );
+    },
+  );
 
   it('collapses malformed signatures and stale timestamps into one authentication response', async () => {
     const malformed = setup();
@@ -247,6 +500,42 @@ describe('generic webhook ingress', () => {
     ).toBe(401);
   });
 
+  it('wipes the current secret when opening the eligible previous secret fails', async () => {
+    const fixture = setup();
+    const openedCurrent = Buffer.alloc(32, 4);
+    fixture.openSecret
+      .mockReset()
+      .mockResolvedValueOnce(openedCurrent)
+      .mockRejectedValueOnce(new Error('previous secret unavailable'));
+
+    const response = await fixture.application.inject(
+      request('{}', currentSecret),
+    );
+
+    expect(response.statusCode).toBe(503);
+    expect(Array.from(openedCurrent)).toEqual(Array.from(new Uint8Array(32)));
+    expect(fixture.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
+  it('wipes both opened secret versions after signature mismatch', async () => {
+    const fixture = setup();
+    const base = request('{}', currentSecret);
+
+    const response = await fixture.application.inject({
+      ...base,
+      headers: {
+        ...base.headers,
+        'x-pertexo-signature': `v1=${'0'.repeat(64)}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(fixture.openedSecrets).toHaveLength(2);
+    for (const secret of fixture.openedSecrets)
+      expect(Array.from(secret)).toEqual(Array.from(new Uint8Array(32)));
+    expect(fixture.database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
   it('maps replay mismatch and admission limits to stable corrective responses', async () => {
     const conflict = setup(undefined, new WebhookDeliveryReplayMismatchError());
     expect(
@@ -351,16 +640,13 @@ describe('generic webhook ingress', () => {
 
   it('does not persist a delivery after the client socket closes during secret opening', async () => {
     const { application, database, openSecret } = setup();
-    let releaseSecret: (() => void) | undefined;
+    const secretBarrier = deferred<Uint8Array>();
     let operationSignal: AbortSignal | undefined;
     openSecret.mockImplementationOnce(
-      (_value: unknown, _context: unknown, signal: AbortSignal) =>
-        new Promise<Uint8Array>((resolve) => {
-          operationSignal = signal;
-          releaseSecret = () => {
-            resolve(new Uint8Array(32).fill(4));
-          };
-        }),
+      (_value: unknown, _context: unknown, signal: AbortSignal) => {
+        operationSignal = signal;
+        return secretBarrier.promise;
+      },
     );
     await application.listen({ host: '127.0.0.1', port: 0 });
     const address = application.server.address();
@@ -379,25 +665,40 @@ describe('generic webhook ingress', () => {
         'content-length': Buffer.byteLength(body),
       },
     });
-    clientRequest.on('error', () => {
-      // Expected when the test intentionally closes the client socket.
-    });
-    clientRequest.end(body);
-    await vi.waitFor(() => {
-      expect(openSecret).toHaveBeenCalledOnce();
-    });
+    try {
+      clientRequest.on('error', () => {
+        // Expected when the test intentionally closes the client socket.
+      });
+      clientRequest.end(body);
+      await vi.waitFor(() => {
+        expect(openSecret).toHaveBeenCalledOnce();
+      });
 
-    clientRequest.destroy();
-    await vi.waitFor(() => {
-      expect(operationSignal?.aborted).toBe(true);
-    });
-    releaseSecret?.();
-    await application.close();
+      clientRequest.destroy();
+      await vi.waitFor(() => {
+        expect(operationSignal?.aborted).toBe(true);
+      });
+    } finally {
+      clientRequest.destroy();
+      secretBarrier.resolve(new Uint8Array(32).fill(4));
+      await application.close();
+      const ownedIndex = applications.indexOf(application);
+      if (ownedIndex >= 0) applications.splice(ownedIndex, 1);
+    }
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
 
   it('propagates accepted-reply serialization failures through the scoped error handler', async () => {
-    const { application } = setup();
+    const { application, database } = setup();
+    database.acceptVerifiedDelivery
+      .mockResolvedValueOnce({
+        runId: '99999999-9999-4999-8999-999999999999',
+        replayed: false,
+      })
+      .mockResolvedValueOnce({
+        runId: '99999999-9999-4999-8999-999999999999',
+        replayed: true,
+      });
     let failAcceptedReply = true;
     application.addHook('onSend', (_request, reply, payload) => {
       if (reply.statusCode === 202 && failAcceptedReply) {
@@ -411,6 +712,15 @@ describe('generic webhook ingress', () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json<{ code: string }>().code).toBe('webhook.unavailable');
+    expect(database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
+
+    const retry = await application.inject(request('{}', currentSecret));
+    expect(retry.statusCode).toBe(202);
+    expect(retry.json()).toEqual({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: true,
+    });
+    expect(database.acceptVerifiedDelivery).toHaveBeenCalledTimes(2);
   });
 
   function setup(
@@ -421,6 +731,7 @@ describe('generic webhook ingress', () => {
       replayed: false,
     },
     includeTraceparent = true,
+    telemetryOverrides: Partial<WebhookIngressTelemetry> = {},
   ) {
     const database = {
       resolveVerification: vi.fn().mockResolvedValue(reference),
@@ -429,15 +740,16 @@ describe('generic webhook ingress', () => {
         ? vi.fn().mockRejectedValue(acceptanceError)
         : vi.fn().mockResolvedValue(acceptance),
     };
+    const openedSecrets: Uint8Array[] = [];
     const openSecret = vi
       .fn()
       .mockImplementation(
         (_value: unknown, context: { secretVersionId: string }) => {
-          return Promise.resolve(
-            new Uint8Array(32).fill(
-              context.secretVersionId === verification.currentSecret.id ? 4 : 5,
-            ),
+          const secret = new Uint8Array(32).fill(
+            context.secretVersionId === verification.currentSecret.id ? 4 : 5,
           );
+          openedSecrets.push(secret);
+          return Promise.resolve(secret);
         },
       );
     const encryption = {
@@ -462,6 +774,7 @@ describe('generic webhook ingress', () => {
         trace();
         return work();
       },
+      ...telemetryOverrides,
     };
     const application = Fastify();
     applications.push(application);
@@ -478,6 +791,7 @@ describe('generic webhook ingress', () => {
       deduplication,
       health,
       openSecret,
+      openedSecrets,
       trace,
     };
   }
@@ -497,12 +811,90 @@ function request(body: string, secret: Uint8Array) {
   };
 }
 
-function signature(body: string, secret: Uint8Array): string {
+function signature(body: string | Uint8Array, secret: Uint8Array): string {
   return `v1=${createHmac('sha256', secret)
     .update(timestamp)
     .update('.')
     .update(body)
     .digest('hex')}`;
+}
+
+function rawHeaders(body: string): string[] {
+  return [
+    'host',
+    '127.0.0.1',
+    'content-type',
+    'application/json',
+    'x-pertexo-timestamp',
+    timestamp,
+    'x-pertexo-signature',
+    signature(body, currentSecret),
+    'idempotency-key',
+    'delivery-1',
+    'content-length',
+    String(Buffer.byteLength(body)),
+  ];
+}
+
+function removeRawHeader(headers: readonly string[], name: string): string[] {
+  const output: string[] = [];
+  for (let index = 0; index < headers.length; index += 2) {
+    if (headers[index]?.toLowerCase() === name) continue;
+    output.push(headers[index] ?? '', headers[index + 1] ?? '');
+  }
+  return output;
+}
+
+function replaceRawHeader(
+  headers: readonly string[],
+  name: string,
+  value: string,
+): string[] {
+  const output = [...headers];
+  const index = output.findIndex(
+    (entry, position) => position % 2 === 0 && entry.toLowerCase() === name,
+  );
+  if (index < 0) throw new Error(`Raw header ${name} is missing`);
+  output[index + 1] = value;
+  return output;
+}
+
+async function sendRawWebhook(
+  application: FastifyInstance,
+  headers: readonly string[],
+  body: string,
+): Promise<Readonly<{ statusCode: number; body: string }>> {
+  if (!application.server.listening)
+    await application.listen({ host: '127.0.0.1', port: 0 });
+  const address = application.server.address();
+  if (address === null || typeof address === 'string')
+    throw new Error('Expected a TCP listening address');
+  return new Promise((resolve, reject) => {
+    const client = sendHttpRequest(
+      {
+        host: '127.0.0.1',
+        port: address.port,
+        method: 'POST',
+        path: `/hooks/${endpointKey}`,
+        headers: [...headers],
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+        response.once('error', reject);
+        response.once('end', () => {
+          resolve({
+            statusCode: response.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString('utf8'),
+          });
+        });
+      },
+    );
+    client.once('error', reject);
+    client.end(body);
+  });
 }
 
 function sealed(id: string) {
@@ -514,5 +906,19 @@ function sealed(id: string) {
     ciphertext: 'ciphertext',
     nonce: 'nonce',
     authTag: 'tag',
+  };
+}
+
+function deferred<T>() {
+  let settle: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve;
+  });
+  return {
+    promise,
+    resolve: (value: T): void => {
+      settle?.(value);
+      settle = undefined;
+    },
   };
 }

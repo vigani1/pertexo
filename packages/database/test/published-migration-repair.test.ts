@@ -8,7 +8,7 @@ const migrationUrl = new URL(
 );
 
 describe('published migration repair', () => {
-  it('converges every published 0037 and 0038 schema variant forward', async () => {
+  it('contains the forward repair definitions for retained 0037 and 0038 variants', async () => {
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

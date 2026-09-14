@@ -33,6 +33,7 @@ import {
   withCoordinatorWriteClient as withWorkspaceWriteClient,
 } from './coordinator-run-store-transactions.js';
 import { serializePersistedWorkflowCheckpoint } from '../compatibility/persisted-workflow-checkpoint.js';
+import { observeScheduleToStartSeconds } from './coordinator-schedule-observation.js';
 
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
@@ -87,6 +88,7 @@ export async function commitCoordinatorAdvancePlan(
           client,
           workspaceId,
           runId,
+          commitState.currentCheckpoint,
           plan.checkpoint,
           new Set(
             plan.attempts
@@ -168,21 +170,17 @@ export async function commitCoordinatorAdvancePlan(
     )
       return transactionResult;
     const { scheduleDueAt, ...committed } = transactionResult;
-    try {
-      const observed = await pool.query<{ observed_at: Date }>(
-        'select clock_timestamp() observed_at',
-      );
-      const durableStartObservedAt = observed.rows[0]?.observed_at;
-      if (durableStartObservedAt === undefined) return Object.freeze(committed);
-      return Object.freeze({
-        ...committed,
-        scheduleToStartSeconds:
-          (durableStartObservedAt.getTime() - Date.parse(scheduleDueAt)) /
-          1_000,
-      });
-    } catch {
-      return Object.freeze(committed);
-    }
+    const scheduleToStartSeconds = await observeScheduleToStartSeconds(
+      pool,
+      scheduleDueAt,
+      input.signal,
+    );
+    return Object.freeze({
+      ...committed,
+      ...(scheduleToStartSeconds === undefined
+        ? {}
+        : { scheduleToStartSeconds }),
+    });
   } catch (error: unknown) {
     if (error instanceof DeliveryMismatch)
       return auditCoordinatorDeliveryMismatch(

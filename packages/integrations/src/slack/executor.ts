@@ -8,10 +8,13 @@ import {
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
+import { SECURE_HTTP_ERROR_CODE } from '../http/secure-http.js';
+import { inspectSecureHttpError } from '../http/secure-http-error.js';
 import {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-} from '../http/secure-http.js';
+  errorNameIs,
+  safeInstanceOf,
+  safeNumberProperty,
+} from '../http/unknown-error.js';
 import type { SlackApiResult, SlackClient } from './client.js';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
@@ -190,19 +193,15 @@ async function execute(
   } catch (error: unknown) {
     if (runtime.providerDispatchUnresolved === true)
       throw failure('outcome_unknown', 'provider', true);
-    if (error instanceof ProviderExecutionRateLimitError)
-      throw failure(
-        'retry',
-        'rate_limit',
-        false,
-        error.retryAfterSeconds * 1_000,
-      );
-    if (error instanceof ProviderCredentialInvalidError)
+    if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
+      const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
+      if (retryAfterSeconds === undefined)
+        throw failure('retry', 'provider', false);
+      throw failure('retry', 'rate_limit', false, retryAfterSeconds * 1_000);
+    }
+    if (safeInstanceOf(error, ProviderCredentialInvalidError))
       throw failure('failed', 'authentication', false);
-    if (
-      invocation.signal.aborted ||
-      (error instanceof Error && error.name === 'AbortError')
-    )
+    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
       throw failure('canceled', 'canceled', false);
     throw failure('retry', 'provider', false);
   }
@@ -226,32 +225,33 @@ async function execute(
         }),
       });
     } catch (error: unknown) {
-      if (error instanceof SlackSendMessageExecutorError) throw error;
-      if (error instanceof SecureHttpError) {
+      if (safeInstanceOf(error, SlackSendMessageExecutorError)) throw error;
+      const secureError = inspectSecureHttpError(error);
+      if (secureError !== undefined) {
         if (runtime.providerDispatchUnresolved === true)
           throw failure('outcome_unknown', 'provider', true);
-        if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+        if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
           throw failure('failed', 'authentication', false);
-        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+        if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
           throw failure('failed', 'configuration', false);
-        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+        if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
           throw failure('retry', 'provider', false);
-        if (error.code === SECURE_HTTP_ERROR_CODE.canceled) {
-          if (!error.possiblyDispatched)
+        if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled) {
+          if (!secureError.possiblyDispatched)
             throw failure('canceled', 'canceled', false);
           throw failure('outcome_unknown', 'provider', true);
         }
-        if (!error.possiblyDispatched)
+        if (!secureError.possiblyDispatched)
           throw failure(
             'retry',
-            error.code === SECURE_HTTP_ERROR_CODE.timedOut
+            secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
               ? 'timeout'
               : 'network',
             false,
           );
         throw failure(
           'outcome_unknown',
-          error.code === SECURE_HTTP_ERROR_CODE.timedOut
+          secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
             ? 'timeout'
             : 'network',
           true,

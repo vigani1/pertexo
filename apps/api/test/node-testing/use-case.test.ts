@@ -2,31 +2,41 @@ import { randomUUID } from 'node:crypto';
 
 import {
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
 } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
-import type {
-  AcceptedPreviewRun,
-  WorkflowDraftRecord,
+import type { AcceptedPreviewRun } from '@pertexo/database/testing';
+import {
+  PreviewIdempotencyConflictError,
+  WorkflowNotFoundError,
 } from '@pertexo/database/testing';
 import type { JsonValue } from '@pertexo/workflow-model/graph-contract';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestInvalidError } from '../../src/node-testing/errors.js';
-import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
+import {
+  GetPreviewRunUseCase,
+  TestWorkflowNodeUseCase,
+} from '../../src/node-testing/use-case.js';
 import {
   authorizeWorkspace,
   createActorContext,
 } from '../../src/workspaces/index.js';
 import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
+import {
+  httpNodeTestingGraph,
+  nodeTestingAcceptedAt,
+  nodeTestingDraft,
+  nodeTestingExpiresAt,
+  nodeTestingIds,
+  nodeTestingPreview,
+} from './fixture.js';
 
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const connectionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const acceptedAt = new Date('2026-08-22T20:00:00.000Z');
-const expiresAt = new Date('2026-08-29T20:00:00.000Z');
+const { actorId, workspaceId, workflowId, connectionId } = nodeTestingIds;
+const acceptedAt = nodeTestingAcceptedAt;
+const expiresAt = nodeTestingExpiresAt;
 const actor = createActorContext({
   actorId,
   workspaceId,
@@ -35,32 +45,7 @@ const actor = createActorContext({
 });
 
 function graph() {
-  return {
-    schemaVersion: 1,
-    nodes: [
-      {
-        id: 'http',
-        definition: { key: 'http.request', version: 1 },
-        position: { x: 0, y: 0 },
-        configVersion: 1,
-        config: {
-          method: 'POST',
-          url: 'https://provider.example.test/resource',
-          headers: {},
-          timeoutMillis: 1_000,
-          maxRedirects: 1,
-          maxResponseBytes: 1_024,
-          inlineResponseBytes: 512,
-        },
-        inputMappings: {
-          body: { kind: 'run_input', path: '$.body' },
-        },
-        connectionRefs: { http_headers: connectionId },
-      },
-    ],
-    edges: [],
-    settings: {},
-  } as const;
+  return httpNodeTestingGraph();
 }
 
 function graphWithConfig(config: Readonly<Record<string, JsonValue>>) {
@@ -75,24 +60,31 @@ function graphWithConfig(config: Readonly<Record<string, JsonValue>>) {
   } as const;
 }
 
-function draft(
-  overrides: Partial<WorkflowDraftRecord> = {},
-): WorkflowDraftRecord {
+function emailGraph() {
   return {
-    workflowId,
-    workspaceId,
-    revision: 3,
     schemaVersion: 1,
-    graphJson: graph(),
-    compatibility: {
-      compatible: true,
-      fingerprint: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.fingerprint,
-      issues: [],
-    },
-    updatedBy: actorId,
-    updatedAt: new Date('2026-08-22T19:00:00.000Z'),
-    ...overrides,
-  };
+    nodes: [
+      {
+        id: 'email',
+        definition: { key: 'email.send_notification', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: { timeoutMillis: 10_000 },
+        inputMappings: {
+          toEmail: { kind: 'run_input', path: '$.toEmail' },
+          subject: { kind: 'run_input', path: '$.subject' },
+          text: { kind: 'run_input', path: '$.text' },
+        },
+        connectionRefs: { resend_api_key: connectionId },
+      },
+    ],
+    edges: [],
+    settings: {},
+  } as const;
+}
+
+function draft(overrides: Parameters<typeof nodeTestingDraft>[0] = {}) {
+  return nodeTestingDraft(overrides);
 }
 
 function accepted(): AcceptedPreviewRun {
@@ -109,13 +101,14 @@ function accepted(): AcceptedPreviewRun {
 
 type TestNodePersistence = Pick<
   NodeTestingPersistence,
-  'acceptPreview' | 'getDraft'
+  'acceptPreview' | 'getDraft' | 'resolvePreviewReplay'
 >;
 
 function persistence(overrides: Partial<TestNodePersistence> = {}) {
   return {
     getDraft: vi.fn().mockResolvedValue(draft()),
     acceptPreview: vi.fn().mockResolvedValue(accepted()),
+    resolvePreviewReplay: vi.fn().mockResolvedValue(null),
     ...overrides,
   } satisfies TestNodePersistence;
 }
@@ -239,6 +232,66 @@ describe('node test application use case', () => {
     // One guard lookup plus the distinct connection:use check; the duplicate
     // workflow:update use-case lookup is gone.
     expect(access.findAccess).toHaveBeenCalledTimes(2);
+  });
+
+  it('maps a missing visible draft before node preparation', async () => {
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(null),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: { mode: 'validate', expectedRevision: 3 },
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('reports the exact current revision representation after draft mutation', async () => {
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: { mode: 'validate', expectedRevision: 3 },
+      }),
+    ).rejects.toMatchObject({
+      name: 'WorkflowRevisionConflictError',
+      currentRevision: 4,
+      currentEtag: '"draft-v1.2xCrfKo53NnU7o8d1pjTcNlKM6p4iH2MvkZQ6f9LCSU"',
+    });
+  });
+
+  it('preserves an unknown draft-read failure by identity', async () => {
+    const failure = new Error('draft store unavailable');
+    const store = persistence({
+      getDraft: vi.fn().mockRejectedValue(failure),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: { mode: 'validate', expectedRevision: 3 },
+      }),
+    ).rejects.toBe(failure);
   });
 
   it.each(['http', 'validate'] as const)(
@@ -466,6 +519,197 @@ describe('node test application use case', () => {
     });
   });
 
+  it('rejects incompatible config identity before preview acceptance', async () => {
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(
+        draft({
+          graphJson: {
+            ...graph(),
+            nodes: [{ ...graph().nodes[0], configVersion: 2 }],
+          },
+        }),
+      ),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-config-mismatch',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: {
+            kind: 'manual',
+            value: { body: { encoding: 'utf8', value: 'hello' } },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'NodeTestInvalidError',
+      issues: [
+        {
+          path: '$.configVersion',
+          code: 'node.config_version_incompatible',
+          message: 'Selected node configuration version is incompatible',
+        },
+      ],
+    });
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('returns the retained preview before reading a mutated draft', async () => {
+    const retained = nodeTestingPreview({ status: 'succeeded' });
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
+      resolvePreviewReplay: vi.fn().mockResolvedValue(retained),
+    });
+    const access = authorization();
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      access,
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-replay',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: { kind: 'manual', value: { original: true } },
+        },
+      }),
+    ).resolves.toEqual({
+      mode: 'test_execute',
+      replayed: true,
+      preview: {
+        id: retained.id,
+        workspaceId,
+        workflowId,
+        draftRevision: 3,
+        nodeId: 'http',
+        status: 'succeeded',
+        disclosure: {
+          sideEffectClass: 'unsafe',
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          dryRun: 'not_supported',
+        },
+        output: null,
+        safeErrorCode: null,
+        createdAt: acceptedAt.toISOString(),
+        startedAt: null,
+        completedAt: null,
+        expiresAt: expiresAt.toISOString(),
+      },
+    });
+    expect(store.getDraft).not.toHaveBeenCalled();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+    expect(access.findAccess).toHaveBeenCalledOnce();
+  });
+
+  it('maps changed content under the same replay key before reading the draft', async () => {
+    const store = persistence({
+      resolvePreviewReplay: vi
+        .fn()
+        .mockRejectedValue(new PreviewIdempotencyConflictError()),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-conflict',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: { kind: 'manual', value: { changed: true } },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'NodeTestRequestError',
+      code: 'idempotency_conflict',
+    });
+    expect(store.getDraft).not.toHaveBeenCalled();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('maps an atomic-admission idempotency conflict after a replay miss', async () => {
+    const store = persistence({
+      acceptPreview: vi
+        .fn()
+        .mockRejectedValue(new PreviewIdempotencyConflictError()),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-raced-conflict',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: {
+            kind: 'manual',
+            value: { body: { encoding: 'utf8', value: 'hello' } },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'NodeTestRequestError',
+      code: 'idempotency_conflict',
+    });
+    expect(store.resolvePreviewReplay).toHaveBeenCalledOnce();
+    expect(store.acceptPreview).toHaveBeenCalledOnce();
+  });
+
+  it('still rejects a stale revision when a new key has no replay', async () => {
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-new-key',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: { kind: 'manual', value: {} },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'WorkflowRevisionConflictError',
+      currentRevision: 4,
+    });
+    expect(store.resolvePreviewReplay).toHaveBeenCalledOnce();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
   it('pins the exact release and accepts one identifier-only durable preview', async () => {
     const executionRelease = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
@@ -506,23 +750,58 @@ describe('node test application use case', () => {
         output: null,
       },
     });
-    expect(store.acceptPreview).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId,
-        workflowId,
-        nodeId: 'http',
-        definitionKey: 'http.request',
-        executorKey: 'http.request',
-        compatibilityReleaseEpoch: executionRelease.epoch,
-        compatibilityReleaseFingerprint: executionRelease.fingerprint,
-        sideEffectClass: 'unsafe',
-        expiresAt,
-        input: {
-          kind: 'manual',
-          value: { body: { encoding: 'utf8', value: 'hello' } },
-        },
-      }),
-    );
+    expect(store.resolvePreviewReplay).toHaveBeenCalledWith({
+      workspaceId,
+      actorUserId: actorId,
+      workflowId,
+      keyHash:
+        'accd77133ae7eebe4e92bf6657b8c2a58554bb2521d24c68997f5b84cfc18928',
+      requestHash:
+        '5bfe2da0fcbee2224fcf578f41e1bb3c43ad94bb801da7e2c305bdbae6405547',
+    });
+    expect(store.acceptPreview).toHaveBeenCalledWith({
+      workspaceId,
+      workflowId,
+      actorUserId: actorId,
+      draftRevision: 3,
+      draftFingerprint:
+        '8428d63fb05e598a2363b934bb3a351e9c5f949aa004291288463f3c7e8a3556',
+      nodeId: 'http',
+      definitionKey: 'http.request',
+      definitionVersion: 1,
+      executorKey: 'http.request',
+      executorVersion: 1,
+      compatibilityReleaseEpoch: executionRelease.epoch,
+      compatibilityReleaseFingerprint: executionRelease.fingerprint,
+      executableNode: {
+        id: 'http',
+        definition: { key: 'http.request', version: 1 },
+        configVersion: 1,
+        config: graph().nodes[0].config,
+        inputMappings: graph().nodes[0].inputMappings,
+        connectionRefs: graph().nodes[0].connectionRefs,
+      },
+      input: {
+        kind: 'manual',
+        value: { body: { encoding: 'utf8', value: 'hello' } },
+      },
+      sideEffectClass: 'unsafe',
+      mayContactProvider: true,
+      mayCauseExternalSideEffect: true,
+      dryRun: 'not_supported',
+      keyHash:
+        'accd77133ae7eebe4e92bf6657b8c2a58554bb2521d24c68997f5b84cfc18928',
+      requestHash:
+        '5bfe2da0fcbee2224fcf578f41e1bb3c43ad94bb801da7e2c305bdbae6405547',
+      operation: 'preview.execute',
+      operationKey: 'request',
+      providerKey: 'http',
+      scope: `${actorId}:${workflowId}`,
+      expiresAt,
+      executionDeadlineAt: new Date('2026-08-22T20:05:00.000Z'),
+      requestId: 'request-node-test',
+      traceId: 'trace-node-test',
+    });
     expect(access.findAccess).toHaveBeenCalledTimes(2);
   });
 
@@ -552,5 +831,192 @@ describe('node test application use case', () => {
         input: { kind: 'prior_preview', previewRunId: priorPreviewRunId },
       }),
     );
+  });
+
+  it('derives the exact provider key for an idempotent-with-key definition', async () => {
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(
+        draft({
+          graphJson: emailGraph(),
+          compatibility: {
+            compatible: true,
+            fingerprint: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.fingerprint,
+            issues: [],
+          },
+        }),
+      ),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      () => acceptedAt,
+    );
+
+    await useCase.execute({
+      ...requestInput(),
+      nodeId: 'email',
+      idempotencyKey: 'preview-email-key',
+      request: {
+        mode: 'test_execute',
+        expectedRevision: 3,
+        acknowledgeSideEffects: true,
+        input: {
+          kind: 'manual',
+          value: {
+            toEmail: 'Recipient@example.com',
+            subject: 'Deployment complete',
+            text: 'Production is healthy.',
+          },
+        },
+      },
+    });
+
+    expect(store.acceptPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sideEffectClass: 'idempotent_with_key',
+        draftFingerprint:
+          'c01b89e9d3a273c33b19a9a1383c7ef1a7eebdfba50d4a374ab6bd8eb35515b8',
+        keyHash:
+          '54058cf53edec407d0ccfb201e69ae10fd5fde6a2a5c2b152a370f72ccb52726',
+        requestHash:
+          '31b07bf06427d11945cf075b5202a51796c34a5b98171341c3dadc90ba525f13',
+        providerIdempotencyKey:
+          'pv1.fba5f01c7234de45b977ef3b12ccfce2f1c03c7dd8a983135856a3f20c0ed41b',
+      }),
+    );
+  });
+});
+
+describe('preview status application use case', () => {
+  it('denies before reading when the caller lacks workflow update authority', async () => {
+    const readPreview = vi.fn().mockResolvedValue(nodeTestingPreview());
+    const access = authorization();
+    access.findAccess.mockResolvedValue(undefined);
+    const useCase = new GetPreviewRunUseCase({ readPreview }, access);
+
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      }),
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    expect(readPreview).not.toHaveBeenCalled();
+  });
+
+  it('maps a missing scoped preview to hidden not-found', async () => {
+    const readPreview = vi.fn().mockResolvedValue(null);
+    const useCase = new GetPreviewRunUseCase({ readPreview }, authorization());
+
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+  });
+
+  it.each([
+    ['null', null, null],
+    [
+      'inline',
+      { schemaVersion: 1, kind: 'inline', value: { ok: true } },
+      { kind: 'inline', value: { ok: true } },
+    ],
+    [
+      'artifact',
+      {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId: '11111111-1111-4111-8111-111111111111',
+      },
+      {
+        kind: 'artifact',
+        artifactId: '11111111-1111-4111-8111-111111111111',
+      },
+    ],
+  ] as const)(
+    'projects complete %s output exactly',
+    async (_name, output, projected) => {
+      const startedAt = new Date('2026-08-22T20:01:00.000Z');
+      const completedAt = new Date('2026-08-22T20:02:00.000Z');
+      const readPreview = vi.fn().mockResolvedValue(
+        nodeTestingPreview({
+          status: 'succeeded',
+          output,
+          safeErrorCode: 'provider.completed',
+          startedAt,
+          completedAt,
+        }),
+      );
+      const useCase = new GetPreviewRunUseCase(
+        { readPreview },
+        authorization(),
+      );
+
+      await expect(
+        useCase.execute({
+          actor,
+          routeWorkspaceId: workspaceId,
+          previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        }),
+      ).resolves.toEqual({
+        preview: {
+          id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          workspaceId,
+          workflowId,
+          draftRevision: 3,
+          nodeId: 'http',
+          status: 'succeeded',
+          disclosure: {
+            sideEffectClass: 'unsafe',
+            mayContactProvider: true,
+            mayCauseExternalSideEffect: true,
+            dryRun: 'not_supported',
+          },
+          output: projected,
+          safeErrorCode: 'provider.completed',
+          createdAt: acceptedAt.toISOString(),
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+        },
+      });
+      expect(readPreview).toHaveBeenCalledWith({
+        workspaceId,
+        actorUserId: actorId,
+        previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      });
+    },
+  );
+
+  it('reuses a frozen matching guard context without another access lookup', async () => {
+    const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:update',
+      access,
+      disclosure: 'not_found',
+    });
+    const readPreview = vi.fn().mockResolvedValue(nodeTestingPreview());
+    access.findAccess.mockClear();
+    const useCase = new GetPreviewRunUseCase({ readPreview }, access);
+
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        authorizedWorkspace,
+        previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      }),
+    ).resolves.toMatchObject({ preview: { status: 'queued' } });
+    expect(Object.isFrozen(authorizedWorkspace)).toBe(true);
+    expect(access.findAccess).not.toHaveBeenCalled();
   });
 });

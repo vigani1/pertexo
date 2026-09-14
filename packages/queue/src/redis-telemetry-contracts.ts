@@ -91,23 +91,27 @@ function notifyRedisOperation(
 }
 
 function classifyRedisOperationError(error: unknown): RedisOperationErrorClass {
-  if (!(error instanceof Error)) return 'internal';
+  try {
+    if (!(error instanceof Error)) return 'internal';
 
-  const classification = `${error.name} ${error.message}`.toLowerCase();
-  if (
-    classification.includes('timeout') ||
-    classification.includes('timed out')
-  )
-    return 'timeout';
-  if (classification.includes('abort')) return 'aborted';
-  if (classification.includes('not ready')) return 'not_ready';
-  if (
-    classification.includes('redis') ||
-    classification.includes('connection') ||
-    classification.includes('socket')
-  )
-    return 'connection';
-  return 'internal';
+    const classification = `${error.name} ${error.message}`.toLowerCase();
+    if (
+      classification.includes('timeout') ||
+      classification.includes('timed out')
+    )
+      return 'timeout';
+    if (classification.includes('abort')) return 'aborted';
+    if (classification.includes('not ready')) return 'not_ready';
+    if (
+      classification.includes('redis') ||
+      classification.includes('connection') ||
+      classification.includes('socket')
+    )
+      return 'connection';
+    return 'internal';
+  } catch {
+    return 'internal';
+  }
 }
 
 const instrumentedRedisClients = new WeakSet<Redis>();

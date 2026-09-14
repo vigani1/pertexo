@@ -49,11 +49,10 @@ function validatePlanEnvelope(
     ),
   );
   assertPlan(plan.events.every(({ name }) => name !== 'run.cancel_requested'));
-  assertPlan(
-    !plan.checkpoint.cancelRequested && !plan.checkpoint.deadlineExpired
-      ? true
-      : plan.attempts.length === 0 && plan.nodeRunAdmissions.length === 0,
-  );
+  if (plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired) {
+    assertPlan(plan.attempts.length === 0);
+    assertPlan(plan.nodeRunAdmissions.length === 0);
+  }
 }
 
 function validateAttempt(

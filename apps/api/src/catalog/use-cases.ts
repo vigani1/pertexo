@@ -85,29 +85,29 @@ function compareIntegration(
   left: Readonly<{ providerKey: string; operationKey: string }>,
   right: Readonly<{ providerKey: string; operationKey: string }>,
 ): number {
-  return left.providerKey < right.providerKey
-    ? -1
-    : left.providerKey > right.providerKey
-      ? 1
-      : left.operationKey < right.operationKey
-        ? -1
-        : left.operationKey > right.operationKey
-          ? 1
-          : 0;
+  const byProvider = compareOrdinal(left.providerKey, right.providerKey);
+  return byProvider === 0
+    ? compareOrdinal(left.operationKey, right.operationKey)
+    : byProvider;
 }
 
 function compareDefinition(
   left: PlatformNodeDefinitionBrowserProjection,
   right: PlatformNodeDefinitionBrowserProjection,
 ): number {
-  return left.definition.key < right.definition.key
-    ? -1
-    : left.definition.key > right.definition.key
-      ? 1
-      : left.definition.version - right.definition.version;
+  const byKey = compareOrdinal(left.definition.key, right.definition.key);
+  return byKey === 0
+    ? left.definition.version - right.definition.version
+    : byKey;
 }
 
-/** Construct once during module registration; each request only serializes it. */
+function compareOrdinal(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+/** Construct the immutable browser catalog once during module registration. */
 export function createCatalogUseCases(
   dependencies: CatalogDependencies,
 ): Readonly<{

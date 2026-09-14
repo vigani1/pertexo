@@ -19,7 +19,10 @@ import {
   type PublishedWorkflowV2Projection,
 } from './published-workflow-reader.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
-import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
+import {
+  withWorkspaceReadTransaction,
+  withWorkspaceTransaction,
+} from '../tenant-access/workspace.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 import {
@@ -203,13 +206,13 @@ export function createWorkflowRunDatabase(
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): WorkflowRunDatabase {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
         parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
       ]);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
@@ -237,7 +240,7 @@ export function createWorkflowRunDatabase(
     },
     get: async (input: GetWorkflowRunInput) => {
       const parsed = getInputSchema.parse(input);
-      return withWorkspaceTransaction(
+      return withWorkspaceReadTransaction(
         pool,
         parsed.workspaceId,
         async (transaction) => readRunModel(transaction, parsed.runId),

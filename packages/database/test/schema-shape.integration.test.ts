@@ -76,8 +76,19 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await owner.end();
-  await fixture.drop();
+  const failures: unknown[] = [];
+  try {
+    await owner.end();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Schema fixture cleanup failed');
 });
 
 describe('migrated schema shape contract', () => {
@@ -99,6 +110,19 @@ describe('migrated schema shape contract', () => {
     const actualByTable = Map.groupBy(
       result.rows,
       ({ table_name: tableName }) => tableName,
+    );
+    const registry = JSON.parse(
+      await readFile(
+        new URL('../raw-sql-table-registry.json', import.meta.url),
+        'utf8',
+      ),
+    ) as RawTableContract[];
+    const typedNames = Object.values(databaseSchema).map((table) =>
+      getTableName(table),
+    );
+    expect(new Set(typedNames).size).toBe(typedNames.length);
+    expect([...actualByTable.keys()].sort()).toEqual(
+      [...typedNames, ...registry.map(({ name }) => name)].sort(),
     );
 
     for (const table of Object.values(databaseSchema)) {
@@ -131,14 +155,16 @@ describe('migrated schema shape contract', () => {
       ),
     ) as RawTableContract[];
     const catalog = await owner.query<{
-      has_index: boolean;
+      has_any_index: boolean;
       has_primary_key: boolean;
+      owner_name: string;
       relforcerowsecurity: boolean;
       relname: string;
       relrowsecurity: boolean;
     }>(
       `select class.relname,class.relrowsecurity,class.relforcerowsecurity,
-              exists(select 1 from pg_index where indrelid=class.oid) has_index,
+              pg_get_userbyid(class.relowner) owner_name,
+              exists(select 1 from pg_index where indrelid=class.oid) has_any_index,
               exists(select 1 from pg_constraint
                       where conrelid=class.oid and contype='p') has_primary_key
          from pg_class class
@@ -150,9 +176,11 @@ describe('migrated schema shape contract', () => {
     );
     const grants = await owner.query<{
       grantee: string;
+      is_grantable: boolean;
+      privilege_type: string;
       table_name: string;
     }>(
-      `select distinct class.relname table_name,
+      `select distinct class.relname table_name,acl.privilege_type,acl.is_grantable,
               case when acl.grantee=0 then 'PUBLIC'
                    else pg_get_userbyid(acl.grantee) end grantee
          from pg_class class
@@ -169,8 +197,9 @@ describe('migrated schema shape contract', () => {
     for (const contract of registry) {
       const table = catalogByName.get(contract.name);
       expect(table, contract.name).toBeDefined();
+      expect(table?.owner_name, contract.name).toBe('pertexo_owner');
       expect(table?.has_primary_key, contract.name).toBe(true);
-      expect(table?.has_index, contract.name).toBe(true);
+      expect(table?.has_any_index, contract.name).toBe(true);
       expect(table?.relrowsecurity, contract.name).toBe(
         contract.rls === 'forced',
       );
@@ -189,6 +218,14 @@ describe('migrated schema shape contract', () => {
         expect(allowedGrantees, `${contract.name}:${grantee}`).toContain(
           grantee,
         );
+      for (const grant of grantsByTable.get(contract.name) ?? []) {
+        if (grant.grantee === 'pertexo_owner') continue;
+        expect(
+          ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
+          `${contract.name}:${grant.grantee}:${grant.privilege_type}`,
+        ).toContain(grant.privilege_type);
+        expect(grant.is_grantable).toBe(false);
+      }
     }
   });
 

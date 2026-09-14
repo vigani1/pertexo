@@ -10,12 +10,8 @@ const {
   actorId,
   checkpointFactory,
   ownerQuery,
-  reconciliation,
-  scannerOne,
-  schedules,
   skipTriggerId,
   triggerId,
-  versionId,
   workflowId,
   workspaceId,
 } = schedule;
@@ -30,7 +26,7 @@ beforeAll(async () => {
   if (interruptedClaim.rows[0]?.trigger_id !== triggerId) {
     throw new Error('Expected schedule prerequisite claim was not established');
   }
-  const skippedScan = await scannerOne.scanDue({
+  const skippedScan = await schedule.scannerOne.scanDue({
     leaseOwner: 'initial-skip-scanner',
     limit: 1,
     leaseSeconds: 30,
@@ -46,7 +42,7 @@ beforeAll(async () => {
       where trigger_id=$1`,
     [triggerId],
   );
-  const acceptedScan = await scannerOne.scanDue({
+  const acceptedScan = await schedule.scannerOne.scanDue({
     leaseOwner: 'initial-acceptance-scanner',
     limit: 1,
     leaseSeconds: 30,
@@ -60,12 +56,77 @@ afterAll(schedule.close);
 
 describe('schedule trigger PostgreSQL slice', () => {
   it('deduplicates an occurrence and preserves a saturated occurrence until capacity recovers', async () => {
+    const dedupeWorkflowId = randomUUID();
+    const dedupeVersionId = randomUUID();
+    const dedupeTriggerId = randomUUID();
+    const dedupeFingerprint = `trigger:v1:sha256:${createHash('sha256').update(dedupeTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `update app.trigger_schedules set status='disabled'
+        where workspace_id=$1`,
+      [workspaceId],
+    );
+    await ownerQuery(
+      `insert into app.workflows(id,workspace_id,name,lifecycle_status,activation_status,
+         published_version_id,created_by)
+       values($1,$2,'Schedule dedupe and quota','active','active',null,$3)`,
+      [dedupeWorkflowId, workspaceId, actorId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by)
+       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+         $4,2,'{}'::jsonb,1,$5)`,
+      [
+        dedupeVersionId,
+        workspaceId,
+        dedupeWorkflowId,
+        `wf:v2:sha256:${'e'.repeat(64)}`,
+        actorId,
+      ],
+    );
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [dedupeWorkflowId, dedupeVersionId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+         node_id,kind,status,desired_config,config_fingerprint,health_status)
+       values($1,$2,$3,$4,'schedule-dedupe','schedule','active',$5::jsonb,$6,'healthy')`,
+      [
+        dedupeTriggerId,
+        workspaceId,
+        dedupeWorkflowId,
+        dedupeVersionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 1,
+          misfirePolicy: 'catch_up_once',
+        }),
+        dedupeFingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+       values($1,$2,'interval',1,'catch_up_once',$3,
+         clock_timestamp()-interval '2 minutes',clock_timestamp()-interval '1 minute')`,
+      [dedupeTriggerId, workspaceId, dedupeFingerprint],
+    );
+    await expect(
+      schedule.scannerOne.scanDue({
+        leaseOwner: 'dedupe-prerequisite-scanner',
+        limit: 1,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ accepted: 1 });
     const first = await ownerQuery<{
       scheduled_at: Date;
       workflow_run_id: string;
     }>(
       'select scheduled_at,workflow_run_id from app.trigger_schedule_occurrences where trigger_id=$1',
-      [triggerId],
+      [dedupeTriggerId],
     );
     const firstOccurrence = first.rows[0];
     if (firstOccurrence === undefined)
@@ -74,9 +135,9 @@ describe('schedule trigger PostgreSQL slice', () => {
     await ownerQuery(
       `update app.trigger_schedules set last_fire_at=null,next_fire_at=$2
         where trigger_id=$1`,
-      [triggerId, scheduledAt],
+      [dedupeTriggerId, scheduledAt],
     );
-    await scannerOne.scanDue({
+    await schedule.scannerOne.scanDue({
       leaseOwner: 'duplicate-scanner',
       limit: 1,
       leaseSeconds: 30,
@@ -86,7 +147,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       `select (select count(*) from app.trigger_schedule_occurrences where trigger_id=$1) occurrences,
               (select count(*) from app.workflow_runs
                 where workflow_id=$2 and trigger_type='schedule') runs`,
-      [triggerId, workflowId],
+      [dedupeTriggerId, dedupeWorkflowId],
     );
     expect(duplicateFacts.rows[0]).toMatchObject({
       occurrences: '1',
@@ -101,8 +162,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       [
         quotaTriggerId,
         workspaceId,
-        workflowId,
-        versionId,
+        dedupeWorkflowId,
+        dedupeVersionId,
         JSON.stringify({
           kind: 'interval',
           intervalMinutes: 1,
@@ -129,7 +190,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       [workspaceId],
     );
     await expect(
-      scannerOne.scanDue({
+      schedule.scannerOne.scanDue({
         leaseOwner: 'quota-scanner',
         limit: 10,
         leaseSeconds: 30,
@@ -155,8 +216,9 @@ describe('schedule trigger PostgreSQL slice', () => {
       ],
     });
     await ownerQuery(
-      "update app.workflow_runs set status='succeeded' where id=$1",
-      [first.rows[0]?.workflow_run_id],
+      `update app.workflow_runs set status='succeeded'
+        where workspace_id=$1 and status='queued'`,
+      [workspaceId],
     );
     await ownerQuery(
       `update app.trigger_schedules set admission_deferred_until=clock_timestamp()
@@ -164,7 +226,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       [quotaTriggerId],
     );
     await expect(
-      scannerOne.scanDue({
+      schedule.scannerOne.scanDue({
         leaseOwner: 'recovery-scanner',
         limit: 10,
         leaseSeconds: 30,
@@ -186,7 +248,138 @@ describe('schedule trigger PostgreSQL slice', () => {
     });
   });
 
-  it('records skip atomically and supersedes a republished configuration without rewriting history', async () => {
+  it('retains live quota backoff across commands and clears resolved health evidence', async () => {
+    const healthWorkflowId = randomUUID();
+    const healthVersionId = randomUUID();
+    const healthTriggerId = randomUUID();
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(healthTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflows(id,workspace_id,name,lifecycle_status,activation_status,
+         published_version_id,created_by)
+       values($1,$2,'Schedule health policy','active','degraded',null,$3)`,
+      [healthWorkflowId, workspaceId, actorId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by)
+       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+         $4,2,'{}'::jsonb,1,$5)`,
+      [
+        healthVersionId,
+        workspaceId,
+        healthWorkflowId,
+        `wf:v2:sha256:${'d'.repeat(64)}`,
+        actorId,
+      ],
+    );
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [healthWorkflowId, healthVersionId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+         node_id,kind,status,desired_config,config_fingerprint,health_status,last_error_code)
+       values($1,$2,$3,$4,'schedule-health','schedule','active',$5::jsonb,$6,
+         'degraded','schedule.admission_throttled')`,
+      [
+        healthTriggerId,
+        workspaceId,
+        healthWorkflowId,
+        healthVersionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 5,
+          misfirePolicy: 'catch_up_once',
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at,
+         admission_deferred_until,health_status,last_error_code)
+       values($1,$2,'interval',5,'catch_up_once',$3,clock_timestamp()-interval '1 hour',
+         clock_timestamp()-interval '5 minutes',clock_timestamp()+interval '2 minutes',
+         'degraded','schedule.admission_throttled')`,
+      [healthTriggerId, workspaceId, fingerprint],
+    );
+    const initial = await ownerQuery<{
+      admission_deferred_until: Date;
+      next_fire_at: Date;
+    }>(
+      `select admission_deferred_until,next_fire_at from app.trigger_schedules
+        where trigger_id=$1`,
+      [healthTriggerId],
+    );
+    const command = (suffix: string, enabled: boolean) => ({
+      workspaceId,
+      actorId,
+      workflowId: healthWorkflowId,
+      triggerId: healthTriggerId,
+      enabled,
+      idempotencyKey: `health-${suffix}`,
+      requestHash: createHash('sha256')
+        .update(`health-${suffix}`)
+        .digest('hex'),
+    });
+
+    const noOp = await schedule.schedules.setEnabled(command('noop', true));
+    expect(noOp.trigger).toMatchObject({
+      status: 'active',
+      healthStatus: 'degraded',
+      lastErrorCode: 'schedule.admission_throttled',
+    });
+    expect(noOp.trigger.nextFireAt).toEqual(initial.rows[0]?.next_fire_at);
+
+    const disabled = await schedule.schedules.setEnabled(
+      command('disable', false),
+    );
+    expect(disabled.trigger).toMatchObject({
+      status: 'disabled',
+      healthStatus: 'disabled',
+      lastErrorCode: null,
+    });
+    const reenabled = await schedule.schedules.setEnabled(
+      command('reenable', true),
+    );
+    expect(reenabled.trigger).toMatchObject({
+      status: 'active',
+      healthStatus: 'degraded',
+      lastErrorCode: 'schedule.admission_throttled',
+    });
+    await expect(
+      ownerQuery(
+        `select admission_deferred_until,next_fire_at from app.trigger_schedules
+          where trigger_id=$1`,
+        [healthTriggerId],
+      ),
+    ).resolves.toMatchObject({ rows: initial.rows });
+
+    await ownerQuery(
+      `update app.trigger_schedules set admission_deferred_until=clock_timestamp()-interval '1 second',
+         health_status='degraded',last_error_code='schedule.scan_failed'
+       where trigger_id=$1`,
+      [healthTriggerId],
+    );
+    const recovered = await schedule.schedules.setEnabled(
+      command('recover', true),
+    );
+    expect(recovered.trigger).toMatchObject({
+      status: 'active',
+      healthStatus: 'healthy',
+      lastErrorCode: null,
+    });
+    await expect(
+      ownerQuery<{ resolved: boolean }>(
+        `select admission_deferred_until<=clock_timestamp() resolved
+           from app.trigger_schedules where trigger_id=$1`,
+        [healthTriggerId],
+      ),
+    ).resolves.toMatchObject({ rows: [{ resolved: true }] });
+  });
+
+  it('records skip, supersedes publication, and operates on only the resulting current schedule', async () => {
     const skipped = await ownerQuery(
       `select disposition,workflow_run_id from app.trigger_schedule_occurrences
         where trigger_id=$1`,
@@ -201,7 +394,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         where trigger_id=$1`,
       [skipTriggerId],
     );
-    const disabledNext = await schedules.setEnabled({
+    const disabledNext = await schedule.schedules.setEnabled({
       workspaceId,
       actorId,
       workflowId,
@@ -215,7 +408,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       'select next_fire_at from app.trigger_schedules where trigger_id=$1',
       [skipTriggerId],
     );
-    await schedules.setEnabled({
+    await schedule.schedules.setEnabled({
       workspaceId,
       actorId,
       workflowId,
@@ -293,7 +486,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       ],
     );
     await expect(
-      reconciliation.reconcile({
+      schedule.reconciliation.reconcile({
         workspaceId,
         workflowId,
         publishedVersionId: nextVersionId,
@@ -312,10 +505,12 @@ describe('schedule trigger PostgreSQL slice', () => {
       interval_minutes: 5,
       old_occurrences: '1',
     });
-  });
 
-  it('lists only current schedule materializations and keeps command replay exact', async () => {
-    const listed = await schedules.list({ workspaceId, actorId, workflowId });
+    const listed = await schedule.schedules.list({
+      workspaceId,
+      actorId,
+      workflowId,
+    });
     expect(listed).toHaveLength(1);
     expect(listed[0]).not.toHaveProperty('configFingerprint');
     expect(listed[0]).not.toHaveProperty('leaseOwner');
@@ -337,8 +532,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       requestHash: createHash('sha256').update('disable-main').digest('hex'),
       requestId: 'schedule-request',
     } as const;
-    const first = await schedules.setEnabled(command);
-    const replay = await schedules.setEnabled(command);
+    const first = await schedule.schedules.setEnabled(command);
+    const replay = await schedule.schedules.setEnabled(command);
     expect(first.replayed).toBe(false);
     expect(replay).toEqual({ ...first, replayed: true });
     const facts = await ownerQuery<{
@@ -357,7 +552,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     expect(facts.rows[0]?.audit_count).toBe('1');
 
     await expect(
-      schedules.setEnabled({
+      schedule.schedules.setEnabled({
         ...command,
         enabled: true,
         requestHash: createHash('sha256').update('enable-main').digest('hex'),
@@ -367,7 +562,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       name: 'ScheduleTriggerError',
     });
     await expect(
-      schedules.list({
+      schedule.schedules.list({
         workspaceId: randomUUID(),
         actorId,
         workflowId,
@@ -377,7 +572,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       name: 'ScheduleTriggerError',
     });
 
-    const enabled = await schedules.setEnabled({
+    const enabled = await schedule.schedules.setEnabled({
       ...command,
       enabled: true,
       idempotencyKey: 'enable-main',

@@ -4,10 +4,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
-import {
-  createNestObservabilityRegistration,
-  NestLoggerAdapter,
-} from '@pertexo/observability/nest-runtime';
+import { NestLoggerAdapter } from '@pertexo/observability/nest-runtime';
 
 export { NestLoggerAdapter };
 
@@ -22,12 +19,13 @@ export class ObservabilityModule {
     logger: StructuredLogger,
     telemetry: TelemetryLifecycle,
   ): DynamicModule {
-    return createNestObservabilityRegistration({
+    return {
       module: ObservabilityModule,
-      loggerToken: STRUCTURED_LOGGER,
-      telemetryToken: TELEMETRY_LIFECYCLE,
-      logger,
-      telemetry,
-    });
+      providers: [
+        { provide: STRUCTURED_LOGGER, useValue: logger },
+        { provide: TELEMETRY_LIFECYCLE, useValue: telemetry },
+      ],
+      exports: [STRUCTURED_LOGGER, TELEMETRY_LIFECYCLE],
+    };
   }
 }

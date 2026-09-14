@@ -67,6 +67,25 @@ function store(): ArtifactStore {
   };
 }
 
+async function closeTestRuntimes(
+  runtime: ReturnType<typeof createApiArtifactRuntime> | undefined,
+  sharedRuntime: ReturnType<typeof createDatabaseRuntime>,
+): Promise<void> {
+  const failures: unknown[] = [];
+  try {
+    await runtime?.close();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await sharedRuntime.close();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Test runtime cleanup failed');
+}
+
 describe('API artifact runtime', () => {
   it('forwards a real shared database runtime to the repository factory', async () => {
     const databaseConfig = parseDatabaseConfig({
@@ -74,21 +93,21 @@ describe('API artifact runtime', () => {
     });
     const sharedRuntime = createDatabaseRuntime(databaseConfig, {});
     const databaseFactory = vi.fn(createArtifactUploadDatabase);
-    const runtime = createApiArtifactRuntime(
-      config,
-      databaseConfig,
-      identityRuntime,
-      { databaseFactory, store: store() },
-      sharedRuntime,
-    );
+    let runtime: ReturnType<typeof createApiArtifactRuntime> | undefined;
     try {
+      runtime = createApiArtifactRuntime(
+        config,
+        databaseConfig,
+        identityRuntime,
+        { databaseFactory, store: store() },
+        sharedRuntime,
+      );
       expect(databaseFactory).toHaveBeenCalledExactlyOnceWith(
         databaseConfig,
         sharedRuntime,
       );
-      await runtime.close();
     } finally {
-      await sharedRuntime.close();
+      await closeTestRuntimes(runtime, sharedRuntime);
     }
   });
 
@@ -126,8 +145,44 @@ describe('API artifact runtime', () => {
       identityRuntime,
       { database: selectedDatabase, store: selectedStore },
     );
-    await expect(runtime.close()).rejects.toMatchObject({ errors: [failure] });
-    await expect(runtime.close()).rejects.toMatchObject({ errors: [failure] });
+    const firstClose = runtime.close();
+    const secondClose = runtime.close();
+    expect(secondClose).toBe(firstClose);
+    await expect(firstClose).rejects.toMatchObject({ errors: [failure] });
+    await expect(secondClose).rejects.toMatchObject({ errors: [failure] });
+    expect(selectedStore.close).toHaveBeenCalledOnce();
+  });
+
+  it('aggregates database rejection and synchronous store close failure once', async () => {
+    const databaseFailure = new Error('database close rejected');
+    const storeFailure = new Error('store close failed');
+    const selectedDatabase = {
+      ...database(),
+      close: vi.fn().mockRejectedValue(databaseFailure),
+    };
+    const selectedStore = {
+      ...store(),
+      close: vi.fn(() => {
+        throw storeFailure;
+      }),
+    };
+    const runtime = createApiArtifactRuntime(
+      config,
+      { connectionString: 'postgresql://unused' } as never,
+      identityRuntime,
+      { database: selectedDatabase, store: selectedStore },
+    );
+
+    const firstClose = runtime.close();
+    const secondClose = runtime.close();
+    expect(secondClose).toBe(firstClose);
+    await expect(firstClose).rejects.toMatchObject({
+      errors: [databaseFailure, storeFailure],
+    });
+    await expect(secondClose).rejects.toMatchObject({
+      errors: [databaseFailure, storeFailure],
+    });
+    expect(selectedDatabase.close).toHaveBeenCalledOnce();
     expect(selectedStore.close).toHaveBeenCalledOnce();
   });
 

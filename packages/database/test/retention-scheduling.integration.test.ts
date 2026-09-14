@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   Pool,
+  apiUrl,
   maintenanceUrl,
   owner,
   randomUUID,
@@ -15,7 +16,7 @@ import {
 } from './support/q11-benchmark.js';
 
 describe('retention enforcement scheduling', () => {
-  it('schedules bounded enforcement exactly once across concurrency and restart', async () => {
+  it('schedules bounded enforcement exactly once across concurrency and repeat scans', async () => {
     const scheduledWorkspaceIds = Array.from({ length: 26 }, () =>
       randomUUID(),
     );
@@ -114,19 +115,19 @@ describe('retention enforcement scheduling', () => {
       await owner.query('rollback').catch(() => undefined);
       throw error;
     }
-    const restarted = await Promise.all([
+    const repeatScan = await Promise.all([
       retention.scheduleEnforcement(),
       retention.scheduleEnforcement(),
     ]);
     expect(
-      restarted.reduce((sum, result) => sum + result.scannedCount, 0),
+      repeatScan.reduce((sum, result) => sum + result.scannedCount, 0),
     ).toBe(26);
     expect(
-      restarted.reduce((sum, result) => sum + result.scheduledCount, 0),
+      repeatScan.reduce((sum, result) => sum + result.scheduledCount, 0),
     ).toBe(0);
-    for (const result of restarted)
+    for (const result of repeatScan)
       expect(result.capacityLimited).toBe(result.scannedCount === 25);
-    expect(restarted.every(({ scannedCount }) => scannedCount > 0)).toBe(true);
+    expect(repeatScan.every(({ scannedCount }) => scannedCount > 0)).toBe(true);
 
     await expect(retention.scheduleEnforcement()).resolves.toMatchObject({
       capacityLimited: false,
@@ -168,10 +169,7 @@ describe('retention enforcement scheduling', () => {
       throw error;
     }
 
-    const apiUrl = new URL(maintenanceUrl);
-    apiUrl.username = 'pertexo_api';
-    apiUrl.password = 'pertexo-local-api';
-    const api = new Pool({ connectionString: apiUrl.toString(), max: 1 });
+    const api = new Pool({ connectionString: apiUrl, max: 1 });
     try {
       await expect(
         api.query(

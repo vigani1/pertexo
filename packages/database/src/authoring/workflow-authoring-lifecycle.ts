@@ -95,8 +95,19 @@ function serializeWorkflow(workflow: WorkflowRecord): Record<string, unknown> {
   };
 }
 
-function durableLifecycleResult(value: unknown): WorkflowRecord {
+function durableLifecycleResult(
+  value: unknown,
+  expectedWorkspaceId: string,
+  expectedWorkflowId: string,
+): WorkflowRecord {
   const parsed = durableLifecycleResultSchema.parse(value).workflow;
+  if (
+    parsed.workspaceId !== expectedWorkspaceId ||
+    parsed.id !== expectedWorkflowId
+  )
+    throw new Error(
+      'Durable workflow lifecycle result identity does not match its claim',
+    );
   return Object.freeze({
     id: parsed.id,
     workspaceId: parsed.workspaceId,
@@ -170,7 +181,7 @@ async function claimLifecycle(
     operation,
     replay:
       claim.status === 'completed'
-        ? durableLifecycleResult(claim.result_ref)
+        ? durableLifecycleResult(claim.result_ref, workspaceId, workflowId)
         : null,
     scope,
   });

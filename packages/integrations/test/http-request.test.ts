@@ -217,6 +217,37 @@ describe('http.request@1 definition', () => {
     ).toBe(false);
   });
 
+  it.each([
+    ['malformed', 'not-a-url'],
+    ['relative', '/relative/path'],
+    ['empty', ''],
+    ['HTTP', 'http://example.test/'],
+    ['credentials', 'https://user:secret@example.test/'],
+    ['fragment', 'https://example.test/path#private'],
+    ['credential-like query', 'https://example.test/?api_token=secret'],
+    ['UTF-8 byte overflow', `https://example.test/${'é'.repeat(1_014)}`],
+  ] as const)('returns an invalid result for a %s URL', (_case, url) => {
+    expect(() =>
+      httpRequestConfigSchema.safeParse(config({ url })),
+    ).not.toThrow();
+    expect(httpRequestConfigSchema.safeParse(config({ url })).success).toBe(
+      false,
+    );
+  });
+
+  it('keeps malformed URL admission total at the browser registration boundary', () => {
+    expect(() =>
+      HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse(
+        config({ url: 'not-a-url' }),
+      ),
+    ).not.toThrow();
+    expect(
+      HTTP_REQUEST_DEFINITION_REGISTRATION.configSchema.safeParse(
+        config({ url: 'not-a-url' }),
+      ).success,
+    ).toBe(false);
+  });
+
   it('rejects every forbidden HTTP field-value control byte', () => {
     const forbidden = [
       ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
@@ -382,10 +413,17 @@ describe('http.request@1 server executor', () => {
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
   });
 
-  it('preserves streamed body and iterator cleanup failures without double-closing ownership', async () => {
+  it('preserves a streamed body failure with hostile iterator cleanup without double-closing ownership', async () => {
     const state = runtime();
     const readError = new Error('response body failed');
-    const returnError = new Error('response body cleanup failed');
+    const returnError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error('cleanup-prototype-trap');
+        },
+      },
+    );
     const providerBody = new Uint8Array(70_000).fill(7);
     const closeBody = vi.fn().mockRejectedValue(returnError);
     let reads = 0;
@@ -428,9 +466,12 @@ describe('http.request@1 server executor', () => {
     expect((failure as HttpRequestExecutorError).cause).toBeInstanceOf(
       AggregateError,
     );
-    expect(
-      ((failure as HttpRequestExecutorError).cause as AggregateError).errors,
-    ).toEqual([readError, returnError]);
+    const cleanupErrors = (
+      (failure as HttpRequestExecutorError).cause as AggregateError
+    ).errors;
+    expect(cleanupErrors).toHaveLength(2);
+    expect(cleanupErrors[0]).toBe(readError);
+    expect(cleanupErrors[1]).toBe(returnError);
     expect(closeBody).toHaveBeenCalledOnce();
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
   });
@@ -528,6 +569,17 @@ describe('http.request@1 server executor', () => {
   it.each([
     ['Error', new Error('response body cleanup failed')],
     ['non-Error', 'response body cleanup rejected'],
+    [
+      'hostile object',
+      new Proxy(
+        {},
+        {
+          getPrototypeOf: () => {
+            throw new Error('cleanup-prototype-trap');
+          },
+        },
+      ),
+    ],
   ])(
     'preserves a sole %s streamed-body cleanup failure',
     async (_label, reason) => {
@@ -566,11 +618,13 @@ describe('http.request@1 server executor', () => {
         .catch((error: unknown) => error)) as HttpRequestExecutorError;
 
       expect(failure).toBeInstanceOf(HttpRequestExecutorError);
-      expect(failure.cause).toEqual(
-        reason instanceof Error
-          ? reason
-          : new Error('HTTP response body cleanup failed', { cause: reason }),
-      );
+      if (_label === 'Error') expect(failure.cause).toBe(reason);
+      else {
+        expect(failure.cause).toMatchObject({
+          message: 'HTTP response body cleanup failed',
+        });
+        expect((failure.cause as Error).cause).toBe(reason);
+      }
       expect(closeBody).toHaveBeenCalledOnce();
       expect(providerBody.every((byte) => byte === 0)).toBe(true);
     },
@@ -744,87 +798,133 @@ describe('http.request@1 server executor', () => {
     });
   });
 
-  it('fails closed on missing runtime, insecure credential transport, collisions, and invalid bodies', async () => {
-    const dispatch =
-      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
-    const httpClient = streamingHttpClient(dispatch);
-    const registration = createHttpRequestExecutorRegistration({ httpClient });
-    const state = runtime();
-    const candidateWithRuntime = invocation(state.value);
-    const { runtime: _runtime, ...candidateWithoutRuntime } =
-      candidateWithRuntime;
-    void _runtime;
-    for (const candidate of [
-      candidateWithoutRuntime,
-      invocation(runtime({ sideEffectClass: 'safe' }).value),
-      invocation(runtime({ providerIdempotencyKey: 'unexpected' }).value),
-      invocation(
-        runtime({
-          connections: {
-            resolve: state.resolve,
+  it.each([
+    [
+      'missing runtime',
+      () => {
+        const withRuntime = invocation(runtime().value);
+        const { runtime: _runtime, ...withoutRuntime } = withRuntime;
+        void _runtime;
+        return withoutRuntime;
+      },
+    ],
+    [
+      'safe side-effect policy',
+      () => invocation(runtime({ sideEffectClass: 'safe' }).value),
+    ],
+    [
+      'unexpected provider idempotency key',
+      () => invocation(runtime({ providerIdempotencyKey: 'unexpected' }).value),
+    ],
+    [
+      'missing final credential fence',
+      () => {
+        const state = runtime();
+        return invocation(
+          runtime({ connections: { resolve: state.resolve } }).value,
+        );
+      },
+    ],
+    [
+      'wrong connection slot',
+      () =>
+        invocation(runtime().value, {
+          connectionRefs: { unexpected: connectionId },
+        }),
+    ],
+    [
+      'extra connection slot',
+      () =>
+        invocation(runtime().value, {
+          connectionRefs: {
+            [HTTP_REQUEST_CONNECTION_SLOT]: connectionId,
+            unexpected: connectionId,
           },
-        }).value,
-      ),
-      invocation(state.value, {
-        connectionRefs: { unexpected: connectionId },
-      }),
-      invocation(state.value, {
-        connectionRefs: {
-          [HTTP_REQUEST_CONNECTION_SLOT]: connectionId,
-          unexpected: connectionId,
-        },
-      }),
-      invocation(state.value, {
-        config: config({ method: 'GET' }),
-        input: { body: { encoding: 'utf8', value: 'unexpected' } },
-      }),
-      invocation(state.value, {
-        config: config({ method: 'HEAD' }),
-        input: { body: { encoding: 'utf8', value: 'unexpected' } },
-      }),
-      invocation(state.value, {
-        config: config({ headers: { accept: 'application/json' } }),
-        input: { body: { encoding: 'base64', value: 'not-base64' } },
-      }),
-      invocation(state.value, {
-        input: { body: { encoding: 'base64', value: 'Zh==' } },
-      }),
-      invocation(state.value, {
-        input: {
-          body: {
-            encoding: 'base64',
-            value: Buffer.alloc(1_048_577).toString('base64'),
+        }),
+    ],
+    [
+      'GET body',
+      () =>
+        invocation(runtime().value, {
+          config: config({ method: 'GET' }),
+          input: { body: { encoding: 'utf8', value: 'unexpected' } },
+        }),
+    ],
+    [
+      'HEAD body',
+      () =>
+        invocation(runtime().value, {
+          config: config({ method: 'HEAD' }),
+          input: { body: { encoding: 'utf8', value: 'unexpected' } },
+        }),
+    ],
+    [
+      'malformed base64 body',
+      () =>
+        invocation(runtime().value, {
+          input: { body: { encoding: 'base64', value: 'not-base64' } },
+        }),
+    ],
+    [
+      'non-canonical base64 body',
+      () =>
+        invocation(runtime().value, {
+          input: { body: { encoding: 'base64', value: 'Zh==' } },
+        }),
+    ],
+    [
+      'oversized base64 body',
+      () =>
+        invocation(runtime().value, {
+          input: {
+            body: {
+              encoding: 'base64',
+              value: Buffer.alloc(1_048_577).toString('base64'),
+            },
           },
-        },
-      }),
-      invocation(state.value, {
-        config: config({ headers: { 'X-Tenant': 'configured' } }),
-        runtime: runtime({
-          connections: {
-            assertCurrent: () => Promise.resolve(),
-            resolve: () =>
-              Promise.resolve({
-                connectionId,
-                providerKey: 'http',
-                authType: 'http_headers',
-                secretVersionId,
-                secret: encoder.encode(
-                  JSON.stringify({
-                    schemaVersion: 1,
-                    type: 'http_headers',
-                    headers: { 'x-tenant': 'credential' },
-                  }),
-                ),
-              }),
-          },
-        }).value,
-      }),
-    ])
-      await expect(registration.execute(candidate)).rejects.toBeInstanceOf(
-        HttpRequestExecutorError,
-      );
-    expect(dispatch).not.toHaveBeenCalled();
-  });
+        }),
+    ],
+    [
+      'configured and credential header collision',
+      () =>
+        invocation(runtime().value, {
+          config: config({ headers: { 'X-Tenant': 'configured' } }),
+          runtime: runtime({
+            connections: {
+              assertCurrent: () => Promise.resolve(),
+              resolve: () =>
+                Promise.resolve({
+                  connectionId,
+                  providerKey: 'http',
+                  authType: 'http_headers',
+                  secretVersionId,
+                  secret: encoder.encode(
+                    JSON.stringify({
+                      schemaVersion: 1,
+                      type: 'http_headers',
+                      headers: { 'x-tenant': 'credential' },
+                    }),
+                  ),
+                }),
+            },
+          }).value,
+        }),
+    ],
+  ] as const)(
+    'rejects %s before HTTP provider dispatch',
+    async (_name, createCandidate) => {
+      const dispatch =
+        vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(dispatch),
+      });
+
+      await expect(
+        registration.execute(createCandidate()),
+      ).rejects.toBeInstanceOf(HttpRequestExecutorError);
+      expect(dispatch).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ['empty header set', {}],
@@ -873,7 +973,7 @@ describe('http.request@1 server executor', () => {
     expect(executeStreaming).not.toHaveBeenCalled();
   });
 
-  it('collapses unexpected connection, transport, and artifact failures into safe outcomes', async () => {
+  it('maps HTTP credential-resolution throttling without provider dispatch', async () => {
     const limitedState = runtime({
       connections: {
         assertCurrent: () => Promise.resolve(),
@@ -893,7 +993,9 @@ describe('http.request@1 server executor', () => {
       ),
     );
     expect(noLimitedDispatch).not.toHaveBeenCalled();
+  });
 
+  it('maps a transient HTTP credential-resolution failure without provider dispatch', async () => {
     const connectionState = runtime({
       connections: {
         assertCurrent: () => Promise.resolve(),
@@ -913,7 +1015,9 @@ describe('http.request@1 server executor', () => {
       ),
     );
     expect(neverCalled).not.toHaveBeenCalled();
+  });
 
+  it('maps an unexpected post-dispatch HTTP transport failure to unknown', async () => {
     const transportState = runtime();
     await expect(
       createHttpRequestExecutorRegistration({
@@ -928,7 +1032,11 @@ describe('http.request@1 server executor', () => {
         true,
       ),
     );
+  });
 
+  it('rejects a mismatched resolved HTTP connection identity', async () => {
+    const neverCalled =
+      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
     const mismatchedConnection = runtime({
       connections: {
         assertCurrent: () => Promise.resolve(),
@@ -950,7 +1058,10 @@ describe('http.request@1 server executor', () => {
       decision: { kind: 'failed', errorKind: 'configuration' },
       possiblyDispatched: false,
     });
+    expect(neverCalled).not.toHaveBeenCalled();
+  });
 
+  it('maps an HTTP dispatch-binding mismatch to configuration failure', async () => {
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(() =>
@@ -967,7 +1078,9 @@ describe('http.request@1 server executor', () => {
       decision: { kind: 'failed', errorKind: 'configuration' },
       possiblyDispatched: false,
     });
+  });
 
+  it('maps artifact persistence failure after provider response to unknown', async () => {
     const artifactState = runtime({
       artifacts: {
         write: () => Promise.reject(new Error('storage-secret')),
@@ -984,7 +1097,9 @@ describe('http.request@1 server executor', () => {
       decision: { kind: 'outcome_unknown', errorKind: 'provider' },
       possiblyDispatched: true,
     });
+  });
 
+  it('fails closed when a large HTTP response has no artifact capability', async () => {
     const noArtifactState = runtime();
     const { artifacts: _artifacts, ...runtimeWithoutArtifacts } =
       noArtifactState.value;
@@ -1002,7 +1117,9 @@ describe('http.request@1 server executor', () => {
         true,
       ),
     );
+  });
 
+  it('uses the binary default media type for an untyped large response', async () => {
     const defaultMediaType = runtime();
     await createHttpRequestExecutorRegistration({
       httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
@@ -1016,6 +1133,34 @@ describe('http.request@1 server executor', () => {
     expect(defaultMediaType.write).toHaveBeenCalledWith(
       expect.objectContaining({ mediaType: 'application/octet-stream' }),
     );
+  });
+
+  it('maps a hostile HTTP adapter rejection without leaking or re-inspecting it', async () => {
+    const hostile = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error('adapter-prototype-trap');
+        },
+      },
+    );
+    const state = runtime();
+
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: {
+          executeStreaming: async (request) => {
+            await request.beforeDispatch();
+            // Deliberately model an untrusted adapter rejection.
+            // eslint-disable-next-line @typescript-eslint/only-throw-error
+            throw hostile;
+          },
+        },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'outcome_unknown', errorKind: 'network' },
+      possiblyDispatched: true,
+    });
   });
 
   it.each([
@@ -1142,6 +1287,7 @@ describe('http.request@1 server executor', () => {
 
   it.each([
     ['invalid config', { config: config({ method: 'TRACE' }) }],
+    ['malformed URL', { config: config({ url: 'not-a-url' }) }],
     ['invalid input', { input: { body: { encoding: 'utf8' } } }],
     ['unknown config field', { config: config({ unknown: true }) }],
     [

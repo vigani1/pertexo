@@ -210,12 +210,16 @@ describe('workflow graph validation', () => {
       },
     };
 
-    expect(validateWorkflowGraph(graph([outer, loop])).issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: 'invalid_structured_body' }),
-        expect.objectContaining({ code: 'invalid_structured_body' }),
-      ]),
-    );
+    expect(validateWorkflowGraph(graph([outer, loop])).issues).toEqual([
+      expect.objectContaining({
+        code: 'invalid_structured_body',
+        path: '$.nodes.outer.inputMappings.value',
+      }),
+      expect.objectContaining({
+        code: 'invalid_structured_body',
+        path: '$.nodes.loop.structured.body.nodes.inner.inputMappings.value',
+      }),
+    ]);
   });
   it('requires node-output mappings to reference a direct local predecessor', () => {
     const mapped = (id: string, sourceId: string) => ({

@@ -79,6 +79,7 @@ class MemoryS3Client implements S3ClientLike {
   public checksumSha256Override: string | undefined;
   public checksumTypeOverride: string | undefined;
   public contentLengthOverride: number | undefined;
+  public contentTypeOverride: string | undefined;
   public headMetadataOverride: Readonly<Record<string, string>> | undefined;
   public putFailureAfterStore: Error | undefined;
   public nextHeadNotFound = false;
@@ -162,7 +163,7 @@ class MemoryS3Client implements S3ClientLike {
             ? undefined
             : (this.checksumTypeOverride ?? 'FULL_OBJECT'),
         ContentLength: this.contentLengthOverride ?? object.body.byteLength,
-        ContentType: object.contentType,
+        ContentType: this.contentTypeOverride ?? object.contentType,
         ETag: 'etag-is-not-a-checksum',
         Metadata: this.useInvalidHeadMetadata
           ? {}
@@ -375,6 +376,30 @@ describe('ArtifactStore', () => {
     ).resolves.toBeNull();
   });
 
+  it('leaves the caller stream owned by the caller when PUT preflight rejects', async () => {
+    const { store } = createStore();
+    store.close();
+    const body = new Readable({
+      read() {
+        // Preflight must reject before requesting or owning bytes.
+      },
+    });
+
+    await expect(
+      store.put({
+        artifactId: ARTIFACT_ID,
+        body,
+        byteLength: 5,
+        mediaType: 'text/plain',
+        sha256: HELLO_SHA256,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).rejects.toBeInstanceOf(ArtifactStoreClosedError);
+
+    expect(body.destroyed).toBe(false);
+    body.destroy();
+  });
+
   it.each([
     { body: 'hell', byteLength: 5, sha256: HELLO_SHA256 },
     { body: 'hello!', byteLength: 5, sha256: HELLO_SHA256 },
@@ -498,6 +523,135 @@ describe('ArtifactStore', () => {
       sha256: HELLO_SHA256,
     });
   });
+
+  it.each([
+    [
+      'checksum',
+      {
+        metadata: {
+          'artifact-id': ARTIFACT_ID,
+          'byte-length': '5',
+          'media-type': 'text/plain',
+          sha256: 'a'.repeat(64),
+          'workspace-id': WORKSPACE_ID,
+        },
+      },
+    ],
+    [
+      'media type',
+      {
+        contentType: 'application/json',
+        metadata: {
+          'artifact-id': ARTIFACT_ID,
+          'byte-length': '5',
+          'media-type': 'application/json',
+          sha256: HELLO_SHA256,
+          'workspace-id': WORKSPACE_ID,
+        },
+      },
+    ],
+    [
+      'byte length',
+      {
+        contentLength: 6,
+        metadata: {
+          'artifact-id': ARTIFACT_ID,
+          'byte-length': '6',
+          'media-type': 'text/plain',
+          sha256: HELLO_SHA256,
+          'workspace-id': WORKSPACE_ID,
+        },
+      },
+    ],
+  ] as const)(
+    'retains the object but rejects changed verification %s after PUT',
+    async (_field, override) => {
+      const { client, store } = createStore();
+      client.headMetadataOverride = override.metadata;
+      client.contentLengthOverride =
+        'contentLength' in override ? override.contentLength : undefined;
+      client.contentTypeOverride =
+        'contentType' in override ? override.contentType : undefined;
+
+      await expect(
+        store.put({
+          artifactId: ARTIFACT_ID,
+          body: Readable.from(['hello']),
+          byteLength: 5,
+          mediaType: 'text/plain',
+          sha256: HELLO_SHA256,
+          workspaceId: WORKSPACE_ID,
+        }),
+      ).rejects.toMatchObject({
+        name: 'ArtifactIntegrityError',
+        message:
+          'Uploaded artifact metadata does not match the requested artifact',
+      });
+      expect(
+        client.commands.some(
+          (command) => command instanceof DeleteObjectCommand,
+        ),
+      ).toBe(false);
+
+      client.headMetadataOverride = undefined;
+      client.contentLengthOverride = undefined;
+      client.contentTypeOverride = undefined;
+      await expect(
+        store.head({ artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID }),
+      ).resolves.toMatchObject({ sha256: HELLO_SHA256 });
+    },
+  );
+
+  it.each(['upload', 'download'] as const)(
+    'owns a presigner rejection when cancellation occurs during %s invocation',
+    async (operation) => {
+      const controller = new AbortController();
+      const cancellation = new Error('caller cancelled during presign');
+      const lateFailure = new Error('presigner rejected');
+      const rejectAfterAbort = () => {
+        controller.abort(cancellation);
+        return Promise.reject(lateFailure);
+      };
+      const store = createArtifactStore(
+        {
+          accessKeyId: 'access',
+          bucket: 'pertexo-artifacts',
+          endpoint: 'http://localhost:9090',
+          forcePathStyle: true,
+          maxObjectBytes: 10 * 1024 * 1024,
+          region: 'us-east-1',
+          requestTimeoutMs: 100,
+          secretAccessKey: 'secret',
+        },
+        {
+          client: new MemoryS3Client(),
+          presignGetObject: rejectAfterAbort,
+          presignPutObject: rejectAfterAbort,
+        },
+      );
+
+      const signing =
+        operation === 'upload'
+          ? store.beginDirectUpload({
+              artifactId: ARTIFACT_ID,
+              byteLength: 5,
+              expiresInSeconds: 300,
+              mediaType: 'text/plain',
+              sha256: HELLO_SHA256,
+              signal: controller.signal,
+              workspaceId: WORKSPACE_ID,
+            })
+          : store.beginDirectDownload({
+              artifactId: ARTIFACT_ID,
+              expiresInSeconds: 300,
+              signal: controller.signal,
+              workspaceId: WORKSPACE_ID,
+            });
+
+      await expect(signing).rejects.toBe(cancellation);
+      await Promise.resolve();
+    },
+  );
 
   it('presigns an immutable, checksum-bound, workspace-scoped direct upload', async () => {
     const fixture = createStore();
@@ -1256,41 +1410,74 @@ describe('ArtifactStore', () => {
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
 
-  it('rejects malformed, foreign, duplicate, and over-bound listings', async () => {
-    const { client, store } = createStore();
-    const purge = () =>
-      store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID });
+  it.each([
+    [
+      'foreign workspace key',
+      {
+        Versions: [
+          { Key: 'workspaces/foreign/artifacts/one', VersionId: 'v1' },
+        ],
+      },
+      1,
+    ],
+    [
+      'empty version identity',
+      {
+        Versions: [
+          {
+            Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+            VersionId: '',
+          },
+        ],
+      },
+      1,
+    ],
+    [
+      'duplicate version identity',
+      {
+        DeleteMarkers: [
+          {
+            Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+            VersionId: 'v1',
+          },
+        ],
+        Versions: [
+          {
+            Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+            VersionId: 'v1',
+          },
+        ],
+      },
+      2,
+    ],
+    [
+      'listing beyond caller bound',
+      {
+        Versions: [
+          {
+            Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+            VersionId: 'v1',
+          },
+          {
+            Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+            VersionId: 'v2',
+          },
+        ],
+      },
+      1,
+    ],
+  ] as const)(
+    'rejects a workspace object listing with %s',
+    async (_case, listing, maxObjects) => {
+      const { client, store } = createStore();
+      client.versionListOutput = listing;
 
-    client.versionListOutput = {
-      Versions: [{ Key: 'workspaces/foreign/artifacts/one', VersionId: 'v1' }],
-    };
-    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
-    client.versionListOutput = {
-      Versions: [
-        {
-          Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
-          VersionId: '',
-        },
-      ],
-    };
-    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
-    const duplicate = {
-      Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
-      VersionId: 'v1',
-    };
-    client.versionListOutput = {
-      DeleteMarkers: [duplicate],
-      Versions: [duplicate],
-    };
-    await expect(
-      store.purgeWorkspacePage({ maxObjects: 2, workspaceId: WORKSPACE_ID }),
-    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
-    client.versionListOutput = {
-      Versions: [duplicate, { ...duplicate, VersionId: 'v2' }],
-    };
-    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
-    expect(client.deletedVersions).toBeUndefined();
-  });
+      await expect(
+        store.purgeWorkspacePage({ maxObjects, workspaceId: WORKSPACE_ID }),
+      ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+      expect(client.deletedVersions).toBeUndefined();
+    },
+  );
 
   it('fails a page when S3 reports a partial version deletion error', async () => {
     const { client, store } = createStore();
@@ -1308,10 +1495,15 @@ describe('ArtifactStore', () => {
   });
 
   it.each([
-    { acknowledgements: [] },
-    { acknowledgements: [{ Key: 'foreign', VersionId: 'version-1' }] },
-    {
-      acknowledgements: [
+    ['missing acknowledgement', [], ['version-1']],
+    [
+      'foreign identity',
+      [{ Key: 'foreign', VersionId: 'version-1' }],
+      ['version-1'],
+    ],
+    [
+      'duplicate identity',
+      [
         {
           Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
           VersionId: 'version-1',
@@ -1321,19 +1513,26 @@ describe('ArtifactStore', () => {
           VersionId: 'version-1',
         },
       ],
-    },
-    { acknowledgements: [{ VersionId: 'version-1' }] },
-  ])(
-    'rejects an invalid delete acknowledgement set: %#',
-    async ({ acknowledgements }) => {
+      ['version-1', 'version-2'],
+    ],
+    ['missing key', [{ VersionId: 'version-1' }], ['version-1']],
+  ] as const)(
+    'rejects delete acknowledgements with %s',
+    async (_case, acknowledgements, requestedVersions) => {
       const { client, store } = createStore();
       const key = `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`;
       client.versionListOutput = {
-        Versions: [{ Key: key, VersionId: 'version-1' }],
+        Versions: requestedVersions.map((VersionId) => ({
+          Key: key,
+          VersionId,
+        })),
       };
       client.deleteVersionsAcknowledgements = acknowledgements;
       await expect(
-        store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
+        store.purgeWorkspacePage({
+          maxObjects: requestedVersions.length,
+          workspaceId: WORKSPACE_ID,
+        }),
       ).rejects.toBeInstanceOf(ArtifactIntegrityError);
     },
   );

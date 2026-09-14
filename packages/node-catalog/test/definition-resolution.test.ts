@@ -32,4 +32,19 @@ describe('platform node definition resolution', () => {
       ),
     ).toThrow(/not implemented/u);
   });
+
+  it('rejects malformed and unsupported releases at the public resolver', () => {
+    expect(() =>
+      resolvePlatformNodeDefinitionForRelease({}, HTTP_REQUEST_DEFINITION),
+    ).toThrow();
+    expect(() =>
+      resolvePlatformNodeDefinitionForRelease(
+        {
+          ...PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+          epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch + 1_000,
+        },
+        HTTP_REQUEST_DEFINITION,
+      ),
+    ).toThrow();
+  });
 });

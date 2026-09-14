@@ -48,6 +48,7 @@ export {
   withPlatformTransaction,
   withTenantScopedReadClient,
   withTenantScopedClient,
+  withWorkspaceReadTransaction,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
 } from './workspace.js';

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { count, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -280,6 +280,38 @@ describe('transactional inbox duplicate proof', () => {
     ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
   });
 
+  it('fails closed on an incomplete existing receipt without invoking business work', async () => {
+    const messageId = randomUUID();
+    await workerDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db
+        .insert(inboxReceipts)
+        .values({
+          consumerName: 'incomplete-proof',
+          messageId,
+          payloadChecksum: checksumA,
+          workspaceId: workspaceA,
+        })
+        .then(() => undefined),
+    );
+    let callbacks = 0;
+    await expect(
+      consumeInboxMessage(
+        workerDatabase,
+        workspaceA,
+        {
+          consumerName: 'incomplete-proof',
+          messageId,
+          payloadChecksum: checksumA,
+        },
+        () => {
+          callbacks += 1;
+          return Promise.resolve(undefined);
+        },
+      ),
+    ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
+    expect(callbacks).toBe(0);
+  });
+
   it('rolls the receipt and business mutation back together', async () => {
     const messageId = randomUUID();
     const logicalAttemptId = randomUUID();
@@ -303,6 +335,20 @@ describe('transactional inbox duplicate proof', () => {
       ),
     ).rejects.toThrow('injected failure');
 
+    await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      const mutations = await db.execute(sql`
+        select count(*)::int count
+        from app.queue_duplicate_probe_attempts
+        where logical_attempt_id=${logicalAttemptId}
+      `);
+      expect(mutations.rows).toEqual([{ count: 0 }]);
+      const receipts = await db
+        .select({ messageId: inboxReceipts.messageId })
+        .from(inboxReceipts)
+        .where(eq(inboxReceipts.messageId, messageId));
+      expect(receipts).toEqual([]);
+    });
+
     await expect(
       consumeInboxMessage(
         workerDatabase,
@@ -318,20 +364,44 @@ describe('transactional inbox duplicate proof', () => {
   });
 
   it('stores completed receipts only in the active workspace', async () => {
+    const messageId = randomUUID();
     await consumeInboxMessage(
       workerDatabase,
       workspaceA,
       {
         consumerName: 'workspace-proof',
-        messageId: randomUUID(),
+        messageId,
         payloadChecksum: checksumA,
       },
       () => Promise.resolve(undefined),
     );
     const receipts = await workerDatabase.withWorkspace(
       workspaceA,
-      async ({ db }) => db.select({ count: count() }).from(inboxReceipts),
+      async ({ db }) =>
+        db
+          .select({
+            completedAt: inboxReceipts.completedAt,
+            consumerName: inboxReceipts.consumerName,
+            messageId: inboxReceipts.messageId,
+            workspaceId: inboxReceipts.workspaceId,
+          })
+          .from(inboxReceipts),
     );
-    expect(receipts[0]?.count).toBeGreaterThan(0);
+    expect(receipts).toEqual([
+      {
+        completedAt: expect.any(Date) as Date,
+        consumerName: 'workspace-proof',
+        messageId,
+        workspaceId: workspaceA,
+      },
+    ]);
+    await expect(
+      workerDatabase.withWorkspace(workspaceB, ({ db }) =>
+        db
+          .select({ messageId: inboxReceipts.messageId })
+          .from(inboxReceipts)
+          .where(eq(inboxReceipts.messageId, messageId)),
+      ),
+    ).resolves.toEqual([]);
   });
 });

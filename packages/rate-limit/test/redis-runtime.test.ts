@@ -144,6 +144,65 @@ describe('Redis rate-limit runtime', () => {
     expect(redisMock.connect).toHaveBeenCalledTimes(2);
   });
 
+  it('disconnects after a rejected quit and caches the original failure', async () => {
+    const quitFailure = new Error('quit rejected');
+    redisMock.status = 'ready';
+    redisMock.quit.mockRejectedValue(quitFailure);
+    const runtime = new RedisRateLimitRuntime('redis://example.test');
+
+    const firstClose = runtime.close();
+    const secondClose = runtime.close();
+
+    expect(secondClose).toBe(firstClose);
+    await expect(firstClose).rejects.toBe(quitFailure);
+    await expect(runtime.close()).rejects.toBe(quitFailure);
+    expect(redisMock.quit).toHaveBeenCalledOnce();
+    expect(redisMock.disconnect).toHaveBeenCalledOnce();
+    await expect(runtime.consume(decision)).rejects.toThrow(/closed/iu);
+    expect(redisMock.connect).not.toHaveBeenCalled();
+  });
+
+  it('bounds a stalled quit and terminally disconnects without retrying it', async () => {
+    redisMock.status = 'ready';
+    redisMock.quit.mockReturnValue(new Promise(() => undefined));
+    const runtime = new RedisRateLimitRuntime('redis://example.test', {
+      operationTimeoutMs: 100,
+    });
+
+    const firstClose = runtime.close();
+    const rejected = expect(firstClose).rejects.toThrow(
+      'Redis rate-limit close timed out',
+    );
+    expect(runtime.close()).toBe(firstClose);
+    await vi.advanceTimersByTimeAsync(100);
+
+    await rejected;
+    expect(redisMock.quit).toHaveBeenCalledOnce();
+    expect(redisMock.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('caches before a synchronous quit failure and preserves it over cleanup', async () => {
+    const quitFailure = new Error('synchronous quit failure');
+    redisMock.status = 'ready';
+    let reentrantClose: Promise<void> | undefined;
+    redisMock.quit.mockImplementation(() => {
+      reentrantClose = runtime.close();
+      throw quitFailure;
+    });
+    redisMock.disconnect.mockImplementation(() => {
+      throw new Error('disconnect failure');
+    });
+    const runtime = new RedisRateLimitRuntime('redis://example.test');
+
+    const firstClose = runtime.close();
+
+    expect(runtime.close()).toBe(firstClose);
+    await expect(firstClose).rejects.toBe(quitFailure);
+    expect(reentrantClose).toBe(firstClose);
+    expect(redisMock.quit).toHaveBeenCalledOnce();
+    expect(redisMock.disconnect).toHaveBeenCalledOnce();
+  });
+
   it('fails an in-flight connect when shutdown wins the race', async () => {
     let finishConnect: (() => void) | undefined;
     redisMock.connect.mockReturnValue(

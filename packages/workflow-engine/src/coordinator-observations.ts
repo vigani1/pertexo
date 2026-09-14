@@ -33,6 +33,17 @@ type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint
 >['invocations'][number];
 
+function loopObservationKey(observation: WorkflowObservation): string {
+  if (
+    observation.kind !== 'loop_started' &&
+    observation.kind !== 'loop_iteration_completed'
+  )
+    return '';
+  const controlKey = observation.controlInvocationKey ?? observation.loopId;
+  if (observation.kind === 'loop_started') return `${controlKey}:0:`;
+  return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
+}
+
 export function branchSelectionObservations(
   completedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
@@ -335,17 +346,9 @@ export function forEachCoordinatorObservations(
       });
     }
   }
-  observations.sort((left, right) => {
-    const leftKey =
-      left.kind === 'loop_started' || left.kind === 'loop_iteration_completed'
-        ? `${left.controlInvocationKey ?? left.loopId}:${left.kind === 'loop_started' ? '0' : '1'}:${left.kind === 'loop_iteration_completed' ? String(left.ordinal).padStart(16, '0') : ''}`
-        : '';
-    const rightKey =
-      right.kind === 'loop_started' || right.kind === 'loop_iteration_completed'
-        ? `${right.controlInvocationKey ?? right.loopId}:${right.kind === 'loop_started' ? '0' : '1'}:${right.kind === 'loop_iteration_completed' ? String(right.ordinal).padStart(16, '0') : ''}`
-        : '';
-    return compareOrdinal(leftKey, rightKey);
-  });
+  observations.sort((left, right) =>
+    compareOrdinal(loopObservationKey(left), loopObservationKey(right)),
+  );
   return { observations, declarationInvocationKeys: declarations };
 }
 export function mergeCoordinatorObservations(

@@ -13,7 +13,9 @@ import {
   DEFINITION_LIFECYCLE_TRANSITIONS,
   EXECUTOR_LIFECYCLE_TRANSITIONS,
   generateSchemaDocument,
+  isBoundedNodeJson,
   nodeManifestSchema,
+  parseRegistryRelease,
   registryReleaseSchema,
   type DefinitionIdentity,
   type ExecutorIdentity,
@@ -49,6 +51,10 @@ const executor: ExecutorIdentity = Object.freeze({
 });
 const policy: PolicyReference = Object.freeze({
   key: 'test.policy',
+  version: 1,
+});
+const secondPolicy: PolicyReference = Object.freeze({
+  key: 'test.policy.second',
   version: 1,
 });
 
@@ -103,6 +109,69 @@ function release(): ReturnType<typeof createRegistryRelease> {
     ],
     policies: [policy],
   });
+}
+
+function dispatchAwareFixture(beforeDispatch = vi.fn(() => Promise.resolve())) {
+  const dispatchManifest = {
+    ...manifest,
+    executorAbi: 2,
+  } satisfies NodeManifest;
+  const dispatchRelease = createRegistryRelease({
+    definitions: [dispatchManifest],
+    epoch: 1,
+    executors: [
+      {
+        abiVersion: 2,
+        definitions: [definition],
+        executor,
+        lifecycle: 'active',
+        policyReferences: [policy],
+      },
+    ],
+    policies: [policy],
+  });
+  const runtime = {
+    workspaceId: '11111111-1111-4111-8111-111111111111',
+    runId: '22222222-2222-4222-8222-222222222222',
+    nodeRunId: '33333333-3333-4333-8333-333333333333',
+    attemptId: '44444444-4444-4444-8444-444444444444',
+    attemptNumber: 1,
+    nodeId: 'node-1',
+    invocationKey: 'invocation-1',
+    sideEffectClass: 'unsafe' as const,
+    beforeDispatch,
+  };
+  const request = {
+    config: {},
+    definition,
+    executor,
+    input: {},
+    connectionRefs: {
+      http_headers: '55555555-5555-4555-8555-555555555555',
+    },
+    signal: new AbortController().signal,
+    runtime,
+  };
+  const registryFor = (execute: NodeExecutorRegistration['execute']) =>
+    createNodeRegistry({
+      definitions: [
+        {
+          manifest: dispatchManifest,
+          configSchema,
+          inputSchema: objectSchema,
+          outputSchema: objectSchema,
+        },
+      ],
+      executors: [
+        {
+          ...executorRegistration(),
+          abiVersion: 2,
+          execute,
+        },
+      ],
+      release: dispatchRelease,
+    });
+  return { beforeDispatch, registryFor, request, runtime };
 }
 
 describe('node-sdk registry release contracts', () => {
@@ -273,6 +342,157 @@ describe('node-sdk registry release contracts', () => {
         .update(canonicalCompatibilityReleaseJson(one))
         .digest('hex')}`,
     );
+
+    const otherDefinition = { key: 'test.other', version: 1 } as const;
+    const otherExecutor = { key: 'test.other', version: 1 } as const;
+    const two = createRegistryRelease({
+      definitions: [
+        { ...manifest, policyReferences: [policy, secondPolicy] },
+        {
+          ...manifest,
+          definition: otherDefinition,
+          executor: otherExecutor,
+          policyReferences: [policy, secondPolicy],
+        },
+      ],
+      epoch: 2,
+      executors: [
+        {
+          abiVersion: 1,
+          definitions: [definition],
+          executor,
+          lifecycle: 'active',
+          policyReferences: [policy, secondPolicy],
+        },
+        {
+          abiVersion: 1,
+          definitions: [otherDefinition],
+          executor: otherExecutor,
+          lifecycle: 'active',
+          policyReferences: [policy, secondPolicy],
+        },
+      ],
+      policies: [policy, secondPolicy],
+    });
+    const fullyPermuted = createRegistryRelease({
+      definitions: [...two.definitions].reverse().map((item) => ({
+        ...item,
+        policyReferences: [...item.policyReferences].reverse(),
+      })),
+      epoch: two.epoch,
+      executors: [...two.executors].reverse().map((item) => ({
+        ...item,
+        definitions: [...item.definitions].reverse(),
+        policyReferences: [...item.policyReferences].reverse(),
+      })),
+      policies: [...two.policies].reverse(),
+    });
+    expect(fullyPermuted.fingerprint).toBe(two.fingerprint);
+  });
+
+  it('rejects duplicate definition policies before set comparison', () => {
+    const malformedInput = {
+      definitions: [{ ...manifest, policyReferences: [policy, policy] }],
+      epoch: 1,
+      executors: [
+        {
+          abiVersion: 1,
+          definitions: [definition],
+          executor,
+          lifecycle: 'active' as const,
+          policyReferences: [policy, secondPolicy],
+        },
+      ],
+      policies: [policy, secondPolicy],
+      schemaVersion: 1 as const,
+    };
+
+    expect(() => createRegistryRelease(malformedInput)).toThrow(
+      /duplicate definition policy/u,
+    );
+    const malformedRelease = {
+      ...malformedInput,
+      fingerprint: computeCompatibilityReleaseFingerprint(malformedInput),
+    };
+    expect(() => parseRegistryRelease(malformedRelease)).toThrow(
+      /duplicate definition policy/u,
+    );
+    expect(() =>
+      createRegistryRelease({
+        ...malformedInput,
+        executors: [
+          {
+            abiVersion: 1,
+            definitions: [definition],
+            executor,
+            lifecycle: 'active',
+            policyReferences: [policy, policy],
+          },
+        ],
+      }),
+    ).toThrow(/duplicate definition policy/u);
+  });
+
+  it('accepts unique reordered policies and rejects unknown or version-drifted edges', () => {
+    const reordered = createRegistryRelease({
+      definitions: [{ ...manifest, policyReferences: [secondPolicy, policy] }],
+      epoch: 1,
+      executors: [
+        {
+          abiVersion: 1,
+          definitions: [definition],
+          executor,
+          lifecycle: 'active',
+          policyReferences: [policy, secondPolicy],
+        },
+      ],
+      policies: [secondPolicy, policy],
+    });
+    const oppositeOrder = createRegistryRelease({
+      definitions: [{ ...manifest, policyReferences: [policy, secondPolicy] }],
+      epoch: 1,
+      executors: [
+        {
+          abiVersion: 1,
+          definitions: [definition],
+          executor,
+          lifecycle: 'active',
+          policyReferences: [secondPolicy, policy],
+        },
+      ],
+      policies: [policy, secondPolicy],
+    });
+
+    expect(reordered.fingerprint).toBe(oppositeOrder.fingerprint);
+    expect(() =>
+      createRegistryRelease({
+        definitions: [
+          {
+            ...manifest,
+            policyReferences: [{ ...policy, version: policy.version + 1 }],
+          },
+        ],
+        epoch: 1,
+        executors: release().executors,
+        policies: [policy],
+      }),
+    ).toThrow(/policies do not match/u);
+    expect(() =>
+      createRegistryRelease({
+        definitions: [{ ...manifest, policyReferences: [secondPolicy] }],
+        epoch: 1,
+        executors: [
+          {
+            abiVersion: 1,
+            definitions: [definition],
+            executor,
+            lifecycle: 'active',
+            policyReferences: [secondPolicy],
+          },
+        ],
+        policies: [policy],
+      }),
+    ).toThrow(/unknown policy/u);
   });
 
   it.each([
@@ -409,7 +629,7 @@ describe('node-sdk registry release contracts', () => {
   });
 });
 
-describe('node-sdk exact server registry', () => {
+describe('node-sdk bounded JSON contracts', () => {
   it('keeps browser and server bounded JSON admission in parity', () => {
     expect(
       generateSchemaDocument(boundedNodeJsonSchema)[
@@ -511,6 +731,122 @@ describe('node-sdk exact server registry', () => {
     expect(getterCalls).toBe(0);
   });
 
+  it('measures and returns one own-data snapshot without invoking hidden JSON hooks', () => {
+    let getterCalls = 0;
+    let methodCalls = 0;
+    const oversized = Object.defineProperty(
+      { value: 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes) },
+      'toJSON',
+      {
+        get: () => {
+          getterCalls += 1;
+          return () => {
+            methodCalls += 1;
+            return {};
+          };
+        },
+      },
+    );
+    const nested = Object.defineProperty({ value: true }, 'toJSON', {
+      value: () => {
+        methodCalls += 1;
+        return {};
+      },
+    });
+    const oversizedMethod = Object.defineProperty(
+      { value: 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes) },
+      'toJSON',
+      {
+        value: () => {
+          methodCalls += 1;
+          return {};
+        },
+      },
+    );
+    const nestedGetter = Object.defineProperty({ value: true }, 'toJSON', {
+      get: () => {
+        getterCalls += 1;
+        return () => ({});
+      },
+    });
+    const rootMethod = Object.defineProperty({ value: true }, 'toJSON', {
+      value: () => {
+        methodCalls += 1;
+        return {};
+      },
+    });
+
+    expect(isBoundedNodeJson(oversized)).toBe(false);
+    expect(isBoundedNodeJson(oversizedMethod)).toBe(false);
+    expect(boundedNodeJsonSchema.safeParse(oversized).success).toBe(false);
+    expect(boundedNodeJsonSchema.safeParse(oversizedMethod).success).toBe(
+      false,
+    );
+    expect(() => canonicalizeBoundedJson(oversized)).toThrow(/byte limit/u);
+    expect(() => canonicalizeBoundedJson(oversizedMethod)).toThrow(
+      /byte limit/u,
+    );
+    for (const input of [rootMethod, { nested }, { nested: nestedGetter }]) {
+      const browserSnapshot = boundedNodeJsonSchema.parse(input);
+      const serverSnapshot = canonicalizeBoundedJson(input);
+      expect(browserSnapshot).toEqual(serverSnapshot);
+      expect(JSON.stringify(browserSnapshot)).toBe(
+        JSON.stringify(serverSnapshot),
+      );
+      expect(Object.isFrozen(browserSnapshot)).toBe(true);
+      for (const child of Object.values(
+        browserSnapshot as Record<string, unknown>,
+      ))
+        if (child !== null && typeof child === 'object')
+          expect(Object.isFrozen(child)).toBe(true);
+    }
+    expect(getterCalls).toBe(0);
+    expect(methodCalls).toBe(0);
+  });
+
+  it('never reads proxy values after descriptor inspection', () => {
+    let getCalls = 0;
+    const input = new Proxy(
+      { nested: { value: true } },
+      {
+        get: () => {
+          getCalls += 1;
+          throw new Error('value trap must not run');
+        },
+      },
+    );
+    const arrayInput = new Proxy([{ value: true }], {
+      get: () => {
+        getCalls += 1;
+        throw new Error('array value trap must not run');
+      },
+    });
+    const mutationTarget = { value: 'accepted' };
+    let descriptorCalls = 0;
+    const mutationInput = new Proxy(mutationTarget, {
+      getOwnPropertyDescriptor: (target, key) => {
+        descriptorCalls += 1;
+        const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
+        if (descriptorCalls === 2) target.value = 'mutated-after-snapshot';
+        return descriptor;
+      },
+    });
+
+    expect(boundedNodeJsonSchema.parse(input)).toEqual({
+      nested: { value: true },
+    });
+    expect(canonicalizeBoundedJson(input)).toEqual({
+      nested: { value: true },
+    });
+    expect(boundedNodeJsonSchema.parse(arrayInput)).toEqual([{ value: true }]);
+    expect(canonicalizeBoundedJson(arrayInput)).toEqual([{ value: true }]);
+    expect(canonicalizeBoundedJson(mutationInput)).toEqual({
+      value: 'accepted',
+    });
+    expect(mutationTarget.value).toBe('mutated-after-snapshot');
+    expect(getCalls).toBe(0);
+  });
+
   it('accepts null-prototype JSON and normalizes negative zero on the server', () => {
     const nullPrototype = Object.assign(Object.create(null) as object, {
       nested: { value: true },
@@ -552,6 +888,13 @@ describe('node-sdk exact server registry', () => {
   });
 
   it('normalizes hostile reflection failures and rejects invalid custom limits', () => {
+    const secondaryTrap = new Proxy(new Error('hidden'), {
+      getPrototypeOf: () => {
+        throw new Error('secondary trap escaped');
+      },
+    });
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
     const hostileValues = [
       new Proxy(
         {},
@@ -577,8 +920,30 @@ describe('node-sdk exact server registry', () => {
           },
         },
       ),
+      new Proxy(
+        {},
+        {
+          getPrototypeOf: () => {
+            throw secondaryTrap;
+          },
+        },
+      ),
+      new Proxy(
+        {},
+        {
+          getPrototypeOf: () => {
+            // eslint-disable-next-line @typescript-eslint/only-throw-error -- hostile inputs may throw arbitrary JavaScript values.
+            throw 17;
+          },
+        },
+      ),
+      revoked.proxy,
     ];
-    for (const hostile of hostileValues) {
+    const rootAndNestedHostileValues = [
+      ...hostileValues,
+      ...hostileValues.map((hostile) => ({ nested: hostile })),
+    ];
+    for (const hostile of rootAndNestedHostileValues) {
       expect(boundedNodeJsonSchema.safeParse(hostile).success).toBe(false);
       expect(() => canonicalizeBoundedJson(hostile)).toThrow(
         InvalidBoundedJsonError,
@@ -595,11 +960,56 @@ describe('node-sdk exact server registry', () => {
     }
   });
 
+  it('normalizes hostile release parser failures at the public registry boundary', () => {
+    const secondaryTrap = new Proxy(new Error('hidden'), {
+      getPrototypeOf: () => {
+        throw new Error('secondary trap escaped');
+      },
+    });
+    const hostileRelease = new Proxy(release(), {
+      ownKeys: () => {
+        throw secondaryTrap;
+      },
+    });
+
+    let failure: unknown;
+    try {
+      createNodeRegistry({
+        definitions: [
+          {
+            manifest,
+            configSchema,
+            inputSchema: objectSchema,
+            outputSchema: objectSchema,
+          },
+        ],
+        executors: [executorRegistration()],
+        release: hostileRelease,
+      });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({ code: 'registry_compatibility' });
+  });
+
   it('enforces scalar byte limits before returning normalized JSON', () => {
     const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
     expect(canonicalizeBoundedJson(exact)).toBe(exact);
     expect(() => canonicalizeBoundedJson(`${exact}x`)).toThrow(
       InvalidBoundedJsonError,
+    );
+    const unicodePayloadBytes = NODE_EXECUTION_LIMITS_V1.bytes - 2;
+    const unicodeExact = `${'🚀'.repeat(Math.floor(unicodePayloadBytes / 4))}${'x'.repeat(unicodePayloadBytes % 4)}`;
+    expect(new TextEncoder().encode(JSON.stringify(unicodeExact))).toHaveLength(
+      NODE_EXECUTION_LIMITS_V1.bytes,
+    );
+    expect(boundedNodeJsonSchema.parse(unicodeExact)).toBe(unicodeExact);
+    expect(canonicalizeBoundedJson(unicodeExact)).toBe(unicodeExact);
+    expect(boundedNodeJsonSchema.safeParse(`${unicodeExact}x`).success).toBe(
+      false,
+    );
+    expect(() => canonicalizeBoundedJson(`${unicodeExact}x`)).toThrow(
+      /byte limit/u,
     );
 
     const envelope = { config: { value: '' }, input: {} };
@@ -645,7 +1055,9 @@ describe('node-sdk exact server registry', () => {
       ),
     ).toThrow(/depth limit/u);
   });
+});
 
+describe('node-sdk exact server registry', () => {
   it('rejects duplicate identities and mismatched bindings', () => {
     const one = release();
     expect(() =>
@@ -722,87 +1134,38 @@ describe('node-sdk exact server registry', () => {
     ).rejects.toBeInstanceOf(InvalidBoundedJsonError);
   });
 
-  it('makes ABI 2 dispatch-aware and requires exactly one durable marker', async () => {
-    const dispatchManifest = {
-      ...manifest,
-      executorAbi: 2,
-    } satisfies NodeManifest;
-    const dispatchRelease = createRegistryRelease({
-      definitions: [dispatchManifest],
-      epoch: 1,
-      executors: [
-        {
-          abiVersion: 2,
-          definitions: [definition],
-          executor,
-          lifecycle: 'active',
-          policyReferences: [policy],
-        },
-      ],
-      policies: [policy],
-    });
-    const marker = vi.fn(() => Promise.resolve());
-    const runtime = {
-      workspaceId: '11111111-1111-4111-8111-111111111111',
-      runId: '22222222-2222-4222-8222-222222222222',
-      nodeRunId: '33333333-3333-4333-8333-333333333333',
-      attemptId: '44444444-4444-4444-8444-444444444444',
-      attemptNumber: 1,
-      nodeId: 'node-1',
-      invocationKey: 'invocation-1',
-      sideEffectClass: 'unsafe' as const,
-      beforeDispatch: marker,
-    };
-    const request = {
-      config: {},
-      definition,
-      executor,
-      input: {},
-      connectionRefs: {
-        http_headers: '55555555-5555-4555-8555-555555555555',
-      },
-      signal: new AbortController().signal,
-      runtime,
-    };
-    const registryFor = (execute: NodeExecutorRegistration['execute']) =>
-      createNodeRegistry({
-        definitions: [
-          {
-            manifest: dispatchManifest,
-            configSchema,
-            inputSchema: objectSchema,
-            outputSchema: objectSchema,
-          },
-        ],
-        executors: [
-          {
-            ...executorRegistration(),
-            abiVersion: 2,
-            execute,
-          },
-        ],
-        release: dispatchRelease,
-      });
-
-    const successful = registryFor(async (invocation) => {
+  it('executes ABI 2 after one durable marker and requires its runtime', async () => {
+    const { beforeDispatch, registryFor, request } = dispatchAwareFixture();
+    const registry = registryFor(async (invocation) => {
       expect(invocation.connectionRefs).toEqual(request.connectionRefs);
       await invocation.runtime?.beforeDispatch();
       return { ok: true };
     });
-    expect(successful.dispatchMode(request)).toBe('executor_controlled');
-    await expect(successful.execute(request)).resolves.toMatchObject({
+    expect(registry.dispatchMode(request)).toBe('executor_controlled');
+    await expect(registry.execute(request)).resolves.toMatchObject({
       output: { ok: true },
     });
-    expect(marker).toHaveBeenCalledOnce();
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+
+    const { runtime: _runtime, ...withoutRuntime } = request;
+    void _runtime;
+    await expect(registry.execute(withoutRuntime)).rejects.toBeInstanceOf(
+      NodeExecutionRuntimeRequiredError,
+    );
+  });
+
+  it('rejects ABI 2 completion without a durable marker', async () => {
+    const { registryFor, request } = dispatchAwareFixture();
 
     await expect(
       registryFor(() => Promise.resolve({})).execute(request),
     ).rejects.toBeInstanceOf(NodeDispatchEvidenceError);
-    const { runtime: _runtime, ...withoutRuntime } = request;
-    void _runtime;
-    await expect(successful.execute(withoutRuntime)).rejects.toBeInstanceOf(
-      NodeExecutionRuntimeRequiredError,
-    );
+  });
+
+  it('rejects a second ABI 2 durable marker', async () => {
+    const { beforeDispatch, registryFor, request, runtime } =
+      dispatchAwareFixture();
+
     await expect(
       registryFor(async (invocation) => {
         await invocation.runtime?.beforeDispatch();
@@ -810,10 +1173,13 @@ describe('node-sdk exact server registry', () => {
         return {};
       }).execute({
         ...request,
-        runtime: { ...runtime, beforeDispatch: marker },
+        runtime: { ...runtime, beforeDispatch },
       }),
     ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+  });
 
+  it('admits only one concurrent ABI 2 durable marker', async () => {
     let releaseMarker: (() => void) | undefined;
     const deferredMarker = vi.fn(
       () =>
@@ -821,6 +1187,8 @@ describe('node-sdk exact server registry', () => {
           releaseMarker = resolve;
         }),
     );
+    const { registryFor, request, runtime } =
+      dispatchAwareFixture(deferredMarker);
     const concurrent = registryFor(async (invocation) => {
       const attempts = await Promise.allSettled(
         Array.from({ length: 8 }, () =>
@@ -840,10 +1208,14 @@ describe('node-sdk exact server registry', () => {
     });
     releaseMarker?.();
     await expect(concurrent).resolves.toMatchObject({ output: {} });
+  });
 
+  it('does not retry a rejected ABI 2 durable marker', async () => {
     const rejectedMarker = vi.fn(() =>
       Promise.reject(new Error('durable marker rejected')),
     );
+    const { registryFor, request, runtime } =
+      dispatchAwareFixture(rejectedMarker);
     await expect(
       registryFor(async (invocation) => {
         await expect(invocation.runtime?.beforeDispatch()).rejects.toThrow(
@@ -859,7 +1231,9 @@ describe('node-sdk exact server registry', () => {
       }),
     ).rejects.toMatchObject({ code: 'dispatch_evidence_missing' });
     expect(rejectedMarker).toHaveBeenCalledOnce();
+  });
 
+  it('preserves executor rejection while an ABI 2 marker remains in flight', async () => {
     let resolveInFlight: (() => void) | undefined;
     const inFlightMarker = vi.fn(
       () =>
@@ -867,6 +1241,8 @@ describe('node-sdk exact server registry', () => {
           resolveInFlight = resolve;
         }),
     );
+    const { registryFor, request, runtime } =
+      dispatchAwareFixture(inFlightMarker);
     const executorFailure = registryFor((invocation) => {
       void invocation.runtime?.beforeDispatch();
       return Promise.reject(new Error('executor rejected while marking'));

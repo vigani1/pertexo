@@ -1,14 +1,14 @@
-/* global process */
-
-import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { promisify } from 'node:util';
+import process from 'node:process';
 
+import {
+  describeBoundedChildFailure,
+  runBoundedChildProcess,
+} from '../bounded-child-process.mjs';
 import { preserveTemporaryDirectoryFailure } from '../temporary-directory-cleanup.mjs';
 
-const execFileAsync = promisify(execFile);
 const root = resolve(import.meta.dirname, '../..');
 const renderer = resolve(
   root,
@@ -35,10 +35,29 @@ const temporaryRoot = await mkdtemp(resolve(tmpdir(), 'pertexo-ecs-render-'));
 let primary = { error: undefined, failed: false };
 
 async function render(directory) {
-  await execFileAsync(process.execPath, [renderer, directory], {
-    cwd: root,
-    env: renderEnvironment,
-  });
+  const timeoutMs = 30_000;
+  const result = await runBoundedChildProcess(
+    process.execPath,
+    [renderer, directory],
+    {
+      cwd: root,
+      env: renderEnvironment,
+      timeoutMs,
+    },
+  );
+  if (
+    result.spawnError !== undefined ||
+    result.timedOut ||
+    result.signal !== null ||
+    result.status !== 0
+  )
+    throw new Error(
+      describeBoundedChildFailure(
+        'task-definition renderer',
+        result,
+        timeoutMs,
+      ),
+    );
 }
 
 try {
@@ -90,31 +109,33 @@ try {
       );
   }
 
-  try {
-    await execFileAsync(
-      process.execPath,
-      [renderer, resolve(temporaryRoot, 'invalid')],
-      {
-        cwd: root,
-        env: {
-          ...renderEnvironment,
-          ECS_IMAGE_URI: 'registry.example.invalid/pertexo:latest',
-        },
+  const timeoutMs = 30_000;
+  const result = await runBoundedChildProcess(
+    process.execPath,
+    [renderer, resolve(temporaryRoot, 'invalid')],
+    {
+      cwd: root,
+      env: {
+        ...renderEnvironment,
+        ECS_IMAGE_URI: 'registry.example.invalid/pertexo:latest',
       },
-    );
+      timeoutMs,
+    },
+  );
+  if (result.status === 0 && result.signal === null && !result.timedOut)
     throw new Error('renderer accepted a mutable image reference');
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === 'renderer accepted a mutable image reference'
-    )
-      throw error;
-    const stderr =
-      typeof error === 'object' && error !== null && 'stderr' in error
-        ? String(error.stderr)
-        : '';
-    if (!stderr.includes('ECS_IMAGE_URI must be digest-qualified')) throw error;
-  }
+  if (
+    result.spawnError !== undefined ||
+    result.timedOut ||
+    !result.stderr.includes('ECS_IMAGE_URI must be digest-qualified')
+  )
+    throw new Error(
+      describeBoundedChildFailure(
+        'invalid task-definition renderer',
+        result,
+        timeoutMs,
+      ),
+    );
 } catch (error) {
   primary = { error, failed: true };
   throw error;

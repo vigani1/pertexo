@@ -70,7 +70,10 @@ function transactionStore(close = vi.fn().mockResolvedValue(undefined)) {
 
 describe('identity runtime composition', () => {
   it('owns and closes the production database resources when none are injected', async () => {
-    const runtime = createApiIdentityRuntime(identityConfig, databaseConfig);
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+    );
     expect(runtime.dependencies.persistence).toBe(
       runtime.dependencies.authorization,
     );
@@ -79,7 +82,7 @@ describe('identity runtime composition', () => {
 
   it('forwards confidential-client and clock configuration through the public runtime', async () => {
     const clock = { now: () => new Date('2026-08-20T12:00:00.000Z') };
-    const runtime = createApiIdentityRuntime(
+    const runtime = await createApiIdentityRuntime(
       {
         ...identityConfig,
         oidc: { ...identityConfig.oidc, clientSecret: 'client-secret' },
@@ -87,8 +90,10 @@ describe('identity runtime composition', () => {
       databaseConfig,
       {
         clock,
-        database: identityDatabase(),
-        transactions: transactionStore(),
+        persistence: {
+          database: identityDatabase(),
+          transactions: transactionStore(),
+        },
       },
     );
 
@@ -104,11 +109,17 @@ describe('identity runtime composition', () => {
       authorizationUrl: vi.fn().mockReturnValue('https://example.test'),
       exchangeCode: vi.fn(),
     };
-    const runtime = createApiIdentityRuntime(identityConfig, databaseConfig, {
-      provider,
-      database: identityDatabase(databaseClose),
-      transactions: transactionStore(transactionClose),
-    });
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+      {
+        provider,
+        persistence: {
+          database: identityDatabase(databaseClose),
+          transactions: transactionStore(transactionClose),
+        },
+      },
+    );
 
     expect(runtime.dependencies.provider).toBe(provider);
     expect(runtime.dependencies.persistence).toBe(
@@ -123,15 +134,155 @@ describe('identity runtime composition', () => {
   it('attempts every resource close and reports aggregate shutdown failure', async () => {
     const databaseClose = vi.fn().mockRejectedValue(new Error('database'));
     const transactionClose = vi.fn().mockRejectedValue(new Error('oidc'));
-    const runtime = createApiIdentityRuntime(identityConfig, databaseConfig, {
-      database: identityDatabase(databaseClose),
-      transactions: transactionStore(transactionClose),
-    });
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+      {
+        persistence: {
+          database: identityDatabase(databaseClose),
+          transactions: transactionStore(transactionClose),
+        },
+      },
+    );
 
     await expect(runtime.close()).rejects.toThrow(
       'Identity resource shutdown failed',
     );
     expect(databaseClose).toHaveBeenCalledOnce();
     expect(transactionClose).toHaveBeenCalledOnce();
+  });
+
+  it('defers closer invocation so a synchronous throw cannot skip another owner', async () => {
+    const databaseClose = vi.fn().mockResolvedValue(undefined);
+    const transactionClose = vi.fn(() => {
+      throw new Error('synchronous OIDC close');
+    });
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+      {
+        persistence: {
+          database: identityDatabase(databaseClose),
+          transactions: transactionStore(transactionClose),
+        },
+      },
+    );
+
+    await expect(runtime.close()).rejects.toThrow(
+      'Identity resource shutdown failed',
+    );
+    expect(databaseClose).toHaveBeenCalledOnce();
+    expect(transactionClose).toHaveBeenCalledOnce();
+  });
+
+  it('closes an acquired database when transaction-store construction fails', async () => {
+    const databaseClose = vi.fn().mockResolvedValue(undefined);
+    const constructionFailure = new Error('transaction construction failed');
+
+    await expect(
+      createApiIdentityRuntime(identityConfig, databaseConfig, {
+        persistence: {
+          databaseFactory: () => identityDatabase(databaseClose),
+          transactionFactory: () => {
+            throw constructionFailure;
+          },
+        },
+      }),
+    ).rejects.toBe(constructionFailure);
+    expect(databaseClose).toHaveBeenCalledOnce();
+  });
+
+  it('attempts both acquired closers when later composition fails', async () => {
+    const databaseClose = vi.fn().mockResolvedValue(undefined);
+    const transactionClose = vi.fn(() => {
+      throw new Error('synchronous OIDC close');
+    });
+    const compositionFailure = new Error('telemetry construction failed');
+
+    await expect(
+      createApiIdentityRuntime(identityConfig, databaseConfig, {
+        persistence: {
+          databaseFactory: () => identityDatabase(databaseClose),
+          transactionFactory: () => transactionStore(transactionClose),
+        },
+        telemetry: {
+          factory: () => {
+            throw compositionFailure;
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'Identity runtime construction and cleanup failed',
+      errors: [compositionFailure, expect.any(Error)],
+    });
+    expect(databaseClose).toHaveBeenCalledOnce();
+    expect(transactionClose).toHaveBeenCalledOnce();
+  });
+
+  it('adapts database transaction results to the application union', async () => {
+    const transaction = {
+      stateDigest: 'a'.repeat(64),
+      browserBindingDigest: 'b'.repeat(64),
+      codeVerifier: 'v'.repeat(43),
+      nonce: 'nonce-value-that-is-long-enough',
+      expiresAt: new Date('2026-08-20T12:05:00.000Z'),
+    };
+    const consume = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'ok', transaction })
+      .mockResolvedValueOnce({ status: 'replayed', transaction });
+    const databaseTransactions = { ...transactionStore(), consume };
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+      {
+        persistence: {
+          database: identityDatabase(),
+          transactions: databaseTransactions,
+        },
+      },
+    );
+
+    await expect(
+      runtime.dependencies.transactions.consume(
+        transaction.stateDigest,
+        transaction.browserBindingDigest,
+        new Date('2026-08-20T12:00:00.000Z'),
+      ),
+    ).resolves.toEqual({ status: 'ok', transaction });
+    await expect(
+      runtime.dependencies.transactions.consume(
+        transaction.stateDigest,
+        transaction.browserBindingDigest,
+        new Date('2026-08-20T12:00:00.000Z'),
+      ),
+    ).resolves.toEqual({ status: 'replayed' });
+    await runtime.close();
+  });
+
+  it('rejects a malformed successful database transaction result', async () => {
+    const databaseTransactions = {
+      ...transactionStore(),
+      consume: vi.fn().mockResolvedValue({ status: 'ok' }),
+    } as unknown as OidcLoginTransactionStore;
+    const runtime = await createApiIdentityRuntime(
+      identityConfig,
+      databaseConfig,
+      {
+        persistence: {
+          database: identityDatabase(),
+          transactions: databaseTransactions,
+        },
+      },
+    );
+
+    await expect(
+      runtime.dependencies.transactions.consume(
+        'a'.repeat(64),
+        'b'.repeat(64),
+        new Date('2026-08-20T12:00:00.000Z'),
+      ),
+    ).rejects.toThrow('OIDC transaction result is missing its value');
+    await runtime.close();
   });
 });

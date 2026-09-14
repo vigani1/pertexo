@@ -42,6 +42,9 @@ const maximumCanonicalPersistedFactBytes =
 // Keep each result bounded while avoiding a long-lived coordinator snapshot
 // spending hundreds of network round trips on the accepted observation window.
 const maximumPersistedFactRowsPerFetch = 1_000;
+// This is a materialization target, not a protocol limit. A single accepted
+// PostgreSQL JSON value may exceed it after numeric text expansion.
+const targetPersistedFactWirePageBytes = 4 * 1_024 * 1_024;
 
 export function normalizedJson(value: unknown): unknown {
   try {
@@ -98,13 +101,22 @@ export async function persistedFactCapacity(
   runId: string,
   firstSequence: number,
   lastSequence?: number,
-): Promise<Readonly<{ count: number; storageBytes: number }>> {
+): Promise<
+  Readonly<{
+    count: number;
+    maximumStorageBytes: number;
+    storageBytes: number;
+  }>
+> {
   const result = await client.query<{
     fact_count: number;
+    maximum_storage_bytes: string;
     storage_bytes: string;
   }>(
     `select count(*)::int as fact_count,
-            coalesce(sum(octet_length(payload::text)),0)::bigint as storage_bytes
+            coalesce(sum(octet_length(payload::text)),0)::bigint as storage_bytes,
+            coalesce(max(octet_length(payload::text)),0)::bigint
+              as maximum_storage_bytes
      from app.run_events
      where workspace_id=$1 and workflow_run_id=$2 and sequence >= $3
        and ($4::int is null or sequence <= $4::int)`,
@@ -113,15 +125,19 @@ export async function persistedFactCapacity(
   const row = result.rows[0];
   const count = row?.fact_count;
   const storageBytes = Number(row?.storage_bytes);
+  const maximumStorageBytes = Number(row?.maximum_storage_bytes);
   if (
     count === undefined ||
     !Number.isSafeInteger(count) ||
     !Number.isSafeInteger(storageBytes) ||
+    !Number.isSafeInteger(maximumStorageBytes) ||
     count < 0 ||
-    storageBytes < 0
+    storageBytes < 0 ||
+    maximumStorageBytes < 0 ||
+    maximumStorageBytes > storageBytes
   )
     throw new CoordinatorRunStateCorruptError();
-  return Object.freeze({ count, storageBytes });
+  return Object.freeze({ count, maximumStorageBytes, storageBytes });
 }
 
 export function canonicalTimestamp(value: unknown): string {
@@ -157,6 +173,7 @@ export async function readPersistedFacts(
     count: number;
     firstSequence: number;
     lastSequence?: number;
+    maximumStorageBytes: number;
     runId: string;
     workspaceId: string;
   }>,
@@ -169,6 +186,16 @@ export async function readPersistedFacts(
   const attemptIds = new Set<string>();
   let canonicalBytes = 0;
   let nextSequence = input.firstSequence;
+  const rowsPerFetch = Math.min(
+    maximumPersistedFactRowsPerFetch,
+    Math.max(
+      1,
+      Math.floor(
+        targetPersistedFactWirePageBytes /
+          Math.max(1, input.maximumStorageBytes),
+      ),
+    ),
+  );
   while (persistedEvents.length < input.count) {
     const result = await client.query<PersistedCoordinatorEventRow>(
       `select event.sequence, event.type, event.payload, event.created_at
@@ -183,7 +210,7 @@ export async function readPersistedFacts(
         input.runId,
         nextSequence,
         input.lastSequence ?? null,
-        maximumPersistedFactRowsPerFetch,
+        rowsPerFetch,
       ],
     );
     if (result.rows.length === 0) break;
@@ -582,6 +609,7 @@ export async function loadCoordinatorAdvanceState(
       const events = await readPersistedFacts(client, {
         count: factCapacity.count,
         firstSequence: checkpoint.nextEventSequence,
+        maximumStorageBytes: factCapacity.maximumStorageBytes,
         runId,
         workspaceId,
       });
@@ -647,8 +675,7 @@ export async function loadCoordinatorAdvanceState(
         const availableArtifacts = await client.query<{ id: string }>(
           `select id from app.artifacts
                where workspace_id = $1 and id = any($2::uuid[])
-                  and status = 'available' and deleted_at is null
-                for share`,
+                  and status = 'available' and deleted_at is null`,
           [workspaceId, artifactIds],
         );
         if (

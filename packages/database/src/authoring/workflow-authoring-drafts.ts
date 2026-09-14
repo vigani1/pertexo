@@ -10,7 +10,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
+import { canonicalApplicationPayloadChecksum } from '../execution/outbox.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
@@ -62,6 +62,9 @@ export type WorkflowAuthoringDraftContext = Readonly<{
 
 const uuidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(128);
+const workflowDraftTagSchema = z
+  .string()
+  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 
 async function createWorkflow(
   context: WorkflowAuthoringDraftContext,
@@ -78,14 +81,17 @@ async function createWorkflow(
       graph,
       placementDefinitionCatalog,
     );
-    const requestHash = canonicalOutboxPayloadChecksum({
-      actorId: input.actorId,
-      graph,
-      name: nameSchema.parse(input.name),
-      requestedWorkflowId: input.id ?? null,
-      schemaVersion: graph.schemaVersion,
-      workspaceId: input.workspaceId,
-    });
+    const requestHash = canonicalApplicationPayloadChecksum(
+      {
+        actorId: input.actorId,
+        graph,
+        name: nameSchema.parse(input.name),
+        requestedWorkflowId: input.id ?? null,
+        schemaVersion: graph.schemaVersion,
+        workspaceId: input.workspaceId,
+      },
+      2_097_152,
+    );
     let createdId: string;
     try {
       const creation = await client.query<{ workflow_id: string }>(
@@ -140,6 +146,9 @@ async function saveDraft(
   context: WorkflowAuthoringDraftContext,
   input: SaveWorkflowDraftInput,
 ): Promise<WorkflowDraftRecord> {
+  const representationTag = workflowDraftTagSchema.parse(
+    input.representationTag,
+  );
   return context.transact(input.workspaceId, input.actorId, async (client) => {
     await context.requireAuthor(client, input.workspaceId, input.actorId);
     const { definitionCatalog, placementDefinitionCatalog } =
@@ -160,7 +169,8 @@ async function saveDraft(
     if (currentRow === undefined)
       throw new WorkflowNotFoundError('Workflow is not visible');
     const currentDraft = mapDraft(currentRow, definitionCatalog);
-    if (currentDraft.revision !== expected)
+    const currentTag = draftRepresentationTag(workflowId, currentDraft);
+    if (currentTag !== representationTag || currentDraft.revision !== expected)
       throwRevisionConflict(workflowId, currentDraft);
     context.requirePlaceable(
       currentDraft.graphJson,
@@ -229,13 +239,20 @@ function throwRevisionConflict(
 ): never {
   throw new WorkflowRevisionConflictError(
     draft.revision,
-    workflowDraftRepresentationTag({
-      workflowId,
-      revision: draft.revision,
-      graph: draft.graphJson,
-      compatibilityFingerprint: draft.compatibility.fingerprint,
-    }),
+    draftRepresentationTag(workflowId, draft),
   );
+}
+
+function draftRepresentationTag(
+  workflowId: string,
+  draft: WorkflowDraftRecord,
+): string {
+  return workflowDraftRepresentationTag({
+    workflowId,
+    revision: draft.revision,
+    graph: draft.graphJson,
+    compatibilityFingerprint: draft.compatibility.fingerprint,
+  });
 }
 
 export function createWorkflowAuthoringDraftStore(

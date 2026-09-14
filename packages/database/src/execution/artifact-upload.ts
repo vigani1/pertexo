@@ -18,6 +18,7 @@ import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import type { ArtifactRecord } from './artifacts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 import { withWorkspaceDestructiveOperationLock } from '../lifecycle/retention-transaction.js';
+import { artifactMetadataMatches } from './artifact-metadata-contract.js';
 
 import {
   ArtifactQuotaExceededError,
@@ -59,14 +60,16 @@ function isDatabaseError(
   code: string,
   detail: string,
 ): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === code &&
-    'detail' in error &&
-    error.detail === detail
-  );
+  try {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      Reflect.get(error, 'code') === code &&
+      Reflect.get(error, 'detail') === detail
+    );
+  } catch {
+    return false;
+  }
 }
 
 function keyDigest(key: string): string {
@@ -145,6 +148,7 @@ async function beginUpload(
       const artifactId = generatePersistedId();
       const requestHash = uploadRequestHash(parsed);
       const scope = `${parsed.actorId}:artifact-upload`;
+      const idempotencyKeyHash = keyDigest(parsed.idempotencyKey);
       await client.query(
         `insert into app.idempotency_records
            (id,workspace_id,operation,scope,key_hash,request_hash,status,
@@ -155,7 +159,7 @@ async function beginUpload(
           generatePersistedId(),
           parsed.workspaceId,
           scope,
-          keyDigest(parsed.idempotencyKey),
+          idempotencyKeyHash,
           requestHash,
           artifactId,
         ],
@@ -170,7 +174,7 @@ async function beginUpload(
           where workspace_id=$1 and operation='artifact.upload'
             and scope=$2 and key_hash=$3
           for update`,
-        [parsed.workspaceId, scope, keyDigest(parsed.idempotencyKey)],
+        [parsed.workspaceId, scope, idempotencyKeyHash],
       );
       const claim = claimResult.rows[0];
       if (claim === undefined)
@@ -226,7 +230,7 @@ async function beginUpload(
           JSON.stringify({ artifactId: artifact.id }),
           parsed.workspaceId,
           scope,
-          keyDigest(parsed.idempotencyKey),
+          idempotencyKeyHash,
         ],
       );
       return Object.freeze({ artifact, replayed: false });
@@ -239,6 +243,7 @@ async function readUploadArtifact(
   input: ArtifactUploadAuthorization,
   access: 'upload' | 'read',
   statuses: readonly ArtifactRecord['status'][] = ['pending', 'available'],
+  signal?: AbortSignal,
 ): Promise<ArtifactRecord | null> {
   const parsed = normalizeIdentity(input);
   return withTenantScopedClient(
@@ -263,12 +268,14 @@ async function readUploadArtifact(
         throw error;
       }
     },
+    signal === undefined ? {} : { signal },
   );
 }
 
 async function completeUploadFinalization(
   pool: Pool,
   input: FinalizeArtifactUploadInput,
+  signal?: AbortSignal,
 ): Promise<ArtifactRecord> {
   const parsed = normalizeFinalizeInput(input);
   return withTenantScopedClient(
@@ -294,11 +301,7 @@ async function completeUploadFinalization(
       if (row === undefined) throw new ArtifactUploadNotFoundError();
       const artifact = mapArtifact(row);
       const expected = parsed.expectedMetadata;
-      if (
-        artifact.byteLength !== expected.byteLength ||
-        artifact.mediaType !== expected.mediaType ||
-        artifact.sha256 !== expected.sha256
-      )
+      if (!artifactMetadataMatches(artifact, expected))
         throw new ArtifactUploadConflictError(
           'Artifact upload metadata does not match the declared object',
         );
@@ -322,6 +325,7 @@ async function completeUploadFinalization(
         throw new ArtifactUploadConflictError('Artifact upload has expired');
       return mapArtifact(finalizedRow);
     },
+    signal === undefined ? {} : { signal },
   );
 }
 
@@ -340,24 +344,20 @@ async function finalizeUpload(
         { actor: input.actor, identity: input.identity },
         'upload',
         ['pending', 'available', 'deleting', 'deleted'],
+        input.signal,
       );
       if (artifact === null) throw new ArtifactUploadNotFoundError();
       const expected = parsed.expectedMetadata;
-      if (
-        artifact.byteLength !== expected.byteLength ||
-        artifact.mediaType !== expected.mediaType ||
-        artifact.sha256 !== expected.sha256
-      )
+      if (!artifactMetadataMatches(artifact, expected))
         throw new ArtifactUploadConflictError(
           'Artifact upload metadata does not match the declared object',
         );
       if (artifact.status === 'available') return artifact;
       if (artifact.status !== 'pending')
         throw new ArtifactUploadConflictError('Artifact upload is not pending');
-      if (artifact.expiresAt.getTime() <= Date.now())
-        throw new ArtifactUploadConflictError('Artifact upload has expired');
       await input.verifyUpload?.();
-      return completeUploadFinalization(pool, input);
+      input.signal?.throwIfAborted();
+      return completeUploadFinalization(pool, input, input.signal);
     },
   );
 }

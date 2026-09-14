@@ -302,6 +302,8 @@ function validateInvocationTransition(
     return;
   }
   const terminalEvent = `node.${next.status}`;
+  // These recognizers are ordered because accepted transitions may also add
+  // the exact node event that validateNodeEvents reconciles below.
   if (
     acceptWaitingToReady(context, previous, next) ||
     acceptJoinStart(context, previous, next) ||

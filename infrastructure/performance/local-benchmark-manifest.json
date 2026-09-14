@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "seed": 15011,
   "warmupRounds": 1,
   "rounds": 5,
@@ -7,7 +7,7 @@
     {
       "name": "authoring-publication",
       "description": "Real-role PostgreSQL publication and derived integration-usage behavior.",
-      "databaseScope": "configured-base",
+      "databaseScope": "runner-owned-fixture",
       "concurrency": 1,
       "fixturePopulation": {
         "workflows": 1,

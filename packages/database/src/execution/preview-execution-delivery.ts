@@ -210,26 +210,12 @@ export async function completePreviewReceipt(
     throw new PreviewAttemptStateError('receipt_completion_lost');
 }
 
-export async function claimPreviewReceipt(
+async function loadPreviewReceipt(
   client: PreviewOutboxClient,
   consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
 ): Promise<'completed' | 'open'> {
-  const inserted = await client.query(
-    `insert into app.inbox_receipts (
-       consumer_name,message_id,workspace_id,payload_checksum
-     ) values ($1,$2,$3,$4)
-     on conflict (consumer_name,message_id) do nothing
-     returning message_id`,
-    [
-      consumerName,
-      delivery.outboxEventId,
-      workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (inserted.rowCount === 1) return 'open';
   const existing = await client.query<{
     completed_at: Date | null;
     payload_checksum: string;
@@ -250,6 +236,38 @@ export async function claimPreviewReceipt(
   )
     throw new PreviewDeliveryMismatchError();
   return receipt.completed_at === null ? 'open' : 'completed';
+}
+
+export async function claimPreviewReceipt(
+  client: PreviewOutboxClient,
+  consumerName: string,
+  workspaceId: string,
+  delivery: PreviewDelivery,
+): Promise<'completed' | 'open'> {
+  const inserted = await client.query(
+    `insert into app.inbox_receipts (
+       consumer_name,message_id,workspace_id,payload_checksum
+     ) values ($1,$2,$3,$4)
+     on conflict (consumer_name,message_id) do nothing
+     returning message_id`,
+    [
+      consumerName,
+      delivery.outboxEventId,
+      workspaceId,
+      delivery.payloadChecksum,
+    ],
+  );
+  if (inserted.rowCount === 1) return 'open';
+  return loadPreviewReceipt(client, consumerName, workspaceId, delivery);
+}
+
+export async function readPreviewReceipt(
+  client: PreviewOutboxClient,
+  consumerName: string,
+  workspaceId: string,
+  delivery: PreviewDelivery,
+): Promise<'completed' | 'open'> {
+  return loadPreviewReceipt(client, consumerName, workspaceId, delivery);
 }
 
 export async function auditPreviewDeliveryMismatch(

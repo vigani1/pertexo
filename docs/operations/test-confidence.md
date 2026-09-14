@@ -43,13 +43,15 @@ than claiming that every catch branch or external environment has been tested.
 | Ambiguous dispatch | Retry tables plus Slack, email and HTTP executor tests distinguish definitely-unsent from possibly-dispatched outcomes | `apps/worker/test/transport-part-2.integration.test.ts` and `packages/database/test/preview-worker-reconciliation.integration.test.ts` retain ambiguity through BullMQ and durable wake-up | Unsafe work is not blindly retried; stable-key idempotent work retains its binding and prior ambiguity is not erased by a later failure |
 | Transaction rollback | `packages/database/test/workspace-transaction-engine.test.ts` preserves operation, rollback, cleanup and release failures | `packages/database/test/transport.integration.test.ts`, `packages/database/test/transport-part-2.integration.test.ts`, `packages/database/test/preview-worker-attempt-lifecycle.integration.test.ts` and `packages/database/test/retention-transaction-cancellation.integration.test.ts` verify rollback on real PostgreSQL | Domain facts, inbox receipts, outbox rows and usage/provider intent commit together or remain absent together; contaminated clients are destroyed |
 
-Cancellation is therefore exercised at acquisition, in-flight work,
+At the 2026-09-09 inventory checkpoint, cancellation was exercised at
+acquisition, in-flight work,
 pre-dispatch, post-dispatch, transaction rollback and cleanup boundaries. The
 secure HTTP marker-race test also prevents cancellation from being reported as
 definitely pre-dispatch while its marker can still commit. A forced uncertain
-wire failure during PostgreSQL `COMMIT` is not simulated locally; that remains a
-driver/service failure qualification limit rather than a reason to weaken the
-durable ambiguity policy.
+wire failure during PostgreSQL `COMMIT` had not yet been simulated locally.
+The later N09 record below supersedes only that limitation with its named
+wire-proxy lost-acknowledgement regression; it does not turn one case into
+general driver/service qualification or weaken the durable ambiguity policy.
 
 ## Mutation sensitivity record
 
@@ -82,9 +84,13 @@ During a full `pnpm quality:local` run, integration-only branch reviews are
 promoted from `referenced-only` to `executed` only after the worker integration
 JSON report proves the exact named file and test passed for the same run ID,
 source revision, and candidate fingerprint. A standalone coverage report has no
-such execution authority. The benchmark producer, comparator, and full runner
-likewise share one schema-v4 validator, so a corrupt or incomplete artifact
-cannot become successful evidence merely because its producer exited zero.
+such execution authority. Current producers bind source snapshots, cohort
+coverage/result hashes, candidate identity, and final report bytes, and recheck
+source stability before accepting the evidence. Missing, malformed, partial,
+failed, stale, or mismatched artifacts fail closed. The benchmark producer,
+comparator, and full runner likewise share the schema-v5 validator, which
+requires complete terminal evidence and positive observations rather than
+trusting a zero producer exit.
 
 Each coverage command also writes a Vitest JSON result beside its coverage
 files. The combined report records elapsed duration, passed, failed, skipped,
@@ -98,7 +104,9 @@ artifact, making duration and health comparable across retained workflow runs.
 N09 adds a separate seven-mutation proof for the behaviors introduced or
 strengthened after the record above. `pnpm mutation:check` copies the exact
 tracked and non-ignored untracked candidate into an owned temporary directory,
-installs from the local pnpm store, builds it, records a private Git identity,
+strips inherited `GIT_*` repository/index/config overrides from explicit
+snapshot Git commands, installs from the local pnpm store, builds it, records a
+private Git identity,
 and applies one mutation at a time. The owning command must fail with its named
 test, the original bytes are restored, any affected package is rebuilt, and the
 same command must pass. A mutation is never retried, the working checkout is

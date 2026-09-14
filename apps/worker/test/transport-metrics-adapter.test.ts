@@ -131,4 +131,18 @@ describe('queue transport metrics adapter', () => {
       queueName: QUEUE_NAME.nodeAttempts,
     });
   });
+
+  it('rejects a queue/job mismatch before recording any metric', () => {
+    const selected = metrics();
+    const observer = createQueueMetricsObserver(selected);
+
+    expect(() => {
+      observer.handlerStarted({
+        jobName: JOB_NAME.advanceWorkflowRun,
+        queueName: QUEUE_NAME.maintenance,
+      });
+    }).toThrow('invalid queue/job pairing');
+    expect(selected.addActiveConcurrency).not.toHaveBeenCalled();
+    expect(selected.recordHandlerFinished).not.toHaveBeenCalled();
+  });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CreateWorkflowUseCase,
   GetWorkflowDraftUseCase,
+  InvalidWorkflowCursorError,
   ListWorkflowVersionsUseCase,
   ListWorkflowsUseCase,
   PublishWorkflowUseCase,
@@ -94,7 +95,15 @@ function version(): WorkflowVersionRecord {
   };
 }
 
-function authorization() {
+function authorization(
+  overrides: Partial<{
+    actorId: string;
+    workspaceId: string;
+    role: 'owner' | 'builder' | 'operator' | 'viewer';
+    membershipStatus: 'active' | 'suspended';
+    workspaceStatus: 'active' | 'suspended' | 'pending_deletion';
+  }> = {},
+) {
   return {
     findAccess: vi.fn().mockResolvedValue({
       actorId,
@@ -102,6 +111,7 @@ function authorization() {
       role: 'owner' as const,
       membershipStatus: 'active' as const,
       workspaceStatus: 'active' as const,
+      ...overrides,
     }),
   };
 }
@@ -136,7 +146,6 @@ describe('workflow authoring application seams', () => {
     const representationTag = createDraftRepresentationTag({
       workflowId,
       revision: 1,
-      schemaVersion: 1,
       graph,
       compatibilityFingerprint: fingerprint,
     });
@@ -179,7 +188,6 @@ describe('workflow authoring application seams', () => {
     const representationTag = createDraftRepresentationTag({
       workflowId,
       revision: 1,
-      schemaVersion: 1,
       graph,
       compatibilityFingerprint: fingerprint,
     });
@@ -239,7 +247,6 @@ describe('workflow authoring application seams', () => {
           representationTag: createDraftRepresentationTag({
             workflowId,
             revision: 1,
-            schemaVersion: 1,
             graph,
             compatibilityFingerprint: fingerprint,
           }),
@@ -415,7 +422,6 @@ describe('workflow authoring application seams', () => {
     const representationTag = createDraftRepresentationTag({
       workflowId,
       revision: 1,
-      schemaVersion: 1,
       graph,
       compatibilityFingerprint: fingerprint,
     });
@@ -499,7 +505,6 @@ describe('workflow authoring application seams', () => {
     const expected = createDraftRepresentationTag({
       workflowId,
       revision: 1,
-      schemaVersion: 1,
       graph,
       compatibilityFingerprint: fingerprint,
     });
@@ -513,7 +518,11 @@ describe('workflow authoring application seams', () => {
     });
     expect(saved.body.revision).toBe(2);
     expect(store.saveDraft).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedRevision: 1, graphJson: graph }),
+      expect.objectContaining({
+        representationTag: expected,
+        expectedRevision: 1,
+        graphJson: graph,
+      }),
     );
   });
 
@@ -567,6 +576,108 @@ describe('workflow authoring application seams', () => {
     expect(publishInput?.requestHash).toMatch(/^[0-9a-f]{64}$/u);
   });
 
+  it('hashes the exact canonical publish identity and excludes diagnostic transport fields', async () => {
+    const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+    const publishWorkflow = vi.fn().mockResolvedValue({
+      version: version(),
+      reused: false,
+      replayed: false,
+    });
+    const useCase = new PublishWorkflowUseCase(
+      persistence({ publishWorkflow }),
+      authorization(),
+    );
+    const base = {
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      representationTag: tag,
+      idempotencyKey: 'publish-hash',
+    } as const;
+
+    await useCase.execute(base);
+    const expected =
+      '5fc86496b8eb735fb38c90193e9736c63ea84bb96812b35651069abbaf47b03e';
+    expect(publishWorkflow).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requestHash: expected }),
+    );
+    await useCase.execute({
+      ...base,
+      requestId: 'diagnostic-request',
+      traceId: 'diagnostic-trace',
+      traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
+    });
+    expect(publishWorkflow).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requestHash: expected }),
+    );
+  });
+
+  it('changes the canonical publish hash for actor, workspace, workflow, and original tag identity', async () => {
+    const tag = '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
+    const actorTwoId = '11111111-1111-4111-8111-111111111111';
+    const workspaceTwoId = '22222222-2222-4222-8222-222222222222';
+    const workflowTwoId = '33333333-3333-4333-8333-333333333333';
+    const tagTwo = '"draft-v1.1234567890abcdefghijklmnopqrstuvwxyz_-ABCDE"';
+    const hashes: string[] = [];
+    const execute = async (
+      inputActor: typeof actor,
+      routeWorkspaceId: string,
+      inputWorkflowId: string,
+      representationTag: string,
+      access = authorization({
+        actorId: inputActor.actorId,
+        workspaceId: routeWorkspaceId,
+      }),
+    ) => {
+      const publishWorkflow = vi.fn((input: DatabasePublishWorkflowInput) => {
+        hashes.push(input.requestHash);
+        return Promise.resolve({
+          version: version(),
+          reused: false,
+          replayed: false,
+        });
+      });
+      await new PublishWorkflowUseCase(
+        persistence({ publishWorkflow }),
+        access,
+      ).execute({
+        actor: inputActor,
+        routeWorkspaceId,
+        workflowId: inputWorkflowId,
+        representationTag,
+        idempotencyKey: 'publish-hash-sensitivity',
+      });
+    };
+
+    await execute(actor, workspaceId, workflowId, tag);
+    await execute(
+      createActorContext({
+        actorId: actorTwoId,
+        workspaceId,
+        sessionId,
+        requestId: 'actor-two',
+      }),
+      workspaceId,
+      workflowId,
+      tag,
+    );
+    await execute(
+      createActorContext({
+        actorId,
+        workspaceId: workspaceTwoId,
+        sessionId,
+        requestId: 'workspace-two',
+      }),
+      workspaceTwoId,
+      workflowId,
+      tag,
+    );
+    await execute(actor, workspaceId, workflowTwoId, tag);
+    await execute(actor, workspaceId, workflowId, tagTwo);
+
+    expect(new Set(hashes).size).toBe(5);
+  });
+
   it('lets persistence resolve an exact publish replay before reading a fresh draft', async () => {
     const getDraft = vi
       .fn()
@@ -600,7 +711,6 @@ describe('workflow authoring application seams', () => {
     const currentEtag = createDraftRepresentationTag({
       workflowId,
       revision: 2,
-      schemaVersion: 1,
       graph,
       compatibilityFingerprint: fingerprint,
     });
@@ -617,7 +727,6 @@ describe('workflow authoring application seams', () => {
         representationTag: createDraftRepresentationTag({
           workflowId,
           revision: 1,
-          schemaVersion: 1,
           graph,
           compatibilityFingerprint: fingerprint,
         }),
@@ -654,6 +763,150 @@ describe('workflow authoring application seams', () => {
     expect(access.findAccess).toHaveBeenCalledWith({ actorId, workspaceId });
   });
 
+  it('allows viewer reads while denying update and publish capabilities before persistence', async () => {
+    const access = authorization({ role: 'viewer' });
+    const store = persistence();
+    await expect(
+      new GetWorkflowDraftUseCase(store, access).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+      }),
+    ).resolves.toMatchObject({ body: { workflowId } });
+
+    const representationTag = createDraftRepresentationTag({
+      workflowId,
+      revision: 1,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    });
+    await expect(
+      new SaveWorkflowDraftUseCase(store, access).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        representationTag,
+        graph,
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    await expect(
+      new PublishWorkflowUseCase(store, access).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        representationTag,
+        idempotencyKey: 'viewer-publish',
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(store.saveDraft).not.toHaveBeenCalled();
+    expect(store.publishWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('marks a structurally valid graph invalid when selected compatibility rejects it', async () => {
+    const compatibility = {
+      compatible: false,
+      fingerprint,
+      issues: [
+        {
+          code: 'unknown_definition' as const,
+          definitionKey: 'retired.node',
+          version: 1,
+        },
+      ],
+    };
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(draft({ compatibility })),
+    });
+
+    await expect(
+      new ValidateWorkflowDraftUseCase(store, authorization()).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+      }),
+    ).resolves.toEqual({ valid: false, issues: [], compatibility });
+  });
+
+  it('serializes exact workflow and version allowlists, retained graph, and timestamps', async () => {
+    const store = persistence();
+    const workflows = await new ListWorkflowsUseCase(
+      store,
+      authorization(),
+    ).execute({ actor, routeWorkspaceId: workspaceId });
+    const versions = await new ListWorkflowVersionsUseCase(
+      store,
+      authorization(),
+    ).execute({ actor, routeWorkspaceId: workspaceId, workflowId });
+
+    expect(workflows).toEqual({
+      items: [
+        {
+          id: workflowId,
+          workspaceId,
+          name: 'Operations',
+          lifecycleStatus: 'active',
+          lifecycleRevision: 1,
+          activationStatus: 'inactive',
+          publishedVersionId: null,
+          createdAt: '2026-08-20T12:00:00.000Z',
+          updatedAt: '2026-08-20T12:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    });
+    expect(versions).toEqual({
+      items: [
+        {
+          id: version().id,
+          workflowId,
+          versionNumber: 1,
+          schemaVersion: 1,
+          graph,
+          checksum: version().checksum,
+          publishedAt: '2026-08-20T12:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    });
+    expect(workflows.items[0]).not.toHaveProperty('createdBy');
+    expect(versions.items[0]).not.toHaveProperty('workspaceId');
+    expect(versions.items[0]).not.toHaveProperty('publishedBy');
+  });
+
+  it('returns exact empty pages and rejects an invalid persistence projection', async () => {
+    const emptyStore = persistence({
+      listWorkflows: vi.fn().mockResolvedValue({ items: [] }),
+      listVersions: vi.fn().mockResolvedValue({ items: [] }),
+    });
+    await expect(
+      new ListWorkflowsUseCase(emptyStore, authorization()).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+      }),
+    ).resolves.toEqual({ items: [], nextCursor: null });
+    await expect(
+      new ListWorkflowVersionsUseCase(emptyStore, authorization()).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+      }),
+    ).resolves.toEqual({ items: [], nextCursor: null });
+
+    const invalid = {
+      ...workflow(),
+      lifecycleStatus: 'deleted',
+    } as unknown as WorkflowRecord;
+    const invalidStore = persistence({
+      listWorkflows: vi.fn().mockResolvedValue({ items: [invalid] }),
+    });
+    await expect(
+      new ListWorkflowsUseCase(invalidStore, authorization()).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+      }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
   it('round-trips the opaque workflow list cursor through the public use case', async () => {
     const cursor = {
       createdAt: new Date('2026-08-20T12:00:00.000Z'),
@@ -672,7 +925,9 @@ describe('workflow authoring application seams', () => {
       actor,
       routeWorkspaceId: workspaceId,
     });
-    expect(first.nextCursor).not.toBeNull();
+    expect(first.nextCursor).toBe(
+      'eyJraW5kIjoid29ya2Zsb3ciLCJjcmVhdGVkQXQiOiIyMDI2LTA4LTIwVDEyOjAwOjAwLjAwMFoiLCJpZCI6ImRkZGRkZGRkLWRkZGQtNGRkZC04ZGRkLWRkZGRkZGRkZGRkZCJ9',
+    );
     await useCase.execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -724,7 +979,9 @@ describe('workflow authoring application seams', () => {
       routeWorkspaceId: workspaceId,
       workflowId,
     });
-    expect(first.nextCursor).not.toBeNull();
+    expect(first.nextCursor).toBe(
+      'eyJraW5kIjoidmVyc2lvbnMiLCJiZWZvcmVWZXJzaW9uTnVtYmVyIjoyfQ',
+    );
     await useCase.execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -737,7 +994,105 @@ describe('workflow authoring application seams', () => {
     );
   });
 
-  it('creates the atomic workflow plus empty draft returned by persistence', async () => {
+  it.each([
+    { name: 'empty input', cursor: '' },
+    {
+      name: 'malformed decoded JSON',
+      cursor: Buffer.from('{', 'utf8').toString('base64url'),
+    },
+    {
+      name: 'the version variant',
+      cursor: encodedCursor({ kind: 'versions', beforeVersionNumber: 2 }),
+    },
+    {
+      name: 'an unknown field',
+      cursor: encodedCursor({
+        kind: 'workflow',
+        createdAt: '2026-08-20T12:00:00.000Z',
+        id: workflowId,
+        unknown: true,
+      }),
+    },
+    {
+      name: 'an absent date',
+      cursor: encodedCursor({ kind: 'workflow', id: workflowId }),
+    },
+    {
+      name: 'an invalid date',
+      cursor: encodedCursor({
+        kind: 'workflow',
+        createdAt: 'not-a-date',
+        id: workflowId,
+      }),
+    },
+    {
+      name: 'an invalid workflow ID',
+      cursor: encodedCursor({
+        kind: 'workflow',
+        createdAt: '2026-08-20T12:00:00.000Z',
+        id: 'not-a-uuid',
+      }),
+    },
+  ])(
+    'rejects workflow cursor with $name before listing',
+    async ({ cursor }) => {
+      const listWorkflows = vi.fn();
+      await expect(
+        new ListWorkflowsUseCase(
+          persistence({ listWorkflows }),
+          authorization(),
+        ).execute({ actor, routeWorkspaceId: workspaceId, after: cursor }),
+      ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
+      expect(listWorkflows).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    {
+      name: 'the workflow variant',
+      cursor: encodedCursor({
+        kind: 'workflow',
+        createdAt: '2026-08-20T12:00:00.000Z',
+        id: workflowId,
+      }),
+    },
+    {
+      name: 'an absent version',
+      cursor: encodedCursor({ kind: 'versions' }),
+    },
+    {
+      name: 'a zero version',
+      cursor: encodedCursor({ kind: 'versions', beforeVersionNumber: 0 }),
+    },
+    {
+      name: 'a fractional version',
+      cursor: encodedCursor({ kind: 'versions', beforeVersionNumber: 1.5 }),
+    },
+    {
+      name: 'an unknown field',
+      cursor: encodedCursor({
+        kind: 'versions',
+        beforeVersionNumber: 2,
+        unknown: true,
+      }),
+    },
+  ])('rejects version cursor with $name before listing', async ({ cursor }) => {
+    const listVersions = vi.fn();
+    await expect(
+      new ListWorkflowVersionsUseCase(
+        persistence({ listVersions }),
+        authorization(),
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        after: cursor,
+      }),
+    ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
+    expect(listVersions).not.toHaveBeenCalled();
+  });
+
+  it('projects one create command and its returned workflow plus empty draft', async () => {
     const store = persistence();
     const result = await new CreateWorkflowUseCase(
       store,
@@ -761,3 +1116,7 @@ describe('workflow authoring application seams', () => {
     );
   });
 });
+
+function encodedCursor(payload: unknown): string {
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}

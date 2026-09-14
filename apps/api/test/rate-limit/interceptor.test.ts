@@ -181,13 +181,91 @@ describe('rate-limit interceptor', () => {
     });
   });
 
-  it('bypasses explicitly exempt routes and rejects missing classification', async () => {
-    const consume = vi.fn();
+  it('keeps an allowed decision authoritative when metric recording throws', async () => {
     const handle = vi.fn(() => of('called'));
     const interceptor = new RateLimitInterceptor(
       new Reflector(),
+      { consume: vi.fn().mockResolvedValue({ allowed: true }) },
+      {
+        record: () => {
+          throw new Error('metrics unavailable');
+        },
+      },
+    );
+
+    await expect(
+      firstValueFrom(
+        await interceptor.intercept(context(providerTestHandler), { handle }),
+      ),
+    ).resolves.toBe('called');
+    expect(handle).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a limited decision authoritative when metric recording throws', async () => {
+    const handle = vi.fn(() => of('called'));
+    const interceptor = new RateLimitInterceptor(
+      new Reflector(),
+      {
+        consume: vi.fn().mockResolvedValue({
+          allowed: false,
+          retryAfterSeconds: 7,
+          limitedDimension: 'connection',
+        }),
+      },
+      {
+        record: () => {
+          throw new Error('metrics unavailable');
+        },
+      },
+    );
+
+    await expect(
+      interceptor.intercept(context(providerTestHandler), { handle }),
+    ).rejects.toMatchObject({
+      code: 'request.rate_limited',
+      details: { retryAfterSeconds: 7 },
+    });
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [authenticatedReadHandler, true, 'request.rate_limit_unavailable'],
+    [providerTestHandler, false, 'request.rate_limit_unavailable'],
+  ] as const)(
+    'keeps the selected backend-failure policy when metric recording throws',
+    async (handler, expectedOpen, expectedCode) => {
+      const handle = vi.fn(() => of('called'));
+      const interceptor = new RateLimitInterceptor(
+        new Reflector(),
+        {
+          consume: vi.fn().mockRejectedValue(new Error('redis unavailable')),
+        },
+        {
+          record: () => {
+            throw new Error('metrics unavailable');
+          },
+        },
+      );
+
+      const result = interceptor.intercept(context(handler), { handle });
+      if (expectedOpen) {
+        await expect(firstValueFrom(await result)).resolves.toBe('called');
+        expect(handle).toHaveBeenCalledOnce();
+      } else {
+        await expect(result).rejects.toMatchObject({ code: expectedCode });
+        expect(handle).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('bypasses explicitly exempt routes and rejects missing classification', async () => {
+    const consume = vi.fn();
+    const handle = vi.fn(() => of('called'));
+    const recorder = metrics();
+    const interceptor = new RateLimitInterceptor(
+      new Reflector(),
       { consume },
-      metrics(),
+      recorder,
     );
 
     await expect(
@@ -199,6 +277,7 @@ describe('rate-limit interceptor', () => {
       interceptor.intercept(context(unclassifiedHandler), { handle }),
     ).rejects.toThrow(/missing rate-limit classification/u);
     expect(consume).not.toHaveBeenCalled();
+    expect(recorder.record).not.toHaveBeenCalled();
   });
 
   it.each([

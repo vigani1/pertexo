@@ -201,11 +201,14 @@ The backend is separate because `apps/api` and `apps/worker` are independent
 deployments. Keeping them in the same repository avoids publishing and
 coordinating private packages while the domain is evolving.
 
-### Complete source layout
+### Illustrative source layout
 
-The repository should converge on this layout. It is intentionally explicit:
-folders communicate runtime ownership, and a generic `utils` or `shared`
-dumping ground is not allowed.
+The layout below illustrates the intended process and capability boundaries; it
+is not a directory-by-directory migration target. The current implementation is
+described by the [codebase map](./codebase-map.md). Feature-local shallow
+directories are valid when they preserve these ownership rules, and empty
+layers or wrapper folders must not be introduced merely to match this sketch.
+A generic `utils` or `shared` dumping ground is not allowed.
 
 ```txt
 apps/
@@ -969,15 +972,18 @@ Benefits:
 - Version comparison and restore are straightforward.
 - The graph model matches what the editor and engine consume.
 
-V1 derived tables support queries that JSONB snapshots are poor at:
+V1 immutable-version indexes support queries that JSONB snapshots are poor at:
 
 ```txt
 workflow_integration_usage
-workflow_triggers
 ```
 
-These are rebuilt transactionally when a draft is published. They are indexes,
-not competing sources of graph truth.
+`workflow_integration_usage` is rebuilt transactionally when a draft is
+published. It is an index, not a competing source of graph truth. Desired
+trigger configuration may also be projected in the publication transaction,
+but effective endpoint, schedule, subscription, health, and activation state
+are runtime resources converged asynchronously by the trigger owner after the
+reconciliation intent commits.
 
 ### Canonical workflow graph contract
 
@@ -1038,10 +1044,13 @@ type ValueSource =
   enforces expression length/depth, and runtime evaluation enforces time and
   output-size limits.
 
-Draft writes send the coherent graph plus `expectedRevision`; they do not
-translate every canvas gesture into database rows. The UI may keep command
-history and send patches over time later, but PostgreSQL still stores one
-authoritative draft snapshot and revision.
+Draft writes send the coherent graph with the strong opaque `If-Match` token
+defined by [ADR 011](./adr/011-optimistic-draft-concurrency.md); they do not
+translate every canvas gesture into database rows. The authorized persistence
+transaction decodes that representation token and compares its expected
+revision internally. `expectedRevision` is not an alternative public request
+field. The UI may keep command history and send patches over time later, but
+PostgreSQL still stores one authoritative draft snapshot and revision.
 
 ### Node definitions
 
@@ -1205,12 +1214,16 @@ use object storage and store references in PostgreSQL.
 ## Draft And Publish Flow
 
 1. The editor loads the current draft and revision.
-2. Draft saves use optimistic concurrency: `expectedRevision` must match.
+2. Draft save and publish requests supply the current strong opaque `If-Match`
+   token; persistence compares its decoded revision inside the authorized
+   transaction.
 3. Validation uses the pinned node-definition contracts.
 4. Publish transaction creates or reuses an immutable workflow version,
-   updates the workflow's published pointer, and rebuilds V1 trigger and
-   integration-usage projections.
-5. An outbox event requests trigger reconciliation after commit.
+   writes its immutable integration-usage index and desired trigger projection,
+   updates the workflow's published pointer and enters the transitional
+   activation state.
+5. The same transaction records an outbox intent; after commit, the trigger
+   owner converges effective runtime resources and activation state.
 6. Production triggers always reference the published version.
 7. Existing runs never switch to a newer version midway through execution.
 
@@ -1256,7 +1269,8 @@ open independent transactions.
 
 1. Authorize workflow edit access in its workspace.
 2. Parse and structurally validate the graph contract.
-3. Update `workflow_drafts` with
+3. Decode the required strong opaque `If-Match` representation token, then
+   update `workflow_drafts` with
    `WHERE workflow_id = ? AND revision = expectedRevision`.
 4. Increment revision and commit.
 5. If no row changed, return `revision_conflict` with the current revision;
@@ -1271,11 +1285,14 @@ not persisted. Full publish validation remains separate.
 2. Run deterministic publish validation and node config migrations before the
    transaction where possible; recheck revision after acquiring the lock.
 3. Insert an immutable `workflow_versions` snapshot with a canonical checksum.
-4. Rebuild dependency, integration-usage, and trigger projections for that
-   version.
-5. Update the workflow's published pointer and activation status.
-6. Insert one versioned `workflow.published` outbox event.
-7. Commit, then let the trigger reconciler perform external side effects.
+4. Rebuild version-derived dependency and integration-usage indexes that are in
+   scope, plus the desired trigger configuration projection for that version.
+5. Update the workflow's published pointer and enter the transitional
+   activation status.
+6. Insert one versioned trigger-reconciliation outbox intent and the publication
+   audit/idempotency facts.
+7. Commit, then let the trigger owner converge effective runtime resources and
+   activation state. No provider or queue call is part of publication.
 
 The checksum covers canonical graph JSON, graph schema version, pinned node
 definition versions, and execution-relevant workflow settings. Publishing the
@@ -1987,8 +2004,10 @@ documentation. Domain errors are translated once by the global exception
 filter. Internal stack traces and provider secrets never enter responses.
 Unsafe state-changing commands that clients may retry accept an
 `Idempotency-Key`. Draft reads return an ETag/revision; draft writes require
-`If-Match` or an equivalent `expectedRevision` field and never use
-last-write-wins.
+the strong opaque `If-Match` token defined by ADR 011 and never use
+last-write-wins. The decoded numeric expected revision is an internal
+persistence/CAS value, not an equivalent public wire field. Publish uses the
+same representation precondition.
 
 ### Error taxonomy
 
@@ -2065,7 +2084,7 @@ and response mapping only.
 | `GET /v1/workspaces/:workspaceId/workflows/:id/draft`                     | `GetWorkflowDraft`         | returns graph, revision, definition compatibility report    |
 | `PUT /v1/workspaces/:workspaceId/workflows/:id/draft`                     | `SaveWorkflowDraft`        | optimistic revision update                                  |
 | `POST /v1/workspaces/:workspaceId/workflows/:id/validate`                 | `ValidateWorkflowDraft`    | read-only validation report                                 |
-| `POST /v1/workspaces/:workspaceId/workflows/:id/publish`                  | `PublishWorkflow`          | version/projections/pointer/outbox atomically               |
+| `POST /v1/workspaces/:workspaceId/workflows/:id/publish`                  | `PublishWorkflow`          | immutable version/indexes, desired trigger projection, pointer and reconciliation intent atomically; activation converges later |
 | `POST /v1/workspaces/:workspaceId/workflows/:id/draft/nodes/:nodeId/test` | `TestWorkflowNode`         | preview run; side effects disclosed and audited             |
 | `GET /v1/workspaces/:workspaceId/workflows/:id/versions`                  | `ListWorkflowVersions`     | immutable cursor list                                       |
 | `POST /v1/workspaces/:workspaceId/workflows/:id/runs`                     | `StartWorkflowRun`         | run/event/outbox atomically; returns `202`                  |
@@ -2310,8 +2329,9 @@ durability, authorization, or operational behavior to the end.
 ## Acceptance Criteria
 
 - A workflow draft can change without affecting active executions.
-- Publishing creates an immutable version and updates triggers atomically from
-  the product's perspective.
+- Publishing atomically creates an immutable version, records its desired
+  trigger configuration and reconciliation intent, and updates the published
+  pointer; effective trigger resources and activation converge asynchronously.
 - Every run references exactly one workflow version.
 - Losing Redis does not erase workflow definitions or completed run history.
 - A worker crash resumes from a durable checkpoint without blindly replaying

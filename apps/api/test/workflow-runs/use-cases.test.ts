@@ -10,6 +10,8 @@ import {
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
+  type ReplayWorkflowRunInput,
+  type StartWorkflowRunInput,
 } from '../../src/workflow-runs/use-cases.js';
 import type {
   WorkflowRunEventStreamer,
@@ -83,6 +85,57 @@ function persistence() {
   };
 }
 
+function accessFor(selectedActorId: string, selectedWorkspaceId: string) {
+  return {
+    findAccess: vi.fn().mockResolvedValue({
+      actorId: selectedActorId,
+      workspaceId: selectedWorkspaceId,
+      role: 'owner' as const,
+      membershipStatus: 'active' as const,
+      workspaceStatus: 'active' as const,
+    }),
+  };
+}
+
+async function startCommand(overrides: Partial<StartWorkflowRunInput> = {}) {
+  const input: StartWorkflowRunInput = {
+    actor,
+    routeWorkspaceId: workspaceId,
+    workflowId,
+    idempotencyKey: 'stable-start-key',
+    ...overrides,
+  };
+  const fixture = persistence();
+  await new StartWorkflowRunUseCase(
+    fixture.store,
+    accessFor(input.actor.actorId, input.routeWorkspaceId),
+  ).execute(input);
+  const command = fixture.start.mock.calls[0]?.[0];
+  if (command === undefined) throw new Error('start command was not persisted');
+  return command;
+}
+
+async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
+  const input: ReplayWorkflowRunInput = {
+    actor,
+    routeWorkspaceId: workspaceId,
+    runId,
+    workflowVersionId,
+    idempotencyKey: 'stable-replay-key',
+    input: { a: 1, b: 2 },
+    ...overrides,
+  };
+  const fixture = persistence();
+  await new ReplayWorkflowRunUseCase(
+    fixture.store,
+    accessFor(input.actor.actorId, input.routeWorkspaceId),
+  ).execute(input);
+  const command = fixture.replay.mock.calls[0]?.[0];
+  if (command === undefined)
+    throw new Error('replay command was not persisted');
+  return command;
+}
+
 describe('workflow run application seams', () => {
   it('reuses guard authorization without repeating the access lookup', async () => {
     const fixture = persistence();
@@ -135,6 +188,108 @@ describe('workflow run application seams', () => {
     });
     expect(command?.idempotencyKeyHash).toMatch(/^[0-9a-f]{64}$/u);
     expect(command?.requestHash).toMatch(/^[0-9a-f]{64}$/u);
+  });
+
+  it('canonically hashes start commands and excludes request metadata', async () => {
+    const canonical = await startCommand({ input: { a: 1, b: 2 } });
+    const reordered = await startCommand({ input: { b: 2, a: 1 } });
+    const metadataOnly = await startCommand({
+      input: { a: 1, b: 2 },
+      requestId: 'different-request',
+      traceId: 'different-trace',
+      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+    });
+
+    expect(reordered.requestHash).toBe(canonical.requestHash);
+    expect(metadataOnly.requestHash).toBe(canonical.requestHash);
+    expect(reordered.idempotencyKeyHash).toBe(canonical.idempotencyKeyHash);
+  });
+
+  it('separates every start hash authority field and absent input from null', async () => {
+    const otherActor = createActorContext({
+      actorId: '11111111-1111-4111-8111-111111111111',
+      workspaceId,
+      sessionId,
+      requestId: 'request-42',
+    });
+    const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';
+    const otherWorkspaceActor = createActorContext({
+      actorId,
+      workspaceId: otherWorkspaceId,
+      sessionId,
+      requestId: 'request-42',
+    });
+    const baseline = await startCommand();
+    const variants = await Promise.all([
+      startCommand({ actor: otherActor }),
+      startCommand({
+        actor: otherWorkspaceActor,
+        routeWorkspaceId: otherWorkspaceId,
+      }),
+      startCommand({ workflowId: '33333333-3333-4333-8333-333333333333' }),
+      startCommand({ input: null }),
+      startCommand({ input: { changed: true } }),
+      startCommand({ deadlineAt: '2026-08-21T18:00:00.000Z' }),
+    ]);
+
+    expect(new Set(variants.map((command) => command.requestHash)).size).toBe(
+      variants.length,
+    );
+    for (const variant of variants) {
+      expect(variant.requestHash).not.toBe(baseline.requestHash);
+    }
+  });
+
+  it('canonically hashes replay commands and excludes request metadata', async () => {
+    const canonical = await replayCommand();
+    const reordered = await replayCommand({ input: { b: 2, a: 1 } });
+    const metadataOnly = await replayCommand({
+      requestId: 'different-request',
+      traceId: 'different-trace',
+      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+    });
+
+    expect(reordered.requestHash).toBe(canonical.requestHash);
+    expect(metadataOnly.requestHash).toBe(canonical.requestHash);
+    expect(reordered.idempotencyKeyHash).toBe(canonical.idempotencyKeyHash);
+  });
+
+  it('separates every replay hash authority field', async () => {
+    const otherActor = createActorContext({
+      actorId: '11111111-1111-4111-8111-111111111111',
+      workspaceId,
+      sessionId,
+      requestId: 'request-42',
+    });
+    const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';
+    const otherWorkspaceActor = createActorContext({
+      actorId,
+      workspaceId: otherWorkspaceId,
+      sessionId,
+      requestId: 'request-42',
+    });
+    const baseline = await replayCommand();
+    const variants = await Promise.all([
+      replayCommand({ actor: otherActor }),
+      replayCommand({
+        actor: otherWorkspaceActor,
+        routeWorkspaceId: otherWorkspaceId,
+      }),
+      replayCommand({ runId: '33333333-3333-4333-8333-333333333333' }),
+      replayCommand({
+        workflowVersionId: '44444444-4444-4444-8444-444444444444',
+      }),
+      replayCommand({ input: null }),
+      replayCommand({ input: { changed: true } }),
+      replayCommand({ deadlineAt: '2026-08-21T18:00:00.000Z' }),
+    ]);
+
+    expect(new Set(variants.map((command) => command.requestHash)).size).toBe(
+      variants.length,
+    );
+    for (const variant of variants) {
+      expect(variant.requestHash).not.toBe(baseline.requestHash);
+    }
   });
 
   it('keeps start and replay capabilities distinct', async () => {
@@ -513,6 +668,16 @@ describe('workflow run application seams', () => {
     });
 
     expect(fixture.get).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(streamer.stream).not.toHaveBeenCalled();
+    const iterator = result[Symbol.asyncIterator]();
+    try {
+      await expect(iterator.next()).resolves.toMatchObject({
+        done: false,
+        value: { id: 2 },
+      });
+    } finally {
+      await iterator.return?.();
+    }
     expect(streamer.stream).toHaveBeenCalledOnce();
     expect(streamer.stream.mock.calls[0]?.[0]).toMatchObject({
       workspaceId,
@@ -520,11 +685,70 @@ describe('workflow run application seams', () => {
       lastEventId: 1,
     });
     expect(streamer.stream.mock.calls[0]?.[0].signal).not.toBe(signal);
-    await expect(result[Symbol.asyncIterator]().next()).resolves.toMatchObject({
-      done: false,
-      value: { id: 2 },
-    });
   });
+
+  it('does not acquire the producer or start authorization when returned before the first read', async () => {
+    const fixture = persistence();
+    const stream = vi.fn<WorkflowRunEventStreamer['stream']>();
+    const reauthorizeSession = vi.fn();
+    const frames = await new StreamRunEventsUseCase(
+      fixture.store,
+      authorization('viewer'),
+      { stream },
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      runId,
+      lastEventId: 0,
+      sessionExpiresAt: new Date(Date.now() + 60_000),
+      reauthorizeSession,
+      abortStream: vi.fn(),
+      signal: new AbortController().signal,
+    });
+
+    const iterator = frames[Symbol.asyncIterator]();
+    await expect(iterator.return?.()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+    expect(stream).not.toHaveBeenCalled();
+    expect(reauthorizeSession).not.toHaveBeenCalled();
+  });
+
+  it.each(['stream factory', 'iterator factory'] as const)(
+    'contains a throwing %s before authorization lifetime starts',
+    async (failurePoint) => {
+      const fixture = persistence();
+      const failure = new Error(`${failurePoint} failed`);
+      const reauthorizeSession = vi.fn();
+      const stream = vi.fn<WorkflowRunEventStreamer['stream']>(() => {
+        if (failurePoint === 'stream factory') throw failure;
+        return {
+          [Symbol.asyncIterator]: () => {
+            throw failure;
+          },
+        };
+      });
+      const frames = await new StreamRunEventsUseCase(
+        fixture.store,
+        authorization('viewer'),
+        { stream },
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        runId,
+        lastEventId: 0,
+        sessionExpiresAt: new Date(Date.now() + 60_000),
+        reauthorizeSession,
+        abortStream: vi.fn(),
+        signal: new AbortController().signal,
+      });
+
+      await expect(frames[Symbol.asyncIterator]().next()).rejects.toBe(failure);
+      expect(stream).toHaveBeenCalledOnce();
+      expect(reauthorizeSession).not.toHaveBeenCalled();
+    },
+  );
 
   it('reauthorizes before later frames and stops after membership removal', async () => {
     const fixture = persistence();

@@ -127,36 +127,43 @@ export async function reconcileActiveWorkflowTriggers(
     }
   }
   await client.query(
-    `update app.workflow_triggers trigger set
-       status=case when trigger.kind='schedule' and exists (
-            select 1 from app.trigger_schedules schedule where schedule.trigger_id=trigger.id
-              and schedule.status='enabled') then 'active'
-         when exists (select 1 from app.webhook_trigger_endpoints endpoint
-           where endpoint.workspace_id=trigger.workspace_id
-             and endpoint.trigger_id=trigger.id and endpoint.status='active')
-         then 'active'
-         when exists (select 1 from app.trigger_schedules schedule
-           where schedule.trigger_id=trigger.id and schedule.status='disabled')
-           or exists (select 1 from app.webhook_trigger_endpoints endpoint
-             where endpoint.workspace_id=trigger.workspace_id
-               and endpoint.trigger_id=trigger.id and endpoint.status='disabled')
-         then 'disabled' else 'configuration_required' end,
-       health_status=case when trigger.kind='schedule' and exists (
-            select 1 from app.trigger_schedules schedule where schedule.trigger_id=trigger.id
-              and schedule.status='enabled') then 'healthy'
-         when exists (select 1 from app.webhook_trigger_endpoints endpoint
-           where endpoint.workspace_id=trigger.workspace_id
-             and endpoint.trigger_id=trigger.id and endpoint.status='active')
-         then 'healthy'
-         when exists (select 1 from app.trigger_schedules schedule
-           where schedule.trigger_id=trigger.id and schedule.status='disabled')
-           or exists (select 1 from app.webhook_trigger_endpoints endpoint
-             where endpoint.workspace_id=trigger.workspace_id
-               and endpoint.trigger_id=trigger.id and endpoint.status='disabled')
-         then 'disabled' else 'pending' end,
+    `with resource_dispositions as materialized (
+       select trigger.workspace_id,trigger.id,
+         case
+           when trigger.kind='schedule' and exists (
+             select 1 from app.trigger_schedules schedule
+              where schedule.trigger_id=trigger.id and schedule.status='enabled')
+             then 'active'
+           when exists (
+             select 1 from app.webhook_trigger_endpoints endpoint
+              where endpoint.workspace_id=trigger.workspace_id
+                and endpoint.trigger_id=trigger.id and endpoint.status='active')
+             then 'active'
+           when exists (
+             select 1 from app.trigger_schedules schedule
+              where schedule.trigger_id=trigger.id and schedule.status='disabled')
+             or exists (
+               select 1 from app.webhook_trigger_endpoints endpoint
+                where endpoint.workspace_id=trigger.workspace_id
+                  and endpoint.trigger_id=trigger.id and endpoint.status='disabled')
+             then 'disabled'
+           else 'configuration_required'
+         end disposition
+       from app.workflow_triggers trigger
+       where trigger.workspace_id=$1 and trigger.workflow_id=$2
+         and trigger.workflow_version_id=$3
+     )
+     update app.workflow_triggers trigger set
+       status=disposition.disposition,
+       health_status=case disposition.disposition
+         when 'active' then 'healthy'
+         when 'disabled' then 'disabled'
+         else 'pending'
+       end,
        last_error_code=null,reconciled_at=clock_timestamp(),updated_at=clock_timestamp()
-     where trigger.workspace_id=$1 and trigger.workflow_id=$2
-       and trigger.workflow_version_id=$3`,
+     from resource_dispositions disposition
+     where trigger.workspace_id=disposition.workspace_id
+       and trigger.id=disposition.id`,
     [workspaceId, workflowId, versionId],
   );
 }

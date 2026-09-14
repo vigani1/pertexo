@@ -2,22 +2,16 @@ import { z } from 'zod';
 
 import type { ArtifactRecord } from './artifacts.js';
 import type { DatabaseReadiness } from '../platform/readiness.js';
+import {
+  artifactByteLengthSchema,
+  artifactMediaTypeSchema,
+  artifactSha256Schema,
+} from './artifact-metadata-contract.js';
 
 export const ARTIFACT_UPLOAD_PENDING_MS = 15 * 60 * 1_000;
 export const ARTIFACT_UPLOAD_PURPOSE = 'user-upload';
 
-const MAX_ARTIFACT_BYTES = 5 * 1024 * 1024 * 1024;
 const uuidSchema = z.uuid();
-const byteLengthSchema = z.number().int().min(0).max(MAX_ARTIFACT_BYTES);
-const HTTP_FIELD_VALUE = /^[\t\x20-\x7e\x80-\xff]+$/u;
-const mediaTypeSchema = z
-  .string()
-  .trim()
-  .min(3)
-  .max(255)
-  .regex(/^[^\s/;]+\/[^\r\n]+$/u)
-  .regex(HTTP_FIELD_VALUE);
-const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
 const idempotencyKeySchema = z
   .string()
   .min(1)
@@ -39,10 +33,10 @@ const artifactIdentitySchema = z
 const beginArtifactUploadSchema = z
   .object({
     actor: actorInputSchema,
-    byteLength: byteLengthSchema,
+    byteLength: artifactByteLengthSchema,
     idempotencyKey: idempotencyKeySchema,
-    mediaType: mediaTypeSchema,
-    sha256: sha256Schema,
+    mediaType: artifactMediaTypeSchema,
+    sha256: artifactSha256Schema,
     workspaceId: uuidSchema,
   })
   .strict();
@@ -58,9 +52,9 @@ const finalizeArtifactUploadSchema = artifactUploadIdentitySchema
   .extend({
     expectedMetadata: z
       .object({
-        byteLength: byteLengthSchema,
-        mediaType: mediaTypeSchema,
-        sha256: sha256Schema,
+        byteLength: artifactByteLengthSchema,
+        mediaType: artifactMediaTypeSchema,
+        sha256: artifactSha256Schema,
       })
       .strict(),
   })
@@ -72,9 +66,9 @@ const artifactRowSchema = z
     workspace_id: uuidSchema,
     purpose: z.string().min(1).max(64),
     storage_key: z.string().min(1).max(512),
-    media_type: mediaTypeSchema,
+    media_type: artifactMediaTypeSchema,
     byte_length: z.union([z.number(), z.string()]),
-    sha256: sha256Schema,
+    sha256: artifactSha256Schema,
     status: z.enum(['pending', 'available', 'deleting', 'deleted']),
     expires_at: z.coerce.date(),
     finalized_at: z.coerce.date().nullable(),

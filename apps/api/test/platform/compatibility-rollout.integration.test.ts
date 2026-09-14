@@ -11,6 +11,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
   WorkflowDefinitionPlacementError,
+  WorkflowRevisionConflictError,
 } from '@pertexo/database/testing';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,
@@ -32,6 +33,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
+import {
+  FixtureResourceOwner,
+  rethrowFixtureSetupFailure,
+} from '../support/fixture-resource-owner.js';
 
 const migrationBaseUrl = process.env.DATABASE_MIGRATION_URL;
 const apiBaseUrl = process.env.DATABASE_API_URL;
@@ -45,6 +50,21 @@ const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const databaseName = `pertexo_test_compatibility_rollout_${randomUUID().replaceAll('-', '')}`;
+const roles = Object.freeze({
+  api: process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
+  dispatcher: process.env.POSTGRES_DISPATCHER_USER ?? 'pertexo_dispatcher',
+  lifecycle:
+    process.env.POSTGRES_LIFECYCLE_COMMAND_USER ?? 'pertexo_lifecycle_command',
+  maintenance: process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
+  migration: process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration',
+  operator: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
+  owner: process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner',
+  worker: process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker',
+});
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
 
 function namedDatabaseUrl(base: string, name: string): string {
   const value = new URL(base);
@@ -68,10 +88,20 @@ const workerUrl =
 async function createDisposableDatabase(): Promise<void> {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
+      `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(roles.owner)}`,
+    );
+    await admin.query(
+      `revoke all on database ${quoteIdentifier(databaseName)} from public`,
+    );
+    await admin.query(
+      `grant connect on database ${quoteIdentifier(databaseName)} to ${[
+        roles.migration,
+        roles.api,
+        roles.worker,
+      ]
+        .map(quoteIdentifier)
+        .join(', ')}`,
     );
   } finally {
     await admin.end();
@@ -79,19 +109,14 @@ async function createDisposableDatabase(): Promise<void> {
   if (migrationUrl === undefined)
     throw new Error('Compatibility rollout migration URL is unavailable');
   await migrateDatabase({
-    apiRuntimeRole: process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
+    apiRuntimeRole: roles.api,
     connectionString: migrationUrl,
-    dispatcherRole:
-      process.env.POSTGRES_DISPATCHER_USER ?? 'pertexo_dispatcher',
-    lifecycleCommandRole:
-      process.env.POSTGRES_LIFECYCLE_COMMAND_USER ??
-      'pertexo_lifecycle_command',
-    maintenanceRole:
-      process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
-    operatorRole: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
-    ownerRole: process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner',
-    workerRuntimeRole:
-      process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker',
+    dispatcherRole: roles.dispatcher,
+    lifecycleCommandRole: roles.lifecycle,
+    maintenanceRole: roles.maintenance,
+    operatorRole: roles.operator,
+    ownerRole: roles.owner,
+    workerRuntimeRole: roles.worker,
   });
 }
 
@@ -108,10 +133,35 @@ const databaseConfig = (connectionString: string) =>
   parseDatabaseConfig({
     connectionString,
     max: 1,
-    ownerRole: process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner',
-    workerRuntimeRole:
-      process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker',
+    ownerRole: roles.owner,
+    workerRuntimeRole: roles.worker,
   });
+
+async function saveCurrentDraft(
+  database: ReturnType<typeof createCoreWorkflowAuthoringDatabase>,
+  input: Omit<
+    Parameters<
+      ReturnType<typeof createCoreWorkflowAuthoringDatabase>['saveDraft']
+    >[0],
+    'representationTag'
+  >,
+) {
+  const draft = await database.getDraft(
+    input.workspaceId,
+    input.workflowId,
+    input.actorId,
+  );
+  if (draft === null) throw new Error('Workflow draft is unavailable');
+  return database.saveDraft({
+    ...input,
+    representationTag: workflowDraftRepresentationTag({
+      workflowId: input.workflowId,
+      revision: draft.revision,
+      graph: draft.graphJson,
+      compatibilityFingerprint: draft.compatibility.fingerprint,
+    }),
+  });
+}
 
 async function activatePreparedRelease(
   maintenance: ReturnType<typeof createCompatibilityReleaseMaintenance>,
@@ -137,10 +187,10 @@ async function activatePreparedRelease(
     target,
   });
   await expect(apiProbe.checkTarget(target)).resolves.toMatchObject({
-    role: 'pertexo_api',
+    role: roles.api,
   });
   await expect(workerProbe.checkTarget(target)).resolves.toMatchObject({
-    role: 'pertexo_worker',
+    role: roles.worker,
   });
   await maintenance.recordPreactivation({
     artifactId: apiArtifact,
@@ -175,6 +225,167 @@ async function activatePreparedRelease(
   });
 }
 
+async function createRolloutFixture(
+  currentDescriptions: Parameters<
+    typeof createCompatibilityReleaseReadinessProbe
+  >[1],
+  stagingDescriptions: Parameters<
+    typeof createCompatibilityReleaseReadinessProbe
+  >[1],
+  activationDescriptions: Parameters<
+    typeof createCompatibilityReleaseReadinessProbe
+  >[1],
+) {
+  const resources = new FixtureResourceOwner();
+  const own = <T extends { close(): Promise<void> }>(
+    name: string,
+    value: T,
+  ): T => resources.acquire(name, value, (selected) => selected.close());
+  try {
+    const maintenance = own(
+      'compatibility maintenance',
+      createCompatibilityReleaseMaintenance(databaseConfig(migrationUrl ?? '')),
+    );
+    const apiProbe = own(
+      'current API probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(apiUrl ?? ''),
+        currentDescriptions,
+      ),
+    );
+    const workerProbe = own(
+      'current worker probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(workerUrl ?? ''),
+        currentDescriptions,
+      ),
+    );
+    const [currentDescription] = currentDescriptions;
+    if (currentDescription === undefined)
+      throw new Error('Current compatibility release is unavailable');
+    const oldApiProbe = own(
+      'predecessor API probe',
+      createCompatibilityReleaseReadinessProbe(databaseConfig(apiUrl ?? ''), [
+        currentDescription,
+      ]),
+    );
+    const stagingApiProbe = own(
+      'staging API probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(apiUrl ?? ''),
+        stagingDescriptions,
+      ),
+    );
+    const stagingWorkerProbe = own(
+      'staging worker probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(workerUrl ?? ''),
+        stagingDescriptions,
+      ),
+    );
+    const activationApiProbe = own(
+      'activation API probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(apiUrl ?? ''),
+        activationDescriptions,
+      ),
+    );
+    const activationWorkerProbe = own(
+      'activation worker probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(workerUrl ?? ''),
+        activationDescriptions,
+      ),
+    );
+    const identity = own(
+      'identity database',
+      createIdentityWorkspaceDatabase(databaseConfig(apiUrl ?? '')),
+    );
+    const authoring = own(
+      'current authoring database',
+      createCoreWorkflowAuthoringDatabase(databaseConfig(apiUrl ?? '')),
+    );
+    const stagingAuthoring = own(
+      'staging authoring database',
+      createCoreWorkflowAuthoringDatabase(
+        databaseConfig(apiUrl ?? ''),
+        'http_staging',
+      ),
+    );
+    const activationAuthoring = own(
+      'activation authoring database',
+      createCoreWorkflowAuthoringDatabase(
+        databaseConfig(apiUrl ?? ''),
+        'http_activation',
+      ),
+    );
+    const connections = own(
+      'connection database',
+      createConnectionDatabase(databaseConfig(apiUrl ?? '')),
+    );
+    const usage = own(
+      'integration usage database',
+      createWorkflowIntegrationUsageDatabase(databaseConfig(apiUrl ?? '')),
+    );
+    const activationRunPersistence = own(
+      'activation run persistence',
+      createPostgresWorkflowRunPersistence(
+        databaseConfig(apiUrl ?? ''),
+        undefined,
+        undefined,
+        'http_activation',
+      ),
+    );
+    return {
+      activationApiProbe,
+      activationAuthoring,
+      activationRunPersistence,
+      activationWorkerProbe,
+      apiProbe,
+      authoring,
+      connections,
+      identity,
+      maintenance,
+      oldApiProbe,
+      resources,
+      stagingApiProbe,
+      stagingAuthoring,
+      stagingWorkerProbe,
+      usage,
+      workerProbe,
+    };
+  } catch (error: unknown) {
+    return rethrowFixtureSetupFailure(resources, error);
+  }
+}
+
+async function createReadinessProbePair(
+  descriptions: Parameters<typeof createCompatibilityReleaseReadinessProbe>[1],
+) {
+  const resources = new FixtureResourceOwner();
+  try {
+    const apiProbe = resources.acquire(
+      'cohort API probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(apiUrl ?? ''),
+        descriptions,
+      ),
+      (probe) => probe.close(),
+    );
+    const workerProbe = resources.acquire(
+      'cohort worker probe',
+      createCompatibilityReleaseReadinessProbe(
+        databaseConfig(workerUrl ?? ''),
+        descriptions,
+      ),
+      (probe) => probe.close(),
+    );
+    return { apiProbe, resources, workerProbe };
+  } catch (error: unknown) {
+    return rethrowFixtureSetupFailure(resources, error);
+  }
+}
+
 describe.runIf(enabled)('additive compatibility release rollout', () => {
   beforeAll(createDisposableDatabase, 60_000);
   afterAll(dropDisposableDatabase);
@@ -206,60 +417,27 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       activationTarget === undefined
     )
       throw new Error('Rolling release support is incomplete');
-    const maintenance = createCompatibilityReleaseMaintenance(
-      databaseConfig(migrationUrl ?? ''),
-    );
-    const apiProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(apiUrl ?? ''),
+    const {
+      activationApiProbe,
+      activationAuthoring,
+      activationRunPersistence,
+      activationWorkerProbe,
+      apiProbe,
+      authoring,
+      connections,
+      identity,
+      maintenance,
+      oldApiProbe,
+      resources,
+      stagingApiProbe,
+      stagingAuthoring,
+      stagingWorkerProbe,
+      usage,
+      workerProbe,
+    } = await createRolloutFixture(
       support.descriptions,
-    );
-    const workerProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(workerUrl ?? ''),
-      support.descriptions,
-    );
-    const oldApiProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(apiUrl ?? ''),
-      [currentDescription],
-    );
-    const stagingApiProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(apiUrl ?? ''),
       stagingSupport.descriptions,
-    );
-    const stagingWorkerProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(workerUrl ?? ''),
-      stagingSupport.descriptions,
-    );
-    const activationApiProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(apiUrl ?? ''),
       activationSupport.descriptions,
-    );
-    const activationWorkerProbe = createCompatibilityReleaseReadinessProbe(
-      databaseConfig(workerUrl ?? ''),
-      activationSupport.descriptions,
-    );
-    const identity = createIdentityWorkspaceDatabase(
-      databaseConfig(apiUrl ?? ''),
-    );
-    const authoring = createCoreWorkflowAuthoringDatabase(
-      databaseConfig(apiUrl ?? ''),
-    );
-    const stagingAuthoring = createCoreWorkflowAuthoringDatabase(
-      databaseConfig(apiUrl ?? ''),
-      'http_staging',
-    );
-    const activationAuthoring = createCoreWorkflowAuthoringDatabase(
-      databaseConfig(apiUrl ?? ''),
-      'http_activation',
-    );
-    const connections = createConnectionDatabase(databaseConfig(apiUrl ?? ''));
-    const usage = createWorkflowIntegrationUsageDatabase(
-      databaseConfig(apiUrl ?? ''),
-    );
-    const activationRunPersistence = createPostgresWorkflowRunPersistence(
-      databaseConfig(apiUrl ?? ''),
-      undefined,
-      undefined,
-      'http_activation',
     );
     const deploymentId = `compatibility-rollout-${randomUUID()}`;
     const approvalId = randomUUID();
@@ -273,10 +451,10 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       });
       await expect(
         apiProbe.checkTarget(targetDescription),
-      ).resolves.toMatchObject({ role: 'pertexo_api' });
+      ).resolves.toMatchObject({ role: roles.api });
       await expect(
         workerProbe.checkTarget(targetDescription),
-      ).resolves.toMatchObject({ role: 'pertexo_worker' });
+      ).resolves.toMatchObject({ role: roles.worker });
       await maintenance.recordPreactivation({
         artifactId: 'api-rollout-a',
         checkId: randomUUID(),
@@ -326,7 +504,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         name: 'Retained definition workflow',
         workspaceId: workspace.id,
       });
-      const preactivationDraft = await authoring.saveDraft({
+      const preactivationDraft = await saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -372,6 +550,12 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       expect(preactivationDraft.compatibility.fingerprint).toBe(
         currentDescription.fingerprint,
       );
+      const preactivationTag = workflowDraftRepresentationTag({
+        workflowId: created.workflowId,
+        revision: preactivationDraft.revision,
+        graph: preactivationDraft.graphJson,
+        compatibilityFingerprint: preactivationDraft.compatibility.fingerprint,
+      });
       await maintenance.activate({
         activationId: randomUUID(),
         actorId: 'compatibility-rollout-integration',
@@ -382,10 +566,10 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       });
 
       await expect(apiProbe.checkCurrent()).resolves.toMatchObject({
-        role: 'pertexo_api',
+        role: roles.api,
       });
       await expect(workerProbe.checkCurrent()).resolves.toMatchObject({
-        role: 'pertexo_worker',
+        role: roles.worker,
       });
       await expect(oldApiProbe.checkCurrent()).rejects.toBeInstanceOf(
         CompatibilityReleaseMismatchError,
@@ -400,6 +584,33 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       expect(retainedDraft.compatibility.fingerprint).toBe(
         targetDescription.fingerprint,
       );
+      const postactivationTag = workflowDraftRepresentationTag({
+        workflowId: created.workflowId,
+        revision: retainedDraft.revision,
+        graph: retainedDraft.graphJson,
+        compatibilityFingerprint: retainedDraft.compatibility.fingerprint,
+      });
+      const releaseOnlyConflict = await authoring
+        .saveDraft({
+          actorId,
+          expectedRevision: preactivationDraft.revision,
+          graphJson: {
+            ...retainedDraft.graphJson,
+            settings: { maxRunDurationMs: 30_000 },
+          },
+          representationTag: preactivationTag,
+          workflowId: created.workflowId,
+          workspaceId: workspace.id,
+        })
+        .catch((error: unknown) => error);
+      expect(releaseOnlyConflict).toBeInstanceOf(WorkflowRevisionConflictError);
+      expect(releaseOnlyConflict).toMatchObject({
+        currentRevision: retainedDraft.revision,
+        currentEtag: postactivationTag,
+      });
+      await expect(
+        authoring.getDraft(workspace.id, created.workflowId, actorId),
+      ).resolves.toMatchObject({ revision: retainedDraft.revision });
       const published = await authoring.publishWorkflow({
         actorId,
         idempotencyKey: `publish-${actorId}`,
@@ -429,7 +640,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         workspaceId: workspace.id,
       });
       await expect(
-        authoring.saveDraft({
+        saveCurrentDraft(authoring, {
           actorId,
           expectedRevision: 1,
           graphJson: {
@@ -453,7 +664,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         }),
       ).rejects.toBeInstanceOf(WorkflowDefinitionPlacementError);
       await expect(
-        authoring.saveDraft({
+        saveCurrentDraft(authoring, {
           actorId,
           expectedRevision: 1,
           graphJson: {
@@ -486,7 +697,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         }),
       ).rejects.toBeInstanceOf(WorkflowDefinitionPlacementError);
       await expect(
-        authoring.saveDraft({
+        saveCurrentDraft(authoring, {
           actorId,
           expectedRevision: 1,
           graphJson: {
@@ -554,10 +765,10 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         'phase4-http-staging',
       );
       await expect(stagingApiProbe.checkCurrent()).resolves.toMatchObject({
-        role: 'pertexo_api',
+        role: roles.api,
       });
       await expect(stagingWorkerProbe.checkCurrent()).resolves.toMatchObject({
-        role: 'pertexo_worker',
+        role: roles.worker,
       });
       await expect(apiProbe.checkCurrent()).rejects.toBeInstanceOf(
         CompatibilityReleaseMismatchError,
@@ -577,7 +788,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         workspaceId: workspace.id,
       });
       await expect(
-        stagingAuthoring.saveDraft({
+        saveCurrentDraft(stagingAuthoring, {
           actorId,
           expectedRevision: 1,
           graphJson: {
@@ -620,10 +831,10 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         'phase4-http-activation',
       );
       await expect(activationApiProbe.checkCurrent()).resolves.toMatchObject({
-        role: 'pertexo_api',
+        role: roles.api,
       });
       await expect(activationWorkerProbe.checkCurrent()).resolves.toMatchObject(
-        { role: 'pertexo_worker' },
+        { role: roles.worker },
       );
       await expect(stagingApiProbe.checkCurrent()).rejects.toBeInstanceOf(
         CompatibilityReleaseMismatchError,
@@ -663,7 +874,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         name: 'HTTP active publication',
         workspaceId: workspace.id,
       });
-      const activeHttpDraft = await activationAuthoring.saveDraft({
+      const activeHttpDraft = await saveCurrentDraft(activationAuthoring, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -776,14 +987,11 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         const [predecessor, target] = rollout.descriptions;
         if (predecessor === undefined || target === undefined)
           throw new Error(`Incomplete rollout support for ${cohort}`);
-        const cohortApiProbe = createCompatibilityReleaseReadinessProbe(
-          databaseConfig(apiUrl ?? ''),
-          rollout.descriptions,
-        );
-        const cohortWorkerProbe = createCompatibilityReleaseReadinessProbe(
-          databaseConfig(workerUrl ?? ''),
-          rollout.descriptions,
-        );
+        const {
+          apiProbe: cohortApiProbe,
+          resources: cohortResources,
+          workerProbe: cohortWorkerProbe,
+        } = await createReadinessProbePair(rollout.descriptions);
         try {
           await activatePreparedRelease(
             maintenance,
@@ -794,36 +1002,17 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
             cohort,
           );
           await expect(cohortApiProbe.checkCurrent()).resolves.toMatchObject({
-            role: 'pertexo_api',
+            role: roles.api,
           });
           await expect(cohortWorkerProbe.checkCurrent()).resolves.toMatchObject(
-            { role: 'pertexo_worker' },
+            { role: roles.worker },
           );
         } finally {
-          await Promise.all([
-            cohortApiProbe.close(),
-            cohortWorkerProbe.close(),
-          ]);
+          await cohortResources.close();
         }
       }
     } finally {
-      await Promise.all([
-        maintenance.close(),
-        apiProbe.close(),
-        workerProbe.close(),
-        oldApiProbe.close(),
-        stagingApiProbe.close(),
-        stagingWorkerProbe.close(),
-        activationApiProbe.close(),
-        activationWorkerProbe.close(),
-        authoring.close(),
-        stagingAuthoring.close(),
-        activationAuthoring.close(),
-        connections.close(),
-        usage.close(),
-        activationRunPersistence.close(),
-        identity.close(),
-      ]);
+      await resources.close();
     }
   });
 });

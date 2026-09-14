@@ -1,23 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   HTTP_REQUEST_EXECUTOR,
-  SLACK_BOT_TOKEN_CONNECTION_SLOT,
-  SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
-  EMAIL_SEND_NOTIFICATION_DEFINITION,
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
-  RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
 import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
-  CORE_MERGE_DEFINITION,
   CORE_MERGE_DEFINITION_V2,
   CORE_MERGE_DEFINITION_V3,
   CORE_MERGE_EXECUTOR,
   CORE_MERGE_EXECUTOR_V2,
   CORE_MERGE_EXECUTOR_V3,
-  CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_DEFINITION_V2,
   CORE_PARALLEL_DEFINITION_V3,
   CORE_PARALLEL_EXECUTOR,
@@ -658,175 +652,6 @@ describe('platform node release history and cohorts', () => {
       expect(CORE_SCHEDULE_CONFIG_SCHEMA.safeParse(config).success).toBe(false);
   });
 
-  it('retains staged and active email releases with no staging admission', async () => {
-    const sendNotification = vi.fn(
-      async (input: { beforeDispatch(): Promise<void> }) => {
-        await input.beforeDispatch();
-        return {
-          kind: 'succeeded' as const,
-          emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
-        };
-      },
-    );
-    const secret = new TextEncoder().encode(
-      JSON.stringify({
-        schemaVersion: 1,
-        type: 'resend_api_key',
-        apiKey: 're_123456789_secret',
-        fromEmail: 'sender@example.com',
-      }),
-    );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
-      { emailSendNotification: { client: { sendNotification } } },
-    );
-    await expect(
-      registry.execute({
-        config: { timeoutMillis: 10_000 },
-        definition: EMAIL_SEND_NOTIFICATION_DEFINITION,
-        executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
-        input: { toEmail: 'to@example.com', subject: 'Subject', text: 'Text' },
-        connectionRefs: {
-          [RESEND_API_KEY_CONNECTION_SLOT]:
-            '22222222-2222-4222-8222-222222222222',
-        },
-        runtime: {
-          workspaceId: '11111111-1111-4111-8111-111111111111',
-          runId: '33333333-3333-4333-8333-333333333333',
-          nodeRunId: '44444444-4444-4444-8444-444444444444',
-          attemptId: '55555555-5555-4555-8555-555555555555',
-          attemptNumber: 1,
-          nodeId: 'email',
-          invocationKey: 'email',
-          sideEffectClass: 'idempotent_with_key',
-          providerIdempotencyKey: 'stable-resend-key',
-          beforeDispatch: () => Promise.resolve(),
-          connections: {
-            resolve: () =>
-              Promise.resolve({
-                connectionId: '22222222-2222-4222-8222-222222222222',
-                providerKey: 'email',
-                authType: 'resend_api_key',
-                secretVersionId: '66666666-6666-4666-8666-666666666666',
-                secret,
-              }),
-            assertCurrent: () => Promise.resolve(),
-          },
-        },
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({
-      kind: 'succeeded',
-      output: { emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' },
-    });
-  });
-  it('retains staged and active Slack releases with no staging admission', async () => {
-    const sendMessage = vi.fn(
-      async (input: { beforeDispatch(): Promise<void> }) => {
-        await input.beforeDispatch();
-        return {
-          kind: 'succeeded' as const,
-          channelId: 'C123ABC',
-          messageTs: '1724412345.000100',
-        };
-      },
-    );
-    const secret = new TextEncoder().encode(
-      JSON.stringify({
-        schemaVersion: 1,
-        type: 'slack_bot_token',
-        botToken: 'xoxb-123456789-secret',
-      }),
-    );
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
-      { slackSendMessage: { client: { sendMessage } } },
-    );
-    await expect(
-      registry.execute({
-        config: { timeoutMillis: 10_000 },
-        definition: SLACK_SEND_MESSAGE_DEFINITION,
-        executor: SLACK_SEND_MESSAGE_EXECUTOR,
-        input: { channelId: 'C123ABC', text: 'deployed' },
-        connectionRefs: {
-          [SLACK_BOT_TOKEN_CONNECTION_SLOT]:
-            '22222222-2222-4222-8222-222222222222',
-        },
-        runtime: {
-          workspaceId: '11111111-1111-4111-8111-111111111111',
-          runId: '33333333-3333-4333-8333-333333333333',
-          nodeRunId: '44444444-4444-4444-8444-444444444444',
-          attemptId: '55555555-5555-4555-8555-555555555555',
-          attemptNumber: 1,
-          nodeId: 'slack',
-          invocationKey: 'slack',
-          sideEffectClass: 'unsafe',
-          beforeDispatch: () => Promise.resolve(),
-          connections: {
-            resolve: () =>
-              Promise.resolve({
-                connectionId: '22222222-2222-4222-8222-222222222222',
-                providerKey: 'slack',
-                authType: 'slack_bot_token',
-                secretVersionId: '66666666-6666-4666-8666-666666666666',
-                secret,
-              }),
-            assertCurrent: () => Promise.resolve(),
-          },
-        },
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({
-      kind: 'succeeded',
-      output: { channelId: 'C123ABC', messageTs: '1724412345.000100' },
-    });
-    expect(sendMessage).toHaveBeenCalledOnce();
-    expect(secret.every((byte) => byte === 0)).toBe(true);
-  });
-
-  it('executes a settled Merge ledger only in its additive release', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-    );
-    const input = {
-      ledger: {
-        'branch-01': { disposition: 'arrived' },
-        'branch-02': { disposition: 'skipped' },
-      },
-      selectedBranchIds: ['branch-01'],
-    };
-    await expect(
-      registry.execute({
-        config: { parallelNodeId: 'parallel', policy: { kind: 'any' } },
-        definition: CORE_MERGE_DEFINITION,
-        executor: CORE_MERGE_EXECUTOR,
-        input,
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({ kind: 'succeeded', output: input });
-  });
-
-  it('executes bounded Parallel declaration only in its additive release', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-    );
-    await expect(
-      registry.execute({
-        config: {
-          branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
-          maxConcurrency: 1,
-        },
-        definition: CORE_PARALLEL_DEFINITION,
-        executor: CORE_PARALLEL_EXECUTOR,
-        input: {},
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({
-      kind: 'succeeded',
-      output: { branchIds: ['branch-02', 'branch-01'] },
-    });
-  });
-
   it('rejects a non-additive Switch identity', () => {
     expect(() =>
       resolvePlatformNodeDefinitionForRelease(
@@ -950,6 +775,49 @@ describe('platform node release history and cohorts', () => {
       ).size,
     ).toBe(PLATFORM_REGISTRY_RELEASE_HISTORY.length);
   });
+
+  it.each(PLATFORM_LIFECYCLE_EXPECTATIONS)(
+    'proves $label is absent before staging and cannot dispatch while staged',
+    (expectation) => {
+      const stagedManifest = expectation.staged.definitions.find(
+        ({ executor: candidate }) =>
+          candidate.key === expectation.executor.key &&
+          candidate.version === expectation.executor.version,
+      );
+      expect(
+        stagedManifest,
+        `${expectation.label} staged manifest`,
+      ).toBeDefined();
+      if (stagedManifest === undefined) return;
+      const predecessor = PLATFORM_REGISTRY_RELEASE_HISTORY.find(
+        ({ epoch }) => epoch === expectation.staged.epoch - 1,
+      );
+      expect(predecessor, `${expectation.label} predecessor`).toBeDefined();
+      if (predecessor === undefined) return;
+
+      expect(() =>
+        resolvePlatformNodeDefinitionForRelease(
+          predecessor,
+          stagedManifest.definition,
+        ),
+      ).toThrow(/not implemented/u);
+      const providerDispatch = vi.fn();
+      expect(() =>
+        createPlatformNodeRegistryForRelease(expectation.staged, {
+          httpRequest: {
+            httpClient: { executeStreaming: providerDispatch } as never,
+          },
+          slackSendMessage: {
+            client: { sendMessage: providerDispatch },
+          },
+          emailSendNotification: {
+            client: { sendNotification: providerDispatch },
+          },
+        }),
+      ).toThrow(/cannot execute this release/u);
+      expect(providerDispatch).not.toHaveBeenCalled();
+    },
+  );
 
   it('executes additive core contract successors without changing retained versions', async () => {
     const signal = new AbortController().signal;

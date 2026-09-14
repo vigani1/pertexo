@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { parseDatabaseConfig } from '@pertexo/database/testing';
+import {
+  parseDatabaseConfig,
+  parseStoredExecutionValueV1,
+} from '@pertexo/database/testing';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
@@ -36,6 +39,11 @@ describeIntegration('preview delivery transport', () => {
     const registry = createPlatformNodeRegistryForRelease(
       platformServingRegistryRelease('core'),
     );
+    const platformInvoker = createPlatformPreviewNodeInvoker({
+      releaseCohort: 'core',
+      registry,
+    });
+    let invocationCount = 0;
     const runtime = await createNodeAttemptRuntime({
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
@@ -43,10 +51,15 @@ describeIntegration('preview delivery transport', () => {
       heartbeatIntervalMillis: 200,
       leaseDurationSeconds: 10,
       preview: {
-        invoker: createPlatformPreviewNodeInvoker({
-          releaseCohort: 'core',
-          registry,
-        }),
+        invoker: {
+          close: async () => {
+            await platformInvoker.close?.();
+          },
+          invoke: (input) => {
+            invocationCount += 1;
+            return platformInvoker.invoke(input);
+          },
+        },
         runStore: previewStore,
       },
       productionEnabled: false,
@@ -64,9 +77,10 @@ describeIntegration('preview delivery transport', () => {
           // core.set is a safe node: dispatch evidence is not required before
           // its pure execution, so no marker exists for this preview.
           expect(state?.dispatch_marked_at).toBeNull();
-          expect(JSON.parse(String(state?.output_ref))).toMatchObject({
+          expect(parseStoredExecutionValueV1(state?.output_ref)).toMatchObject({
             value: { hello: 'transport' },
           });
+          expect(invocationCount).toBe(1);
 
           const receipts = await withTenantScopedWorker((client) =>
             client.query<{ count: string; completed: string }>(
@@ -110,6 +124,7 @@ describeIntegration('preview delivery transport', () => {
           const after = await previewState(delivery.accepted.previewRunId);
           expect(after).toEqual(before);
           expect(after?.attempt_fence).toBe('1');
+          expect(invocationCount).toBe(1);
         },
       );
     } finally {

@@ -30,6 +30,13 @@ export type ScheduleObservation = Readonly<{
   nextAt: Date;
 }>;
 
+export type PersistedScheduleRecurrenceRow = Readonly<{
+  recurrence_kind: 'cron' | 'interval';
+  cron_expression: string | null;
+  timezone: string | null;
+  interval_minutes: number | null;
+}>;
+
 // Resolution examines a three-hour overlap window at minute precision. Keep a
 // margin over those 180 possible raw slots, while ensuring a broken parser
 // cannot monopolize the worker's synchronous event loop.
@@ -65,6 +72,21 @@ export function parseScheduleRecurrence(input: unknown): ScheduleRecurrence {
     return invalidSchedule(error);
   }
   return Object.freeze(cron.data);
+}
+
+/** Translate the mutually exclusive persisted recurrence columns exactly once. */
+export function parsePersistedScheduleRecurrence(
+  row: PersistedScheduleRecurrenceRow,
+): ScheduleRecurrence {
+  return parseScheduleRecurrence(
+    row.recurrence_kind === 'cron'
+      ? {
+          kind: 'cron',
+          expression: row.cron_expression,
+          timezone: row.timezone,
+        }
+      : { kind: 'interval', intervalMinutes: row.interval_minutes },
+  );
 }
 
 function cronParser(

@@ -146,33 +146,52 @@ export async function readRunEventsAfter(
   input: Readonly<z.input<typeof readRunEventsSchema>>,
 ): Promise<RunEventPage> {
   const parsed = readRunEventsSchema.parse(input);
-  const run = await transaction.db.execute<{ high_water: number }>(sql`
-    select coalesce(max(e.sequence), 0)::integer as high_water
-    from app.workflow_runs r
-    left join app.run_events e
-      on e.workspace_id = r.workspace_id and e.workflow_run_id = r.id
-    where r.workspace_id = ${transaction.workspaceId} and r.id = ${parsed.runId}
-    group by r.id
+  const result = await transaction.db.execute<{
+    created_at: Date | null;
+    high_water: number;
+    payload: unknown;
+    sequence: number | null;
+    type: RunEventType | null;
+  }>(sql`
+    with run_snapshot as materialized (
+      select coalesce((
+        select max(event.sequence)
+        from app.run_events event
+        where event.workspace_id = run.workspace_id
+          and event.workflow_run_id = run.id
+      ), 0)::integer as high_water
+      from app.workflow_runs run
+      where run.workspace_id = ${transaction.workspaceId}
+        and run.id = ${parsed.runId}
+    )
+    select snapshot.high_water,
+           page.sequence,page.type,page.payload,page.created_at
+    from run_snapshot snapshot
+    left join lateral (
+      select event.sequence,event.type,event.payload,event.created_at
+      from app.run_events event
+      where event.workspace_id = ${transaction.workspaceId}
+        and event.workflow_run_id = ${parsed.runId}
+        and event.sequence > ${parsed.afterSequence}
+        and event.sequence <= snapshot.high_water
+      order by event.sequence
+      limit ${parsed.limit + 1}
+    ) page on true
+    order by page.sequence nulls last
   `);
-  const highWaterSequence = run.rows[0]?.high_water;
+  const highWaterSequence = result.rows[0]?.high_water;
   if (highWaterSequence === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
-
-  const result = await transaction.db.execute<{
-    created_at: Date;
-    payload: unknown;
-    sequence: number;
-    type: RunEventType;
-  }>(sql`
-    select sequence, type, payload, created_at
-    from app.run_events
-    where workspace_id = ${transaction.workspaceId}
-      and workflow_run_id = ${parsed.runId}
-      and sequence > ${parsed.afterSequence}
-    order by sequence
-    limit ${parsed.limit + 1}
-  `);
-  const pageRows = result.rows.slice(0, parsed.limit);
+  const eventRows = result.rows.filter(
+    (
+      row,
+    ): row is typeof row & {
+      created_at: Date;
+      sequence: number;
+      type: RunEventType;
+    } => row.created_at !== null && row.sequence !== null && row.type !== null,
+  );
+  const pageRows = eventRows.slice(0, parsed.limit);
   for (const [index, row] of pageRows.entries()) {
     if (row.sequence !== parsed.afterSequence + index + 1)
       throw new RunEventGapError();
@@ -189,7 +208,7 @@ export async function readRunEventsAfter(
         }),
       ),
     ),
-    hasMore: result.rows.length > parsed.limit,
+    hasMore: eventRows.length > parsed.limit,
     highWaterSequence,
   });
 }

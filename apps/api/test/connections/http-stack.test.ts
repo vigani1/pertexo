@@ -2,7 +2,13 @@ import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/testing';
+import { FailureNotificationDestinationError } from '@pertexo/database/api';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
+import {
+  ConnectionSecretEncryptionError,
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+} from '@pertexo/integrations/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
@@ -25,7 +31,9 @@ const destinationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0021_workflow_integration_usage.sql');
 
-function identityRuntime(): ApiIdentityRuntime {
+function identityRuntime(
+  role: 'admin' | 'builder' | 'owner' | 'viewer' = 'owner',
+): ApiIdentityRuntime {
   const dependencies: IdentityWorkspaceDependencies = {
     config: {
       oidc: {
@@ -52,7 +60,7 @@ function identityRuntime(): ApiIdentityRuntime {
           sessionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
           tokenDigest: 'a'.repeat(64),
           userId: actorId,
-          expiresAt: new Date(Date.now() + 60_000),
+          expiresAt: new Date('2099-08-22T20:00:00.000Z'),
           clientMetadata: {},
         }),
       revokeByDigest: () => Promise.resolve(false),
@@ -72,7 +80,7 @@ function identityRuntime(): ApiIdentityRuntime {
             ? {
                 actorId,
                 workspaceId,
-                role: 'owner' as const,
+                role,
                 membershipStatus: 'active' as const,
                 workspaceStatus: 'active' as const,
               }
@@ -87,6 +95,23 @@ function connectionRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
 ) {
   let stored: ConnectionRecord | null = null;
+  let createReplayIdentity:
+    | Readonly<{
+        workspaceId: string;
+        actorId: string;
+        idempotencyKey: string;
+        requestHash: string;
+      }>
+    | undefined;
+  let testReplayIdentity:
+    | Readonly<{
+        workspaceId: string;
+        actorId: string;
+        connectionId: string;
+        idempotencyKey: string;
+        requestHash: string;
+      }>
+    | undefined;
   let testResult:
     | Readonly<{
         connection: ConnectionRecord;
@@ -99,6 +124,12 @@ function connectionRuntime(
         ConnectionDependencies['persistence']['createConnection']
       >[0],
     ) => {
+      createReplayIdentity = {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        idempotencyKey: input.idempotencyKey,
+        requestHash: input.requestHash,
+      };
       stored = {
         id: input.connectionId,
         workspaceId: input.workspaceId,
@@ -156,10 +187,16 @@ function connectionRuntime(
   const appendDestinationVersion = vi
     .fn<FailureNotificationDestinationDatabase['appendVersion']>()
     .mockResolvedValue(destinationRecord);
+  const getDestination = vi
+    .fn<FailureNotificationDestinationDatabase['get']>()
+    .mockResolvedValue(destinationRecord);
+  const listDestinations = vi
+    .fn<FailureNotificationDestinationDatabase['list']>()
+    .mockResolvedValue([destinationRecord]);
   const destinationPersistence: FailureNotificationDestinationDatabase = {
     create: () => Promise.reject(new Error('not used')),
-    get: () => Promise.resolve(destinationRecord),
-    list: () => Promise.resolve([destinationRecord]),
+    get: getDestination,
+    list: listDestinations,
     appendVersion: appendDestinationVersion,
     setStatus: () => Promise.reject(new Error('not used')),
     setWorkflowPolicy: () => Promise.reject(new Error('not used')),
@@ -189,7 +226,14 @@ function connectionRuntime(
       },
       persistence: {
         createConnection,
-        findConnectionCreateReplay: () => Promise.resolve(stored),
+        findConnectionCreateReplay: (input) =>
+          Promise.resolve(
+            stored !== null &&
+              createReplayIdentity !== undefined &&
+              replayIdentityMatches(createReplayIdentity, input)
+              ? stored
+              : null,
+          ),
         findConnectionRotateReplay: () => Promise.resolve(null),
         rotateConnectionSecret: () => Promise.reject(new Error('not used')),
         revokeConnection: () => Promise.reject(new Error('not used')),
@@ -198,12 +242,27 @@ function connectionRuntime(
             ConnectionDependencies['persistence']['startConnectionTest']
           >[0],
         ) => {
-          if (testResult !== undefined)
+          if (testResult !== undefined) {
+            if (
+              testReplayIdentity === undefined ||
+              !replayIdentityMatches(testReplayIdentity, input)
+            )
+              return Promise.reject(
+                new Error('test replay identity does not match'),
+              );
             return Promise.resolve({
               kind: 'replay' as const,
               result: testResult,
             });
+          }
           if (stored === null) return Promise.reject(new Error('not created'));
+          testReplayIdentity = {
+            workspaceId: input.workspaceId,
+            actorId: input.actorId,
+            connectionId: input.connectionId,
+            idempotencyKey: input.idempotencyKey,
+            requestHash: input.requestHash,
+          };
           return Promise.resolve({
             kind: 'dispatch' as const,
             dispatchToken: input.dispatchToken,
@@ -254,19 +313,52 @@ function connectionRuntime(
     executeHttp,
     markConnectionTestDispatched,
     appendDestinationVersion,
+    getDestination,
+    listDestinations,
   };
 }
+
+function replayIdentityMatches(
+  expected: Readonly<Record<string, string>>,
+  actual: Readonly<Record<string, unknown>>,
+): boolean {
+  return Object.entries(expected).every(
+    ([name, value]) => actual[name] === value,
+  );
+}
+
+const connectionUrl = `/v1/workspaces/${workspaceId}/connections`;
+const connectionPayload = {
+  providerKey: 'http',
+  name: 'Operations API',
+  credential: {
+    schemaVersion: 1,
+    type: 'http_headers',
+    headers: { Authorization: credentialValue },
+  },
+} as const;
+const authenticatedHeaders = {
+  cookie: `pertexo_session=${rawSession}; pertexo_csrf=${csrf}`,
+  'x-csrf-token': csrf,
+  'idempotency-key': 'create-http-stack',
+};
+const destinationPath = `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`;
+const destinationPayload = {
+  expectedVersion: 1,
+  config: {
+    kind: 'slack',
+    connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    channelId: 'C67890',
+  },
+} as const;
 
 describe('connections real Nest HTTP stack', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
 
-  afterEach(async () => {
-    await application?.close();
-    application = undefined;
-  });
-
-  it('enforces auth/CSRF, creates once, replays safely, and never returns secrets', async () => {
-    const identity = identityRuntime();
+  async function start(
+    role: 'admin' | 'builder' | 'owner' | 'viewer' = 'owner',
+  ) {
+    const identity = identityRuntime(role);
     const connection = connectionRuntime(identity.dependencies.authorization);
     application = await createApiApplication(config, {
       database,
@@ -280,38 +372,60 @@ describe('connections real Nest HTTP stack', () => {
       telemetry,
     });
     await application.init();
-    const url = `/v1/workspaces/${workspaceId}/connections`;
-    const payload = {
-      providerKey: 'http',
-      name: 'Operations API',
-      credential: {
-        schemaVersion: 1,
-        type: 'http_headers',
-        headers: { Authorization: credentialValue },
-      },
-    };
+    return { application, connection };
+  }
 
+  afterEach(async () => {
+    await application?.close();
+    application = undefined;
+  });
+
+  it('rejects unauthenticated and invalid-CSRF mutations before persistence or encryption', async () => {
+    const { application, connection } = await start();
     const unauthenticated = await application.inject({
       method: 'POST',
-      url,
+      url: connectionUrl,
       headers: { 'idempotency-key': 'create-http-stack' },
-      payload,
+      payload: connectionPayload,
     });
     expect(unauthenticated.statusCode).toBe(401);
     expect(unauthenticated.json()).toMatchObject({
       code: 'auth.unauthenticated',
     });
 
-    const headers = {
-      cookie: `pertexo_session=${rawSession}; pertexo_csrf=${csrf}`,
-      'x-csrf-token': csrf,
-      'idempotency-key': 'create-http-stack',
-    };
+    const missingCsrf = await application.inject({
+      method: 'POST',
+      url: connectionUrl,
+      headers: {
+        cookie: `pertexo_session=${rawSession}; pertexo_csrf=${csrf}`,
+        'idempotency-key': 'create-http-stack',
+      },
+      payload: connectionPayload,
+    });
+    expect(missingCsrf.statusCode).toBe(403);
+
+    const mismatchedCsrf = await application.inject({
+      method: 'POST',
+      url: connectionUrl,
+      headers: {
+        cookie: `pertexo_session=${rawSession}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': 'x'.repeat(32),
+        'idempotency-key': 'create-http-stack',
+      },
+      payload: connectionPayload,
+    });
+    expect(mismatchedCsrf.statusCode).toBe(403);
+    expect(connection.createConnection).not.toHaveBeenCalled();
+    expect(connection.encryption.seal).not.toHaveBeenCalled();
+  });
+
+  it('creates and tests a connection once, replays only the same input, and omits secrets', async () => {
+    const { application, connection } = await start();
     const created = await application.inject({
       method: 'POST',
-      url,
-      headers,
-      payload,
+      url: connectionUrl,
+      headers: authenticatedHeaders,
+      payload: connectionPayload,
     });
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({
@@ -325,9 +439,9 @@ describe('connections real Nest HTTP stack', () => {
 
     const replay = await application.inject({
       method: 'POST',
-      url,
-      headers,
-      payload,
+      url: connectionUrl,
+      headers: authenticatedHeaders,
+      payload: connectionPayload,
     });
     expect(replay.statusCode).toBe(201);
     expect(replay.json()).toEqual(created.json());
@@ -335,12 +449,16 @@ describe('connections real Nest HTTP stack', () => {
     expect(connection.encryption.seal).toHaveBeenCalledOnce();
 
     const connectionId = connectionResponseSchema.parse(created.json()).id;
-    const testHeaders = { ...headers, 'idempotency-key': 'test-http-stack' };
+    const testHeaders = {
+      ...authenticatedHeaders,
+      'idempotency-key': 'test-http-stack',
+    };
+    const testPayload = { url: 'https://provider.example.test/health' };
     const tested = await application.inject({
       method: 'POST',
-      url: `${url}/${connectionId}/test`,
+      url: `${connectionUrl}/${connectionId}/test`,
       headers: testHeaders,
-      payload: { url: 'https://provider.example.test/health' },
+      payload: testPayload,
     });
     expect(tested.statusCode).toBe(200);
     expect(tested.json()).toMatchObject({
@@ -350,67 +468,189 @@ describe('connections real Nest HTTP stack', () => {
     expect(tested.payload).not.toContain(credentialValue);
     const testReplay = await application.inject({
       method: 'POST',
-      url: `${url}/${connectionId}/test`,
+      url: `${connectionUrl}/${connectionId}/test`,
       headers: testHeaders,
-      payload: { url: 'https://provider.example.test/health' },
+      payload: testPayload,
     });
     expect(testReplay.statusCode).toBe(200);
     expect(testReplay.json()).toEqual(tested.json());
     expect(connection.executeHttp).toHaveBeenCalledOnce();
     expect(connection.encryption.open).toHaveBeenCalledOnce();
     expect(connection.markConnectionTestDispatched).toHaveBeenCalledOnce();
+  });
 
-    const destinationPath = `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`;
-    const unauthenticatedDestination = await application.inject({
+  it('hides unauthenticated and cross-workspace destination mutations', async () => {
+    const { application, connection } = await start();
+    const unauthenticated = await application.inject({
       method: 'POST',
       url: destinationPath,
-      payload: {
-        expectedVersion: 1,
-        config: {
-          kind: 'slack',
-          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-          channelId: 'C67890',
-        },
-      },
+      payload: destinationPayload,
     });
-    expect(unauthenticatedDestination.statusCode).toBe(401);
-    const forbiddenDestination = await application.inject({
+    expect(unauthenticated.statusCode).toBe(401);
+
+    const crossWorkspace = await application.inject({
       method: 'POST',
       url: destinationPath.replace(
         workspaceId,
         'ffffffff-ffff-4fff-8fff-ffffffffffff',
       ),
-      headers: { ...headers, 'idempotency-key': 'destination-hidden-wire' },
-      payload: {
-        expectedVersion: 1,
-        config: {
-          kind: 'slack',
-          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-          channelId: 'C67890',
-        },
+      headers: {
+        ...authenticatedHeaders,
+        'idempotency-key': 'destination-hidden-wire',
       },
+      payload: destinationPayload,
     });
-    expect(forbiddenDestination.statusCode).toBe(404);
+    expect(crossWorkspace.statusCode).toBe(404);
     expect(connection.appendDestinationVersion).not.toHaveBeenCalled();
+  });
 
-    const appended = await application.inject({
+  it('allows a builder to read destinations but denies destination management', async () => {
+    const { application, connection } = await start('builder');
+    const listed = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/failure-notification-destinations`,
+      headers: authenticatedHeaders,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toEqual({
+      items: [
+        expect.objectContaining({ id: destinationId, currentVersion: 2 }),
+      ],
+    });
+    expect(connection.listDestinations).toHaveBeenCalledOnce();
+
+    const denied = await application.inject({
       method: 'POST',
       url: destinationPath,
-      headers: { ...headers, 'idempotency-key': 'destination-append-wire' },
-      payload: {
-        expectedVersion: 1,
-        config: {
-          kind: 'slack',
-          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-          channelId: 'C67890',
-        },
+      headers: {
+        ...authenticatedHeaders,
+        'idempotency-key': 'destination-builder-denied',
       },
+      payload: destinationPayload,
     });
-    expect(appended.statusCode).toBe(200);
-    expect(appended.json()).toMatchObject({
-      id: destinationId,
-      currentVersion: 2,
+    expect(denied.statusCode).toBe(404);
+    expect(connection.appendDestinationVersion).not.toHaveBeenCalled();
+  });
+
+  it('denies a viewer destination reads before persistence', async () => {
+    const { application, connection } = await start('viewer');
+    const denied = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/failure-notification-destinations`,
+      headers: authenticatedHeaders,
     });
-    expect(connection.appendDestinationVersion).toHaveBeenCalledOnce();
+    expect(denied.statusCode).toBe(404);
+    expect(connection.listDestinations).not.toHaveBeenCalled();
+  });
+
+  it.each(['owner', 'admin'] as const)(
+    'allows a %s to append a destination version',
+    async (role) => {
+      const { application, connection } = await start(role);
+      const appended = await application.inject({
+        method: 'POST',
+        url: destinationPath,
+        headers: {
+          ...authenticatedHeaders,
+          'idempotency-key': `destination-${role}-append`,
+        },
+        payload: destinationPayload,
+      });
+      expect(appended.statusCode).toBe(200);
+      expect(appended.json()).toMatchObject({
+        id: destinationId,
+        currentVersion: 2,
+      });
+      expect(connection.appendDestinationVersion).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('maps hidden destination reads and conflicts to public HTTP errors', async () => {
+    const { application, connection } = await start();
+    connection.getDestination.mockRejectedValueOnce(
+      new FailureNotificationDestinationError(
+        'not_found',
+        'raw hidden destination detail',
+      ),
+    );
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}`,
+      headers: authenticatedHeaders,
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.json()).toMatchObject({ code: 'resource.not_found' });
+    expect(hidden.payload).not.toContain('raw hidden destination detail');
+
+    connection.appendDestinationVersion.mockRejectedValueOnce(
+      new FailureNotificationDestinationError(
+        'conflict',
+        'raw destination version detail',
+      ),
+    );
+    const conflict = await application.inject({
+      method: 'POST',
+      url: destinationPath,
+      headers: {
+        ...authenticatedHeaders,
+        'idempotency-key': 'destination-conflict-wire',
+      },
+      payload: destinationPayload,
+    });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toMatchObject({ code: 'connection.conflict' });
+    expect(conflict.payload).not.toContain('raw destination version detail');
+  });
+
+  it('does not serialize raw credential-protection causes', async () => {
+    const { application, connection } = await start();
+    const failure = new ConnectionSecretEncryptionError();
+    Object.defineProperty(failure, 'cause', {
+      value: new Error('Bearer raw-kms-credential'),
+    });
+    connection.encryption.seal.mockRejectedValueOnce(failure);
+    const response = await application.inject({
+      method: 'POST',
+      url: connectionUrl,
+      headers: authenticatedHeaders,
+      payload: connectionPayload,
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ code: 'provider.unavailable' });
+    expect(response.payload).not.toContain('raw-kms-credential');
+    expect(response.payload).not.toContain(credentialValue);
+  });
+
+  it('does not serialize raw provider failure causes', async () => {
+    const { application, connection } = await start();
+    const created = await application.inject({
+      method: 'POST',
+      url: connectionUrl,
+      headers: authenticatedHeaders,
+      payload: connectionPayload,
+    });
+    const connectionId = connectionResponseSchema.parse(created.json()).id;
+    const providerFailure = new SecureHttpError(
+      SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+      'definite_failure',
+      false,
+    );
+    Object.defineProperty(providerFailure, 'cause', {
+      value: new Error('provider body with raw-secret'),
+    });
+    connection.executeHttp.mockRejectedValueOnce(providerFailure);
+    const response = await application.inject({
+      method: 'POST',
+      url: `${connectionUrl}/${connectionId}/test`,
+      headers: {
+        ...authenticatedHeaders,
+        'idempotency-key': 'test-provider-cause',
+      },
+      payload: { url: 'https://provider.example.test/health' },
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ code: 'provider.unavailable' });
+    expect(response.payload).not.toContain('provider body with raw-secret');
+    expect(response.payload).not.toContain(credentialValue);
   });
 });

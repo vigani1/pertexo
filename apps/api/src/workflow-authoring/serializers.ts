@@ -68,7 +68,6 @@ export function serializeWorkflowDraft(
   const representation: DraftRepresentation = {
     workflowId: draft.workflowId,
     revision: draft.revision,
-    schemaVersion: draft.schemaVersion,
     graph,
     compatibilityFingerprint: draft.compatibility.fingerprint,
   };

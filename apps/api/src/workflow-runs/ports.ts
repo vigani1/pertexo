@@ -140,6 +140,7 @@ export interface WorkflowRunEventStreamer {
       runId: string;
       lastEventId: number;
       signal: AbortSignal;
+      onProducerFailure?(error: unknown): void;
     }>,
   ): AsyncIterable<WorkflowRunEventFrame>;
 }

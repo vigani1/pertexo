@@ -80,6 +80,17 @@ function subject(request: RateLimitRequest): RateLimitSubject {
   };
 }
 
+function recordMetric(
+  recorder: RateLimitMetricRecorder,
+  event: Parameters<RateLimitMetricRecorder['record']>[0],
+): void {
+  try {
+    recorder.record(event);
+  } catch {
+    // Diagnostic recording cannot change request-admission authority.
+  }
+}
+
 @Injectable()
 export class RateLimitInterceptor implements NestInterceptor {
   public constructor(
@@ -108,7 +119,7 @@ export class RateLimitInterceptor implements NestInterceptor {
     try {
       result = await this.consumer.consume(decision);
     } catch {
-      this.metrics.record({
+      recordMetric(this.metrics, {
         endpointClass: metadata,
         failureMode: decision.failureMode,
         outcome: 'backend_error',
@@ -121,7 +132,7 @@ export class RateLimitInterceptor implements NestInterceptor {
       );
     }
     if (!result.allowed) {
-      this.metrics.record({
+      recordMetric(this.metrics, {
         endpointClass: metadata,
         failureMode: decision.failureMode,
         outcome: 'limited',
@@ -133,7 +144,7 @@ export class RateLimitInterceptor implements NestInterceptor {
         }),
       );
     }
-    this.metrics.record({
+    recordMetric(this.metrics, {
       endpointClass: metadata,
       failureMode: decision.failureMode,
       outcome: 'allowed',

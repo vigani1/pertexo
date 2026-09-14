@@ -1,41 +1,30 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 
 import {
-  JOB_NAME,
-  Pool,
-  QUEUE_NAME,
-  Queue,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  WorkerDrainState,
-  actorId,
-  adminUrl,
-  apiQuery,
   canonicalOutboxPayloadChecksum,
-  cleanupFixture,
   createFailureNotificationStore,
   createOutboxDispatcherDatabase,
-  createPreviewMaintenanceRuntime,
-  createProviderFailureNotificationDelivery,
-  createQueueProducer,
-  databaseUrl,
-  enabled,
-  dispatcherUrl,
   parseDatabaseConfig,
-  performance,
-  randomUUID,
-  redisConnection,
-  redisUrl,
-  restoreServices,
-  setupFixture,
-  startService,
-  stopService,
-  waitFor,
-  workerQuery,
-  workerUrl,
-  workflowId,
-  workspaceId,
-} from './coordinator-consumer.fixtures.js';
+} from '@pertexo/database/testing';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+} from '@pertexo/integrations/server';
+import {
+  createQueueConsumer,
+  createQueueProducer,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue';
+import { Queue } from 'bullmq';
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { createProviderFailureNotificationDelivery } from '../src/execution/failure-notification-delivery.js';
+import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   createFailureNotificationDispatcher,
   dispatchFairRounds,
@@ -45,14 +34,30 @@ import {
   terminalizeFailedRun,
 } from './support/coordinator-run-fixtures.js';
 
+const {
+  actorId,
+  adminUrl,
+  apiQuery,
+  databaseUrl,
+  dispatcherUrl,
+  enabled,
+  redisConnection,
+  redisUrl,
+  restoreServicesAndClose,
+  setup,
+  startService,
+  stopService,
+  waitFor,
+  workerQuery,
+  workerUrl,
+  workflowId,
+  workspaceId,
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Failure notification transport resilience', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('recovers failure notification dispatch through PostgreSQL and BullMQ without changing run truth', async () => {
     const destinationId = randomUUID();
@@ -372,8 +377,14 @@ describeIntegration('Failure notification transport resilience', () => {
       const blockedProviderCalls: string[] = [];
       let enteredCount = 0;
       let resolveEntered: (() => void) | undefined;
-      const allEntered = new Promise<void>((resolve) => {
+      let rejectEntered: ((error: Error) => void) | undefined;
+      let enteredDeadline: ReturnType<typeof setTimeout> | undefined;
+      const allEntered = new Promise<void>((resolve, reject) => {
         resolveEntered = resolve;
+        rejectEntered = reject;
+        enteredDeadline = setTimeout(() => {
+          reject(new Error('Provider drain barrier timed out'));
+        }, 5_000);
       });
       const blockAfterFence = async (
         provider: 'email' | 'slack',
@@ -467,7 +478,27 @@ describeIntegration('Failure notification transport resilience', () => {
           });
         },
       );
-      await allEntered;
+      try {
+        await allEntered;
+      } catch (barrierError: unknown) {
+        for (const controller of blockedControllers) controller.abort();
+        const settlements = await Promise.allSettled(blockedResults);
+        const drainErrors = settlements.flatMap((settlement) =>
+          settlement.status === 'rejected'
+            ? [settlement.reason as unknown]
+            : [],
+        );
+        if (drainErrors.length === 0) throw barrierError;
+        throw new AggregateError(
+          [barrierError, ...drainErrors],
+          'Provider drain barrier and blocked deliveries failed',
+        );
+      } finally {
+        if (enteredDeadline !== undefined) clearTimeout(enteredDeadline);
+        // Ensure the deferred cannot remain pending if setup fails before both
+        // provider callbacks enter. Rejection after settlement is inert.
+        rejectEntered?.(new Error('Provider drain barrier disposed'));
+      }
       const drainStartedAt = performance.now();
       for (const controller of blockedControllers) controller.abort();
       const settledBlockedResults = await Promise.all(blockedResults);
@@ -484,7 +515,7 @@ describeIntegration('Failure notification transport resilience', () => {
             intentId: blocked.intentId,
             attemptNumber: blocked.claim.attemptNumber,
             maxAttempts: 3,
-            retryDelaySeconds: 0,
+            retryDelaySeconds: result.kind === 'retry' ? 1 : 0,
             result,
           }),
         ).resolves.toBe('completed');
@@ -516,72 +547,86 @@ describeIntegration('Failure notification transport resilience', () => {
 
     const deliveries: string[] = [];
     const slackDeliveries: string[] = [];
-    const providerStore = createFailureNotificationStore(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerUrl),
-        max: 2,
-      }),
-    );
-    const providerDelivery = createProviderFailureNotificationDelivery({
-      store: providerStore,
-      encryption: {
-        open: (_sealed, encryptionContext) =>
-          Promise.resolve(
-            new TextEncoder().encode(
-              JSON.stringify(
-                encryptionContext.connectionId === slackConnectionId
-                  ? {
-                      schemaVersion: 1,
-                      type: 'slack_bot_token',
-                      botToken: 'xoxb-integration-only',
-                    }
-                  : {
-                      schemaVersion: 1,
-                      type: 'resend_api_key',
-                      apiKey: 're_integration_only',
-                      fromEmail: 'sender@example.test',
-                    },
-              ),
-            ),
-          ),
-      },
-      slack: {
-        sendMessage: async (input) => {
-          await input.beforeDispatch();
-          expect(input).toMatchObject({ channelId: 'C12345' });
-          slackDeliveries.push(input.channelId);
-          throw new Error('unexpected failure after dispatch fence');
-        },
-      },
-      email: {
-        sendNotification: async (input) => {
-          await input.beforeDispatch();
-          expect(input).toMatchObject({
-            toEmail: 'failure-notification@example.test',
-            idempotencyKey: `failure-notification:v1:${intentId}`,
-          });
-          deliveries.push(input.idempotencyKey);
-          return { kind: 'succeeded', emailId: randomUUID() };
-        },
-      },
-      workerId: 'failure-notification-integration-worker',
-    });
-    let runtime = await createPreviewMaintenanceRuntime({
-      database: parseDatabaseConfig({
-        connectionString: databaseUrl(workerUrl),
-        max: 4,
-      }),
-      redisUrl,
-      failureNotificationDelivery: providerDelivery,
-    });
-    let drainState = new WorkerDrainState();
-    let dispatcher = createFailureNotificationDispatcher(
-      runtime.consumer,
-      drainState,
-    );
+    let providerStore:
+      ReturnType<typeof createFailureNotificationStore> | undefined;
+    let runtime:
+      Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>> | undefined;
+    let dispatcher:
+      | Awaited<ReturnType<typeof createFailureNotificationDispatcher>>
+      | undefined;
     let producer: ReturnType<typeof createQueueProducer> | undefined;
     let queue: Queue | undefined;
+    let scenarioError: unknown;
     try {
+      providerStore = createFailureNotificationStore(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+          max: 2,
+        }),
+      );
+      const providerDelivery = createProviderFailureNotificationDelivery({
+        store: providerStore,
+        encryption: {
+          open: (_sealed, encryptionContext) =>
+            Promise.resolve(
+              new TextEncoder().encode(
+                JSON.stringify(
+                  encryptionContext.connectionId === slackConnectionId
+                    ? {
+                        schemaVersion: 1,
+                        type: 'slack_bot_token',
+                        botToken: 'xoxb-integration-only',
+                      }
+                    : {
+                        schemaVersion: 1,
+                        type: 'resend_api_key',
+                        apiKey: 're_integration_only',
+                        fromEmail: 'sender@example.test',
+                      },
+                ),
+              ),
+            ),
+        },
+        slack: {
+          sendMessage: async (input) => {
+            await input.beforeDispatch();
+            expect(input).toMatchObject({ channelId: 'C12345' });
+            slackDeliveries.push(input.channelId);
+            throw new Error('unexpected failure after dispatch fence');
+          },
+        },
+        email: {
+          sendNotification: async (input) => {
+            await input.beforeDispatch();
+            expect(input).toMatchObject({
+              toEmail: 'failure-notification@example.test',
+              idempotencyKey: `failure-notification:v1:${intentId}`,
+            });
+            deliveries.push(input.idempotencyKey);
+            return { kind: 'succeeded', emailId: randomUUID() };
+          },
+        },
+        workerId: 'failure-notification-integration-worker',
+      });
+      runtime = await createPreviewMaintenanceRuntime(
+        {
+          database: parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+            max: 4,
+          }),
+          redisUrl,
+          failureNotificationDelivery: providerDelivery,
+        },
+        {
+          consumerFactory: (options) =>
+            createQueueConsumer({ ...options, drainTimeoutMs: 2_000 }),
+        },
+      );
+      let drainState = new WorkerDrainState();
+      dispatcher = await createFailureNotificationDispatcher(
+        runtime.consumer,
+        drainState,
+      );
       await stopService('redis');
       await expect(dispatcher.checkReadiness()).rejects.toThrow();
       await expect(dispatcher.dispatchOnce()).rejects.toThrow(
@@ -604,17 +649,34 @@ describeIntegration('Failure notification transport resilience', () => {
         runtime.consumer.waitUntilReady(5_000),
         dispatcher.checkReadiness(),
       ]);
-      await Promise.allSettled([dispatcher.close(), runtime.close()]);
-      runtime = await createPreviewMaintenanceRuntime({
-        database: parseDatabaseConfig({
-          connectionString: databaseUrl(workerUrl),
-          max: 4,
-        }),
-        redisUrl,
-        failureNotificationDelivery: providerDelivery,
-      });
+      const reconstructionErrors: unknown[] = [];
+      await dispatcher
+        .close()
+        .catch((error: unknown) => reconstructionErrors.push(error));
+      await runtime
+        .close()
+        .catch((error: unknown) => reconstructionErrors.push(error));
+      if (reconstructionErrors.length > 0)
+        throw new AggregateError(
+          reconstructionErrors,
+          'Failure notification runtime reconstruction drain failed',
+        );
+      runtime = await createPreviewMaintenanceRuntime(
+        {
+          database: parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+            max: 4,
+          }),
+          redisUrl,
+          failureNotificationDelivery: providerDelivery,
+        },
+        {
+          consumerFactory: (options) =>
+            createQueueConsumer({ ...options, drainTimeoutMs: 2_000 }),
+        },
+      );
       drainState = new WorkerDrainState();
-      dispatcher = createFailureNotificationDispatcher(
+      dispatcher = await createFailureNotificationDispatcher(
         runtime.consumer,
         drainState,
       );
@@ -739,27 +801,52 @@ describeIntegration('Failure notification transport resilience', () => {
         `select
              coalesce((select string_agg(coalesce(safe_error_code,''),' ')
                from app.run_failure_notification_audit_facts
-               where notification_intent_id=$2),'') audit,
+               where notification_intent_id=any($2::uuid[])),'') audit,
              coalesce((select string_agg(payload::text,' ')
                from app.run_events where workflow_run_id=$3),'') events,
              coalesce((select string_agg(payload::text,' ')
-               from app.outbox_events where aggregate_id=$2),'') outbox
+               from app.outbox_events where aggregate_id=any($2::uuid[])),'') outbox
            from app.workspaces where id=$1`,
-        [workspaceId, intentId, accepted.runId],
+        [workspaceId, [intentId, slackIntentId], accepted.runId],
       );
       expect(JSON.stringify(persisted)).not.toMatch(
         /failure-notification@example\.test|re_integration_only|sender@example\.test|xoxb-integration-only|C12345/i,
       );
-    } finally {
-      await startService('redis').catch(() => undefined);
-      await Promise.allSettled([
-        dispatcher.close(),
-        runtime.close(),
-        providerStore.close(),
-        producer?.close() ?? Promise.resolve(),
-      ]);
-      await queue?.obliterate({ force: true }).catch(() => undefined);
-      await queue?.close();
+    } catch (error: unknown) {
+      scenarioError = error;
     }
+    const errors: unknown[] =
+      scenarioError === undefined ? [] : [scenarioError];
+    const attemptCleanup = async (
+      operation: () => Promise<unknown>,
+    ): Promise<void> => {
+      await Promise.resolve()
+        .then(operation)
+        .catch((error: unknown) => {
+          errors.push(error);
+        });
+    };
+    await attemptCleanup(() => startService('redis'));
+    if (dispatcher !== undefined)
+      await attemptCleanup(() => dispatcher.close());
+    if (runtime !== undefined) await attemptCleanup(() => runtime.close());
+    if (producer !== undefined) await attemptCleanup(() => producer.close());
+    if (queue !== undefined) {
+      await attemptCleanup(() => queue.obliterate({ force: true }));
+      await attemptCleanup(() => queue.close());
+    }
+    if (providerStore !== undefined)
+      await attemptCleanup(() => providerStore.close());
+    if (errors.length === 1 && scenarioError !== undefined)
+      throw scenarioError instanceof Error
+        ? scenarioError
+        : new Error('Failure notification scenario failed', {
+            cause: scenarioError,
+          });
+    if (errors.length > 0)
+      throw new AggregateError(
+        errors,
+        'Failure notification scenario and cleanup failed',
+      );
   }, 120_000);
 });

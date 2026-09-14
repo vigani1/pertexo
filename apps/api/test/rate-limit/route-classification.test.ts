@@ -2,11 +2,14 @@ import { Reflector } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
 import { ConnectionsController } from '../../src/connections/controllers.js';
+import { ArtifactsController } from '../../src/artifacts/controllers.js';
 import { CatalogController } from '../../src/catalog/controllers.js';
-import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.js';
+import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.controller.js';
 import {
   OidcController,
   SessionController,
+} from '../../src/identity-workspace/auth-controllers.js';
+import {
   UserController,
   WorkspaceMembersController,
   WorkspaceController,
@@ -64,6 +67,9 @@ const routes: readonly (readonly [
   [WorkflowAuthoringController, 'save', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'validate', 'workflow_compile'],
   [WorkflowAuthoringController, 'publish', 'workflow_compile'],
+  [WorkflowAuthoringController, 'restoreVersion', 'ordinary_mutation'],
+  [WorkflowAuthoringController, 'archive', 'ordinary_mutation'],
+  [WorkflowAuthoringController, 'restore', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'versions', 'authenticated_read'],
   [WorkflowRunsController, 'startRun', 'run_admission'],
   [WorkflowRunsController, 'replayRun', 'run_admission'],
@@ -79,6 +85,10 @@ const routes: readonly (readonly [
   [ScheduleManagementController, 'list', 'authenticated_read'],
   [ScheduleManagementController, 'enable', 'trigger_mutation'],
   [ScheduleManagementController, 'disable', 'trigger_mutation'],
+  [ArtifactsController, 'beginUpload', 'ordinary_mutation'],
+  [ArtifactsController, 'finalizeUpload', 'ordinary_mutation'],
+  [ArtifactsController, 'getMetadata', 'authenticated_read'],
+  [ArtifactsController, 'beginDownload', 'authenticated_read'],
   [LiveController, 'live', RATE_LIMIT_EXEMPT],
   [ReadyController, 'ready', RATE_LIMIT_EXEMPT],
 ];
@@ -104,4 +114,48 @@ describe('HTTP rate-limit classification contract', () => {
       ).toBe(expected);
     },
   );
+
+  it('keeps the human-written policy table complete for every mounted Nest handler', () => {
+    const controllers = new Set(routes.map(([controller]) => controller));
+    const discovered = [...controllers].flatMap((controller) =>
+      Object.getOwnPropertyNames(controller.prototype).flatMap((method) => {
+        const handler: unknown = Object.getOwnPropertyDescriptor(
+          controller.prototype,
+          method,
+        )?.value;
+        return method !== 'constructor' &&
+          typeof handler === 'function' &&
+          Reflect.hasMetadata('path', handler)
+          ? [`${controller.name}.${method}`]
+          : [];
+      }),
+    );
+    const expected = routes.map(
+      ([controller, method]) => `${controller.name}.${method}`,
+    );
+
+    expect([...discovered].sort()).toEqual([...expected].sort());
+  });
+
+  it('lets method policy override the enclosing controller policy', () => {
+    const handler: unknown = Object.getOwnPropertyDescriptor(
+      ConnectionsController.prototype,
+      'create',
+    )?.value;
+    if (typeof handler !== 'function')
+      throw new Error('ConnectionsController.create is missing');
+
+    expect(reflector.get(RATE_LIMIT_METADATA, ConnectionsController)).toBe(
+      'connection_mutation',
+    );
+    expect(reflector.get(RATE_LIMIT_METADATA, handler)).toBe(
+      'ordinary_mutation',
+    );
+    expect(
+      reflector.getAllAndOverride(RATE_LIMIT_METADATA, [
+        handler,
+        ConnectionsController,
+      ]),
+    ).toBe('ordinary_mutation');
+  });
 });

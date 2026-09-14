@@ -8,6 +8,7 @@ import type { StructuredLogger } from '@pertexo/observability/logging';
 import type * as LoggingModule from '@pertexo/observability/logging';
 import type * as ObservabilityModule from '@pertexo/observability';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { classifyProcessError } from '@pertexo/observability/process-error-classification';
 import type * as LifecycleRunModule from './run.js';
 
 import {
@@ -60,6 +61,24 @@ async function loadModules(): Promise<LifecycleCommandBootstrapModules> {
   return { artifactStore, database, logging, observability, worker };
 }
 
+function reportDiagnostic(report: (() => void) | undefined): void {
+  try {
+    report?.();
+  } catch {
+    // Process stderr remains the last-resort diagnostic owner.
+  }
+}
+
+async function attemptBootstrapCleanup(
+  close: (() => Promise<void> | void) | undefined,
+): Promise<void> {
+  try {
+    await close?.();
+  } catch {
+    // The initiating bootstrap failure remains authoritative.
+  }
+}
+
 export async function bootstrapLifecycleCommand(
   dependencies: LifecycleCommandBootstrapDependencies = {},
 ): Promise<void> {
@@ -96,8 +115,7 @@ export async function bootstrapLifecycleCommand(
       ledger,
       config.coordinator,
     );
-    workerInvoked = true;
-    await worker.runLifecycleCommandWorker({
+    const workerResources = {
       coordinator,
       expectedLifecycleCommandRole: config.lifecycleCommandRole,
       ledger,
@@ -107,22 +125,22 @@ export async function bootstrapLifecycleCommand(
       readiness,
       signal: shutdown.signal,
       telemetry,
-    });
+    };
+    workerInvoked = true;
+    await worker.runLifecycleCommandWorker(workerResources);
   } catch (error: unknown) {
-    logger?.fatal(
-      'lifecycle_command.bootstrap_failed',
-      { errorType: error instanceof Error ? error.name : typeof error },
-      error,
+    reportDiagnostic(() =>
+      logger?.fatal(
+        'lifecycle_command.bootstrap_failed',
+        { errorType: classifyProcessError(error) },
+        error,
+      ),
     );
     if (!workerInvoked) {
-      await readiness.clear().catch(() => undefined);
-      await coordinator?.close().catch(() => undefined);
-      try {
-        ledger?.close();
-      } catch {
-        // The original bootstrap failure remains authoritative.
-      }
-      await telemetry.shutdown().catch(() => undefined);
+      await attemptBootstrapCleanup(() => readiness.clear());
+      await attemptBootstrapCleanup(() => coordinator?.close());
+      await attemptBootstrapCleanup(() => ledger?.close());
+      await attemptBootstrapCleanup(() => telemetry.shutdown());
     }
     throw error;
   } finally {
@@ -142,7 +160,7 @@ if (isMainModule()) {
   void bootstrapLifecycleCommand().catch((error: unknown) => {
     process.stderr.write(
       `${JSON.stringify({
-        errorType: error instanceof Error ? error.name : typeof error,
+        errorType: classifyProcessError(error),
         event: 'lifecycle_command.process_failed',
         level: 'fatal',
       })}\n`,

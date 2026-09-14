@@ -20,12 +20,14 @@ import {
   percentile,
   run,
   runWithOwnedDatabaseClient,
+  reserveBenchmarkEvidence,
   startDatabaseSampler,
   summarize,
   validateManifest,
   writeBenchmarkEvidence,
 } from './run-local-benchmark.mjs';
 import {
+  capturePostgresEvidence,
   runPoolContentionSamples,
   validatePostgresEvidence,
 } from './postgres-evidence.mjs';
@@ -42,7 +44,7 @@ const overlapWorkloadFixture = fileURLToPath(
 
 function manifest(overrides = {}) {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     seed: 42,
     warmupRounds: 1,
     rounds: 3,
@@ -50,6 +52,7 @@ function manifest(overrides = {}) {
       {
         name: 'fixture',
         description: 'Bounded fixture',
+        databaseScope: 'configured-base',
         concurrency: 1,
         fixturePopulation: { operations: 2 },
         commands: [
@@ -76,6 +79,28 @@ function manifest(overrides = {}) {
     ],
     ...overrides,
   };
+}
+
+const syntheticBuildIdentity = Object.freeze({
+  outputSha256: 'synthetic-build',
+  fileCount: 1,
+});
+
+function benchmarkOptions(overrides = {}) {
+  return {
+    qualifyBuild: async () => syntheticBuildIdentity,
+    buildIdentity: async () => syntheticBuildIdentity,
+    ...overrides,
+  };
+}
+
+function errorMessages(error) {
+  return [
+    error instanceof Error ? error.message : String(error),
+    ...(error instanceof AggregateError
+      ? error.errors.flatMap((cause) => errorMessages(cause))
+      : []),
+  ];
 }
 
 test('calculates nearest-rank latency and variability without inventing a budget', () => {
@@ -303,6 +328,35 @@ test('PostgreSQL evidence does not mistake an undefined rejection for success', 
   assert.equal(ended, true);
 });
 
+test('PostgreSQL pool waiter rejection is observed before the deliberate hold finishes', async () => {
+  const moduleUrl = new URL('./postgres-evidence.mjs', import.meta.url).href;
+  const probe = `
+    import { runPoolContentionSamples } from ${JSON.stringify(moduleUrl)};
+    import { setTimeout as delay } from 'node:timers/promises';
+    let unhandled = 0;
+    process.on('unhandledRejection', () => { unhandled += 1; });
+    let connects = 0;
+    try {
+      await runPoolContentionSamples({
+        connect() {
+          connects += 1;
+          if (connects === 1) return Promise.resolve({ release() {} });
+          return Promise.reject(new Error('immediate waiter rejection'));
+        },
+        async end() {},
+      }, () => delay(50));
+    } catch {}
+    await delay(10);
+    process.stdout.write(String(unhandled));
+  `;
+  const result = await run(process.execPath, [
+    '--input-type=module',
+    '-e',
+    probe,
+  ]);
+  assert.equal(result.stdout, '0');
+});
+
 test('parses only named, timestamped, positive operation timing markers', () => {
   const marker = (overrides = {}) =>
     `PERTEXO_Q11_OPERATION_V2=${JSON.stringify({ schemaVersion: 2, name: 'fixture', startedAtUnixMs: 100, endedAtUnixMs: 112.5, population: 1, boundary: 'fixture boundary', ...overrides })}`;
@@ -369,10 +423,116 @@ test('rejects weak, duplicate, or shell-shaped benchmark manifests', () => {
     () => validateManifest(duplicateOperation),
     /operation names must be unique/u,
   );
+
+  for (const [label, mutate, expected] of [
+    [
+      'unsafe rounds',
+      (value) => (value.rounds = Number.MAX_SAFE_INTEGER + 1),
+      /measured rounds/u,
+    ],
+    [
+      'unsafe concurrency',
+      (value) => (value.scenarios[0].concurrency = Number.MAX_SAFE_INTEGER + 1),
+      /concurrency/u,
+    ],
+    [
+      'zero fixture population',
+      (value) => (value.scenarios[0].fixturePopulation.operations = 0),
+      /fixture populations/u,
+    ],
+    [
+      'non-string argv',
+      (value) => value.scenarios[0].commands[0].args.push(1),
+      /argv array/u,
+    ],
+    [
+      'missing database scope',
+      (value) => delete value.scenarios[0].databaseScope,
+      /database scope/u,
+    ],
+    [
+      'unsupported overlap concurrency',
+      (value) => {
+        value.scenarios[0].databaseScope = 'runner-owned-shared';
+        value.scenarios[0].requireOverlap = true;
+        value.scenarios[0].concurrency = 2;
+        value.scenarios[0].commands[0].participant = 'fixture';
+        for (const operation of value.scenarios[0].commands[0]
+          .expectedOperations)
+          operation.databaseScope = 'runner-owned-shared';
+        value.scenarios[0].commands.push({
+          participant: 'peer',
+          file: process.execPath,
+          args: ['-e', ''],
+          expectedOperations: [
+            {
+              name: 'peer',
+              count: 1,
+              population: 1,
+              boundary: 'peer boundary',
+              databaseScope: 'runner-owned-shared',
+            },
+          ],
+        });
+      },
+      /exactly one execution per participant/u,
+    ],
+    [
+      'shared database without participant',
+      (value) => {
+        value.scenarios[0].databaseScope = 'runner-owned-shared';
+        for (const operation of value.scenarios[0].commands[0]
+          .expectedOperations)
+          operation.databaseScope = 'runner-owned-shared';
+      },
+      /participants must be unique/u,
+    ],
+    [
+      'shared operation without matching scope',
+      (value) => {
+        value.scenarios[0].databaseScope = 'runner-owned-shared';
+        value.scenarios[0].commands[0].participant = 'fixture';
+      },
+      /operation contracts are invalid/u,
+    ],
+  ]) {
+    const invalid = manifest();
+    mutate(invalid);
+    assert.throws(() => validateManifest(invalid), expected, label);
+  }
 });
 
 test('refuses to measure against services not owned by the isolated runner', async () => {
   await assert.rejects(() => benchmark(manifest(), {}), /Q02-owned isolated/u);
+});
+
+test('disables the event-loop monitor when database sampler acquisition fails', async () => {
+  let enabled = 0;
+  let disabled = 0;
+  const source = { workingTreeSha256: 'stable-source' };
+  await assert.rejects(
+    benchmark(
+      manifest(),
+      { ...process.env, PERTEXO_Q11_ISOLATED: '1' },
+      benchmarkOptions({
+        sourceIdentity: async () => source,
+        createEventLoopMonitor: () => ({
+          enable: () => {
+            enabled += 1;
+          },
+          disable: () => {
+            disabled += 1;
+          },
+        }),
+        startDatabaseSampler: async () => {
+          throw new Error('sampler acquisition failed');
+        },
+      }),
+    ),
+    /sampler acquisition failed/u,
+  );
+  assert.equal(enabled, 1);
+  assert.equal(disabled, 1);
 });
 
 test('rejects incomplete PostgreSQL role, pool, and plan evidence', () => {
@@ -380,17 +540,17 @@ test('rejects incomplete PostgreSQL role, pool, and plan evidence', () => {
     () =>
       validatePostgresEvidence({
         available: true,
-        instrumentedSqlRoundTrips: 3,
+        instrumentedSqlQueryCount: 3,
         poolCheckoutWaitSeconds: [0.05, 0.05, 0.05],
         queryPlans: [],
       }),
-    /retention-keyset/u,
+    /query plans/u,
   );
   assert.throws(
     () =>
       validatePostgresEvidence({
         available: true,
-        instrumentedSqlRoundTrips: 3,
+        instrumentedSqlQueryCount: 3,
         poolCheckoutWaitSeconds: [0, 0, 0],
         queryPlans: [],
       }),
@@ -431,7 +591,7 @@ test('isolates PostgreSQL workload totals and resets by database OID', async () 
         return {
           rows: [
             {
-              sql_round_trips: selected.reduce(
+              statement_executions: selected.reduce(
                 (sum, value) => sum + value.calls,
                 0,
               ),
@@ -454,12 +614,12 @@ test('isolates PostgreSQL workload totals and resets by database OID', async () 
   await target.beginScenario();
   statistics.record(22, 13, 17.5);
 
-  assert.deepEqual(await base.endScenario(), {
-    sqlRoundTrips: 5,
+  assert.deepEqual(await base.captureScenario(), {
+    statementExecutions: 5,
     serverExecutionMs: 7.5,
   });
-  assert.deepEqual(await target.endScenario(), {
-    sqlRoundTrips: 13,
+  assert.deepEqual(await target.captureScenario(), {
+    statementExecutions: 13,
     serverExecutionMs: 17.5,
   });
 });
@@ -565,13 +725,174 @@ for (const failingCloseIndexes of [[0], [0, 1]])
     );
   });
 
-test('records repeated operation latency, throughput, launcher cost and RSS', async () => {
-  const evidence = await benchmark(manifest(), {
-    ...process.env,
-    DATABASE_ADMIN_URL: '',
-    DATABASE_MIGRATION_URL: '',
-    PERTEXO_Q11_ISOLATED: '1',
+test('attempts both PostgreSQL sampler closes when the second connect fails', async () => {
+  const clients = [];
+  class Client {
+    constructor() {
+      this.index = clients.length;
+      this.closeAttempts = 0;
+      clients.push(this);
+    }
+
+    async connect() {
+      if (this.index === 1) throw new Error('statistics connect failed');
+    }
+
+    async end() {
+      this.closeAttempts += 1;
+    }
+  }
+
+  await assert.rejects(
+    startDatabaseSampler(
+      {
+        DATABASE_ADMIN_URL: 'postgres://admin@127.0.0.1/postgres',
+        DATABASE_MIGRATION_URL: 'postgres://migration@127.0.0.1/pertexo',
+      },
+      { Client },
+    ),
+    /statistics connect failed/u,
+  );
+  assert.deepEqual(
+    clients.map(({ closeAttempts }) => closeAttempts),
+    [1, 1],
+  );
+});
+
+test('attempts both PostgreSQL plan-client closes when the second connect fails', async () => {
+  const clients = [];
+  class Client {
+    constructor() {
+      this.index = clients.length;
+      this.closeAttempts = 0;
+      clients.push(this);
+    }
+
+    async connect() {
+      if (this.index === 1) throw new Error('maintenance connect failed');
+    }
+
+    async end() {
+      this.closeAttempts += 1;
+    }
+  }
+
+  await assert.rejects(
+    capturePostgresEvidence(
+      {
+        DATABASE_MIGRATION_URL: 'postgres://migration@127.0.0.1/pertexo',
+        DATABASE_MAINTENANCE_URL: 'postgres://maintenance@127.0.0.1/pertexo',
+      },
+      {
+        Client,
+        capturePoolEvidence: async () => ({
+          instrumentedSqlQueryCount: 3,
+          poolCheckoutWaitSeconds: [0.05, 0.05, 0.05],
+        }),
+      },
+    ),
+    (error) => errorMessages(error).includes('maintenance connect failed'),
+  );
+  assert.deepEqual(
+    clients.map(({ closeAttempts }) => closeAttempts),
+    [1, 1],
+  );
+});
+
+test('drains both PostgreSQL evidence collectors before surfacing either failure', async () => {
+  let releasePlans;
+  let settledEvidence = false;
+  const pendingPlans = new Promise((resolve) => {
+    releasePlans = resolve;
   });
+  const evidence = capturePostgresEvidence(
+    {
+      DATABASE_MIGRATION_URL: 'postgres://migration@127.0.0.1/pertexo',
+      DATABASE_MAINTENANCE_URL: 'postgres://maintenance@127.0.0.1/pertexo',
+    },
+    {
+      capturePoolEvidence: async () => {
+        throw new Error('pool collector failed');
+      },
+      capturePlans: async () => pendingPlans,
+    },
+  ).finally(() => {
+    settledEvidence = true;
+  });
+  await delay(20);
+  assert.equal(settledEvidence, false);
+  releasePlans({ queryPlans: [], databaseRuntime: {} });
+  await assert.rejects(evidence, /pool collector failed/u);
+});
+
+test('a stuck PostgreSQL sampler query is canceled by client disposal before stop returns', async () => {
+  const clients = [];
+  let rejectSample;
+  class Client {
+    constructor(config) {
+      this.config = config;
+      this.index = clients.length;
+      this.closeAttempts = 0;
+      clients.push(this);
+    }
+
+    async connect() {
+      return undefined;
+    }
+
+    query(statement) {
+      if (this.index === 0)
+        return new Promise((_resolve, reject) => {
+          rejectSample = reject;
+        });
+      if (statement.includes('create extension'))
+        return Promise.resolve({ rows: [] });
+      if (statement.includes('from pg_database'))
+        return Promise.resolve({ rows: [{ database_oid: 17 }] });
+      throw new Error(`Unexpected query: ${statement}`);
+    }
+
+    async end() {
+      this.closeAttempts += 1;
+      if (this.index === 0)
+        rejectSample(new Error('sample canceled by client disposal'));
+    }
+  }
+
+  const sampler = await startDatabaseSampler(
+    {
+      DATABASE_ADMIN_URL: 'postgres://admin@127.0.0.1/postgres',
+      DATABASE_MIGRATION_URL: 'postgres://migration@127.0.0.1/pertexo',
+    },
+    { Client, samplerStopGraceMillis: 20 },
+  );
+  const observations = await sampler.stop();
+  assert.equal(observations.available, false);
+  assert.match(observations.reason, /canceled by client disposal/u);
+  assert.deepEqual(
+    clients.map(({ closeAttempts }) => closeAttempts),
+    [1, 1],
+  );
+  assert.equal(
+    clients.every(
+      ({ config }) =>
+        config.query_timeout === 30_000 && config.statement_timeout === 30_000,
+    ),
+    true,
+  );
+});
+
+test('records repeated operation latency, throughput, launcher cost and RSS', async () => {
+  const evidence = await benchmark(
+    manifest(),
+    {
+      ...process.env,
+      DATABASE_ADMIN_URL: '',
+      DATABASE_MIGRATION_URL: '',
+      PERTEXO_Q11_ISOLATED: '1',
+    },
+    benchmarkOptions(),
+  );
   assert.equal(evidence.scenarios[0].rounds.length, 3);
   assert.equal(evidence.scenarios[0].operationLatencyMs.p95 >= 7.5, true);
   assert.equal(
@@ -591,12 +912,73 @@ test('records repeated operation latency, throughput, launcher cost and RSS', as
     ),
     true,
   );
-  assert.equal(typeof evidence.source.dirty, 'boolean');
-  assert.match(evidence.source.workingTreeSha256, /^[a-f0-9]{64}$/u);
+  assert.equal(typeof evidence.source.started.dirty, 'boolean');
+  assert.match(evidence.source.started.workingTreeSha256, /^[a-f0-9]{64}$/u);
+  assert.equal(evidence.source.stable, true);
+  assert.equal(evidence.build.stable, true);
   assert.match(evidence.orchestratorDiagnostics.scope, /orchestrator only/u);
   assert.match(evidence.workloadMetricLimitations.heap, /unavailable/u);
   assert.equal(evidence.databaseObservations.available, false);
   assert.equal(evidence.postgresEvidence.available, false);
+});
+
+test('rejects source drift during build and marks later source drift unqualified', async () => {
+  let buildPhaseSourceCalls = 0;
+  await assert.rejects(
+    benchmark(
+      manifest(),
+      { ...process.env, PERTEXO_Q11_ISOLATED: '1' },
+      benchmarkOptions({
+        sourceIdentity: async () => ({
+          workingTreeSha256:
+            buildPhaseSourceCalls++ === 0 ? 'before-build' : 'during-build',
+        }),
+      }),
+    ),
+    /Source changed while qualifying/u,
+  );
+
+  let workloadSourceCalls = 0;
+  const evidence = await benchmark(
+    manifest(),
+    {
+      ...process.env,
+      DATABASE_ADMIN_URL: '',
+      DATABASE_MIGRATION_URL: '',
+      PERTEXO_Q11_ISOLATED: '1',
+    },
+    benchmarkOptions({
+      sourceIdentity: async () => ({
+        workingTreeSha256:
+          workloadSourceCalls++ < 2 ? 'measured-source' : 'changed-source',
+      }),
+    }),
+  );
+  assert.equal(evidence.status, 'partial');
+  assert.equal(evidence.source.stable, false);
+  assert.throws(() => validateBenchmarkEvidence(evidence), /stale or partial/u);
+});
+
+test('marks build-output drift during measured work unqualified', async () => {
+  const source = { workingTreeSha256: 'stable-source' };
+  const evidence = await benchmark(
+    manifest(),
+    {
+      ...process.env,
+      DATABASE_ADMIN_URL: '',
+      DATABASE_MIGRATION_URL: '',
+      PERTEXO_Q11_ISOLATED: '1',
+    },
+    benchmarkOptions({
+      sourceIdentity: async () => source,
+      buildIdentity: async () => ({
+        outputSha256: 'changed-build',
+        fileCount: 1,
+      }),
+    }),
+  );
+  assert.equal(evidence.status, 'partial');
+  assert.equal(evidence.build.stable, false);
 });
 
 test('validates and safely owns the actual producer output', async (t) => {
@@ -630,7 +1012,7 @@ test('validates and safely owns the actual producer output', async (t) => {
   const postgresEvidence = {
     available: true,
     poolCheckoutWaitSeconds: [0.05, 0.06, 0.07],
-    instrumentedSqlRoundTrips: 1,
+    instrumentedSqlQueryCount: 1,
     queryPlans: [
       'retention-keyset',
       'artifact-version-listing',
@@ -641,33 +1023,72 @@ test('validates and safely owns the actual producer output', async (t) => {
     ].map((name) => ({
       name,
       role: 'pertexo_maintenance',
-      plan: { Plan: { 'Node Type': 'Result' }, 'Execution Time': 1 },
+      planScope: 'outer-function-call',
+      internalStatementPlanAvailable: false,
+      representativeRows: {
+        artifacts: 400,
+        purgeWorkspaces: 4,
+        workspaces: 44,
+      },
+      plan: {
+        Plan: { 'Node Type': 'Result', 'Actual Rows': 1, 'Actual Loops': 1 },
+        'Planning Time': 0.1,
+        'Execution Time': 1,
+      },
     })),
+    databaseRuntime: {
+      database: 'pertexo',
+      role: 'pertexo_maintenance',
+      serverVersion: '18.0',
+      serverVersionNumber: 180000,
+      extensions: [{ name: 'pg_stat_statements', version: '1.11' }],
+      settings: {
+        maxConnections: 100,
+        pgStatStatementsMax: 20_000,
+        sharedBuffers: '128MB',
+        workMem: '4MB',
+        effectiveCacheSize: '4GB',
+        jit: 'off',
+        trackIoTiming: 'off',
+        pgStatStatementsTrack: 'top',
+      },
+      serviceIdentity: {
+        image: 'postgres:18@sha256:fixture',
+        hostScope: 'loopback',
+        portScope: 'ephemeral-loopback',
+      },
+    },
+  };
+  const sampledStatements = () => {
+    let statements = 0;
+    return {
+      beginScenario: async () => {
+        statements = 0;
+      },
+      captureScenario: async () => ({
+        statementExecutions: statements++,
+        serverExecutionMs: statements,
+      }),
+      stop: async () => observations,
+    };
   };
   const produced = await benchmark(
     manifest(),
     { ...process.env, PERTEXO_Q11_ISOLATED: '1' },
-    {
-      startDatabaseSampler: async () => ({
-        beginScenario: async () => undefined,
-        endScenario: async () => ({
-          sqlRoundTrips: 1,
-          serverExecutionMs: 1,
-        }),
-        stop: async () => observations,
-      }),
+    benchmarkOptions({
+      startDatabaseSampler: async () => sampledStatements(),
       capturePostgresEvidence: async () => postgresEvidence,
       sourceIdentity: async () => ({
         workingTreeSha256: 'producer-source',
       }),
-    },
+    }),
   );
   assert.equal(validateBenchmarkEvidence(produced), produced);
 
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const corruptions = [
     (value) => delete value.scenarios[0].databaseWorkload,
-    (value) => (value.scenarios[0].databaseWorkload.sqlRoundTrips = 0),
+    (value) => (value.scenarios[0].databaseWorkload.statementExecutions = 0),
     (value) => delete value.scenarios[0].operationBreakdown['fixture-first'],
     (value) => (value.scenarios[0].launcherElapsedMs.mean += 1),
     (value) => value.scenarios[0].rounds.pop(),
@@ -805,6 +1226,46 @@ test('validates and safely owns the actual producer output', async (t) => {
   );
 });
 
+test('reserves benchmark output before build or workload activity', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-reservation-'));
+  const manifestFile = path.join(directory, 'manifest.json');
+  const outputFile = path.join(directory, 'evidence.json');
+  const workloadSentinel = path.join(directory, 'workload-started');
+  try {
+    const reservation = await reserveBenchmarkEvidence(outputFile);
+    assert.equal(await readFile(outputFile, 'utf8'), '');
+    await reservation.abandon();
+    await assert.rejects(readFile(outputFile), { code: 'ENOENT' });
+
+    await writeFile(outputFile, 'existing evidence');
+    const input = manifest();
+    input.scenarios[0].commands[0].args = [
+      '-e',
+      `require('node:fs').writeFileSync(${JSON.stringify(workloadSentinel)}, 'started')`,
+    ];
+    await writeFile(manifestFile, `${JSON.stringify(input)}\n`);
+    await assert.rejects(
+      run(
+        process.execPath,
+        [
+          'infrastructure/performance/run-local-benchmark.mjs',
+          manifestFile,
+          outputFile,
+        ],
+        {
+          env: { ...process.env, PERTEXO_Q11_ISOLATED: '1' },
+          timeoutMillis: 10_000,
+        },
+      ),
+      /EEXIST/u,
+    );
+    assert.equal(await readFile(outputFile, 'utf8'), 'existing evidence');
+    await assert.rejects(readFile(workloadSentinel), { code: 'ENOENT' });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('releases declared contention participants together and proves overlap', async () => {
   const base = manifest();
   const overlapManifest = manifest({
@@ -842,7 +1303,7 @@ test('releases declared contention participants together and proves overlap', as
       DATABASE_MIGRATION_URL: '',
       PERTEXO_Q11_ISOLATED: '1',
     },
-    {
+    benchmarkOptions({
       startDatabaseSampler: unavailableSampler,
       prepareScenarioDatabase: async (_scenario, environment) => ({
         databaseName: 'fixture',
@@ -853,7 +1314,7 @@ test('releases declared contention participants together and proves overlap', as
         },
         close: async () => undefined,
       }),
-    },
+    }),
   );
   assert.equal(
     evidence.scenarios[0].rounds.every(
@@ -885,12 +1346,19 @@ test('samples a runner-owned fixture database separately from the configured bas
       ? new URL(environment.DATABASE_MIGRATION_URL).pathname.slice(1)
       : 'base';
     sampledDatabases.push(databaseName);
+    let snapshot = 0;
     return {
-      beginScenario: async () => undefined,
-      endScenario: async () =>
-        databaseName === 'fixture'
-          ? { sqlRoundTrips: 7, serverExecutionMs: 3.5 }
-          : { sqlRoundTrips: 0, serverExecutionMs: 0 },
+      beginScenario: async () => {
+        snapshot = 0;
+      },
+      captureScenario: async () => {
+        const value = databaseName === 'fixture' ? snapshot : 0;
+        snapshot += 1;
+        return {
+          statementExecutions: value,
+          serverExecutionMs: value / 2,
+        };
+      },
       stop: async () => observations,
     };
   };
@@ -902,7 +1370,7 @@ test('samples a runner-owned fixture database separately from the configured bas
       DATABASE_MIGRATION_URL: '',
       PERTEXO_Q11_ISOLATED: '1',
     },
-    {
+    benchmarkOptions({
       startDatabaseSampler,
       prepareScenarioDatabase: async (_scenario, environment) => ({
         databaseName: 'fixture',
@@ -916,21 +1384,26 @@ test('samples a runner-owned fixture database separately from the configured bas
         },
         close: async () => undefined,
       }),
-    },
+    }),
   );
 
   assert.deepEqual(sampledDatabases, ['base', 'fixture']);
   assert.equal(resetCount, 4);
-  assert.deepEqual(evidence.scenarios[0].databaseWorkload, {
-    sqlRoundTrips: 0,
-    serverExecutionMs: 0,
-  });
-  assert.deepEqual(evidence.scenarios[0].targetDatabase, {
-    scope: 'runner-owned fixture database',
-    databaseName: 'fixture',
-    workload: { sqlRoundTrips: 7, serverExecutionMs: 3.5 },
-    observations,
-  });
+  assert.equal(evidence.scenarios[0].databaseWorkload.statementExecutions, 0);
+  assert.equal(
+    evidence.scenarios[0].databaseWorkload.scope,
+    'scenarioIncludingWarmupAndFixtures',
+  );
+  assert.equal(
+    evidence.scenarios[0].targetDatabase.scope,
+    'runner-owned fixture database',
+  );
+  assert.equal(evidence.scenarios[0].targetDatabase.databaseName, 'fixture');
+  assert.equal(
+    evidence.scenarios[0].targetDatabase.workload.statementExecutions > 0,
+    true,
+  );
+  assert.equal(evidence.scenarios[0].targetDatabase.observations, observations);
 });
 
 test('fails closed when workloads omit declared operation measurements', async () => {
@@ -941,13 +1414,126 @@ test('fails closed when workloads omit declared operation measurements', async (
   ];
   await assert.rejects(
     () =>
-      benchmark(missing, {
+      benchmark(
+        missing,
+        {
+          ...process.env,
+          DATABASE_ADMIN_URL: '',
+          DATABASE_MIGRATION_URL: '',
+          PERTEXO_Q11_ISOLATED: '1',
+        },
+        benchmarkOptions(),
+      ),
+    /emitted 0 Q11 operation timings; expected 2/u,
+  );
+});
+
+test('an early overlap participant failure is observed and its sibling is reaped', async () => {
+  const base = manifest();
+  const overlapManifest = manifest({
+    scenarios: [
+      {
+        ...base.scenarios[0],
+        databaseScope: 'runner-owned-shared',
+        requireOverlap: true,
+        commands: [
+          {
+            participant: 'failed',
+            file: process.execPath,
+            args: ['-e', 'process.exit(9)'],
+            expectedOperations: [
+              {
+                name: 'failed',
+                count: 1,
+                population: 1,
+                boundary: 'failed boundary',
+                databaseScope: 'runner-owned-shared',
+              },
+            ],
+          },
+          {
+            participant: 'waiting',
+            file: process.execPath,
+            args: [overlapWorkloadFixture],
+            expectedOperations: [
+              {
+                name: 'waiting',
+                count: 1,
+                population: 1,
+                boundary: 'waiting boundary',
+                databaseScope: 'runner-owned-shared',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  await assert.rejects(
+    benchmark(
+      overlapManifest,
+      {
         ...process.env,
         DATABASE_ADMIN_URL: '',
         DATABASE_MIGRATION_URL: '',
         PERTEXO_Q11_ISOLATED: '1',
+      },
+      benchmarkOptions({
+        prepareScenarioDatabase: async (_scenario, environment) => ({
+          databaseName: 'fixture',
+          environment: {
+            ...environment,
+            PERTEXO_Q11_SHARED_DATABASE_NAME: 'fixture',
+          },
+          close: async () => undefined,
+        }),
       }),
-    /emitted 0 Q11 operation timings; expected 2/u,
+    ),
+    (error) =>
+      errorMessages(error).some((message) =>
+        /exited before reaching|failed \(9\)|failed \(SIGTERM\)/u.test(message),
+      ),
+  );
+});
+
+test('benchmark commands enforce a deadline and reap the timed-out process tree', async () => {
+  await assert.rejects(
+    run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      timeoutMillis: 30,
+    }),
+    /timed out after 30 ms/u,
+  );
+});
+
+test('the overall benchmark deadline cancels an active workload', async () => {
+  const timed = manifest();
+  timed.scenarios[0].commands[0] = {
+    file: process.execPath,
+    args: ['-e', 'setInterval(() => {}, 1000)'],
+    expectedOperations: [
+      {
+        name: 'never',
+        count: 1,
+        population: 1,
+        boundary: 'never completes',
+      },
+    ],
+  };
+  await assert.rejects(
+    benchmark(
+      timed,
+      {
+        ...process.env,
+        DATABASE_ADMIN_URL: '',
+        DATABASE_MIGRATION_URL: '',
+        PERTEXO_Q11_ISOLATED: '1',
+      },
+      benchmarkOptions({ benchmarkTimeoutMillis: 30 }),
+    ),
+    (error) =>
+      errorMessages(error).some((message) =>
+        /Benchmark timed out after 30 ms/u.test(message),
+      ),
   );
 });
 
@@ -1015,7 +1601,7 @@ for (const terminationSignal of ['SIGINT', 'SIGTERM'])
     );
     let nestedPid;
     try {
-      nestedPid = Number(await waitForFile(nestedPidFile));
+      nestedPid = Number(await waitForFile(nestedPidFile, 30_000));
       runner.kill(terminationSignal);
       await once(runner, 'close');
       await delay(100);
@@ -1087,7 +1673,7 @@ test('a failed benchmark command cannot hang on output pipes inherited by a desc
   );
   let nestedPid;
   try {
-    nestedPid = Number(await waitForFile(nestedPidFile));
+    nestedPid = Number(await waitForFile(nestedPidFile, 30_000));
     const [code] = await Promise.race([
       once(runner, 'close'),
       delay(2_000, undefined, { ref: false }).then(() => {

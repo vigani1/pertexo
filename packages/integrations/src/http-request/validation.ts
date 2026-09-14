@@ -63,6 +63,23 @@ function safeConfiguredHeader(name: string): boolean {
   );
 }
 
+function safeRequestUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      url.username === '' &&
+      url.password === '' &&
+      url.hash === '' &&
+      [...url.searchParams.keys()].every(
+        (name) => !credentialLikeHeader.test(name),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const httpRequestHeadersSchema = z
   .record(headerNameSchema, headerValueSchema)
   .superRefine((headers, context) => {
@@ -150,18 +167,7 @@ export const httpRequestConfigSchema = z
       .url()
       .max(MAX_URL_BYTES)
       .refine((value) => utf8Bytes(value) <= MAX_URL_BYTES)
-      .refine((value) => {
-        const url = new URL(value);
-        return (
-          url.protocol === 'https:' &&
-          url.username === '' &&
-          url.password === '' &&
-          url.hash === '' &&
-          [...url.searchParams.keys()].every(
-            (name) => !credentialLikeHeader.test(name),
-          )
-        );
-      }),
+      .refine(safeRequestUrl),
     headers: httpRequestHeadersSchema,
     timeoutMillis: z.number().int().min(1).max(120_000),
     maxRedirects: z.number().int().min(0).max(5),

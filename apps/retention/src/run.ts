@@ -35,6 +35,10 @@ export interface RetentionWorkerResources {
   readonly telemetry: TelemetryLifecycle;
 }
 
+function isSignalReason(error: unknown, signal: AbortSignal): boolean {
+  return signal.aborted && error === signal.reason;
+}
+
 export async function runRetentionWorker(
   resources: RetentionWorkerResources,
 ): Promise<void> {
@@ -120,7 +124,7 @@ async function monitorRegionalReplicaLag(
         previousStatus = observation.status;
       }
     } catch (error: unknown) {
-      if (error === signal.reason) return;
+      if (isSignalReason(error, signal)) return;
       resources.logger.error(
         'retention.regional_replica_lag_failed',
         { applicationName: resources.replicaMonitor.applicationName },

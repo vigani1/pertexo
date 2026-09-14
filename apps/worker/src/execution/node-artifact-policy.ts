@@ -24,18 +24,22 @@ export function artifactExpiry(
   retentionMillis: number,
   retentionDeadline: Date | undefined,
 ): Date {
+  const createdAtMillis = createdAt.getTime();
   if (
-    retentionDeadline !== undefined &&
-    !Number.isFinite(retentionDeadline.getTime())
+    !Number.isFinite(createdAtMillis) ||
+    (retentionDeadline !== undefined &&
+      !Number.isFinite(retentionDeadline.getTime()))
   )
-    throw new TypeError('Artifact retention deadline is invalid');
-  const defaultExpiry = new Date(createdAt.getTime() + retentionMillis);
+    throw new TypeError('Artifact retention clock or deadline is invalid');
+  const defaultExpiry = new Date(createdAtMillis + retentionMillis);
+  if (!Number.isFinite(defaultExpiry.getTime()))
+    throw new TypeError('Artifact retention expiry is outside the Date range');
   const expiresAt =
     retentionDeadline !== undefined &&
     retentionDeadline.getTime() < defaultExpiry.getTime()
       ? new Date(retentionDeadline.getTime())
       : defaultExpiry;
-  if (expiresAt.getTime() <= createdAt.getTime())
+  if (expiresAt.getTime() <= createdAtMillis)
     throw new RangeError('Artifact retention deadline has expired');
   return expiresAt;
 }

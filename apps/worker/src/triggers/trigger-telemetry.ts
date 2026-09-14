@@ -1,4 +1,4 @@
-import { metrics } from '@opentelemetry/api';
+import { metrics, type Meter } from '@opentelemetry/api';
 import type { ScanDueSchedulesResult } from '@pertexo/database/execution';
 
 export interface TriggerRuntimeTelemetry {
@@ -7,8 +7,9 @@ export interface TriggerRuntimeTelemetry {
   scanFailed(durationSeconds: number): void;
 }
 
-export function createTriggerRuntimeTelemetry(): TriggerRuntimeTelemetry {
-  const meter = metrics.getMeter('@pertexo/worker.triggers', '0.0.0');
+export function createTriggerRuntimeTelemetry(
+  meter: Meter = metrics.getMeter('@pertexo/worker.triggers', '0.0.0'),
+): TriggerRuntimeTelemetry {
   const scans = meter.createCounter('pertexo.schedule.scan.count', {
     description: 'Schedule scans by bounded outcome',
   });

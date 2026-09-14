@@ -88,7 +88,9 @@ function availabilityOutcome(statusCode: number, problem: string): string {
 export function registerApiMetrics(
   server: FastifyInstance,
   meter: Meter = metrics.getMeter('@pertexo/api.http', '0.0.0'),
+  options: Readonly<{ now?: () => bigint }> = {},
 ): void {
+  const now = options.now ?? (() => process.hrtime.bigint());
   const requests = meter.createCounter(API_METRIC_NAME.requests, {
     description: 'API requests by bounded route template and response class',
     unit: '{request}',
@@ -109,7 +111,7 @@ export function registerApiMetrics(
   const responseProblemCodes = new WeakMap<FastifyRequest, string>();
 
   server.addHook('onRequest', (request, _reply, done) => {
-    startedAt.set(request, process.hrtime.bigint());
+    startedAt.set(request, now());
     done();
   });
   server.addHook('onSend', (request, reply, payload, done) => {
@@ -132,10 +134,7 @@ export function registerApiMetrics(
       requests.add(1, attributes);
       const start = startedAt.get(request);
       if (start !== undefined) {
-        duration.record(
-          Number(process.hrtime.bigint() - start) / 1_000_000_000,
-          attributes,
-        );
+        duration.record(Number(now() - start) / 1_000_000_000, attributes);
       }
       if (eligible(route)) {
         const problem = responseProblemCodes.get(request) ?? 'none';

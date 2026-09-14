@@ -8,6 +8,7 @@ import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { IdentityConflictError } from './identity-workspace-errors.js';
+import { readIdentityDatabaseErrorCode } from './identity-workspace-support.js';
 
 const stateDigestSchema = sha256HexSchema;
 const secretSchema = z.string().min(1).max(16_384);
@@ -40,10 +41,11 @@ export interface OidcSecretEncryptionAdapter {
   ): Promise<string> | string;
 }
 
-export type OidcTransactionConsumeResult = Readonly<{
-  status: 'ok' | 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
-  transaction?: OidcLoginTransaction;
-}>;
+export type OidcTransactionConsumeResult =
+  | Readonly<{ status: 'ok'; transaction: OidcLoginTransaction }>
+  | Readonly<{
+      status: 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
+    }>;
 
 export class OidcTransactionSealingError extends Error {
   public override readonly name = 'OidcTransactionSealingError';
@@ -70,20 +72,16 @@ function associatedData(
   return `pertexo/oidc-login/${stateDigest}/${field}`;
 }
 
-function parseSealed(value: SealedOidcSecret): SealedOidcSecret {
+function parseSealed(value: unknown): SealedOidcSecret {
   return sealMetadataSchema.parse(value);
 }
 
 function isConflict(error: unknown): boolean {
-  return (
-    error instanceof Error && (error as { code?: string }).code === '23505'
-  );
+  return readIdentityDatabaseErrorCode(error) === '23505';
 }
 
 function isCapacityExhausted(error: unknown): boolean {
-  return (
-    error instanceof Error && (error as { code?: string }).code === '54000'
-  );
+  return readIdentityDatabaseErrorCode(error) === '54000';
 }
 
 export function createOidcLoginTransactionStore(
@@ -100,9 +98,13 @@ export function createOidcLoginTransactionStore(
       const browserBindingDigest = stateDigestSchema.parse(
         transaction.browserBindingDigest,
       );
+      const expiresAt: unknown = transaction.expiresAt;
+      const expiryMillis =
+        expiresAt instanceof Date ? expiresAt.getTime() : Number.NaN;
       if (
-        !(transaction.expiresAt instanceof Date) ||
-        transaction.expiresAt.getTime() <= Date.now()
+        !(expiresAt instanceof Date) ||
+        !Number.isFinite(expiryMillis) ||
+        expiryMillis <= Date.now()
       ) {
         throw new Error('OIDC transaction expiry must be in the future');
       }
@@ -135,7 +137,7 @@ export function createOidcLoginTransactionStore(
             sealedNonce.tag,
             sealedNonce.keyVersion,
             browserBindingDigest,
-            transaction.expiresAt,
+            expiresAt,
           ],
         );
       } catch (error: unknown) {
@@ -203,16 +205,16 @@ export function createOidcLoginTransactionStore(
       const consumedRow = result.row;
       try {
         const sealedCodeVerifier = parseSealed({
-          ciphertext: String(consumedRow.code_verifier_ciphertext),
-          nonce: String(consumedRow.code_verifier_nonce),
-          tag: String(consumedRow.code_verifier_tag),
-          keyVersion: String(consumedRow.code_verifier_key_version),
+          ciphertext: consumedRow.code_verifier_ciphertext,
+          nonce: consumedRow.code_verifier_nonce,
+          tag: consumedRow.code_verifier_tag,
+          keyVersion: consumedRow.code_verifier_key_version,
         });
         const sealedNonce = parseSealed({
-          ciphertext: String(consumedRow.nonce_ciphertext),
-          nonce: String(consumedRow.nonce_nonce),
-          tag: String(consumedRow.nonce_tag),
-          keyVersion: String(consumedRow.nonce_key_version),
+          ciphertext: consumedRow.nonce_ciphertext,
+          nonce: consumedRow.nonce_nonce,
+          tag: consumedRow.nonce_tag,
+          keyVersion: consumedRow.nonce_key_version,
         });
         const [codeVerifier, nonce] = await Promise.all([
           encryption.open(

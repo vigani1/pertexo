@@ -256,6 +256,31 @@ describe('compiled lifecycle command process lifecycle', () => {
   );
 
   it(
+    'cleans every acquired owner when compiled metrics construction fails before worker handoff',
+    async () => {
+      const { child, markerPath, state } =
+        await startFixture('metrics-failure');
+      await waitForOutput(
+        child,
+        state,
+        'bootstrap.failed',
+        STARTUP_TIMEOUT_MILLIS,
+      );
+      const { code, signal } = await waitForExit(child, state);
+
+      expect(signal).toBeNull();
+      expect(code).toBe(0);
+      expect(await markerExists(markerPath)).toBe(false);
+      expect(state.output).toContain('readiness.cleared');
+      expect(state.output).toContain('database.closed');
+      expect(state.output).toContain('ledger.closed');
+      expect(state.output).toContain('telemetry.closed');
+      expect(state.output).not.toContain('worker.active');
+    },
+    PROCESS_TEST_TIMEOUT_MILLIS,
+  );
+
+  it(
     'runs the compiled entrypoint failure formatter with a sanitized exit',
     async () => {
       const { child, state } = await startFixture('entrypoint-failure');
@@ -270,7 +295,7 @@ describe('compiled lifecycle command process lifecycle', () => {
       expect(state.output).toContain(
         '"event":"lifecycle_command.process_failed"',
       );
-      expect(state.output).toContain('"errorType":"ZodError"');
+      expect(state.output).toContain('"errorType":"Error"');
       expect(state.output).not.toContain('LIFECYCLE_COMMAND_LEASE_OWNER');
     },
     PROCESS_TEST_TIMEOUT_MILLIS,

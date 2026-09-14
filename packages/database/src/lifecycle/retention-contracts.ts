@@ -67,8 +67,10 @@ export type RetentionDryRunProcessResult =
 export interface RetentionDatabaseOptions {
   readonly leaseOwner: string;
   readonly leaseSeconds?: number;
+  readonly lockTimeoutMs?: number;
   readonly maxPagesPerBatch?: number;
   readonly pageSize?: number;
+  readonly statementTimeoutMs?: number;
 }
 
 export interface RetentionScheduleResult {

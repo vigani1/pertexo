@@ -1,13 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import {
+  acquireDatabasePool,
+  createDatabaseRuntime,
+} from '../src/platform/database-runtime.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -20,6 +24,12 @@ const apiBaseUrl =
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 const databaseName = `pertexo_test_runtime_${randomUUID().replaceAll('-', '')}`;
 const applicationName = `runtime-${randomUUID()}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
 
 function databaseUrl(base: string, includeApplicationName = false): string {
   const url = new URL(base);
@@ -50,12 +60,7 @@ async function waitForSessionCount(expected: number): Promise<void> {
 }
 
 beforeAll(async () => {
-  await admin.query(`drop database if exists "${databaseName}" with (force)`);
-  await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-  await admin.query(`revoke all on database "${databaseName}" from public`);
-  await admin.query(
-    `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api`,
-  );
+  await fixture.create();
   await migrateDatabase({
     connectionString: databaseUrl(migrationBaseUrl),
     ownerRole: 'pertexo_owner',
@@ -69,8 +74,22 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await dropDisconnectedDatabase(admin, databaseName);
-  await admin.end();
+  const failures: unknown[] = [];
+  try {
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await admin.end();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Database runtime fixture cleanup failed',
+    );
 });
 
 describe('database process runtime integration', () => {
@@ -82,21 +101,48 @@ describe('database process runtime integration', () => {
       workerRuntimeRole: 'pertexo_worker',
     });
     const runtime = createDatabaseRuntime(config, { role: 'api' });
-    const repositories = [
-      createWorkspaceDatabase(config, { runtime }),
-      createWorkspaceDatabase(config, { runtime }),
-      createWorkspaceDatabase(config, { runtime }),
-    ];
+    const lease = acquireDatabasePool(config, runtime);
+    const repositories: ReturnType<typeof createWorkspaceDatabase>[] = [];
+    const clients: PoolClient[] = [];
 
     try {
+      for (let index = 0; index < 3; index += 1)
+        repositories.push(createWorkspaceDatabase(config, { runtime }));
+      const acquired = await Promise.all([
+        lease.pool.connect(),
+        lease.pool.connect(),
+        lease.pool.connect(),
+      ]);
+      clients.push(...acquired);
       await Promise.all(
-        repositories.map((repository) => repository.checkCompatibility()),
+        clients.map((client, index) =>
+          client.query('select pg_advisory_lock($1)', [8_100_000 + index]),
+        ),
       );
       await waitForSessionCount(4);
 
+      await Promise.all(
+        clients.map((client) =>
+          client.query('select pg_advisory_unlock_all()'),
+        ),
+      );
+      for (const client of clients.splice(0)) client.release();
+      await Promise.all(
+        repositories.map((repository) => repository.checkCompatibility()),
+      );
       await Promise.all(repositories.map((repository) => repository.close()));
       expect(await sessionCount()).toBe(4);
     } finally {
+      for (const client of clients) {
+        await client
+          .query('select pg_advisory_unlock_all()')
+          .catch(() => undefined);
+        client.release(true);
+      }
+      await Promise.allSettled(
+        repositories.map((repository) => repository.close()),
+      );
+      await lease.close();
       await runtime.close();
     }
     await waitForSessionCount(0);

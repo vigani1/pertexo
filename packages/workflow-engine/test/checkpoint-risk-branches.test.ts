@@ -125,7 +125,7 @@ describe('checkpoint risk branches', () => {
     },
   );
 
-  it('canonicalizes a negative-zero numeric field', () => {
+  it('preserves a negative-zero numeric field', () => {
     expect(
       Object.is(parseCheckpoint({ ...baseV1(), revision: -0 }).revision, -0),
     ).toBe(true);

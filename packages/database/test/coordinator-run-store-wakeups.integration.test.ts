@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   Pool,
+  asOwner,
   asRuntime,
   canonicalOutboxPayloadChecksum,
   createDeadlineWakeupScanner,
@@ -16,7 +17,7 @@ import {
 
 describe('Coordinator durable wakeup invariants', () => {
   it('wakes each due workflow deadline exactly once independently of node timing', async () => {
-    const deadlineAt = new Date(Date.now() + 100).toISOString();
+    const deadlineAt = '2099-01-01T00:00:00.000Z';
     const runId = await insertRun({ deadlineAt, status: 'waiting' });
     const config = parseDatabaseConfig({
       connectionString: databaseUrl(workerBaseUrl),
@@ -41,7 +42,15 @@ describe('Coordinator durable wakeup invariants', () => {
         deadline_wakeup_at: null,
         outboxes: 0,
       });
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.workflow_runs
+           set created_at=clock_timestamp()-interval '2 seconds',
+               deadline_at=clock_timestamp()-interval '1 second'
+           where workspace_id=$1 and id=$2`,
+          [workspaceA, runId],
+        ),
+      );
       const claims = await Promise.all([
         scannerA.claimDueWakeups(10),
         scannerB.claimDueWakeups(10),
@@ -76,7 +85,24 @@ describe('Coordinator durable wakeup invariants', () => {
         canonicalOutboxPayloadChecksum(proof.rows[0]?.payload),
       );
     } finally {
-      await Promise.all([scannerA.close(), scannerB.close()]);
+      const closed = await Promise.allSettled([
+        scannerA.close(),
+        scannerB.close(),
+      ]);
+      const failures: Error[] = [];
+      for (const result of closed)
+        if (result.status === 'rejected')
+          failures.push(
+            result.reason instanceof Error
+              ? result.reason
+              : new Error('Wakeup scanner cleanup rejected', {
+                  cause: result.reason,
+                }),
+          );
+      if (failures.length > 0) {
+        // eslint-disable-next-line no-unsafe-finally -- Both scanners have settled and cleanup failures must remain visible.
+        throw new AggregateError(failures, 'Wakeup scanner cleanup failed');
+      }
     }
   });
 
@@ -87,9 +113,9 @@ describe('Coordinator durable wakeup invariants', () => {
       client.query(
         `insert into app.node_runs (
              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,retry_due_at
+             status,side_effect_class,retry_due_at,wait_kind
            ) values ($1,$2,$3,'retry-node',$4,'{}','waiting','safe',
-                     clock_timestamp() + interval '1 hour')`,
+                     clock_timestamp() + interval '1 hour','retry_backoff')`,
         [nodeRunId, workspaceA, runId, `${versionA}|retry-node|b:|i:`],
       ),
     );

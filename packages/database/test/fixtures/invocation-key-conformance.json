@@ -1,0 +1,49 @@
+[
+  {
+    "name": "root scope omitted",
+    "input": {
+      "workflowVersionId": "00000000-0000-4000-8000-000000000101",
+      "nodeId": "root"
+    },
+    "expected": "00000000-0000-4000-8000-000000000101|root|b:|i:"
+  },
+  {
+    "name": "root scope explicitly empty",
+    "input": {
+      "workflowVersionId": "00000000-0000-4000-8000-000000000101",
+      "nodeId": "root",
+      "branchPath": [],
+      "iterationPath": []
+    },
+    "expected": "00000000-0000-4000-8000-000000000101|root|b:|i:"
+  },
+  {
+    "name": "colon-bearing identifiers",
+    "input": {
+      "workflowVersionId": "version:alpha",
+      "nodeId": "node:root"
+    },
+    "expected": "version%3Aalpha|node%3Aroot|b:|i:"
+  },
+  {
+    "name": "branch scope",
+    "input": {
+      "workflowVersionId": "version:alpha",
+      "nodeId": "target",
+      "branchPath": [{ "nodeId": "condition:primary", "outputPort": "yes/no" }]
+    },
+    "expected": "version%3Aalpha|target|b:condition%3Aprimary%3Ayes%2Fno|i:"
+  },
+  {
+    "name": "nested iteration scope",
+    "input": {
+      "workflowVersionId": "version:alpha",
+      "nodeId": "target",
+      "iterationPath": [
+        { "loopNodeId": "outer:loop", "ordinal": 2 },
+        { "loopNodeId": "inner/loop", "ordinal": 11 }
+      ]
+    },
+    "expected": "version%3Aalpha|target|b:|i:outer%3Aloop%3A2%2Finner%2Floop%3A11"
+  }
+]

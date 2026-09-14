@@ -7,9 +7,9 @@ import {
 } from '../platform/readiness.js';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 import {
-  acquirePoolClient,
   query,
   type MaintenancePool,
+  withOwnedPoolClient,
 } from './control-ledger-postgres.js';
 import { ControlLedgerReconciliationError } from './control-ledger-errors.js';
 
@@ -64,8 +64,7 @@ export function createControlLedgerReadSide(
         })
         .strict()
         .parse(input);
-      const client = await acquirePoolClient(pool, parsedInput.signal);
-      try {
+      await withOwnedPoolClient(pool, parsedInput.signal, async (client) => {
         const result = await query<{
           boundary_compatible: boolean;
           current_user: string;
@@ -114,9 +113,7 @@ export function createControlLedgerReadSide(
           throw new Error(
             'Restore maintenance database boundary is incompatible',
           );
-      } finally {
-        client.release();
-      }
+      });
     },
     listCommittedArtifacts: async (
       input: CommittedArtifactInventoryInput,
@@ -142,8 +139,7 @@ export function createControlLedgerReadSide(
             });
         })
         .parse(input);
-      const client = await acquirePoolClient(pool, parsedInput.signal);
-      try {
+      return withOwnedPoolClient(pool, parsedInput.signal, async (client) => {
         const result = await query<{
           artifact_id: string;
           byte_length: string | number;
@@ -177,9 +173,7 @@ export function createControlLedgerReadSide(
           });
         });
         return Object.freeze({ artifacts: Object.freeze(artifacts), hasMore });
-      } finally {
-        client.release();
-      }
+      });
     },
   });
 }

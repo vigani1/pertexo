@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 
 import { generateKeyPair, SignJWT, type KeyInput } from 'jose';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   digestBase64Url,
@@ -36,6 +36,17 @@ const request: OidcAuthorizationRequest = {
   clientId: configuration.clientId,
   scopes: ['openid', 'profile', 'email'],
 };
+
+let sharedPrivateKey: KeyInput;
+let sharedPublicKey: KeyInput;
+let sharedSignedToken: string;
+
+beforeAll(async () => {
+  const keyPair = await generateKeyPair('RS256');
+  sharedPrivateKey = keyPair.privateKey;
+  sharedPublicKey = keyPair.publicKey;
+  sharedSignedToken = await signedToken(sharedPrivateKey);
+});
 
 async function signedToken(
   privateKey: KeyInput,
@@ -78,6 +89,28 @@ function responseFetch(
       }),
     );
   };
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMillis: number,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('test operation timed out'));
+    }, timeoutMillis);
+    timeout.unref();
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error instanceof Error ? error : new Error('test failed'));
+      },
+    );
+  });
 }
 
 function adapterWithToken(
@@ -145,8 +178,6 @@ describe('generic OIDC provider adapter', () => {
     ['long state', { state: 's'.repeat(513) }],
     ['short nonce', { nonce: 'too-short' }],
     ['long nonce', { nonce: 'n'.repeat(513) }],
-    ['short code challenge', { codeChallenge: 'c'.repeat(31) }],
-    ['long code challenge', { codeChallenge: 'c'.repeat(513) }],
     [
       'long redirect URI',
       { redirectUri: `https://example.test/${'r'.repeat(2_048)}` },
@@ -171,6 +202,29 @@ describe('generic OIDC provider adapter', () => {
       adapter.authorizationUrl({ ...request, ...invalidFields }),
     ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
   });
+
+  it.each([
+    ['42 characters', 42, 'rejected', false],
+    ['43 characters', 43, 'accepted', true],
+    ['128 characters', 128, 'accepted', true],
+    ['129 characters', 129, 'rejected', false],
+  ] as const)(
+    '%s is an %s PKCE challenge boundary',
+    (_name, length, _outcome, accepted) => {
+      const adapter = new GenericOidcProviderAdapter(configuration);
+      const buildAuthorizationUrl = (): string =>
+        adapter.authorizationUrl({
+          ...request,
+          codeChallenge: 'c'.repeat(length),
+        });
+
+      if (accepted) expect(buildAuthorizationUrl).not.toThrow();
+      else
+        expect(buildAuthorizationUrl).toThrow(
+          expect.objectContaining({ code: 'identity.invalid_input' }),
+        );
+    },
+  );
 
   it.each([
     ['missing code', { code: '' }],
@@ -314,12 +368,22 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it.each([
-    ['signature', 'other', undefined, true],
-    ['issuer', undefined, { iss: 'https://evil.example.test' }, true],
-    ['audience', undefined, { aud: 'other-client' }, true],
-    ['nonce', undefined, { nonce: 'wrong-nonce' }, false],
+    ['rejects signature tampering', 'other', undefined, true],
+    [
+      'rejects issuer tampering',
+      undefined,
+      { iss: 'https://evil.example.test' },
+      true,
+    ],
+    ['rejects audience tampering', undefined, { aud: 'other-client' }, true],
+    [
+      'returns nonce for application verification',
+      undefined,
+      { nonce: 'wrong-nonce' },
+      false,
+    ],
   ] as const)(
-    'rejects %s tampering without exposing token material',
+    '%s without exposing token material',
     async (_name, keyMutation, claims, shouldReject) => {
       const { privateKey, publicKey } = await generateKeyPair('RS256');
       const signingKey =
@@ -343,8 +407,29 @@ describe('generic OIDC provider adapter', () => {
     },
   );
 
-  it('requires bounded OIDC token lifetime claims', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
+  it.each([
+    {
+      name: 'missing issued-at claim',
+      configure: (token: SignJWT, now: number) =>
+        token.setExpirationTime(now + 300),
+    },
+    {
+      name: 'missing expiration claim',
+      configure: (token: SignJWT, now: number) => token.setIssuedAt(now),
+    },
+    {
+      name: 'issued-at claim older than the maximum token age',
+      configure: (token: SignJWT, now: number) =>
+        token.setIssuedAt(now - 700).setExpirationTime(now + 300),
+    },
+    {
+      name: 'expired claim outside clock tolerance',
+      configure: (token: SignJWT, now: number) =>
+        token.setIssuedAt(now - 400).setExpirationTime(now - 120),
+    },
+  ])('rejects a token with $name', async ({ configure }) => {
+    const privateKey = sharedPrivateKey;
+    const publicKey = sharedPublicKey;
     const baseClaims = {
       iss: configuration.issuer,
       sub: 'subject-123',
@@ -352,37 +437,22 @@ describe('generic OIDC provider adapter', () => {
       nonce: request.nonce,
     };
     const now = Math.floor(Date.now() / 1_000);
-    const tokens = [
-      await new SignJWT(baseClaims)
-        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-        .setExpirationTime(now + 300)
-        .sign(privateKey),
-      await new SignJWT(baseClaims)
-        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-        .setIssuedAt(now)
-        .sign(privateKey),
-      await new SignJWT(baseClaims)
-        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-        .setIssuedAt(now - 700)
-        .setExpirationTime(now + 300)
-        .sign(privateKey),
-      await new SignJWT(baseClaims)
-        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-        .setIssuedAt(now - 400)
-        .setExpirationTime(now - 120)
-        .sign(privateKey),
-    ];
+    const token = await configure(
+      new SignJWT(baseClaims).setProtectedHeader({
+        alg: 'RS256',
+        kid: 'test-key',
+      }),
+      now,
+    ).sign(privateKey);
+    const { adapter } = adapterWithToken(token, publicKey);
 
-    for (const token of tokens) {
-      const { adapter } = adapterWithToken(token, publicKey);
-      await expect(
-        adapter.exchangeCode({
-          code: 'one-time-code',
-          codeVerifier: 'a'.repeat(43),
-          redirectUri: request.redirectUri,
-        }),
-      ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
-    }
+    await expect(
+      adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      }),
+    ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
   });
 
   it('classifies transport timeouts and provider 5xx responses as unavailable', async () => {
@@ -501,8 +571,8 @@ describe('generic OIDC provider adapter', () => {
       code: 'identity.provider_rejected',
     },
   ])('cancels the token response transport for $name', async (scenario) => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
     const cancelled = vi.fn();
     const fetchImpl: typeof fetch = () =>
       Promise.resolve(
@@ -532,8 +602,8 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('cancels a token response whose body stalls until the request timeout', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
     const cancelled = vi.fn();
     const fetchImpl: typeof fetch = () =>
       Promise.resolve(
@@ -557,8 +627,8 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('classifies token body read failures as provider transport failures', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
     const fetchImpl: typeof fetch = () =>
       Promise.resolve(
         new Response(
@@ -580,9 +650,68 @@ describe('generic OIDC provider adapter', () => {
     ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
   });
 
+  it.each(['successful body read', 'failed body read'] as const)(
+    'releases the reader lock and abort listener after a %s',
+    async (scenario) => {
+      const response =
+        scenario === 'successful body read'
+          ? new Response(JSON.stringify({ id_token: sharedSignedToken }))
+          : new Response(
+              new ReadableStream<Uint8Array>({
+                pull(controller) {
+                  controller.error(new Error('controlled read failure'));
+                },
+              }),
+            );
+      let addedAbortListeners = 0;
+      let removedAbortListeners = 0;
+      const fetchImpl: typeof fetch = (_input, init) => {
+        if (init?.signal === null || init?.signal === undefined)
+          throw new Error('expected request abort signal');
+        const signal = init.signal;
+        const originalAdd = signal.addEventListener.bind(signal);
+        const originalRemove = signal.removeEventListener.bind(signal);
+        vi.spyOn(signal, 'addEventListener').mockImplementation(
+          (type, listener, options) => {
+            if (type === 'abort') addedAbortListeners += 1;
+            originalAdd(type, listener, options);
+          },
+        );
+        vi.spyOn(signal, 'removeEventListener').mockImplementation(
+          (type, listener, options) => {
+            if (type === 'abort') removedAbortListeners += 1;
+            originalRemove(type, listener, options);
+          },
+        );
+        return Promise.resolve(response);
+      };
+      const adapter = new GenericOidcProviderAdapter(configuration, {
+        verificationKey: sharedPublicKey,
+        fetch: fetchImpl,
+      });
+      const exchange = adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      });
+
+      if (scenario === 'successful body read')
+        await expect(exchange).resolves.toMatchObject({
+          subject: 'subject-123',
+        });
+      else
+        await expect(exchange).rejects.toMatchObject({
+          code: 'identity.provider_unavailable',
+        });
+      expect(response.body?.locked).toBe(false);
+      expect(addedAbortListeners).toBeGreaterThan(0);
+      expect(removedAbortListeners).toBe(addedAbortListeners);
+    },
+  );
+
   it('rejects a response that arrives only after its timeout signal fired', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
     const { adapter } = adapterWithToken(
       token,
       publicKey,
@@ -604,8 +733,8 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('rejects a successful token response whose final URL changes origin', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
     const fetchImpl: typeof fetch = () => {
       const response = new Response(JSON.stringify({ id_token: token }));
       Object.defineProperty(response, 'url', {
@@ -625,8 +754,8 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('keeps invalid token responses and redirects as rejected callbacks', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
 
     const boundedFetch: typeof fetch = () =>
       Promise.resolve(new Response('x'.repeat(2_000), { status: 200 }));
@@ -682,8 +811,7 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('classifies remote JWKS endpoint failures as unavailable', async () => {
-    const { privateKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
     const cancelled = vi.fn();
     const fetchImpl: typeof fetch = (input) => {
       const url = input instanceof Request ? input.url : input.toString();
@@ -728,8 +856,7 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('classifies a valid JWKS document without the requested key as unavailable', async () => {
-    const { privateKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
     const fetchImpl: typeof fetch = (input) => {
       const url = input instanceof Request ? input.url : input.toString();
       return Promise.resolve(
@@ -752,8 +879,7 @@ describe('generic OIDC provider adapter', () => {
   });
 
   it('rejects a cross-origin final URL while fetching remote JWKS', async () => {
-    const { privateKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
+    const token = sharedSignedToken;
     const fetchImpl: typeof fetch = (input) => {
       const url = input instanceof Request ? input.url : input.toString();
       if (url === configuration.tokenEndpoint)
@@ -779,15 +905,14 @@ describe('generic OIDC provider adapter', () => {
     ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
   });
 
-  it('bounds a provider-response cancellation that settles after the deadline', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('RS256');
-    const token = await signedToken(privateKey);
-    const cancelled = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          setTimeout(resolve, 300);
-        }),
-    );
+  it('bounds a provider-response cancellation that remains pending', async () => {
+    const token = sharedSignedToken;
+    const publicKey = sharedPublicKey;
+    let releaseCancellation: (() => void) | undefined;
+    const cancellation = new Promise<void>((resolve) => {
+      releaseCancellation = resolve;
+    });
+    const cancelled = vi.fn(() => cancellation);
     const { adapter } = adapterWithToken(token, publicKey, () =>
       Promise.resolve(
         new Response(new ReadableStream({ cancel: cancelled }), {
@@ -795,19 +920,25 @@ describe('generic OIDC provider adapter', () => {
         }),
       ),
     );
-    await expect(
-      adapter.exchangeCode({
-        code: 'one-time-code',
-        codeVerifier: 'a'.repeat(43),
-        redirectUri: request.redirectUri,
-      }),
-    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
-    await new Promise((resolve) => setTimeout(resolve, 75));
-    expect(cancelled).toHaveBeenCalledOnce();
+    try {
+      await expect(
+        withTimeout(
+          adapter.exchangeCode({
+            code: 'one-time-code',
+            codeVerifier: 'a'.repeat(43),
+            redirectUri: request.redirectUri,
+          }),
+          500,
+        ),
+      ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
+      expect(cancelled).toHaveBeenCalledOnce();
+    } finally {
+      releaseCancellation?.();
+    }
   });
 
   it('closes a real streaming provider error response', async () => {
-    const { publicKey } = await generateKeyPair('RS256');
+    const publicKey = sharedPublicKey;
     let responseClosed: (() => void) | undefined;
     const closed = new Promise<void>((resolve) => {
       responseClosed = resolve;
@@ -817,24 +948,24 @@ describe('generic OIDC provider adapter', () => {
       outgoing.writeHead(503, { 'content-type': 'text/plain' });
       outgoing.write('provider is unavailable');
     });
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    const address = server.address();
-    if (address === null || typeof address === 'string')
-      throw new Error('OIDC test server did not bind a TCP port');
-    const endpoint = `http://127.0.0.1:${String(address.port)}`;
-    const adapter = new GenericOidcProviderAdapter(
-      {
-        ...configuration,
-        issuer: endpoint,
-        authorizationEndpoint: `${endpoint}/authorize`,
-        tokenEndpoint: `${endpoint}/token`,
-        jwksUri: `${endpoint}/jwks`,
-        allowInsecureHttpForTests: true,
-      },
-      { verificationKey: publicKey },
-    );
     try {
+      server.listen(0, '127.0.0.1');
+      await once(server, 'listening');
+      const address = server.address();
+      if (address === null || typeof address === 'string')
+        throw new Error('OIDC test server did not bind a TCP port');
+      const endpoint = `http://127.0.0.1:${String(address.port)}`;
+      const adapter = new GenericOidcProviderAdapter(
+        {
+          ...configuration,
+          issuer: endpoint,
+          authorizationEndpoint: `${endpoint}/authorize`,
+          tokenEndpoint: `${endpoint}/token`,
+          jwksUri: `${endpoint}/jwks`,
+          allowInsecureHttpForTests: true,
+        },
+        { verificationKey: publicKey },
+      );
       await expect(
         adapter.exchangeCode({
           code: 'one-time-code',
@@ -842,16 +973,7 @@ describe('generic OIDC provider adapter', () => {
           redirectUri: request.redirectUri,
         }),
       ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
-      await expect(
-        Promise.race([
-          closed.then(() => 'closed'),
-          new Promise<string>((resolve) => {
-            setTimeout(() => {
-              resolve('timed-out');
-            }, 500);
-          }),
-        ]),
-      ).resolves.toBe('closed');
+      await expect(withTimeout(closed, 500)).resolves.toBeUndefined();
     } finally {
       server.closeAllConnections();
       await new Promise<void>((resolve) =>
@@ -862,14 +984,46 @@ describe('generic OIDC provider adapter', () => {
     }
   });
 
-  it('requires HTTPS unless explicitly opted into test HTTP endpoints', () => {
+  it.each([
+    'issuer',
+    'authorizationEndpoint',
+    'tokenEndpoint',
+    'jwksUri',
+    'redirectUri',
+  ] as const)('rejects an insecure %s in production configuration', (field) => {
     expect(
       () =>
         new GenericOidcProviderAdapter({
           ...configuration,
-          issuer: 'http://issuer.example.test',
+          [field]: 'http://issuer.example.test/path',
         }),
     ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
+  });
+
+  it.each([
+    ['unsupported protocol', 'ftp://issuer.example.test/path'],
+    ['credentials', 'https://user:password@issuer.example.test/path'],
+    ['fragment', 'https://issuer.example.test/path#fragment'],
+  ] as const)('rejects every endpoint with %s', (_condition, endpoint) => {
+    for (const field of [
+      'issuer',
+      'authorizationEndpoint',
+      'tokenEndpoint',
+      'jwksUri',
+      'redirectUri',
+    ] as const) {
+      expect(
+        () =>
+          new GenericOidcProviderAdapter({
+            ...configuration,
+            [field]: endpoint,
+            allowInsecureHttpForTests: true,
+          }),
+      ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
+    }
+  });
+
+  it('allows HTTP for every endpoint in explicit test configuration', () => {
     expect(
       () =>
         new GenericOidcProviderAdapter({
@@ -878,24 +1032,9 @@ describe('generic OIDC provider adapter', () => {
           authorizationEndpoint: 'http://issuer.example.test/authorize',
           tokenEndpoint: 'http://issuer.example.test/token',
           jwksUri: 'http://issuer.example.test/jwks',
+          redirectUri: 'http://app.example.test/callback',
           allowInsecureHttpForTests: true,
         }),
     ).not.toThrow();
-    expect(
-      () =>
-        new GenericOidcProviderAdapter({
-          ...configuration,
-          issuer: 'ftp://issuer.example.test',
-          allowInsecureHttpForTests: true,
-        }),
-    ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
-    expect(
-      () =>
-        new GenericOidcProviderAdapter({
-          ...configuration,
-          issuer: 'https://user:password@issuer.example.test#fragment',
-          allowInsecureHttpForTests: true,
-        }),
-    ).toThrow(expect.objectContaining({ code: 'identity.invalid_input' }));
   });
 });

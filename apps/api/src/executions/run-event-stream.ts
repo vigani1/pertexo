@@ -119,6 +119,10 @@ interface StreamOptions {
 
 const ABORTED = Symbol('aborted');
 
+function signalWasAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
 function parsePageSize(value: number | undefined): number {
   const pageSize = value ?? DEFAULT_PAGE_SIZE;
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
@@ -155,14 +159,26 @@ async function nextOrAbort<T>(
       resolve(ABORTED);
     };
     signal.addEventListener('abort', onAbort, { once: true });
-    iterator.next().then(
+    let next: PromiseLike<IteratorResult<T>>;
+    try {
+      next = iterator.next();
+    } catch (error: unknown) {
+      signal.removeEventListener('abort', onAbort);
+      // Iterator adapters may throw arbitrary values; identity is intentional.
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      reject(error);
+      return;
+    }
+    void Promise.resolve(next).then(
       (result) => {
         signal.removeEventListener('abort', onAbort);
         resolve(result);
       },
       (error: unknown) => {
         signal.removeEventListener('abort', onAbort);
-        reject(error instanceof Error ? error : new Error(String(error)));
+        // Iterator adapters may reject with arbitrary values; preserve identity.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        reject(error);
       },
     );
   });
@@ -178,6 +194,7 @@ export async function* streamRunEventFrames(
     readonly runId: string;
     readonly signal: AbortSignal;
     readonly workspaceId: string;
+    readonly onProducerFailure?: (error: unknown) => void;
   },
   dependencies: StreamDependencies,
   options: StreamOptions = {},
@@ -197,10 +214,10 @@ export async function* streamRunEventFrames(
     workspaceId: identity.workspaceId,
   });
   let cursor = identity.lastEventId;
-  const iterator = subscription[Symbol.asyncIterator]();
+  let iterator: AsyncIterator<LiveRunEventNotification> | undefined;
 
   const readPage = async (): Promise<readonly PersistedRunEvent[]> => {
-    if (input.signal.aborted) {
+    if (signalWasAborted(input.signal)) {
       return [];
     }
     const page = await dependencies.reader.readPage({
@@ -210,11 +227,15 @@ export async function* streamRunEventFrames(
       signal: input.signal,
       workspaceId: identity.workspaceId,
     });
+    if (signalWasAborted(input.signal)) {
+      return [];
+    }
     return page.map((event) => persistedRunEventSchema.parse(event));
   };
 
   let primary = NO_STREAM_FAILURE;
   try {
+    iterator = subscription[Symbol.asyncIterator]();
     let shouldBackfill = true;
     let backfillPath: SseRunEventFrame['visibilityPath'] =
       identity.lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
@@ -229,12 +250,14 @@ export async function* streamRunEventFrames(
             );
           }
 
-          for (const event of page) {
-            if (event.sequence !== cursor + 1) {
+          for (const [index, event] of page.entries()) {
+            if (event.sequence !== cursor + index + 1) {
               throw new RunEventStreamInvariantError(
                 `Persisted run event sequence is not contiguous after ${String(cursor)}`,
               );
             }
+          }
+          for (const event of page) {
             cursor = event.sequence;
             yield frameForEvent(event, backfillPath);
           }
@@ -271,12 +294,17 @@ export async function* streamRunEventFrames(
     }
   } catch (error) {
     primary = { error, failed: true };
+    try {
+      input.onProducerFailure?.(error);
+    } catch {
+      // Failure notification cannot replace the authoritative producer error.
+    }
     throw error;
   } finally {
     const cleanups: (() => void | Promise<void>)[] = [
       () => subscription.close(),
     ];
-    if (iterator.return !== undefined) {
+    if (iterator?.return !== undefined) {
       const returnIterator = iterator.return.bind(iterator);
       cleanups.push(async () => {
         await returnIterator();

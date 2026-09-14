@@ -5,10 +5,15 @@ import {
   ConnectionEnvelopeEncryption,
 } from './envelope-encryption.js';
 import { createBoundedKmsClient } from './kms-client.js';
+import { isValidEnvelopeKeyReference } from '../crypto/envelope-cipher.js';
 
 const configSchema = z
   .object({
-    keyReference: z.string().min(1).max(2_048),
+    keyReference: z
+      .string()
+      .min(1)
+      .max(2_048)
+      .refine(isValidEnvelopeKeyReference),
     region: z.string().min(1).max(128),
     endpoint: z.url().optional(),
   })

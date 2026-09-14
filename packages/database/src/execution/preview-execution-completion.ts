@@ -9,6 +9,7 @@ import {
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
   optionsFor,
   previewConsumerName,
   safeErrorCodeSchema,
@@ -16,12 +17,39 @@ import {
   type PreviewDelivery,
   type PreviewTerminalOutcome,
 } from './preview-execution-contract.js';
-import { completePreviewReceipt } from './preview-execution-delivery.js';
-import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
+import {
+  auditPreviewDeliveryMismatch,
+  completePreviewReceipt,
+  readPreviewReceipt,
+  validatePreviewDelivery,
+} from './preview-execution-delivery.js';
+import {
+  parseStoredExecutionValueV1,
+  serializeStoredExecutionValueV1,
+} from './stored-execution-value.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 export type PreviewCompletionResult = Readonly<{
   kind: 'committed' | 'duplicate';
+}>;
+
+type CanonicalCompletionOutcome =
+  | Readonly<{
+      outputRef: string;
+      status: typeof PREVIEW_STATUS.succeeded;
+    }>
+  | Readonly<{
+      safeErrorCode: string;
+      status: Exclude<PreviewStatus, 'queued' | 'running' | 'succeeded'>;
+    }>;
+
+type PreviewCompletionScope = Readonly<{
+  attemptFenceToken: number;
+  delivery: PreviewDelivery;
+  previewAttemptId: string;
+  previewRunId: string;
+  workerId: string;
+  workspaceId: string;
 }>;
 
 export async function appendPreviewTerminalFacts(
@@ -109,6 +137,67 @@ export async function appendPreviewTerminalFacts(
   );
 }
 
+async function exactDuplicateCompletion(
+  client: PoolClient,
+  scope: PreviewCompletionScope,
+  outcome: CanonicalCompletionOutcome,
+  receipt: 'completed' | 'open',
+): Promise<PreviewCompletionResult> {
+  const current = await client.query<{
+    attempt_output_ref: unknown;
+    attempt_safe_error_code: string | null;
+    attempt_status: string;
+    run_output_ref: unknown;
+    run_safe_error_code: string | null;
+    run_status: string;
+  }>(
+    `select attempt.status as attempt_status,
+          attempt.output_ref as attempt_output_ref,
+          attempt.safe_error_code as attempt_safe_error_code,
+          run.status as run_status,
+          run.output_ref as run_output_ref,
+          run.safe_error_code as run_safe_error_code
+     from app.preview_attempts attempt
+     join app.preview_runs run
+       on run.workspace_id=attempt.workspace_id
+      and run.id=attempt.preview_run_id
+    where attempt.workspace_id=$1 and attempt.id=$2
+      and attempt.preview_run_id=$3
+    for update of attempt,run`,
+    [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
+  );
+  const row = current.rows[0];
+  if (row === undefined || receipt !== 'completed')
+    throw new PreviewAttemptStateError('completion_lost');
+  const statusesMatch =
+    row.attempt_status === outcome.status && row.run_status === outcome.status;
+  let valuesMatch = false;
+  if (outcome.status === PREVIEW_STATUS.succeeded) {
+    try {
+      valuesMatch =
+        serializeStoredExecutionValueV1(
+          parseStoredExecutionValueV1(row.attempt_output_ref),
+        ) === outcome.outputRef &&
+        serializeStoredExecutionValueV1(
+          parseStoredExecutionValueV1(row.run_output_ref),
+        ) === outcome.outputRef &&
+        row.attempt_safe_error_code === null &&
+        row.run_safe_error_code === null;
+    } catch {
+      valuesMatch = false;
+    }
+  } else {
+    valuesMatch =
+      row.attempt_output_ref === null &&
+      row.run_output_ref === null &&
+      row.attempt_safe_error_code === outcome.safeErrorCode &&
+      row.run_safe_error_code === outcome.safeErrorCode;
+  }
+  if (!statusesMatch || !valuesMatch)
+    throw new PreviewAttemptStateError('completion_lost');
+  return Object.freeze({ kind: 'duplicate' });
+}
+
 export async function completePreviewAttempt(
   pool: Pool,
   input: Readonly<{
@@ -149,12 +238,25 @@ export async function completePreviewAttempt(
           safeErrorCode: safeErrorCodeSchema.parse(input.outcome.safeErrorCode),
           status: input.outcome.status,
         } as const);
-  return withTenantScopedClient(
-    pool,
-    { workspaceId: scope.workspaceId },
-    async (client): Promise<PreviewCompletionResult> => {
-      const terminal = await client.query<{ id: string }>(
-        `update app.preview_attempts
+  try {
+    return await withTenantScopedClient(
+      pool,
+      { workspaceId: scope.workspaceId },
+      async (client): Promise<PreviewCompletionResult> => {
+        await validatePreviewDelivery(client, {
+          delivery: input.delivery,
+          previewAttemptId: scope.previewAttemptId,
+          previewRunId: scope.previewRunId,
+          workspaceId: scope.workspaceId,
+        });
+        const receipt = await readPreviewReceipt(
+          client,
+          previewConsumerName,
+          scope.workspaceId,
+          input.delivery,
+        );
+        const terminal = await client.query<{ id: string }>(
+          `update app.preview_attempts
          set status=$6::varchar,
              output_ref=$7::jsonb,
              safe_error_code=$8::varchar,
@@ -165,43 +267,27 @@ export async function completePreviewAttempt(
          where workspace_id=$1 and id=$2 and preview_run_id=$3
            and status='running' and lease_owner=$4 and fence_token=$5
          returning id`,
-        [
-          scope.workspaceId,
-          scope.previewAttemptId,
-          scope.previewRunId,
-          scope.workerId,
-          scope.attemptFenceToken,
-          outcome.status,
-          outcome.status === PREVIEW_STATUS.succeeded
-            ? JSON.stringify(outcome.outputRef)
-            : null,
-          outcome.status === PREVIEW_STATUS.succeeded
-            ? null
-            : outcome.safeErrorCode,
-        ],
-      );
-      if (terminal.rowCount !== 1) {
-        const current = await client.query<{
-          output_ref: unknown;
-          status: string;
-        }>(
-          `select status,output_ref from app.preview_attempts
-           where workspace_id=$1 and id=$2`,
-          [scope.workspaceId, scope.previewAttemptId],
+          [
+            scope.workspaceId,
+            scope.previewAttemptId,
+            scope.previewRunId,
+            scope.workerId,
+            scope.attemptFenceToken,
+            outcome.status,
+            outcome.status === PREVIEW_STATUS.succeeded
+              ? outcome.outputRef
+              : null,
+            outcome.status === PREVIEW_STATUS.succeeded
+              ? null
+              : outcome.safeErrorCode,
+          ],
         );
-        const row = current.rows[0];
-        if (row === undefined)
-          throw new PreviewAttemptStateError('completion_lost');
-        if (
-          row.status !== outcome.status ||
-          (outcome.status === PREVIEW_STATUS.succeeded &&
-            row.output_ref === null)
-        )
-          throw new PreviewAttemptStateError('completion_lost');
-        return Object.freeze({ kind: 'duplicate' });
-      }
-      const syncedRuns = await client.query<{ id: string }>(
-        `update app.preview_runs
+        if (terminal.rowCount !== 1)
+          return exactDuplicateCompletion(client, scope, outcome, receipt);
+        if (receipt !== 'open')
+          throw new PreviewAttemptStateError('receipt_already_completed');
+        const syncedRuns = await client.query<{ id: string }>(
+          `update app.preview_runs
          set status=$3::varchar,
              output_ref=$4::jsonb,
              safe_error_code=$5::varchar,
@@ -210,39 +296,54 @@ export async function completePreviewAttempt(
          where workspace_id=$1 and id=$2
            and status in ('queued','running')
          returning id`,
-        [
+          [
+            scope.workspaceId,
+            scope.previewRunId,
+            outcome.status,
+            outcome.status === PREVIEW_STATUS.succeeded
+              ? outcome.outputRef
+              : null,
+            outcome.status === PREVIEW_STATUS.succeeded
+              ? null
+              : outcome.safeErrorCode,
+          ],
+        );
+        if (syncedRuns.rowCount !== 1)
+          throw new PreviewAttemptStateError('run_sync_lost');
+        await appendPreviewTerminalFacts(client, {
+          previewAttemptId: scope.previewAttemptId,
+          previewRunId: scope.previewRunId,
+          status: outcome.status,
+          workspaceId: scope.workspaceId,
+        });
+        // The inbox receipt completes atomically with the truthful business
+        // outcome, exactly like production attempt transitions.
+        await completePreviewReceipt(
+          client,
+          previewConsumerName,
           scope.workspaceId,
-          scope.previewRunId,
-          outcome.status,
-          outcome.status === PREVIEW_STATUS.succeeded
-            ? JSON.stringify(outcome.outputRef)
-            : null,
-          outcome.status === PREVIEW_STATUS.succeeded
-            ? null
-            : outcome.safeErrorCode,
-        ],
-      );
-      if (syncedRuns.rowCount !== 1)
-        throw new PreviewAttemptStateError('run_sync_lost');
-      await appendPreviewTerminalFacts(client, {
-        previewAttemptId: scope.previewAttemptId,
-        previewRunId: scope.previewRunId,
-        status: outcome.status,
-        workspaceId: scope.workspaceId,
-      });
-      // The inbox receipt completes atomically with the truthful business
-      // outcome, exactly like production attempt transitions.
-      await completePreviewReceipt(
-        client,
+          {
+            outboxEventId: scope.delivery.outboxEventId,
+            payloadChecksum: scope.delivery.payloadChecksum,
+          },
+        );
+        return Object.freeze({ kind: 'committed' });
+      },
+      optionsFor(input.signal),
+    );
+  } catch (error: unknown) {
+    if (
+      error instanceof PreviewDeliveryMismatchError &&
+      !input.signal?.aborted
+    ) {
+      await auditPreviewDeliveryMismatch(
+        pool,
         previewConsumerName,
         scope.workspaceId,
-        {
-          outboxEventId: scope.delivery.outboxEventId,
-          payloadChecksum: scope.delivery.payloadChecksum,
-        },
+        input.delivery,
+        input.signal ?? new AbortController().signal,
       );
-      return Object.freeze({ kind: 'committed' });
-    },
-    optionsFor(input.signal),
-  );
+    }
+    throw error;
+  }
 }

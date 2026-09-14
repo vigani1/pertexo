@@ -28,7 +28,7 @@ const inputSchema = z
         payloadChecksum: sha256HexSchema,
       })
       .strict(),
-    signal: z.custom<AbortSignal>().optional(),
+    signal: z.instanceof(AbortSignal).optional(),
     workspaceId: z.uuid(),
   })
   .strict();
@@ -93,12 +93,12 @@ export function createOperatorRunReplayStore(
   checkpointFactory: OperatorRunReplayCheckpointFactory,
   runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
+  const compatibilityReleases = parseCompatibilityReleaseExpectationSet(
+    compatibilityReleaseInput,
+  );
   const database = createWorkspaceDatabase(
     config,
     runtime === undefined ? {} : { runtime },
-  );
-  const compatibilityReleases = parseCompatibilityReleaseExpectationSet(
-    compatibilityReleaseInput,
   );
   return Object.freeze({
     replay: async (input: z.input<typeof inputSchema>) => {

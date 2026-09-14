@@ -34,16 +34,26 @@ resource object marked `source` must contain the literal value `aws-api` and be
 derived from the deployed account. Do not include secret values, tenant data,
 policy documents, or credentials.
 
-The snapshot is accepted only for the SHA-256 of the exact contract bytes and
-within the contract's freshness window. It identifies the exact Git commit and
-digest-qualified image. Both `eu-central-1` and `eu-west-1` must be collected in
-the same evidence run.
+The snapshot is structurally accepted only when it carries the SHA-256 of the
+exact external-platform contract, workload manifest and autoscaling policy, and
+falls within the contract's freshness window. It identifies the exact Git
+commit and digest-qualified image. Both `eu-central-1` and `eu-west-1` must be
+collected in the same evidence run. These bindings detect drift; they do not
+authenticate the collector or the referenced raw bytes.
 
 ## Required normalized evidence
 
-The top-level document has `schemaVersion`, `source`, `contractSha256`,
-`observedAt`, `release`, `regions`, `migration`, and `recoveryWriterFence`.
-The executable validator is authoritative for field names and invariants.
+The top-level document has `schemaVersion: 2`, `source`,
+`contractFingerprints`, `observedAt`, `release`, `collection`, `regions`,
+`migration`, and `recoveryWriterFence`. `contractFingerprints` contains exact
+hashes for `external-platform-contract.json`, `workloads.json` and
+`autoscaling.json`. The collection record identifies one IAM collector
+principal and run, ordered start/completion times, and one distinct content-
+hashed raw-observation reference for every common AWS observation kind in both
+regions plus the recovery-only writer-fence kinds. Its fixed verification status is
+`requires-independent-authentication`: the document is forbidden from
+self-asserting that the validator verified remote state. The executable
+validator is authoritative for field names and invariants.
 
 For each region, the adapter records:
 
@@ -51,20 +61,25 @@ For each region, the adapter records:
   reachable regional endpoint classes, exact per-workload egress classes, and
   public ingress rules;
 - every workload's exact task definition, image, task role, execution role,
-  secret references, KMS keys, and independently calculated policy hashes;
+  SSM configuration references, secret references, KMS keys, independently
+  calculated policy hashes, read/decrypt observations and links to the matching
+  regional raw records;
 - whether either IAM policy contains wildcard actions or wildcard access to
   sensitive resources (secrets, KMS keys, databases, buckets, and queues);
 - each service's desired/running/pending counts, rollout state, deployment
   percentages, health grace, and load-balancer drain time;
 - emitted metric names plus alarm ARNs and whether alarm actions are enabled;
   and
-- API and worker scalable-target bounds, policy signal names, alarm ARNs, and
-  enabled state.
+- API and worker scalable-target bounds, cooldowns, worker slot capacity, and
+  each policy's metric, statistic, threshold, unit, period, evaluation count,
+  normalization, alarm ARN and enabled state.
 
-The migration evidence records the exact ECS task and task definition, exit
-code, maximum observed concurrent migration tasks, completion time, and earliest
-serving-service update time. The adapter must sample migration task concurrency
-for the entire release window; a point-in-time count is insufficient.
+The migration evidence records the exact ECS task and task definition, the one
+successful task identity, exit code, positive safe-integer maximum observed
+concurrency, start/completion times, and earliest serving-service update time.
+Its task definition must equal the migration workload observed in the primary
+region. The adapter must sample migration task concurrency for the entire
+release window; a point-in-time count is insufficient.
 
 The recovery evidence records closed ingress, zero desired count for every
 declared writer, and a hash over the normalized Route 53, load-balancer, ECS,
@@ -72,14 +87,36 @@ EventBridge, and queue-consumer policy state used to establish that fence.
 Recovery-region infrastructure existing with writers at zero is expected; an
 absent environment is not equivalent evidence.
 
+## Local rendered-task startup smoke
+
+`pnpm deployment:startup:smoke` is a separately provisioned local Docker check,
+not AWS or registry evidence. Each run uses collision-free container names,
+records the exact container ID immediately after `docker create`, and starts it
+only after ownership is known. A create timeout that returns no ID reports the
+unique name for manual inspection; created IDs remain cleanup-owned even when
+start fails. Docker, renderer and OpenSSL commands have local deadlines. API
+readiness bounds both response headers and body, while worker readiness executes
+the complete rendered marker-revocation-plus-process health command. In-flight
+bridge sockets and upstream requests are destroyed before server close, and
+every temporary directory is cleanup-owned from acquisition.
+
+When the local image has a repository digest, the smoke reports it as a local
+repository-digest resolution. Otherwise it uses the local Docker image ID to
+construct a digest-qualified renderer input and explicitly reports
+`local-image-id-not-registry-attested`. That fallback proves only that the two
+local inspections resolve to the same image bytes; it is never a registry
+manifest attestation or substitute for the release evidence above.
+
 ## Release retention and review
 
 Retain the accepted snapshot with the immutable image scan and release record.
 The evidence itself contains resource identifiers and policy fingerprints, so
 store it in the access-controlled release evidence system rather than committing
 production account details to this repository. An independent platform reviewer
-must compare the policy hashes with the reviewed IaC change and confirm that the
-AWS caller used for collection has read access to every declared resource.
+must authenticate the raw-observation references and collector identity,
+compare their hashes with the retained raw bytes and the policy hashes with the
+reviewed IaC change, and confirm that the AWS caller used for collection has
+read access to every declared resource.
 
 Any validator failure blocks production rollout. Repair the deployed resource
 or explicitly revise ADR 028 and the versioned contract; never edit the evidence
@@ -88,10 +125,13 @@ evidence is rejected.
 
 ## What this does not prove
 
-The repository fixture tests only prove validator behavior. They do not prove
-that an AWS account exists, that the collector has complete visibility, that an
-alarm reaches a pager, or that failover, PITR, scaling, drain, and regional
-recovery work under load. Those live exercises remain Phase 7 release evidence.
+The repository fixture tests only prove validator behavior. Literal
+`source: aws-api`, collector identity, hashes and raw references remain
+normalized assertions until an independent system authenticates them. They do
+not prove that an AWS account exists, that the collector has complete
+visibility, that an alarm reaches a pager, or that failover, PITR, scaling,
+drain, and regional recovery work under load. Those live exercises remain Phase
+7 release evidence.
 
 ## E01 external qualification approval packet
 

@@ -264,6 +264,39 @@ describe('operator command runner', () => {
     expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
   });
 
+  it('retains operation, diagnostic, and cleanup failures without short-circuiting owners', async () => {
+    const fixture = createResources({
+      ...commandBase(),
+      dryRun: false,
+      runId: randomUUID(),
+      type: 'run.cancel',
+    });
+    const operationError = new Error('cancel failed');
+    operationError.name = 'SecretOperatorSubclass';
+    const diagnosticError = new Error('failure logger failed');
+    const databaseError = new Error('database close failed');
+    const telemetryError = new Error('telemetry shutdown failed');
+    fixture.database.cancelRun.mockRejectedValueOnce(operationError);
+    fixture.logger.error.mockImplementationOnce(() => {
+      throw diagnosticError;
+    });
+    fixture.database.close.mockRejectedValueOnce(databaseError);
+    fixture.telemetry.shutdown.mockRejectedValueOnce(telemetryError);
+
+    await expect(
+      runOperatorCommand(fixture.resources).catch((error: unknown) => error),
+    ).resolves.toMatchObject({
+      errors: [operationError, diagnosticError, databaseError, telemetryError],
+    });
+    expect(fixture.logger.error).toHaveBeenCalledWith(
+      'operator_command.failed',
+      expect.objectContaining({ errorType: 'Error' }),
+      operationError,
+    );
+    expect(fixture.database.close).toHaveBeenCalledOnce();
+    expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
+  });
+
   it('preserves an undefined operation rejection while attempting both cleanups', async () => {
     const fixture = createResources({
       ...commandBase(),

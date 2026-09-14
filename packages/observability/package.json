@@ -29,6 +29,11 @@
       "node": "./dist/transport-metrics.js",
       "default": "./dist/transport-metrics.js"
     },
+    "./process-error-classification": {
+      "types": "./dist/process-error-classification.d.ts",
+      "node": "./dist/process-error-classification.js",
+      "default": "./dist/process-error-classification.js"
+    },
     "./queue-tracing": {
       "types": "./dist/queue-tracing.d.ts",
       "node": "./dist/queue-tracing.js",
@@ -51,6 +56,7 @@
     "./dist/logger.js": false,
     "./dist/telemetry.js": false,
     "./dist/transport-metrics.js": false,
+    "./dist/process-error-classification.js": false,
     "./dist/queue-tracing.js": false,
     "./dist/runtime.js": false,
     "./dist/nest-runtime.js": false
@@ -58,7 +64,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/observability/test-results.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import {
   canonicalOutboxPayloadChecksum,
   isValidStoredExecutionOutput,
+  PreviewAttemptStateError,
 } from '@pertexo/database/execution';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
@@ -134,8 +135,8 @@ export interface PreviewAttemptHandlerDependencies {
   workerId: string;
 }
 
-class PreviewAttemptStateError extends Error {
-  public override readonly name = 'PreviewAttemptStateError';
+export class PreviewAttemptHandlerStateError extends Error {
+  public override readonly name = 'PreviewAttemptHandlerStateError';
   public constructor(readonly code: string) {
     super(`Preview attempt delivery cannot execute: ${code}`);
   }
@@ -164,73 +165,42 @@ async function completeOutcome(
   dispatched: boolean,
   completionSignal: AbortSignal,
 ): Promise<PreviewAttemptHandlerResult> {
+  let terminalOutcome: PreviewTerminalOutcome;
   if (
     outcome.status === 'canceled' &&
     lease.sideEffectClass !== 'safe' &&
     dispatched
-  ) {
-    outcome = Object.freeze({
+  )
+    terminalOutcome = Object.freeze({
       safeErrorCode: 'preview.outcome_unknown',
       status: 'outcome_unknown',
     });
-  }
-  if (outcome.status === 'succeeded') {
+  else if (outcome.status === 'succeeded') {
     // Executor payloads are raw JSON; the durable contract is the bounded
-    // stored-value envelope. Inline wrapping only in this checkpoint —
-    // oversized responses fail closed here until artifact streaming for
-    // previews composes its capability.
+    // stored-value envelope. Large raw values must be written through the
+    // artifact capability first and represented here by a bounded reference.
     const stored = {
       kind: 'inline',
       schemaVersion: 1,
       value: outcome.output,
     } as unknown;
-    if (!isValidStoredExecutionOutput(stored)) {
-      return committedTerminal(
-        dependencies,
-        lease,
-        'failed',
-        dispatched,
-        await dependencies.runStore.complete({
-          delivery,
-          lease,
-          outcome: {
-            safeErrorCode: 'preview.output_invalid',
-            status: 'failed',
-          },
-          signal: completionSignal,
-          workerId: dependencies.workerId,
-        }),
-      );
-    }
-    return committedTerminal(
-      dependencies,
-      lease,
-      'succeeded',
-      dispatched,
-      await dependencies.runStore.complete({
-        delivery,
-        lease,
-        outcome: {
-          output: stored,
-          status: 'succeeded',
-        },
-        signal: completionSignal,
-        workerId: dependencies.workerId,
-      }),
-    );
-  }
+    terminalOutcome = isValidStoredExecutionOutput(stored)
+      ? { output: stored, status: 'succeeded' }
+      : { safeErrorCode: 'preview.output_invalid', status: 'failed' };
+  } else terminalOutcome = outcome;
+  const result = await dependencies.runStore.complete({
+    delivery,
+    lease,
+    outcome: terminalOutcome,
+    signal: completionSignal,
+    workerId: dependencies.workerId,
+  });
   return committedTerminal(
     dependencies,
     lease,
-    outcome.status,
+    terminalOutcome.status,
     dispatched,
-    await dependencies.runStore.complete({
-      delivery,
-      lease,
-      outcome,
-      signal: completionSignal,
-      workerId: dependencies.workerId,
-    }),
+    result,
   );
 }
 
@@ -277,7 +247,7 @@ type PreviewExecutionEnvironment = Readonly<{
 function createPreviewExecutionEnvironment(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
-  contextSignal: AbortSignal,
+  executionSignal: AbortSignal,
 ): PreviewExecutionEnvironment {
   const capabilityContext = Object.freeze({
     artifactRetentionDeadline: lease.retentionExpiresAt,
@@ -296,7 +266,7 @@ function createPreviewExecutionEnvironment(
     dependencies.runtimeCapabilities?.connections?.(capabilityContext);
   const artifacts =
     dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
-  let dispatched = false;
+  let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
     workspaceId: lease.workspaceId,
     runId: lease.previewRunId,
@@ -310,7 +280,12 @@ function createPreviewExecutionEnvironment(
     beforeDispatch: async (
       input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
     ): Promise<void> => {
-      if (dispatched) throw new PreviewAttemptStateError('duplicate_dispatch');
+      if (dispatchState !== 'not_started')
+        throw new PreviewAttemptHandlerStateError('duplicate_dispatch');
+      executionSignal.throwIfAborted();
+      // Reserve the sole dispatch permission before awaiting durable authority.
+      // A failed marker is uncertain and never reopens the provider-I/O gate.
+      dispatchState = 'marking';
       try {
         await dependencies.runStore.markDispatched({
           lease,
@@ -320,32 +295,35 @@ function createPreviewExecutionEnvironment(
           ...(input?.providerDispatchBinding === undefined
             ? {}
             : { providerDispatchBinding: input.providerDispatchBinding }),
-          signal: contextSignal,
+          signal: executionSignal,
           workerId: dependencies.workerId,
         });
       } catch (error: unknown) {
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'connection_fence_failed'
-        )
+        let durableCode: string | undefined;
+        try {
+          if (error instanceof PreviewAttemptStateError)
+            durableCode = error.code;
+        } catch {
+          // Hostile unknown values cannot claim a durable state-error code.
+        }
+        if (durableCode === 'connection_fence_failed')
           throw new NodeDispatchEvidenceError(
             'provider_connection_fence_failed',
           );
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'dispatch_binding_mismatch'
-        )
+        if (durableCode === 'dispatch_binding_mismatch')
           throw new NodeDispatchEvidenceError(
             'provider_dispatch_binding_mismatch',
           );
         throw error;
       }
-      dispatched = true;
+      dispatchState = 'marked';
+      executionSignal.throwIfAborted();
     },
   });
-  return Object.freeze({ runtime, wasDispatched: () => dispatched });
+  return Object.freeze({
+    runtime,
+    wasDispatched: () => dispatchState === 'marked',
+  });
 }
 
 export function createPreviewAttemptHandler(
@@ -386,26 +364,23 @@ export function createPreviewAttemptHandler(
         outboxEventId: delivery.data.outboxEventId,
         payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
       };
-      if (Date.now() >= lease.executionDeadlineAt.getTime())
+      if (Date.now() >= lease.executionDeadlineAt.getTime()) {
+        const deadlineOutcome = deadlineExceededOutcome(lease, false);
         return committedTerminal(
           dependencies,
           lease,
-          deadlineExceededOutcome(lease, false).status,
+          deadlineOutcome.status,
           false,
           await dependencies.runStore.complete({
             delivery: claimDelivery,
             lease,
-            outcome: deadlineExceededOutcome(lease, false),
+            outcome: deadlineOutcome,
             signal: context.signal,
             workerId: dependencies.workerId,
           }),
         );
+      }
 
-      const environment = createPreviewExecutionEnvironment(
-        dependencies,
-        lease,
-        context.signal,
-      );
       const supervisor =
         startPreviewAttemptSupervisor<PreviewInvocationOutcome>({
           contextSignal: context.signal,
@@ -416,6 +391,12 @@ export function createPreviewAttemptHandler(
           workerId: dependencies.workerId,
         });
       try {
+        const environment = createPreviewExecutionEnvironment(
+          dependencies,
+          lease,
+          supervisor.executionSignal,
+        );
+        supervisor.executionSignal.throwIfAborted();
         const raced = await supervisor.race(
           dependencies.invoker.invoke({
             lease,
@@ -424,20 +405,22 @@ export function createPreviewAttemptHandler(
           }),
         );
         const dispatched = environment.wasDispatched();
-        if (raced === 'deadline')
+        if (raced === 'deadline') {
+          const deadlineOutcome = deadlineExceededOutcome(lease, dispatched);
           return committedTerminal(
             dependencies,
             lease,
-            deadlineExceededOutcome(lease, dispatched).status,
+            deadlineOutcome.status,
             dispatched,
             await dependencies.runStore.complete({
               delivery: claimDelivery,
               lease,
-              outcome: deadlineExceededOutcome(lease, dispatched),
+              outcome: deadlineOutcome,
               signal: context.signal,
               workerId: dependencies.workerId,
             }),
           );
+        }
         if (raced.kind === 'error' || raced.kind === 'lease_failure')
           throw raced.error;
         // A result that resolved before the deadline remains truthful even

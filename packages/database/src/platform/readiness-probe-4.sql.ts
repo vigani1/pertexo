@@ -128,22 +128,38 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
              from pg_class where oid=to_regclass('app.run_failure_notification_audit_facts'))
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.run_failure_notification_intents')
-            and conname='run_failure_notification_intents_logical_unique')
+            and conname='run_failure_notification_intents_logical_unique'
+            and contype='u' and convalidated
+            and pg_get_constraintdef(oid)='UNIQUE (workflow_run_id, terminal_event_sequence, policy_version)')
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.run_failure_notification_intents')
-            and conname='run_failure_notification_intents_context_bounded')
+            and conname='run_failure_notification_intents_context_bounded'
+            and contype='c' and convalidated
+            and md5(pg_get_expr(conbin,conrelid))='77b25bd755ec88a5301021ebc6cb2c9e')
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.run_failure_notification_intents')
             and conname='run_failure_notification_intents_run_pin_fk'
-            and not convalidated)
+            and contype='f' and not convalidated
+            and confrelid=to_regclass('app.workflow_runs') and confdeltype='c')
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.run_failure_notification_intents')
             and conname='run_failure_notification_intents_status_valid'
-            and pg_get_constraintdef(oid) like '%claimed%')
-        and exists (select 1 from pg_trigger
-          where tgrelid=to_regclass('app.run_failure_notification_intents')
-            and tgname='run_failure_notification_intents_require_run_pin'
-            and not tgisinternal)
+            and contype='c' and convalidated
+            and md5(pg_get_expr(conbin,conrelid))='24027fc4e7c4b27880b5f21d3875e8c3')
+        and exists (select 1 from pg_trigger trigger
+          where trigger.tgrelid=to_regclass('app.run_failure_notification_intents')
+            and trigger.tgname='run_failure_notification_intents_require_run_pin'
+            and trigger.tgenabled='O' and trigger.tgtype=23
+            and trigger.tgfoid='app.require_new_failure_notification_intent_pin()'::regprocedure
+            and trigger.tgqual is null
+            and (select array_agg(attribute.attname order by attribute.attname)
+                   from pg_attribute attribute
+                  where attribute.attrelid=trigger.tgrelid
+                    and attribute.attnum=any(trigger.tgattr::smallint[])) = array[
+                      'connection_secret_version_id','destination_config_version',
+                      'destination_id','policy_version','side_effect_class',
+                      'workflow_run_id','workspace_id']::name[]
+            and not trigger.tgisinternal)
         and exists (select 1 from pg_policy
           where polrelid=to_regclass('app.run_failure_notification_intents')
             and polname='run_failure_notification_intents_workspace_scope')
@@ -166,14 +182,23 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
              where oid=to_regclass('app.workflow_failure_notification_policies'))
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.failure_notification_destination_versions')
-            and conname='failure_notification_destination_versions_config_strict')
+            and conname='failure_notification_destination_versions_config_strict'
+            and contype='c' and convalidated
+            and md5(pg_get_expr(conbin,conrelid))='8fafc799cb24b6f5c49050a6cb9c1883')
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.failure_notification_destination_versions')
-            and conname='failure_notification_destination_versions_destination_kind_fk')
-        and exists (select 1 from pg_trigger
-          where tgrelid=to_regclass('app.failure_notification_destination_versions')
-            and tgname='failure_notification_destination_versions_immutable'
-            and not tgisinternal)
+            and conname='failure_notification_destination_versions_destination_kind_fk'
+            and contype='f' and convalidated
+            and confrelid=to_regclass('app.failure_notification_destinations')
+            and confdeltype='r')
+        and exists (select 1 from pg_trigger trigger
+          where trigger.tgrelid=to_regclass('app.failure_notification_destination_versions')
+            and trigger.tgname='failure_notification_destination_versions_immutable'
+            and trigger.tgenabled='O' and trigger.tgtype=27
+            and trigger.tgfoid='app.reject_failure_notification_destination_version_mutation()'::regprocedure
+            and trigger.tgqual is null
+            and cardinality(trigger.tgattr::smallint[])=0
+            and not trigger.tgisinternal)
         and has_table_privilege($2, 'app.failure_notification_destinations', 'SELECT')
         and has_table_privilege($2, 'app.failure_notification_destination_versions', 'SELECT')
         and not has_table_privilege($2, 'app.failure_notification_destinations', 'INSERT')
@@ -233,9 +258,9 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
             to_regprocedure('app.recover_due_workflow_run_active_admissions(integer)')
           ]) and admission_function.prosecdef
             and admission_owner.rolname=$1
-            and 'row_security=on'=any(admission_function.proconfig)
-            and exists (select 1 from unnest(admission_function.proconfig) setting
-                         where setting like 'search_path=pg_catalog%'))
+            and admission_function.proconfig=array[
+              'search_path=pg_catalog, app','row_security=on'
+            ]::text[])
         and (
           (
             has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
@@ -265,9 +290,9 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
             to_regprocedure('app.assert_regional_write_admission()')
           ]) and admission_function.prosecdef
             and admission_owner.rolname=$1
-            and 'row_security=on'=any(admission_function.proconfig)
-            and exists (select 1 from unnest(admission_function.proconfig) setting
-                         where setting like 'search_path=pg_catalog%'))
+            and admission_function.proconfig=array[
+              'search_path=pg_catalog, app','row_security=on'
+            ]::text[])
         and has_function_privilege($3,
           'app.assert_regional_write_admission()','EXECUTE')
         and has_function_privilege($2,
@@ -290,20 +315,26 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
           ('webhook_trigger_replay_records'),('webhook_endpoint_ingress_limits')
         ) expected(table_name) where not (select relrowsecurity and relforcerowsecurity
           from pg_class where oid=to_regclass('app.'||expected.table_name)))
-        and exists (select 1 from pg_trigger
-          where tgrelid=to_regclass('app.webhook_trigger_secret_versions')
-            and tgname='webhook_trigger_secret_versions_immutable'
-            and not tgisinternal)
+        and exists (select 1 from pg_trigger trigger
+          where trigger.tgrelid=to_regclass('app.webhook_trigger_secret_versions')
+            and trigger.tgname='webhook_trigger_secret_versions_immutable'
+            and trigger.tgenabled='O' and trigger.tgtype=27
+            and trigger.tgfoid='app.reject_webhook_trigger_secret_version_mutation()'::regprocedure
+            and trigger.tgqual is null
+            and cardinality(trigger.tgattr::smallint[])=0
+            and not trigger.tgisinternal)
         and exists (select 1 from pg_proc proc
           where proc.oid=to_regprocedure('app.resolve_public_webhook_endpoint(character)')
             and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
-            and 'row_security=on'=any(proc.proconfig)
-            and 'search_path=pg_catalog, app'=any(proc.proconfig))
+            and proc.proconfig=array[
+              'search_path=pg_catalog, app','row_security=on'
+            ]::text[])
         and exists (select 1 from pg_proc proc
           where proc.oid=to_regprocedure('app.consume_webhook_ingress_limit(character)')
             and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
-            and 'row_security=on'=any(proc.proconfig)
-            and exists(select 1 from unnest(proc.proconfig) setting where setting like 'search_path=pg_catalog%'))
+            and proc.proconfig=array[
+              'search_path=pg_catalog, app, pg_temp','row_security=on'
+            ]::text[])
         and case when has_function_privilege(current_user,
           'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)',
           'EXECUTE') then has_function_privilege(current_user,
@@ -336,9 +367,14 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
         and exists (select 1 from pg_constraint where
           conrelid=to_regclass('app.trigger_schedule_occurrences')
           and conname='trigger_schedule_occurrences_identity_unique' and contype='u')
-        and exists (select 1 from pg_trigger where
-          tgrelid=to_regclass('app.trigger_schedules')
-          and tgname='trigger_schedules_config_immutable' and not tgisinternal)
+        and exists (select 1 from pg_trigger trigger where
+          trigger.tgrelid=to_regclass('app.trigger_schedules')
+          and trigger.tgname='trigger_schedules_config_immutable'
+          and trigger.tgenabled='O' and trigger.tgtype=19
+          and trigger.tgfoid='app.reject_trigger_schedule_config_mutation()'::regprocedure
+          and trigger.tgqual is null
+          and cardinality(trigger.tgattr::smallint[])=0
+          and not trigger.tgisinternal)
         and 6=(select count(*) from pg_proc proc where proc.oid=any(array[
           to_regprocedure('app.claim_due_trigger_schedules(character varying,integer,integer)'),
           to_regprocedure('app.schedule_claim_is_eligible(uuid,uuid)'),
@@ -347,8 +383,9 @@ export const READINESS_TRIGGERS_MIGRATION_SQL = `
           to_regprocedure('app.defer_trigger_schedule_claim(uuid,uuid,integer)'),
           to_regprocedure('app.fail_trigger_schedule_claim(uuid,uuid)')
         ]) and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
-          and 'row_security=on'=any(proc.proconfig)
-          and exists(select 1 from unnest(proc.proconfig) setting where setting like 'search_path=pg_catalog%'))
+          and proc.proconfig=array[
+            'search_path=pg_catalog, app, pg_temp','row_security=on'
+          ]::text[])
         and has_function_privilege($2,
           'app.claim_due_trigger_schedules(character varying,integer,integer)','EXECUTE')
         and has_function_privilege($2,'app.schedule_claim_is_eligible(uuid,uuid)','EXECUTE')

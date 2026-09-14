@@ -29,6 +29,16 @@ function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError();
 }
 
+function isConnectionUnavailableError(
+  error: unknown,
+): error is ConnectionUnavailableError {
+  try {
+    return error instanceof ConnectionUnavailableError;
+  } catch {
+    return false;
+  }
+}
+
 export function createProviderConnectionRuntimeFactory(
   database: ConnectionResolutionDatabase,
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
@@ -46,6 +56,7 @@ export function createProviderConnectionRuntimeFactory(
             connectionId: input.connectionId,
           }),
         );
+        assertNotAborted(input.signal);
         if (!admission.allowed)
           throw new ProviderExecutionRateLimitError(
             admission.retryAfterSeconds,
@@ -58,12 +69,14 @@ export function createProviderConnectionRuntimeFactory(
             expectedProviderKey: input.expectedProviderKey,
             workerId: context.workerId,
             purpose: input.purpose,
+            signal: input.signal,
           });
         } catch (error: unknown) {
-          if (error instanceof ConnectionUnavailableError)
+          if (isConnectionUnavailableError(error))
             throw new ProviderCredentialInvalidError();
           throw error;
         }
+        assertNotAborted(input.signal);
         if (
           resolved.connection.authType !== input.expectedAuthType ||
           resolved.connection.id !== input.connectionId ||
@@ -110,9 +123,10 @@ export function createProviderConnectionRuntimeFactory(
             expectedProviderKey: input.expectedProviderKey,
             expectedAuthType: input.expectedAuthType,
             secretVersionId: input.secretVersionId,
+            signal: input.signal,
           });
         } catch (error: unknown) {
-          if (error instanceof ConnectionUnavailableError)
+          if (isConnectionUnavailableError(error))
             throw new ProviderCredentialInvalidError();
           throw error;
         }

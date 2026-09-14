@@ -1,34 +1,29 @@
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  JOB_NAME,
-  QUEUE_NAME,
-  Queue,
-  cleanupFixture,
-  createCoordinatorRuntime,
-  createQueueProducer,
+import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
+import { acceptRun } from './support/coordinator-run-fixtures.js';
+
+const {
   databaseUrl,
   enabled,
-  parseDatabaseConfig,
   redisConnection,
   redisUrl,
-  restoreServices,
-  setupFixture,
+  restoreServicesAndClose,
+  setup,
   waitFor,
   workerQuery,
   workerUrl,
   workspaceId,
-} from './coordinator-consumer.fixtures.js';
-import { acceptRun } from './support/coordinator-run-fixtures.js';
-
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Coordinator transport identity fencing', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('rejects and audits an outbox identity replayed with a different run payload', async () => {
     const [authoritative, target] = await Promise.all([
@@ -48,7 +43,21 @@ describeIntegration('Coordinator transport identity fencing', () => {
     const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
       connection: redisConnection(),
     });
+    let scenarioError: unknown;
     try {
+      const runSnapshotBefore = await workerQuery<{
+        completed_at: Date | null;
+        id: string;
+        status: string;
+        workflow_id: string;
+        workflow_version_id: string;
+      }>(
+        `select id,status,workflow_id,workflow_version_id,completed_at
+           from app.workflow_runs
+          where workspace_id=$1 and id=any($2::uuid[])
+          order by id`,
+        [workspaceId, [authoritative.runId, target.runId]],
+      );
       await queue.obliterate({ force: true });
       await Promise.all([
         runtime.consumer.waitUntilReady(5_000),
@@ -76,7 +85,8 @@ describeIntegration('Coordinator transport identity fencing', () => {
       await expect(forgedJob.getState()).resolves.toBe('failed');
       await expect(
         workerQuery<{
-          audit_count: string;
+          audit_consumer: string | null;
+          audit_fact_type: string | null;
           event_count: string;
           inbox_count: string;
           node_count: string;
@@ -92,9 +102,12 @@ describeIntegration('Coordinator transport identity fencing', () => {
                (select count(*)::text from app.inbox_receipts receipt
                  where receipt.workspace_id=checkpoint.workspace_id
                    and receipt.message_id=$3) inbox_count,
-               (select count(*)::text from app.transport_security_audit_facts fact
+               (select fact.consumer_name from app.transport_security_audit_facts fact
                  where fact.workspace_id=checkpoint.workspace_id
-                   and fact.message_id=$3) audit_count
+                   and fact.message_id=$3) audit_consumer,
+               (select fact.fact_type from app.transport_security_audit_facts fact
+                 where fact.workspace_id=checkpoint.workspace_id
+                   and fact.message_id=$3) audit_fact_type
              from app.run_checkpoints checkpoint
              where checkpoint.workspace_id=$1
                and checkpoint.workflow_run_id=$2`,
@@ -102,19 +115,58 @@ describeIntegration('Coordinator transport identity fencing', () => {
         ),
       ).resolves.toEqual([
         {
-          audit_count: '1',
+          audit_consumer: 'workflow-coordinator',
+          audit_fact_type: 'inbox_checksum_mismatch',
           event_count: '1',
           inbox_count: '0',
           node_count: '0',
           revision: 0,
         },
       ]);
-    } finally {
-      await Promise.allSettled([
-        producer.close(),
-        runtime.close(),
-        queue.close(),
-      ]);
+      await expect(
+        workerQuery<{
+          completed_at: Date | null;
+          id: string;
+          status: string;
+          workflow_id: string;
+          workflow_version_id: string;
+        }>(
+          `select id,status,workflow_id,workflow_version_id,completed_at
+             from app.workflow_runs
+            where workspace_id=$1 and id=any($2::uuid[])
+            order by id`,
+          [workspaceId, [authoritative.runId, target.runId]],
+        ),
+      ).resolves.toEqual(runSnapshotBefore);
+    } catch (error: unknown) {
+      scenarioError = error;
     }
+    const cleanupErrors: unknown[] = [];
+    for (const close of [
+      () => runtime.close(),
+      () => producer.close(),
+      () => queue.close(),
+    ])
+      await Promise.resolve()
+        .then(close)
+        .catch((error: unknown) => {
+          cleanupErrors.push(error);
+        });
+    if (scenarioError !== undefined && cleanupErrors.length > 0)
+      throw new AggregateError(
+        [scenarioError, ...cleanupErrors],
+        'Coordinator identity scenario and cleanup failed',
+      );
+    if (scenarioError !== undefined)
+      throw scenarioError instanceof Error
+        ? scenarioError
+        : new Error('Coordinator identity scenario failed', {
+            cause: scenarioError,
+          });
+    if (cleanupErrors.length > 0)
+      throw new AggregateError(
+        cleanupErrors,
+        'Coordinator identity fixture cleanup failed',
+      );
   });
 });

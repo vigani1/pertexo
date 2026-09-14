@@ -2,10 +2,12 @@ import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 
 import type { DatabaseConfig } from '../config.js';
+import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
 
 export interface MaintenancePool {
+  readonly options: Readonly<{ max: number }>;
   connect(): Promise<PoolClient>;
   end(): Promise<void>;
 }
@@ -66,6 +68,47 @@ export async function acquirePoolClient(
     throw error;
   } finally {
     signal.removeEventListener('abort', onAbort);
+  }
+}
+
+function abortedClientError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new Error('Database operation was aborted', { cause: signal.reason });
+}
+
+/** Owns a checked-out client and destroys it when caller cancellation wins. */
+export async function withOwnedPoolClient<T>(
+  pool: MaintenancePool,
+  signal: AbortSignal | undefined,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await acquirePoolClient(pool, signal);
+  const abortSignal = signal;
+  let released = false;
+  const destroyForAbort = (): void => {
+    if (abortSignal === undefined) return;
+    if (released) return;
+    released = true;
+    try {
+      destroyCanceledPoolClient(client, abortedClientError(abortSignal));
+    } catch {
+      // Cancellation remains authoritative after best-effort pool cleanup.
+    }
+  };
+  signal?.addEventListener('abort', destroyForAbort, { once: true });
+  if (signal?.aborted === true) destroyForAbort();
+  try {
+    signal?.throwIfAborted();
+    return await work(client);
+  } catch (error: unknown) {
+    if (signal?.aborted === true) signal.throwIfAborted();
+    throw error;
+  } finally {
+    signal?.removeEventListener('abort', destroyForAbort);
+    // The abort listener can change this flag while work is awaiting.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!released) client.release();
   }
 }
 

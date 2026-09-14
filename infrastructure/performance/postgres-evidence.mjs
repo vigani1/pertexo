@@ -12,6 +12,16 @@ const planOptions = 'ANALYZE, BUFFERS, WAL, SETTINGS, FORMAT JSON';
 const POOL_CONTENTION_ROUNDS = 3;
 const POOL_CONTENTION_HOLD_MILLIS = 60;
 const MINIMUM_OBSERVED_CHECKOUT_WAIT_SECONDS = 0.04;
+const DATABASE_CONNECTION_TIMEOUT_MILLIS = 2_000;
+const DATABASE_QUERY_TIMEOUT_MILLIS = 30_000;
+const REQUIRED_PLAN_NAMES = Object.freeze([
+  'retention-keyset',
+  'artifact-version-listing',
+  'purge-discovery',
+  'purge-claim',
+  'purge-checkpoint',
+  'tenant-row-page',
+]);
 
 function databaseUrl(baseUrl) {
   const url = new URL(baseUrl);
@@ -20,20 +30,18 @@ function databaseUrl(baseUrl) {
 
 function planFrom(result) {
   const value = result.rows[0]?.['QUERY PLAN'];
-  if (!Array.isArray(value) || value[0]?.Plan === undefined)
+  if (
+    !Array.isArray(value) ||
+    value.length !== 1 ||
+    value[0]?.Plan === null ||
+    typeof value[0]?.Plan !== 'object' ||
+    Array.isArray(value[0]?.Plan)
+  )
     throw new Error('PostgreSQL did not return structured query-plan evidence');
   return value[0];
 }
 
 export function validatePostgresEvidence(evidence) {
-  const requiredPlans = [
-    'retention-keyset',
-    'artifact-version-listing',
-    'purge-discovery',
-    'purge-claim',
-    'purge-checkpoint',
-    'tenant-row-page',
-  ];
   if (evidence?.available !== true)
     throw new Error('PostgreSQL performance evidence is unavailable');
   if (
@@ -47,25 +55,112 @@ export function validatePostgresEvidence(evidence) {
   )
     throw new Error('Pool checkout wait evidence is incomplete');
   if (
-    !Number.isSafeInteger(evidence.instrumentedSqlRoundTrips) ||
-    evidence.instrumentedSqlRoundTrips < 0
+    !Number.isSafeInteger(evidence.instrumentedSqlQueryCount) ||
+    evidence.instrumentedSqlQueryCount < 1
   )
-    throw new Error('Instrumented SQL round-trip count is missing');
-  for (const name of requiredPlans) {
-    const plan = evidence.queryPlans?.find(
+    throw new Error('Instrumented SQL query count is missing');
+  if (
+    !Array.isArray(evidence.queryPlans) ||
+    evidence.queryPlans.length !== REQUIRED_PLAN_NAMES.length ||
+    new Set(evidence.queryPlans.map(({ name }) => name)).size !==
+      REQUIRED_PLAN_NAMES.length ||
+    evidence.queryPlans.some(({ name }) => !REQUIRED_PLAN_NAMES.includes(name))
+  )
+    throw new Error(
+      'Required PostgreSQL query plans are missing or duplicated',
+    );
+  for (const name of REQUIRED_PLAN_NAMES) {
+    const plan = evidence.queryPlans.find(
       (candidate) => candidate.name === name,
     );
+    const rootPlan = plan?.plan?.Plan;
+    const representativeRowNames = Object.keys(
+      plan?.representativeRows ?? {},
+    ).sort();
     if (
       plan?.role !== 'pertexo_maintenance' ||
-      plan.plan?.Plan === undefined ||
+      plan.planScope !== 'outer-function-call' ||
+      plan.internalStatementPlanAvailable !== false ||
+      rootPlan === null ||
+      typeof rootPlan !== 'object' ||
+      Array.isArray(rootPlan) ||
+      typeof rootPlan['Node Type'] !== 'string' ||
+      rootPlan['Node Type'].length === 0 ||
+      !Number.isFinite(rootPlan['Actual Rows']) ||
+      rootPlan['Actual Rows'] < 0 ||
+      !Number.isFinite(rootPlan['Actual Loops']) ||
+      rootPlan['Actual Loops'] < 0 ||
+      !Number.isFinite(plan.plan['Planning Time']) ||
+      plan.plan['Planning Time'] < 0 ||
       !Number.isFinite(plan.plan['Execution Time']) ||
-      plan.plan['Execution Time'] < 0
+      plan.plan['Execution Time'] < 0 ||
+      plan.representativeRows === null ||
+      typeof plan.representativeRows !== 'object' ||
+      JSON.stringify(representativeRowNames) !==
+        JSON.stringify(['artifacts', 'purgeWorkspaces', 'workspaces']) ||
+      Object.values(plan.representativeRows).some(
+        (count) => !Number.isSafeInteger(count) || count < 1,
+      )
     )
       throw new Error(
         `${name}: representative maintenance-role plan is missing`,
       );
   }
+  const runtime = evidence.databaseRuntime;
+  if (
+    runtime === null ||
+    typeof runtime !== 'object' ||
+    runtime.database !== 'pertexo' ||
+    runtime.role !== 'pertexo_maintenance' ||
+    typeof runtime.serverVersion !== 'string' ||
+    runtime.serverVersion.length === 0 ||
+    !Number.isSafeInteger(runtime.serverVersionNumber) ||
+    runtime.serverVersionNumber < 1 ||
+    !Array.isArray(runtime.extensions) ||
+    !runtime.extensions.some(
+      (extension) =>
+        extension?.name === 'pg_stat_statements' &&
+        typeof extension.version === 'string' &&
+        extension.version.length > 0,
+    ) ||
+    runtime.settings === null ||
+    typeof runtime.settings !== 'object' ||
+    !Number.isSafeInteger(runtime.settings.maxConnections) ||
+    runtime.settings.maxConnections < 1 ||
+    !Number.isSafeInteger(runtime.settings.pgStatStatementsMax) ||
+    runtime.settings.pgStatStatementsMax < 1 ||
+    [
+      'sharedBuffers',
+      'workMem',
+      'effectiveCacheSize',
+      'jit',
+      'trackIoTiming',
+      'pgStatStatementsTrack',
+    ].some(
+      (name) =>
+        typeof runtime.settings[name] !== 'string' ||
+        runtime.settings[name].length === 0,
+    ) ||
+    typeof runtime.serviceIdentity?.image !== 'string' ||
+    runtime.serviceIdentity.image.length === 0 ||
+    !['loopback', 'network'].includes(runtime.serviceIdentity?.hostScope) ||
+    typeof runtime.serviceIdentity?.portScope !== 'string' ||
+    runtime.serviceIdentity.portScope.length === 0
+  )
+    throw new Error('PostgreSQL runtime identity and settings are incomplete');
   return evidence;
+}
+
+function settled(promise) {
+  return Promise.resolve(promise).then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason) => ({ status: 'rejected', reason }),
+  );
+}
+
+function throwFailures(failures, message) {
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) throw new AggregateError(failures, message);
 }
 
 function recordingMeter(metricNames) {
@@ -110,42 +205,38 @@ export async function runPoolContentionSamples(
   try {
     for (let round = 0; round < POOL_CONTENTION_ROUNDS; round += 1) {
       const owner = await pool.connect();
-      const waiting = pool.connect();
-      let waitFailed = false;
-      let waitError;
+      let waiterOutcome;
       try {
-        await wait();
+        waiterOutcome = settled(pool.connect());
       } catch (error) {
-        waitFailed = true;
-        waitError = error;
-      } finally {
+        waiterOutcome = Promise.resolve({ status: 'rejected', reason: error });
+      }
+      const holdOutcome = settled(Promise.resolve().then(() => wait()));
+      const hold = await holdOutcome;
+      const failures = [];
+      try {
         owner.release();
-      }
-      let checkoutFailed = false;
-      let checkoutError;
-      let client;
-      try {
-        client = await waiting;
       } catch (error) {
-        checkoutFailed = true;
-        checkoutError = error;
+        failures.push(error);
       }
-      if (client !== undefined)
-        try {
-          if (!waitFailed) await client.query('select 1');
-        } finally {
-          client.release();
+      const checkout = await waiterOutcome;
+      if (hold.status === 'rejected') failures.push(hold.reason);
+      if (checkout.status === 'rejected') failures.push(checkout.reason);
+      if (checkout.status === 'fulfilled') {
+        const client = checkout.value;
+        if (hold.status === 'fulfilled') {
+          const query = await settled(
+            Promise.resolve().then(() => client.query('select 1')),
+          );
+          if (query.status === 'rejected') failures.push(query.reason);
         }
-      const setupFailures = [
-        ...(waitFailed ? [waitError] : []),
-        ...(checkoutFailed ? [checkoutError] : []),
-      ];
-      if (setupFailures.length === 1) throw setupFailures[0];
-      if (setupFailures.length > 1)
-        throw new AggregateError(
-          setupFailures,
-          'PostgreSQL pool evidence sample setup failed',
-        );
+        try {
+          client.release();
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+      throwFailures(failures, 'PostgreSQL pool evidence sample setup failed');
     }
   } catch (error) {
     samplingFailed = true;
@@ -169,7 +260,13 @@ async function capturePoolEvidence(environment) {
     await import('../../packages/database/dist/testing.js');
   const telemetry = recordingMeter(DATABASE_METRIC_NAME);
   const pool = createDatabasePool(
-    { connectionString: environment.DATABASE_MAINTENANCE_URL, max: 1 },
+    {
+      connectionString: environment.DATABASE_MAINTENANCE_URL,
+      connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+      max: 1,
+      query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+      statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    },
     {
       meter: telemetry.meter,
       monitorLockWaits: false,
@@ -181,7 +278,7 @@ async function capturePoolEvidence(environment) {
   return {
     // Each round first records an uncontended acquisition and then its waiter.
     poolCheckoutWaitSeconds: successful.filter((_, index) => index % 2 === 1),
-    instrumentedSqlRoundTrips: telemetry.sqlRoundTrips(),
+    instrumentedSqlQueryCount: telemetry.sqlRoundTrips(),
   };
 }
 
@@ -318,26 +415,78 @@ async function createRepresentativeFixture(owner) {
   }
 }
 
-async function capturePlans(environment) {
+function normalizedPostgresServiceIdentity(environment) {
+  const url = new URL(environment.DATABASE_MAINTENANCE_URL);
+  const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost';
+  return {
+    image: environment.POSTGRES_IMAGE,
+    hostScope: loopback ? 'loopback' : 'network',
+    portScope: loopback ? 'ephemeral-loopback' : url.port || 'default',
+  };
+}
+
+async function captureDatabaseRuntime(maintenance, environment) {
+  const identity = await maintenance.query(
+    `select current_database() database,
+              current_user role,
+              current_setting('server_version') server_version,
+              current_setting('server_version_num')::int server_version_number,
+              current_setting('max_connections')::int max_connections,
+              current_setting('shared_buffers') shared_buffers,
+              current_setting('work_mem') work_mem,
+              current_setting('effective_cache_size') effective_cache_size,
+              current_setting('jit') jit,
+              current_setting('track_io_timing') track_io_timing,
+              current_setting('pg_stat_statements.max')::int pg_stat_statements_max,
+              current_setting('pg_stat_statements.track') pg_stat_statements_track`,
+  );
+  const extensions = await maintenance.query(
+    `select extname name,extversion version
+         from pg_extension
+        order by extname`,
+  );
+  const row = identity.rows[0];
+  return {
+    database: row?.database,
+    role: row?.role,
+    serverVersion: row?.server_version,
+    serverVersionNumber: Number(row?.server_version_number),
+    extensions: extensions.rows.map(({ name, version }) => ({ name, version })),
+    settings: {
+      maxConnections: Number(row?.max_connections),
+      sharedBuffers: row?.shared_buffers,
+      workMem: row?.work_mem,
+      effectiveCacheSize: row?.effective_cache_size,
+      jit: row?.jit,
+      trackIoTiming: row?.track_io_timing,
+      pgStatStatementsMax: Number(row?.pg_stat_statements_max),
+      pgStatStatementsTrack: row?.pg_stat_statements_track,
+    },
+    serviceIdentity: normalizedPostgresServiceIdentity(environment),
+  };
+}
+
+async function capturePlans(environment, options = {}) {
   const { Client } = requireDatabaseDependency('pg');
-  const owner = new Client({
+  const DatabaseClient = options.Client ?? Client;
+  const owner = new DatabaseClient({
     connectionString: databaseUrl(environment.DATABASE_MIGRATION_URL),
-    connectionTimeoutMillis: 2_000,
+    connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
   });
-  const maintenance = new Client({
+  const maintenance = new DatabaseClient({
     connectionString: databaseUrl(environment.DATABASE_MAINTENANCE_URL),
-    connectionTimeoutMillis: 2_000,
+    connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
   });
-  let ownerConnected = false;
-  let maintenanceConnected = false;
   let operationFailed = false;
   let operationError;
-  let plans;
+  let result;
   try {
     await owner.connect();
-    ownerConnected = true;
     await maintenance.connect();
-    maintenanceConnected = true;
     const fixture = await createRepresentativeFixture(owner);
     await owner.query('set role pertexo_owner');
     await owner.query(
@@ -383,28 +532,31 @@ async function capturePlans(environment) {
         values: [fixture.tenantJobId, fixture.tenantToken, fixture.purgeHash],
       },
     ];
-    plans = [];
+    const plans = [];
     for (const query of queries) {
-      const result = await maintenance.query(query);
+      const queryResult = await maintenance.query(query);
       plans.push({
         name: query.name,
         role: 'pertexo_maintenance',
+        planScope: 'outer-function-call',
+        internalStatementPlanAvailable: false,
         representativeRows: {
           artifacts: 400,
           purgeWorkspaces: 4,
           workspaces: 44,
         },
-        plan: planFrom(result),
+        plan: planFrom(queryResult),
       });
     }
+    result = {
+      queryPlans: plans,
+      databaseRuntime: await captureDatabaseRuntime(maintenance, environment),
+    };
   } catch (error) {
     operationFailed = true;
     operationError = error;
   }
-  const closing = await Promise.allSettled([
-    maintenanceConnected ? maintenance.end() : Promise.resolve(),
-    ownerConnected ? owner.end() : Promise.resolve(),
-  ]);
+  const closing = await Promise.allSettled([maintenance.end(), owner.end()]);
   const closeFailures = closing
     .filter((result) => result.status === 'rejected')
     .map((result) => result.reason);
@@ -413,10 +565,13 @@ async function capturePlans(environment) {
       [...(operationFailed ? [operationError] : []), ...closeFailures],
       'PostgreSQL plan evidence collection failed',
     );
-  return plans;
+  return result;
 }
 
-export async function capturePostgresEvidence(environment = process.env) {
+export async function capturePostgresEvidence(
+  environment = process.env,
+  options = {},
+) {
   if (
     !environment.DATABASE_MIGRATION_URL ||
     !environment.DATABASE_MAINTENANCE_URL
@@ -425,9 +580,14 @@ export async function capturePostgresEvidence(environment = process.env) {
       available: false,
       reason: 'isolated database roles were not provided',
     };
-  const [pool, queryPlans] = await Promise.all([
-    capturePoolEvidence(environment),
-    capturePlans(environment),
+  const results = await Promise.allSettled([
+    (options.capturePoolEvidence ?? capturePoolEvidence)(environment),
+    (options.capturePlans ?? capturePlans)(environment, options),
   ]);
-  return validatePostgresEvidence({ available: true, ...pool, queryPlans });
+  const failures = results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason] : [],
+  );
+  throwFailures(failures, 'PostgreSQL evidence collectors failed');
+  const [pool, plans] = results.map(({ value }) => value);
+  return validatePostgresEvidence({ available: true, ...pool, ...plans });
 }

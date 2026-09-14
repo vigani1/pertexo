@@ -2,43 +2,56 @@ import { randomUUID } from 'node:crypto';
 
 import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
-import type { DatabaseError, PoolClient } from 'pg';
+import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
+import type { WorkspaceDatabase } from '../src/database.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { rlsProbeRecords } from '../src/schema.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_rls_${randomUUID().replaceAll('-', '')}`;
+const inheritedRole = `pertexo_test_inherited_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    new URL(adminUrl).username,
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
+const apiUrl = fixture.databaseUrl(apiBaseUrl);
+const workerUrl = fixture.databaseUrl(workerBaseUrl);
+const adminPool = new Pool({ connectionString: adminUrl, max: 1 });
+const databaseAdminPool = new Pool({
+  connectionString: fixture.databaseUrl(adminUrl),
+  max: 1,
+});
 
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
 const recordA = randomUUID();
 const recordB = randomUUID();
-const readinessDriftLockId = 7_166_118_813;
-const integrationSuiteLockId = 7_166_118_814;
-const integrationSuiteLockPool = new Pool({
-  connectionString: migrationUrl,
-  max: 1,
-});
-let integrationSuiteLockClient: PoolClient | undefined;
-
-const database = createWorkspaceDatabase(
-  parseDatabaseConfig({
-    connectionString: apiUrl,
-    max: 1,
-    ownerRole: 'pertexo_owner',
-  }),
-);
+let database: WorkspaceDatabase;
+let ownerPool: Pool;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -54,7 +67,10 @@ const migrationConfig = {
 function expectPgCode(code: string): (error: unknown) => boolean {
   return (error: unknown): boolean => {
     let current: unknown = error;
-    while (current instanceof Error) {
+    const visited = new WeakSet<object>();
+    for (let depth = 0; depth < 32 && current instanceof Error; depth += 1) {
+      if (visited.has(current)) return false;
+      visited.add(current);
       if ((current as DatabaseError).code === code) {
         return true;
       }
@@ -65,8 +81,7 @@ function expectPgCode(code: string): (error: unknown) => boolean {
 }
 
 async function executeAsOwner(statement: string): Promise<void> {
-  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
+  const client = await ownerPool.connect();
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
@@ -77,33 +92,20 @@ async function executeAsOwner(statement: string): Promise<void> {
     throw error;
   } finally {
     client.release();
-    await pool.end();
-  }
-}
-
-async function withReadinessDriftLock(
-  operation: () => Promise<void>,
-): Promise<void> {
-  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
-  try {
-    await client.query('select pg_advisory_lock($1)', [readinessDriftLockId]);
-    await operation();
-  } finally {
-    await client
-      .query('select pg_advisory_unlock($1)', [readinessDriftLockId])
-      .catch(() => undefined);
-    client.release();
-    await pool.end();
   }
 }
 
 beforeAll(async () => {
-  integrationSuiteLockClient = await integrationSuiteLockPool.connect();
-  await integrationSuiteLockClient.query('select pg_advisory_lock($1)', [
-    integrationSuiteLockId,
-  ]);
+  await fixture.create();
   await migrateDatabase(migrationConfig);
+  ownerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+  database = createWorkspaceDatabase(
+    parseDatabaseConfig({
+      connectionString: apiUrl,
+      max: 1,
+      ownerRole: 'pertexo_owner',
+    }),
+  );
   await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
     await db.insert(rlsProbeRecords).values({
       id: recordA,
@@ -118,17 +120,31 @@ beforeAll(async () => {
       label: 'workspace-b',
     });
   });
-});
+}, 60_000);
 
 afterAll(async () => {
-  await database.close();
-  if (integrationSuiteLockClient !== undefined) {
-    await integrationSuiteLockClient.query('select pg_advisory_unlock($1)', [
-      integrationSuiteLockId,
-    ]);
-    integrationSuiteLockClient.release();
+  const failures: unknown[] = [];
+  const cleanup: (() => Promise<void>)[] = [];
+  // beforeAll can fail before these runtime owners are assigned.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (database !== undefined) cleanup.push(() => database.close());
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (ownerPool !== undefined) cleanup.push(() => ownerPool.end());
+  cleanup.push(() => databaseAdminPool.end());
+  cleanup.push(() => fixture.drop());
+  cleanup.push(async () => {
+    await adminPool.query(`drop role if exists "${inheritedRole}"`);
+  });
+  cleanup.push(() => adminPool.end());
+  for (const close of cleanup) {
+    try {
+      await close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
   }
-  await integrationSuiteLockPool.end();
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'RLS fixture cleanup failed');
 });
 
 describe('workspace transaction boundary', () => {
@@ -282,6 +298,44 @@ describe('workspace transaction boundary', () => {
       expect(bIds).toContain(recordB);
       expect(bIds).not.toContain(recordA);
     } finally {
+      releaseBarrier?.();
+      await concurrentDatabase.close();
+    }
+  });
+
+  it('drains the peer transaction when one participant fails before the barrier', async () => {
+    const concurrentDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({
+        connectionString: apiUrl,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+      }),
+    );
+    const controller = new AbortController();
+    let releaseBarrier!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      releaseBarrier = resolve;
+    });
+    const waiting = concurrentDatabase.withWorkspace(
+      workspaceA,
+      async () => barrier,
+      { signal: controller.signal },
+    );
+    const failedBeforeCallback = concurrentDatabase.withWorkspace(
+      'not-a-workspace-id',
+      () => Promise.reject(new Error('callback must not run')),
+    );
+
+    try {
+      await expect(failedBeforeCallback).rejects.toThrow();
+    } finally {
+      controller.abort();
+      releaseBarrier();
+      const outcomes = await Promise.allSettled([
+        waiting,
+        failedBeforeCallback,
+      ]);
+      expect(outcomes.every(({ status }) => status === 'rejected')).toBe(true);
       await concurrentDatabase.close();
     }
   });
@@ -430,23 +484,22 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0086_operator_attempt_reclaim_state.sql',
+      migrationHead: '0089_oidc_capacity_lock_time.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });
   });
 
   it('detects a missing workspace policy', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(
-        'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
+    await executeAsOwner(
+      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
+    );
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Workspace row-level security policy is incompatible',
       );
-      try {
-        await expect(database.checkCompatibility()).rejects.toThrow(
-          'Workspace row-level security policy is incompatible',
-        );
-      } finally {
-        await executeAsOwner(`
+    } finally {
+      await executeAsOwner(`
           create policy rls_probe_records_workspace_scope
             on app.rls_probe_records
             for all
@@ -458,77 +511,253 @@ describe('database compatibility and readiness', () => {
               workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
             )
         `);
-      }
+    }
+  });
+
+  it('rejects a weakened or additional permissive workspace policy', async () => {
+    await executeAsOwner(`
+      alter policy rls_probe_records_workspace_scope
+        on app.rls_probe_records
+        using (
+          workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          or true
+        )
+        with check (
+          workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          or true
+        )
+    `);
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Workspace row-level security policy is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        alter policy rls_probe_records_workspace_scope
+          on app.rls_probe_records
+          using (
+            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          )
+          with check (
+            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          )
+      `);
+    }
+
+    await executeAsOwner(`
+      create policy rls_probe_records_unexpected_permissive
+        on app.rls_probe_records for select to pertexo_api using (true)
+    `);
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Workspace row-level security policy is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        drop policy rls_probe_records_unexpected_permissive
+          on app.rls_probe_records
+      `);
+    }
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
     });
   });
 
   it('detects an incompatible runtime grant', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(
-        'revoke insert on app.rls_probe_records from pertexo_api',
+    await executeAsOwner(
+      'revoke insert on app.rls_probe_records from pertexo_api',
+    );
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Runtime database grants are incompatible',
       );
-      try {
-        await expect(database.checkCompatibility()).rejects.toThrow(
-          'Runtime database grants are incompatible',
-        );
-      } finally {
-        await executeAsOwner(
-          'grant insert on app.rls_probe_records to pertexo_api',
-        );
-      }
+    } finally {
+      await executeAsOwner(
+        'grant insert on app.rls_probe_records to pertexo_api',
+      );
+    }
+  });
+
+  it('detects a forbidden effective column grant inherited by the worker', async () => {
+    await adminPool.query(`create role "${inheritedRole}" nologin`);
+    await executeAsOwner(
+      `grant update (message_id) on app.inbox_receipts to "${inheritedRole}"`,
+    );
+    await adminPool.query(
+      `grant "${inheritedRole}" to pertexo_worker with inherit true`,
+    );
+    const cleanupFailures: unknown[] = [];
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Coordinator RunStore grants are incompatible',
+      );
+    } finally {
+      for (const restore of [
+        async (): Promise<void> => {
+          await adminPool.query(
+            `revoke "${inheritedRole}" from pertexo_worker`,
+          );
+        },
+        (): Promise<void> =>
+          executeAsOwner(
+            `revoke update (message_id) on app.inbox_receipts from "${inheritedRole}"`,
+          ),
+        async (): Promise<void> => {
+          await adminPool.query(`drop role "${inheritedRole}"`);
+        },
+      ])
+        try {
+          await restore();
+        } catch (error: unknown) {
+          cleanupFailures.push(error);
+        }
+    }
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        cleanupFailures,
+        'Inherited grant cleanup failed',
+      );
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
     });
   });
 
   it('detects a disabled OIDC capacity trigger', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(
-        'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
+    await executeAsOwner(
+      'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
+    );
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'OIDC login transaction capacity guard is incompatible',
       );
-      try {
-        await expect(database.checkCompatibility()).rejects.toThrow(
-          'OIDC login transaction capacity guard is incompatible',
-        );
-      } finally {
-        await executeAsOwner(
-          'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
-        );
-      }
+    } finally {
+      await executeAsOwner(
+        'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
+      );
+    }
+  });
+
+  it('detects a trigger with the right name but the wrong enforcement function', async () => {
+    await executeAsOwner(`
+      drop trigger connection_secret_versions_immutable
+        on app.connection_secret_versions;
+      create trigger connection_secret_versions_immutable
+        before update or delete on app.connection_secret_versions
+        for each row execute function app.reject_webhook_trigger_secret_version_mutation()
+    `);
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Connection persistence schema or grants are incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        drop trigger connection_secret_versions_immutable
+          on app.connection_secret_versions;
+        create trigger connection_secret_versions_immutable
+          before update or delete on app.connection_secret_versions
+          for each row execute function app.reject_connection_history_change()
+      `);
+    }
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
+    });
+  });
+
+  it('detects a weakened check constraint under its expected name', async () => {
+    await executeAsOwner(`
+      alter table app.run_failure_notification_intents
+        drop constraint run_failure_notification_intents_status_valid,
+        add constraint run_failure_notification_intents_status_valid
+          check (status is not null)
+    `);
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Run failure notification persistence is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        alter table app.run_failure_notification_intents
+          drop constraint run_failure_notification_intents_status_valid,
+          add constraint run_failure_notification_intents_status_valid check (
+            status in (
+              'pending','claimed','dispatching','retry','delivered',
+              'dead_letter','outcome_unknown'
+            )
+          )
+      `);
+    }
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
+    });
+  });
+
+  it('detects a broadened function search path', async () => {
+    await executeAsOwner(`
+      alter function app.consume_webhook_ingress_limit(character)
+        set search_path=pg_catalog,app,pg_temp,public
+    `);
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Webhook trigger persistence is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        alter function app.consume_webhook_ingress_limit(character)
+          set search_path=pg_catalog,app,pg_temp
+      `);
+    }
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
     });
   });
 
   it('detects when forced row-level security is removed', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(
-        'alter table app.rls_probe_records no force row level security',
+    await executeAsOwner(
+      'alter table app.rls_probe_records no force row level security',
+    );
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Protected table does not force row-level security',
       );
-      try {
-        await expect(database.checkCompatibility()).rejects.toThrow(
-          'Protected table does not force row-level security',
-        );
-      } finally {
-        await executeAsOwner(
-          'alter table app.rls_probe_records force row level security',
-        );
-      }
+    } finally {
+      await executeAsOwner(
+        'alter table app.rls_probe_records force row level security',
+      );
+    }
+  });
+
+  it('detects a protected table owner change', async () => {
+    await databaseAdminPool.query(
+      'alter table app.rls_probe_records owner to pertexo_migration',
+    );
+    try {
+      await expect(database.checkCompatibility()).rejects.toThrow(
+        'Protected table has an unexpected owner',
+      );
+    } finally {
+      await databaseAdminPool.query(
+        'alter table app.rls_probe_records owner to pertexo_owner',
+      );
+    }
+    await expect(database.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_api',
     });
   });
 
   it('detects an incompatible migration head', async () => {
-    await withReadinessDriftLock(async () => {
-      await executeAsOwner(`
+    await executeAsOwner(`
         insert into pertexo_internal.schema_migrations (name, checksum)
         values ('9999_incompatible.sql', 'test-only')
       `);
-      try {
-        await expect(database.checkReadiness()).rejects.toThrow(
-          'Database migration head is incompatible',
-        );
-      } finally {
-        await executeAsOwner(`
+    try {
+      await expect(database.checkReadiness()).rejects.toThrow(
+        'Database migration head is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
           delete from pertexo_internal.schema_migrations
           where name = '9999_incompatible.sql'
         `);
-      }
-    });
+    }
   });
 });

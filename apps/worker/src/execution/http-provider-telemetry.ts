@@ -7,11 +7,13 @@ import {
   type Span,
   type Tracer,
 } from '@opentelemetry/api';
+import type { HttpRequestOutput } from '@pertexo/integrations';
 import {
   HttpRequestExecutorError,
   type HttpExecutionErrorKind,
   type HttpRequestExecutorTelemetry,
 } from '@pertexo/integrations/server';
+import { runProviderWorkOnceWithOptionalTrace } from './provider-telemetry.js';
 
 export type HttpProviderRequestMeasurement = Readonly<{
   providerKey: 'http';
@@ -38,32 +40,23 @@ export function createHttpProviderTelemetry(
   const now = options.monotonicNow ?? (() => performance.now());
   return Object.freeze({
     measure: (work: Parameters<HttpRequestExecutorTelemetry['measure']>[0]) => {
-      const measured = async () => {
+      const measured = async (): ReturnType<
+        HttpRequestExecutorTelemetry['measure']
+      > => {
         const startedAt = safeNow(now);
         try {
           const output = await work();
-          record(
-            Object.freeze({
-              providerKey: 'http' as const,
-              operationKey: 'request' as const,
-              outcome: 'succeeded' as const,
-              possiblyDispatched: true,
-              responseStorage: output.body.kind,
-              statusClass: '2xx' as const,
-            }),
-            startedAt,
-          );
+          record(successMeasurement(output), startedAt);
           return output;
         } catch (error: unknown) {
           record(failureMeasurement(error), startedAt);
           throw error;
         }
       };
-      try {
-        return options.trace(measured);
-      } catch {
-        return measured();
-      }
+      return runProviderWorkOnceWithOptionalTrace<HttpRequestOutput, undefined>(
+        () => measured(),
+        (callback) => options.trace(() => callback(undefined)),
+      );
     },
   });
 
@@ -71,32 +64,72 @@ export function createHttpProviderTelemetry(
     measurement: HttpProviderRequestMeasurement,
     startedAt: number,
   ): void {
-    try {
+    recordDiagnostic(() => {
       options.count(measurement);
+    });
+    recordDiagnostic(() => {
       options.annotate?.(measurement);
+    });
+    recordDiagnostic(() => {
       options.duration(
         measurement,
         Math.max(0, safeNow(now) - startedAt) / 1_000,
       );
-      if (measurement.errorClass === 'rate_limit')
+    });
+    if (measurement.errorClass === 'rate_limit')
+      recordDiagnostic(() => {
         options.rateLimit(measurement);
-    } catch {
-      // Diagnostics cannot change provider execution truth.
-    }
+      });
+  }
+}
+
+function recordDiagnostic(operation: () => void): void {
+  try {
+    operation();
+  } catch {
+    // Diagnostics cannot change provider execution truth.
+  }
+}
+
+function successMeasurement(
+  output: Awaited<
+    ReturnType<Parameters<HttpRequestExecutorTelemetry['measure']>[0]>
+  >,
+): HttpProviderRequestMeasurement {
+  try {
+    return Object.freeze({
+      providerKey: 'http',
+      operationKey: 'request',
+      outcome: 'succeeded',
+      possiblyDispatched: true,
+      responseStorage: output.body.kind,
+      statusClass: '2xx',
+    });
+  } catch {
+    return Object.freeze({
+      providerKey: 'http',
+      operationKey: 'request',
+      outcome: 'succeeded',
+      possiblyDispatched: true,
+    });
   }
 }
 
 function failureMeasurement(error: unknown): HttpProviderRequestMeasurement {
-  if (error instanceof HttpRequestExecutorError)
-    return Object.freeze({
-      providerKey: 'http',
-      operationKey: 'request',
-      outcome: error.decision.kind,
-      possiblyDispatched: error.possiblyDispatched,
-      ...(error.decision.kind === 'succeeded'
-        ? {}
-        : { errorClass: error.decision.errorKind }),
-    });
+  try {
+    if (error instanceof HttpRequestExecutorError)
+      return Object.freeze({
+        providerKey: 'http',
+        operationKey: 'request',
+        outcome: error.decision.kind,
+        possiblyDispatched: error.possiblyDispatched,
+        ...(error.decision.kind === 'succeeded'
+          ? {}
+          : { errorClass: error.decision.errorKind }),
+      });
+  } catch {
+    // Hostile rejections cannot supply trusted HTTP outcome metadata.
+  }
   return Object.freeze({
     providerKey: 'http',
     operationKey: 'request',
@@ -161,28 +194,39 @@ export function createProductionHttpProviderTelemetry(
   });
   return Object.freeze({
     measure: (work: Parameters<HttpRequestExecutorTelemetry['measure']>[0]) =>
-      tracer.startActiveSpan('pertexo.provider.http.request', async (span) => {
-        const measured = createHttpProviderTelemetry({
-          annotate: (measurement) => {
-            annotateSpan(span, measurement);
-          },
-          count: (measurement) => {
-            count.add(1, attributes(measurement));
-          },
-          duration: (measurement, seconds) => {
-            duration.record(seconds, attributes(measurement));
-          },
-          rateLimit: (measurement) => {
-            rateLimit.add(1, attributes(measurement));
-          },
-          trace: (innerWork) => innerWork(),
-        });
-        try {
-          return await measured.measure(work);
-        } finally {
-          span.end();
-        }
-      }),
+      runProviderWorkOnceWithOptionalTrace<HttpRequestOutput, Span>(
+        async (span) => {
+          const measured = createHttpProviderTelemetry({
+            ...(span === undefined
+              ? {}
+              : {
+                  annotate: (measurement) => {
+                    annotateSpan(span, measurement);
+                  },
+                }),
+            count: (measurement) => {
+              count.add(1, attributes(measurement));
+            },
+            duration: (measurement, seconds) => {
+              duration.record(seconds, attributes(measurement));
+            },
+            rateLimit: (measurement) => {
+              rateLimit.add(1, attributes(measurement));
+            },
+            trace: (innerWork) => innerWork(),
+          });
+          try {
+            return await measured.measure(work);
+          } finally {
+            if (span !== undefined)
+              recordDiagnostic(() => {
+                span.end();
+              });
+          }
+        },
+        (callback) =>
+          tracer.startActiveSpan('pertexo.provider.http.request', callback),
+      ),
   });
 }
 
@@ -192,11 +236,16 @@ function annotateSpan(
 ): void {
   const values = attributes(measurement);
   for (const [name, value] of Object.entries(values))
-    if (value !== undefined) span.setAttribute(name, value);
-  span.setStatus({
-    code:
-      measurement.outcome === 'succeeded'
-        ? SpanStatusCode.OK
-        : SpanStatusCode.ERROR,
+    if (value !== undefined)
+      recordDiagnostic(() => {
+        span.setAttribute(name, value);
+      });
+  recordDiagnostic(() => {
+    span.setStatus({
+      code:
+        measurement.outcome === 'succeeded'
+          ? SpanStatusCode.OK
+          : SpanStatusCode.ERROR,
+    });
   });
 }

@@ -1,16 +1,14 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { Pool } from 'pg';
-import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
+import { retentionQuery as query } from './retention-support.js';
 import {
   inRetentionTransaction,
-  lockWorkspaceRetentionControl,
   type RetentionTransactionOptions,
-  withWorkspaceDestructiveOperationLock,
+  withWorkspaceDestructiveAuthorization,
 } from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
@@ -87,42 +85,6 @@ function retentionTransactionOptions(
   };
 }
 
-function query<Row extends Record<string, unknown>>(
-  client: Pool | PoolClient,
-  text: string,
-  values: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  signal?.throwIfAborted();
-  return client.query<Row>({
-    text,
-    values: [...values],
-    ...(signal === undefined ? {} : { signal }),
-  });
-}
-
-function exactLedgerProjection(
-  reconciliation: Awaited<ReturnType<ControlLedger['reconcile']>>,
-  sequence: number,
-  hash: string,
-): boolean {
-  return (
-    reconciliation.reachedHighWater &&
-    !reconciliation.hasMore &&
-    reconciliation.records.length === 0 &&
-    reconciliation.pageEndSequence === sequence &&
-    reconciliation.pageEndHash === hash
-  );
-}
-
-function externalOperationSignal(
-  signal: AbortSignal | undefined,
-  timeoutMs: number,
-): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
-}
-
 export function createPreviewRetentionCoordinator(
   config: DatabaseConfig,
   ledger: ControlLedger,
@@ -130,6 +92,10 @@ export function createPreviewRetentionCoordinator(
   inputOptions: PreviewRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
 ): PreviewRetentionCoordinator {
+  if (config.max < 2)
+    throw new RangeError(
+      'Preview retention coordination requires a database pool of at least 2 connections',
+    );
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -137,53 +103,32 @@ export function createPreviewRetentionCoordinator(
   return Object.freeze({
     close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
-      const due = await query<{ preview_run_id: string; workspace_id: string }>(
+      const transactionOptions = retentionTransactionOptions(options);
+      const due = await inRetentionTransaction(
         pool,
-        'select * from app.find_due_preview_cleanup(1)',
-        [],
+        transactionOptions,
         signal,
+        (client) =>
+          query<{ preview_run_id: string; workspace_id: string }>(
+            client,
+            'select * from app.find_due_preview_cleanup(1)',
+            [],
+            signal,
+          ),
       );
       const candidate = due.rows[0];
       if (candidate === undefined)
         return Object.freeze({ status: 'idle' as const });
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
       const previewRunId = uuidSchema.parse(candidate.preview_run_id);
-      const transactionOptions = retentionTransactionOptions(options);
-      const highWater = await lockWorkspaceRetentionControl(
+      const authorization = await withWorkspaceDestructiveAuthorization(
         pool,
         transactionOptions,
         signal,
         workspaceId,
-        'Preview workspace control lock was not returned',
-      );
-      const externalSignal = externalOperationSignal(
-        signal,
+        ledger,
         options.externalOperationTimeoutMs,
-      );
-      const reconciliation = await ledger.reconcile({
-        maxRecords: 1,
-        projectedHash: highWater.hash,
-        projectedSequence: highWater.sequence,
-        signal: externalSignal,
-        workspaceId,
-      });
-      if (
-        !exactLedgerProjection(
-          reconciliation,
-          highWater.sequence,
-          highWater.hash,
-        )
-      )
-        return Object.freeze({
-          previewRunId,
-          status: 'released' as const,
-          workspaceId,
-        });
-      return withWorkspaceDestructiveOperationLock(
-        pool,
-        workspaceId,
-        signal,
-        async () => {
+        async (highWater, externalSignal) => {
           const step = await inRetentionTransaction(
             pool,
             transactionOptions,
@@ -266,7 +211,7 @@ export function createPreviewRetentionCoordinator(
                     ],
                     signal,
                   );
-                  return finished.rows[0]?.completed === true;
+                  return z.boolean().parse(finished.rows[0]?.completed);
                 },
               );
               return Object.freeze({
@@ -302,7 +247,7 @@ export function createPreviewRetentionCoordinator(
                   ],
                   signal,
                 );
-                return finished.rows[0]?.completed === true;
+                return z.boolean().parse(finished.rows[0]?.completed);
               },
             );
             return Object.freeze({
@@ -318,6 +263,13 @@ export function createPreviewRetentionCoordinator(
           });
         },
       );
+      if (authorization.status === 'stale')
+        return Object.freeze({
+          previewRunId,
+          status: 'released' as const,
+          workspaceId,
+        });
+      return authorization.value;
     },
   });
 }

@@ -9,7 +9,21 @@ export interface Q11DatabaseIdentity {
   readonly role: string;
 }
 
-export async function waitForQ11OverlapBarrier(): Promise<void> {
+type Q11BarrierDependencies = Readonly<{
+  access?: (path: string) => Promise<void>;
+  delay?: (milliseconds: number) => Promise<unknown>;
+  now?: () => number;
+  timeoutMillis?: number;
+  writeFile?: (
+    path: string,
+    data: string,
+    options: Readonly<{ flag: 'wx' }>,
+  ) => Promise<void>;
+}>;
+
+export async function waitForQ11OverlapBarrier(
+  dependencies: Q11BarrierDependencies = {},
+): Promise<void> {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
   const directory = process.env.PERTEXO_Q11_OVERLAP_DIRECTORY;
   const participant = process.env.PERTEXO_Q11_OVERLAP_PARTICIPANT;
@@ -20,14 +34,21 @@ export async function waitForQ11OverlapBarrier(): Promise<void> {
     !/^[a-z0-9][a-z0-9-]{0,39}$/u.test(participant)
   )
     throw new Error('Q11 overlap barrier configuration is incomplete');
-  await writeFile(path.join(directory, `${participant}.ready`), '', {
+  const write = dependencies.writeFile ?? writeFile;
+  const inspect = dependencies.access ?? access;
+  const wait = dependencies.delay ?? ((milliseconds) => delay(milliseconds));
+  const now = dependencies.now ?? Date.now;
+  const timeoutMillis = dependencies.timeoutMillis ?? 60_000;
+  if (!Number.isSafeInteger(timeoutMillis) || timeoutMillis < 1)
+    throw new Error('Q11 overlap barrier timeout is invalid');
+  await write(path.join(directory, `${participant}.ready`), '', {
     flag: 'wx',
   });
   const release = path.join(directory, 'release');
-  const deadline = Date.now() + 60_000;
+  const deadline = now() + timeoutMillis;
   for (;;) {
     try {
-      await access(release);
+      await inspect(release);
       return;
     } catch (error: unknown) {
       if (
@@ -37,9 +58,9 @@ export async function waitForQ11OverlapBarrier(): Promise<void> {
       )
         throw error;
     }
-    if (Date.now() >= deadline)
+    if (now() >= deadline)
       throw new Error('Timed out waiting for the Q11 overlap release');
-    await delay(10);
+    await wait(10);
   }
 }
 

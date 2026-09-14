@@ -77,6 +77,10 @@ export async function loadMigrationExecutionPlan(
 
   const parsed = executionPlanSchema.parse(JSON.parse(raw));
   const knownNames = new Set(migrationNames);
+  if (!knownNames.has(parsed.transactionalThrough))
+    throw new Error(
+      `Migration execution plan transactional boundary is unknown: ${parsed.transactionalThrough}`,
+    );
   for (const name of Object.keys(parsed.migrations))
     if (!knownNames.has(name))
       throw new Error(
@@ -97,15 +101,22 @@ export async function loadMigrationExecutionPlan(
       throw new Error(
         `Migration rollback window must precede the migration: ${name}`,
       );
+    if (!knownNames.has(execution.rollbackCompatibleThrough))
+      throw new Error(
+        `Migration rollback window references unknown file: ${execution.rollbackCompatibleThrough}`,
+      );
   }
 
   return Object.freeze({
-    executionFor: (name: string): MigrationExecution =>
-      name <= parsed.transactionalThrough
-        ? Object.freeze({ mode: 'transactional' as const })
-        : (parsed.migrations[name] ??
-          (() => {
-            throw new Error(`Migration execution mode is undeclared: ${name}`);
-          })()),
+    executionFor: (name: string): MigrationExecution => {
+      if (!knownNames.has(name))
+        throw new Error(`Migration execution plan file is unknown: ${name}`);
+      if (name <= parsed.transactionalThrough)
+        return Object.freeze({ mode: 'transactional' as const });
+      const execution = parsed.migrations[name];
+      if (execution === undefined)
+        throw new Error(`Migration execution mode is undeclared: ${name}`);
+      return execution;
+    },
   });
 }

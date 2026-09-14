@@ -8,6 +8,7 @@ import {
   ProblemDetailsFilter,
   RequestContextStore,
   applicationError,
+  isApplicationError,
 } from '../../src/platform/http/index.js';
 import { IdentityError } from '../../src/identity/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
@@ -51,6 +52,13 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  it.each([null, undefined, false, 0, 'request.invalid'])(
+    'does not classify primitive value %j as an application error',
+    (value) => {
+      expect(isApplicationError(value)).toBe(false);
+    },
+  );
+
   it('exposes the current lifecycle revision without a draft ETag or untrusted details', () => {
     const response = responseMock();
     new ProblemDetailsFilter(new RequestContextStore()).catch(
@@ -403,6 +411,47 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
+  it('escapes both tilde and slash segments in validation pointers', () => {
+    const response = responseMock();
+    const error = new z.ZodError([
+      { code: 'custom', path: ['a~b/c'], message: 'Invalid field' },
+    ]);
+
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      error,
+      hostFor({ url: '/v1/profile' }, response),
+    );
+
+    expect(response.body).toMatchObject({
+      errors: [{ path: '/a~0b~1c', message: 'Invalid field' }],
+    });
+  });
+
+  it.each([0, 100, 101])('bounds %i validation issues at 100', (count) => {
+    const response = responseMock();
+    const error = new z.ZodError(
+      Array.from({ length: count }, (_, index) => ({
+        code: 'custom' as const,
+        path: ['fields', index],
+        message: `Invalid field ${String(index)}`,
+      })),
+    );
+
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      error,
+      hostFor({ url: '/v1/profile' }, response),
+    );
+
+    const body: unknown = response.body;
+    if (typeof body !== 'object' || body === null || !('errors' in body))
+      throw new Error('Problem response errors are missing');
+    const errors: unknown = body.errors;
+    expect(Array.isArray(errors)).toBe(true);
+    if (!Array.isArray(errors))
+      throw new Error('Problem errors are not an array');
+    expect(errors).toHaveLength(Math.min(count, 100));
+  });
+
   it('maps Nest validation exceptions without trusting arbitrary response fields', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };
@@ -479,6 +528,119 @@ describe('RFC 9457 problem details filter', () => {
     );
   });
 
+  it.each([
+    [
+      'throwing has trap',
+      () =>
+        new Proxy(
+          {},
+          {
+            has: () => {
+              throw new Error('hostile has trap');
+            },
+          },
+        ),
+    ],
+    [
+      'throwing get trap',
+      () =>
+        new Proxy(
+          { code: 'request.invalid' },
+          {
+            get: () => {
+              throw new Error('hostile get trap');
+            },
+          },
+        ),
+    ],
+    [
+      'throwing getOwnPropertyDescriptor trap',
+      () =>
+        new Proxy(
+          {},
+          {
+            getOwnPropertyDescriptor: () => {
+              throw new Error('hostile descriptor trap');
+            },
+          },
+        ),
+    ],
+    [
+      'throwing getPrototypeOf trap',
+      () =>
+        new Proxy(
+          {},
+          {
+            getPrototypeOf: () => {
+              throw new Error('hostile prototype trap');
+            },
+          },
+        ),
+    ],
+    [
+      'known code with throwing metadata getter',
+      () => {
+        const value = { code: 'request.invalid' };
+        Object.defineProperty(value, 'safeDetail', {
+          get: () => {
+            throw new Error('hostile safe detail getter');
+          },
+        });
+        return value;
+      },
+    ],
+    [
+      'revoked proxy',
+      () => {
+        const revocable = Proxy.revocable({}, {});
+        revocable.revoke();
+        return revocable.proxy;
+      },
+    ],
+  ] as const)('fails closed for a %s', (_label, createException) => {
+    const response = responseMock();
+    const logger = { log: vi.fn() };
+    const exception = createException();
+
+    new ProblemDetailsFilter(new RequestContextStore(), logger).catch(
+      exception,
+      hostFor({ url: '/v1/hostile' }, response),
+    );
+
+    expect(response.status).toHaveBeenCalledOnce();
+    expect(response.status).toHaveBeenCalledWith(500);
+    expect(response.send).toHaveBeenCalledOnce();
+    expect(response.body).toMatchObject({
+      code: 'internal.unexpected',
+      status: 500,
+    });
+    expect(logger.log).toHaveBeenCalledOnce();
+    const logged: unknown = logger.log.mock.calls[0]?.[0];
+    if (typeof logged !== 'object' || logged === null || !('cause' in logged))
+      throw new Error('Logged problem cause is missing');
+    expect(logged.cause).toBe(exception);
+  });
+
+  it('fails closed when an injected feature mapper throws', () => {
+    const response = responseMock();
+    const cause = new Error('private mapper input');
+    const mapper = vi.fn(() => {
+      throw new Error('mapper failed');
+    });
+
+    new ProblemDetailsFilter(new RequestContextStore(), undefined, [
+      mapper,
+    ]).catch(cause, hostFor({ url: '/v1/mapper' }, response));
+
+    expect(mapper).toHaveBeenCalledOnce();
+    expect(response.status).toHaveBeenCalledWith(500);
+    expect(response.send).toHaveBeenCalledOnce();
+    expect(response.body).toMatchObject({
+      code: 'internal.unexpected',
+      status: 500,
+    });
+  });
+
   it.each([418, 504])(
     'preserves an explicit unmapped HTTP status %i without inventing a domain code',
     (status) => {
@@ -539,6 +701,23 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
+  it.each([Number.NaN, 418.5])(
+    'normalizes non-integer framework status %s to a safe 500',
+    (status) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        new HttpException('unsafe', status),
+        hostFor({ url: '/v1/resource' }, response),
+      );
+
+      expect(response.status).toHaveBeenCalledWith(500);
+      expect(response.body).toMatchObject({
+        status: 500,
+        code: 'internal.unexpected',
+      });
+    },
+  );
+
   it('renders typed revision conflicts with the current strong validator', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };
@@ -583,21 +762,69 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
-  it('fails malformed revision-conflict metadata closed as an internal error', () => {
+  it.each([
+    [
+      'invalid revision',
+      {
+        currentRevision: 0,
+        currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+      },
+    ],
+    ['invalid ETag', { currentRevision: 2, currentEtag: 'weak' }],
+  ])(
+    'fails %s conflict metadata closed as an internal error',
+    (_name, details) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError('workflow.revision_conflict', {
+          details,
+        }),
+        hostFor({ url: '/v1/workflows/workflow-1' }, response),
+      );
+
+      expect(response.body).toMatchObject({
+        status: 500,
+        code: 'internal.unexpected',
+      });
+      expect(response.header).not.toHaveBeenCalledWith(
+        'etag',
+        expect.anything(),
+      );
+    },
+  );
+
+  it.each([1, 300])('emits valid retry bound %i', (retryAfterSeconds) => {
     const response = responseMock();
     new ProblemDetailsFilter(new RequestContextStore()).catch(
-      applicationError('workflow.revision_conflict', {
-        details: { currentRevision: 0, currentEtag: 'weak' },
+      applicationError('request.rate_limited', {
+        details: { retryAfterSeconds },
       }),
-      hostFor({ url: '/v1/workflows/workflow-1' }, response),
+      hostFor({ url: '/v1/workflows' }, response),
     );
 
-    expect(response.body).toMatchObject({
-      status: 500,
-      code: 'internal.unexpected',
-    });
-    expect(response.header).not.toHaveBeenCalledWith('etag', expect.anything());
+    expect(response.header).toHaveBeenCalledWith(
+      'retry-after',
+      String(retryAfterSeconds),
+    );
   });
+
+  it.each([0, 301, 1.5, Number.NaN, '2'])(
+    'omits invalid retry bound %j',
+    (retryAfterSeconds) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError('request.rate_limited', {
+          details: { retryAfterSeconds },
+        }),
+        hostFor({ url: '/v1/workflows' }, response),
+      );
+
+      expect(response.header).not.toHaveBeenCalledWith(
+        'retry-after',
+        expect.anything(),
+      );
+    },
+  );
 
   it('exposes only bounded typed workflow validation issues', () => {
     const contexts = new RequestContextStore();

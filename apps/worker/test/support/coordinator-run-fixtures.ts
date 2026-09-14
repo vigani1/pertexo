@@ -7,6 +7,7 @@ import {
 } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/database/api';
 import { platformRegistryReleaseSupport } from '@pertexo/node-catalog';
+import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
   createCheckpoint,
@@ -14,18 +15,16 @@ import {
   createExecutableCompatibilityReleaseSupport,
   invocationKey,
 } from '@pertexo/workflow-engine';
+import { Queue } from 'bullmq';
 import { expect } from 'vitest';
 
-import {
-  JOB_NAME,
-  QUEUE_NAME,
-  Queue,
-  apiDatabase,
+import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
+import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
+
+const {
   actorId,
   conditionWorkflowId,
   conditionWorkflowVersionId,
-  createCoordinatorRuntime,
-  createQueueProducer,
   databaseUrl,
   engineVersion,
   forEachWorkflowId,
@@ -40,12 +39,14 @@ import {
   switchWorkflowId,
   switchWorkflowVersionId,
   waitFor,
+  waitWorkflowId,
+  waitWorkflowVersionId,
   workerQuery,
   workerUrl,
   workflowId,
   workflowVersionId,
   workspaceId,
-} from '../coordinator-consumer.fixtures.js';
+} = coordinatorFixture;
 
 export interface AcceptedRun {
   readonly outboxEventId: string;
@@ -65,19 +66,39 @@ export interface CoordinatorRedeliveryHarness {
 export async function createCoordinatorRedeliveryHarness(
   accepted: AcceptedRun,
 ): Promise<CoordinatorRedeliveryHarness> {
-  const runtime = await createCoordinatorRuntime({
-    database: parseDatabaseConfig({
-      connectionString: databaseUrl(workerUrl),
-      max: 4,
-    }),
-    maximumAdmissions: 1,
-    releaseCohort: 'for_each_activation',
-    redisUrl,
-  });
-  const producer = createQueueProducer({ redisUrl });
-  const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-    connection: redisConnection(),
-  });
+  const owners: (() => void | Promise<void>)[] = [];
+  let runtime: Awaited<ReturnType<typeof createCoordinatorRuntime>>;
+  let producer: ReturnType<typeof createQueueProducer>;
+  let queue: Queue;
+  try {
+    runtime = await createCoordinatorRuntime({
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 4,
+      }),
+      maximumAdmissions: 1,
+      releaseCohort: 'for_each_activation',
+      redisUrl,
+    });
+    owners.push(() => runtime.close());
+    producer = createQueueProducer({ redisUrl });
+    owners.push(() => producer.close());
+    queue = new Queue(QUEUE_NAME.workflowCoordinator, {
+      connection: redisConnection(),
+    });
+    owners.push(() => queue.close());
+  } catch (startupError: unknown) {
+    const errors: unknown[] = [startupError];
+    for (const closeOwner of owners.reverse())
+      await Promise.resolve()
+        .then(closeOwner)
+        .catch((error: unknown) => errors.push(error));
+    if (errors.length === 1) throw startupError;
+    throw new AggregateError(
+      errors,
+      'Coordinator redelivery harness startup failed',
+    );
+  }
   const job = {
     name: JOB_NAME.advanceWorkflowRun,
     data: {
@@ -89,12 +110,21 @@ export async function createCoordinatorRedeliveryHarness(
   };
   let published: Awaited<ReturnType<typeof producer.publish>> | undefined;
 
-  const close = async () => {
-    await Promise.allSettled([
-      producer.close(),
-      runtime.close(),
-      queue.close(),
-    ]);
+  let closePromise: Promise<void> | undefined;
+  const close = () => {
+    closePromise ??= (async () => {
+      const errors: unknown[] = [];
+      for (const closeOwner of owners.reverse())
+        await Promise.resolve()
+          .then(closeOwner)
+          .catch((error: unknown) => errors.push(error));
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Coordinator redelivery harness cleanup failed',
+        );
+    })();
+    return closePromise;
   };
 
   const publishInitial = async () => {
@@ -102,7 +132,8 @@ export async function createCoordinatorRedeliveryHarness(
       runtime.consumer.waitUntilReady(5_000),
       producer.waitUntilReady(5_000),
     ]);
-    published = await producer.publish(job);
+    const initialPublished = await producer.publish(job);
+    published = initialPublished;
     const firstTransition = await waitFor(
       async () => {
         const [rows, queuedJob] = await Promise.all([
@@ -111,7 +142,7 @@ export async function createCoordinatorRedeliveryHarness(
                where workspace_id = $1 and workflow_run_id = $2`,
             [workspaceId, accepted.runId],
           ),
-          queue.getJob(published?.jobId ?? ''),
+          queue.getJob(initialPublished.jobId),
         ]);
         return {
           revision: rows[0]?.revision,
@@ -128,27 +159,37 @@ export async function createCoordinatorRedeliveryHarness(
   };
 
   const redeliver = async () => {
-    if (published === undefined) throw new Error('initial job is missing');
+    const currentPublished = published;
+    if (currentPublished === undefined)
+      throw new Error('initial job is missing');
     const firstJob = await waitFor(
-      () => queue.getJob(published?.jobId ?? ''),
+      () => queue.getJob(currentPublished.jobId),
       (value) => value !== undefined,
     );
     if (firstJob === undefined) throw new Error('initial job disappeared');
-    await waitFor(
+    const firstState = await waitFor(
       () => firstJob.getState(),
-      (state) => state === 'completed',
+      (state) => state === 'completed' || state === 'failed',
     );
+    if (firstState !== 'completed')
+      throw new Error(
+        `Initial coordinator job failed: ${firstJob.failedReason}`,
+      );
     await firstJob.remove();
     await producer.publish(job);
     const replay = await waitFor(
-      () => queue.getJob(published?.jobId ?? ''),
+      () => queue.getJob(currentPublished.jobId),
       (value) => value !== undefined,
     );
     if (replay === undefined) throw new Error('redelivered job disappeared');
-    await waitFor(
+    const replayState = await waitFor(
       () => replay.getState(),
-      (state) => state === 'completed',
+      (state) => state === 'completed' || state === 'failed',
     );
+    if (replayState !== 'completed')
+      throw new Error(
+        `Redelivered coordinator job failed: ${replay.failedReason}`,
+      );
   };
 
   return { publishInitial, redeliver, close };
@@ -167,22 +208,24 @@ async function acceptFixtureRun(
     iterationBudget: input.iterationBudget,
     nextEventSequence: 2,
   };
-  return apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    acceptWorkflowRun(transaction, {
-      engineVersion,
-      initialCheckpoint:
-        input.iterationBudget === 0
-          ? createCheckpoint(checkpointInput)
-          : createCheckpointV2(checkpointInput),
-      keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
-      operation: 'workflow.run.accept',
-      runInput: input.workflowId === workflowId ? { name: 'Ada' } : {},
-      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
-      scope: `coordinator:${input.workflowId}`,
-      triggerType: 'manual',
-      workflowId: input.workflowId,
-      workflowVersionId: input.workflowVersionId,
-    }),
+  return coordinatorFixture.apiDatabase.withWorkspace(
+    workspaceId,
+    (transaction) =>
+      acceptWorkflowRun(transaction, {
+        engineVersion,
+        initialCheckpoint:
+          input.iterationBudget === 0
+            ? createCheckpoint(checkpointInput)
+            : createCheckpointV2(checkpointInput),
+        keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
+        operation: 'workflow.run.accept',
+        runInput: input.workflowId === workflowId ? { name: 'Ada' } : {},
+        requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+        scope: `coordinator:${input.workflowId}`,
+        triggerType: 'manual',
+        workflowId: input.workflowId,
+        workflowVersionId: input.workflowVersionId,
+      }),
   );
 }
 
@@ -192,6 +235,34 @@ export function acceptRun(): Promise<AcceptedRun> {
     workflowId,
     workflowVersionId,
   });
+}
+
+export async function cancelFixtureRun(
+  runId: string,
+  reason: string,
+): Promise<void> {
+  const database = createWorkflowRunDatabase(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(apiUrl),
+      max: 2,
+    }),
+    createExecutableCompatibilityReleaseSupport(
+      platformRegistryReleaseSupport('for_each_activation').map(
+        composeExecutableCompatibilityRelease,
+      ),
+    ).descriptions,
+  );
+  try {
+    await database.cancel({
+      actorId,
+      workspaceId,
+      runId,
+      reason,
+      requestId: `for-each-cancel-${randomUUID()}`,
+    });
+  } finally {
+    await database.close();
+  }
 }
 
 export async function acceptReplayRun(): Promise<AcceptedReplayRun> {
@@ -277,6 +348,14 @@ export function acceptForEachRun(): Promise<AcceptedRun> {
     iterationBudget: 1_000,
     workflowId: forEachWorkflowId,
     workflowVersionId: forEachWorkflowVersionId,
+  });
+}
+
+export function acceptWaitRun(): Promise<AcceptedRun> {
+  return acceptFixtureRun({
+    iterationBudget: 1_000,
+    workflowId: waitWorkflowId,
+    workflowVersionId: waitWorkflowVersionId,
   });
 }
 

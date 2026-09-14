@@ -21,7 +21,6 @@ function representation(
   return {
     workflowId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     revision: 1,
-    schemaVersion: 1,
     graph,
     compatibilityFingerprint:
       'wf-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -38,13 +37,32 @@ describe('workflow authoring strong draft ETag', () => {
       }),
     );
     expect(first).toBe(second);
-    expect(first).toMatch(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+    expect(first).toBe(
+      '"draft-v1.xzaPxyaUKr6H4jU2nHgNO0qYBq8iqqmHnSPCfbYc7Qk"',
+    );
   });
 
-  it('changes when the selected representation or compatibility fingerprint changes', () => {
+  it('changes for workflow, revision, graph, or compatibility identity', () => {
     const baseline = createDraftRepresentationTag(representation());
     expect(
+      createDraftRepresentationTag(
+        representation({
+          workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        }),
+      ),
+    ).not.toBe(baseline);
+    expect(
       createDraftRepresentationTag(representation({ revision: 2 })),
+    ).not.toBe(baseline);
+    expect(
+      createDraftRepresentationTag(
+        representation({
+          graph: {
+            ...graph,
+            settings: { maxRunDurationMs: 1_000 },
+          },
+        }),
+      ),
     ).not.toBe(baseline);
     expect(
       createDraftRepresentationTag(
@@ -56,7 +74,7 @@ describe('workflow authoring strong draft ETag', () => {
     ).not.toBe(baseline);
   });
 
-  it('makes mixed current/target API replicas conservatively conflict', () => {
+  it('assigns distinct tags to current and target compatibility projections', () => {
     const current = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );

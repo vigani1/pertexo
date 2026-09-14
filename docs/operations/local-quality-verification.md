@@ -34,7 +34,7 @@ The manifest includes unit/static quality, coverage, a repeated isolated local
 performance baseline, real-service integration, SSE resilience, worker
 transport resilience, API and database compatibility, deployment, image, and
 exercise checks. The performance evidence is written beside the manifest, uses
-the same owned services, and is validated against the schema-v4 evidence
+the same owned services, and is validated against the schema-v5 evidence
 contract before its exclusive output file is accepted. The full runner validates
 it again before qualification succeeds. The manifest also names three AWS-only
 control-ledger policy tests as skipped because local MinIO cannot qualify AWS S3
@@ -50,3 +50,13 @@ pnpm quality:local -- --partial integration-api,sse-resilience
 A partial run starts required service prerequisites automatically, records all
 unselected cohorts as skipped, and labels its manifest `partial`. It is useful
 diagnostic evidence but is never a complete qualification.
+
+Ordinary PR CI keeps its stable `quality` check name and runs the service-free
+`architecture:check`, `built-exports:check`, and `quality:local:check` gates.
+The build step precedes built-export validation. A semantic policy validator
+checks those CI owners, their local `check` ownership, and the nested
+`performance:local:check` contract. Full `quality:local` remains excluded from
+that static job; mutation execution remains owned by the disposable
+`integration` job. Local success confirms repository configuration, not hosted
+execution or branch-protection settings; those require an exact-revision PR run
+and externally retained required-check evidence.

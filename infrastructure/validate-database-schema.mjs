@@ -18,6 +18,14 @@ const registryPath = path.join(
   repositoryRoot,
   'packages/database/raw-sql-table-registry.json',
 );
+const rawTableRoleNames = new Set([
+  'api_runtime_role',
+  'dispatcher_role',
+  'lifecycle_command_role',
+  'maintenance_role',
+  'operator_role',
+  'worker_runtime_role',
+]);
 
 export async function validateDatabaseSchemaOwnership() {
   const migrationNames = (await readdir(migrationsDirectory))
@@ -43,6 +51,21 @@ export async function validateDatabaseSchemaOwnership() {
   ).join('\n');
   const registry = JSON.parse(await readFile(registryPath, 'utf8'));
 
+  return validateDatabaseSchemaSources({
+    migrationSql,
+    registry,
+    schemaSource,
+  });
+}
+
+export function validateDatabaseSchemaSources({
+  migrationSql,
+  registry,
+  schemaSource,
+}) {
+  if (typeof migrationSql !== 'string' || typeof schemaSource !== 'string')
+    throw new TypeError('Database schema sources must be strings');
+
   const migrationTables = matches(
     migrationSql,
     /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?app\.([a-z0-9_]+)/giu,
@@ -65,12 +88,17 @@ export async function validateDatabaseSchemaOwnership() {
   for (const entry of registry) {
     if (
       typeof entry?.name !== 'string' ||
+      !/^[a-z][a-z0-9_]*$/u.test(entry.name) ||
       entry.owner !== 'owner_role' ||
       !Array.isArray(entry.accessRoles) ||
       entry.accessRoles.length === 0 ||
+      !entry.accessRoles.every(
+        (role) => typeof role === 'string' && rawTableRoleNames.has(role),
+      ) ||
+      new Set(entry.accessRoles).size !== entry.accessRoles.length ||
       !['forced', 'not_applicable'].includes(entry.rls) ||
       typeof entry.reason !== 'string' ||
-      entry.reason.length < 40
+      entry.reason.trim().length < 40
     ) {
       throw new Error(
         `Invalid raw SQL table registry entry: ${JSON.stringify(entry)}`,

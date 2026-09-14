@@ -10,12 +10,11 @@ import {
 import type { IdentityClock, IdentityCrypto } from '../identity/index.js';
 import { RequestContextStore } from '../platform/http/index.js';
 import {
-  OidcController,
-  SessionController,
   UserController,
   WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
+import { OidcController, SessionController } from './auth-controllers.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,

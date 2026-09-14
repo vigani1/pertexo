@@ -2,9 +2,10 @@
 
 Startup compatibility deliberately verifies the exact PostgreSQL function body
 stored in `pg_proc.prosrc` for security- and compatibility-critical functions.
-The recurring readiness probe does not run these catalog checks. Formatting-only
-changes therefore remain operational changes: PostgreSQL normalizes the stored
-body, and a different `md5(prosrc)` blocks startup.
+The recurring readiness probe does not run these catalog checks. For these
+interpreted/string-body functions, `prosrc` is PostgreSQL's stored source text,
+not a formatting-normalized representation. Formatting-only edits can therefore
+change `md5(prosrc)` and remain operational changes that block startup.
 
 ## Hashed function inventory
 
@@ -20,8 +21,11 @@ body, and a different `md5(prosrc)` blocks startup.
 | `app.node_compatibility_artifact_set_valid(jsonb)` | `1ee6b6a001eb02b6b5a95f671240ae69` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.compatibility_preactivation_cohort_complete(character varying,integer,character varying,character varying,jsonb)` | `4bd8e8a005eebc013d41ae6b6a55b976` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 
-`packages/database/src/platform/readiness.ts` is the executable inventory. This table is
-an operator aid and must change in the same commit whenever that code changes.
+The executable inventory is split between
+`packages/database/src/platform/readiness.ts` (compatibility-release functions)
+and `packages/database/src/platform/readiness-probe-3.sql.ts` (the preview pin
+guard). This table is an operator aid and must change in the same commit whenever
+either inventory changes.
 
 ## Synchronized update procedure
 

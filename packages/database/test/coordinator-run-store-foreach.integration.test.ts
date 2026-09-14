@@ -15,7 +15,7 @@ import {
   parseDatabaseConfig,
   randomUUID,
   rawStore,
-  store,
+  ownedDeliveryStore,
   testDelivery,
   versionA,
   workerBaseUrl,
@@ -113,7 +113,7 @@ describe('Coordinator For Each persistence invariants', () => {
     });
 
     let operationStartedAt = performance.now();
-    const loaded = await store.loadAdvanceState({
+    const loaded = await ownedDeliveryStore.loadAdvanceState({
       workspaceId: workspaceA,
       runId,
       signal: new AbortController().signal,
@@ -243,8 +243,11 @@ describe('Coordinator For Each persistence invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     );
-    await expect(scanner.claimDueWakeups(100)).resolves.toBe(0);
-    await scanner.close();
+    try {
+      await expect(scanner.claimDueWakeups(100)).resolves.toBe(0);
+    } finally {
+      await scanner.close();
+    }
 
     const freshStore = createCoordinatorRunStore(
       parseDatabaseConfig({
@@ -254,17 +257,20 @@ describe('Coordinator For Each persistence invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     );
-    await expect(
-      freshStore.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({
-      kind: 'ready',
-      state: { checkpoint: { revision: 1, loops: [{ nextOrdinal: 1 }] } },
-    });
-    await freshStore.close();
+    try {
+      await expect(
+        freshStore.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({
+        kind: 'ready',
+        state: { checkpoint: { revision: 1, loops: [{ nextOrdinal: 1 }] } },
+      });
+    } finally {
+      await freshStore.close();
+    }
 
     const persisted = await asRuntime(workerBaseUrl, workspaceA, (client) =>
       client.query<{
@@ -303,7 +309,7 @@ describe('Coordinator For Each persistence invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,

@@ -198,16 +198,23 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
         has_table_privilege($2, 'app.workflow_runs', 'SELECT')
         and not exists (
           select 1 from (values
-            ('node_attempts_executor_failure_complete'),
-            ('node_attempts_executor_failure_kind_valid'),
-            ('node_attempts_executor_error_kind_valid'),
-            ('node_attempts_retry_decision_valid'),
-            ('node_attempts_executor_failure_only_failed')
-          ) expected(constraint_name)
+            ('node_attempts', 'node_attempts_executor_failure_complete', 'a26f4dab1c76073c0c7fd8f7f24b2ef8'),
+            ('node_attempts', 'node_attempts_executor_failure_kind_valid', 'a0672099d8264a9a5c45ed8b47fff5e3'),
+            ('node_attempts', 'node_attempts_executor_error_kind_valid', 'c2402ac4536fd5e42e5aba48157deb35'),
+            ('node_attempts', 'node_attempts_retry_decision_valid', '80ec4124618ff47d27f7dae58a3a19ec'),
+            ('node_attempts', 'node_attempts_executor_failure_only_failed', 'ae628dc62cd9da0fc594eb6fafade890'),
+            ('node_runs', 'node_runs_provider_dispatch_binding_format', '06f600b7f9331e0a59fa4f377acd6fec'),
+            ('preview_attempts', 'preview_attempts_provider_dispatch_binding_format', '06f600b7f9331e0a59fa4f377acd6fec')
+          ) expected(table_name, constraint_name, expression_hash)
           where not exists (
             select 1 from pg_constraint constraint_record
-            where constraint_record.conrelid=to_regclass('app.node_attempts')
+            where constraint_record.conrelid=to_regclass('app.' || expected.table_name)
               and constraint_record.conname=expected.constraint_name
+              and constraint_record.contype='c'
+              and constraint_record.convalidated
+              and md5(pg_get_expr(
+                constraint_record.conbin, constraint_record.conrelid
+              ))=expected.expression_hash
           )
         )
         and (
@@ -216,16 +223,6 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
           where constraint_record.conrelid = to_regclass('app.node_runs')
             and constraint_record.conname = 'node_runs_invocation_key_format'
         ) = $invocation_constraint$(((invocation_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'::text) OR ((invocation_key)::text ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'::text))$invocation_constraint$
-        and exists (
-          select 1 from pg_constraint
-          where conrelid=to_regclass('app.node_runs')
-            and conname='node_runs_provider_dispatch_binding_format'
-        )
-        and exists (
-          select 1 from pg_constraint
-          where conrelid=to_regclass('app.preview_attempts')
-            and conname='preview_attempts_provider_dispatch_binding_format'
-        )
         and has_table_privilege($2, 'app.run_checkpoints', 'SELECT')
         and has_table_privilege($2, 'app.run_events', 'SELECT')
         and has_table_privilege($2, 'app.node_runs', 'SELECT')
@@ -259,12 +256,13 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
         and not has_table_privilege($2, 'app.inbox_receipts', 'UPDATE')
         and not has_table_privilege($2, 'app.transport_security_audit_facts', 'UPDATE')
         and not exists (
-          select 1 from information_schema.column_privileges privilege
-          where privilege.table_schema='app'
-            and privilege.table_name='inbox_receipts'
-            and privilege.grantee=$2
-            and privilege.privilege_type='UPDATE'
-            and privilege.column_name <> 'completed_at'
+          select 1 from pg_attribute attribute
+          where attribute.attrelid=to_regclass('app.inbox_receipts')
+            and attribute.attnum > 0 and not attribute.attisdropped
+            and attribute.attname <> 'completed_at'
+            and has_column_privilege(
+              $2, attribute.attrelid, attribute.attnum, 'UPDATE'
+            )
         )
         and not exists (
           select 1 from (values
@@ -278,30 +276,34 @@ ${READINESS_ARTIFACT_CAPACITY_SQL}      (
         )
         and not exists (
           select 1
-          from information_schema.column_privileges privilege
-          where privilege.table_schema='app'
-            and privilege.grantee=$2
-            and privilege.privilege_type='UPDATE'
-            and privilege.table_name in (
-              'workflow_runs', 'run_checkpoints', 'node_runs', 'node_attempts'
+          from (values
+            ('workflow_runs'), ('run_checkpoints'), ('node_runs'), ('node_attempts')
+          ) protected(table_name)
+          join pg_class relation
+            on relation.oid=to_regclass('app.' || protected.table_name)
+          join pg_attribute attribute
+            on attribute.attrelid=relation.oid
+           and attribute.attnum > 0 and not attribute.attisdropped
+          where has_column_privilege(
+              $2, relation.oid, attribute.attnum, 'UPDATE'
             )
             and not (
-              (privilege.table_name='workflow_runs' and privilege.column_name in (
+              (protected.table_name='workflow_runs' and attribute.attname in (
                 'status','started_at','completed_at','output_ref','error_summary','updated_at',
                 'deadline_wakeup_at'
               ))
-              or (privilege.table_name='run_checkpoints' and privilege.column_name in (
+              or (protected.table_name='run_checkpoints' and attribute.attname in (
                 'revision','engine_version','scheduler_state','resume_at',
                 'resume_lease_owner','resume_lease_token','resume_lease_expires_at',
                 'updated_at','last_transition_fingerprint'
               ))
-              or (privilege.table_name='node_runs' and privilege.column_name in (
+              or (protected.table_name='node_runs' and attribute.attname in (
                 'status','output_ref','current_attempt_id','current_attempt_number',
                  'resume_at','retry_due_at','safe_error_code','updated_at',
                   'started_at','completed_at','due_wakeup_at','control_kind','wait_kind',
                   'provider_dispatch_binding'
               ))
-              or (privilege.table_name='node_attempts' and privilege.column_name in (
+              or (protected.table_name='node_attempts' and attribute.attname in (
                 'status','lease_owner','lease_expires_at','fence_token',
                  'dispatch_marked_at','output_ref','safe_error_code','error_summary',
                  'reconciliation_ref','updated_at','started_at','completed_at',

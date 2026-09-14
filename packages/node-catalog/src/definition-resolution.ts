@@ -65,6 +65,13 @@ export const PLATFORM_NODE_DEFINITION_REGISTRATIONS = Object.freeze([
   EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
 ] as const satisfies readonly NodeDefinitionRegistration[]);
 
+const PLATFORM_NODE_DEFINITION_REGISTRATIONS_BY_IDENTITY = new Map(
+  PLATFORM_NODE_DEFINITION_REGISTRATIONS.map((registration) => [
+    platformIdentityToken(registration.manifest.definition),
+    registration,
+  ]),
+);
+
 export function platformIdentityToken(
   identity: Readonly<{ key: string; version: number }>,
 ): string {
@@ -100,12 +107,18 @@ export function resolvePlatformNodeDefinitionForRelease(
       candidate.definition.key === definition.key &&
       candidate.definition.version === definition.version,
   );
-  const registration = PLATFORM_NODE_DEFINITION_REGISTRATIONS.find(
-    (candidate) =>
-      candidate.manifest.definition.key === definition.key &&
-      candidate.manifest.definition.version === definition.version,
+  if (manifest === undefined)
+    throw new Error('Platform compatibility definition is not implemented');
+  return resolveRegisteredPlatformManifest(manifest);
+}
+
+function resolveRegisteredPlatformManifest(
+  manifest: ReturnType<typeof parseRegistryRelease>['definitions'][number],
+): PlatformNodeDefinition {
+  const registration = PLATFORM_NODE_DEFINITION_REGISTRATIONS_BY_IDENTITY.get(
+    platformIdentityToken(manifest.definition),
   );
-  if (manifest === undefined || registration === undefined)
+  if (registration === undefined)
     throw new Error('Platform compatibility definition is not implemented');
   return Object.freeze({ ...registration, manifest });
 }
@@ -130,7 +143,9 @@ function compareDefinitionIdentity(
 export function platformBrowserNodeDefinitionCatalog(
   cohort: PlatformReleaseCohort,
 ): PlatformNodeDefinitionBrowserCatalog {
-  const release = platformServingRegistryRelease(cohort);
+  const release = parseSupportedPlatformRelease(
+    platformServingRegistryRelease(cohort),
+  );
   const activeExecutors = new Set(
     release.executors
       .filter(({ lifecycle }) => lifecycle === 'active')
@@ -150,10 +165,7 @@ export function platformBrowserNodeDefinitionCatalog(
       compareDefinitionIdentity(left.definition, right.definition),
     )
     .map((manifest) => {
-      const registration = resolvePlatformNodeDefinitionForRelease(
-        release,
-        manifest.definition,
-      );
+      const registration = resolveRegisteredPlatformManifest(manifest);
       const projection = registration.manifest;
       return Object.freeze({
         schemaVersion: projection.schemaVersion,

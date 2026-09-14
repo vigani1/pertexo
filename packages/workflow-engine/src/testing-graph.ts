@@ -30,10 +30,23 @@ export function parseSchedulerGraph(value: unknown): SchedulerGraph {
       })),
     };
   } catch (error) {
-    if (error instanceof WorkflowEngineError) throw error;
+    let isEngineError = false;
+    try {
+      isEngineError = error instanceof WorkflowEngineError;
+    } catch {
+      // Hostile rejection values are normalized below.
+    }
+    if (isEngineError) throw error;
+    let message: string | undefined;
+    try {
+      if (error instanceof Error && typeof error.message === 'string')
+        message = error.message;
+    } catch {
+      // Hostile rejection values are normalized below.
+    }
     throw new WorkflowEngineError(
       'graph_invalid',
-      error instanceof Error ? error.message : 'graph parsing failed',
+      message ?? 'graph parsing failed',
     );
   }
 }

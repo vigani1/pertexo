@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowAuthoringController } from '../../src/workflow-authoring/controllers.js';
-import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -21,6 +20,27 @@ const body = {
     issues: [],
   },
   updatedAt: '2026-08-20T12:00:00.000Z',
+};
+const workflow = {
+  id: workflowId,
+  workspaceId,
+  name: 'Operations',
+  lifecycleStatus: 'active' as const,
+  lifecycleRevision: 1,
+  activationStatus: 'inactive' as const,
+  publishedVersionId: null,
+  createdAt: '2026-08-20T12:00:00.000Z',
+  updatedAt: '2026-08-20T12:00:00.000Z',
+};
+const version = {
+  id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  workflowId,
+  versionNumber: 1,
+  schemaVersion: 1 as const,
+  graph: body.graph,
+  checksum:
+    'wf:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  publishedAt: '2026-08-20T12:00:00.000Z',
 };
 
 function request(
@@ -43,15 +63,18 @@ function request(
 }
 
 function makeController() {
+  const listWorkflows = {
+    execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  };
   const restoreVersion = {
     execute: vi.fn().mockResolvedValue({ body, representationTag: tag }),
   };
   const transitionLifecycle = {
-    execute: vi.fn().mockResolvedValue({ workflow: {}, replayed: false }),
+    execute: vi.fn().mockResolvedValue({ workflow, replayed: false }),
   };
   const createWorkflow = {
     execute: vi.fn().mockResolvedValue({
-      body: { workflow: {}, draft: body },
+      body: { workflow, draft: body },
       representationTag: tag,
     }),
   };
@@ -62,27 +85,27 @@ function makeController() {
     execute: vi.fn().mockResolvedValue({ body, representationTag: tag }),
   };
   const publishWorkflow = {
-    execute: vi.fn().mockResolvedValue({ version: {}, reused: false }),
+    execute: vi.fn().mockResolvedValue({ version, reused: false }),
+  };
+  const validateDraft = {
+    execute: vi.fn().mockResolvedValue({
+      valid: true,
+      issues: [],
+      compatibility: body.compatibility,
+    }),
+  };
+  const listVersions = {
+    execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   };
   return {
     controller: new WorkflowAuthoringController(
-      {
-        execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
-      } as never,
+      listWorkflows as never,
       createWorkflow as never,
       getDraft as never,
       saveDraft as never,
-      {
-        execute: vi.fn().mockResolvedValue({
-          valid: true,
-          issues: [],
-          compatibility: body.compatibility,
-        }),
-      } as never,
+      validateDraft as never,
       publishWorkflow as never,
-      {
-        execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
-      } as never,
+      listVersions as never,
       transitionLifecycle as never,
       restoreVersion as never,
     ),
@@ -92,10 +115,39 @@ function makeController() {
     getDraft,
     saveDraft,
     publishWorkflow,
+    listWorkflows,
+    listVersions,
+    validateDraft,
   };
 }
 
 describe('workflow authoring controller public seam', () => {
+  it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
+    const { controller, listWorkflows } = makeController();
+    await expect(
+      controller.list(request(), { workspaceId }, { limit: '100' }),
+    ).resolves.toEqual({ items: [], nextCursor: null });
+    expect(listWorkflows.execute).toHaveBeenCalledExactlyOnceWith({
+      actor: {
+        actorId,
+        kind: 'user',
+        requestId: 'request-42',
+        sessionId,
+        workspaceId,
+      },
+      requestId: 'request-42',
+      routeWorkspaceId: workspaceId,
+      limit: 100,
+    });
+
+    for (const after of ['', 'x'.repeat(513)]) {
+      await expect(
+        controller.list(request(), { workspaceId }, { after }),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+    }
+    expect(listWorkflows.execute).toHaveBeenCalledOnce();
+  });
+
   it('uses session context without a guard and gives guarded context precedence', async () => {
     const { controller, createWorkflow } = makeController();
     await controller.create(
@@ -154,7 +206,7 @@ describe('workflow authoring controller public seam', () => {
     );
   });
 
-  it('maps an invalid session actor to request.invalid status 400', async () => {
+  it('maps an invalid session actor to request.invalid before delegation', async () => {
     const { controller, createWorkflow } = makeController();
     const invalid = {
       ...request({ 'idempotency-key': 'invalid-actor' }),
@@ -171,7 +223,6 @@ describe('workflow authoring controller public seam', () => {
         { header: vi.fn() },
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
     expect(createWorkflow.execute).not.toHaveBeenCalled();
   });
   it('requires If-Match for version restore and returns its fresh draft tag', async () => {
@@ -233,7 +284,7 @@ describe('workflow authoring controller public seam', () => {
     },
   );
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
-    const { controller } = makeController();
+    const { controller, getDraft } = makeController();
     const response = { header: vi.fn() };
     const result = await controller.draft(
       request(),
@@ -241,11 +292,23 @@ describe('workflow authoring controller public seam', () => {
       response,
     );
     expect(result).toEqual(body);
+    expect(getDraft.execute).toHaveBeenCalledExactlyOnceWith({
+      actor: {
+        actorId,
+        kind: 'user',
+        requestId: 'request-42',
+        sessionId,
+        workspaceId,
+      },
+      requestId: 'request-42',
+      routeWorkspaceId: workspaceId,
+      workflowId,
+    });
     expect(response.header).toHaveBeenCalledWith('ETag', tag);
   });
 
-  it('requires If-Match before calling the save use case and maps it to 428', async () => {
-    const { controller } = makeController();
+  it('classifies missing If-Match before calling the save use case', async () => {
+    const { controller, saveDraft } = makeController();
     await expect(
       controller.save(
         request(),
@@ -257,10 +320,11 @@ describe('workflow authoring controller public seam', () => {
       code: 'precondition_required',
       name: 'WorkflowHeaderError',
     });
+    expect(saveDraft.execute).not.toHaveBeenCalled();
   });
 
-  it('maps the create draft representation ETag to the response', async () => {
-    const { controller } = makeController();
+  it('delegates one valid create command and maps its draft ETag', async () => {
+    const { controller, createWorkflow } = makeController();
     const response = { header: vi.fn() };
 
     await controller.create(
@@ -271,10 +335,23 @@ describe('workflow authoring controller public seam', () => {
     );
 
     expect(response.header).toHaveBeenCalledWith('ETag', tag);
+    expect(createWorkflow.execute).toHaveBeenCalledExactlyOnceWith({
+      actor: {
+        actorId,
+        kind: 'user',
+        requestId: 'request-42',
+        sessionId,
+        workspaceId,
+      },
+      requestId: 'request-42',
+      routeWorkspaceId: workspaceId,
+      request: { name: 'Operations' },
+      idempotencyKey: 'create-42',
+    });
   });
 
   it('parses a complete graph and forwards exactly one save command', async () => {
-    const { controller } = makeController();
+    const { controller, saveDraft } = makeController();
     const response = { header: vi.fn() };
     await controller.save(
       request({ 'if-match': tag }),
@@ -283,6 +360,20 @@ describe('workflow authoring controller public seam', () => {
       response,
     );
     expect(response.header).toHaveBeenCalledWith('ETag', tag);
+    expect(saveDraft.execute).toHaveBeenCalledExactlyOnceWith({
+      actor: {
+        actorId,
+        kind: 'user',
+        requestId: 'request-42',
+        sessionId,
+        workspaceId,
+      },
+      requestId: 'request-42',
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      representationTag: tag,
+      graph: body.graph,
+    });
   });
 
   it('forwards request and trace identifiers on mutating commands', async () => {
@@ -329,8 +420,8 @@ describe('workflow authoring controller public seam', () => {
     );
   });
 
-  it('does not call a use case when route or body parsing fails', async () => {
-    const { controller } = makeController();
+  it('does not call create when its route parsing fails', async () => {
+    const { controller, createWorkflow } = makeController();
     await expect(
       controller.create(
         request({ 'idempotency-key': 'create-42' }),
@@ -339,6 +430,20 @@ describe('workflow authoring controller public seam', () => {
         { header: vi.fn() },
       ),
     ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(createWorkflow.execute).not.toHaveBeenCalled();
+  });
+
+  it('does not call save when its independently valid route has a malformed body', async () => {
+    const { controller, saveDraft } = makeController();
+    await expect(
+      controller.save(
+        request({ 'if-match': tag }),
+        { workspaceId, workflowId },
+        { graph: { ...body.graph, unexpected: true } },
+        { header: vi.fn() },
+      ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(saveDraft.execute).not.toHaveBeenCalled();
   });
 
   it('rejects route fields outside the workflow collection contract', async () => {

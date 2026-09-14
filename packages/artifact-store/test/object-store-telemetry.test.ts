@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   ObservedS3Client,
+  observePresign,
   type ObjectStoreObserver,
   type ObjectStoreRequestObservation,
   type ObjectStoreSafetyObservation,
@@ -184,6 +185,148 @@ describe('object-store telemetry', () => {
         workspaceId: WORKSPACE_ID,
       }),
     ).rejects.toThrow('configured limit');
+  });
+
+  it.each(['name', 'metadata', 'prototype', 'revoked'] as const)(
+    'contains hostile %s failure classification and preserves exact rejection',
+    async (shape) => {
+      const target = new Error('private provider detail');
+      let failure: unknown;
+      if (shape === 'name') {
+        Object.defineProperty(target, 'name', {
+          get() {
+            throw new Error('name trap');
+          },
+        });
+        failure = target;
+      } else if (shape === 'metadata') {
+        Object.defineProperty(target, '$metadata', {
+          get() {
+            throw new Error('metadata trap');
+          },
+        });
+        failure = target;
+      } else if (shape === 'prototype') {
+        failure = new Proxy(target, {
+          getPrototypeOf() {
+            throw new Error('prototype trap');
+          },
+        });
+      } else {
+        const revocable = Proxy.revocable(target, {});
+        revocable.revoke();
+        failure = revocable.proxy;
+      }
+      const recording = recordingObserver();
+      const client = new ObservedS3Client(
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- provider failures are unknown at this boundary.
+        { destroy: vi.fn(), send: () => Promise.reject(failure) },
+        recording.observer,
+        'artifact',
+        'artifact',
+      );
+
+      const request = client.send(new HeadBucketCommand({ Bucket: 'secret' }));
+      await expect(request).rejects.toBe(failure);
+      expect(recording.requests).toEqual([
+        expect.objectContaining({ errorClass: 'unknown', outcome: 'error' }),
+      ]);
+
+      const presign = observePresign(
+        recording.observer,
+        'artifact',
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- presigner failures are unknown at this boundary.
+        () => Promise.reject(failure),
+      );
+      await expect(presign).rejects.toBe(failure);
+      expect(recording.requests).toHaveLength(2);
+    },
+  );
+
+  it('contains hostile command inspection without changing a successful result', async () => {
+    const result = Object.freeze({ etag: 'result' });
+    const recording = recordingObserver();
+    const client = new ObservedS3Client(
+      { destroy: vi.fn(), send: () => Promise.resolve(result) },
+      recording.observer,
+      'artifact',
+      'artifact',
+    );
+    const command = new Proxy(
+      {},
+      {
+        get(_target, property) {
+          if (property === 'constructor') throw new Error('constructor trap');
+          return undefined;
+        },
+      },
+    );
+
+    await expect(client.send(command as never)).resolves.toBe(result);
+    expect(recording.requests).toEqual([
+      expect.objectContaining({ operation: 'unknown', outcome: 'success' }),
+    ]);
+  });
+
+  it('contains a hostile abort reason during request classification', async () => {
+    const failure = new Error('provider rejected');
+    const reason = new Proxy(new Error('private cancellation'), {
+      getPrototypeOf() {
+        throw new Error('prototype trap');
+      },
+    });
+    const controller = new AbortController();
+    controller.abort(reason);
+    const recording = recordingObserver();
+    const client = new ObservedS3Client(
+      { destroy: vi.fn(), send: () => Promise.reject(failure) },
+      recording.observer,
+      'artifact',
+      'artifact',
+    );
+
+    await expect(
+      client.send(new HeadBucketCommand({ Bucket: 'secret' }), {
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toBe(failure);
+    expect(recording.requests).toEqual([
+      expect.objectContaining({ errorClass: 'unknown', outcome: 'error' }),
+    ]);
+  });
+
+  it('preserves a hostile provider rejection through the public store wrapper', async () => {
+    const target = new Error('hidden');
+    Object.defineProperty(target, 'name', {
+      get() {
+        throw new Error('name trap');
+      },
+    });
+    const recording = recordingObserver();
+    const store = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 4,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client: {
+          destroy: vi.fn(),
+          send: () => Promise.reject(target),
+        },
+        observer: recording.observer,
+      },
+    );
+
+    await expect(
+      store.head({ artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBe(target);
+    expect(recording.safety).toEqual([]);
   });
 
   it('observes presigning and existing artifact integrity enforcement', async () => {

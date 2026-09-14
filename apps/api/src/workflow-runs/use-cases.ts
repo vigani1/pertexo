@@ -32,6 +32,7 @@ import {
 import {
   NO_STREAM_FAILURE,
   preserveFailureDuringStreamCleanup,
+  streamProducerFailureReason,
   type StreamFailure,
 } from './stream-cleanup.js';
 
@@ -194,15 +195,7 @@ export class CancelWorkflowRunUseCase {
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
       ...(input.reason === undefined ? {} : { reason: input.reason }),
-      ...(input.requestId === undefined
-        ? { requestId: input.actor.requestId }
-        : { requestId: input.requestId }),
-      ...(input.traceId === undefined && input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.traceId ?? input.actor.traceId }),
-      ...(input.traceparent === undefined
-        ? {}
-        : { traceparent: input.traceparent }),
+      ...requestIdentifiers(input),
     });
     return workflowRunCancelResponseSchema.parse({
       run: toRunSummary(result.run),
@@ -231,41 +224,47 @@ export class StreamRunEventsUseCase {
       runId: input.runId,
     });
     if (run === undefined) throw new WorkflowRunNotFoundError();
-    const lifetimeController = new AbortController();
-    const lifetimeSignal = AbortSignal.any([
-      input.signal,
-      lifetimeController.signal,
-    ]);
-    const frames = this.streamer.stream({
-      workspaceId: input.routeWorkspaceId,
-      runId: input.runId,
-      lastEventId: input.lastEventId,
-      signal: lifetimeSignal,
-    });
-    const authorizationLifetime = createStreamAuthorizationLifetime(
-      { ...input, signal: lifetimeSignal },
+    return authorizedStreamFrames(
+      this.streamer,
+      input,
       this.authorization,
       SSE_REAUTHORIZATION_INTERVAL_MS,
-      lifetimeController,
-    );
-    return authorizedStreamFrames(
-      frames,
-      { ...input, signal: lifetimeSignal },
-      lifetimeController,
-      authorizationLifetime,
     );
   }
 }
 
 async function* authorizedStreamFrames(
-  frames: AsyncIterable<WorkflowRunEventFrame>,
+  streamer: WorkflowRunEventStreamer,
   input: StreamRunEventsInput,
-  lifetimeController: AbortController,
-  authorizationLifetime: StreamAuthorizationLifetime,
+  authorization: WorkspaceAuthorizationSource,
+  intervalMs: number,
 ): AsyncGenerator<WorkflowRunEventFrame> {
-  const iterator = frames[Symbol.asyncIterator]();
+  let iterator: AsyncIterator<WorkflowRunEventFrame> | undefined;
+  let lifetimeController: AbortController | undefined;
+  let authorizationLifetime: StreamAuthorizationLifetime | undefined;
   let primary: StreamFailure = NO_STREAM_FAILURE;
   try {
+    lifetimeController = new AbortController();
+    const lifetimeSignal = AbortSignal.any([
+      input.signal,
+      lifetimeController.signal,
+    ]);
+    const frames = streamer.stream({
+      workspaceId: input.routeWorkspaceId,
+      runId: input.runId,
+      lastEventId: input.lastEventId,
+      signal: lifetimeSignal,
+      onProducerFailure: (error: unknown) => {
+        input.abortStream(streamProducerFailureReason(error));
+      },
+    });
+    iterator = frames[Symbol.asyncIterator]();
+    authorizationLifetime = createStreamAuthorizationLifetime(
+      { ...input, signal: lifetimeSignal },
+      authorization,
+      intervalMs,
+      lifetimeController,
+    );
     while (!input.signal.aborted) {
       const outcome = await nextFrameOrAuthorizationLoss(
         iterator,
@@ -285,11 +284,11 @@ async function* authorizedStreamFrames(
     // authorization failure—and therefore the HTTP close—pending forever.
     await preserveFailureDuringStreamCleanup(primary, [
       () => {
-        lifetimeController.abort();
+        lifetimeController?.abort();
       },
-      () => authorizationLifetime.stop(),
+      () => authorizationLifetime?.stop(),
       async () => {
-        await iterator.return?.();
+        await iterator?.return?.();
       },
     ]);
   }

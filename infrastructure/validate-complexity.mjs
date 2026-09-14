@@ -6,9 +6,9 @@ import path from 'node:path';
 import process from 'node:process';
 import ts from 'typescript';
 
-const root = path.resolve(import.meta.dirname, '..');
+const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const baselinePath = path.join(
-  root,
+  repositoryRoot,
   'infrastructure',
   'complexity-baseline.json',
 );
@@ -53,19 +53,34 @@ function branchIncrement(node) {
   return 0;
 }
 
-function functionName(node, sourceFile, anonymousCounts) {
+function localFunctionName(node, sourceFile) {
   if ('name' in node && node.name !== undefined)
     return node.name.getText(sourceFile);
   const parent = node.parent;
   if (ts.isVariableDeclaration(parent)) return parent.name.getText(sourceFile);
   if (ts.isPropertyAssignment(parent)) return parent.name.getText(sourceFile);
-  const kind = ts.SyntaxKind[node.kind] ?? 'Function';
-  const next = (anonymousCounts.get(kind) ?? 0) + 1;
-  anonymousCounts.set(kind, next);
-  return `<${kind}:${next}>`;
+  return `<${ts.SyntaxKind[node.kind] ?? 'Function'}>`;
 }
 
-function analyzeFunction(node, sourceFile, relativePath, anonymousCounts) {
+function functionName(node, sourceFile, nameCounts) {
+  const owners = [];
+  let ancestor = node.parent;
+  while (!ts.isSourceFile(ancestor)) {
+    if (ts.isClassLike(ancestor) && ancestor.name !== undefined)
+      owners.push(ancestor.name.getText(sourceFile));
+    else if (ts.isFunctionLike(ancestor))
+      owners.push(localFunctionName(ancestor, sourceFile));
+    ancestor = ancestor.parent;
+  }
+  const base = [...owners.reverse(), localFunctionName(node, sourceFile)].join(
+    '.',
+  );
+  const occurrence = (nameCounts.get(base) ?? 0) + 1;
+  nameCounts.set(base, occurrence);
+  return occurrence === 1 ? base : `${base}@${String(occurrence)}`;
+}
+
+function analyzeFunction(node, sourceFile, relativePath, nameCounts) {
   let branches = 0;
   const visit = (child) => {
     if (child !== node && ts.isFunctionLike(child)) return;
@@ -76,19 +91,19 @@ function analyzeFunction(node, sourceFile, relativePath, anonymousCounts) {
   const start = sourceFile.getLineAndCharacterOfPosition(node.getStart()).line;
   const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line;
   return {
-    key: `${relativePath}#${functionName(node, sourceFile, anonymousCounts)}`,
+    key: `${relativePath}#${functionName(node, sourceFile, nameCounts)}`,
     file: relativePath,
     lines: end - start + 1,
     branches,
   };
 }
 
-async function inventory() {
+export async function inventoryComplexity(rootDirectory = repositoryRoot) {
   const roots = ['apps', 'packages'];
   const files = (
     await Promise.all(
       roots.map(async (directory) => {
-        const parent = path.join(root, directory);
+        const parent = path.join(rootDirectory, directory);
         const packages = await readdir(parent, { withFileTypes: true });
         return (
           await Promise.all(
@@ -112,7 +127,7 @@ async function inventory() {
   const functionHotspots = {};
   const allFunctions = [];
   for (const absolutePath of files.sort()) {
-    const relativePath = path.relative(root, absolutePath);
+    const relativePath = path.relative(rootDirectory, absolutePath);
     const source = await readFile(absolutePath, 'utf8');
     const lines = source.split('\n').length;
     if (lines > FILE_LINE_BUDGET) fileHotspots[relativePath] = lines;
@@ -123,14 +138,14 @@ async function inventory() {
       true,
       ts.ScriptKind.TS,
     );
-    const anonymousCounts = new Map();
+    const nameCounts = new Map();
     const visit = (node) => {
       if (ts.isFunctionLike(node)) {
         const measurement = analyzeFunction(
           node,
           sourceFile,
           relativePath,
-          anonymousCounts,
+          nameCounts,
         );
         allFunctions.push(measurement);
         if (
@@ -178,7 +193,7 @@ export function findComplexityRegressions(current, baseline) {
 }
 
 async function main() {
-  const current = await inventory();
+  const current = await inventoryComplexity();
   if (process.argv.includes('--write')) {
     const baseline = {
       budgets: {

@@ -110,7 +110,7 @@ describe('Node DNS and HTTP adapters', () => {
     expect(Object.isFrozen(result[1])).toBe(true);
   });
 
-  it('selects HTTPS, pins both lookup forms, preserves hostname/SNI, and closes', async () => {
+  it('selects HTTPS, pins both lookup forms, passes the original hostname, and closes', async () => {
     const response = responseFixture();
     const request = requestFixture(fixtures.httpsRequest, response);
     const controller = new AbortController();

@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
+  ArtifactMetadataNotFoundError,
   claimDueUnfinalizedArtifact,
   claimDueUnfinalizedArtifacts,
   completeArtifactRemoval,
@@ -18,20 +19,41 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { artifacts } from '../src/schema.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
-
-const database = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-);
+const databaseName = `pertexo_test_artifacts_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
+const apiUrl = fixture.databaseUrl(apiBaseUrl);
+const workerUrl = fixture.databaseUrl(workerBaseUrl);
+let database!: ReturnType<typeof createWorkspaceDatabase>;
+let databaseCreated = false;
+let databaseAcquired = false;
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
@@ -60,8 +82,55 @@ function pendingInput(overrides: Record<string, unknown> = {}) {
   };
 }
 
+async function waitForMilestone(
+  milestone: Promise<void>,
+  operation: Promise<unknown>,
+  label: string,
+): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const bounded = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(`${label} was not observed within 5000ms`));
+    }, 5_000);
+  });
+  try {
+    await Promise.race([
+      milestone,
+      operation.then(
+        () => Promise.reject(new Error(`${label} operation settled early`)),
+        (error: unknown) => {
+          throw error;
+        },
+      ),
+      bounded,
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 beforeAll(async () => {
-  await migrateDatabase(migrationConfig);
+  try {
+    await fixture.create();
+    databaseCreated = true;
+    await migrateDatabase(migrationConfig);
+    database = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    databaseAcquired = true;
+  } catch (error: unknown) {
+    const cleanup = await Promise.allSettled([
+      ...(databaseAcquired ? [database.close()] : []),
+      ...(databaseCreated ? [fixture.drop()] : []),
+    ]);
+    const failures: unknown[] = [error];
+    for (const result of cleanup)
+      if (result.status === 'rejected') failures.push(result.reason);
+    throw new AggregateError(
+      failures,
+      'Artifact metadata fixture setup failed',
+    );
+  }
 });
 
 beforeEach(() => {
@@ -70,7 +139,25 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  await database.close();
+  const failures: unknown[] = [];
+  try {
+    if (databaseAcquired) await database.close();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (databaseCreated) {
+    try {
+      await fixture.drop();
+      databaseCreated = false;
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Artifact metadata fixture cleanup failed',
+    );
 });
 
 describe('artifact metadata lifecycle', () => {
@@ -334,9 +421,27 @@ describe('artifact metadata lifecycle', () => {
     );
     expect(deleted.status).toBe('deleted');
     expect(deleted.deletedAt).toBeInstanceOf(Date);
+    await expect(
+      database.withWorkspace(workspaceA, (transaction) =>
+        completeArtifactRemoval(transaction, { artifactId: due.artifactId }),
+      ),
+    ).resolves.toEqual(deleted);
+
+    await expect(
+      database.withWorkspace(workspaceA, (transaction) =>
+        completeArtifactRemoval(transaction, {
+          artifactId: available.artifactId,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ArtifactLifecycleConflictError);
+    await expect(
+      database.withWorkspace(workspaceA, (transaction) =>
+        completeArtifactRemoval(transaction, { artifactId: randomUUID() }),
+      ),
+    ).rejects.toBeInstanceOf(ArtifactMetadataNotFoundError);
   });
 
-  it('uses skip-locked claims so concurrent maintenance batches are disjoint', async () => {
+  it('uses skip-locked claims while another maintenance batch holds its row locks', async () => {
     const due = Array.from({ length: 4 }, () =>
       pendingInput({ expiresAt: new Date(Date.now() - 60_000) }),
     );
@@ -344,22 +449,40 @@ describe('artifact metadata lifecycle', () => {
       for (const input of due) await createPendingArtifact(transaction, input);
     });
 
-    const [left, right] = await Promise.all([
-      database.withWorkspace(workspaceA, (transaction) =>
+    const firstClaimed = Promise.withResolvers<undefined>();
+    const releaseFirst = Promise.withResolvers<undefined>();
+    const first = database.withWorkspace(workspaceA, async (transaction) => {
+      const locked = await transaction.db.execute<{ id: string }>(sql`
+        select id
+        from app.artifacts
+        where workspace_id=${transaction.workspaceId}
+          and status='pending'
+          and expires_at <= clock_timestamp()
+        order by expires_at,id
+        limit 2
+        for update
+      `);
+      firstClaimed.resolve(undefined);
+      await releaseFirst.promise;
+      return locked.rows.map((row) => row.id);
+    });
+    try {
+      await waitForMilestone(firstClaimed.promise, first, 'first claim lock');
+      const right = await database.withWorkspace(workspaceA, (transaction) =>
         claimDueUnfinalizedArtifacts(transaction, {
           limit: 2,
         }),
-      ),
-      database.withWorkspace(workspaceA, (transaction) =>
-        claimDueUnfinalizedArtifacts(transaction, {
-          limit: 2,
-        }),
-      ),
-    ]);
-    expect(left).toHaveLength(2);
-    expect(right).toHaveLength(2);
-    expect(
-      new Set([...left, ...right].map((artifact) => artifact.id)).size,
-    ).toBe(4);
+      );
+      expect(right).toHaveLength(2);
+      releaseFirst.resolve(undefined);
+      const left = await first;
+      expect(left).toHaveLength(2);
+      expect(
+        new Set([...left, ...right.map((artifact) => artifact.id)]).size,
+      ).toBe(4);
+    } finally {
+      releaseFirst.resolve(undefined);
+      await first;
+    }
   });
 });

@@ -132,6 +132,98 @@ export function authoringGraph(tree: RawExecutableGraphV2): unknown {
   };
 }
 
+type DefinitionManifest = ReturnType<typeof definitionManifest>;
+type ExecutorManifest = ReturnType<typeof executorManifest>;
+
+function assertAdmissionLifecycle(
+  definition: DefinitionManifest,
+  executor: ExecutorManifest,
+): void {
+  if (
+    (definition.lifecycle !== 'active' &&
+      definition.lifecycle !== 'deprecated') ||
+    executor.lifecycle !== 'active'
+  )
+    fail('node executable pins are incompatible');
+}
+
+function assertRetainedBehavior(
+  admissionDefinition: DefinitionManifest,
+  currentDefinition: DefinitionManifest,
+  admissionExecutor: ExecutorManifest,
+  currentExecutor: ExecutorManifest,
+): void {
+  if (
+    canonicalJson(immutableDefinitionBehavior(admissionDefinition)) !==
+      canonicalJson(immutableDefinitionBehavior(currentDefinition)) ||
+    canonicalJson(immutableExecutorBehavior(admissionExecutor)) !==
+      canonicalJson(immutableExecutorBehavior(currentExecutor))
+  )
+    fail('node executable pins are incompatible');
+}
+
+function assertNodePinIdentity(
+  node: WorkflowNode,
+  definition: WorkflowExecutableNodeV2['definition'],
+  executor: WorkflowExecutableNodeV2['executor'],
+  executorAbi: unknown,
+  selectedSideEffectClass: WorkflowExecutableNodeV2['sideEffectClass'],
+  admissionDefinition: DefinitionManifest,
+  currentDefinition: DefinitionManifest,
+  admissionExecutor: ExecutorManifest,
+  currentExecutor: ExecutorManifest,
+): void {
+  if (
+    !sameIdentity(node.definition, definition) ||
+    !sameIdentity(admissionDefinition.executor, executor) ||
+    !sameIdentity(currentDefinition.executor, executor) ||
+    admissionDefinition.configVersion !== node.configVersion ||
+    currentDefinition.configVersion !== node.configVersion ||
+    executorAbi !== admissionExecutor.abiVersion ||
+    executorAbi !== currentExecutor.abiVersion ||
+    selectedSideEffectClass !==
+      sideEffectClass(admissionDefinition.retryClass) ||
+    selectedSideEffectClass !== sideEffectClass(currentDefinition.retryClass)
+  )
+    fail('node executable pins are incompatible');
+}
+
+function assertPinnedPolicies(
+  expectedPolicies: string,
+  admissionDefinition: DefinitionManifest,
+  currentDefinition: DefinitionManifest,
+): void {
+  if (
+    expectedPolicies !==
+      canonicalJson(
+        [...admissionDefinition.policyReferences].sort(compareIdentity),
+      ) ||
+    expectedPolicies !==
+      canonicalJson(
+        [...currentDefinition.policyReferences].sort(compareIdentity),
+      )
+  )
+    fail('node executable pins are incompatible');
+}
+
+function assertCurrentExecutionEligibility(
+  currentExecutor: ExecutorManifest,
+  definition: WorkflowExecutableNodeV2['definition'],
+  alreadyAdmitted: boolean,
+): void {
+  if (
+    !currentExecutor.definitions.some((value) =>
+      sameIdentity(value, definition),
+    ) ||
+    !(
+      currentExecutor.lifecycle === 'active' ||
+      currentExecutor.lifecycle === 'retained' ||
+      (currentExecutor.lifecycle === 'retirement_blocked' && alreadyAdmitted)
+    )
+  )
+    fail('node executable pins are incompatible');
+}
+
 function validatePin(
   raw: Record<string, unknown>,
   node: WorkflowNode,
@@ -148,42 +240,34 @@ function validatePin(
   const admissionExecutor = executorManifest(admission, executor);
   const currentExecutor = executorManifest(current, executor);
   const expectedPolicies = canonicalJson(policies);
-  if (
-    (admissionDefinition.lifecycle !== 'active' &&
-      admissionDefinition.lifecycle !== 'deprecated') ||
-    admissionExecutor.lifecycle !== 'active' ||
-    canonicalJson(immutableDefinitionBehavior(admissionDefinition)) !==
-      canonicalJson(immutableDefinitionBehavior(currentDefinition)) ||
-    canonicalJson(immutableExecutorBehavior(admissionExecutor)) !==
-      canonicalJson(immutableExecutorBehavior(currentExecutor)) ||
-    !sameIdentity(node.definition, definition) ||
-    !sameIdentity(admissionDefinition.executor, executor) ||
-    !sameIdentity(currentDefinition.executor, executor) ||
-    admissionDefinition.configVersion !== node.configVersion ||
-    currentDefinition.configVersion !== node.configVersion ||
-    raw.executorAbi !== admissionExecutor.abiVersion ||
-    raw.executorAbi !== currentExecutor.abiVersion ||
-    selectedSideEffectClass !==
-      sideEffectClass(admissionDefinition.retryClass) ||
-    selectedSideEffectClass !== sideEffectClass(currentDefinition.retryClass) ||
-    expectedPolicies !==
-      canonicalJson(
-        [...admissionDefinition.policyReferences].sort(compareIdentity),
-      ) ||
-    expectedPolicies !==
-      canonicalJson(
-        [...currentDefinition.policyReferences].sort(compareIdentity),
-      ) ||
-    !currentExecutor.definitions.some((value) =>
-      sameIdentity(value, definition),
-    ) ||
-    !(
-      currentExecutor.lifecycle === 'active' ||
-      currentExecutor.lifecycle === 'retained' ||
-      (currentExecutor.lifecycle === 'retirement_blocked' && alreadyAdmitted)
-    )
-  )
-    fail('node executable pins are incompatible');
+  assertAdmissionLifecycle(admissionDefinition, admissionExecutor);
+  assertRetainedBehavior(
+    admissionDefinition,
+    currentDefinition,
+    admissionExecutor,
+    currentExecutor,
+  );
+  assertNodePinIdentity(
+    node,
+    definition,
+    executor,
+    raw.executorAbi,
+    selectedSideEffectClass,
+    admissionDefinition,
+    currentDefinition,
+    admissionExecutor,
+    currentExecutor,
+  );
+  assertPinnedPolicies(
+    expectedPolicies,
+    admissionDefinition,
+    currentDefinition,
+  );
+  assertCurrentExecutionEligibility(
+    currentExecutor,
+    definition,
+    alreadyAdmitted,
+  );
   assertExpressionPolicies(node, policies);
   return {
     id: node.id,

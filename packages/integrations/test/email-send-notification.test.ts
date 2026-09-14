@@ -273,6 +273,8 @@ describe('email.send_notification@1', () => {
     ],
     [200, {}, '{', { kind: 'invalid_response' }],
     [200, {}, '{"id":"not-a-uuid"}', { kind: 'invalid_response' }],
+    [400, {}, '{', { kind: 'http_failure', status: 400 }],
+    [401, {}, '{', { kind: 'http_failure', status: 401 }],
     [
       400,
       {},
@@ -314,6 +316,92 @@ describe('email.send_notification@1', () => {
       ).resolves.toEqual(expected);
       expect(requestBody?.every((byte) => byte === 0)).toBe(true);
       expect(responseBody.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each(
+    [400, 401, 403, 422].flatMap((status) =>
+      [
+        { body: new Uint8Array(), bodyCase: 'empty' },
+        { body: Uint8Array.of(0xff), bodyCase: 'invalid UTF-8' },
+        { body: new TextEncoder().encode('{'), bodyCase: 'malformed JSON' },
+        {
+          body: new TextEncoder().encode('{"unexpected":true}'),
+          bodyCase: 'unknown JSON',
+        },
+      ].map(({ body, bodyCase }) => ({
+        status,
+        body,
+        bodyCase,
+        errorKind:
+          status === 401 || status === 403
+            ? ('authentication' as const)
+            : ('provider' as const),
+      })),
+    ),
+  )(
+    'preserves HTTP $status refusal truth for an $bodyCase body through client and executor',
+    async ({ status, body, errorKind }) => {
+      const directResponseBody = new Uint8Array(body);
+      let directRequestBody: Uint8Array | undefined;
+      const directClient = createResendClient({
+        execute: async (request) => {
+          directRequestBody = request.body;
+          await request.beforeDispatch();
+          return {
+            status,
+            headers: {},
+            body: directResponseBody,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          };
+        },
+      });
+      await expect(
+        directClient.sendNotification({
+          apiKey: 're_123456789_secret',
+          fromEmail: 'sender@example.com',
+          toEmail: 'recipient@example.com',
+          subject: 'Deployment complete',
+          text: 'Production is healthy.',
+          idempotencyKey: providerIdempotencyKey,
+          timeoutMillis: 30_000,
+          beforeDispatch: () => Promise.resolve(),
+        }),
+      ).resolves.toEqual({ kind: 'http_failure', status });
+      expect(directRequestBody?.every((byte) => byte === 0)).toBe(true);
+      expect(directResponseBody.every((byte) => byte === 0)).toBe(true);
+
+      const executorResponseBody = new Uint8Array(body);
+      let executorRequestBody: Uint8Array | undefined;
+      const state = runtime(undefined);
+      const executorClient = createResendClient({
+        execute: async (request) => {
+          executorRequestBody = request.body;
+          await request.beforeDispatch();
+          return {
+            status,
+            headers: {},
+            body: executorResponseBody,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          };
+        },
+      });
+      await expect(
+        createEmailSendNotificationExecutorRegistration({
+          client: executorClient,
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({
+        kind: 'failed',
+        errorKind,
+        possiblyDispatched: false,
+      });
+      expect(executorRequestBody?.every((byte) => byte === 0)).toBe(true);
+      expect(executorResponseBody.every((byte) => byte === 0)).toBe(true);
+      expect(state.secret.every((byte) => byte === 0)).toBe(true);
     },
   );
 
@@ -479,6 +567,167 @@ describe('email.send_notification@1', () => {
     });
   });
 
+  it.each([
+    {
+      name: 'invalid credential without history',
+      error: new ProviderCredentialInvalidError(),
+      historical: false,
+      expected: {
+        kind: 'failed',
+        errorKind: 'authentication',
+        possiblyDispatched: false,
+      },
+    },
+    {
+      name: 'invalid credential with history',
+      error: new ProviderCredentialInvalidError(),
+      historical: true,
+      expected: {
+        kind: 'outcome_unknown',
+        errorKind: 'authentication',
+        possiblyDispatched: true,
+      },
+    },
+    {
+      name: 'throttle without history',
+      error: new ProviderExecutionRateLimitError(7),
+      historical: false,
+      expected: {
+        kind: 'retry',
+        errorKind: 'rate_limit',
+        possiblyDispatched: false,
+        retryAfterMillis: 7_000,
+      },
+    },
+    {
+      name: 'throttle with history',
+      error: new ProviderExecutionRateLimitError(7),
+      historical: true,
+      expected: {
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      },
+    },
+    {
+      name: 'cancellation without history',
+      error: Object.assign(new Error('resolution canceled'), {
+        name: 'AbortError',
+      }),
+      historical: false,
+      expected: {
+        kind: 'canceled',
+        errorKind: 'canceled',
+        possiblyDispatched: false,
+      },
+    },
+    {
+      name: 'cancellation with history',
+      error: Object.assign(new Error('resolution canceled'), {
+        name: 'AbortError',
+      }),
+      historical: true,
+      expected: {
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      },
+    },
+    {
+      name: 'transient failure without history',
+      error: new Error('connection resolver unavailable'),
+      historical: false,
+      expected: {
+        kind: 'retry',
+        errorKind: 'provider',
+        possiblyDispatched: false,
+      },
+    },
+    {
+      name: 'transient failure with history',
+      error: new Error('connection resolver unavailable'),
+      historical: true,
+      expected: {
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      },
+    },
+  ])(
+    'applies resolution precedence for $name without provider I/O',
+    async ({ error, historical, expected }) => {
+      const state = runtime(
+        undefined,
+        secretVersionId,
+        historical ? originalBinding : undefined,
+        historical ? true : undefined,
+      );
+      state.value = Object.freeze({
+        ...state.value,
+        connections: {
+          assertCurrent: state.assertCurrent,
+          resolve: () => Promise.reject(error),
+        },
+      });
+
+      await expect(
+        createEmailSendNotificationExecutorRegistration({
+          client: { sendNotification: state.sendNotification },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject(expected);
+      expect(state.sendNotification).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    {
+      name: 'connection identity',
+      mutate: (state: ReturnType<typeof runtime>) => ({
+        connectionId: '77777777-7777-4777-8777-777777777777',
+        providerKey: 'email',
+        authType: 'resend_api_key',
+        secretVersionId,
+        secret: state.secret,
+      }),
+      errorKind: 'configuration',
+    },
+    {
+      name: 'credential decode',
+      mutate: (state: ReturnType<typeof runtime>) => ({
+        connectionId,
+        providerKey: 'email',
+        authType: 'resend_api_key',
+        secretVersionId,
+        secret: (state.secret = Uint8Array.of(0xff)),
+      }),
+      errorKind: 'authentication',
+    },
+  ])(
+    'preserves historical uncertainty for resolved $name failure',
+    async ({ mutate, errorKind }) => {
+      const state = runtime(undefined, secretVersionId, originalBinding, true);
+      state.value = Object.freeze({
+        ...state.value,
+        connections: {
+          assertCurrent: state.assertCurrent,
+          resolve: () => Promise.resolve(mutate(state)),
+        },
+      });
+
+      await expect(
+        createEmailSendNotificationExecutorRegistration({
+          client: { sendNotification: state.sendNotification },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject({
+        kind: 'outcome_unknown',
+        errorKind,
+        possiblyDispatched: true,
+      });
+      expect(state.secret.every((byte) => byte === 0)).toBe(true);
+      expect(state.sendNotification).not.toHaveBeenCalled();
+    },
+  );
+
   it('reports historical ambiguity when the retry lacks a credential fence', async () => {
     const state = runtime(undefined, secretVersionId, originalBinding, true);
     const { connections, ...withoutConnections } = state.value;
@@ -497,7 +746,7 @@ describe('email.send_notification@1', () => {
     expect(state.sendNotification).not.toHaveBeenCalled();
   });
 
-  it('classifies credential admission failures before provider dispatch', async () => {
+  it('rejects a non-idempotent email runtime before provider dispatch', async () => {
     const invalidRuntime = runtime(undefined);
     invalidRuntime.value = Object.freeze({
       ...invalidRuntime.value,
@@ -513,7 +762,9 @@ describe('email.send_notification@1', () => {
       possiblyDispatched: false,
     });
     expect(invalidRuntime.sendNotification).not.toHaveBeenCalled();
+  });
 
+  it('rejects an email runtime without a final credential fence', async () => {
     const missingFence = runtime(undefined);
     const connections = missingFence.value.connections;
     if (connections === undefined)
@@ -532,26 +783,10 @@ describe('email.send_notification@1', () => {
       errorKind: 'authentication',
       possiblyDispatched: false,
     });
+    expect(missingFence.sendNotification).not.toHaveBeenCalled();
+  });
 
-    const limited = runtime(undefined);
-    limited.value = Object.freeze({
-      ...limited.value,
-      connections: {
-        assertCurrent: limited.assertCurrent,
-        resolve: () => Promise.reject(new ProviderExecutionRateLimitError(7)),
-      },
-    });
-    await expect(
-      createEmailSendNotificationExecutorRegistration({
-        client: { sendNotification: limited.sendNotification },
-      }).execute(invocation(limited.value)),
-    ).rejects.toMatchObject({
-      kind: 'retry',
-      errorKind: 'rate_limit',
-      possiblyDispatched: false,
-      retryAfterMillis: 7_000,
-    });
-
+  it('rejects a mismatched resolved email credential before provider dispatch', async () => {
     const mismatched = runtime(undefined);
     mismatched.value = Object.freeze({
       ...mismatched.value,
@@ -576,6 +811,7 @@ describe('email.send_notification@1', () => {
       errorKind: 'configuration',
       possiblyDispatched: false,
     });
+    expect(mismatched.sendNotification).not.toHaveBeenCalled();
   });
 
   it('preserves an executor failure returned by an injected provider adapter', async () => {
@@ -592,6 +828,37 @@ describe('email.send_notification@1', () => {
         client: { sendNotification: state.sendNotification },
       }).execute(invocation(state.value)),
     ).rejects.toBeInstanceOf(EmailSendNotificationExecutorError);
+  });
+
+  it('maps a hostile provider-adapter rejection without evaluating its prototype twice', async () => {
+    const hostile = Object.defineProperties(
+      Object.create(SecureHttpError.prototype),
+      {
+        code: {
+          get: () => {
+            throw new Error('secure-code-trap');
+          },
+        },
+        classification: { value: 'ambiguous' },
+        possiblyDispatched: { value: true },
+      },
+    ) as unknown;
+    const state = runtime(undefined);
+    state.sendNotification.mockImplementation(async (input) => {
+      await input.beforeDispatch();
+      // Deliberately model an untrusted adapter rejection.
+      throw hostile;
+    });
+
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'network',
+      possiblyDispatched: true,
+    });
   });
 
   it.each(providerCredentialFailureCases)(
@@ -744,6 +1011,53 @@ describe('email.send_notification@1', () => {
     expect(reclaimed.secret.every((byte) => byte === 0)).toBe(true);
   });
 
+  it('reuses the identical email key after a malformed successful response', async () => {
+    const keys: string[] = [];
+    const responseBodies = [
+      new TextEncoder().encode('{'),
+      new TextEncoder().encode(
+        JSON.stringify({ id: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' }),
+      ),
+    ];
+    let call = 0;
+    const client = createResendClient({
+      execute: async (request) => {
+        await request.beforeDispatch();
+        keys.push(request.headers?.['idempotency-key'] ?? 'missing');
+        const body = responseBodies[call];
+        call += 1;
+        if (body === undefined) throw new Error('Unexpected Resend call');
+        return {
+          status: 200,
+          headers: {},
+          body,
+          bodyEncoding: 'utf8',
+          finalUrl: request.url,
+          redirectCount: 0,
+        };
+      },
+    });
+    const executor = createEmailSendNotificationExecutorRegistration({
+      client,
+    });
+    const first = runtime(undefined);
+    const retry = runtime(undefined, secretVersionId, originalBinding);
+
+    await expect(
+      executor.execute(invocation(first.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'provider',
+      possiblyDispatched: true,
+    });
+    await expect(executor.execute(invocation(retry.value))).resolves.toEqual({
+      emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+    });
+    expect(keys).toEqual([providerIdempotencyKey, providerIdempotencyKey]);
+    for (const body of responseBodies)
+      expect(body.every((byte) => byte === 0)).toBe(true);
+  });
+
   it('retries pre/post-dispatch transport failures and preserves cancellation', async () => {
     for (const [error, expected] of [
       [
@@ -838,7 +1152,7 @@ describe('email.send_notification@1', () => {
     });
   });
 
-  it('keeps repeated definite 429 retries unambiguous despite a persisted binding', async () => {
+  it('keeps one definite 429 adapter response unambiguous with a persisted binding', async () => {
     const executor = createEmailSendNotificationExecutorRegistration({
       client: {
         sendNotification: async (request) => {
@@ -848,19 +1162,17 @@ describe('email.send_notification@1', () => {
       },
     });
 
-    for (let attempt = 1; attempt <= 4; attempt += 1) {
-      const state = runtime(
-        { kind: 'rate_limited', retryAfterMillis: 1_000 },
-        secretVersionId,
-        originalBinding,
-      );
-      await expect(
-        executor.execute(invocation(state.value)),
-      ).rejects.toMatchObject({
-        kind: 'retry',
-        errorKind: 'rate_limit',
-        possiblyDispatched: false,
-      });
-    }
+    const state = runtime(
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+      secretVersionId,
+      originalBinding,
+    );
+    await expect(
+      executor.execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      possiblyDispatched: false,
+    });
   });
 });

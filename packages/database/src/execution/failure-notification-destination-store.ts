@@ -13,6 +13,7 @@ import type {
   FailureNotificationStore,
 } from './failure-notification-contracts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { parseFailureNotificationAttemptNumber } from './failure-notification-input-validation.js';
 
 type DestinationStore = Pick<
   FailureNotificationStore,
@@ -31,6 +32,9 @@ export function createFailureNotificationDestinationStore(
       );
       const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
       const workerId = z.string().min(1).max(128).parse(raw.workerId);
+      const attemptNumber = parseFailureNotificationAttemptNumber(
+        raw.attemptNumber,
+      );
       return withTenantScopedClient(
         pool,
         { workspaceId },
@@ -65,7 +69,7 @@ export function createFailureNotificationDestinationStore(
                  when 'slack' then 'slack_bot_token' else 'resend_api_key' end
                and connection.status='active'
               and connection.current_secret_version_id=intent.connection_secret_version_id`,
-            [workspaceId, intentId, raw.attemptNumber],
+            [workspaceId, intentId, attemptNumber],
           );
           const row = result.rows[0];
           if (row === undefined)
@@ -130,6 +134,9 @@ export function createFailureNotificationDestinationStore(
         raw.workspaceId,
       );
       const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
+      const attemptNumber = parseFailureNotificationAttemptNumber(
+        raw.attemptNumber,
+      );
       await withTenantScopedClient(
         pool,
         { workspaceId },
@@ -143,7 +150,7 @@ export function createFailureNotificationDestinationStore(
                   .parse(raw.deliveryBinding);
           const destination = await client.query<{ ready: boolean }>(
             `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
-            [workspaceId, intentId, raw.attemptNumber],
+            [workspaceId, intentId, attemptNumber],
           );
           if (destination.rows[0]?.ready !== true)
             throw new FailureNotificationStateError(
@@ -181,7 +188,7 @@ export function createFailureNotificationDestinationStore(
                 case version.kind when 'slack' then 'slack_bot_token' else 'resend_api_key' end,
                 intent.connection_secret_version_id)
             returning intent.id`,
-            [workspaceId, intentId, raw.attemptNumber, parsedBinding],
+            [workspaceId, intentId, attemptNumber, parsedBinding],
           );
           if (fenced.rowCount !== 1)
             throw new FailureNotificationStateError(
@@ -191,7 +198,7 @@ export function createFailureNotificationDestinationStore(
             workspaceId,
             intentId,
             factType: 'dispatch_marked',
-            attemptNumber: raw.attemptNumber,
+            attemptNumber,
             possiblyDispatched: false,
           });
         },

@@ -6,12 +6,30 @@
   "recoveryRegion": "eu-west-1",
   "evidence": {
     "source": "aws-api",
+    "normalizedSchemaVersion": 2,
     "maximumAgeMinutes": 60,
     "requireImmutableImage": true,
     "requireDistinctTaskRoles": true,
     "requireDistinctExecutionRoles": true,
     "forbidWildcardIamActions": true,
-    "forbidSensitiveResourceWildcards": true
+    "forbidSensitiveResourceWildcards": true,
+    "requiredRawObservationKinds": [
+      "application-autoscaling",
+      "cloudwatch",
+      "ec2-network",
+      "ecr",
+      "ecs",
+      "iam",
+      "kms",
+      "secrets-manager",
+      "ssm"
+    ],
+    "requiredRecoveryRawObservationKinds": [
+      "elastic-load-balancing-v2",
+      "eventbridge",
+      "route53",
+      "sqs"
+    ]
   },
   "network": {
     "assignPublicIp": false,

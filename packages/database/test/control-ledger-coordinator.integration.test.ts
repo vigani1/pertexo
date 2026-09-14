@@ -98,6 +98,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
   it('keeps maintenance least privileged and serializes the workspace lock', async () => {
     if (maintenance === undefined)
       throw new Error('Maintenance pool unavailable');
+    const maintenancePool = maintenance;
     await expect(
       maintenance.query('select * from app.workspaces'),
     ).rejects.toMatchObject({
@@ -140,6 +141,12 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
     const first = await maintenance.connect();
     const second = await maintenance.connect();
     try {
+      const secondBackend = await second.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const secondPid = secondBackend.rows[0]?.pid;
+      if (secondPid === undefined)
+        throw new Error('Second backend PID unavailable');
       await first.query('begin');
       await first.query('select * from app.lock_workspace_control_ledger($1)', [
         workspaceId,
@@ -153,7 +160,18 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
         .then(() => {
           acquired = true;
         });
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await expect
+        .poll(async () => {
+          const activity = await maintenancePool.query<{ blocked: boolean }>(
+            `select exists(
+               select 1 from pg_stat_activity
+                where pid=$1 and wait_event_type='Lock'
+             ) blocked`,
+            [secondPid],
+          );
+          return activity.rows[0]?.blocked;
+        })
+        .toBe(true);
       expect(acquired).toBe(false);
       await first.query('commit');
       await waiting;
@@ -280,10 +298,9 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
         .then(() => {
           acquired = true;
         });
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waiting;
       expect(acquired).toBe(true);
       await expect(reconciling).rejects.toMatchObject({ name: 'TimeoutError' });
-      await waiting;
       expect(acquired).toBe(true);
       await waiter.query('commit');
     } finally {
@@ -296,12 +313,19 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
   it('cancels an in-flight workspace lock query with the caller reason', async () => {
     if (maintenance === undefined)
       throw new Error('Maintenance pool unavailable');
+    const maintenancePool = maintenance;
     const blocker = await maintenance.connect();
     const ledger = new MemoryLedger();
+    const cancellationApplicationName = `ledger-cancel-${randomUUID()}`;
+    const cancellationUrl = new URL(maintenanceUrl);
+    cancellationUrl.searchParams.set(
+      'application_name',
+      cancellationApplicationName,
+    );
     const coordinator = createControlLedgerCoordinator(
       {
         ...migrationConfig,
-        connectionString: maintenanceUrl,
+        connectionString: cancellationUrl.toString(),
         connectionTimeoutMillis: 1_000,
         idleTimeoutMillis: 1_000,
         max: 2,
@@ -320,7 +344,18 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
         signal: controller.signal,
         workspaceId: cancellationWorkspaceId,
       });
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await expect
+        .poll(async () => {
+          const activity = await maintenancePool.query<{ blocked: boolean }>(
+            `select exists(
+               select 1 from pg_stat_activity
+                where application_name=$1 and wait_event_type='Lock'
+             ) blocked`,
+            [cancellationApplicationName],
+          );
+          return activity.rows[0]?.blocked;
+        })
+        .toBe(true);
       controller.abort(reason);
       await expect(pending).rejects.toBe(reason);
     } finally {

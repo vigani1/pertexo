@@ -172,6 +172,95 @@ describe('createStructuredLogger', () => {
     expect(JSON.stringify(capture.records)).not.toContain('trap secret');
   });
 
+  it('contains top-level and revoked proxy error classification', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const prototypeTrap = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('prototype trap secret');
+        },
+      },
+    );
+    const revocable = Proxy.revocable({}, {});
+    revocable.revoke();
+
+    expect(() => {
+      logger.error('error.proxy', {}, prototypeTrap);
+    }).not.toThrow();
+    expect(() => {
+      logger.error('error.revoked', {}, revocable.proxy);
+    }).not.toThrow();
+
+    expect(capture.records).toHaveLength(2);
+    const serialized = JSON.stringify(capture.records);
+    expect(serialized).toContain('[Unserializable error]');
+    expect(serialized).not.toContain('prototype trap secret');
+  });
+
+  it('checks entry and secret names before reading unknown record values', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    let getterCalls = 0;
+    const wide: Record<string, unknown> = {};
+    for (let index = 0; index < 105; index += 1)
+      Object.defineProperty(wide, `field${String(index).padStart(3, '0')}`, {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return `value-${String(index)}`;
+        },
+      });
+    Object.defineProperty(wide, 'password', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 'secret-getter-value';
+      },
+    });
+
+    const fields: Record<string, unknown> = { wide };
+    Object.defineProperty(fields, 'clientSecret', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 'top-level-secret-getter-value';
+      },
+    });
+    logger.info('fields.bounded', fields);
+
+    expect(getterCalls).toBe(0);
+    expect(capture.records[0]).toMatchObject({
+      wide: { field000: '[Accessor]' },
+    });
+    const serialized = JSON.stringify(capture.records[0]);
+    expect(serialized).not.toContain('secret-getter-value');
+    expect(serialized).not.toContain('top-level-secret-getter-value');
+    expect(capture.records[0]).toMatchObject({ clientSecret: '[Redacted]' });
+    expect(serialized).not.toContain('field104');
+  });
+
+  it('applies one traversal budget across wide nested records', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const fields = Object.fromEntries(
+      Array.from({ length: 100 }, (_, outer) => [
+        `outer${String(outer)}`,
+        Object.fromEntries(
+          Array.from({ length: 100 }, (_, inner) => [
+            `inner${String(inner)}`,
+            inner,
+          ]),
+        ),
+      ]),
+    );
+
+    logger.info('fields.total_bound', fields);
+
+    expect(JSON.stringify(capture.records[0]).length).toBeLessThan(15_000);
+  });
+
   it('serializes errors with their causes', () => {
     const capture = captureDestination();
     const logger = createStructuredLogger(testConfig(), capture.destination);

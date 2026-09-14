@@ -19,6 +19,7 @@ import type {
   ExternalIdentity,
   OidcCallbackInput,
   OidcConfiguration,
+  OidcLoginTransaction,
   VerifiedOidcProfile,
 } from './types.js';
 import { internalIdentitySchema, oidcConfigurationSchema } from './types.js';
@@ -167,19 +168,24 @@ export class OidcLoginService {
     } catch {
       throw new IdentityError('identity.callback_rejected');
     }
-    if (consumed === undefined || consumed.status === 'missing') {
+    if (consumed === undefined) {
       throw new IdentityError('identity.transaction_missing');
     }
-    if (consumed.status === 'expired') {
-      throw new IdentityError('identity.transaction_expired');
+    switch (consumed.status) {
+      case 'missing':
+        throw new IdentityError('identity.transaction_missing');
+      case 'expired':
+        throw new IdentityError('identity.transaction_expired');
+      case 'replayed':
+        throw new IdentityError('identity.transaction_replayed');
+      case 'binding_mismatch':
+        throw new IdentityError('identity.callback_rejected');
+      case 'ok':
+        break;
     }
-    if (consumed.status === 'replayed') {
-      throw new IdentityError('identity.transaction_replayed');
-    }
-    if (consumed.status === 'binding_mismatch') {
-      throw new IdentityError('identity.callback_rejected');
-    }
-    const transaction = consumed.transaction;
+    const transaction = (
+      consumed as Readonly<{ transaction?: OidcLoginTransaction }>
+    ).transaction;
     if (transaction === undefined) {
       throw new IdentityError('identity.transaction_missing');
     }

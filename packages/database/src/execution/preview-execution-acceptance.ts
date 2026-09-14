@@ -3,6 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import { executableNodeSchema } from './preview-executable-node.js';
 import {
   auditEvents,
   idempotencyRecords,
@@ -32,11 +33,6 @@ export const traceparentSchema = z
   .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
   .refine((value) => value.slice(36, 52) !== '0'.repeat(16))
   .optional();
-export const executableNodeSchema = z
-  .record(z.string(), z.json())
-  .refine(
-    (value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 1_048_576,
-  );
 
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
@@ -116,8 +112,11 @@ const resultRefSchema = z
   .object({ outboxEventId: z.uuid(), previewAttemptId: z.uuid() })
   .strict();
 
+type ParsedPreviewRunInput = z.input<typeof acceptPreviewRunInputSchema>;
 export type AcceptPreviewRunInput = Readonly<
-  z.input<typeof acceptPreviewRunInputSchema>
+  Omit<ParsedPreviewRunInput, 'executableNode'> & {
+    executableNode: Readonly<Record<string, unknown>>;
+  }
 >;
 
 export type AcceptedPreviewRun = Readonly<{
@@ -177,7 +176,7 @@ export class PriorPreviewInputUnavailableError extends Error {
   }
 }
 
-async function readExistingAcceptance(
+export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: Pick<
     z.output<typeof acceptPreviewRunInputSchema>,
@@ -259,7 +258,7 @@ async function assertAdmission(
     throw new PreviewAdmissionDeniedError('draft');
 }
 
-async function assertPreviewActor(
+export async function assertPreviewActor(
   transaction: WorkspaceTransaction,
   actorUserId: string,
 ): Promise<void> {
@@ -285,57 +284,6 @@ async function assertPreviewActor(
     !['owner', 'admin', 'builder'].includes(row.membershipRole)
   )
     throw new PreviewAdmissionDeniedError('actor');
-}
-
-export async function readPreviewRun(
-  transaction: WorkspaceTransaction,
-  input: Readonly<{ actorUserId: string; previewRunId: string }>,
-  now: Date = new Date(),
-): Promise<PreviewRunRecord | null> {
-  const actorUserId = z.uuid().parse(input.actorUserId);
-  const previewRunId = z.uuid().parse(input.previewRunId);
-  await assertPreviewActor(transaction, actorUserId);
-  const rows = await transaction.db
-    .select()
-    .from(previewRuns)
-    .where(
-      and(
-        eq(previewRuns.workspaceId, transaction.workspaceId),
-        eq(previewRuns.id, previewRunId),
-        gt(previewRuns.expiresAt, now),
-      ),
-    )
-    .limit(1);
-  const row = rows[0];
-  if (row === undefined) return null;
-  const status = previewStatusSchema.parse(row.status);
-  const sideEffectClass = z
-    .enum(['safe', 'idempotent_with_key', 'unsafe'])
-    .parse(row.sideEffectClass);
-  const dryRun = z
-    .enum(['not_supported', 'provider_supported'])
-    .parse(row.dryRun);
-  return Object.freeze({
-    id: row.id,
-    workspaceId: row.workspaceId,
-    workflowId: row.workflowId,
-    draftRevision: row.draftRevision,
-    nodeId: row.nodeId,
-    status,
-    sideEffectClass,
-    mayContactProvider: row.mayContactProvider,
-    mayCauseExternalSideEffect: row.mayCauseExternalSideEffect,
-    dryRun,
-    output:
-      row.outputRef === null
-        ? null
-        : parseStoredExecutionValueV1(row.outputRef),
-    safeErrorCode: row.safeErrorCode,
-    createdAt: row.createdAt,
-    startedAt: row.startedAt,
-    completedAt: row.completedAt,
-    expiresAt: row.expiresAt,
-  });
 }
 
 async function resolveInput(

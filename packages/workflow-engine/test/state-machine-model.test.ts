@@ -572,7 +572,6 @@ describe('bounded workflow state-machine model', () => {
               },
             ],
           });
-          expect(canceled.checkpoint.runStatus).toBe('canceled');
           expect(canceled.checkpoint.cancelRequested).toBe(true);
           expect(canceled.attempts).toEqual([]);
           expect(
@@ -580,6 +579,24 @@ describe('bounded workflow state-machine model', () => {
               ({ invocationKey: key }) => key === retrying.invocationKey,
             )?.status,
           ).toBe('canceled');
+          const runningBody = canceled.checkpoint.invocations.filter(
+            ({ iterationPath, status }) =>
+              iterationPath !== undefined && status === 'running',
+          );
+          expect(canceled.checkpoint.runStatus).toBe(
+            runningBody.length === 0 ? 'canceled' : 'running',
+          );
+          for (const invocation of runningBody)
+            expect(
+              canceled.checkpoint.loops.some(({ activeOrdinals, loopId }) => {
+                const scope = invocation.iterationPath?.find(
+                  ({ loopNodeId }) => loopNodeId === loopId,
+                );
+                return (
+                  scope !== undefined && activeOrdinals.includes(scope.ordinal)
+                );
+              }),
+            ).toBe(true);
         },
       ),
       { seed: MODEL_SEED + 6, numRuns: modelRuns(256) },

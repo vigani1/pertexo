@@ -44,7 +44,6 @@ const workflowId = randomUUID();
 const workflowVersionId = randomUUID();
 let api: Pool | undefined;
 let lifecycle: Pool | undefined;
-let firstOperationId = '';
 
 async function apiWorkspaceQuery(
   text: string,
@@ -272,9 +271,9 @@ afterAll(async () => {
 
 describe('workspace lifecycle command intents', () => {
   it('creates one exact durable operation without changing workspace state', async () => {
-    if (api === undefined) throw new Error('API pool unavailable');
+    if (api === undefined || lifecycle === undefined)
+      throw new Error('Lifecycle pools unavailable');
     const operationId = randomUUID();
-    firstOperationId = operationId;
     const values = [
       operationId,
       workspaceId,
@@ -330,6 +329,24 @@ describe('workspace lifecycle command intents', () => {
     } finally {
       await owner.end();
     }
+    const cleanupClaim = await lifecycle.query<{
+      lease_fence: string;
+      lease_token: string;
+      operation_id: string;
+    }>(
+      "select * from app.claim_workspace_lifecycle_operations('command:first-case-cleanup',1,interval '1 minute')",
+    );
+    const cleanupLease = cleanupClaim.rows[0];
+    if (cleanupLease?.operation_id !== operationId)
+      throw new Error('First lifecycle operation cleanup lease missing');
+    await lifecycle.query(
+      "select app.fail_workspace_lifecycle_operation($1,$2,$3,'test_case_complete')",
+      [
+        cleanupLease.operation_id,
+        cleanupLease.lease_token,
+        cleanupLease.lease_fence,
+      ],
+    );
   });
 
   it('rechecks owner authorization and exposes only narrow role functions', async () => {
@@ -410,15 +427,15 @@ describe('workspace lifecycle command intents', () => {
       lease_token: string;
       operation_id: string;
     }>(
-      "select * from app.claim_workspace_lifecycle_operations('command:authorization',2,interval '1 minute')",
+      "select * from app.claim_workspace_lifecycle_operations('command:authorization',1,interval '1 minute')",
     );
     const rejected = claimed.rows.find(
       ({ operation_id }) => operation_id === rejectedOperationId,
     );
-    const retained = claimed.rows.find(
-      ({ operation_id }) => operation_id === firstOperationId,
-    );
+    if (rejected === undefined)
+      throw new Error('Authorization-loss operation was not claimed');
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    let membershipSuspended = false;
     try {
       await owner.query('set role pertexo_owner');
       await owner.query("select set_config('app.workspace_id',$1,false)", [
@@ -428,51 +445,87 @@ describe('workspace lifecycle command intents', () => {
         "update app.workspace_memberships set status='suspended' where workspace_id=$1 and user_id=$2",
         [workspaceId, ownerUserId],
       );
+      membershipSuspended = true;
       await expect(
         lifecycle.query(
           'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
-          [
-            rejected?.operation_id,
-            rejected?.lease_token,
-            rejected?.lease_fence,
-          ],
+          [rejected.operation_id, rejected.lease_token, rejected.lease_fence],
         ),
       ).rejects.toMatchObject({ code: '42501' });
       await lifecycle.query(
         "select app.fail_workspace_lifecycle_operation($1,$2,$3,'authorization_lost')",
-        [rejected?.operation_id, rejected?.lease_token, rejected?.lease_fence],
-      );
-      await lifecycle.query(
-        'select app.release_workspace_lifecycle_operation($1,$2,$3)',
-        [retained?.operation_id, retained?.lease_token, retained?.lease_fence],
+        [rejected.operation_id, rejected.lease_token, rejected.lease_fence],
       );
       await owner.query(
         "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",
         [workspaceId, ownerUserId],
       );
+      membershipSuspended = false;
     } finally {
+      if (membershipSuspended)
+        await owner
+          .query(
+            "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",
+            [workspaceId, ownerUserId],
+          )
+          .catch(() => undefined);
       await owner.end();
     }
   });
 
   it('claims with monotonic fencing and rejects a stale release', async () => {
     if (lifecycle === undefined) throw new Error('Lifecycle pool unavailable');
+    const operationId = randomUUID();
+    await apiWorkspaceQuery(
+      'select * from app.request_workspace_lifecycle_operation($1,$2,$3,$4,$5,$6,$7)',
+      [
+        operationId,
+        workspaceId,
+        '7'.repeat(64),
+        'deletion_requested',
+        ownerUserId,
+        'Exercise lifecycle lease fencing',
+        '9'.repeat(64),
+      ],
+    );
     const first = await lifecycle.query<{
       lease_fence: string;
       lease_token: string;
       operation_id: string;
     }>(
-      "select * from app.claim_workspace_lifecycle_operations('command:test',1,interval '10 milliseconds')",
+      "select * from app.claim_workspace_lifecycle_operations('command:test',1,interval '1 minute')",
     );
-    expect(typeof first.rows[0]?.operation_id).toBe('string');
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const firstLease = first.rows[0];
+    if (firstLease?.operation_id !== operationId)
+      throw new Error('Lifecycle fencing operation was not claimed');
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        "select set_config('app.workspace_lifecycle_operation_transition','on',true)",
+      );
+      await owner.query(
+        `update app.workspace_lifecycle_operations
+            set lease_acquired_at=clock_timestamp()-interval '2 seconds',
+                lease_expires_at=clock_timestamp()-interval '1 second'
+          where id=$1`,
+        [operationId],
+      );
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      await owner.end();
+    }
     await expect(
       lifecycle.query(
         'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
         [
-          first.rows[0]?.operation_id,
-          first.rows[0]?.lease_token,
-          first.rows[0]?.lease_fence,
+          firstLease.operation_id,
+          firstLease.lease_token,
+          firstLease.lease_fence,
         ],
       ),
     ).rejects.toMatchObject({ code: '55000' });
@@ -483,24 +536,40 @@ describe('workspace lifecycle command intents', () => {
     }>(
       "select * from app.claim_workspace_lifecycle_operations('command:test-2',1,interval '1 minute')",
     );
-    expect(Number(second.rows[0]?.lease_fence)).toBe(
-      Number(first.rows[0]?.lease_fence) + 1,
+    const secondLease = second.rows[0];
+    if (secondLease?.operation_id !== operationId)
+      throw new Error('Expired lifecycle operation was not reclaimed');
+    expect(Number(secondLease.lease_fence)).toBe(
+      Number(firstLease.lease_fence) + 1,
     );
+    const leaseFunctions = [
+      'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
+      'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
+      'select * from app.read_workspace_lifecycle_control_command($1,$2,$3)',
+      `select app.project_and_complete_workspace_lifecycle_operation(
+        $1,$2,$3,1,'${'0'.repeat(64)}','${'1'.repeat(64)}'
+      )`,
+    ];
+    for (const statement of leaseFunctions)
+      for (const [token, fence] of [
+        [null, secondLease.lease_fence],
+        [secondLease.lease_token, null],
+        [secondLease.lease_token, 0],
+      ])
+        await expect(
+          lifecycle.query(statement, [secondLease.operation_id, token, fence]),
+        ).rejects.toMatchObject({ code: '22023' });
     const stale = await lifecycle.query<{ released: boolean }>(
       'select app.release_workspace_lifecycle_operation($1,$2,$3) released',
-      [
-        first.rows[0]?.operation_id,
-        first.rows[0]?.lease_token,
-        first.rows[0]?.lease_fence,
-      ],
+      [firstLease.operation_id, firstLease.lease_token, firstLease.lease_fence],
     );
     expect(stale.rows[0]?.released).toBe(false);
     const released = await lifecycle.query<{ released: boolean }>(
       'select app.release_workspace_lifecycle_operation($1,$2,$3) released',
       [
-        second.rows[0]?.operation_id,
-        second.rows[0]?.lease_token,
-        second.rows[0]?.lease_fence,
+        secondLease.operation_id,
+        secondLease.lease_token,
+        secondLease.lease_fence,
       ],
     );
     expect(released.rows[0]?.released).toBe(true);
@@ -512,18 +581,33 @@ describe('workspace lifecycle command intents', () => {
     }>(
       "select * from app.claim_workspace_lifecycle_operations('command:max',1,interval '5 minutes')",
     );
-    expect(maximum.rows[0]?.operation_id).toBe(firstOperationId);
+    const maximumLease = maximum.rows[0];
+    if (maximumLease?.operation_id !== operationId)
+      throw new Error('Released lifecycle operation was not reclaimed');
     await lifecycle.query(
-      'select app.release_workspace_lifecycle_operation($1,$2,$3)',
+      "select app.fail_workspace_lifecycle_operation($1,$2,$3,'test_case_complete')",
       [
-        maximum.rows[0]?.operation_id,
-        maximum.rows[0]?.lease_token,
-        maximum.rows[0]?.lease_fence,
+        maximumLease.operation_id,
+        maximumLease.lease_token,
+        maximumLease.lease_fence,
       ],
     );
   });
 
-  it('binds projection, session revocation, and completion to one live lease', async () => {
+  it('binds deletion projection and a late restore to their durable chronological state', async () => {
+    const operationId = randomUUID();
+    await apiWorkspaceQuery(
+      'select * from app.request_workspace_lifecycle_operation($1,$2,$3,$4,$5,$6,$7)',
+      [
+        operationId,
+        workspaceId,
+        'e'.repeat(64),
+        'deletion_requested',
+        ownerUserId,
+        'Delete workspace through coordinator',
+        'a'.repeat(64),
+      ],
+    );
     const ledgerCalls: string[] = [];
     let durableRecord: WorkspaceLifecycleLedgerRecord | undefined;
     const reconcileStarted = Promise.withResolvers<undefined>();
@@ -600,14 +684,10 @@ describe('workspace lifecycle command intents', () => {
         await admin.end();
         releaseReconcile.resolve(undefined);
       }
-      await expect(firstAttempt).resolves.toEqual({
-        commandType: 'deletion_requested',
-        operationId: firstOperationId,
-        status: 'released',
-      });
+      await expect(firstAttempt).rejects.toThrow('append response was lost');
       await expect(coordinator.processNext()).resolves.toEqual({
         commandType: 'deletion_requested',
-        operationId: firstOperationId,
+        operationId,
         status: 'completed',
       });
       expect(ledgerCalls).toEqual(['reconcile', 'append', 'reconcile']);
@@ -631,7 +711,7 @@ describe('workspace lifecycle command intents', () => {
            on operation.workspace_id=workspace.id
          join app.sessions session_record on session_record.user_id=$2
          where workspace.id=$1 and operation.id=$3`,
-        [workspaceId, ownerUserId, firstOperationId],
+        [workspaceId, ownerUserId, operationId],
       );
       expect(result.rows[0]).toEqual({
         operation_status: 'completed',
@@ -680,9 +760,7 @@ describe('workspace lifecycle command intents', () => {
     } finally {
       await owner.end();
     }
-  });
 
-  it('rejects a restore that waited past its durable recovery deadline', async () => {
     if (lifecycle === undefined) throw new Error('Lifecycle pool unavailable');
     const restoreOperationId = randomUUID();
     await apiWorkspaceQuery(
@@ -697,17 +775,17 @@ describe('workspace lifecycle command intents', () => {
         '5'.repeat(64),
       ],
     );
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const restoreOwner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
-      await owner.query('set role pertexo_owner');
-      await owner.query(
+      await restoreOwner.query('set role pertexo_owner');
+      await restoreOwner.query(
         `update app.workspaces
          set purge_after=deletion_requested_at+interval '1 microsecond'
          where id=$1`,
         [workspaceId],
       );
     } finally {
-      await owner.end();
+      await restoreOwner.end();
     }
     const claimed = await lifecycle.query<{
       lease_fence: string;

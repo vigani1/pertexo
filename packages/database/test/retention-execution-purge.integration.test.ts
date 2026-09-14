@@ -567,7 +567,20 @@ describe('retention execution purge stages', () => {
           (select count(*) from app.transport_security_audit_facts where id=$5)
             security_count,
           (select count(*) from app.trigger_schedule_occurrences where id=$6)
-            occurrence_count`,
+            occurrence_count,
+          (select count(*) from app.webhook_trigger_deliveries where id=$7)
+            delivery_count,
+          (select count(*) from app.webhook_trigger_replay_records
+            where endpoint_id=$8 and dedupe_kind='keyed' and dedupe_key_hash=$9)
+            replay_count,
+          (select count(*) from app.trigger_schedules where trigger_id=$10)
+            schedule_count,
+          (select count(*) from app.workflow_triggers where id=any($11::uuid[]))
+            trigger_count,
+          (select count(*) from app.webhook_trigger_endpoints where id=$8)
+            endpoint_count,
+          (select count(*) from app.webhook_trigger_secret_versions where id=$12)
+            secret_count`,
         [
           oldRunId,
           nodeRunId,
@@ -575,17 +588,29 @@ describe('retention execution purge stages', () => {
           oldAuditId,
           oldSecurityFactId,
           occurrenceId,
+          webhookDeliveryId,
+          webhookEndpointId,
+          'f'.repeat(64),
+          triggerId,
+          [triggerId, webhookTriggerId],
+          webhookSecretId,
         ],
       );
       expect(proof.rows).toEqual([
         {
           attempt_count: '0',
           audit_count: '0',
+          delivery_count: '0',
+          endpoint_count: '1',
           event_count: '0',
           node_count: '0',
           occurrence_count: '0',
+          replay_count: '0',
           run_count: '0',
+          schedule_count: '1',
           security_count: '0',
+          secret_count: '1',
+          trigger_count: '2',
         },
       ]);
       await owner.query(

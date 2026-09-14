@@ -29,10 +29,10 @@ import {
 import { createIdentityWorkspaceSessionStore } from './identity-workspace-session-store.js';
 import { createIdentityWorkspaceIdentityStore } from './identity-workspace-identity-store.js';
 import {
-  parseIdentityMetadata as parseMetadata,
-  parseIdentityUuid as parseUuid,
-  throwIdentityDatabaseConflict as databaseConflict,
-  throwWorkspaceLifecycleError as workspaceLifecycleOperationError,
+  parseIdentityMetadata,
+  parseIdentityUuid,
+  throwIdentityDatabaseConflict,
+  throwWorkspaceLifecycleError,
 } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
 import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
@@ -80,6 +80,10 @@ export {
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;
 
+// This is the historical idempotency snapshot for workspace creation, not a
+// general workspace-row codec. A newly created workspace cannot be `purging`.
+// revokedSessionCount remains required so existing result_ref values retain
+// their original shape even though the public create method returns workspace.
 const durableWorkspaceResultSchema = z
   .object({
     workspace: z
@@ -251,9 +255,9 @@ export function createIdentityWorkspaceDatabase(
     createWorkspaceWithOwner: async (
       input: WorkspaceWithOwnerInput,
     ): Promise<WorkspaceRecord> => {
-      const id = parseUuid(input.id ?? generatePersistedId());
-      const ownerUserId = parseUuid(input.ownerUserId);
-      const metadata = parseMetadata(input.metadata);
+      const id = parseIdentityUuid(input.id ?? generatePersistedId());
+      const ownerUserId = parseIdentityUuid(input.ownerUserId);
+      const metadata = parseIdentityMetadata(input.metadata);
       const name = input.name.trim();
       const slug = input.slug.trim().toLowerCase();
       if (name.length === 0 || name.length > 128)
@@ -322,7 +326,7 @@ export function createIdentityWorkspaceDatabase(
           },
         );
       } catch (error: unknown) {
-        databaseConflict(
+        throwIdentityDatabaseConflict(
           error,
           'Workspace creation conflicts with an existing record',
           'workspace_slug',
@@ -333,8 +337,8 @@ export function createIdentityWorkspaceDatabase(
     requestWorkspaceLifecycleOperation: async (
       input: RequestWorkspaceLifecycleOperationInput,
     ): Promise<WorkspaceLifecycleOperation> => {
-      const workspaceId = parseUuid(input.workspaceId);
-      const actorUserId = parseUuid(input.actorUserId);
+      const workspaceId = parseIdentityUuid(input.workspaceId);
+      const actorUserId = parseIdentityUuid(input.actorUserId);
       const commandType = z
         .enum(['deletion_requested', 'deletion_restored'])
         .parse(input.commandType);
@@ -373,7 +377,7 @@ export function createIdentityWorkspaceDatabase(
           },
         );
       } catch (error: unknown) {
-        workspaceLifecycleOperationError(error);
+        throwWorkspaceLifecycleError(error);
       }
     },
 
@@ -382,9 +386,9 @@ export function createIdentityWorkspaceDatabase(
       operationIdInput: string,
       actorUserIdInput: string,
     ): Promise<WorkspaceLifecycleOperation | null> => {
-      const workspaceId = parseUuid(workspaceIdInput);
-      const operationId = parseUuid(operationIdInput);
-      const actorUserId = parseUuid(actorUserIdInput);
+      const workspaceId = parseIdentityUuid(workspaceIdInput);
+      const operationId = parseIdentityUuid(operationIdInput);
+      const actorUserId = parseIdentityUuid(actorUserIdInput);
       try {
         return await withTenantScopedClient(
           pool,
@@ -402,7 +406,7 @@ export function createIdentityWorkspaceDatabase(
           },
         );
       } catch (error: unknown) {
-        workspaceLifecycleOperationError(error);
+        throwWorkspaceLifecycleError(error);
       }
     },
 

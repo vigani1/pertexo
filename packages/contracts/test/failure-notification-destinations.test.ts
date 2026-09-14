@@ -29,7 +29,7 @@ describe('failure notification destination contracts', () => {
     ).toMatchObject({ toEmail: 'Ops@example.test' });
   });
 
-  it('rejects secret fields, mixed kinds, and invalid optimistic versions', () => {
+  it('rejects secret fields from an otherwise valid Slack configuration', () => {
     expect(
       failureNotificationDestinationCreateRequestSchema.safeParse({
         kind: 'slack',
@@ -38,9 +38,12 @@ describe('failure notification destination contracts', () => {
         botToken: 'xoxb-secret',
       }).success,
     ).toBe(false);
+  });
+
+  it('rejects a mixed-kind configuration at a valid optimistic version', () => {
     expect(
       failureNotificationDestinationAppendVersionRequestSchema.safeParse({
-        expectedVersion: 0,
+        expectedVersion: 1,
         config: {
           kind: 'email',
           connectionId: '11111111-1111-4111-8111-111111111111',
@@ -48,6 +51,39 @@ describe('failure notification destination contracts', () => {
         },
       }).success,
     ).toBe(false);
+    expect(
+      failureNotificationDestinationAppendVersionRequestSchema.safeParse({
+        expectedVersion: 1,
+        config: {
+          kind: 'email',
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          toEmail: 'ops@example.test',
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an invalid optimistic version with a valid configuration', () => {
+    expect(
+      failureNotificationDestinationAppendVersionRequestSchema.safeParse({
+        expectedVersion: 0,
+        config: {
+          kind: 'email',
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          toEmail: 'ops@example.test',
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      failureNotificationDestinationAppendVersionRequestSchema.safeParse({
+        expectedVersion: 1,
+        config: {
+          kind: 'email',
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          toEmail: 'ops@example.test',
+        },
+      }).success,
+    ).toBe(true);
   });
 
   it('publishes every destination command with command-only idempotency', () => {

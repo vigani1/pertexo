@@ -2,10 +2,8 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { ConnectionsController } from './controllers.js';
-import {
-  FailureNotificationDestinationsController,
-  FailureNotificationDestinationUseCases,
-} from './failure-notification-destinations.js';
+import { FailureNotificationDestinationsController } from './failure-notification-destinations.controller.js';
+import { FailureNotificationDestinationUseCases } from './failure-notification-destinations.js';
 import {
   ConnectionManageGuard,
   ConnectionUseGuard,

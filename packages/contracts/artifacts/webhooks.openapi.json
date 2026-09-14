@@ -142,115 +142,230 @@
       },
       "WebhookManagementCommandResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "trigger": {
+        "oneOf": [
+          {
             "type": "object",
             "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "workflowId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "workflowVersionId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "nodeId": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 256
-              },
-              "kind": {
-                "type": "string",
-                "const": "webhook"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "desired",
-                  "configuration_required",
-                  "pending",
-                  "active",
-                  "degraded",
-                  "disabled",
-                  "error"
-                ]
-              },
-              "healthStatus": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "healthy",
-                  "degraded",
-                  "unhealthy",
-                  "disabled"
-                ]
-              },
-              "lastErrorCode": {
-                "anyOf": [
-                  {
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "id": {
                     "type": "string",
-                    "maxLength": 128
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "endpointReady": {
-                "type": "boolean"
-              },
-              "reconciledAt": {
-                "anyOf": [
-                  {
+                  "workflowId": {
                     "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
-                  {
-                    "type": "null"
+                  "workflowVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "nodeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "webhook"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "desired",
+                      "configuration_required",
+                      "pending",
+                      "active",
+                      "degraded",
+                      "disabled",
+                      "error"
+                    ]
+                  },
+                  "healthStatus": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "healthy",
+                      "degraded",
+                      "unhealthy",
+                      "disabled"
+                    ]
+                  },
+                  "lastErrorCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endpointReady": {
+                    "type": "boolean"
+                  },
+                  "reconciledAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
-                ]
+                },
+                "required": [
+                  "id",
+                  "workflowId",
+                  "workflowVersionId",
+                  "nodeId",
+                  "kind",
+                  "status",
+                  "healthStatus",
+                  "lastErrorCode",
+                  "endpointReady",
+                  "reconciledAt"
+                ],
+                "additionalProperties": false
+              },
+              "replayed": {
+                "type": "boolean",
+                "const": true
+              },
+              "endpointKey": {
+                "not": {}
+              },
+              "signingSecret": {
+                "not": {}
               }
             },
             "required": [
-              "id",
-              "workflowId",
-              "workflowVersionId",
-              "nodeId",
-              "kind",
-              "status",
-              "healthStatus",
-              "lastErrorCode",
-              "endpointReady",
-              "reconciledAt"
+              "trigger",
+              "replayed"
             ],
             "additionalProperties": false
           },
-          "replayed": {
-            "type": "boolean"
-          },
-          "endpointKey": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
-          },
-          "signingSecret": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43}$"
+          {
+            "type": "object",
+            "properties": {
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workflowId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workflowVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "nodeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "webhook"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "desired",
+                      "configuration_required",
+                      "pending",
+                      "active",
+                      "degraded",
+                      "disabled",
+                      "error"
+                    ]
+                  },
+                  "healthStatus": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "healthy",
+                      "degraded",
+                      "unhealthy",
+                      "disabled"
+                    ]
+                  },
+                  "lastErrorCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endpointReady": {
+                    "type": "boolean"
+                  },
+                  "reconciledAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "workflowId",
+                  "workflowVersionId",
+                  "nodeId",
+                  "kind",
+                  "status",
+                  "healthStatus",
+                  "lastErrorCode",
+                  "endpointReady",
+                  "reconciledAt"
+                ],
+                "additionalProperties": false
+              },
+              "replayed": {
+                "type": "boolean",
+                "const": false
+              },
+              "endpointKey": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              },
+              "signingSecret": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            },
+            "required": [
+              "trigger",
+              "replayed"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "trigger",
-          "replayed"
-        ],
-        "additionalProperties": false
+        ]
       },
       "WebhookRotateSecretRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

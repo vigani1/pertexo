@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
+import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 import {
   acquirePoolClient,
   cancelBackendQuery,
@@ -14,6 +15,7 @@ import {
   raceWithSignal,
   throwIfAborted,
   type MaintenancePool,
+  withOwnedPoolClient,
 } from './control-ledger-postgres.js';
 import {
   controlLedgerClientReleaseError,
@@ -24,6 +26,7 @@ import {
 import {
   acquireWorkspaceDestructiveOperationLock,
   releaseWorkspaceDestructiveOperationLock,
+  withWorkspaceDestructiveOperationLock,
 } from './retention-transaction.js';
 import {
   createControlLedgerReadSide,
@@ -233,6 +236,8 @@ function parseInput(input: LegalHoldCommandInput) {
     .parse(input);
 }
 
+type ParsedLegalHoldCommandInput = ReturnType<typeof parseInput>;
+
 function numberSequence(value: string | number): number {
   const sequence = typeof value === 'string' ? Number(value) : value;
   if (!Number.isSafeInteger(sequence) || sequence < 0)
@@ -240,6 +245,51 @@ function numberSequence(value: string | number): number {
       'Database control high water is invalid',
     );
   return sequence;
+}
+
+function decodeExactProjectedReplay(
+  row: ProjectionRow,
+  input: ParsedLegalHoldCommandInput,
+  commandType: LegalHoldCommandType,
+): LegalHoldCommandResult {
+  let commandId: string;
+  let holdId: string;
+  let occurredAt: string;
+  let recordHash: string;
+  let sequence: number;
+  try {
+    commandId = uuidSchema.parse(row.command_id);
+    holdId = uuidSchema.parse(row.subject_id);
+    occurredAt = occurredAtSchema.parse(
+      row.occurred_at instanceof Date
+        ? row.occurred_at.toISOString()
+        : row.occurred_at,
+    );
+    recordHash = hashSchema.parse(row.record_hash);
+    hashSchema.parse(row.previous_hash);
+    sequence = numberSequence(row.sequence);
+  } catch {
+    throw new ControlLedgerCommandConflictError();
+  }
+  if (
+    commandId !== input.commandId ||
+    row.command_type !== commandType ||
+    holdId !== input.holdId ||
+    row.actor_ref !== input.actorRef ||
+    row.legal_authority !== input.legalAuthority ||
+    row.reason !== input.reason ||
+    occurredAt !== input.occurredAt
+  )
+    throw new ControlLedgerCommandConflictError();
+  return Object.freeze({
+    commandId,
+    commandType,
+    holdId,
+    recordHash,
+    replayed: true,
+    sequence,
+    workspaceId: input.workspaceId,
+  });
 }
 
 function assertRecord(
@@ -273,17 +323,32 @@ function assertRecord(
     throw new ControlLedgerReconciliationError(
       `Unsupported control ledger command: ${record.commandType}`,
     );
-  const material = z.object({
-    actorRef: boundedText(128),
-    commandId: uuidSchema,
-    occurredAt: occurredAtSchema,
-    reason: boundedText(512),
-    subjectId: uuidSchema,
-  });
-  material.parse(record);
-  if (record.commandType.startsWith('legal_hold_'))
-    boundedText(256).parse(record.legalAuthority);
-  else if (record.legalAuthority !== undefined)
+  const material = z
+    .object({
+      actorRef: boundedText(128),
+      commandId: uuidSchema,
+      occurredAt: occurredAtSchema,
+      reason: boundedText(512),
+      subjectId: uuidSchema,
+    })
+    .parse(record);
+  if (
+    material.actorRef !== record.actorRef ||
+    material.commandId !== record.commandId ||
+    material.occurredAt !== record.occurredAt ||
+    material.reason !== record.reason ||
+    material.subjectId !== record.subjectId
+  )
+    throw new ControlLedgerReconciliationError(
+      'External control ledger record material is not canonical',
+    );
+  if (record.commandType.startsWith('legal_hold_')) {
+    const legalAuthority = boundedText(256).parse(record.legalAuthority);
+    if (legalAuthority !== record.legalAuthority)
+      throw new ControlLedgerReconciliationError(
+        'External control ledger legal authority is not canonical',
+      );
+  } else if (record.legalAuthority !== undefined)
     throw new ControlLedgerReconciliationError(
       'Deletion control ledger record must omit legal authority',
     );
@@ -323,7 +388,7 @@ async function project(
     ],
     signal,
   );
-  return result.rows[0]?.projected === true;
+  return z.boolean().parse(result.rows[0]?.projected);
 }
 
 export function createControlLedgerCoordinator(
@@ -359,31 +424,59 @@ export function createControlLedgerCoordinator(
     throw new Error('Control ledger record bound cannot exceed page capacity');
   const pool = options.pool ?? createDatabasePool(config);
   const ownsPool = options.pool === undefined;
+  if (pool.options.max < 2)
+    throw new RangeError(
+      'Control ledger coordination requires a database pool of at least 2 connections',
+    );
   const readSide = createControlLedgerReadSide(config, pool);
+  let closePromise: Promise<void> | undefined;
 
   const transact = async <T>(
     workspaceId: string,
     signal: AbortSignal | undefined,
     operation: (client: PoolClient, highWater: HighWater) => Promise<T>,
+    acquireDestructiveLock = true,
+    suppliedClient?: PoolClient,
   ): Promise<T> => {
     throwIfAborted(signal);
-    const client = await acquirePoolClient(pool, signal);
+    const ownsClient = suppliedClient === undefined;
+    const client = suppliedClient ?? (await acquirePoolClient(pool, signal));
     const processId = (client as PoolClient & { processID?: number }).processID;
     const cancellation = { requested: false };
+    let clientReleased = false;
+    let destructiveLockAcquired = false;
     const cancelForAbort = (): void => {
       cancellation.requested = true;
-      if (processId !== undefined)
+      if (ownsClient && !clientReleased) {
+        clientReleased = true;
+        destructiveLockAcquired = false;
+        try {
+          destroyCanceledPoolClient(
+            client,
+            signal?.reason instanceof Error
+              ? signal.reason
+              : new Error('Control ledger transaction was canceled', {
+                  cause: signal?.reason,
+                }),
+          );
+        } catch {
+          // Abort still owns the outcome after best-effort pool cleanup.
+        }
+      } else if (!ownsClient && processId !== undefined)
         void cancelBackendQuery(config, processId).catch(() => undefined);
     };
     signal?.addEventListener('abort', cancelForAbort, { once: true });
-    let destructiveLockAcquired = false;
+    if (signal?.aborted === true) cancelForAbort();
     try {
-      await acquireWorkspaceDestructiveOperationLock(
-        client,
-        workspaceId,
-        signal,
-      );
-      destructiveLockAcquired = true;
+      throwIfAborted(signal);
+      if (acquireDestructiveLock) {
+        await acquireWorkspaceDestructiveOperationLock(
+          client,
+          workspaceId,
+          signal,
+        );
+        destructiveLockAcquired = true;
+      }
       await query(client, 'begin', [], signal);
       await query(
         client,
@@ -416,33 +509,56 @@ export function createControlLedgerCoordinator(
       });
       throwIfAborted(signal);
       await query(client, 'commit', [], signal);
-      await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
-      destructiveLockAcquired = false;
+      if (destructiveLockAcquired) {
+        await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
+        destructiveLockAcquired = false;
+      }
       signal?.removeEventListener('abort', cancelForAbort);
-      client.release(
-        cancellation.requested
-          ? new Error('Control ledger transaction was canceled')
-          : undefined,
-      );
+      // The abort listener mutates this flag asynchronously between awaits.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (ownsClient && !clientReleased) {
+        clientReleased = true;
+        client.release(
+          cancellation.requested
+            ? new Error('Control ledger transaction was canceled')
+            : undefined,
+        );
+      }
       return result;
     } catch (error: unknown) {
+      let rollbackFailed = false;
       let rollbackError: unknown;
-      try {
-        await client.query({ text: 'rollback' });
-      } catch (caught: unknown) {
-        rollbackError = caught;
+      if (!clientReleased) {
+        try {
+          await client.query({ text: 'rollback' });
+        } catch (caught: unknown) {
+          rollbackFailed = true;
+          rollbackError = caught;
+        }
       }
+      let unlockFailed = false;
+      let unlockError: unknown;
       if (destructiveLockAcquired) {
         try {
           await releaseWorkspaceDestructiveOperationLock(client, workspaceId);
         } catch (caught: unknown) {
-          rollbackError ??= caught;
+          unlockFailed = true;
+          unlockError = caught;
         }
       }
       signal?.removeEventListener('abort', cancelForAbort);
-      client.release(
-        controlLedgerClientReleaseError(rollbackError, cancellation.requested),
-      );
+      if (ownsClient && !clientReleased) {
+        clientReleased = true;
+        client.release(
+          controlLedgerClientReleaseError(
+            rollbackFailed,
+            rollbackError,
+            unlockFailed,
+            unlockError,
+            cancellation.requested,
+          ),
+        );
+      }
       throw error;
     }
   };
@@ -585,8 +701,7 @@ export function createControlLedgerCoordinator(
     afterWorkspaceId: string | undefined,
     signal?: AbortSignal,
   ): Promise<readonly string[]> => {
-    const client = await acquirePoolClient(pool, signal);
-    try {
+    return withOwnedPoolClient(pool, signal, async (client) => {
       const result = await query<{ workspace_id: string }>(
         client,
         'select workspace_id from app.enumerate_workspace_control_anchors($1,$2)',
@@ -605,9 +720,7 @@ export function createControlLedgerCoordinator(
         previous = workspaceId;
       }
       return Object.freeze(workspaceIds);
-    } finally {
-      client.release();
-    }
+    });
   };
 
   const reconcileSweep = async (
@@ -679,26 +792,8 @@ export function createControlLedgerCoordinator(
           );
           const row = existing.rows[0];
           if (row !== undefined) {
-            const occurredAt = new Date(row.occurred_at).toISOString();
-            if (
-              row.command_type !== commandType ||
-              row.subject_id !== parsed.holdId ||
-              row.actor_ref !== parsed.actorRef ||
-              row.legal_authority !== parsed.legalAuthority ||
-              row.reason !== parsed.reason ||
-              occurredAt !== parsed.occurredAt
-            )
-              throw new ControlLedgerCommandConflictError();
             return {
-              existing: Object.freeze({
-                commandId: row.command_id,
-                commandType,
-                holdId: row.subject_id,
-                recordHash: row.record_hash,
-                replayed: true,
-                sequence: numberSequence(row.sequence),
-                workspaceId: parsed.workspaceId,
-              }),
+              existing: decodeExactProjectedReplay(row, parsed, commandType),
               initial: Object.freeze(initial),
             };
           }
@@ -766,90 +861,103 @@ export function createControlLedgerCoordinator(
             );
             return undefined;
           }
-          const rowOccurredAt = new Date(row.occurred_at).toISOString();
-          if (
-            row.command_type !== commandType ||
-            row.subject_id !== parsed.holdId ||
-            row.actor_ref !== parsed.actorRef ||
-            row.legal_authority !== parsed.legalAuthority ||
-            row.reason !== parsed.reason ||
-            rowOccurredAt !== parsed.occurredAt
-          )
-            throw new ControlLedgerCommandConflictError();
-          return Object.freeze({
-            commandId: row.command_id,
-            commandType,
-            holdId: row.subject_id,
-            recordHash: row.record_hash,
-            replayed: true,
-            sequence: numberSequence(row.sequence),
-            workspaceId: parsed.workspaceId,
-          });
+          return decodeExactProjectedReplay(row, parsed, commandType);
         },
       );
       if (repaired !== undefined) return repaired;
 
-      const appendSignal = externalSignal(
-        parsed.signal,
-        parsedOptions.externalOperationTimeoutMs,
-      );
-      const appendInput: AppendControlLedgerRecord = {
-        actorRef: parsed.actorRef,
-        commandId: parsed.commandId,
-        commandType,
-        legalAuthority: parsed.legalAuthority,
-        occurredAt: parsed.occurredAt,
-        previousHash: projected.highWaterHash,
-        reason: parsed.reason,
-        sequence: projected.highWaterSequence + 1,
-        signal: appendSignal,
-        subjectId: parsed.holdId,
-        workspaceId: parsed.workspaceId,
-      };
-      const appended = await raceWithSignal(
-        ledger.append(appendInput),
-        appendSignal,
-      );
-      assertRecord(appended, parsed.workspaceId, {
-        hash: projected.highWaterHash,
-        sequence: projected.highWaterSequence,
-      });
-      if (
-        appended.commandId !== appendInput.commandId ||
-        appended.commandType !== appendInput.commandType ||
-        appended.subjectId !== appendInput.subjectId ||
-        appended.actorRef !== appendInput.actorRef ||
-        appended.legalAuthority !== appendInput.legalAuthority ||
-        appended.reason !== appendInput.reason ||
-        appended.occurredAt !== appendInput.occurredAt
-      )
-        throw new ControlLedgerCommandConflictError();
-
-      const completed = await transact(
+      const completed = await withWorkspaceDestructiveOperationLock(
+        pool,
         parsed.workspaceId,
         parsed.signal,
-        async (client, highWater) => {
-          if (
-            highWater.sequence !== appended.sequence - 1 ||
-            highWater.hash !== appended.previousHash
-          )
-            return undefined;
-          await query(
-            client,
-            'select app.validate_workspace_legal_hold_command($1,$2,$3)',
-            [parsed.workspaceId, commandType, parsed.holdId],
+        async (lockClient) => {
+          const appendAuthorized = await transact(
+            parsed.workspaceId,
             parsed.signal,
+            async (client, highWater) => {
+              if (
+                highWater.sequence !== projected.highWaterSequence ||
+                highWater.hash !== projected.highWaterHash
+              )
+                return false;
+              await query(
+                client,
+                'select app.validate_workspace_legal_hold_command($1,$2,$3)',
+                [parsed.workspaceId, commandType, parsed.holdId],
+                parsed.signal,
+              );
+              return true;
+            },
+            false,
+            lockClient,
           );
-          await project(client, appended, parsed.signal);
-          return Object.freeze({
-            commandId: appended.commandId,
+          if (!appendAuthorized) return undefined;
+
+          const appendSignal = externalSignal(
+            parsed.signal,
+            parsedOptions.externalOperationTimeoutMs,
+          );
+          const appendInput: AppendControlLedgerRecord = {
+            actorRef: parsed.actorRef,
+            commandId: parsed.commandId,
             commandType,
-            holdId: appended.subjectId,
-            recordHash: appended.recordHash,
-            replayed: false,
-            sequence: appended.sequence,
-            workspaceId: appended.workspaceId,
+            legalAuthority: parsed.legalAuthority,
+            occurredAt: parsed.occurredAt,
+            previousHash: projected.highWaterHash,
+            reason: parsed.reason,
+            sequence: projected.highWaterSequence + 1,
+            signal: appendSignal,
+            subjectId: parsed.holdId,
+            workspaceId: parsed.workspaceId,
+          };
+          const appended = await raceWithSignal(
+            ledger.append(appendInput),
+            appendSignal,
+          );
+          assertRecord(appended, parsed.workspaceId, {
+            hash: projected.highWaterHash,
+            sequence: projected.highWaterSequence,
           });
+          if (
+            appended.commandId !== appendInput.commandId ||
+            appended.commandType !== appendInput.commandType ||
+            appended.subjectId !== appendInput.subjectId ||
+            appended.actorRef !== appendInput.actorRef ||
+            appended.legalAuthority !== appendInput.legalAuthority ||
+            appended.reason !== appendInput.reason ||
+            appended.occurredAt !== appendInput.occurredAt
+          )
+            throw new ControlLedgerCommandConflictError();
+
+          return transact(
+            parsed.workspaceId,
+            parsed.signal,
+            async (client, highWater) => {
+              if (
+                highWater.sequence !== appended.sequence - 1 ||
+                highWater.hash !== appended.previousHash
+              )
+                return undefined;
+              await query(
+                client,
+                'select app.validate_workspace_legal_hold_command($1,$2,$3)',
+                [parsed.workspaceId, commandType, parsed.holdId],
+                parsed.signal,
+              );
+              await project(client, appended, parsed.signal);
+              return Object.freeze({
+                commandId: appended.commandId,
+                commandType,
+                holdId: appended.subjectId,
+                recordHash: appended.recordHash,
+                replayed: false,
+                sequence: appended.sequence,
+                workspaceId: appended.workspaceId,
+              });
+            },
+            false,
+            lockClient,
+          );
         },
       );
       if (completed !== undefined) return completed;
@@ -859,9 +967,7 @@ export function createControlLedgerCoordinator(
 
   return Object.freeze({
     ...readSide,
-    close: async (): Promise<void> => {
-      if (ownsPool) await pool.end();
-    },
+    close: () => (closePromise ??= ownsPool ? pool.end() : Promise.resolve()),
     placeLegalHold: (input: LegalHoldCommandInput) =>
       command('legal_hold_placed', input),
     reconcileWorkspace: (input: {

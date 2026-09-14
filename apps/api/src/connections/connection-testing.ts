@@ -154,9 +154,11 @@ export class TestConnectionUseCase {
           );
         }
       } catch (error: unknown) {
-        await this.persistence
-          .abandonConnectionTest(common)
-          .catch(() => undefined);
+        try {
+          await this.persistence.abandonConnectionTest(common);
+        } catch {
+          // Abandonment is cleanup and cannot replace the command failure.
+        }
         throw error;
       } finally {
         plaintext?.fill(0);

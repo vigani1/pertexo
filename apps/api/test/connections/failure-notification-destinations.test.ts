@@ -4,10 +4,8 @@ import {
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  FailureNotificationDestinationsController,
-  FailureNotificationDestinationUseCases,
-} from '../../src/connections/failure-notification-destinations.js';
+import { FailureNotificationDestinationsController } from '../../src/connections/failure-notification-destinations.controller.js';
+import { FailureNotificationDestinationUseCases } from '../../src/connections/failure-notification-destinations.js';
 import { createActorContext } from '../../src/workspaces/index.js';
 import { hashRequest } from '../../src/connections/use-case-support.js';
 
@@ -28,6 +26,7 @@ const record = {
   config: { kind: 'slack' as const, connectionId, channelId: 'C12345' },
   createdAt: new Date('2026-08-25T10:00:00.000Z'),
   updatedAt: new Date('2026-08-25T10:00:00.000Z'),
+  internalMetadata: 'must-not-escape',
 };
 
 function request(headers: Record<string, string | readonly string[]> = {}) {
@@ -76,15 +75,15 @@ describe('failure notification destination API seams', () => {
     const useCases = new FailureNotificationDestinationUseCases(database);
     const mutation = { ...command, idempotencyKey: 'typed-command-42' };
 
-    await useCases.create({ ...mutation, body: record.config });
-    await useCases.list(command);
-    await useCases.get({ ...command, destinationId });
-    await useCases.append({
+    const created = await useCases.create({ ...mutation, body: record.config });
+    const listed = await useCases.list(command);
+    const fetched = await useCases.get({ ...command, destinationId });
+    const appended = await useCases.append({
       ...mutation,
       destinationId,
       body: { expectedVersion: 1, config: record.config },
     });
-    await useCases.status({
+    const status = await useCases.status({
       ...mutation,
       destinationId,
       body: { status: 'disabled' },
@@ -95,6 +94,25 @@ describe('failure notification destination API seams', () => {
       body: { destinationId },
     });
     await useCases.clearPolicy({ ...mutation, workflowId });
+
+    const exactResponse = {
+      id: destinationId,
+      workspaceId,
+      kind: 'slack',
+      status: 'enabled',
+      currentVersion: 1,
+      config: record.config,
+      createdAt: '2026-08-25T10:00:00.000Z',
+      updatedAt: '2026-08-25T10:00:00.000Z',
+    };
+    expect(created).toEqual(exactResponse);
+    expect(listed).toEqual({ items: [exactResponse] });
+    expect(fetched).toEqual(exactResponse);
+    expect(appended).toEqual(exactResponse);
+    expect(status).toEqual(exactResponse);
+    expect(
+      JSON.stringify({ created, listed, fetched, appended, status }),
+    ).not.toContain('must-not-escape');
 
     expect(database.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,6 +147,43 @@ describe('failure notification destination API seams', () => {
         workspaceId,
         idempotencyKey: 'typed-command-42',
         requestHash: hashRequest({ workflowId }),
+      }),
+    );
+  });
+
+  it('uses guarded actor identifiers consistently in destination commands', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+    const guardedActor = createActorContext({
+      actorId: '99999999-9999-4999-8999-999999999999',
+      workspaceId,
+      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      requestId: 'guard-request',
+      traceId: 'guard-trace',
+    });
+    const authorizedWorkspace = {
+      actor: guardedActor,
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'connection:manage' as const,
+    };
+
+    await controller.create(
+      {
+        ...request({ 'idempotency-key': 'guarded-destination' }),
+        authorizedWorkspace,
+      },
+      { workspaceId },
+      record.config,
+    );
+
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: guardedActor.actorId,
+        requestId: 'guard-request',
+        traceId: 'guard-trace',
       }),
     );
   });
@@ -227,7 +282,7 @@ describe('failure notification destination API seams', () => {
     });
   });
 
-  it('appends a version and maps optimistic and idempotency conflicts', async () => {
+  it('appends a version and propagates optimistic and idempotency conflicts', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),
@@ -323,7 +378,7 @@ describe('failure notification destination API seams', () => {
     );
   });
 
-  it('maps hidden destination reads and writes to not found', async () => {
+  it('propagates hidden destination read and write failures', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(
       new FailureNotificationDestinationUseCases(database),

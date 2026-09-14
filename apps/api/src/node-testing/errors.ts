@@ -40,7 +40,6 @@ export class NodeTestInvalidError extends Error {
 }
 
 export function mapNodeTestingError(error: unknown): ApplicationError {
-  if (isApplicationError(error)) return error;
   if (error instanceof InvalidAuthenticatedWorkspaceContextError)
     return applicationError('request.invalid', { safeDetail: error.message });
   if (
@@ -54,6 +53,7 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
     return applicationError('request.invalid', { safeDetail: error.message });
   if (error instanceof AuthorizationError)
     return applicationError(error.code, { safeDetail: error.message });
+  if (isApplicationError(error)) return error;
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
   if (error instanceof NodeTestRequestError)

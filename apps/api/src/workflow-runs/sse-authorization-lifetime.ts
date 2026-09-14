@@ -46,6 +46,8 @@ export function createStreamAuthorizationLifetime(
     Date.now() + intervalMs,
     input.sessionExpiresAt.getTime(),
   );
+  let nextIdleRefreshAt =
+    authorizationDeadline - AUTHORIZATION_LOOKUP_BUDGET_MS;
   let deadlineTimer: NodeJS.Timeout | undefined;
   let pendingAuthorization: Promise<void> | undefined;
   let revoked = false;
@@ -61,12 +63,21 @@ export function createStreamAuthorizationLifetime(
     lifetimeController.abort(error);
     input.abortStream(error);
   };
-  const armAuthorizationDeadline = (sessionExpiresAt: Date): void => {
+  const armAuthorizationDeadline = (
+    sessionExpiresAt: Date,
+    afterRefresh: boolean,
+  ): void => {
     clearDeadlineTimer();
-    authorizationDeadline = Math.min(
+    const previousDeadline = authorizationDeadline;
+    const nextDeadline = Math.min(
       Date.now() + intervalMs,
       sessionExpiresAt.getTime(),
     );
+    authorizationDeadline = nextDeadline;
+    nextIdleRefreshAt =
+      afterRefresh && nextDeadline <= previousDeadline
+        ? nextDeadline
+        : nextDeadline - AUTHORIZATION_LOOKUP_BUDGET_MS;
     deadlineTimer = setTimeout(
       () => {
         revoke(new Error('SSE authorization lifetime expired'));
@@ -95,7 +106,7 @@ export function createStreamAuthorizationLifetime(
       signal,
     });
     signal.throwIfAborted();
-    armAuthorizationDeadline(session.expiresAt);
+    armAuthorizationDeadline(session.expiresAt, true);
   };
   const reauthorize = (): Promise<void> => {
     if (pendingAuthorization !== undefined) return pendingAuthorization;
@@ -120,12 +131,12 @@ export function createStreamAuthorizationLifetime(
     pendingAuthorization = current;
     return current;
   };
-  armAuthorizationDeadline(input.sessionExpiresAt);
+  armAuthorizationDeadline(input.sessionExpiresAt, false);
   const streamStopped = (): boolean => watchdogSignal.aborted;
   const watchdog = (async (): Promise<void> => {
     while (!watchdogSignal.aborted) {
       const wait = waitUntilAuthorizationDeadline(
-        authorizationDeadline - AUTHORIZATION_LOOKUP_BUDGET_MS,
+        nextIdleRefreshAt,
         watchdogSignal,
       );
       const outcome = await wait.promise;

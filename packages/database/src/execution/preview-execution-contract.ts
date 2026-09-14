@@ -118,18 +118,21 @@ export class PreviewAttemptStateError extends Error {
   }
 }
 
+const PREVIEW_STATUS_PAIRS: Readonly<Record<string, ReadonlySet<string>>> =
+  Object.freeze({
+    canceled: new Set([PREVIEW_STATUS.canceled]),
+    failed: new Set([PREVIEW_STATUS.failed]),
+    outcome_unknown: new Set([PREVIEW_STATUS.outcomeUnknown]),
+    queued: new Set([PREVIEW_STATUS.queued]),
+    running: new Set([PREVIEW_STATUS.queued, PREVIEW_STATUS.running]),
+    succeeded: new Set([PREVIEW_STATUS.succeeded]),
+    timed_out: new Set([PREVIEW_STATUS.timedOut]),
+  });
+
 export function previewPairConsistent(
   attemptStatus: string,
   runStatus: string,
 ): boolean {
-  const allowed: Record<string, readonly string[]> = {
-    canceled: [PREVIEW_STATUS.canceled],
-    failed: [PREVIEW_STATUS.failed],
-    outcome_unknown: [PREVIEW_STATUS.outcomeUnknown],
-    queued: [PREVIEW_STATUS.queued],
-    running: [PREVIEW_STATUS.queued, PREVIEW_STATUS.running],
-    succeeded: [PREVIEW_STATUS.succeeded],
-    timed_out: [PREVIEW_STATUS.timedOut],
-  };
-  return allowed[attemptStatus]?.includes(runStatus) ?? false;
+  if (!Object.hasOwn(PREVIEW_STATUS_PAIRS, attemptStatus)) return false;
+  return PREVIEW_STATUS_PAIRS[attemptStatus]?.has(runStatus) ?? false;
 }

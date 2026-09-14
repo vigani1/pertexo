@@ -9,6 +9,11 @@ import {
 } from './failure-notification-store-support.js';
 import type { FailureNotificationStore } from './failure-notification-contracts.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import {
+  parseFailureNotificationAttemptNumber,
+  parseFailureNotificationMaximumAttempts,
+  parseFailureNotificationRetryDelaySeconds,
+} from './failure-notification-input-validation.js';
 
 type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;
 type DeliveryResult = ReturnType<
@@ -99,6 +104,15 @@ export function createFailureNotificationCompletionStore(
       const result = FailureNotificationDeliveryResultV1Schema.parse(
         raw.result,
       );
+      const attemptNumber = parseFailureNotificationAttemptNumber(
+        raw.attemptNumber,
+      );
+      const maxAttempts = parseFailureNotificationMaximumAttempts(
+        raw.maxAttempts,
+      );
+      const retryDelaySeconds = parseFailureNotificationRetryDelaySeconds(
+        raw.retryDelaySeconds,
+      );
       const safeErrorCode =
         result.kind === 'delivered' ? undefined : result.safeErrorCode;
       const providerReference =
@@ -116,7 +130,7 @@ export function createFailureNotificationCompletionStore(
           const row = locked.rows[0];
           if (
             (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
-            row.delivery_attempts !== raw.attemptNumber
+            row.delivery_attempts !== attemptNumber
           )
             return 'stale' as const;
           if (
@@ -131,10 +145,14 @@ export function createFailureNotificationCompletionStore(
           const decision = completionDecision(
             row,
             result,
-            raw.attemptNumber,
-            raw.maxAttempts,
+            attemptNumber,
+            maxAttempts,
           );
           if (decision.kind === 'retry') {
+            if (retryDelaySeconds === 0)
+              throw new FailureNotificationStateError(
+                'Retry delay must be positive when scheduling a retry',
+              );
             const scheduled = await client.query<{ next_delivery_at: Date }>(
               `update app.run_failure_notification_intents
              set status='retry',dispatch_marked_at=null,recovery_at=null,
@@ -145,7 +163,7 @@ export function createFailureNotificationCompletionStore(
               [
                 workspaceId,
                 intentId,
-                raw.retryDelaySeconds,
+                retryDelaySeconds,
                 safeErrorCode ?? null,
                 decision.deliveryUnresolved,
               ],
@@ -158,14 +176,14 @@ export function createFailureNotificationCompletionStore(
             await insertFailureNotificationDeliveryOutbox(client, {
               workspaceId,
               intentId,
-              attemptNumber: raw.attemptNumber + 1,
+              attemptNumber: attemptNumber + 1,
               availableAt: due,
             });
             await auditFailureNotification(client, {
               workspaceId,
               intentId,
               factType: 'retry_scheduled',
-              attemptNumber: raw.attemptNumber,
+              attemptNumber,
               ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
               possiblyDispatched: decision.deliveryUnresolved,
             });
@@ -190,7 +208,7 @@ export function createFailureNotificationCompletionStore(
             workspaceId,
             intentId,
             factType: completionAuditFactType(decision.status),
-            attemptNumber: raw.attemptNumber,
+            attemptNumber,
             ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
             possiblyDispatched: decision.deliveryUnresolved,
           });

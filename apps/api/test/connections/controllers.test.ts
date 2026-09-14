@@ -3,12 +3,34 @@ import { describe, expect, it, vi } from 'vitest';
 import { ConnectionsController } from '../../src/connections/controllers.js';
 import { mapConnectionError } from '../../src/connections/errors.js';
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
+import type {
+  CreateConnectionUseCase,
+  RevokeConnectionUseCase,
+  RotateConnectionSecretUseCase,
+  TestConnectionUseCase,
+} from '../../src/connections/use-cases.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const secretVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const connectionResponse = Object.freeze({
+  id: connectionId,
+  workspaceId,
+  providerKey: 'http' as const,
+  name: 'Operations API',
+  authType: 'http_headers' as const,
+  status: 'active' as const,
+  secretVersionId,
+  health: {
+    lastTestedAt: null,
+    lastHealthyAt: null,
+    lastErrorCode: null,
+  },
+  createdAt: '2026-08-22T12:00:00.000Z',
+  updatedAt: '2026-08-22T12:00:00.000Z',
+});
 
 function request(headers: Record<string, string> = {}) {
   return {
@@ -26,31 +48,34 @@ function request(headers: Record<string, string> = {}) {
 
 function controller() {
   const create = {
-    execute: vi.fn<(command: unknown) => Promise<{ id: string }>>(() =>
-      Promise.resolve({ id: connectionId }),
+    execute: vi.fn<CreateConnectionUseCase['execute']>(() =>
+      Promise.resolve(connectionResponse),
     ),
   };
   const rotate = {
-    execute: vi.fn<(command: unknown) => Promise<{ id: string }>>(() =>
-      Promise.resolve({ id: connectionId }),
+    execute: vi.fn<RotateConnectionSecretUseCase['execute']>(() =>
+      Promise.resolve(connectionResponse),
     ),
   };
   const revoke = {
-    execute: vi.fn<(command: unknown) => Promise<{ id: string }>>(() =>
-      Promise.resolve({ id: connectionId }),
+    execute: vi.fn<RevokeConnectionUseCase['execute']>(() =>
+      Promise.resolve({ ...connectionResponse, status: 'revoked' }),
     ),
   };
   const test = {
-    execute: vi.fn<
-      (command: unknown) => Promise<{ connection: { id: string } }>
-    >(() => Promise.resolve({ connection: { id: connectionId } })),
+    execute: vi.fn<TestConnectionUseCase['execute']>(() =>
+      Promise.resolve({
+        connection: connectionResponse,
+        outcome: { ok: true, httpStatus: 204, errorCode: null },
+      }),
+    ),
   };
   return {
     instance: new ConnectionsController(
-      create as never,
-      rotate as never,
-      revoke as never,
-      test as never,
+      create as unknown as CreateConnectionUseCase,
+      rotate as unknown as RotateConnectionSecretUseCase,
+      revoke as unknown as RevokeConnectionUseCase,
+      test as unknown as TestConnectionUseCase,
     ),
     create,
     rotate,
@@ -66,32 +91,77 @@ const credential = {
 } as const;
 
 describe('connections controller public seam', () => {
-  it('parses create input and forwards immutable actor and request metadata once', async () => {
+  it('forwards create input with immutable actor and request metadata once', async () => {
     const { instance, create } = controller();
+    const body = { providerKey: 'http', name: 'Operations API', credential };
     await instance.create(
       request({ 'idempotency-key': 'create-42' }),
       { workspaceId },
-      { providerKey: 'http', name: 'Operations API', credential },
+      body,
     );
     expect(create.execute).toHaveBeenCalledOnce();
-    expect(create.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        idempotencyKey: 'create-42',
+    const command = create.execute.mock.calls[0]?.[0];
+    if (command === undefined)
+      throw new Error('controller did not forward a command');
+    expect(command).toEqual({
+      actor: {
+        actorId,
+        kind: 'user',
+        workspaceId,
+        sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
         requestId: 'request-42',
         traceId: 'trace-42',
-      }),
-    );
-    const command = create.execute.mock.calls[0]?.[0];
-    expect(command).toMatchObject({ actor: { actorId, workspaceId } });
-    if (
-      typeof command !== 'object' ||
-      command === null ||
-      !('actor' in command)
-    )
-      throw new Error('controller did not forward an actor');
+      },
+      routeWorkspaceId: workspaceId,
+      request: body,
+      idempotencyKey: 'create-42',
+      requestId: 'request-42',
+      traceId: 'trace-42',
+      signal: command.signal,
+    });
+    expect(command.signal).toBeInstanceOf(AbortSignal);
     expect(Object.isFrozen(command.actor)).toBe(true);
     expect(command).not.toHaveProperty('authorizedWorkspace');
+  });
+
+  it('forwards rotation with the exact guarded actor, identifiers, and operation signal', async () => {
+    const { instance, rotate } = controller();
+    const base = request({ 'idempotency-key': 'rotate-guarded' });
+    const authorizedWorkspace = {
+      actor: Object.freeze({
+        actorId: guardActorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId: base.identitySession.sessionId,
+        requestId: 'rotate-request',
+        traceId: 'rotate-trace',
+      }),
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'connection:manage' as const,
+    };
+    const body = { expectedSecretVersionId: secretVersionId, credential };
+
+    await instance.rotate(
+      { ...base, authorizedWorkspace },
+      { workspaceId, connectionId },
+      body,
+    );
+
+    expect(rotate.execute).toHaveBeenCalledWith({
+      actor: authorizedWorkspace.actor,
+      authorizedWorkspace,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      request: body,
+      idempotencyKey: 'rotate-guarded',
+      requestId: 'rotate-request',
+      traceId: 'rotate-trace',
+      signal: rotate.execute.mock.calls[0]?.[0].signal,
+    });
+    expect(rotate.execute.mock.calls[0]?.[0].signal).toBeInstanceOf(
+      AbortSignal,
+    );
   });
 
   it('gives guarded actor and identifiers precedence over session context', async () => {
@@ -201,21 +271,35 @@ describe('connections controller public seam', () => {
     );
   });
 
-  it('requires idempotency and forwards a bounded HTTPS connection test', async () => {
+  it('requires idempotency and forwards unknown test input to the safe use case', async () => {
     const { instance, test } = controller();
+    const body = { url: 'https://provider.example.test/health' };
     await instance.test(
       request({ 'idempotency-key': 'test-42' }),
       { workspaceId, connectionId },
-      { url: 'https://provider.example.test/health' },
+      body,
     );
-    expect(test.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        connectionId,
-        idempotencyKey: 'test-42',
-        request: { url: 'https://provider.example.test/health' },
-      }),
-    );
+    const command = test.execute.mock.calls[0]?.[0];
+    if (command === undefined)
+      throw new Error('controller did not forward a test command');
+    expect(command).toEqual({
+      actor: {
+        actorId,
+        kind: 'user',
+        workspaceId,
+        sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        requestId: 'request-42',
+        traceId: 'trace-42',
+      },
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-42',
+      request: body,
+      requestId: 'request-42',
+      traceId: 'trace-42',
+      signal: command.signal,
+    });
+    expect(command.signal).toBeInstanceOf(AbortSignal);
     await instance.test(
       request({ 'idempotency-key': 'test-43' }),
       { workspaceId, connectionId },

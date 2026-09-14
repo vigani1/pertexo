@@ -20,8 +20,14 @@ type StoppedComposeService = Readonly<{
 }>;
 
 type ComposeServiceControllerDependencies = Readonly<{
-  compose: (arguments_: readonly string[]) => Promise<string>;
-  inspect: (containerId: string) => Promise<ContainerState>;
+  compose: (
+    arguments_: readonly string[],
+    timeoutMillis?: number,
+  ) => Promise<string>;
+  inspect: (
+    containerId: string,
+    timeoutMillis?: number,
+  ) => Promise<ContainerState>;
   now: () => number;
   pollIntervalMillis: number;
   startDeadlineMillis: number;
@@ -70,10 +76,27 @@ export function createComposeServiceController(
       service,
     );
 
+  const remainingRecoveryMillis = (deadline: number): number => {
+    const remaining = deadline - dependencies.now();
+    if (remaining <= 0)
+      throw new Error(
+        'Compose service did not become healthy before its recovery deadline',
+      );
+    return remaining;
+  };
+
   const assertSameContainer = async (
     stopped: StoppedComposeService,
+    deadline?: number,
   ): Promise<void> => {
-    if ((await currentContainerId(stopped.service)) !== stopped.containerId)
+    const containerId = oneContainerId(
+      await dependencies.compose(
+        ['ps', '--all', '--quiet', stopped.service],
+        deadline === undefined ? undefined : remainingRecoveryMillis(deadline),
+      ),
+      stopped.service,
+    );
+    if (containerId !== stopped.containerId)
       throw new Error(
         `Compose service ${stopped.service} changed container identity during recovery`,
       );
@@ -99,11 +122,22 @@ export function createComposeServiceController(
         attempt <= MAX_CLEAN_EXIT_START_ATTEMPTS;
         attempt += 1
       ) {
-        await assertSameContainer(stopped);
+        await assertSameContainer(stopped, deadline);
         try {
-          await dependencies.compose(['start', stopped.service]);
+          await dependencies.compose(
+            ['start', stopped.service],
+            remainingRecoveryMillis(deadline),
+          );
         } catch (error: unknown) {
-          const state = await dependencies.inspect(stopped.containerId);
+          let state: ContainerState;
+          try {
+            state = await dependencies.inspect(
+              stopped.containerId,
+              remainingRecoveryMillis(deadline),
+            );
+          } catch {
+            throw error;
+          }
           if (
             state.status !== 'exited' ||
             state.exitCode !== 0 ||
@@ -112,9 +146,12 @@ export function createComposeServiceController(
             throw error;
         }
 
-        while (dependencies.now() < deadline) {
-          await assertSameContainer(stopped);
-          const state = await dependencies.inspect(stopped.containerId);
+        for (;;) {
+          await assertSameContainer(stopped, deadline);
+          const state = await dependencies.inspect(
+            stopped.containerId,
+            remainingRecoveryMillis(deadline),
+          );
           if (state.status === 'running' && state.health === 'healthy')
             return dependencies.now() - startedAt;
           if (state.health === 'unhealthy')
@@ -126,14 +163,24 @@ export function createComposeServiceController(
               state.exitCode === 0 &&
               attempt < MAX_CLEAN_EXIT_START_ATTEMPTS
             ) {
-              await dependencies.wait(dependencies.pollIntervalMillis);
+              await dependencies.wait(
+                Math.min(
+                  dependencies.pollIntervalMillis,
+                  remainingRecoveryMillis(deadline),
+                ),
+              );
               break;
             }
             throw new Error(
               `Compose service ${stopped.service} exited unexpectedly with code ${String(state.exitCode)}`,
             );
           }
-          await dependencies.wait(dependencies.pollIntervalMillis);
+          await dependencies.wait(
+            Math.min(
+              dependencies.pollIntervalMillis,
+              remainingRecoveryMillis(deadline),
+            ),
+          );
         }
       }
       throw new Error(
@@ -150,23 +197,27 @@ export function createDockerComposeServiceController(options: {
   const run = async (
     executable: string,
     arguments_: readonly string[],
+    timeoutMillis = options.operationTimeoutMillis,
   ): Promise<string> => {
     const result = await execFileAsync(executable, arguments_, {
       cwd: options.cwd,
       encoding: 'utf8',
-      timeout: options.operationTimeoutMillis,
+      timeout: Math.max(
+        1,
+        Math.min(options.operationTimeoutMillis, Math.ceil(timeoutMillis)),
+      ),
     });
     return result.stdout.trim();
   };
   return createComposeServiceController({
-    compose: (arguments_) => run('docker', ['compose', ...arguments_]),
-    inspect: async (containerId) => {
-      const raw = await run('docker', [
-        'inspect',
-        '--format',
-        '{{json .State}}',
-        containerId,
-      ]);
+    compose: (arguments_, timeoutMillis) =>
+      run('docker', ['compose', ...arguments_], timeoutMillis),
+    inspect: async (containerId, timeoutMillis) => {
+      const raw = await run(
+        'docker',
+        ['inspect', '--format', '{{json .State}}', containerId],
+        timeoutMillis,
+      );
       const parsed = JSON.parse(raw) as {
         ExitCode?: unknown;
         Health?: { Status?: unknown };

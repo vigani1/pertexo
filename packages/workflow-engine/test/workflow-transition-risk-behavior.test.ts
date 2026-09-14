@@ -65,7 +65,39 @@ describe('workflow transition public risk behavior', () => {
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
   });
 
-  it('accepts an idempotent join declaration and rejects a conflicting replay', () => {
+  it('accepts an identical join declaration replay without new work', () => {
+    const declaration = {
+      kind: 'join_declared' as const,
+      joinId: 'join',
+      branchIds: ['a'],
+      policy: { kind: 'all' as const },
+    };
+    const joinInput = {
+      occurredAt,
+      maximumAdmissions: 0,
+      schedulerState: {
+        deriveReadiness: false,
+        nodes: [{ id: 'join', sideEffectClass: 'safe' as const }],
+        edges: [],
+      },
+    } as const;
+    const declared = advanceWorkflow({
+      ...joinInput,
+      checkpoint: checkpoint(),
+      observations: [declaration],
+    });
+    const replayed = advanceWorkflow({
+      ...joinInput,
+      checkpoint: declared.checkpoint,
+      observations: [declaration],
+    });
+    expect(replayed.checkpoint.joins).toEqual(declared.checkpoint.joins);
+    expect(replayed.events).toEqual([]);
+    expect(replayed.nodeRunAdmissions).toEqual([]);
+    expect(replayed.attempts).toEqual([]);
+  });
+
+  it('rejects a conflicting join declaration replay', () => {
     const declaration = {
       kind: 'join_declared' as const,
       joinId: 'join',
@@ -299,44 +331,34 @@ describe('workflow transition public risk behavior', () => {
     ).toBe(true);
   });
 
-  it('orders every public observation family before applying terminal control', () => {
+  it('applies a join declaration before its same-window disposition', () => {
     const observations: WorkflowObservation[] = [
-      { kind: 'cursor_only' },
-      { kind: 'cancel_requested' },
-      { kind: 'deadline_expired' },
-      {
-        kind: 'join_declared',
-        joinId: 'join',
-        branchIds: ['a'],
-        policy: { kind: 'all' },
-      },
       {
         kind: 'branch_disposition',
         joinId: 'join',
         branch: { branchId: 'a', disposition: 'arrived' },
       },
       {
-        kind: 'branch_selected',
-        invocationKey: 'condition',
-        nodeId: 'condition',
-        selectedOutputPort: 'true',
+        kind: 'join_declared',
+        joinId: 'join',
+        branchIds: ['a'],
+        policy: { kind: 'all' },
       },
-      {
-        kind: 'loop_started',
-        loopId: 'loop',
-        collection: inline(ATTEMPT_ID),
-        collectionChecksum: 'sum',
-        collectionSize: 0,
-        maxConcurrency: 1,
-        maxIterations: 1,
-      },
-      { kind: 'loop_iteration_completed', loopId: 'loop', ordinal: 0 },
-      { kind: 'ready', invocationKey: 'ready', nodeId: 'ready' },
     ];
-
-    expect(() => advance(checkpoint(), observations)).toThrow(
-      expect.objectContaining({ code: 'join_invalid' }),
-    );
+    const plan = advanceWorkflow({
+      checkpoint: checkpoint(),
+      observations,
+      occurredAt,
+      maximumAdmissions: 0,
+      schedulerState: {
+        deriveReadiness: false,
+        nodes: [{ id: 'join', sideEffectClass: 'safe' }],
+        edges: [],
+      },
+    });
+    expect(plan.checkpoint.joins[0]?.ledger).toEqual([
+      { branchId: 'a', disposition: 'arrived' },
+    ]);
   });
 
   it('accepts an identical terminal loop replay through checkpoint state', () => {

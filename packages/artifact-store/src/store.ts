@@ -74,6 +74,7 @@ export interface ArtifactMetadata extends ArtifactIdentity {
 }
 
 export interface PutArtifactRequest extends ArtifactMetadata {
+  /** Ownership transfers only after the store admits the request preflight. */
   readonly body: Readable;
   readonly signal?: AbortSignal;
 }
@@ -205,19 +206,23 @@ function workspacePrefix(workspaceId: string): string {
 }
 
 function isNotFound(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
+  try {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+
+    const candidate = error as {
+      readonly $metadata?: { readonly httpStatusCode?: number };
+      readonly name?: string;
+    };
+    return (
+      candidate.$metadata?.httpStatusCode === 404 ||
+      candidate.name === 'NoSuchKey' ||
+      candidate.name === 'NotFound'
+    );
+  } catch {
     return false;
   }
-
-  const candidate = error as {
-    readonly $metadata?: { readonly httpStatusCode?: number };
-    readonly name?: string;
-  };
-  return (
-    candidate.$metadata?.httpStatusCode === 404 ||
-    candidate.name === 'NoSuchKey' ||
-    candidate.name === 'NotFound'
-  );
 }
 
 function objectMetadata(
@@ -363,9 +368,12 @@ function verifiedBody(
 
 function abortError(signal: AbortSignal | undefined): Error {
   const reason: unknown = signal?.reason;
-  return reason instanceof Error
-    ? reason
-    : new Error('Artifact transfer aborted');
+  try {
+    if (reason instanceof Error) return reason;
+  } catch {
+    // Cancellation values are untrusted at this boundary.
+  }
+  return new Error('Artifact transfer aborted', { cause: reason });
 }
 
 async function consume(body: Readable): Promise<void> {
@@ -651,7 +659,12 @@ class AwsArtifactStore
       if (verified === null) {
         throw new ArtifactIntegrityError('Uploaded artifact is unavailable');
       }
-      return verified;
+      if (!artifactMetadataMatches(verified, metadata)) {
+        throw new ArtifactIntegrityError(
+          'Uploaded artifact metadata does not match the requested artifact',
+        );
+      }
+      return Object.freeze(metadata);
     } catch (error: unknown) {
       body.destroy();
       throw error;
@@ -861,11 +874,15 @@ class ObservedArtifactStore
   }
 
   private report(error: unknown): void {
-    if (
-      !(error instanceof ArtifactIntegrityError) ||
-      error instanceof ArtifactInputIntegrityError
-    )
+    try {
+      if (
+        !(error instanceof ArtifactIntegrityError) ||
+        error instanceof ArtifactInputIntegrityError
+      )
+        return;
+    } catch {
       return;
+    }
     safelyObserveSafetyViolation(this.observer, {
       check: 'artifact_integrity',
       regionRole: this.regionRole,

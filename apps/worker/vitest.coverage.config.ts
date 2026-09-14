@@ -1,18 +1,11 @@
-import { fileURLToPath } from 'node:url';
-
 import { defineConfig } from 'vitest/config';
 
+import { workerResolve, workerTestDefaults } from './vitest.shared.config.js';
+
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@pertexo/queue': fileURLToPath(
-        new URL('../../packages/queue/src/index.ts', import.meta.url),
-      ),
-    },
-  },
+  resolve: workerResolve,
   test: {
-    environment: 'node',
-    exclude: ['dist/**', 'node_modules/**', '**/*.integration.test.ts'],
+    ...workerTestDefaults,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'json'],

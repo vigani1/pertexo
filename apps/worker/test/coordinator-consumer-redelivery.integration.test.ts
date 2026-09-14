@@ -1,17 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '@pertexo/node-catalog';
 
-import {
-  cleanupFixture,
-  databaseUrl,
-  enabled,
-  parseDatabaseConfig,
-  restoreServices,
-  setupFixture,
-  workerQuery,
-  workerUrl,
-  workspaceId,
-} from './coordinator-consumer.fixtures.js';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   acceptReplayRun,
   acceptRun,
@@ -19,14 +10,20 @@ import {
 } from './support/coordinator-run-fixtures.js';
 import { createCoordinatorRecoveryHarness } from './support/coordinator-recovery-harness.js';
 
+const {
+  databaseUrl,
+  enabled,
+  restoreServicesAndClose,
+  setup,
+  workerQuery,
+  workerUrl,
+  workspaceId,
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Coordinator exact redelivery resilience', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('advances an accepted V2 run once across exact BullMQ redelivery', async () => {
     const accepted = await acceptRun();

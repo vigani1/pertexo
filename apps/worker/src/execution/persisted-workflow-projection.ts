@@ -19,25 +19,22 @@ export function verifyPersistedWorkflowProjection(
   const admissionDescription = options.releaseSupport?.descriptions.find(
     ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
   );
-  if (
-    options.releaseSupport !== undefined &&
-    (supportedCurrent === undefined || admissionDescription === undefined)
-  )
-    throw new TypeError('Published workflow compatibility release is missing');
-  const admissionRelease =
-    options.releaseSupport === undefined
-      ? options.admissionRelease
-      : options.releaseSupport.resolve(
-          admissionDescription?.epoch ?? 0,
-          admissionDescription?.fingerprint ?? '',
-        );
-  const currentRelease =
-    options.releaseSupport === undefined
-      ? options.currentRelease
-      : options.releaseSupport.resolve(
-          supportedCurrent?.epoch ?? 0,
-          supportedCurrent?.fingerprint ?? '',
-        );
+  let admissionRelease = options.admissionRelease;
+  let currentRelease = options.currentRelease;
+  if (options.releaseSupport !== undefined) {
+    if (supportedCurrent === undefined || admissionDescription === undefined)
+      throw new TypeError(
+        'Published workflow compatibility release is missing',
+      );
+    admissionRelease = options.releaseSupport.resolve(
+      admissionDescription.epoch,
+      admissionDescription.fingerprint,
+    );
+    currentRelease = options.releaseSupport.resolve(
+      supportedCurrent.epoch,
+      supportedCurrent.fingerprint,
+    );
+  }
   const executable = verifyWorkflowExecutableV2({
     envelope: projection.executableJson,
     checksum: projection.checksum,

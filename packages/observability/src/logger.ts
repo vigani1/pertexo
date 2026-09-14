@@ -32,6 +32,7 @@ const RESERVED_FIELDS = new Set([
 
 const MAX_SANITIZE_DEPTH = 12;
 const MAX_SANITIZE_ENTRIES = 100;
+const MAX_SANITIZE_TOTAL_ENTRIES = 500;
 const MAX_REDACT_TEXT_LENGTH = 16_384;
 const REDACTED = '[Redacted]';
 const TRUNCATED = '[Truncated]';
@@ -195,17 +196,17 @@ function isSecretName(name: string): boolean {
 function sanitizeError(
   error: Error,
   depth: number,
-  seen: WeakSet<object>,
+  state: SanitizeState,
 ): Error {
   try {
-    if (seen.has(error)) {
+    if (state.seen.has(error)) {
       return new Error('[Circular error]');
     }
-    seen.add(error);
+    state.seen.add(error);
 
     const cause =
       'cause' in error
-        ? sanitizeValue(error.cause, depth + 1, seen)
+        ? sanitizeValue(error.cause, depth + 1, state)
         : undefined;
     const sanitized =
       cause === undefined
@@ -221,55 +222,96 @@ function sanitizeError(
   }
 }
 
+interface SanitizeState {
+  remainingEntries: number;
+  seen: WeakSet<object>;
+}
+
+function sanitizeArray(
+  value: readonly unknown[],
+  depth: number,
+  state: SanitizeState,
+): readonly unknown[] | string {
+  try {
+    const length = Math.min(value.length, MAX_SANITIZE_ENTRIES);
+    const sanitized: unknown[] = [];
+    for (
+      let index = 0;
+      index < length && state.remainingEntries > 0;
+      index += 1
+    ) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (descriptor === undefined) {
+        sanitized.length += 1;
+        continue;
+      }
+      state.remainingEntries -= 1;
+      sanitized.push(
+        'value' in descriptor
+          ? sanitizeValue(descriptor.value, depth + 1, state)
+          : '[Accessor]',
+      );
+    }
+    return sanitized;
+  } catch {
+    return '[Unserializable]';
+  }
+}
+
 function sanitizeValue(
   value: unknown,
   depth: number,
-  seen: WeakSet<object>,
+  state: SanitizeState,
 ): unknown {
-  if (typeof value === 'string') {
-    return redactLogText(value);
+  try {
+    if (typeof value === 'string') return redactLogText(value);
+    if (typeof value !== 'object' || value === null) return value;
+    if (depth >= MAX_SANITIZE_DEPTH || state.remainingEntries <= 0)
+      return TRUNCATED;
+    if (value instanceof Error) return sanitizeError(value, depth, state);
+    if (state.seen.has(value)) return '[Circular]';
+    state.seen.add(value);
+    return Array.isArray(value)
+      ? sanitizeArray(value, depth, state)
+      : sanitizeRecord(value, depth, state);
+  } catch {
+    return '[Unserializable]';
   }
-  if (typeof value !== 'object' || value === null) {
-    return value;
-  }
-  if (depth >= MAX_SANITIZE_DEPTH) {
-    return TRUNCATED;
-  }
-  if (value instanceof Error) {
-    return sanitizeError(value, depth, seen);
-  }
-  if (seen.has(value)) {
-    return '[Circular]';
-  }
-  seen.add(value);
-
-  if (Array.isArray(value)) {
-    return value
-      .slice(0, MAX_SANITIZE_ENTRIES)
-      .map((item) => sanitizeValue(item, depth + 1, seen));
-  }
-
-  return sanitizeRecord(value, depth, seen);
 }
 
 function sanitizeRecord(
   value: object,
   depth: number,
-  seen: WeakSet<object>,
+  state: SanitizeState,
+  excludedNames: ReadonlySet<string> = new Set(),
 ): Record<string, unknown> | string {
-  let entries: readonly [string, unknown][];
   try {
-    entries = Object.entries(value).slice(0, MAX_SANITIZE_ENTRIES);
+    const sanitized: Record<string, unknown> = {};
+    let admitted = 0;
+    for (const key of Reflect.ownKeys(value)) {
+      if (
+        typeof key !== 'string' ||
+        excludedNames.has(key) ||
+        admitted >= MAX_SANITIZE_ENTRIES ||
+        state.remainingEntries <= 0
+      )
+        continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor?.enumerable !== true) continue;
+      admitted += 1;
+      state.remainingEntries -= 1;
+      if (isSecretName(key)) {
+        sanitized[key] = REDACTED;
+      } else if ('value' in descriptor) {
+        sanitized[key] = sanitizeValue(descriptor.value, depth + 1, state);
+      } else {
+        sanitized[key] = '[Accessor]';
+      }
+    }
+    return sanitized;
   } catch {
     return '[Unserializable]';
   }
-
-  return Object.fromEntries(
-    entries.map(([key, entryValue]) => [
-      key,
-      isSecretName(key) ? REDACTED : sanitizeValue(entryValue, depth + 1, seen),
-    ]),
-  );
 }
 
 function safeFields(fields: LogFields | undefined): Record<string, unknown> {
@@ -278,10 +320,12 @@ function safeFields(fields: LogFields | undefined): Record<string, unknown> {
   }
 
   try {
-    const selected = Object.fromEntries(
-      Object.entries(fields).filter(([key]) => !RESERVED_FIELDS.has(key)),
-    );
-    const sanitized = sanitizeRecord(selected, 0, new WeakSet());
+    const state: SanitizeState = {
+      remainingEntries: MAX_SANITIZE_TOTAL_ENTRIES,
+      seen: new WeakSet(),
+    };
+    state.seen.add(fields);
+    const sanitized = sanitizeRecord(fields, 0, state, RESERVED_FIELDS);
     return typeof sanitized === 'string' ? {} : sanitized;
   } catch {
     return {};
@@ -293,13 +337,18 @@ function errorValue(error: unknown): Error | undefined {
     return undefined;
   }
 
-  if (error instanceof Error) {
-    return sanitizeError(error, 0, new WeakSet());
+  const state: SanitizeState = {
+    remainingEntries: MAX_SANITIZE_TOTAL_ENTRIES,
+    seen: new WeakSet(),
+  };
+  try {
+    if (error instanceof Error) return sanitizeError(error, 0, state);
+    return new Error('Non-Error value thrown', {
+      cause: sanitizeValue(error, 0, state),
+    });
+  } catch {
+    return new Error('[Unserializable error]');
   }
-
-  return new Error('Non-Error value thrown', {
-    cause: sanitizeValue(error, 0, new WeakSet()),
-  });
 }
 
 function correlationFields(): Readonly<Record<string, string>> {

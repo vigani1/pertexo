@@ -315,37 +315,40 @@ export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
  * this before queue admission so hostile context values cannot reach a worker.
  */
 export function projectExpressionContext(value: unknown): ExpressionContextV1 {
-  if (value === null || typeof value !== 'object')
-    throw new TypeError('expression context must be an object');
-  const context = value as Record<string, unknown>;
-  if (
-    !Object.hasOwn(context, 'runInput') ||
-    !Object.hasOwn(context, 'nodeOutputs')
-  )
-    throw new TypeError('expression context requires runInput and nodeOutputs');
-  const canonical = canonicalizeJson({
-    runInput: context.runInput,
-    nodeOutputs: context.nodeOutputs,
-  });
-  if (!isJsonObject(canonical))
-    throw new TypeError('expression context must be an object');
-  if (
-    !Object.hasOwn(canonical, 'runInput') ||
-    !Object.hasOwn(canonical, 'nodeOutputs')
-  )
-    throw new TypeError('expression context requires runInput and nodeOutputs');
-  const runInput = canonical.runInput;
-  const nodeOutputs = canonical.nodeOutputs;
-  if (
-    runInput === undefined ||
-    nodeOutputs === undefined ||
-    !isJsonObject(nodeOutputs)
-  )
-    throw new TypeError(
-      'expression context requires JSON runInput and nodeOutputs',
+  try {
+    if (value === null || typeof value !== 'object') throw new TypeError();
+    const runInputDescriptor = Object.getOwnPropertyDescriptor(
+      value,
+      'runInput',
     );
-  return {
-    runInput,
-    nodeOutputs,
-  };
+    const nodeOutputsDescriptor = Object.getOwnPropertyDescriptor(
+      value,
+      'nodeOutputs',
+    );
+    if (
+      runInputDescriptor === undefined ||
+      !('value' in runInputDescriptor) ||
+      nodeOutputsDescriptor === undefined ||
+      !('value' in nodeOutputsDescriptor)
+    )
+      throw new TypeError();
+    const runInputValue: unknown = runInputDescriptor.value;
+    const nodeOutputsValue: unknown = nodeOutputsDescriptor.value;
+    const canonical = canonicalizeJson({
+      runInput: runInputValue,
+      nodeOutputs: nodeOutputsValue,
+    });
+    if (!isJsonObject(canonical)) throw new TypeError();
+    const runInput = canonical.runInput;
+    const nodeOutputs = canonical.nodeOutputs;
+    if (
+      runInput === undefined ||
+      nodeOutputs === undefined ||
+      !isJsonObject(nodeOutputs)
+    )
+      throw new TypeError();
+    return { runInput, nodeOutputs };
+  } catch {
+    throw new TypeError('invalid expression context');
+  }
 }

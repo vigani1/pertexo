@@ -4,8 +4,9 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { createHash } from 'node:crypto';
+import { getEventListeners } from 'node:events';
 import { Readable } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ControlLedgerClosedError,
@@ -207,12 +208,14 @@ describe('external control ledger', () => {
     );
   });
 
-  it('fails closed for invalid first/predecessor state and corrupted predecessors', async () => {
+  it('rejects a first record whose previous hash is not zero', async () => {
     const firstFixture = fixture();
     await expect(
       firstFixture.ledger.append(command({ previousHash: '1'.repeat(64) })),
     ).rejects.toThrow('zero hash');
+  });
 
+  it('rejects a subsequent record when its predecessor is missing', async () => {
     const missingFixture = fixture();
     await expect(
       missingFixture.ledger.append(command({ sequence: 2 })),
@@ -222,15 +225,21 @@ describe('external control ledger', () => {
         (candidate) => candidate instanceof PutObjectCommand,
       ),
     ).toBe(false);
+  });
 
+  it('rejects a subsequent record whose previous hash mismatches', async () => {
     const mismatchFixture = fixture();
-    const first = await mismatchFixture.ledger.append(command());
+    await mismatchFixture.ledger.append(command());
     await expect(
       mismatchFixture.ledger.append(
         command({ previousHash: '1'.repeat(64), sequence: 2 }),
       ),
     ).rejects.toThrow('does not match predecessor');
+  });
 
+  it('rejects a subsequent record when its predecessor is corrupted', async () => {
+    const mismatchFixture = fixture();
+    const first = await mismatchFixture.ledger.append(command());
     const corrupted = Buffer.from(mismatchFixture.client.getRequired(key(1)));
     corrupted[10] = corrupted[10] === 97 ? 98 : 97;
     mismatchFixture.client.putRaw(key(1), corrupted);
@@ -580,6 +589,55 @@ describe('external control ledger', () => {
     );
   });
 
+  it.each([
+    ['anchor', 1],
+    ['batch', 2],
+    ['continuation probe', 3],
+  ] as const)(
+    'cancels during the reconciliation %s read and releases request listeners',
+    async (_stage, getCall) => {
+      const { client, ledger } = fixture();
+      const first = await ledger.append(command());
+      const second = await ledger.append(
+        command({
+          commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c04',
+          previousHash: first.recordHash,
+          sequence: 2,
+        }),
+      );
+      await ledger.append(
+        command({
+          commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c05',
+          previousHash: second.recordHash,
+          sequence: 3,
+        }),
+      );
+      client.getSignals.length = 0;
+      client.hangGetCall = getCall;
+      const controller = new AbortController();
+      const reason = new Error(`cancel during ${_stage}`);
+
+      const reconciliation = ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: first.recordHash,
+        projectedSequence: 1,
+        signal: controller.signal,
+        workspaceId: WORKSPACE_ID,
+      });
+      await vi.waitFor(() => {
+        expect(client.getSignals).toHaveLength(getCall);
+      });
+      controller.abort(reason);
+
+      await expect(reconciliation).rejects.toBe(reason);
+      for (const signal of client.getSignals) {
+        if (signal === undefined)
+          throw new Error('Expected a bounded reconciliation request signal');
+        expect(getEventListeners(signal, 'abort')).toHaveLength(0);
+      }
+    },
+  );
+
   it('treats an omitted provider contents list as an empty page', async () => {
     const client = new MemoryS3();
     client.listOutput = { IsTruncated: false, KeyCount: 0 };
@@ -801,27 +859,28 @@ describe('external control ledger', () => {
     ).rejects.toThrow('listed record is missing');
   });
 
-  it('bounds payload/key inputs and requires legal authority for holds', async () => {
+  it.each([
+    ['over-bound reason', { reason: 'x'.repeat(513) }],
+    ['unsafe workspace identity', { workspaceId: '../unsafe' }],
+    ['hold without legal authority', { commandType: 'legal_hold_placed' }],
+  ] as const)('rejects %s', async (_case, override) => {
     const { ledger } = fixture();
-    await expect(
-      ledger.append(command({ reason: 'x'.repeat(513) })),
-    ).rejects.toBeDefined();
-    await expect(
-      ledger.append(command({ workspaceId: '../unsafe' })),
-    ).rejects.toBeDefined();
-    await expect(
-      ledger.append(command({ commandType: 'legal_hold_placed' })),
-    ).rejects.toBeDefined();
+    await expect(ledger.append(command(override))).rejects.toBeDefined();
   });
 
-  it('propagates cancellation, enforces timeout, and has explicit client ownership', async () => {
+  it('enforces a bounded read timeout', async () => {
     const borrowed = new MemoryS3();
     borrowed.hangGets = true;
     const { ledger } = fixture(borrowed, 20);
     await expect(
       ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
     ).rejects.toMatchObject({ name: 'TimeoutError' });
+  });
 
+  it('propagates caller cancellation and leaves a borrowed client open', async () => {
+    const borrowed = new MemoryS3();
+    borrowed.hangGets = true;
+    const { ledger } = fixture(borrowed, 50);
     const controller = new AbortController();
     const cancelled = ledger.read({
       sequence: 1,
@@ -836,7 +895,9 @@ describe('external control ledger', () => {
     await expect(
       ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
     ).rejects.toBeInstanceOf(ControlLedgerClosedError);
+  });
 
+  it('destroys an explicitly owned client exactly once', () => {
     const owned = new MemoryS3();
     const ownedLedger = createControlLedger(
       {

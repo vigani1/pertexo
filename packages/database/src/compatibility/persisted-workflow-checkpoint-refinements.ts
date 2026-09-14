@@ -24,6 +24,16 @@ type Checkpoint = Readonly<{
     joinId: string;
     branchPath?: readonly BranchScopePart[] | undefined;
     iterationPath?: readonly IterationScopePart[] | undefined;
+    policy:
+      | Readonly<{ kind: 'all' }>
+      | Readonly<{ kind: 'any' }>
+      | Readonly<{ kind: 'count'; count: number }>;
+    ledger: readonly Readonly<{
+      branchId: string;
+      disposition: string;
+    }>[];
+    selectedBranchIds?: readonly string[] | undefined;
+    unsatisfiedReasonCode?: string | undefined;
   }>[];
   loops: readonly Readonly<{
     controlInvocationKey: string;
@@ -38,9 +48,152 @@ type Checkpoint = Readonly<{
   }>[];
   initialIterationBudget?: number | undefined;
   remainingIterationBudget: number;
+  cancelRequested: boolean;
+  deadlineExpired: boolean;
 }>;
 
 type InvocationByKey = ReadonlyMap<string, Invocation>;
+type Join = Checkpoint['joins'][number];
+
+function requiredArrivals(
+  policy: Join['policy'],
+  arrivedCount: number,
+): number {
+  if (policy.kind === 'all') return arrivedCount;
+  if (policy.kind === 'any') return 1;
+  return policy.count;
+}
+
+function expectedUnsatisfiedReason(
+  join: Join,
+  arrivedCount: number,
+  required: number,
+): string | undefined {
+  if (join.policy.kind !== 'all')
+    return arrivedCount < required ? 'insufficient_arrivals' : undefined;
+  if (join.ledger.some(({ disposition }) => disposition === 'failed'))
+    return 'branch_failed';
+  if (join.ledger.some(({ disposition }) => disposition === 'canceled'))
+    return 'branch_canceled';
+  return undefined;
+}
+
+function invocationStatusIsConsistent(
+  checkpoint: Checkpoint,
+  join: Join,
+  selected: readonly string[] | undefined,
+  invocation: Invocation | undefined,
+): boolean {
+  if (join.unsatisfiedReasonCode !== undefined)
+    return invocation?.status === 'failed';
+  if (selected !== undefined)
+    return invocation !== undefined && invocation.status !== 'pending';
+  return (
+    invocation?.status === 'pending' ||
+    ((checkpoint.cancelRequested || checkpoint.deadlineExpired) &&
+      invocation?.status === 'canceled')
+  );
+}
+
+function selectedBranchesAreConsistent(
+  selected: readonly string[] | undefined,
+  expected: readonly string[],
+  branchIds: ReadonlySet<string>,
+  terminal: boolean,
+  satisfiable: boolean,
+): boolean {
+  if (selected === undefined) return true;
+  return (
+    terminal &&
+    satisfiable &&
+    new Set(selected).size === selected.length &&
+    selected.length === expected.length &&
+    selected.every(
+      (branchId, index) =>
+        branchId === expected[index] && branchIds.has(branchId),
+    )
+  );
+}
+
+export function refineJoinConsistency(
+  checkpoint: Checkpoint,
+  context: z.RefinementCtx,
+): void {
+  const joinKeys = new Set<string>();
+  for (const join of checkpoint.joins) {
+    const ledger = [...join.ledger].sort((left, right) =>
+      left.branchId < right.branchId
+        ? -1
+        : left.branchId > right.branchId
+          ? 1
+          : 0,
+    );
+    const branchIds = new Set(ledger.map(({ branchId }) => branchId));
+    const selected =
+      join.selectedBranchIds === undefined
+        ? undefined
+        : [...join.selectedBranchIds].sort();
+    const arrived = ledger
+      .filter(({ disposition }) => disposition === 'arrived')
+      .map(({ branchId }) => branchId);
+    const required = requiredArrivals(join.policy, arrived.length);
+    const terminal = ledger.every(
+      ({ disposition }) => disposition !== 'pending',
+    );
+    const satisfiable =
+      join.policy.kind === 'all'
+        ? !ledger.some(
+            ({ disposition }) =>
+              disposition === 'failed' || disposition === 'canceled',
+          )
+        : arrived.length >= required;
+    const expectedSelected = satisfiable ? arrived.slice(0, required) : [];
+    const expectedReason = expectedUnsatisfiedReason(
+      join,
+      arrived.length,
+      required,
+    );
+    const joinKey =
+      join.joinInvocationKey ??
+      scopedInvocationKey(
+        checkpoint,
+        join.joinId,
+        join.branchPath ?? [],
+        join.iterationPath ?? [],
+      );
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === joinKey,
+    );
+    const statusIsConsistent = invocationStatusIsConsistent(
+      checkpoint,
+      join,
+      selected,
+      invocation,
+    );
+    if (
+      joinKeys.has(joinKey) ||
+      !statusIsConsistent ||
+      branchIds.size !== ledger.length ||
+      (join.policy.kind === 'count' && join.policy.count > ledger.length) ||
+      (selected !== undefined && join.unsatisfiedReasonCode !== undefined) ||
+      !selectedBranchesAreConsistent(
+        selected,
+        expectedSelected,
+        branchIds,
+        terminal,
+        satisfiable,
+      ) ||
+      (join.unsatisfiedReasonCode !== undefined &&
+        (!terminal || join.unsatisfiedReasonCode !== expectedReason))
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'checkpoint join state is inconsistent',
+        input: checkpoint,
+      });
+    joinKeys.add(joinKey);
+  }
+}
 
 function scopedInvocationKey(
   checkpoint: Checkpoint,
@@ -149,6 +302,8 @@ export function refineLoopsBudgetAndWaits(
     const complete =
       loop.nextOrdinal === loop.collectionSize &&
       loop.activeOrdinals.length === 0;
+    const expectedControlStatus =
+      loop.terminalStatus ?? (complete ? 'succeeded' : 'waiting');
     if (
       loopKeys.has(loop.controlInvocationKey) ||
       loop.controlInvocationKey !==
@@ -164,11 +319,7 @@ export function refineLoopsBudgetAndWaits(
       JSON.stringify(control.iterationPath ?? []) !==
         JSON.stringify(loop.iterationPath) ||
       JSON.stringify(control.output) !== JSON.stringify(loop.collection) ||
-      (loop.terminalStatus === undefined
-        ? complete
-          ? control.status !== 'succeeded'
-          : control.status !== 'waiting'
-        : control.status !== loop.terminalStatus)
+      control.status !== expectedControlStatus
     )
       context.addIssue({
         code: 'custom',

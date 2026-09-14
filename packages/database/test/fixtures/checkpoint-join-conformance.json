@@ -1,0 +1,51 @@
+[
+  {
+    "name": "all satisfied",
+    "status": "succeeded",
+    "join": {
+      "policy": { "kind": "all" },
+      "ledger": [
+        { "branchId": "branch-02", "disposition": "skipped" },
+        { "branchId": "branch-01", "disposition": "arrived" }
+      ],
+      "selectedBranchIds": ["branch-01"]
+    }
+  },
+  {
+    "name": "any satisfied",
+    "status": "succeeded",
+    "join": {
+      "policy": { "kind": "any" },
+      "ledger": [
+        { "branchId": "branch-02", "disposition": "arrived" },
+        { "branchId": "branch-01", "disposition": "arrived" }
+      ],
+      "selectedBranchIds": ["branch-01"]
+    }
+  },
+  {
+    "name": "count satisfied",
+    "status": "succeeded",
+    "join": {
+      "policy": { "kind": "count", "count": 2 },
+      "ledger": [
+        { "branchId": "branch-03", "disposition": "skipped" },
+        { "branchId": "branch-02", "disposition": "arrived" },
+        { "branchId": "branch-01", "disposition": "arrived" }
+      ],
+      "selectedBranchIds": ["branch-02", "branch-01"]
+    }
+  },
+  {
+    "name": "all unsatisfied",
+    "status": "failed",
+    "join": {
+      "policy": { "kind": "all" },
+      "ledger": [
+        { "branchId": "branch-02", "disposition": "canceled" },
+        { "branchId": "branch-01", "disposition": "failed" }
+      ],
+      "unsatisfiedReasonCode": "branch_failed"
+    }
+  }
+]

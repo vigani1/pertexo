@@ -1,8 +1,12 @@
 import { readFile } from 'node:fs/promises';
 
+import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkCompatibilityReleasePreactivationTarget,
+  CompatibilityReleaseMismatchError,
+  lockExpectedCompatibilityReleaseWithClient,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
@@ -65,7 +69,7 @@ describe('node compatibility release persistence', () => {
     );
   });
 
-  it('accepts only a bounded canonical V1 catalog expectation', () => {
+  it('accepts only a bounded compact V1 authority expectation', () => {
     const expectation = {
       epoch: 1,
       fingerprint:
@@ -83,13 +87,96 @@ describe('node compatibility release persistence', () => {
         catalogJson:
           '{ "domain": "pertexo.node-compatibility-release", "schemaVersion": 1 }',
       }),
-    ).toThrow('not canonical');
+    ).toThrow('not a compact V1 authority expectation');
     expect(() =>
       parseCompatibilityReleaseExpectation({
         ...expectation,
         fingerprint: 'node-compat:v1:sha256:not-a-digest',
       }),
     ).toThrow();
+
+    const catalog = {
+      domain: 'pertexo.node-compatibility-release',
+      schemaVersion: 1,
+      padding: '',
+    };
+    const withoutPadding = JSON.stringify(catalog);
+    catalog.padding = 'x'.repeat(
+      128 * 1024 - Buffer.byteLength(withoutPadding),
+    );
+    const exactBoundary = JSON.stringify(catalog);
+    expect(Buffer.byteLength(exactBoundary)).toBe(128 * 1024);
+    expect(
+      parseCompatibilityReleaseExpectation({
+        ...expectation,
+        catalogJson: exactBoundary,
+      }),
+    ).toMatchObject({ catalogJson: exactBoundary });
+    expect(() =>
+      parseCompatibilityReleaseExpectation({
+        ...expectation,
+        catalogJson: `${exactBoundary.slice(0, -2)}x"}`,
+      }),
+    ).toThrow('catalog is too large');
+  });
+
+  it('distinguishes a durable mismatch from an authority query failure', async () => {
+    const expectation = {
+      epoch: 1,
+      fingerprint:
+        'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',
+      catalogJson:
+        '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
+    } as const;
+    const noMatch = {
+      query: () => Promise.resolve({ rows: [] }),
+    };
+    const outage = new Error('socket reset');
+    const unavailable = {
+      query: async () => Promise.reject(outage),
+    };
+
+    await expect(
+      lockExpectedCompatibilityReleaseWithClient(
+        noMatch as unknown as Pick<Pool, 'query'>,
+        expectation,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(CompatibilityReleaseMismatchError);
+      expect(error).toMatchObject({
+        diagnosticCategory: 'mismatch',
+        message: 'Node compatibility release does not match this artifact',
+      });
+      expect('cause' in (error as object)).toBe(false);
+      return true;
+    });
+    await expect(
+      lockExpectedCompatibilityReleaseWithClient(unavailable, expectation),
+    ).rejects.toMatchObject({
+      cause: outage,
+      diagnosticCategory: 'query_failure',
+      message: 'Node compatibility release does not match this artifact',
+    });
+
+    const hostile = Object.create(null) as object;
+    await expect(
+      checkCompatibilityReleasePreactivationTarget(
+        // Deliberately exercises an adapter that violates Error conventions.
+        {
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          query: () => Promise.reject(hostile),
+        } as unknown as Pool,
+        [expectation],
+        expectation,
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(CompatibilityReleaseMismatchError);
+      expect(error).toMatchObject({
+        cause: hostile,
+        diagnosticCategory: 'query_failure',
+      });
+      return true;
+    });
   });
 
   it('separates retained execution history from a bounded rolling readiness overlap', () => {

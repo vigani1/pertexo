@@ -4,9 +4,10 @@ export { idempotencyKeySchema } from './transport-headers.js';
 
 export const oidcAuthorizationCodeSchema = z.string().min(1).max(4_096);
 export const oidcStateSchema = z.string().min(16).max(512);
+/** OAuth callback wire input: validate known fields and ignore extensions. */
 export const oidcCallbackRequestSchema = z
   .object({ code: oidcAuthorizationCodeSchema, state: oidcStateSchema })
-  .strict();
+  .strip();
 export const oidcStartResponseSchema = z
   .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
   .strict();

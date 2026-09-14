@@ -100,6 +100,7 @@ export function createConnectionResolutionPersistence(
             sealed: mapSealed(row),
           });
         },
+        input.signal === undefined ? {} : { signal: input.signal },
       );
     },
   });

@@ -1,15 +1,13 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
-import type { Pool } from 'pg';
-import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
+import { retentionQuery as query } from './retention-support.js';
 import {
   inRetentionTransaction,
-  lockWorkspaceRetentionControl,
-  withWorkspaceDestructiveOperationLock,
+  withWorkspaceDestructiveAuthorization,
 } from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
@@ -65,20 +63,6 @@ const optionsSchema = z
   })
   .strict();
 
-function query<Row extends Record<string, unknown>>(
-  client: Pool | PoolClient,
-  text: string,
-  values: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  signal?.throwIfAborted();
-  return client.query<Row>({
-    text,
-    values: [...values],
-    ...(signal === undefined ? {} : { signal }),
-  });
-}
-
 export function createRunArtifactRetentionCoordinator(
   config: DatabaseConfig,
   ledger: ControlLedger,
@@ -97,59 +81,35 @@ export function createRunArtifactRetentionCoordinator(
   return Object.freeze({
     close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
-      const due = await query<{ artifact_id: string; workspace_id: string }>(
+      const transactionOptions = {
+        lockTimeoutMs: options.lockTimeoutMs,
+        statementTimeoutMs: options.statementTimeoutMs,
+      };
+      const due = await inRetentionTransaction(
         pool,
-        'select * from app.find_due_run_artifact_retention(1)',
-        [],
+        transactionOptions,
         signal,
+        (client) =>
+          query<{ artifact_id: string; workspace_id: string }>(
+            client,
+            'select * from app.find_due_run_artifact_retention(1)',
+            [],
+            signal,
+          ),
       );
       const candidate = due.rows[0];
       if (candidate === undefined)
         return Object.freeze({ status: 'idle' as const });
       const artifactId = uuidSchema.parse(candidate.artifact_id);
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
-      const transactionOptions = {
-        lockTimeoutMs: options.lockTimeoutMs,
-        statementTimeoutMs: options.statementTimeoutMs,
-      };
-      const highWater = await lockWorkspaceRetentionControl(
+      const authorization = await withWorkspaceDestructiveAuthorization(
         pool,
         transactionOptions,
         signal,
         workspaceId,
-        'Run artifact workspace control lock was not returned',
-      );
-      const timeoutSignal = AbortSignal.timeout(
+        ledger,
         options.externalOperationTimeoutMs,
-      );
-      const externalSignal =
-        signal === undefined
-          ? timeoutSignal
-          : AbortSignal.any([signal, timeoutSignal]);
-      const reconciliation = await ledger.reconcile({
-        maxRecords: 1,
-        projectedHash: highWater.hash,
-        projectedSequence: highWater.sequence,
-        signal: externalSignal,
-        workspaceId,
-      });
-      if (
-        !reconciliation.reachedHighWater ||
-        reconciliation.hasMore ||
-        reconciliation.records.length !== 0 ||
-        reconciliation.pageEndSequence !== highWater.sequence ||
-        reconciliation.pageEndHash !== highWater.hash
-      )
-        return Object.freeze({
-          artifactId,
-          status: 'released' as const,
-          workspaceId,
-        });
-      return withWorkspaceDestructiveOperationLock(
-        pool,
-        workspaceId,
-        signal,
-        async () => {
+        async (highWater, externalSignal) => {
           const outcome = await inRetentionTransaction(
             pool,
             transactionOptions,
@@ -192,7 +152,7 @@ export function createRunArtifactRetentionCoordinator(
                   [workspaceId, artifactId, highWater.sequence, highWater.hash],
                   signal,
                 );
-                return deferred.rows[0]?.deferred === true;
+                return z.boolean().parse(deferred.rows[0]?.deferred);
               },
             );
 
@@ -248,7 +208,7 @@ export function createRunArtifactRetentionCoordinator(
                 [workspaceId, artifactId, highWater.sequence, highWater.hash],
                 signal,
               );
-              return completed.rows[0]?.completed === true;
+              return z.boolean().parse(completed.rows[0]?.completed);
             },
           );
           if (!completed)
@@ -260,6 +220,13 @@ export function createRunArtifactRetentionCoordinator(
           });
         },
       );
+      if (authorization.status === 'stale')
+        return Object.freeze({
+          artifactId,
+          status: 'released' as const,
+          workspaceId,
+        });
+      return authorization.value;
     },
   });
 }

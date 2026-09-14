@@ -64,6 +64,61 @@ export {
 
 const reconciliationConsumerName = 'trigger-runtime.reconciliation.v1';
 
+type ReconciliationEvent = Readonly<{
+  payload: z.output<typeof reconciliationPayloadSchema>;
+  payloadChecksum: string;
+}>;
+
+function assertStoredReconciliationIdentity(
+  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+  eventRow: Readonly<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload_checksum: string;
+    schema_version: number;
+  }>,
+  payload: z.output<typeof reconciliationPayloadSchema>,
+  identity: Readonly<{
+    outboxEventId: string;
+    versionId: string;
+    workflowId: string;
+  }>,
+): void {
+  if (
+    eventRow.aggregate_id !== identity.workflowId ||
+    eventRow.aggregate_type !== 'workflow' ||
+    eventRow.job_name !== 'reconcile-workflow-triggers' ||
+    eventRow.schema_version !== 1 ||
+    payload.workspaceId !== input.workspaceId ||
+    payload.workflowId !== identity.workflowId ||
+    payload.publishedVersionId !== identity.versionId ||
+    payload.outboxEventId !== identity.outboxEventId ||
+    canonicalOutboxPayloadChecksum(payload) !== eventRow.payload_checksum
+  )
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation durable event identity is inconsistent',
+    );
+}
+
+function assertDeliveryIdentity(
+  delivery: NonNullable<
+    Parameters<
+      WorkflowTriggerReconciliationDatabase['reconcile']
+    >[0]['delivery']
+  >,
+  event: ReconciliationEvent,
+  outboxEventId: string,
+): void {
+  if (
+    uuidSchema.parse(delivery.outboxEventId) !== outboxEventId ||
+    digestSchema.parse(delivery.payloadChecksum) !== event.payloadChecksum
+  )
+    throw new WorkflowTriggerReconciliationMismatchError(
+      'Reconciliation delivery failed durable transport verification',
+    );
+}
+
 async function completeReceipt(
   client: PoolClient,
   workspaceId: string,
@@ -124,26 +179,20 @@ export function createWorkflowTriggerReconciliationDatabase(
               'Reconciliation outbox payload is invalid',
             );
           }
-          const deliveryChecksum = input.delivery?.payloadChecksum;
-          if (
-            eventRow.aggregate_id !== workflowId ||
-            eventRow.aggregate_type !== 'workflow' ||
-            eventRow.job_name !== 'reconcile-workflow-triggers' ||
-            eventRow.schema_version !== 1 ||
-            payload.workspaceId !== input.workspaceId ||
-            payload.workflowId !== workflowId ||
-            payload.publishedVersionId !== versionId ||
-            payload.outboxEventId !== outboxEventId ||
-            canonicalOutboxPayloadChecksum(payload) !==
-              eventRow.payload_checksum ||
-            (input.delivery !== undefined &&
-              (uuidSchema.parse(input.delivery.outboxEventId) !==
-                outboxEventId ||
-                digestSchema.parse(deliveryChecksum) !==
-                  eventRow.payload_checksum))
-          )
-            throw new WorkflowTriggerReconciliationMismatchError(
-              'Reconciliation delivery failed durable transport verification',
+          assertStoredReconciliationIdentity(input, eventRow, payload, {
+            outboxEventId,
+            versionId,
+            workflowId,
+          });
+          const verifiedEvent: ReconciliationEvent = {
+            payload,
+            payloadChecksum: eventRow.payload_checksum,
+          };
+          if (input.delivery !== undefined)
+            assertDeliveryIdentity(
+              input.delivery,
+              verifiedEvent,
+              outboxEventId,
             );
 
           if (input.delivery !== undefined) {

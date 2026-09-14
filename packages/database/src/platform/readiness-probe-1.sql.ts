@@ -21,14 +21,29 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         where policy.polrelid = table_class.oid
           and policy.polname = 'rls_probe_records_workspace_scope'
           and policy.polcmd = '*'
+          and policy.polpermissive
+          and cardinality(policy.polroles) = 2
+          and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+          and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+          and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+          and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+          and (select count(*) from pg_policy candidate where candidate.polrelid = table_class.oid) = 1
           and role.oid = any(policy.polroles)
-          and policy.polqual is not null
-          and policy.polwithcheck is not null
-          and pg_get_expr(policy.polqual, policy.polrelid) like '%workspace_id%'
-          and pg_get_expr(policy.polqual, policy.polrelid) like '%current_setting%'
-          and pg_get_expr(policy.polwithcheck, policy.polrelid) like '%workspace_id%'
-          and pg_get_expr(policy.polwithcheck, policy.polrelid) like '%current_setting%'
       ) or (
+        exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = table_class.oid
+            and policy.polname = 'rls_probe_records_workspace_scope'
+            and policy.polcmd = '*'
+            and policy.polpermissive
+            and cardinality(policy.polroles) = 2
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and (select count(*) from pg_policy candidate where candidate.polrelid = table_class.oid) = 1
+        )
+        and
         not has_table_privilege(current_user, table_class.oid, 'SELECT')
         and not has_table_privilege(current_user, table_class.oid, 'INSERT')
         and not has_table_privilege(current_user, table_class.oid, 'UPDATE')
@@ -78,23 +93,45 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and
         (select c.relrowsecurity and c.relforcerowsecurity
          from pg_class c where c.oid = to_regclass('app.audit_events'))
-        and exists (
-          select 1 from pg_policy p
-          where p.polrelid = to_regclass('app.workspace_memberships')
-            and p.polname = 'workspace_memberships_workspace_scope'
-            and p.polqual is not null and p.polwithcheck is not null
+        and (select count(*) from pg_policy where polrelid = to_regclass('app.workspace_memberships')) = 1
+        and (select count(*) from pg_policy where polrelid = to_regclass('app.audit_events')) = 3
+        and not exists (
+          select 1 from (values
+            ('workspace_memberships', 'workspace_memberships_workspace_scope', '*', 3),
+            ('audit_events', 'audit_events_workspace_select', 'r', 3),
+            ('audit_events', 'audit_events_workspace_insert', 'a', 3)
+          ) expected(table_name, policy_name, command, role_count)
+          where not exists (
+            select 1 from pg_policy policy
+            where policy.polrelid = to_regclass('app.' || expected.table_name)
+              and policy.polname = expected.policy_name
+              and policy.polcmd = expected.command
+              and policy.polpermissive
+              and cardinality(policy.polroles) = expected.role_count
+              and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+              and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+              and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+              and case when expected.command = 'a'
+                then policy.polqual is null
+                  and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+                when expected.command = 'r'
+                then pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+                  and policy.polwithcheck is null
+                else pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+                  and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+              end
+          )
         )
         and exists (
-          select 1 from pg_policy p
-          where p.polrelid = to_regclass('app.audit_events')
-            and p.polname = 'audit_events_workspace_select'
-            and p.polqual is not null
-        )
-        and exists (
-          select 1 from pg_policy p
-          where p.polrelid = to_regclass('app.audit_events')
-            and p.polname = 'audit_events_workspace_insert'
-            and p.polwithcheck is not null
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.audit_events')
+            and policy.polname = 'audit_events_retention_scope'
+            and policy.polcmd = '*'
+            and policy.polpermissive
+            and cardinality(policy.polroles) = 1
+            and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
         )
       ) as phase1_policy_compatible,
       (

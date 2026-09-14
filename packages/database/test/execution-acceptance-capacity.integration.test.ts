@@ -297,7 +297,7 @@ describe('workflow run capacity admission', () => {
            (workspace_id,version,status,active_run_limit,queued_run_limit,
             effective_at,expires_at)
          values ($1,9,'active',5,100,'-infinity'::timestamptz,
-                 clock_timestamp()+interval '1 second')`,
+                 clock_timestamp()+interval '5 seconds')`,
         [workspaceA],
       );
       await owner.query(
@@ -314,9 +314,26 @@ describe('workflow run capacity admission', () => {
       workspaceA,
       (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
     );
-    // The accepted run pins an immutable entitlement version whose expiry is
-    // evaluated by PostgreSQL, so this intentionally crosses the database clock.
-    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    const deadline = Date.now() + 10_000;
+    for (;;) {
+      const timing = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+        db.execute<{ expired: boolean; expires_at: Date }>(sql`
+          select clock_timestamp() >= version.expires_at expired,
+                 version.expires_at
+          from app.workspace_execution_entitlement_versions version
+          where version.workspace_id=${workspaceA} and version.version=9
+        `),
+      );
+      const row = timing.rows[0];
+      if (row === undefined) throw new Error('Pinned entitlement is missing');
+      expect(accepted.acceptedAt.getTime()).toBeLessThan(
+        new Date(row.expires_at).getTime(),
+      );
+      if (row.expired) break;
+      if (Date.now() >= deadline)
+        throw new Error('Timed out waiting for pinned entitlement expiry');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     await expect(
       workerDatabase.withWorkspace(workspaceA, ({ db }) =>
         db.execute(sql`
@@ -340,7 +357,7 @@ describe('workflow run capacity admission', () => {
       `),
     );
     expect(counters.rows).toEqual([{ active_runs: 0, queued_runs: 0 }]);
-  });
+  }, 15_000);
 
   it('enforces five active runs while waiting retains and terminal state releases the slot', async () => {
     const accepted = await Promise.all(

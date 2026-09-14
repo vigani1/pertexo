@@ -248,6 +248,42 @@ describe('slack.send_message@1', () => {
     },
   );
 
+  it.each(['send-message', 'auth-test'] as const)(
+    'rejects invalid UTF-8 for %s through the shared response envelope parser',
+    async (operation) => {
+      const body = Uint8Array.of(0xff);
+      const client = createSlackClient({
+        execute: (request) =>
+          Promise.resolve({
+            status: 200,
+            headers: {},
+            body,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          }),
+      });
+      const result =
+        operation === 'send-message'
+          ? client.sendMessage({
+              botToken: 'xoxb-123456789-secret',
+              channelId: 'C123ABC',
+              text: 'deployment complete',
+              timeoutMillis: 30_000,
+              signal: new AbortController().signal,
+              beforeDispatch: () => Promise.resolve(),
+            })
+          : client.authTest({
+              botToken: 'xoxb-123456789-secret',
+              timeoutMillis: 30_000,
+              beforeDispatch: () => Promise.resolve(),
+            });
+
+      await expect(result).resolves.toEqual({ kind: 'invalid_response' });
+      expect(body.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
   it('uses only the fixed endpoint, one bounded request, no redirects, and inaccessible unfurls', async () => {
     let requestBody: Uint8Array | undefined;
     const execute = vi.fn(
@@ -590,7 +626,7 @@ describe('slack.send_message@1', () => {
     },
   );
 
-  it('preserves known executor failures and rejects a mismatched provider response', async () => {
+  it('preserves a known Slack executor failure identity', async () => {
     const known = runtime(
       new SlackSendMessageExecutorError({
         kind: 'retry',
@@ -603,7 +639,9 @@ describe('slack.send_message@1', () => {
         client: { sendMessage: known.sendMessage },
       }).execute(invocation(known.value)),
     ).rejects.toBeInstanceOf(SlackSendMessageExecutorError);
+  });
 
+  it('rejects a mismatched Slack provider response channel as unknown', async () => {
     const mismatched = runtime({
       kind: 'succeeded',
       channelId: 'COTHER',
@@ -620,7 +658,29 @@ describe('slack.send_message@1', () => {
     });
   });
 
-  it('fails closed on rate-limited resolution and mismatched resolved credentials', async () => {
+  it('maps a hostile provider-adapter rejection to an opaque unsafe outcome', async () => {
+    const { proxy, revoke } = Proxy.revocable({}, {});
+    const state = runtime(undefined);
+    state.sendMessage.mockImplementation(async (input) => {
+      await input.beforeDispatch();
+      revoke();
+      // Deliberately model an untrusted adapter rejection.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw proxy;
+    });
+
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: state.sendMessage },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'outcome_unknown',
+      errorKind: 'network',
+      possiblyDispatched: true,
+    });
+  });
+
+  it('rejects a non-unsafe Slack runtime before provider dispatch', async () => {
     const invalidRuntime = runtime(undefined);
     invalidRuntime.value = Object.freeze({
       ...invalidRuntime.value,
@@ -636,7 +696,9 @@ describe('slack.send_message@1', () => {
       possiblyDispatched: false,
     });
     expect(invalidRuntime.sendMessage).not.toHaveBeenCalled();
+  });
 
+  it('exposes an ordinary Slack resolution throttle without provider dispatch', async () => {
     const limited = runtime(undefined);
     limited.value = Object.freeze({
       ...limited.value,
@@ -655,7 +717,10 @@ describe('slack.send_message@1', () => {
       retryAfterMillis: 7_000,
       possiblyDispatched: false,
     });
+    expect(limited.sendMessage).not.toHaveBeenCalled();
+  });
 
+  it('rejects a mismatched resolved Slack credential before provider dispatch', async () => {
     const mismatched = runtime(undefined);
     mismatched.value = Object.freeze({
       ...mismatched.value,
@@ -680,6 +745,7 @@ describe('slack.send_message@1', () => {
       errorKind: 'configuration',
       possiblyDispatched: false,
     });
+    expect(mismatched.sendMessage).not.toHaveBeenCalled();
   });
 
   it.each(providerCredentialFailureCases)(

@@ -1,12 +1,52 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  parsePersistedScheduleRecurrence,
   parseScheduleRecurrence,
   resolveScheduleObservation,
   SCHEDULE_CRON_PARSER_VERSION,
 } from '../src/triggers/schedule-recurrence.js';
 
 describe('schedule recurrence', () => {
+  it('translates mutually exclusive persisted recurrence columns strictly', () => {
+    expect(
+      parsePersistedScheduleRecurrence({
+        recurrence_kind: 'cron',
+        cron_expression: '30 9 * * 1-5',
+        timezone: 'Europe/Paris',
+        interval_minutes: null,
+      }),
+    ).toEqual({
+      kind: 'cron',
+      expression: '30 9 * * 1-5',
+      timezone: 'Europe/Paris',
+    });
+    expect(
+      parsePersistedScheduleRecurrence({
+        recurrence_kind: 'interval',
+        cron_expression: null,
+        timezone: null,
+        interval_minutes: 15,
+      }),
+    ).toEqual({ kind: 'interval', intervalMinutes: 15 });
+    expect(() =>
+      parsePersistedScheduleRecurrence({
+        recurrence_kind: 'cron',
+        cron_expression: null,
+        timezone: 'Europe/Paris',
+        interval_minutes: null,
+      }),
+    ).toThrow(TypeError);
+    expect(() =>
+      parsePersistedScheduleRecurrence({
+        recurrence_kind: 'interval',
+        cron_expression: null,
+        timezone: null,
+        interval_minutes: null,
+      }),
+    ).toThrow(TypeError);
+  });
+
   it('accepts only strict five-field cron in a canonical IANA timezone', () => {
     expect(SCHEDULE_CRON_PARSER_VERSION).toBe('5.10.0');
     expect(

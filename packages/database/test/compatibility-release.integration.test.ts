@@ -1,10 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Pool } from 'pg';
-import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -15,7 +14,11 @@ import {
 import { createCompatibilityReleaseMaintenance } from '../src/compatibility/compatibility-release-maintenance.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import {
+  acquireDatabasePool,
+  createDatabaseRuntime,
+} from '../src/platform/database-runtime.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import {
   checkDatabasePreactivationReadiness,
   checkDatabaseReadiness,
@@ -37,14 +40,31 @@ const workerBaseUrl =
 const dispatcherBaseUrl =
   process.env.DATABASE_DISPATCHER_URL ??
   'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
-const databaseName = `pertexo_test_compatibility_${randomUUID().replaceAll('-', '')}`;
-const upgradeDatabaseName = `pertexo_test_compatibility_upgrade_${randomUUID().replaceAll('-', '')}`;
-const rolloutDatabaseName = `pertexo_test_compatibility_rollout_${randomUUID().replaceAll('-', '')}`;
-const databaseNames = [
+const uniqueSuffix = randomUUID().replaceAll('-', '').slice(0, 20);
+const databaseName = `pertexo_test_compat_${uniqueSuffix}`;
+const upgradeDatabaseName = `pertexo_test_compat_up_${uniqueSuffix}`;
+const rolloutDatabaseName = `pertexo_test_compat_roll_${uniqueSuffix}`;
+const maintenanceDatabaseName = `pertexo_test_compat_maint_${uniqueSuffix}`;
+const databaseFixtures = [
   databaseName,
   upgradeDatabaseName,
   rolloutDatabaseName,
-] as const;
+  maintenanceDatabaseName,
+].map((name) =>
+  createDisposableDatabaseFixture({
+    adminUrl,
+    connectRoles: [
+      'pertexo_migration',
+      'pertexo_api',
+      'pertexo_worker',
+      'pertexo_dispatcher',
+    ],
+    databaseName: name,
+    ownerRole: 'pertexo_owner',
+  }),
+);
+const createdDatabaseFixtures: (typeof databaseFixtures)[number][] = [];
+let upgradeBaselineState: string | undefined;
 const catalogSchema = z.looseObject({
   executors: z.array(
     z.looseObject({
@@ -65,38 +85,93 @@ function databaseUrl(base: string, name = databaseName): string {
   return url.toString();
 }
 
-function pgCode(expected: string): (error: unknown) => boolean {
+function pgDiagnostic(
+  expected: Readonly<{
+    code: string;
+    message?: string;
+  }>,
+): (error: unknown) => boolean {
   return (error: unknown): boolean => {
     let current: unknown = error;
-    while (current instanceof Error) {
-      if ((current as DatabaseError).code === expected) return true;
-      current = current.cause;
+    const visited = new WeakSet<object>();
+    for (let depth = 0; depth < 8; depth += 1) {
+      if (current === null || typeof current !== 'object') return false;
+      if (visited.has(current)) return false;
+      visited.add(current);
+      try {
+        const code: unknown = Reflect.get(current, 'code');
+        const message: unknown = Reflect.get(current, 'message');
+        if (
+          code === expected.code &&
+          (expected.message === undefined ||
+            (typeof message === 'string' &&
+              message.length <= 1_000 &&
+              message.includes(expected.message)))
+        )
+          return true;
+        current = Reflect.get(current, 'cause');
+      } catch {
+        return false;
+      }
     }
     return false;
   };
 }
 
-async function createDatabase(name: string): Promise<void> {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+function pgCode(code: string): (error: unknown) => boolean {
+  return pgDiagnostic({ code });
+}
+
+async function captureCompatibilityState(name: string): Promise<string> {
+  const pool = new Pool({
+    connectionString: databaseUrl(migrationBaseUrl, name),
+    max: 1,
+  });
+  const client = await pool.connect();
+  let transactionOpen = false;
+  let disposalError: Error | undefined;
   try {
-    await admin.query(`drop database if exists "${name}" with (force)`);
-    await admin.query(`create database "${name}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${name}" from public`);
-    await admin.query(
-      `grant connect on database "${name}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+    await client.query('begin');
+    transactionOpen = true;
+    await client.query('set local role pertexo_owner');
+    const releases = await client.query(
+      `select epoch, schema_version, fingerprint, catalog_json,
+              predecessor_epoch, prepared_by_kind, prepared_by, reason,
+              created_at
+         from app.node_compatibility_releases order by epoch`,
     );
+    const current = await client.query(
+      `select singleton, epoch, fingerprint, activated_by_kind, activated_by,
+              activated_at
+         from app.node_compatibility_current order by singleton`,
+    );
+    await client.query('rollback');
+    transactionOpen = false;
+    return JSON.stringify({ current: current.rows, releases: releases.rows });
+  } catch (error: unknown) {
+    if (transactionOpen) {
+      try {
+        await client.query('rollback');
+      } catch (rollbackError: unknown) {
+        disposalError = new Error(
+          'Compatibility state capture rollback failed; discard the client',
+          { cause: rollbackError },
+        );
+      }
+    }
+    throw error;
   } finally {
-    await admin.end();
+    client.release(disposalError);
+    await pool.end();
   }
 }
 
-async function dropDatabase(name: string): Promise<void> {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, name);
-  } finally {
-    await admin.end();
-  }
+async function cleanupCreatedDatabases(): Promise<unknown[]> {
+  const fixtures = createdDatabaseFixtures.splice(0).reverse();
+  const settled = await Promise.allSettled(fixtures.map(({ drop }) => drop()));
+  return settled.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
 }
 
 function migrationConfig(name: string) {
@@ -133,24 +208,32 @@ async function migrateThrough0018(name: string): Promise<void> {
 }
 
 beforeAll(async () => {
-  for (const name of databaseNames) await createDatabase(name);
-  await migrateDatabase({
-    apiRuntimeRole: 'pertexo_api',
-    connectionString: databaseUrl(migrationBaseUrl),
-    dispatcherRole: 'pertexo_dispatcher',
-    maintenanceRole: 'pertexo_maintenance',
-    lifecycleCommandRole: 'pertexo_lifecycle_command',
-    operatorRole: 'pertexo_operator',
-    ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
-  });
-  await migrateDatabase(migrationConfig(rolloutDatabaseName));
-  await migrateThrough0018(upgradeDatabaseName);
-  await migrateDatabase(migrationConfig(upgradeDatabaseName));
+  try {
+    for (const fixture of databaseFixtures) {
+      await fixture.create();
+      createdDatabaseFixtures.push(fixture);
+    }
+    await migrateDatabase(migrationConfig(databaseName));
+    await migrateDatabase(migrationConfig(rolloutDatabaseName));
+    await migrateDatabase(migrationConfig(maintenanceDatabaseName));
+    await migrateThrough0018(upgradeDatabaseName);
+    upgradeBaselineState = await captureCompatibilityState(upgradeDatabaseName);
+    await migrateDatabase(migrationConfig(upgradeDatabaseName));
+  } catch (error: unknown) {
+    const cleanupFailures = await cleanupCreatedDatabases();
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [error, ...cleanupFailures],
+        'Compatibility fixture setup and cleanup failed',
+      );
+    throw error;
+  }
 }, 60_000);
 
 afterAll(async () => {
-  for (const name of databaseNames) await dropDatabase(name);
+  const failures = await cleanupCreatedDatabases();
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Compatibility fixture cleanup failed');
 });
 
 describe('durable node compatibility release authority', () => {
@@ -204,7 +287,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -327,7 +410,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -345,17 +428,17 @@ describe('durable node compatibility release authority', () => {
   it('exposes one transaction-owning maintenance seam for the deployment controller', async () => {
     const maintenance = createCompatibilityReleaseMaintenance(
       parseDatabaseConfig({
-        connectionString: databaseUrl(migrationBaseUrl, rolloutDatabaseName),
+        connectionString: databaseUrl(
+          migrationBaseUrl,
+          maintenanceDatabaseName,
+        ),
         max: 1,
         ownerRole: 'pertexo_owner',
         workerRuntimeRole: 'pertexo_worker',
       }),
     );
-    const predecessor = {
-      ...BASELINE_COMPATIBILITY_EXPECTATION,
-      epoch: 2,
-    };
-    const target = { ...predecessor, epoch: 3 };
+    const predecessor = BASELINE_COMPATIBILITY_EXPECTATION;
+    const target = { ...predecessor, epoch: 2 };
     const deploymentId = `compatibility-maintenance-${randomUUID()}`;
     const approvalId = randomUUID();
     try {
@@ -414,7 +497,7 @@ describe('durable node compatibility release authority', () => {
       await maintenance.activate(activation);
 
       const api = new Pool({
-        connectionString: databaseUrl(apiBaseUrl, rolloutDatabaseName),
+        connectionString: databaseUrl(apiBaseUrl, maintenanceDatabaseName),
         max: 1,
       });
       try {
@@ -429,6 +512,58 @@ describe('durable node compatibility release authority', () => {
     }
   });
 
+  it('replaces a max-one pool client after an uncertain maintenance rollback', async () => {
+    const config = parseDatabaseConfig({
+      connectionString: databaseUrl(migrationBaseUrl, maintenanceDatabaseName),
+      max: 1,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
+    const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
+    const pool = acquireDatabasePool(config, runtime).pool;
+    const client = await pool.connect();
+    const firstBackend = await client.query<{ pid: number }>(
+      'select pg_backend_pid()::int pid',
+    );
+    const firstPid = firstBackend.rows[0]?.pid;
+    if (firstPid === undefined) throw new Error('first backend PID missing');
+    const originalQuery = client.query.bind(client) as (
+      text: string,
+      values?: unknown[],
+    ) => Promise<unknown>;
+    const originalConnect = pool.connect.bind(pool);
+    const operationFailure = new Error('injected maintenance failure');
+    const rollbackFailure = new Error('injected rollback failure');
+    client.query = ((text: string, values?: unknown[]): Promise<unknown> => {
+      if (text.includes('app.prepare_node_compatibility_release'))
+        return Promise.reject(operationFailure);
+      if (text === 'rollback') return Promise.reject(rollbackFailure);
+      return originalQuery(text, values);
+    }) as typeof client.query;
+    pool.connect = (() => Promise.resolve(client)) as typeof pool.connect;
+    const maintenance = createCompatibilityReleaseMaintenance(config, runtime);
+    try {
+      await expect(
+        maintenance.prepare({
+          actorId: 'compatibility-rollback-test',
+          actorKind: 'deployment',
+          expectedPredecessor: BASELINE_COMPATIBILITY_EXPECTATION,
+          reason: 'Exercise uncertain rollback disposal',
+          target: { ...BASELINE_COMPATIBILITY_EXPECTATION, epoch: 2 },
+        }),
+      ).rejects.toBe(operationFailure);
+      pool.connect = originalConnect;
+      const replacement = await pool.query<{ pid: number }>(
+        'select pg_backend_pid()::int pid',
+      );
+      expect(replacement.rows[0]?.pid).not.toBe(firstPid);
+    } finally {
+      pool.connect = originalConnect;
+      await maintenance.close();
+      await runtime.close();
+    }
+  });
+
   it('matches the local API and worker artifacts and fails closed on drift', async () => {
     for (const base of [apiBaseUrl, workerBaseUrl]) {
       const pool = new Pool({ connectionString: databaseUrl(base), max: 1 });
@@ -440,7 +575,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0086_operator_attempt_reclaim_state.sql',
+          migrationHead: '0089_oidc_capacity_lock_time.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -461,6 +596,10 @@ describe('durable node compatibility release authority', () => {
       max: 1,
     });
     try {
+      expect(upgradeBaselineState).toBeDefined();
+      await expect(
+        captureCompatibilityState(upgradeDatabaseName),
+      ).resolves.toBe(upgradeBaselineState);
       await expect(
         checkDatabaseReadiness(pool, {
           ownerRole: 'pertexo_owner',
@@ -468,7 +607,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
     } finally {
       await pool.end();
@@ -519,7 +658,7 @@ describe('durable node compatibility release authority', () => {
     const insertCandidate = async (
       epoch: number,
       catalog: z.infer<typeof catalogSchema>,
-      fingerprint = `node-compat:v1:sha256:${epoch.toString(16).padStart(64, '0')}`,
+      fingerprint = `node-compat:v1:sha256:${createHash('sha256').update(JSON.stringify(catalog)).digest('hex')}`,
     ): Promise<void> => {
       await owner.query('begin');
       try {
@@ -559,7 +698,10 @@ describe('durable node compatibility release authority', () => {
         ({ executor }) => executor.key !== 'core.set',
       );
       await expect(insertCandidate(3, omitted)).rejects.toSatisfy(
-        pgCode('23514'),
+        pgDiagnostic({
+          code: '23514',
+          message: 'must retain core executor core.set',
+        }),
       );
 
       for (const lifecycle of ['staged', 'retirement_blocked', 'retired']) {
@@ -571,7 +713,10 @@ describe('durable node compatibility release authority', () => {
           throw new Error('core Set fixture missing');
         unavailableSet.lifecycle = lifecycle;
         await expect(insertCandidate(3, unavailable)).rejects.toSatisfy(
-          pgCode('23514'),
+          pgDiagnostic({
+            code: '23514',
+            message: 'must retain core executor core.set',
+          }),
         );
       }
 
@@ -582,7 +727,10 @@ describe('durable node compatibility release authority', () => {
       if (manual === undefined) throw new Error('core Manual fixture missing');
       duplicated.executors.push(structuredClone(manual));
       await expect(insertCandidate(3, duplicated)).rejects.toSatisfy(
-        pgCode('23514'),
+        pgDiagnostic({
+          code: '23514',
+          message: 'must retain core executor core.manual',
+        }),
       );
     } finally {
       await owner.end();

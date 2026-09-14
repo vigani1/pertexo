@@ -22,7 +22,7 @@ const migrationBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const databaseName = `pertexo_test_0083_artifact_deadline_${randomUUID().replaceAll('-', '')}`;
+const databaseName = `pertexo_test_0083_deadline_${randomUUID().replaceAll('-', '')}`;
 
 const database = createDisposableDatabaseFixture({
   adminUrl,
@@ -240,6 +240,9 @@ describe('artifact finalization retention deadline prior-head migration', () => 
         '0084_workspace_member_discovery_index.sql',
         '0085_artifact_media_type_http_safety.sql',
         '0086_operator_attempt_reclaim_state.sql',
+        '0087_workspace_maintenance_rerun_purge.sql',
+        '0088_sql_boundary_integrity.sql',
+        '0089_oidc_capacity_lock_time.sql',
       ]);
 
       const api = new Pool({

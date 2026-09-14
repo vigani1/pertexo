@@ -1,48 +1,48 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
 
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  JOB_NAME,
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  QUEUE_NAME,
-  Queue,
-  cleanupFixture,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
+import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
   composeExecutableCompatibilityRelease,
-  createCoordinatorRuntime,
-  createNodeAttemptRuntime,
-  createPlatformNodeRegistryForRelease,
-  createQueueProducer,
-  databaseUrl,
-  enabled,
-  engineVersion,
   invocationKey,
-  parseDatabaseConfig,
-  randomUUID,
-  redisConnection,
-  redisUrl,
-  restoreServices,
-  setupFixture,
-  waitFor,
-  workerQuery,
-  workerUrl,
-  workflowVersionId,
-  workspaceId,
-} from './coordinator-consumer.fixtures.js';
+} from '@pertexo/workflow-engine';
+import { Queue } from 'bullmq';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   acceptRun,
   waitForAttemptOutbox,
   waitForCoordinatorOutbox,
 } from './support/coordinator-run-fixtures.js';
 
+const {
+  databaseUrl,
+  enabled,
+  engineVersion,
+  redisConnection,
+  redisUrl,
+  restoreServicesAndClose,
+  setup,
+  waitFor,
+  workerQuery,
+  workerUrl,
+  workflowVersionId,
+  workspaceId,
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Linear node execution resilience', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('executes Manual through Set/Map to Terminate across durable coordinator continuations', async () => {
     const accepted = await acceptRun();

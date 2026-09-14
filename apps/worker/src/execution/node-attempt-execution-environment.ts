@@ -29,7 +29,7 @@ export function createNodeExecutionEnvironment(
   }>,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
-  let dispatched = false;
+  let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const capabilityContext = Object.freeze({
     workspaceId: lease.workspaceId,
     runId: lease.runId,
@@ -56,8 +56,11 @@ export function createNodeExecutionEnvironment(
     beforeDispatch: async (
       dispatchInput?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
     ): Promise<void> => {
-      if (dispatched)
+      if (dispatchState !== 'not_started')
         throw new NodeAttemptHandlerStateError('duplicate_dispatch');
+      // Reserve the sole dispatch permission before any asynchronous work. A
+      // failed marker is uncertain and must not reopen the provider-I/O gate.
+      dispatchState = 'marking';
       try {
         await runStore.markDispatched({
           lease,
@@ -82,7 +85,7 @@ export function createNodeExecutionEnvironment(
           );
         throw error;
       }
-      dispatched = true;
+      dispatchState = 'marked';
     },
   });
   const registry: NodeExecutionRegistry = Object.freeze({
@@ -95,10 +98,14 @@ export function createNodeExecutionEnvironment(
       const mode = sourceRegistry.dispatchMode?.(request) ?? 'before_execute';
       if (mode === 'before_execute') await runtime.beforeDispatch();
       const result = await sourceRegistry.execute({ ...request, runtime });
-      if (mode === 'executor_controlled' && !dispatched)
+      if (mode === 'executor_controlled' && dispatchState !== 'marked')
         throw new NodeAttemptHandlerStateError('dispatch_evidence_missing');
       return result;
     },
   });
-  return Object.freeze({ registry, runtime, wasDispatched: () => dispatched });
+  return Object.freeze({
+    registry,
+    runtime,
+    wasDispatched: () => dispatchState === 'marked',
+  });
 }

@@ -51,6 +51,7 @@ const graphSchema = z
             key: z.string(),
             version: z.number().int(),
           }),
+          disabled: z.boolean().optional(),
           config: z.unknown(),
         })
         .loose(),
@@ -84,6 +85,10 @@ export function workflowTriggerProjection(
         const identity = `${node.definition.key}@${String(node.definition.version)}`;
         const kind = triggerKind(identity);
         if (kind === null) return [];
+        // Graph disablement is execution-only. Published external trigger
+        // identity remains materialized so deliveries/scans retain stable
+        // ingress and occurrence semantics; stored trigger configuration has
+        // its own independent enable/disable lifecycle.
         let config: Readonly<Record<string, unknown>>;
         if (kind === 'webhook') config = webhookConfigSchema.parse(node.config);
         else if (

@@ -14,6 +14,9 @@ import { loadNodeAttemptInputs } from '../src/execution/node-attempt-run-store-i
 import { scopedInvocationKey } from '../src/execution/node-attempt-run-store-transactions.js';
 import { serializeStoredExecutionJsonValue } from '../src/execution/stored-execution-value.js';
 
+const INVOCATION_EFFECTIVE_UPPER = 1_996;
+const JOIN_EFFECTIVE_UPPER = 713;
+
 const inline = (value: unknown) => ({
   schemaVersion: 1,
   kind: 'inline',
@@ -24,6 +27,8 @@ function recordMeasurement(input: {
   family: string;
   contractVersion: string;
   population: number;
+  declaredUpperPopulation?: number;
+  limitingConstraint?: string;
   upperSupportedPopulation: number;
   completedOperations: number;
   setupMs: number;
@@ -53,22 +58,22 @@ function populations(upper: number): readonly number[] {
   return [...new Set([1, Math.ceil(upper / 2), upper])];
 }
 
-function largestAcceptedPopulation(
+function assertEffectivePopulation(
   declaredMaximum: number,
+  expectedMaximum: number,
   checkpoint: (population: number) => unknown,
 ): number {
-  let accepted = 0;
-  let rejected = declaredMaximum + 1;
-  while (accepted + 1 < rejected) {
-    const candidate = Math.floor((accepted + rejected) / 2);
-    try {
-      parsePersistedWorkflowCheckpoint(checkpoint(candidate));
-      accepted = candidate;
-    } catch {
-      rejected = candidate;
-    }
-  }
-  return accepted;
+  expect(expectedMaximum).toBeLessThanOrEqual(declaredMaximum);
+  expect(() =>
+    parsePersistedWorkflowCheckpoint(checkpoint(expectedMaximum)),
+  ).not.toThrow();
+  // The next fixture crosses the stored-execution value limit before the
+  // checkpoint collection limit. Calling the serializer directly proves this
+  // is that limiting contract rather than an unrelated checkpoint invariant.
+  expect(() =>
+    serializeStoredExecutionJsonValue(checkpoint(expectedMaximum + 1)),
+  ).toThrow('Stored execution value violates the V1 persistence contract');
+  return expectedMaximum;
 }
 
 const structuredScopeNodeIds = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef'.split('');
@@ -355,8 +360,9 @@ describe('Q9 bounded-work probes', () => {
 
   it('measures small, intermediate and effective-upper V2 invocation populations', () => {
     const derivationIdentity = randomUUID();
-    const upperSupportedPopulation = largestAcceptedPopulation(
+    const upperSupportedPopulation = assertEffectivePopulation(
       PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations,
+      INVOCATION_EFFECTIVE_UPPER,
       (population) => invocationCheckpoint(population, derivationIdentity),
     );
     expect(upperSupportedPopulation).toBeGreaterThan(1);
@@ -373,6 +379,9 @@ describe('Q9 bounded-work probes', () => {
       recordMeasurement({
         family: 'checkpoint-invocation-validation-projection',
         contractVersion: 'persisted-workflow-checkpoint-v2',
+        declaredUpperPopulation:
+          PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.invocations,
+        limitingConstraint: 'stored-execution-value-v1',
         population,
         upperSupportedPopulation,
         completedOperations: parsed.invocations.length,
@@ -385,8 +394,9 @@ describe('Q9 bounded-work probes', () => {
 
   it('measures small, intermediate and effective-upper V2 join populations', () => {
     const derivationIdentity = randomUUID();
-    const upperSupportedPopulation = largestAcceptedPopulation(
+    const upperSupportedPopulation = assertEffectivePopulation(
       PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.joins,
+      JOIN_EFFECTIVE_UPPER,
       (population) => joinCheckpoint(population, derivationIdentity),
     );
     expect(upperSupportedPopulation).toBeGreaterThan(1);
@@ -403,6 +413,8 @@ describe('Q9 bounded-work probes', () => {
       recordMeasurement({
         family: 'checkpoint-join-validation-projection',
         contractVersion: 'persisted-workflow-checkpoint-v2',
+        declaredUpperPopulation: PERSISTED_WORKFLOW_CHECKPOINT_LIMITS.joins,
+        limitingConstraint: 'stored-execution-value-v1',
         population,
         upperSupportedPopulation,
         completedOperations: parsed.joins.length,

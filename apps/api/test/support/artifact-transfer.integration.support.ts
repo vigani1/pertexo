@@ -38,6 +38,10 @@ import {
   loginThroughOidc,
   type HttpSessionCookies,
 } from './real-oidc-http.fixture.js';
+import {
+  FixtureResourceOwner,
+  rethrowFixtureSetupFailure,
+} from './fixture-resource-owner.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
 const migrationUrl =
@@ -195,51 +199,47 @@ export type ArtifactTransferApiFixture = Readonly<{
   close(): Promise<void>;
 }>;
 
-const logLines: string[] = [];
+type FixtureLogCapture = Readonly<{
+  logger: StructuredLogger;
+  readText(): string;
+}>;
 
-const logger: StructuredLogger = {
-  debug: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-  error: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-  fatal: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-  info: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-  trace: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-  warn: (event, fields, error) => {
-    captureLog(event, fields, error);
-  },
-};
-
-function captureLog(
-  event: string,
-  fields: Readonly<Record<string, unknown>> | undefined,
-  error: unknown,
-): void {
-  let fieldsText = '';
-  if (fields !== undefined) {
-    try {
-      fieldsText = JSON.stringify(fields);
-    } catch {
-      fieldsText = '[unserializable fields]';
+function createFixtureLogCapture(): FixtureLogCapture {
+  const lines: string[] = [];
+  const capture = (
+    event: string,
+    fields: Readonly<Record<string, unknown>> | undefined,
+    error: unknown,
+  ): void => {
+    let fieldsText = '';
+    if (fields !== undefined) {
+      try {
+        fieldsText = JSON.stringify(fields);
+      } catch {
+        fieldsText = '[unserializable fields]';
+      }
     }
-  }
-  const errorText =
-    error === undefined
-      ? ''
-      : error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-          ? error
-          : '[unserializable error]';
-  logLines.push(`${event} ${fieldsText} ${errorText}`.trim());
+    const errorText =
+      error === undefined
+        ? ''
+        : error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : '[unserializable error]';
+    lines.push(`${event} ${fieldsText} ${errorText}`.trim());
+  };
+  return Object.freeze({
+    logger: Object.freeze({
+      debug: capture,
+      error: capture,
+      fatal: capture,
+      info: capture,
+      trace: capture,
+      warn: capture,
+    }),
+    readText: () => lines.join('\n'),
+  });
 }
 
 const telemetry: TelemetryLifecycle = {
@@ -264,89 +264,117 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       'Artifact transfer integration requires API_ARTIFACT_INTEGRATION and all database/object-store settings',
     );
   }
-  const provider = createFakeOidcProvider({
-    issuer,
-    clientId,
-    displayNamePrefix: 'Artifact',
-  });
-  const identityDatabase = createIdentityWorkspaceDatabase(
-    artifactTransferDatabaseConfig,
-  );
-  const transactions = createOidcLoginTransactionStore(
-    artifactTransferDatabaseConfig,
-    createOidcSecretEncryptionAdapter({
-      current: { version: 'artifact-transfer-v1', key: encryptionKey },
-    }),
-  );
-  const workspaceDatabase = createWorkspaceDatabase(
-    artifactTransferDatabaseConfig,
-  );
-  const subjects = {
-    owner: await resolveIdentity(identityDatabase, 'owner'),
-    operator: await resolveIdentity(identityDatabase, 'operator'),
-    viewer: await resolveIdentity(identityDatabase, 'viewer'),
-  } as const;
-  const workspaceId = randomUUID();
-  const otherWorkspaceId = randomUUID();
-  const ownerPool = new Pool({
-    connectionString: databaseUrl(migrationUrl, databaseNameFromUrl()),
-    max: 1,
-  });
-  const apiPool = new Pool({
-    connectionString: artifactTransferDatabaseConfig.connectionString,
-    max: 1,
-  });
-  const apiRole =
-    apiUrl === undefined
-      ? 'pertexo_api'
-      : decodeURIComponent(new URL(apiUrl).username);
-  const configuredArtifactStore = artifactStoreConfig();
-  const verificationStore = createVerificationStore(configuredArtifactStore);
-  const recoveryStore = createRecoveryStore(configuredArtifactStore.recovery);
-  const storageCalls = {
-    beginDirectDownload: 0,
-    beginDirectUpload: 0,
-    validateDirectUpload: 0,
-  };
-  let afterNextUploadVerification: (() => Promise<void>) | undefined;
-  const apiStore = Object.freeze({
-    beginDirectDownload: (
-      ...args: Parameters<VerificationStore['beginDirectDownload']>
-    ) => {
-      storageCalls.beginDirectDownload += 1;
-      return verificationStore.beginDirectDownload(...args);
-    },
-    beginDirectUpload: (
-      ...args: Parameters<VerificationStore['beginDirectUpload']>
-    ) => {
-      storageCalls.beginDirectUpload += 1;
-      return verificationStore.beginDirectUpload(...args);
-    },
-    checkReadiness: (
-      ...args: Parameters<VerificationStore['checkReadiness']>
-    ) => verificationStore.checkReadiness(...args),
-    close: () => {
-      verificationStore.close();
-    },
-    validateDirectUpload: async (
-      ...args: Parameters<VerificationStore['validateDirectUpload']>
-    ) => {
-      storageCalls.validateDirectUpload += 1;
-      const result = await verificationStore.validateDirectUpload(...args);
-      const callback = afterNextUploadVerification;
-      afterNextUploadVerification = undefined;
-      if (callback !== undefined) await callback();
-      return result;
-    },
-  });
-  const withOwner = <T>(work: (client: PoolClient) => Promise<T>) =>
-    withRoleClient(ownerPool, ownerRole, workspaceId, work);
-  const withApi = <T>(work: (client: PoolClient) => Promise<T>) =>
-    withRoleClient(apiPool, apiRole, workspaceId, work);
-  let identityRuntime: ReturnType<typeof createApiIdentityRuntime> | undefined;
-  let artifactRuntime: ApiArtifactRuntime | undefined;
-
+  const resources = new FixtureResourceOwner();
+  const logs = createFixtureLogCapture();
   try {
+    const provider = createFakeOidcProvider({
+      issuer,
+      clientId,
+      displayNamePrefix: 'Artifact',
+    });
+    const identityDatabase = resources.acquire(
+      'identity database',
+      createIdentityWorkspaceDatabase(artifactTransferDatabaseConfig),
+      (database) => database.close(),
+    );
+    const transactions = resources.acquire(
+      'OIDC transactions',
+      createOidcLoginTransactionStore(
+        artifactTransferDatabaseConfig,
+        createOidcSecretEncryptionAdapter({
+          current: { version: 'artifact-transfer-v1', key: encryptionKey },
+        }),
+      ),
+      (store) => store.close(),
+    );
+    const workspaceDatabase = resources.acquire(
+      'workspace database',
+      createWorkspaceDatabase(artifactTransferDatabaseConfig),
+      (database) => database.close(),
+    );
+    const subjects = {
+      owner: await resolveIdentity(identityDatabase, 'owner'),
+      operator: await resolveIdentity(identityDatabase, 'operator'),
+      viewer: await resolveIdentity(identityDatabase, 'viewer'),
+    } as const;
+    const workspaceId = randomUUID();
+    const otherWorkspaceId = randomUUID();
+    const ownerPool = resources.acquire(
+      'owner pool',
+      new Pool({
+        connectionString: databaseUrl(migrationUrl, databaseNameFromUrl()),
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    const apiPool = resources.acquire(
+      'API pool',
+      new Pool({
+        connectionString: artifactTransferDatabaseConfig.connectionString,
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    const apiRole =
+      apiUrl === undefined
+        ? 'pertexo_api'
+        : decodeURIComponent(new URL(apiUrl).username);
+    const configuredArtifactStore = artifactStoreConfig();
+    const verificationStore = resources.acquire(
+      'verification store',
+      createVerificationStore(configuredArtifactStore),
+      (store) => {
+        store.close();
+      },
+    );
+    const recoveryStore = resources.acquire(
+      'recovery store',
+      createRecoveryStore(configuredArtifactStore.recovery),
+      (store) => {
+        store.close();
+      },
+    );
+    const storageCalls = {
+      beginDirectDownload: 0,
+      beginDirectUpload: 0,
+      validateDirectUpload: 0,
+    };
+    let afterNextUploadVerification: (() => Promise<void>) | undefined;
+    const apiStore = Object.freeze({
+      beginDirectDownload: (
+        ...args: Parameters<VerificationStore['beginDirectDownload']>
+      ) => {
+        storageCalls.beginDirectDownload += 1;
+        return verificationStore.beginDirectDownload(...args);
+      },
+      beginDirectUpload: (
+        ...args: Parameters<VerificationStore['beginDirectUpload']>
+      ) => {
+        storageCalls.beginDirectUpload += 1;
+        return verificationStore.beginDirectUpload(...args);
+      },
+      checkReadiness: (
+        ...args: Parameters<VerificationStore['checkReadiness']>
+      ) => verificationStore.checkReadiness(...args),
+      close: () => {
+        verificationStore.close();
+      },
+      validateDirectUpload: async (
+        ...args: Parameters<VerificationStore['validateDirectUpload']>
+      ) => {
+        storageCalls.validateDirectUpload += 1;
+        const result = await verificationStore.validateDirectUpload(...args);
+        const callback = afterNextUploadVerification;
+        afterNextUploadVerification = undefined;
+        if (callback !== undefined) await callback();
+        return result;
+      },
+    });
+    const withOwner = <T>(work: (client: PoolClient) => Promise<T>) =>
+      withRoleClient(ownerPool, ownerRole, workspaceId, work);
+    const withApi = <T>(work: (client: PoolClient) => Promise<T>) =>
+      withRoleClient(apiPool, apiRole, workspaceId, work);
+
     await withOwner(async (client) => {
       await client.query(
         `insert into app.workspaces
@@ -388,15 +416,16 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     const config = artifactApiConfig();
     if (config.identity === undefined || config.artifacts === undefined)
       throw new Error('Artifact integration config is incomplete');
-    identityRuntime = createApiIdentityRuntime(
-      config.identity,
-      config.database,
-      {
+    const identityRuntime = resources.acquire(
+      'identity runtime',
+      await createApiIdentityRuntime(config.identity, config.database, {
         provider,
-        database: identityDatabase,
-        transactions,
-      },
+        persistence: { database: identityDatabase, transactions },
+      }),
+      (runtime) => runtime.close(),
     );
+    resources.transfer(identityDatabase);
+    resources.transfer(transactions);
     const createdArtifactRuntime = createApiArtifactRuntime(
       config.artifacts,
       config.database,
@@ -410,17 +439,27 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       ...createdArtifactRuntime,
       checkReadiness: () => Promise.resolve(),
     });
-    artifactRuntime = runtime;
-    const application = await createApiApplication(config, {
-      database: workspaceDatabase,
-      identityRuntime,
-      artifactRuntime: runtime,
-      rateLimitConsumer: {
-        consume: () => Promise.resolve({ allowed: true as const }),
-      },
-      logger,
-      telemetry,
-    });
+    resources.acquire('artifact runtime', runtime, (selected) =>
+      selected.close(),
+    );
+    resources.transfer(verificationStore);
+    const application = resources.acquire(
+      'API application',
+      await createApiApplication(config, {
+        database: workspaceDatabase,
+        identityRuntime,
+        artifactRuntime: runtime,
+        rateLimitConsumer: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+        logger: logs.logger,
+        telemetry,
+      }),
+      (selected) => selected.close(),
+    );
+    resources.transfer(workspaceDatabase);
+    resources.transfer(identityRuntime);
+    resources.transfer(runtime);
     return Object.freeze({
       application,
       workspaceDatabase,
@@ -432,7 +471,8 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       viewerUserId: subjects.viewer.user.id,
       verificationStore,
       recoveryStore,
-      createFreshApplication: () => createFreshArtifactService(config),
+      createFreshApplication: () =>
+        createFreshArtifactService(config, logs.logger),
       afterNextUploadVerification: (callback) => {
         afterNextUploadVerification = callback;
       },
@@ -465,7 +505,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
             ...outbox.rows.map((row) => `outbox:${row.value}`),
           ]);
         }),
-      readLogText: () => logLines.join('\n'),
+      readLogText: logs.readText,
       readStorageCalls: () => Object.freeze({ ...storageCalls }),
       login: (subject: 'owner' | 'operator' | 'viewer') =>
         loginThroughOidc(application, subject),
@@ -567,40 +607,10 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
             [workspaceId, artifactId],
           );
         }),
-      close: async () => {
-        await Promise.allSettled([
-          application.close(),
-          Promise.resolve().then(() => {
-            verificationStore.close();
-          }),
-          Promise.resolve().then(() => {
-            recoveryStore.close();
-          }),
-          workspaceDatabase.close(),
-          identityDatabase.close(),
-          transactions.close(),
-          ownerPool.end(),
-          apiPool.end(),
-        ]);
-      },
+      close: () => resources.close(),
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      artifactRuntime?.close(),
-      identityRuntime?.close(),
-      Promise.resolve().then(() => {
-        verificationStore.close();
-      }),
-      Promise.resolve().then(() => {
-        recoveryStore.close();
-      }),
-      transactions.close(),
-      identityDatabase.close(),
-      workspaceDatabase.close(),
-      ownerPool.end(),
-      apiPool.end(),
-    ]);
-    throw error;
+    return rethrowFixtureSetupFailure(resources, error);
   }
 }
 
@@ -754,38 +764,47 @@ function createRecoveryStore(
 
 async function createFreshArtifactService(
   config: ApiConfig,
+  logger: StructuredLogger,
 ): Promise<FreshArtifactService> {
   if (config.identity === undefined || config.artifacts === undefined)
     throw new Error('Artifact integration config is incomplete');
-  const provider = createFakeOidcProvider({
-    issuer,
-    clientId,
-    displayNamePrefix: 'Artifact',
-  });
-  const identityDatabase = createIdentityWorkspaceDatabase(
-    artifactTransferDatabaseConfig,
-  );
-  const transactions = createOidcLoginTransactionStore(
-    artifactTransferDatabaseConfig,
-    createOidcSecretEncryptionAdapter({
-      current: { version: 'artifact-transfer-v1', key: encryptionKey },
-    }),
-  );
-  const workspaceDatabase = createWorkspaceDatabase(
-    artifactTransferDatabaseConfig,
-  );
-  let identityRuntime: ReturnType<typeof createApiIdentityRuntime> | undefined;
-  let artifactRuntime: ApiArtifactRuntime | undefined;
+  const resources = new FixtureResourceOwner();
   try {
-    identityRuntime = createApiIdentityRuntime(
-      config.identity,
-      config.database,
-      {
-        provider,
-        database: identityDatabase,
-        transactions,
-      },
+    const provider = createFakeOidcProvider({
+      issuer,
+      clientId,
+      displayNamePrefix: 'Artifact',
+    });
+    const identityDatabase = resources.acquire(
+      'fresh identity database',
+      createIdentityWorkspaceDatabase(artifactTransferDatabaseConfig),
+      (database) => database.close(),
     );
+    const transactions = resources.acquire(
+      'fresh OIDC transactions',
+      createOidcLoginTransactionStore(
+        artifactTransferDatabaseConfig,
+        createOidcSecretEncryptionAdapter({
+          current: { version: 'artifact-transfer-v1', key: encryptionKey },
+        }),
+      ),
+      (store) => store.close(),
+    );
+    const workspaceDatabase = resources.acquire(
+      'fresh workspace database',
+      createWorkspaceDatabase(artifactTransferDatabaseConfig),
+      (database) => database.close(),
+    );
+    const identityRuntime = resources.acquire(
+      'fresh identity runtime',
+      await createApiIdentityRuntime(config.identity, config.database, {
+        provider,
+        persistence: { database: identityDatabase, transactions },
+      }),
+      (runtime) => runtime.close(),
+    );
+    resources.transfer(identityDatabase);
+    resources.transfer(transactions);
     const createdArtifactRuntime = createApiArtifactRuntime(
       config.artifacts,
       config.database,
@@ -795,32 +814,34 @@ async function createFreshArtifactService(
       ...createdArtifactRuntime,
       checkReadiness: () => Promise.resolve(),
     });
-    artifactRuntime = runtime;
-    const application = await createApiApplication(config, {
-      database: workspaceDatabase,
-      identityRuntime,
-      artifactRuntime: runtime,
-      rateLimitConsumer: {
-        consume: () => Promise.resolve({ allowed: true as const }),
-      },
-      logger,
-      telemetry,
-    });
+    resources.acquire('fresh artifact runtime', runtime, (selected) =>
+      selected.close(),
+    );
+    const application = resources.acquire(
+      'fresh API application',
+      await createApiApplication(config, {
+        database: workspaceDatabase,
+        identityRuntime,
+        artifactRuntime: runtime,
+        rateLimitConsumer: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+        logger,
+        telemetry,
+      }),
+      (selected) => selected.close(),
+    );
+    resources.transfer(workspaceDatabase);
+    resources.transfer(identityRuntime);
+    resources.transfer(runtime);
     return Object.freeze({
       application,
       login: (subject: 'owner' | 'operator' | 'viewer') =>
         loginThroughOidc(application, subject),
-      close: () => application.close(),
+      close: () => resources.close(),
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      artifactRuntime?.close(),
-      identityRuntime?.close(),
-      workspaceDatabase.close(),
-      identityDatabase.close(),
-      transactions.close(),
-    ]);
-    throw error;
+    return rethrowFixtureSetupFailure(resources, error);
   }
 }
 

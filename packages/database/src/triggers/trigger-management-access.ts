@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import { lockActiveTriggerWorkflow } from './workflow-trigger-activation.js';
 
 /** Configuration changes share actor authority and workflow-first lock order. */
@@ -21,9 +22,10 @@ export async function canManageWorkflowTrigger(
       join app.workspaces workspace on workspace.id=membership.workspace_id
       join app.users actor on actor.id=membership.user_id
      where membership.workspace_id=$1 and membership.user_id=$2
-       and membership.status='active' and membership.role in ('owner','admin','builder')
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId],
+       and membership.status='active' and membership.role=any($3::text[])
+       and workspace.status='active' and actor.status='active'
+     for share of membership,workspace,actor`,
+    [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
   );
   if (membership.rowCount !== 1) return false;
   return lockActiveTriggerWorkflow(client, workspaceId, triggerId, workflowId);

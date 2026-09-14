@@ -15,13 +15,13 @@ export function appendPendingFailureObservations(
   observations: unknown[],
   failures: readonly PendingFailureRow[],
 ): void {
-  const allowedFailureKinds = [
+  const allowedFailureKinds: readonly string[] = [
     'failed',
     'canceled',
     'retry',
     'outcome_unknown',
   ];
-  const allowedErrorKinds = [
+  const allowedErrorKinds: readonly string[] = [
     'authentication',
     'canceled',
     'configuration',
@@ -33,6 +33,18 @@ export function appendPendingFailureObservations(
   ];
   for (const failure of failures) {
     if (
+      !(failure.completed_at instanceof Date) ||
+      !Number.isFinite(failure.completed_at.getTime()) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+        failure.attempt_id,
+      ) ||
+      !Number.isSafeInteger(failure.attempt_number) ||
+      failure.attempt_number < 1 ||
+      typeof failure.executor_possibly_dispatched !== 'boolean' ||
+      typeof failure.invocation_key !== 'string' ||
+      Buffer.byteLength(failure.invocation_key, 'utf8') < 1 ||
+      Buffer.byteLength(failure.invocation_key, 'utf8') > 256 ||
+      !/^[a-z][a-z0-9._:-]{0,127}$/u.test(failure.safe_error_code) ||
       !allowedFailureKinds.includes(failure.executor_failure_kind) ||
       !allowedErrorKinds.includes(failure.executor_error_kind)
     )

@@ -13,6 +13,7 @@ import {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
   readPreviewRun,
+  resolvePreviewReplay,
 } from '../src/execution/preview-execution.js';
 import {
   auditEvents,
@@ -21,16 +22,38 @@ import {
   previewAttempts,
   previewRuns,
 } from '../src/schema.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_preview_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
+const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
 
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
@@ -43,12 +66,9 @@ let releaseFingerprint = '';
 const keyHash = digest('preview-key');
 const requestHash = digest('preview-request');
 const otherRequestHash = digest('preview-request-conflict');
-const apiDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-);
-const workerDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
-);
+let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+let workerDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+let databaseCreated = false;
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
@@ -99,7 +119,7 @@ function input(
     operation: 'preview.execute',
     requestHash,
     requestId: 'request-preview-1',
-    scope: `workflow:${workflowA}`,
+    scope: `${actorId}:${workflowA}`,
     sideEffectClass: 'unsafe',
     traceId: 'trace-preview-1',
     traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
@@ -214,23 +234,63 @@ async function resetFixture(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await migrateDatabase(migrationConfig);
-  const pool = new Pool({ connectionString: apiUrl, max: 1 });
-  const result = await pool.query<{ epoch: number; fingerprint: string }>(
-    'select epoch, fingerprint from app.node_compatibility_current where singleton = true',
-  );
-  await pool.end();
-  const current = result.rows[0];
-  if (current === undefined)
-    throw new Error('Preview fixture requires a current compatibility release');
-  releaseEpoch = current.epoch;
-  releaseFingerprint = current.fingerprint;
+  await disposableDatabase.create();
+  databaseCreated = true;
+  try {
+    await migrateDatabase(migrationConfig);
+    apiDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    workerDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+    );
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const result = await pool.query<{ epoch: number; fingerprint: string }>(
+        'select epoch, fingerprint from app.node_compatibility_current where singleton = true',
+      );
+      const current = result.rows[0];
+      if (current === undefined)
+        throw new Error(
+          'Preview fixture requires a current compatibility release',
+        );
+      releaseEpoch = current.epoch;
+      releaseFingerprint = current.fingerprint;
+    } finally {
+      await pool.end();
+    }
+  } catch (error: unknown) {
+    await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
+    await disposableDatabase.drop();
+    databaseCreated = false;
+    throw error;
+  }
 });
 
 beforeEach(resetFixture);
 
 afterAll(async () => {
-  await Promise.all([apiDatabase.close(), workerDatabase.close()]);
+  const failures: unknown[] = [];
+  for (const close of [
+    () => apiDatabase.close(),
+    () => workerDatabase.close(),
+  ]) {
+    try {
+      await close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (databaseCreated) {
+    try {
+      await disposableDatabase.drop();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(failures, 'Preview fixture cleanup failed');
 });
 
 describe('durable preview acceptance', () => {
@@ -307,6 +367,23 @@ describe('durable preview acceptance', () => {
       'update app.workflow_drafts set revision = 2 where workflow_id = $1',
       [workflowA],
     );
+    const resolved = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) =>
+        resolvePreviewReplay(transaction, {
+          actorUserId: actorId,
+          workflowId: workflowA,
+          keyHash,
+          requestHash,
+        }),
+    );
+    expect(resolved).toMatchObject({
+      id: accepted.previewRunId,
+      workflowId: workflowA,
+      draftRevision: 1,
+      nodeId: 'http',
+      status: 'queued',
+    });
     const replayed = await apiDatabase.withWorkspace(
       workspaceA,
       (transaction) => acceptPreviewRun(transaction, input()),
@@ -314,9 +391,82 @@ describe('durable preview acceptance', () => {
     expect(replayed).toEqual({ ...accepted, duplicate: true });
     await expect(
       apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        resolvePreviewReplay(transaction, {
+          actorUserId: actorId,
+          workflowId: workflowA,
+          keyHash,
+          requestHash: otherRequestHash,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
         acceptPreviewRun(transaction, input({ requestHash: otherRequestHash })),
       ),
     ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
+  });
+
+  it('keeps simultaneous first requests behind one atomic acceptance', async () => {
+    const results = await Promise.all([
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptPreviewRun(transaction, input()),
+      ),
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptPreviewRun(transaction, input()),
+      ),
+    ]);
+
+    expect(results.map(({ duplicate }) => duplicate).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(
+      new Set(results.map(({ previewRunId }) => previewRunId)),
+    ).toHaveProperty('size', 1);
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      expect(await db.select({ count: count() }).from(previewRuns)).toEqual([
+        { count: 1 },
+      ]);
+      expect(await db.select({ count: count() }).from(previewAttempts)).toEqual(
+        [{ count: 1 }],
+      );
+      expect(await db.select({ count: count() }).from(outboxEvents)).toEqual([
+        { count: 1 },
+      ]);
+    });
+  });
+
+  it('denies revoked replay lookup and hides another workspace claim', async () => {
+    await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptPreviewRun(transaction, input()),
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceB, (transaction) =>
+        resolvePreviewReplay(transaction, {
+          actorUserId: actorId,
+          workflowId: workflowA,
+          keyHash,
+          requestHash,
+        }),
+      ),
+    ).resolves.toBeNull();
+
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.workspace_memberships set status = 'suspended'
+       where workspace_id = $1 and user_id = $2`,
+      [workspaceA, actorId],
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        resolvePreviewReplay(transaction, {
+          actorUserId: actorId,
+          workflowId: workflowA,
+          keyHash,
+          requestHash,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(PreviewAdmissionDeniedError);
   });
 
   it('rolls every acceptance fact back with its caller transaction', async () => {
@@ -367,7 +517,9 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_attempts
        set status = 'succeeded', started_at = now(), completed_at = now(),
-           output_ref = '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'
+           output_ref = to_jsonb(
+             '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'::text
+           )
        where id = $1`,
       [first.previewAttemptId],
     );
@@ -375,7 +527,9 @@ describe('durable preview acceptance', () => {
       workspaceA,
       `update app.preview_runs
        set status = 'succeeded', started_at = now(), completed_at = now(),
-           output_ref = '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'
+           output_ref = to_jsonb(
+             '{"schemaVersion":1,"kind":"inline","value":{"token":"persisted"}}'::text
+           )
        where id = $1`,
       [first.previewRunId],
     );
@@ -564,6 +718,25 @@ describe('durable preview acceptance', () => {
       status: 'succeeded',
       output: { kind: 'inline', value: { ok: true } },
     });
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_runs
+       set output_ref = to_jsonb(
+         '{"schemaVersion":1,"kind":"inline","value":{"ok":true}}'::text
+       )
+       where id = $1`,
+      [accepted.previewRunId],
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        readPreviewRun(transaction, {
+          actorUserId: actorId,
+          previewRunId: accepted.previewRunId,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      output: { kind: 'inline', value: { ok: true } },
+    });
     await expect(
       apiDatabase.withWorkspace(workspaceB, (transaction) =>
         readPreviewRun(transaction, {
@@ -619,6 +792,8 @@ describe('durable preview acceptance', () => {
           sideEffectClass: 'unsafe',
         }),
       ).rejects.toThrow();
+    });
+    await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
       await expect(
         db
           .update(previewAttempts)

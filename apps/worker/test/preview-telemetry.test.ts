@@ -101,4 +101,60 @@ describe('preview telemetry', () => {
       telemetry.recordReconciliation({ decision: 'duplicate' });
     }).not.toThrow();
   });
+
+  it('preserves optional false values while omitting absent labels', () => {
+    const harness = meterHarness();
+    const telemetry = createProductionPreviewTelemetry(harness.meter);
+
+    telemetry.recordTerminal({
+      mayContactProvider: false,
+      mayCauseExternalSideEffect: false,
+      outcome: 'succeeded',
+      possiblyDispatched: false,
+      source: 'execution',
+      usesConnection: false,
+    });
+
+    const attributes = harness.counters.get(
+      'pertexo.preview.terminal.count',
+    )?.[0]?.attributes;
+    expect(attributes).toEqual({
+      may_contact_provider: false,
+      may_cause_external_side_effect: false,
+      outcome: 'succeeded',
+      possibly_dispatched: false,
+      source: 'execution',
+      uses_connection: false,
+    });
+    expect(attributes).not.toHaveProperty('operation_key');
+    expect(attributes).not.toHaveProperty('provider_key');
+    expect(attributes).not.toHaveProperty('side_effect_class');
+  });
+
+  it.each([
+    ['completed', 'timed_out'],
+    ['duplicate', undefined],
+    ['redelivered', 'outcome_unknown'],
+    ['rescheduled', undefined],
+  ] as const)('records the %s reconciliation decision', (decision, outcome) => {
+    const harness = meterHarness();
+    const telemetry = createProductionPreviewTelemetry(harness.meter);
+
+    telemetry.recordReconciliation({
+      decision,
+      ...(outcome === undefined ? {} : { outcome }),
+    });
+
+    expect(
+      harness.counters.get('pertexo.preview.reconciliation.count'),
+    ).toEqual([
+      {
+        attributes: {
+          decision,
+          ...(outcome === undefined ? {} : { outcome }),
+        },
+        value: 1,
+      },
+    ]);
+  });
 });

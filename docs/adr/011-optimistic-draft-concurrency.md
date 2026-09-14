@@ -62,7 +62,9 @@ The save use case:
 3. loads the authorized current draft, recomputes its tag with the shared
    codec, and strongly compares that value with the supplied tag;
 4. captures that row's revision as `expectedRevision` only when the tags match;
-5. in one workspace-scoped transaction, updates the row with
+5. in one workspace-scoped transaction, selects and locks the current
+   compatibility release, recomputes the current full tag, rejects if the
+   original tag no longer matches, then updates the row with
    `WHERE workflow_id = ? AND revision = ?`, writes the graph and actor, and
    increments the revision once; and
 6. appends the successful save audit fact in that transaction and returns the
@@ -74,6 +76,16 @@ row, the use case reloads the authorized current row and computes its current
 tag for the conflict response; it never retries the update. Malformed or
 over-limit graphs are not persisted. Full publish validation is separate, so
 a structurally valid draft may contain publish-blocking issues.
+
+The write-time full-tag comparison is also authoritative for representation
+changes that do not advance the draft revision. In particular, if a
+compatibility release activates after the API's early comparison but before
+the save transaction selects its catalog, the transaction returns the current
+revision and newly selected tag as a `412` conflict. The caller must refetch.
+This clarification preserves the original whole-graph revision CAS while
+closing the compatibility-only race; `expectedRevision` remains an internal
+database command field and is neither extracted from the tag nor exposed in
+the public request body.
 
 ### Publish precondition and idempotent replay
 
@@ -248,7 +260,8 @@ prohibited metric labels.
   conflict statuses, or manually shape problem extensions.
 - Repository integration tests use the real API runtime role and prove a
   matching update, an atomic two-writer race with one winner, cross-workspace
-  invisibility, RLS enforcement, monotonic revision, and transaction rollback
+  invisibility, RLS enforcement, a compatibility activation between the early
+  read and write-time comparison, monotonic revision, and transaction rollback
   of both draft and audit state.
 - HTTP tests prove strong-tag round trips, the new tag on success, missing,
   weak, wildcard, list, malformed, and stale preconditions, the safe

@@ -15,11 +15,13 @@ import {
   currentRepresentationTag,
   draftNode,
   emptyGraph,
+  finishTransactionClient,
   otherWorkspaceId,
   parseDatabaseConfig,
   baselineEmptyDefinitionCatalog,
   queryAsOwner,
   randomUUID,
+  saveCurrentDraft,
   testDefinitionCatalog,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
@@ -33,6 +35,55 @@ function recordBenchmarkOperation(name: string, startedAt: number): void {
 }
 
 describe('workflow publication projections', () => {
+  it.each(['workspaceId', 'workflowId'] as const)(
+    'rejects a replay whose durable publication %s does not match its claim',
+    async (identityField) => {
+      const created = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: `create-corrupt-publish-${identityField}`,
+        name: `Corrupt publish ${identityField}`,
+        workspaceId,
+      });
+      const idempotencyKey = `publish-corrupt-result-${identityField}`;
+      const command = {
+        actorId,
+        representationTag: await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+        idempotencyKey,
+        requestHash: createHash('sha256').update(idempotencyKey).digest('hex'),
+        workflowId: created.workflowId,
+        workspaceId,
+      } as const;
+      await expect(authoring.publishWorkflow(command)).resolves.toMatchObject({
+        replayed: false,
+      });
+      await queryAsOwner(
+        `update app.idempotency_records
+            set result_ref=jsonb_set(
+              result_ref,$2::text[],to_jsonb($3::text),false)
+          where workspace_id=$4 and operation='workflow.publish'
+            and key_hash=$1
+          returning key_hash`,
+        [
+          createHash('sha256').update(idempotencyKey).digest('hex'),
+          ['version', identityField],
+          identityField === 'workspaceId' ? otherWorkspaceId : randomUUID(),
+          workspaceId,
+        ],
+        workspaceId,
+      );
+
+      await expect(authoring.publishWorkflow(command)).rejects.toThrow(
+        'Durable workflow publication result identity does not match its claim',
+      );
+    },
+  );
+
   it('uses canonical executable identity rather than JSON or presentation identity', async () => {
     const catalogAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -86,7 +137,7 @@ describe('workflow publication projections', () => {
         checksum: first.version.checksum,
         graphJson: baseGraph,
       });
-      await catalogAuthoring.saveDraft({
+      await saveCurrentDraft(catalogAuthoring, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -121,7 +172,7 @@ describe('workflow publication projections', () => {
         version: { id: first.version.id, checksum: first.version.checksum },
       });
 
-      await catalogAuthoring.saveDraft({
+      await saveCurrentDraft(catalogAuthoring, {
         actorId,
         expectedRevision: 2,
         graphJson: {
@@ -154,7 +205,7 @@ describe('workflow publication projections', () => {
         first.version.checksum,
       );
 
-      await authoring.saveDraft({
+      await saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 3,
         graphJson: emptyGraph,
@@ -324,6 +375,39 @@ describe('workflow publication projections', () => {
       } finally {
         await corruptCompiler.close();
       }
+
+      await queryAsOwner(
+        `insert into app.workflow_versions
+           (id,workspace_id,workflow_id,version_number,schema_version,
+            graph_json,checksum,executable_schema_version,executable_json,
+            compatibility_release_epoch,published_by)
+         values($1,$2,$3,2,1,'{}'::jsonb,$4,2,$5::jsonb,1,$6)
+         returning id`,
+        [
+          randomUUID(),
+          workspaceId,
+          created.workflowId,
+          `wf:v2:sha256:${'b'.repeat(64)}`,
+          JSON.stringify(executableJson),
+          actorId,
+        ],
+        workspaceId,
+      );
+      await expect(
+        executableAuthoring.publishWorkflow({
+          ...command,
+          idempotencyKey: 'publish-v2-corrupt-retained-graph',
+          requestHash: 'a'.repeat(64),
+        }),
+      ).rejects.toThrow();
+      await expect(
+        queryAsOwner<{ versions: string }>(
+          `select count(*)::text versions from app.workflow_versions
+            where workspace_id=$1 and workflow_id=$2`,
+          [workspaceId, created.workflowId],
+          workspaceId,
+        ),
+      ).resolves.toEqual([{ versions: '2' }]);
     } finally {
       await executableAuthoring.close();
     }
@@ -409,29 +493,87 @@ describe('workflow publication projections', () => {
         workflowId: created.workflowId,
         workspaceId,
       });
+      const additionalVersionIds: string[] = [];
+      for (const suffix of ['a', 'b']) {
+        const additionalGraph = {
+          ...emptyGraph,
+          nodes: [
+            {
+              ...draftNode(`http-usage-${suffix}`),
+              connectionRefs: { primary: connectionId },
+            },
+          ],
+        };
+        const additional = await usageAuthoring.createWorkflow({
+          actorId,
+          emptyGraph: additionalGraph,
+          idempotencyKey: `create-usage-${connectionId}-${suffix}`,
+          name: `Integration usage traversal ${suffix}`,
+          workspaceId,
+        });
+        const additionalPublication = await usageAuthoring.publishWorkflow({
+          actorId,
+          representationTag: await currentRepresentationTag(
+            usageAuthoring,
+            workspaceId,
+            additional.workflowId,
+            actorId,
+            usageCatalog,
+          ),
+          idempotencyKey: `publish-usage-${connectionId}-${suffix}`,
+          requestHash: createHash('sha256')
+            .update(`publish-${connectionId}-${suffix}`)
+            .digest('hex'),
+          workflowId: additional.workflowId,
+          workspaceId,
+        });
+        additionalVersionIds.push(additionalPublication.version.id);
+      }
 
-      await expect(
-        usageDatabase.findProviderOperationImpact({
+      const providerImpactIds: string[] = [];
+      let providerAfter:
+        | Readonly<{ workflowVersionId: string; connectionId: string }>
+        | undefined;
+      do {
+        const page = await usageDatabase.findProviderOperationImpact({
           workspaceId,
           providerKey: 'http',
           operationKey: 'request',
           limit: 1,
-        }),
-      ).resolves.toMatchObject({
-        items: [
-          {
-            workflowVersionId: published.version.id,
-            providerKey: 'http',
-            operationKey: 'request',
-            connectionId,
-          },
-        ],
-      });
-      await expect(
-        usageDatabase.findConnectionImpact({ workspaceId, connectionId }),
-      ).resolves.toMatchObject({
-        items: [{ workflowVersionId: published.version.id, connectionId }],
-      });
+          ...(providerAfter === undefined ? {} : { after: providerAfter }),
+        });
+        providerImpactIds.push(
+          ...page.items.map(({ workflowVersionId }) => workflowVersionId),
+        );
+        providerAfter = page.nextCursor;
+      } while (providerAfter !== undefined);
+      expect(providerImpactIds.toSorted()).toEqual(
+        [published.version.id, ...additionalVersionIds].toSorted(),
+      );
+
+      const connectionImpactIds: string[] = [];
+      let connectionAfter:
+        | Readonly<{
+            workflowVersionId: string;
+            providerKey: string;
+            operationKey: string;
+          }>
+        | undefined;
+      do {
+        const page = await usageDatabase.findConnectionImpact({
+          workspaceId,
+          connectionId,
+          limit: 1,
+          ...(connectionAfter === undefined ? {} : { after: connectionAfter }),
+        });
+        connectionImpactIds.push(
+          ...page.items.map(({ workflowVersionId }) => workflowVersionId),
+        );
+        connectionAfter = page.nextCursor;
+      } while (connectionAfter !== undefined);
+      expect(connectionImpactIds.toSorted()).toEqual(
+        [published.version.id, ...additionalVersionIds].toSorted(),
+      );
       await expect(
         usageDatabase.findConnectionImpact({
           workspaceId: otherWorkspaceId,
@@ -440,8 +582,11 @@ describe('workflow publication projections', () => {
       ).resolves.toEqual({ items: [] });
 
       const client = await apiPool.connect();
+      let transactionOpen = false;
+      let primaryError: unknown;
       try {
         await client.query('begin');
+        transactionOpen = true;
         await client.query("select set_config('app.workspace_id', $1, true)", [
           workspaceId,
         ]);
@@ -450,10 +595,16 @@ describe('workflow publication projections', () => {
           [published.version.id],
         );
         await client.query('commit');
-      } finally {
-        client.release();
+        transactionOpen = false;
+      } catch (error: unknown) {
+        primaryError = error;
       }
-      await usageAuthoring.saveDraft({
+      await finishTransactionClient(client, {
+        label: 'Missing integration-usage fixture deletion',
+        primaryError,
+        transactionOpen,
+      });
+      await saveCurrentDraft(usageAuthoring, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -483,11 +634,16 @@ describe('workflow publication projections', () => {
         reused: true,
         version: { id: published.version.id, graphJson: graph },
       });
-      await expect(
-        usageDatabase.findConnectionImpact({ workspaceId, connectionId }),
-      ).resolves.toMatchObject({
-        items: [{ workflowVersionId: published.version.id, connectionId }],
+      const rebuiltImpact = await usageDatabase.findConnectionImpact({
+        workspaceId,
+        connectionId,
       });
+      expect(rebuiltImpact.items).toContainEqual(
+        expect.objectContaining({
+          workflowVersionId: published.version.id,
+          connectionId,
+        }),
+      );
     } finally {
       await Promise.all([
         connectionDatabase.close(),

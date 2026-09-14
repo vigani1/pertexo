@@ -192,7 +192,6 @@ function validateInvocation(
   checkpoint: PersistedWorkflowCheckpoint,
   freshFact: Readonly<Record<string, unknown>> | undefined,
 ): string | undefined {
-  corruptIf(row === undefined);
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   corruptIf(row.node_id !== invocation.nodeId);
   corruptIf(
@@ -252,8 +251,7 @@ export async function validateLoadedCheckpointPhysicalState(
   const available = await client.query<{ id: string }>(
     `select id from app.artifacts
      where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null
-     for share`,
+       and status='available' and deleted_at is null`,
     [workspaceId, [...artifactIds]],
   );
   corruptIf(

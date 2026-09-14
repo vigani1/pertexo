@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { PoolClient } from 'pg';
 
 import {
+  adminUrl,
   type ControlLedger,
   createRetentionEnforcementCoordinator,
   cutoffAt,
@@ -608,5 +610,195 @@ describe('retention replay lineage', () => {
     await expect(
       countRuns(workspaceId, [sourceRunId, replayRunId]),
     ).resolves.toBe(0);
+  });
+
+  it('serializes a concurrent replay child insert behind source deletion', async () => {
+    const raceWorkspaceId = randomUUID();
+    const sourceRunId = randomUUID();
+    const childRunId = randomUUID();
+    await createWorkspaceFixture(raceWorkspaceId);
+    await insertRunFixtures([
+      {
+        id: sourceRunId,
+        workspaceId: raceWorkspaceId,
+        completedAt: '2026-01-01T00:00:00Z',
+        detailsPurgedAt: '2026-01-02T00:00:00Z',
+      },
+    ]);
+    const sourceMaterial = await withOwner(raceWorkspaceId, async (client) => {
+      const source = await client.query<{
+        workflow_id: string;
+        workflow_version_id: string;
+      }>(
+        `select workflow_id,workflow_version_id from app.workflow_runs
+            where workspace_id=$1 and id=$2`,
+        [raceWorkspaceId, sourceRunId],
+      );
+      const row = source.rows[0];
+      if (row === undefined) throw new Error('Replay source fixture missing');
+      return row;
+    });
+    const batchId = await startSummaryBatch(
+      raceWorkspaceId,
+      new Date('2026-08-01T00:00:00Z'),
+    );
+    const maintenance = new Pool({ connectionString: maintenanceUrl, max: 2 });
+    const observer = new Pool({ connectionString: adminUrl, max: 1 });
+    const deletionClient = await maintenance.connect();
+    let childClient: PoolClient | undefined;
+    let childInsertion:
+      | Promise<
+          | { readonly error: unknown; readonly status: 'rejected' }
+          | { readonly status: 'fulfilled' }
+        >
+      | undefined;
+    let deletionOpen = false;
+    let childOpen = false;
+    let rowLevelSecurityRelaxed = false;
+    try {
+      const claimed = await maintenance.query<{
+        batch_id: string;
+        lease_fence: string;
+        lease_token: string;
+      }>('select * from app.claim_retention_destructive_batches($1,1,60)', [
+        'retention-replay-insert-race',
+      ]);
+      const lease = claimed.rows[0];
+      if (lease?.batch_id !== batchId)
+        throw new Error('Replay race batch was not claimed');
+      const anchor = await maintenance.query<{
+        retention_control_hash: string;
+        retention_control_sequence: string;
+      }>('select * from app.lock_workspace_control_ledger($1)', [
+        raceWorkspaceId,
+      ]);
+      const highWater = anchor.rows[0];
+      if (highWater === undefined)
+        throw new Error('Replay race control anchor missing');
+
+      await withOwner(raceWorkspaceId, (client) =>
+        client.query(
+          'alter table app.workflow_runs no force row level security',
+        ),
+      );
+      rowLevelSecurityRelaxed = true;
+      await deletionClient.query('begin');
+      deletionOpen = true;
+      await expect(
+        deletionClient.query(
+          `select * from app.execute_standard_retention_page(
+             $1,$2,$3,1000,$4,$5
+           )`,
+          [
+            batchId,
+            lease.lease_token,
+            lease.lease_fence,
+            highWater.retention_control_sequence,
+            highWater.retention_control_hash,
+          ],
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ eligible_delta: 1, examined_delta: 1, outcome: 'progressed' }],
+      });
+
+      const acquiredChild = await owner.connect();
+      childClient = acquiredChild;
+      await acquiredChild.query('begin');
+      childOpen = true;
+      await acquiredChild.query('set local role pertexo_owner');
+      await acquiredChild.query(
+        "select set_config('app.workspace_id',$1,true)",
+        [raceWorkspaceId],
+      );
+      const childBackend = await acquiredChild.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const childPid = childBackend.rows[0]?.pid;
+      if (childPid === undefined)
+        throw new Error('Replay child backend PID missing');
+      childInsertion = acquiredChild
+        .query(
+          `insert into app.workflow_runs(
+             id,workspace_id,workflow_id,workflow_version_id,
+             replay_source_run_id,replay_command_id,trigger_type,status,
+             completed_at,details_purged_at,created_at,updated_at
+           ) values($1,$2,$3,$4,$5,$6,'replay','succeeded',$7,$8,$7,$8)`,
+          [
+            childRunId,
+            raceWorkspaceId,
+            sourceMaterial.workflow_id,
+            sourceMaterial.workflow_version_id,
+            sourceRunId,
+            randomUUID(),
+            '2026-05-20T00:00:00Z',
+            '2026-05-21T00:00:00Z',
+          ],
+        )
+        .then(
+          () => ({ status: 'fulfilled' as const }),
+          (error: unknown) => ({ error, status: 'rejected' as const }),
+        );
+      await expect
+        .poll(async () => {
+          const activity = await observer.query<{ blocked: boolean }>(
+            `select exists(
+               select 1 from pg_stat_activity
+                where pid=$1 and wait_event_type='Lock'
+                  and cardinality(pg_blocking_pids(pid)) > 0
+             ) blocked`,
+            [childPid],
+          );
+          return activity.rows[0]?.blocked;
+        })
+        .toBe(true);
+
+      await deletionClient.query('commit');
+      deletionOpen = false;
+      const childOutcome = await childInsertion;
+      if (childOutcome.status !== 'rejected')
+        throw new Error('Replay child unexpectedly survived source deletion');
+      expect(childOutcome.error).toMatchObject({ code: '23503' });
+      await acquiredChild.query('rollback');
+      childOpen = false;
+      acquiredChild.release();
+      childClient = undefined;
+      await withOwner(raceWorkspaceId, (client) =>
+        client.query('alter table app.workflow_runs force row level security'),
+      );
+      rowLevelSecurityRelaxed = false;
+
+      await expect(
+        maintenance.query(
+          `select * from app.execute_standard_retention_page(
+             $1,$2,$3,1000,$4,$5
+           )`,
+          [
+            batchId,
+            lease.lease_token,
+            lease.lease_fence,
+            highWater.retention_control_sequence,
+            highWater.retention_control_hash,
+          ],
+        ),
+      ).resolves.toMatchObject({ rows: [{ outcome: 'completed' }] });
+      await expect(
+        countRuns(raceWorkspaceId, [sourceRunId, childRunId]),
+      ).resolves.toBe(0);
+    } finally {
+      if (deletionOpen)
+        await deletionClient.query('rollback').catch(() => undefined);
+      if (childOpen)
+        await childClient?.query('rollback').catch(() => undefined);
+      await childInsertion;
+      childClient?.release();
+      deletionClient.release();
+      if (rowLevelSecurityRelaxed)
+        await withOwner(raceWorkspaceId, (client) =>
+          client.query(
+            'alter table app.workflow_runs force row level security',
+          ),
+        );
+      await Promise.all([maintenance.end(), observer.end()]);
+    }
   });
 });

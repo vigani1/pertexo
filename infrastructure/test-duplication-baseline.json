@@ -7,9 +7,9 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 31,
-        "duplicatedLines": 605,
-        "duplicatedTokens": 5340
+        "clones": 20,
+        "duplicatedLines": 340,
+        "duplicatedTokens": 3042
       },
       "families": [
         {
@@ -71,7 +71,7 @@
           "reason": "Purge-start and deletion-completion independently capture their durable repair command beside the distinct lease preparation that consumes it.",
           "clones": [
             {
-              "hash": "6d5cb49a69a35a1df77b51303f21734be56bd2d98f3c6c4f87d52d13bb670fa8",
+              "hash": "9b7c1213fb1a03c3ba466fd9652823d15d1d36feb776e92e16e563e478f6aece",
               "maxLines": 21
             }
           ]
@@ -99,12 +99,8 @@
           "reason": "Preview and durable run-artifact retention share bounded configuration and abort-aware query plumbing but enforce different eligibility, ownership, and deletion policies.",
           "clones": [
             {
-              "hash": "23e9caf87265a3d4c9f32a76f125008b8f5d0b8f211b6fcea40a7eb64310fdfc",
+              "hash": "0cda06183cf8cb12143b0df0d26daee4f5176af5217effbba651879312cef4b6",
               "maxLines": 17
-            },
-            {
-              "hash": "d9abb6925273187972e8673b3c5fcdffe5185f7da3999575123ac7aa6da5b678",
-              "maxLines": 15
             }
           ]
         },
@@ -166,29 +162,29 @@
         },
         {
           "files": [
-            "apps/operator-command/src/main.ts",
-            "apps/retention/src/main.ts"
+            "apps/lifecycle-command/src/main.ts",
+            "apps/recovery/src/main.ts"
           ],
           "classification": "false-positive",
-          "reason": "Two process entry points repeat fail-closed telemetry shutdown and signal-listener cleanup while owning unrelated application resources.",
+          "reason": "Lifecycle and recovery entry points independently retain fail-closed telemetry shutdown and signal-listener cleanup beside different application resource ownership.",
           "clones": [
             {
-              "hash": "00e1fe5720681052b8d49d7416d5b8bc4d481ccd37ceab304e95f39e8852e7d1",
-              "maxLines": 15
+              "hash": "9f7b2bd27c6f088cb53ae30df94a1c4f668e5065d6b00b4012cbc848e0a955a3",
+              "maxLines": 19
             }
           ]
         },
         {
           "files": [
-            "apps/api/src/platform/observability/observability.module.ts",
-            "apps/worker/src/platform/observability/observability.module.ts"
+            "apps/api/src/platform/health/drain-state.ts",
+            "apps/worker/src/runtime/worker-shutdown-coordinator.ts"
           ],
           "classification": "false-positive",
-          "reason": "API and worker Nest roots intentionally own identical thin observability adapters without introducing a cross-application framework package.",
+          "reason": "API drain state and worker shutdown coordination both expose idempotent close hooks, but their ownership graphs and failure propagation contracts remain application-specific.",
           "clones": [
             {
-              "hash": "7a157fa7f925b07b7d10b06396d9c2e3c48c0b45dbd1b9f3d13217fb85617e83",
-              "maxLines": 33
+              "hash": "e5054d90b9bc6be5efd4659597616ae5f962d6524102fd740398483a51760d33",
+              "maxLines": 16
             }
           ]
         },
@@ -201,8 +197,19 @@
           "reason": "API and worker database modules expose similar Nest lifecycle adapters but validate different roles, compatibility cohorts, and runtime responsibilities.",
           "clones": [
             {
-              "hash": "2ebaa2af8c122ab70ff3c5352d8d1cf30145cbfef717bbc211aad7abfb326c88",
-              "maxLines": 38
+              "hash": "42805d029720e901b80b564433fcd7a6f32a3c851bebc01127f9b7bf73a9437a",
+              "maxLines": 34
+            }
+          ]
+        },
+        {
+          "files": ["apps/api/src/main.ts", "apps/worker/src/main.ts"],
+          "classification": "false-positive",
+          "reason": "API and worker process roots repeat bounded telemetry diagnostics and direct-module startup while owning different Nest applications and shutdown semantics.",
+          "clones": [
+            {
+              "hash": "d2b0d9df507f1d9ec699943b1a9b745b3e63cf86714fbf923ab2aee635409aea",
+              "maxLines": 20
             }
           ]
         },
@@ -229,8 +236,8 @@
           "reason": "Identity and authoring telemetry wrappers record different operation vocabularies and attributes while preserving feature-local cardinality control.",
           "clones": [
             {
-              "hash": "6e1c8ae1870df8cf22cc83f7426bdb71af16faecd40196dcd52d1ed08bf2c689",
-              "maxLines": 25
+              "hash": "b0d2ff86af8f58e6c1e2bd3eb79336eb2d9f14199b15128f43e30d8b4d3ee21a",
+              "maxLines": 19
             }
           ]
         },
@@ -270,64 +277,152 @@
       "minLines": 18,
       "minTokens": 130,
       "maximums": {
-        "clones": 6,
-        "duplicatedLines": 267,
-        "duplicatedTokens": 2192
+        "clones": 11,
+        "duplicatedLines": 327,
+        "duplicatedTokens": 3065
       },
       "families": [
         {
           "files": [
-            "apps/worker/test/transport-part-2.integration.test.ts",
-            "apps/worker/test/transport.integration.test.ts"
+            "packages/database/test/retention-control-foundation-migration.integration.test.ts",
+            "packages/database/test/workflow-run-input-retention-migration.integration.test.ts"
           ],
-          "classification": "intentional-scenario-local",
-          "reason": "The paired transport proofs deliberately keep inbox transaction writes and bounded dispatcher actions in each scenario file so atomicity, redelivery, and fair-claim behavior remain visible at the tested seam.",
+          "classification": "false-positive",
+          "reason": "Independent historical migration fixtures repeat defensive PostgreSQL teardown so each published-head upgrade proof owns and reports all of its cleanup failures.",
           "clones": [
             {
-              "hash": "138352a795ebb59cb474f9ce60d4fdd848915aa6a774faf97c25067dc0fa871c",
-              "maxLines": 109
+              "hash": "3b9379d1726d1dbaa77800e4fe0add8684d1488a78155789a52282c70eb04c0f",
+              "maxLines": 19
             }
           ]
         },
         {
           "files": [
-            "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
-            "packages/workflow-engine/test/executable-workflow-foreach.test.ts"
+            "apps/worker/test/preview-consumer-reconciliation.integration.test.ts",
+            "apps/worker/test/preview-consumer-sigkill-reconciliation.integration.test.ts"
           ],
           "classification": "intentional-scenario-local",
-          "reason": "The conflict scenario repeats the persisted successful observation to make the changed completed-output value and resulting rejection visible in the test.",
+          "reason": "Ordinary reconciliation and SIGKILL recovery scenarios each show the complete real Redis/PostgreSQL runtime acquisition before asserting distinct crash-boundary outcomes.",
           "clones": [
             {
-              "hash": "f75a4b5100a0a0276f41ff9f6f7f083f7b9dc3a665a42885b4cd66cfdfee22cf",
-              "maxLines": 30
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/worker/test/node-attempt-handler-part-2.test.ts",
-            "apps/worker/test/node-attempt-handler-part-2.test.ts"
-          ],
-          "classification": "intentional-scenario-local",
-          "reason": "Provider-failure scenarios build explicit executors with different failure kinds and completion expectations; an option-driven helper would hide the tested behavior.",
-          "clones": [
-            {
-              "hash": "23facc9ee3428611964a622cdf2011e7ea7907b81ecc5cb1416df92597586fd2",
+              "hash": "0824de7e9a0c67c9f9ff43754193714549b4cb2b29ff6bacfbedf84bd5274d5a",
               "maxLines": 31
             }
           ]
         },
         {
           "files": [
-            "apps/lifecycle-command/test/run.test.ts",
-            "apps/retention/test/run.test.ts"
+            "apps/worker/test/email-provider-telemetry.test.ts",
+            "apps/worker/test/slack-provider-telemetry.test.ts"
           ],
           "classification": "false-positive",
-          "reason": "Separate deployable applications use similar ledger and logger fakes but exercise different startup, telemetry, reconciliation, and shutdown contracts.",
+          "reason": "Email and Slack telemetry tests independently prove hostile rejection identity at provider-specific metric seams; sharing the assertion would hide each owner contract.",
           "clones": [
             {
-              "hash": "665d091e56e0ff0c9de8fe9587dfb00c1f63cd8bdcfdbd58075f5b38a79b51fa",
-              "maxLines": 37
+              "hash": "fc9fa2929e3edf44337648b2a22b94700c9b52a0cbb3f46cc065ef7a7cc84a7b",
+              "maxLines": 20
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/recovery/test/main.test.ts",
+            "apps/retention/test/main.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Recovery and retention bootstrap tests use similar telemetry and ledger doubles while exercising different dependency graphs, ownership handoffs, and cleanup orders.",
+          "clones": [
+            {
+              "hash": "9db9ff521860fbde4a4b9f6a50acacb445ee22c2128604800eaf4cad489f9f7d",
+              "maxLines": 24
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/recovery/test/main-process.test.ts",
+            "apps/retention/test/main-process.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Separate compiled executables need self-contained child-process signal fixtures so failures identify the owning deployment entrypoint and its timeout diagnostics.",
+          "clones": [
+            {
+              "hash": "1d98ba7c1c9f48ba19f07a42ccbf7a663ef8ccc17fb3dec1494bd487e58474fc",
+              "maxLines": 41
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/recovery/test/config.test.ts",
+            "apps/retention/test/config.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Recovery and retention configuration suites repeat the security matrix that forbids shared artifact and ledger principals across independently deployed services.",
+          "clones": [
+            {
+              "hash": "dfbf2d3ccf0d9e5b27d5b556083f8986131cad593b7d1ac90118114668705f5a",
+              "maxLines": 56
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/test/workflow-runs/postgres-persistence.test.ts",
+            "packages/workflow-engine/test/executable-workflow.fixtures.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "API persistence and engine execution independently spell out the canonical parallel graph because they validate serialization and scheduling at different package boundaries.",
+          "clones": [
+            {
+              "hash": "84c66cbe400e9d9e28909959c7114b8068c022c93bec958faea07c4e4dd9a0c1",
+              "maxLines": 36
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/test/executions/run-event-stream.test.ts",
+            "apps/api/test/executions/run-event-stream.test.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Distinct stream cancellation scenarios retain an explicit async subscription fixture so iterator return and source close expectations remain visible in each case.",
+          "clones": [
+            {
+              "hash": "3b8e30811cc36238b136cd968669da3b28f4671d8d7f86b42fdd370950902c93",
+              "maxLines": 22
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/test/connections/http-stack.test.ts",
+            "apps/api/test/workflow-runs/http-stack.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Connection and workflow HTTP stack tests each own an authenticated identity runtime; common session plumbing supports different route modules and authorization assertions.",
+          "clones": [
+            {
+              "hash": "b832ca02c90e7f90579066d1603da362282eac911aa3bfb97b7f821abd7f5edf",
+              "maxLines": 26
+            },
+            {
+              "hash": "11a9d73e86d2eb917c2186bad81edb08457bf7e85334147dd93f3477ff0ef60a",
+              "maxLines": 35
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/test/main.test.ts",
+            "apps/worker/test/main.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "API and worker bootstrap suites use similar observable lifecycle doubles but verify different application creation, readiness, shutdown, and diagnostic ownership.",
+          "clones": [
+            {
+              "hash": "aec9d048a8e2e93f482a0f7b4800a05a4bfeb27149910f8f1d6dd5b5e3d8e1a7",
+              "maxLines": 28
             }
           ]
         }

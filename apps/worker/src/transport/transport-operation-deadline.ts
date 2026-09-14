@@ -22,11 +22,9 @@ export function bounded<T>(
       },
       (error: unknown) => {
         clearTimeout(timer);
-        reject(
-          error instanceof Error
-            ? error
-            : new Error('Transport operation failed', { cause: error }),
-        );
+        // Preserve even legacy non-Error rejections without inspecting them.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        reject(error);
       },
     );
   });

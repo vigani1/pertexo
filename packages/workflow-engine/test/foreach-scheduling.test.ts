@@ -91,7 +91,23 @@ describe('bounded ForEach scheduling', () => {
       branchPath: ['branch-b'],
       iterationPath: [{ loopNodeId: 'loop', ordinal: 2 }],
     } as const;
-    expect(invocationKey(input)).toBe(invocationKey(input));
-    expect(invocationKey(input)).toContain('loop%3A2');
+    expect(invocationKey(input)).toBe(
+      '00000000-0000-4000-8000-000000000006|node|b:branch-b|i:loop%3A2',
+    );
+    expect(invocationKey({ ...input, workflowVersionId: 'changed' })).not.toBe(
+      invocationKey(input),
+    );
+    expect(invocationKey({ ...input, nodeId: 'changed' })).not.toBe(
+      invocationKey(input),
+    );
+    expect(invocationKey({ ...input, branchPath: ['branch-a'] })).not.toBe(
+      invocationKey(input),
+    );
+    expect(
+      invocationKey({
+        ...input,
+        iterationPath: [{ loopNodeId: 'loop', ordinal: 3 }],
+      }),
+    ).not.toBe(invocationKey(input));
   });
 });

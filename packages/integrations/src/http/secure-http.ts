@@ -7,6 +7,7 @@ import {
   type SecureHttpErrorCode,
   failure,
   abortFailure,
+  inspectSecureHttpError,
   isTimeoutError,
 } from './secure-http-error.js';
 export {
@@ -23,6 +24,7 @@ import {
   parseRequest,
   type ParsedSecureHttpRequest,
 } from './secure-http-request.js';
+import { normalizeUnknownError } from './unknown-error.js';
 
 const MAX_URL_BYTES = 2_048;
 const safeResponseHeaders = new Set([
@@ -280,14 +282,15 @@ export class SecureHttpClient {
       parsed = parseRequest(input);
       return await this.executeOwnedRequest(parsed, consume);
     } catch (error: unknown) {
-      if (error instanceof SecureHttpError) {
+      const secureError = inspectSecureHttpError(error);
+      if (secureError !== undefined) {
         try {
           this.observer?.observeFailure({
-            classification: error.classification,
+            classification: secureError.classification,
             durationSeconds: (performance.now() - startedAt) / 1_000,
-            possiblyDispatched: error.possiblyDispatched,
-            reason: error.code,
-            stage: failureStage(error.code),
+            possiblyDispatched: secureError.possiblyDispatched,
+            reason: secureError.code,
+            stage: failureStage(secureError.code),
           });
         } catch {
           // Diagnostics must never alter provider request behavior.
@@ -335,7 +338,8 @@ export class SecureHttpClient {
           markerCommitted = true;
           assertNotAborted(executionSignal, POST_DISPATCH_AMBIGUITY);
         } catch (error: unknown) {
-          if (error instanceof SecureHttpError) throw error;
+          const secureError = inspectSecureHttpError(error);
+          if (secureError !== undefined) throw secureError.error;
           throw failure(
             SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
             false,
@@ -360,9 +364,13 @@ export class SecureHttpClient {
           }),
           executionSignal,
           POST_DISPATCH_AMBIGUITY,
+          (lateResponse) => {
+            lateResponse.close();
+          },
         );
       } catch (error: unknown) {
-        if (error instanceof SecureHttpError) throw error;
+        const secureError = inspectSecureHttpError(error);
+        if (secureError !== undefined) throw secureError.error;
         throw mapTransportError(error, executionSignal);
       }
       assertResponseStatus(response);
@@ -407,7 +415,8 @@ export class SecureHttpClient {
             )
           : [{ address: hostname, family: literalFamily }];
     } catch (error: unknown) {
-      if (error instanceof SecureHttpError) throw error;
+      const secureError = inspectSecureHttpError(error);
+      if (secureError !== undefined) throw secureError.error;
       throw failure(
         SECURE_HTTP_ERROR_CODE.dnsFailed,
         failureContext.possiblyDispatched,
@@ -503,12 +512,8 @@ function parseRedirectUrl(location: string, current: URL): URL {
 function literalAddressFamily(hostname: string): 4 | 6 | undefined {
   // URL parsing canonicalizes alternate IPv4 spellings before this boundary.
   // DNS labels may contain only hexadecimal letters without being IP literals.
-  if (isIP(hostname) === 0) return undefined;
-  try {
-    return assertPublicAddress(hostname);
-  } catch {
-    throw failure(SECURE_HTTP_ERROR_CODE.ssrfBlocked, false, false);
-  }
+  const family = isIP(hostname);
+  return family === 0 ? undefined : family === 4 ? 4 : 6;
 }
 
 function redirectLocation(
@@ -620,41 +625,50 @@ function raceWithSignal<T>(
   work: Promise<T>,
   signal: AbortSignal,
   failureContext: DispatchFailureContext,
+  disposeLateValue?: (value: T) => void,
 ): Promise<T> {
-  if (signal.aborted) void work.catch(() => undefined);
-  if (signal.aborted)
-    return Promise.reject(
-      abortFailure(
-        signal,
-        failureContext.possiblyDispatched,
-        failureContext.ambiguous,
-      ),
-    );
   return new Promise<T>((resolve, reject) => {
-    const aborted = (): void => {
-      reject(
-        abortFailure(
-          signal,
-          failureContext.possiblyDispatched,
-          failureContext.ambiguous,
-        ),
-      );
+    let settled = false;
+    const settle = (complete: () => void): boolean => {
+      if (settled) return false;
+      settled = true;
+      signal.removeEventListener('abort', aborted);
+      complete();
+      return true;
     };
-    signal.addEventListener('abort', aborted, { once: true });
+    const aborted = (): void => {
+      settle(() => {
+        reject(
+          abortFailure(
+            signal,
+            failureContext.possiblyDispatched,
+            failureContext.ambiguous,
+          ),
+        );
+      });
+    };
     void work.then(
       (value) => {
-        signal.removeEventListener('abort', aborted);
-        resolve(value);
+        if (
+          !settle(() => {
+            resolve(value);
+          })
+        ) {
+          try {
+            disposeLateValue?.(value);
+          } catch {
+            // The selected cancellation remains authoritative over disposal.
+          }
+        }
       },
       (error: unknown) => {
-        signal.removeEventListener('abort', aborted);
-        reject(
-          error instanceof Error
-            ? error
-            : new Error('Secure HTTP operation failed'),
-        );
+        settle(() => {
+          reject(normalizeUnknownError(error, 'Secure HTTP operation failed'));
+        });
       },
     );
+    signal.addEventListener('abort', aborted, { once: true });
+    if (signal.aborted) aborted();
   });
 }
 

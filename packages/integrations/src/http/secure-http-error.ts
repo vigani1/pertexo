@@ -1,3 +1,5 @@
+import { errorCodeIs, errorNameIs, safeInstanceOf } from './unknown-error.js';
+
 export const SECURE_HTTP_ERROR_CODE = Object.freeze({
   canceled: 'canceled',
   connectionFenceFailed: 'connection_fence_failed',
@@ -28,11 +30,47 @@ export class SecureHttpError extends Error {
   }
 }
 
+export type SecureHttpErrorDetails = Readonly<{
+  classification: SecureHttpError['classification'];
+  code: SecureHttpErrorCode;
+  error: SecureHttpError;
+  possiblyDispatched: boolean;
+}>;
+
+const SECURE_HTTP_ERROR_CODES = new Set<unknown>(
+  Object.values(SECURE_HTTP_ERROR_CODE),
+);
+
+export function inspectSecureHttpError(
+  error: unknown,
+): SecureHttpErrorDetails | undefined {
+  if (!safeInstanceOf(error, SecureHttpError)) return undefined;
+  try {
+    const code: unknown = error.code;
+    const classification: unknown = error.classification;
+    const possiblyDispatched: unknown = error.possiblyDispatched;
+    if (
+      !SECURE_HTTP_ERROR_CODES.has(code) ||
+      (classification !== 'ambiguous' &&
+        classification !== 'definite_failure') ||
+      typeof possiblyDispatched !== 'boolean'
+    )
+      return undefined;
+    return Object.freeze({
+      classification,
+      code: code as SecureHttpErrorCode,
+      error,
+      possiblyDispatched,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 export function isTimeoutError(error: unknown): boolean {
   return (
-    error instanceof Error &&
-    (('code' in error && error.code === 'ETIMEDOUT') ||
-      error.name === 'TimeoutError')
+    safeInstanceOf(error, Error) &&
+    (errorCodeIs(error, 'ETIMEDOUT') || errorNameIs(error, 'TimeoutError'))
   );
 }
 
@@ -55,8 +93,7 @@ export function abortFailure(
   possiblyDispatched: boolean,
   ambiguous: boolean,
 ): SecureHttpError {
-  const timedOut =
-    signal.reason instanceof Error && signal.reason.name === 'TimeoutError';
+  const timedOut = errorNameIs(signal.reason, 'TimeoutError');
   return failure(
     timedOut
       ? SECURE_HTTP_ERROR_CODE.timedOut

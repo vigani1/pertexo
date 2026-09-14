@@ -21,7 +21,7 @@ export const TRANSPORT_METRIC_NAME = Object.freeze({
   queueDepth: 'pertexo.transport.queue.depth',
   queueOldestJobAge: 'pertexo.transport.queue.oldest_job_age',
   queueStalls: 'pertexo.transport.queue.stalls',
-  workerProcessStarts: 'pertexo.worker.process.starts',
+  workerProcessStartTime: 'pertexo.worker.process.start_time',
 } as const);
 
 export type TransportErrorClass =
@@ -160,6 +160,7 @@ export interface TransportMetrics {
 export interface TransportMetricsOptions {
   /** Injection seam for SDK-backed production meters and deterministic tests. */
   readonly meter?: Meter;
+  readonly now?: () => number;
 }
 
 function requireNonNegativeFinite(value: number, name: string): void {
@@ -314,11 +315,11 @@ export function createTransportMetrics(
       unit: 'By',
     },
   );
-  const workerProcessStarts = meter.createCounter(
-    TRANSPORT_METRIC_NAME.workerProcessStarts,
+  const workerProcessStartTime = meter.createGauge(
+    TRANSPORT_METRIC_NAME.workerProcessStartTime,
     {
-      description: 'Successful worker process compositions, including restarts',
-      unit: '{process}',
+      description: 'Unix time of this telemetry writer worker process start',
+      unit: 's',
     },
   );
 
@@ -406,7 +407,7 @@ export function createTransportMetrics(
       queueStalls.add(1, { queue_name: queueName });
     },
     recordWorkerProcessStart(): void {
-      workerProcessStarts.add(1);
+      workerProcessStartTime.record((options.now ?? Date.now)() / 1_000);
     },
   });
 }

@@ -29,18 +29,29 @@ import type {
 import type { FailureNotificationDeliveryCapability } from './failure-notification-handler.js';
 const TIMEOUT_MILLIS = 30_000;
 
+function isErrorInstance<T extends Error>(
+  value: unknown,
+  constructor: abstract new (...arguments_: never[]) => T,
+): value is T {
+  try {
+    return value instanceof constructor;
+  } catch {
+    return false;
+  }
+}
+
 function localFailure(
   error: unknown,
   provider: 'slack' | 'email',
 ): FailureNotificationDeliveryResultV1 {
-  if (error instanceof ConnectionSecretEncryptionError)
+  if (isErrorInstance(error, ConnectionSecretEncryptionError))
     return {
       schemaVersion: 1,
       kind: 'retry',
       safeErrorCode: 'delivery.credential_unavailable',
       possiblyDispatched: false,
     };
-  if (error instanceof SecureHttpError) {
+  if (isErrorInstance(error, SecureHttpError)) {
     if (error.possiblyDispatched)
       return {
         schemaVersion: 1,
@@ -322,7 +333,7 @@ async function deliverSlack(
         }),
       );
     } catch (error: unknown) {
-      if (error instanceof FailureNotificationStateError)
+      if (isErrorInstance(error, FailureNotificationStateError))
         return {
           schemaVersion: 1,
           kind: 'definite_failure',
@@ -416,7 +427,7 @@ async function deliverEmail(
         input.deliveryUnresolved,
       );
     } catch (error: unknown) {
-      if (error instanceof FailureNotificationStateError)
+      if (isErrorInstance(error, FailureNotificationStateError))
         return input.deliveryUnresolved
           ? {
               schemaVersion: 1,
@@ -460,7 +471,7 @@ export function createProviderFailureNotificationDelivery(
         });
       } catch (error: unknown) {
         if (input.signal.aborted) return canceled(input);
-        if (error instanceof FailureNotificationStateError)
+        if (isErrorInstance(error, FailureNotificationStateError))
           return input.deliveryUnresolved
             ? {
                 schemaVersion: 1,

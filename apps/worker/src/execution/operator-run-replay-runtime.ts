@@ -61,7 +61,7 @@ export function createDatabaseOperatorRunReplayStore(
           currentCompatibilityRelease,
         );
       } catch (error: unknown) {
-        if (error instanceof WorkflowEngineError)
+        if (isErrorInstance(error, WorkflowEngineError))
           throw new OperatorRunReplayNotExecutableError();
         throw error;
       }
@@ -114,7 +114,7 @@ export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
           workspaceId: delivery.data.workspaceId,
         });
       } catch (error: unknown) {
-        if (error instanceof OperatorRunReplayNotExecutableError) {
+        if (isErrorInstance(error, OperatorRunReplayNotExecutableError)) {
           await store.fail({
             commandId: delivery.data.commandId,
             safeErrorCode: 'version_not_executable',
@@ -123,9 +123,9 @@ export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
           throw unrecoverableQueueError('Run replay target is not executable');
         }
         if (
-          error instanceof OperatorRunReplayMismatchError ||
-          error instanceof InboxChecksumMismatchError ||
-          error instanceof InboxReceiptUnavailableError
+          isErrorInstance(error, OperatorRunReplayMismatchError) ||
+          isErrorInstance(error, InboxChecksumMismatchError) ||
+          isErrorInstance(error, InboxReceiptUnavailableError)
         )
           throw unrecoverableQueueError(
             'Run replay failed durable state verification',
@@ -134,4 +134,15 @@ export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
       }
     },
   });
+}
+
+function isErrorInstance<T extends Error>(
+  value: unknown,
+  constructor: abstract new (...arguments_: never[]) => T,
+): value is T {
+  try {
+    return value instanceof constructor;
+  } catch {
+    return false;
+  }
 }

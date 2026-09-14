@@ -177,6 +177,14 @@ function toJobOptions(queueName: QueueName, jobId: string): JobsOptions {
   };
 }
 
+function observeFallbackCleanup(start: () => unknown): void {
+  try {
+    void Promise.resolve(start()).catch(() => undefined);
+  } catch {
+    // The primary bounded-close failure remains authoritative.
+  }
+}
+
 export class BullMqQueueProducer implements QueueProducer {
   private readonly redis: Redis;
   private readonly queues: QueueMap;
@@ -290,6 +298,7 @@ export class BullMqQueueProducer implements QueueProducer {
       remainingTimeoutMs,
       new QueueNotReadyError(),
     );
+    if (!this.isReady()) throw new QueueNotReadyError();
   }
 
   public async publish(job: QueueJob): Promise<QueuePublishResult> {
@@ -414,8 +423,11 @@ export class BullMqQueueProducer implements QueueProducer {
       );
       if (rejected !== undefined) throw rejected.reason;
     } catch (error) {
-      for (const queue of Object.values(this.queues)) void queue.disconnect();
-      this.redis.disconnect();
+      for (const queue of Object.values(this.queues))
+        observeFallbackCleanup(() => queue.disconnect());
+      observeFallbackCleanup(() => {
+        this.redis.disconnect();
+      });
       throw error;
     } finally {
       this.lifecycle = 'closed';

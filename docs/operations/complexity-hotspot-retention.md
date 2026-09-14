@@ -36,7 +36,7 @@ This historical register records the occurrences accepted after the A-06 refacto
 | `packages/integrations/src/http/secure-http.ts` | 808 | Deliberately linear SSRF/DNS/TLS/redirect validation sequence; leave intact unless profiling or a correctness defect justifies a seam. |
 | `packages/node-catalog/src/registry.ts` | 767 | Catalog assembly and compatibility validation share one registry owner and generated manifest boundary. |
 | `packages/node-sdk/src/release.ts` | 846 | Canonical release grammar, fingerprinting, and successor validation share one compatibility boundary. |
-| `packages/node-sdk/src/server.ts` | 954 | Registry HTTP boundary keeps validation, compatibility headers, and response contracts local; split only with server contract characterization. |
+| `packages/node-sdk/src/server.ts` | 954 | Historical registry-construction boundary kept manifest validation, compatibility selection, and release assembly local; despite the filename, it was not an HTTP server. Split only with registry contract characterization. |
 | `packages/queue/src/consumer.ts` | 685 | Consumer lease, shutdown, redelivery, and acknowledgement lifecycle is one stateful adapter boundary. |
 | `packages/workflow-engine/src/coordinator-observations.ts` | 540 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
 | `packages/workflow-engine/src/operations.ts` | 731 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
@@ -164,3 +164,10 @@ lock order, and external-I/O concurrency are unchanged.
 ## Verification
 
 `node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 85 physical lines after its exact exports were delegated to capability-owned testing barrels.
+
+That statement is complexity evidence at this historical register revision, not
+a claim that every retained module was behaviorally complete. The later
+whole-codebase WQ-193–WQ-199 review found and repaired external-ledger
+serialization, cancellation, cleanup-truth, and lifecycle/purge seams under
+their own focused tests. The current executable baseline remains the authority
+for today's hotspot counts and ceilings.

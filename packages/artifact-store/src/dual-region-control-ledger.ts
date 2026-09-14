@@ -20,6 +20,11 @@ import {
   safelyObserveSafetyViolation,
 } from './object-store-telemetry.js';
 import type { ObjectStoreObserver } from './object-store-telemetry.js';
+import {
+  exactEqual,
+  normalizeAppendRequest,
+  requestMaterialMatches,
+} from './control-ledger/append-material.js';
 
 export interface DualRegionControlLedgerReadiness extends ControlLedgerReadiness {
   readonly primary: ControlLedgerReadiness;
@@ -41,46 +46,6 @@ export class ControlLedgerPartialReplicationError extends Error {
   }
 }
 
-function exactEqual(left: unknown, right: unknown): boolean {
-  if (left === right) return true;
-  if (left === null || right === null) return false;
-  if (typeof left !== 'object' || typeof right !== 'object') return false;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    return (
-      Array.isArray(left) &&
-      Array.isArray(right) &&
-      left.length === right.length &&
-      left.every((item, index) => exactEqual(item, right[index]))
-    );
-  }
-  const leftEntries = Object.entries(left).filter(
-    ([, value]) => value !== undefined,
-  );
-  const rightEntries = Object.entries(right).filter(
-    ([, value]) => value !== undefined,
-  );
-  return (
-    leftEntries.length === rightEntries.length &&
-    leftEntries.every(([key, value]) =>
-      Object.hasOwn(right, key)
-        ? exactEqual(value, (right as Record<string, unknown>)[key])
-        : false,
-    )
-  );
-}
-
-function requestMaterialMatches(
-  record: ControlLedgerRecord,
-  request: AppendControlLedgerRecord,
-): boolean {
-  const { recordHash, schemaVersion, ...material } = record;
-  const { signal, ...requested } = request;
-  void recordHash;
-  void schemaVersion;
-  void signal;
-  return exactEqual(material, requested);
-}
-
 function throwCancellation(signal: AbortSignal | undefined): never {
   signal?.throwIfAborted();
   throw new ControlLedgerIntegrityError(
@@ -89,10 +54,12 @@ function throwCancellation(signal: AbortSignal | undefined): never {
 }
 
 function isConflict(result: PromiseSettledResult<unknown>): boolean {
-  return (
-    result.status === 'rejected' &&
-    result.reason instanceof ControlLedgerConflictError
-  );
+  if (result.status !== 'rejected') return false;
+  try {
+    return result.reason instanceof ControlLedgerConflictError;
+  } catch {
+    return false;
+  }
 }
 
 function failedRegionRole(
@@ -180,10 +147,13 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
   ): Promise<ControlLedgerRecord> {
     this.assertOpen();
     await this.checkReadiness(request.signal);
+    const normalizedRequest = normalizeAppendRequest(request);
     const readRequest: ControlLedgerReadRequest = {
-      sequence: request.sequence,
-      ...(request.signal === undefined ? {} : { signal: request.signal }),
-      workspaceId: request.workspaceId,
+      sequence: normalizedRequest.sequence,
+      ...(normalizedRequest.signal === undefined
+        ? {}
+        : { signal: normalizedRequest.signal }),
+      workspaceId: normalizedRequest.workspaceId,
     };
     const [primaryExisting, recoveryExisting] = await Promise.allSettled([
       this.primary.read(readRequest),
@@ -193,7 +163,8 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
       primaryExisting.status === 'rejected' ||
       recoveryExisting.status === 'rejected'
     ) {
-      if (request.signal?.aborted === true) throwCancellation(request.signal);
+      if (normalizedRequest.signal?.aborted === true)
+        throwCancellation(normalizedRequest.signal);
       this.observeCoordinatorFailure(
         'append',
         'unavailable',
@@ -212,39 +183,42 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
           'Dual-region control ledger records differ at the target sequence',
         );
       }
-      if (!requestMaterialMatches(primaryRecord, request)) {
+      if (!requestMaterialMatches(primaryRecord, normalizedRequest)) {
         throw new ControlLedgerConflictError();
       }
       return primaryRecord;
     }
     if (primaryRecord !== null || recoveryRecord !== null) {
       const present = primaryRecord ?? recoveryRecord;
-      if (present === null || !requestMaterialMatches(present, request)) {
+      if (
+        present === null ||
+        !requestMaterialMatches(present, normalizedRequest)
+      ) {
         throw new ControlLedgerConflictError();
       }
       const repaired = await Promise.allSettled([
         primaryRecord === null
-          ? this.primary.append(request)
+          ? this.primary.append(normalizedRequest)
           : Promise.resolve(primaryRecord),
         recoveryRecord === null
-          ? this.recovery.append(request)
+          ? this.recovery.append(normalizedRequest)
           : Promise.resolve(recoveryRecord),
       ]);
       return classifyAppend(
         repaired[0],
         repaired[1],
-        request.signal,
+        normalizedRequest.signal,
         this.observeCoordinatorFailure,
       );
     }
     const appended = await Promise.allSettled([
-      this.primary.append(request),
-      this.recovery.append(request),
+      this.primary.append(normalizedRequest),
+      this.recovery.append(normalizedRequest),
     ]);
     return classifyAppend(
       appended[0],
       appended[1],
-      request.signal,
+      normalizedRequest.signal,
       this.observeCoordinatorFailure,
     );
   }

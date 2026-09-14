@@ -2,7 +2,110 @@ import { describe, expect, it } from 'vitest';
 
 import { parseApiConfig } from '../src/platform/config/api-config.js';
 
+function validDeployedEnvironment(): Record<string, string> {
+  return {
+    DATABASE_API_URL: 'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+    NODE_ENV: 'production',
+    OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
+    OIDC_ISSUER: 'https://identity.example.test',
+    OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
+    OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
+    OIDC_JWKS_URI: 'https://identity.example.test/jwks',
+    OIDC_CLIENT_ID: 'pertexo-api',
+    OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
+    OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+    OIDC_TRANSACTION_KEY_VERSION: 'v2',
+    CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+    CONNECTION_KMS_REGION: 'eu-central-1',
+    REDIS_URL: 'rediss://redis.example.test:6380/0',
+    TRUST_PROXY_CIDRS: '10.0.0.0/8',
+    ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
+    ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
+    ARTIFACT_STORE_BUCKET: 'pertexo-primary',
+    ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
+    ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
+    ARTIFACT_STORE_REGION: 'eu-central-1',
+    ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-key',
+    ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
+    ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-recovery',
+    ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://objects-recovery.example.test',
+    ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE: 'true',
+    ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
+  };
+}
+
 describe('parseApiConfig', () => {
+  it('accepts one complete production environment', () => {
+    expect(parseApiConfig(validDeployedEnvironment())).toMatchObject({
+      nodeEnv: 'production',
+      redisUrl: 'rediss://redis.example.test:6380/0',
+      trustedProxyCidrs: ['10.0.0.0/8'],
+    });
+  });
+
+  it('rejects production OTLP omission independently', () => {
+    const environment = validDeployedEnvironment();
+    delete environment.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+    expect(() => parseApiConfig(environment)).toThrow(
+      'Production API requires OTLP telemetry export',
+    );
+  });
+
+  it('rejects deployed proxy omission independently', () => {
+    const environment = validDeployedEnvironment();
+    delete environment.TRUST_PROXY_CIDRS;
+
+    expect(() => parseApiConfig(environment)).toThrow(
+      'TRUST_PROXY_CIDRS is required when deployed',
+    );
+  });
+
+  it('rejects an invalid IPv6 proxy prefix independently', () => {
+    expect(() =>
+      parseApiConfig({
+        ...validDeployedEnvironment(),
+        TRUST_PROXY_CIDRS: '2001:db8::/129',
+      }),
+    ).toThrow('Invalid proxy IP/CIDR');
+  });
+
+  it('rejects an insecure deployed session cookie independently', () => {
+    expect(() =>
+      parseApiConfig({
+        ...validDeployedEnvironment(),
+        SESSION_COOKIE_SECURE: 'false',
+      }),
+    ).toThrow('Secure session cookies are required when deployed');
+  });
+
+  it('rejects SameSite=None with an insecure test cookie independently', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL: validDeployedEnvironment().DATABASE_API_URL,
+        NODE_ENV: 'test',
+        OIDC_ISSUER: 'http://127.0.0.1:4400',
+        OIDC_AUTHORIZATION_ENDPOINT: 'http://127.0.0.1:4400/authorize',
+        OIDC_TOKEN_ENDPOINT: 'http://127.0.0.1:4400/token',
+        OIDC_JWKS_URI: 'http://127.0.0.1:4400/jwks',
+        OIDC_CLIENT_ID: 'integration-test',
+        OIDC_REDIRECT_URI: 'http://127.0.0.1:3000/callback',
+        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        SESSION_COOKIE_SAME_SITE: 'none',
+        SESSION_COOKIE_SECURE: 'false',
+      }),
+    ).toThrow('SameSite=None requires secure session cookies');
+  });
+
+  it.each([
+    ['malformed previous-key JSON', { OIDC_TRANSACTION_PREVIOUS_KEYS: '{' }],
+    ['disallowed signing algorithm', { OIDC_ALLOWED_ALGORITHMS: 'HS256' }],
+  ])('sanitizes %s independently', (_name, changed) => {
+    expect(() =>
+      parseApiConfig({ ...validDeployedEnvironment(), ...changed }),
+    ).toThrow('Identity configuration is invalid');
+  });
   it.each(['for_each_staging', 'for_each_activation'] as const)(
     'accepts the %s compatibility cohort',
     (cohort) => {

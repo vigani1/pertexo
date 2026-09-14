@@ -8,6 +8,8 @@ import {
   createCheckpointV2,
   executeNodeAttempt,
   invocationKey,
+} from '../src/index.js';
+import {
   nodeRelease,
   conditionGraph,
   switchGraph,

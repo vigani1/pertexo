@@ -326,6 +326,7 @@ function validateReleaseEdges(input: RegistryReleaseInput): void {
   );
   const policies = new Set(input.policies.map(identityToken));
   for (const manifest of input.definitions) {
+    rejectDuplicateIdentities('definition policy', manifest.policyReferences);
     const executor = executors.get(identityToken(manifest.executor));
     if (executor === undefined)
       throw new Error(

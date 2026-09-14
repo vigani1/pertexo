@@ -120,6 +120,55 @@ describe('Nest observability runtime integration', () => {
     expect(write.mock.calls[1]?.[1]).toEqual({ messageType: 'object' });
   });
 
+  it('redacts credentials before the shorter Nest display boundary', () => {
+    const write = vi.fn();
+    const adapter = new NestLoggerAdapter(loggerFixture({ info: write }));
+    for (const atIndex of [1_023, 1_024, 1_100]) {
+      const beforeAuthority = 'x'.repeat(960) + ' https://user:';
+      const secret = `VISIBLE_SECRET_${String(atIndex)}`;
+      const filler = 'p'.repeat(
+        Math.max(0, atIndex - beforeAuthority.length - secret.length),
+      );
+      adapter.log(`${beforeAuthority}${secret}${filler}@host.test`);
+    }
+
+    expect(write).toHaveBeenCalledTimes(3);
+    for (const call of write.mock.calls) {
+      const serialized = JSON.stringify(call);
+      expect(serialized).toContain('[Redacted]');
+      expect(serialized).not.toContain('VISIBLE_SECRET');
+      expect(serialized.length).toBeLessThan(1_300);
+    }
+  });
+
+  it('contains hostile message classification once and emits a safe marker', () => {
+    const write = vi.fn();
+    const adapter = new NestLoggerAdapter(loggerFixture({ error: write }));
+    let prototypeChecks = 0;
+    const message = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          prototypeChecks += 1;
+          throw new Error('nest prototype trap secret');
+        },
+      },
+    );
+
+    expect(() => {
+      adapter.error(message, 'NestFactory');
+    }).not.toThrow();
+    expect(prototypeChecks).toBe(1);
+    expect(write).toHaveBeenCalledWith(
+      'nest.error',
+      { context: 'NestFactory', messageType: 'uninspectable' },
+      expect.objectContaining({ message: '[Unserializable error]' }),
+    );
+    expect(JSON.stringify(write.mock.calls)).not.toContain(
+      'nest prototype trap secret',
+    );
+  });
+
   it('registers common tokens and delegates shutdown exactly once per hook', async () => {
     const logger = loggerFixture();
     const shutdown = vi.fn().mockResolvedValue(undefined);
@@ -150,6 +199,29 @@ describe('Nest observability runtime integration', () => {
       throw new Error('Telemetry shutdown provider is missing');
     await shutdownProvider.useFactory().onApplicationShutdown();
     expect(shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('can transfer telemetry shutdown to an application-level owner', () => {
+    const loggerToken = Symbol('logger');
+    const telemetryToken = Symbol('telemetry');
+    // Nest-compatible module token fixture.
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+    class RuntimeModule {}
+    const registration = createNestObservabilityRegistration({
+      module: RuntimeModule,
+      loggerToken,
+      telemetryToken,
+      logger: loggerFixture(),
+      telemetry: telemetryFixture(vi.fn().mockResolvedValue(undefined)),
+      registerShutdown: false,
+    });
+
+    expect(registration.providers).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provide: TelemetryShutdown }),
+      ]),
+    );
+    expect(registration.exports).toEqual([loggerToken, telemetryToken]);
   });
 });
 

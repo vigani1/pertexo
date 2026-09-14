@@ -120,4 +120,53 @@ describe('secure HTTP streamed-body deadline/error mapping', () => {
     });
     expect(fixture.close).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    {
+      name: 'revoked proxy',
+      create: () => {
+        const { proxy, revoke } = Proxy.revocable({}, {});
+        revoke();
+        return proxy;
+      },
+    },
+    {
+      name: 'throwing name and code accessors',
+      create: () =>
+        Object.defineProperties(Object.create(Error.prototype), {
+          code: {
+            get: () => {
+              throw new Error('iterator-code-trap');
+            },
+          },
+          name: {
+            get: () => {
+              throw new Error('iterator-name-trap');
+            },
+          },
+        }) as unknown,
+    },
+  ])(
+    'maps a hostile iterator rejection without stranding work: $name',
+    async ({ create }) => {
+      const fixture = response({
+        [Symbol.asyncIterator]: () => ({
+          next: () => {
+            // Deliberately model an untrusted stream rejection.
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            return Promise.reject<IteratorResult<Uint8Array>>(create());
+          },
+        }),
+      });
+
+      await expect(
+        clientFor(fixture.value).execute(request()),
+      ).rejects.toMatchObject({
+        code: SECURE_HTTP_ERROR_CODE.networkFailed,
+        classification: 'ambiguous',
+        possiblyDispatched: true,
+      });
+      expect(fixture.close).toHaveBeenCalledOnce();
+    },
+  );
 });

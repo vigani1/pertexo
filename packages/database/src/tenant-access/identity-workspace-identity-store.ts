@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import type { DatabaseError, Pool } from 'pg';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import {
@@ -13,6 +13,7 @@ import { mapAuthIdentity, mapUser } from './identity-workspace-rows.js';
 import {
   parseIdentityMetadata,
   parseIdentityUuid,
+  readIdentityDatabaseErrorCode,
   throwIdentityDatabaseConflict,
 } from './identity-workspace-support.js';
 import type {
@@ -27,6 +28,16 @@ import type {
 import { withPlatformTransaction } from './workspace.js';
 
 const issuerSchema = z.url().max(2048);
+const userIdentityFieldsSchema = z.object({
+  email: z.string().trim().min(3).max(320),
+  displayName: z.string().trim().min(1).max(256),
+});
+
+function parseUserIdentityFields(
+  input: Pick<CreateUserInput, 'email' | 'displayName'>,
+): z.output<typeof userIdentityFieldsSchema> {
+  return userIdentityFieldsSchema.parse(input);
+}
 
 type IdentityStore = Pick<
   IdentityWorkspaceDatabase,
@@ -42,16 +53,14 @@ async function createUser(
   input: CreateUserInput,
 ): Promise<UserRecord> {
   const id = parseIdentityUuid(input.id ?? generatePersistedId());
-  if (input.email.trim() !== input.email || input.email.length < 3)
-    throw new Error('Invalid user email');
-  if (input.displayName.trim().length === 0)
-    throw new Error('Invalid user display name');
+  const fields = parseUserIdentityFields(input);
+  if (fields.email !== input.email) throw new Error('Invalid user email');
   try {
     const result = await pool.query(
       `insert into app.users (id, email, display_name, status)
        values ($1, $2, $3, 'active')
        returning id, email, display_name, status, created_at, updated_at`,
-      [id, input.email, input.displayName],
+      [id, fields.email, fields.displayName],
     );
     return mapUser(result.rows[0] as Record<string, unknown>);
   } catch (error: unknown) {
@@ -125,8 +134,7 @@ export function createIdentityWorkspaceIdentityStore(
         );
         return mapAuthIdentity(result.rows[0] as Record<string, unknown>);
       } catch (error: unknown) {
-        const code =
-          error instanceof Error ? (error as DatabaseError).code : undefined;
+        const code = readIdentityDatabaseErrorCode(error);
         if (code === '23505') {
           const raced = await pool.query(
             `select id, user_id, issuer, provider_subject, profile_metadata,
@@ -171,13 +179,7 @@ export function createIdentityWorkspaceIdentityStore(
         .min(1)
         .max(255)
         .parse(input.providerSubject);
-      const email = z.string().trim().min(3).max(320).parse(input.email);
-      const displayName = z
-        .string()
-        .trim()
-        .min(1)
-        .max(256)
-        .parse(input.displayName);
+      const { email, displayName } = parseUserIdentityFields(input);
       const profileMetadata = parseIdentityMetadata(input.profileMetadata);
       return withPlatformTransaction(pool, async (client) => {
         await client.query(
@@ -255,7 +257,12 @@ export function createIdentityWorkspaceIdentityStore(
             identityResult.rows[0] as Record<string, unknown>,
           ),
         };
-      });
+      }).catch((error: unknown) =>
+        throwIdentityDatabaseConflict(
+          error,
+          'User identity conflicts with an existing record',
+        ),
+      );
     },
   });
 }

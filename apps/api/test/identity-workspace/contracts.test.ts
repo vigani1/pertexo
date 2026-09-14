@@ -106,7 +106,7 @@ describe('identity/workspace generated contracts', () => {
     );
   });
 
-  it('preserves strict writes and bounded field constraints in generated JSON Schema', () => {
+  it('preserves strict writes and the extension-tolerant bounded callback contract', () => {
     const create =
       identityWorkspaceClientContract.schemas.WorkspaceCreateRequest;
     const deletion =
@@ -128,12 +128,22 @@ describe('identity/workspace generated contracts', () => {
       properties: { reason: { maxLength: 512, minLength: 1 } },
     });
     expect(callback).toMatchObject({
-      additionalProperties: false,
       required: ['code', 'state'],
       properties: {
         code: { maxLength: 4_096, minLength: 1 },
         state: { maxLength: 512, minLength: 16 },
       },
+    });
+    expect(callback).not.toHaveProperty('additionalProperties');
+    expect(
+      oidcCallbackRequestSchema.parse({
+        code: 'authorization-code',
+        state: 'state-value-123456',
+        provider_extension: 'ignored',
+      }),
+    ).toEqual({
+      code: 'authorization-code',
+      state: 'state-value-123456',
     });
   });
 });

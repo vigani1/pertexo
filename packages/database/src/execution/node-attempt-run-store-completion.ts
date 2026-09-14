@@ -5,7 +5,6 @@ import {
   completionSchema,
   DeliveryMismatch,
   NodeAttemptOutputInvalidError,
-  NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
   type CompleteNodeAttemptResult,
   type NodeAttemptRunStore,
@@ -102,11 +101,6 @@ export async function completeNodeAttempt(
           ],
         );
         if (run.rowCount !== 1) throw new NodeAttemptStateCorruptError();
-        if (
-          input.outcome.status === 'suspended' &&
-          run.rows[0]?.abort_requested
-        )
-          throw new NodeAttemptReconciliationRequiredError();
         const locked = await client.query<LockedAttemptRow>(
           `select attempt.status attempt_status,attempt.fence_token,
                   attempt.lease_owner,attempt.lease_expires_at,
@@ -115,7 +109,15 @@ export async function completeNodeAttempt(
                    attempt.error_summary,attempt.executor_failure_kind,
                    attempt.executor_error_kind,
                    attempt.executor_possibly_dispatched,
-                    attempt.retry_decision,node.status node_status,node.wait_kind
+                    attempt.retry_decision,node.status node_status,node.wait_kind,
+                    (node.current_attempt_id=attempt.id) current_attempt,
+                    exists (
+                      select 1 from app.run_events event
+                       where event.workspace_id=attempt.workspace_id
+                         and event.workflow_run_id=node.workflow_run_id
+                         and event.type='node.waiting'
+                         and event.payload->>'attemptId'=attempt.id::text
+                    ) suspension_recorded
            from app.node_attempts attempt
            join app.node_runs node
              on node.workspace_id=attempt.workspace_id
@@ -124,7 +126,6 @@ export async function completeNodeAttempt(
              and attempt.node_run_id=$3 and attempt.attempt_number=$4
              and node.workflow_run_id=$5 and node.node_id=$6
              and node.invocation_key=$7
-             and node.current_attempt_id=attempt.id
            for update of node,attempt`,
           [
             input.lease.workspaceId,
@@ -144,6 +145,7 @@ export async function completeNodeAttempt(
           row,
           receiptRow,
           serializedOutput,
+          run.rows[0]?.abort_requested === true,
         );
       },
     );

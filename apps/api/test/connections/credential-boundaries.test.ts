@@ -52,6 +52,7 @@ describe('connection credential boundary compatibility', () => {
 
   it.each([
     [
+      'Slack user token prefix',
       slackBotTokenCredentialSchema,
       resolvedSlackBotTokenCredentialSchema,
       {
@@ -61,6 +62,7 @@ describe('connection credential boundary compatibility', () => {
       },
     ],
     [
+      'uppercase Resend key prefix',
       resendApiKeyCredentialSchema,
       resolvedResendApiKeyCredentialSchema,
       {
@@ -71,6 +73,7 @@ describe('connection credential boundary compatibility', () => {
       },
     ],
     [
+      'display-name email syntax',
       resendApiKeyCredentialSchema,
       resolvedResendApiKeyCredentialSchema,
       {
@@ -81,6 +84,7 @@ describe('connection credential boundary compatibility', () => {
       },
     ],
     [
+      'transport-controlled Host header',
       httpHeadersCredentialSchema,
       resolvedHttpHeadersCredentialSchema,
       {
@@ -90,15 +94,15 @@ describe('connection credential boundary compatibility', () => {
       },
     ],
   ])(
-    'rejects the same invalid overlapping credential fields',
-    (wire, resolved, value) => {
+    'rejects %s at both credential boundaries',
+    (_name, wire, resolved, value) => {
       expect(wire.safeParse(value).success).toBe(false);
       expect(resolved.safeParse(value).success).toBe(false);
     },
   );
 
   it('accounts for serialized header delimiters at both boundaries', () => {
-    const value = {
+    const oversized = {
       schemaVersion: 1,
       type: 'http_headers',
       headers: {
@@ -106,10 +110,26 @@ describe('connection credential boundary compatibility', () => {
         'x-b': 'b'.repeat(8_187),
       },
     };
+    const exactBoundary = {
+      schemaVersion: 1,
+      type: 'http_headers',
+      headers: {
+        'x-a': 'a'.repeat(8_186),
+        'x-b': 'b'.repeat(8_186),
+      },
+    };
 
-    expect(httpHeadersCredentialSchema.safeParse(value).success).toBe(false);
-    expect(resolvedHttpHeadersCredentialSchema.safeParse(value).success).toBe(
+    expect(httpHeadersCredentialSchema.safeParse(exactBoundary).success).toBe(
+      true,
+    );
+    expect(
+      resolvedHttpHeadersCredentialSchema.safeParse(exactBoundary).success,
+    ).toBe(true);
+    expect(httpHeadersCredentialSchema.safeParse(oversized).success).toBe(
       false,
     );
+    expect(
+      resolvedHttpHeadersCredentialSchema.safeParse(oversized).success,
+    ).toBe(false);
   });
 });

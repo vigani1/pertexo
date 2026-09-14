@@ -197,6 +197,7 @@ export async function lockCoordinatorCommitState(
     count: factCapacity.count,
     firstSequence: currentCheckpoint.nextEventSequence,
     lastSequence: plan.consumedThroughEventSequence,
+    maximumStorageBytes: factCapacity.maximumStorageBytes,
     runId,
     workspaceId,
   });

@@ -51,6 +51,7 @@ import {
   type WorkflowCreateResult,
   type WorkflowDraftResult,
 } from './serializers.js';
+import { createDraftRepresentationTag } from './etag.js';
 
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{ limit?: number; after?: string }>;
@@ -194,13 +195,19 @@ export class SaveWorkflowDraftUseCase {
         await authorize(input, 'workflow:update', this.authorization);
         const graph = parseWorkflowGraphDraft(input.graph);
         const current = await this.currentDraft(input);
-        const currentTag = serializeWorkflowDraft(current).representationTag;
+        const currentTag = createDraftRepresentationTag({
+          workflowId: current.workflowId,
+          revision: current.revision,
+          graph: current.graphJson,
+          compatibilityFingerprint: current.compatibility.fingerprint,
+        });
         if (currentTag !== input.representationTag)
           throw revisionConflict(current, currentTag);
         const saved = await this.persistence.saveDraft({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,
           actorId: input.actor.actorId,
+          representationTag: input.representationTag,
           expectedRevision: current.revision,
           graphJson: graph,
           ...(input.requestId === undefined

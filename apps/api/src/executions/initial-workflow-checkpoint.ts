@@ -67,13 +67,14 @@ export function createInitialWorkflowCheckpoint(
       projection.compatibilityReleaseEpoch
     )
       throw new InitialWorkflowCheckpointError();
+    const checkpointFactory = executable.envelope.graph.nodes.some(
+      ({ definition }) => requiresStructuredCheckpoint(definition),
+    )
+      ? createCheckpointV2
+      : createCheckpoint;
     return Object.freeze({
       engineVersion: API_ENGINE_VERSION,
-      checkpoint: (executable.envelope.graph.nodes.some(({ definition }) =>
-        requiresStructuredCheckpoint(definition),
-      )
-        ? createCheckpointV2
-        : createCheckpoint)({
+      checkpoint: checkpointFactory({
         engineVersion: API_ENGINE_VERSION,
         workflowVersionId: projection.id,
         iterationBudget: API_ITERATION_BUDGET,

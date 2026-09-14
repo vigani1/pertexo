@@ -12,7 +12,7 @@ import {
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { node } from '@opentelemetry/sdk-node';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createNodeInstrumentations } from '../src/telemetry.js';
 
@@ -33,6 +33,17 @@ type FinishedSpan = ReturnType<
 type HttpModule = typeof httpTypes;
 type HttpServer = httpTypes.Server;
 type HttpClientRequest = httpTypes.ClientRequest;
+
+type Settled<T> =
+  Readonly<{ ok: true; value: T }> | Readonly<{ error: unknown; ok: false }>;
+
+async function settle<T>(operation: () => Promise<T>): Promise<Settled<T>> {
+  try {
+    return { ok: true, value: await operation() };
+  } catch (error) {
+    return { error, ok: false };
+  }
+}
 
 async function listen(server: HttpServer): Promise<number> {
   server.listen(0, '127.0.0.1');
@@ -255,7 +266,7 @@ describe('HTTP telemetry URL privacy', () => {
     },
   );
 
-  it('sanitizes exported HTTP and Undici spans while retaining safe request data', async () => {
+  async function captureConfiguredHttpExport() {
     const exporter = new node.InMemorySpanExporter();
     const provider = new node.NodeTracerProvider({
       spanProcessors: [new node.SimpleSpanProcessor(exporter)],
@@ -279,11 +290,6 @@ describe('HTTP telemetry URL privacy', () => {
       throw new Error('Expected HTTP and Undici instrumentation');
     }
 
-    httpInstrumentation.setTracerProvider(provider);
-    undiciInstrumentation.setTracerProvider(provider);
-    httpInstrumentation.enable();
-    undiciInstrumentation.enable();
-
     const require = createRequire(import.meta.url);
     const http = require('http') as HttpModule;
     const server = http.createServer((request, response) => {
@@ -292,8 +298,14 @@ describe('HTTP telemetry URL privacy', () => {
       }
       response.end('ok');
     });
+    let closedServer: HttpServer | undefined;
 
-    try {
+    const capture = await settle(async () => {
+      httpInstrumentation.setTracerProvider(provider);
+      undiciInstrumentation.setTracerProvider(provider);
+      httpInstrumentation.enable();
+      undiciInstrumentation.enable();
+
       const port = await listen(server);
       const portText = String(port);
       const origin = `http://127.0.0.1:${portText}`;
@@ -307,7 +319,7 @@ describe('HTTP telemetry URL privacy', () => {
       );
       await fetchResponse.arrayBuffer();
 
-      const closedServer = http.createServer();
+      closedServer = http.createServer();
       const closedPort = await listen(closedServer);
       await close(closedServer);
       const closedPortText = String(closedPort);
@@ -375,14 +387,67 @@ describe('HTTP telemetry URL privacy', () => {
           span.attributes['url.full'] === 'http://localhost/',
       );
 
+      return Object.freeze({
+        closedOrigin,
+        hookErrorSpans,
+        httpClientSpans,
+        httpErrorSpans,
+        malformedSpans,
+        origin,
+        portText,
+        serverSpans,
+        spans,
+        undiciClientSpans,
+        undiciErrorSpans,
+      });
+    });
+    const cleanupResults = await Promise.allSettled([
+      close(server),
+      closedServer === undefined ? Promise.resolve() : close(closedServer),
+      Promise.resolve().then(() => {
+        httpInstrumentation.disable();
+      }),
+      Promise.resolve().then(() => {
+        undiciInstrumentation.disable();
+      }),
+      provider.shutdown(),
+    ]);
+    const cleanupFailures = cleanupResults
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      )
+      .map(({ reason }): unknown => reason as unknown);
+    if (!capture.ok) {
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          [capture.error, ...cleanupFailures],
+          'HTTP telemetry capture and cleanup failed',
+        );
+      }
+      throw capture.error;
+    }
+    if (cleanupFailures.length > 0) {
+      throw new AggregateError(
+        cleanupFailures,
+        'HTTP telemetry test cleanup failed',
+      );
+    }
+    return capture.value;
+  }
+
+  describe('configured HTTP and Undici export scenarios', () => {
+    let captured!: Awaited<ReturnType<typeof captureConfiguredHttpExport>>;
+
+    beforeAll(async () => {
+      captured = await captureConfiguredHttpExport();
+    });
+
+    it('retains safe server and Node HTTP client data', () => {
+      const { httpClientSpans, origin, serverSpans } = captured;
+
       expect(serverSpans).toHaveLength(1);
       expect(httpClientSpans).toHaveLength(1);
-      expect(undiciClientSpans).toHaveLength(1);
-      expect(httpErrorSpans).toHaveLength(1);
-      expect(hookErrorSpans).toHaveLength(1);
-      expect(undiciErrorSpans).toHaveLength(1);
-      expect(malformedSpans).toHaveLength(1);
-
       expect(serverSpans[0]?.attributes).toEqual(
         expect.objectContaining({
           'http.request.method': 'GET',
@@ -398,6 +463,12 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': `${origin}/http-client`,
         }),
       );
+    });
+
+    it('retains safe Undici response data', () => {
+      const { origin, undiciClientSpans } = captured;
+
+      expect(undiciClientSpans).toHaveLength(1);
       expect(undiciClientSpans[0]?.attributes).toEqual(
         expect.objectContaining({
           'http.request.method': 'GET',
@@ -406,6 +477,12 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': `${origin}/undici-client`,
         }),
       );
+    });
+
+    it('sanitizes a refused Node HTTP connection', () => {
+      const { closedOrigin, httpErrorSpans } = captured;
+
+      expect(httpErrorSpans).toHaveLength(1);
       expect(httpErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(httpErrorSpans[0]?.events[0]?.attributes).toEqual(
         expect.objectContaining({ 'exception.type': 'Error' }),
@@ -418,11 +495,15 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': `${closedOrigin}/http-error`,
         }),
       );
+    });
+
+    it('sanitizes a custom lookup failure with hostile URL-shaped text', () => {
+      const { hookErrorSpans, portText } = captured;
+
+      expect(hookErrorSpans).toHaveLength(1);
       expect(hookErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(hookErrorSpans[0]?.events[0]?.attributes).toEqual(
-        expect.objectContaining({
-          'exception.type': 'Error',
-        }),
+        expect.objectContaining({ 'exception.type': 'Error' }),
       );
       expect(hookErrorSpans[0]?.events[0]?.attributes).not.toHaveProperty(
         'exception.message',
@@ -438,6 +519,12 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': `http://example.test:${portText}/http-error-hook`,
         }),
       );
+    });
+
+    it('sanitizes a refused Undici connection', () => {
+      const { closedOrigin, undiciErrorSpans } = captured;
+
+      expect(undiciErrorSpans).toHaveLength(1);
       expect(undiciErrorSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(undiciErrorSpans[0]?.events[0]?.attributes).toEqual(
         expect.objectContaining({ 'exception.type': 'Error' }),
@@ -450,6 +537,12 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': `${closedOrigin}/undici-error`,
         }),
       );
+    });
+
+    it('uses a safe fallback for a malformed credential-bearing URL', () => {
+      const { malformedSpans } = captured;
+
+      expect(malformedSpans).toHaveLength(1);
       expect(malformedSpans[0]?.status.code).toBe(SpanStatusCode.ERROR);
       expect(malformedSpans[0]?.events[0]?.attributes).toEqual(
         expect.objectContaining({ 'exception.type': 'ERR_INVALID_URL' }),
@@ -460,6 +553,23 @@ describe('HTTP telemetry URL privacy', () => {
           'url.full': 'http://localhost/',
         }),
       );
+    });
+
+    it('removes all query and credential sentinels from every exported span', () => {
+      const { spans } = captured;
+      const secrets = [
+        QUERY_SECRET,
+        STATE_SECRET,
+        ARBITRARY_SECRET,
+        ERROR_QUERY_SECRET,
+        HOOK_ERROR_QUERY_SECRET,
+        FRAGMENT_SECRET,
+        MALFORMED_CREDENTIAL_SECRET,
+        ERROR_CODE_SECRET,
+        MULTI_USERINFO_SECRET,
+        SPACED_QUERY_SECRET,
+        'user:password@',
+      ];
 
       for (const span of spans) {
         const serializedSpan = JSON.stringify({
@@ -471,30 +581,11 @@ describe('HTTP telemetry URL privacy', () => {
           resource: span.resource.attributes,
           status: span.status,
         });
-        expect(serializedSpan).not.toContain(QUERY_SECRET);
-        expect(serializedSpan).not.toContain(STATE_SECRET);
-        expect(serializedSpan).not.toContain(ARBITRARY_SECRET);
-        expect(serializedSpan).not.toContain(ERROR_QUERY_SECRET);
-        expect(serializedSpan).not.toContain(HOOK_ERROR_QUERY_SECRET);
-        expect(serializedSpan).not.toContain(FRAGMENT_SECRET);
-        expect(serializedSpan).not.toContain(MALFORMED_CREDENTIAL_SECRET);
-        expect(serializedSpan).not.toContain(ERROR_CODE_SECRET);
-        expect(serializedSpan).not.toContain(MULTI_USERINFO_SECRET);
-        expect(serializedSpan).not.toContain(SPACED_QUERY_SECRET);
-        expect(serializedSpan).not.toContain('user:password@');
+        for (const secret of secrets) {
+          expect(serializedSpan).not.toContain(secret);
+        }
+        expect(span.attributes['url.query']).toBeUndefined();
       }
-
-      expect(serverSpans[0]?.attributes['url.query']).toBeUndefined();
-      expect(httpClientSpans[0]?.attributes['url.query']).toBeUndefined();
-      expect(undiciClientSpans[0]?.attributes['url.query']).toBeUndefined();
-      expect(httpErrorSpans[0]?.attributes['url.query']).toBeUndefined();
-      expect(undiciErrorSpans[0]?.attributes['url.query']).toBeUndefined();
-      expect(malformedSpans[0]?.attributes['url.query']).toBeUndefined();
-    } finally {
-      await close(server);
-      httpInstrumentation.disable();
-      undiciInstrumentation.disable();
-      await provider.shutdown();
-    }
+    });
   });
 });

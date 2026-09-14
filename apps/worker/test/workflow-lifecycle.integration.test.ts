@@ -58,10 +58,7 @@ describeIntegration(
           publishedVersionId: ids.version,
         },
       });
-      const archiveEvent = await eventForTransition(
-        environment,
-        archive.workflow,
-      );
+      const archiveEvent = await latestEventForWorkflow(environment);
       const archiveDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-archive-one',
         capabilityFor(firstRuntime.consumer),
@@ -107,10 +104,7 @@ describeIntegration(
           publishedVersionId: ids.version,
         },
       });
-      const restoreEvent = await eventForTransition(
-        environment,
-        restore.workflow,
-      );
+      const restoreEvent = await latestEventForWorkflow(environment);
       const stoppedDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-restore-one-stopped-worker',
         environment.readyCapabilities(),
@@ -172,30 +166,24 @@ describeIntegration(
       // A second archive is intentionally held back. Restore is dispatched first,
       // then the older archive event is delivered. PostgreSQL lifecycle authority
       // must make that reordered archive reconcile the current active state.
-      const archiveTwo = await environment.transition(
+      await environment.transition(
         'archive',
         3,
         'workflow-lifecycle-archive-two',
       );
-      const archiveTwoEvent = await eventForTransition(
-        environment,
-        archiveTwo.workflow,
-      );
+      const archiveTwoEvent = await latestEventForWorkflow(environment);
       await environment.ownerQuery(
         `update app.outbox_events
           set available_at=clock_timestamp()+interval '1 hour'
         where id=$1`,
         [archiveTwoEvent.id],
       );
-      const restoreTwo = await environment.transition(
+      await environment.transition(
         'restore',
         4,
         'workflow-lifecycle-restore-two',
       );
-      const restoreTwoEvent = await eventForTransition(
-        environment,
-        restoreTwo.workflow,
-      );
+      const restoreTwoEvent = await latestEventForWorkflow(environment);
       const restoreTwoDispatcher = environment.createDispatcher(
         'workflow-lifecycle-dispatcher-restore-two',
         capabilityFor(restartedRuntime.consumer),
@@ -249,9 +237,8 @@ function expectRunSnapshotIsNonEmpty(snapshot: RunSnapshot): void {
   }
 }
 
-async function eventForTransition(
+async function latestEventForWorkflow(
   environment: WorkflowLifecycleWorkerEnvironment,
-  workflow: Readonly<{ lifecycleRevision: number }>,
 ): Promise<LifecycleOutboxEvent> {
   const result = await environment.ownerQuery<{
     id: string;
@@ -263,10 +250,14 @@ async function eventForTransition(
     [environment.ids.workflow, JOB_NAME.reconcileWorkflowTriggers],
   );
   const row = result.rows[0];
-  if (row === undefined)
-    throw new Error(
-      `Lifecycle event for revision ${String(workflow.lifecycleRevision)} is missing`,
-    );
+  if (row === undefined) throw new Error('Latest workflow event is missing');
+  expect(row.payload).toEqual({
+    outboxEventId: row.id,
+    publishedVersionId: environment.ids.version,
+    schemaVersion: 1,
+    workflowId: environment.ids.workflow,
+    workspaceId: environment.workspaceId,
+  });
   return row;
 }
 
@@ -301,7 +292,12 @@ async function waitForQueueJob(
   await poll('workflow lifecycle BullMQ job', async () => {
     const job = await environment.queue.getJob(jobIdForOutboxEvent(eventId));
     if (job === undefined) throw new Error('BullMQ job is missing');
-    expect(await job.getState()).toBe('completed');
+    const state = await job.getState();
+    if (state === 'failed')
+      throw new Error(
+        `BullMQ job failed: ${job.failedReason.slice(0, 500) || 'unknown reason'}`,
+      );
+    expect(state).toBe('completed');
   });
 }
 

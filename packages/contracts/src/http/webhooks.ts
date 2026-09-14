@@ -38,24 +38,27 @@ export const webhookManagementCommandRequestSchema = z.object({}).strict();
 export const webhookRotateSecretRequestSchema = z
   .object({ endpointKey: webhookCredentialSchema })
   .strict();
-export const webhookManagementCommandResponseSchema = z
-  .object({
-    trigger: webhookTriggerHealthSchema,
-    replayed: z.boolean(),
-    endpointKey: webhookCredentialSchema.optional(),
-    signingSecret: webhookCredentialSchema.optional(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if (
-      value.replayed &&
-      (value.endpointKey !== undefined || value.signingSecret !== undefined)
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Replays cannot disclose credentials',
-      });
-  });
+export const webhookManagementCommandResponseSchema = z.discriminatedUnion(
+  'replayed',
+  [
+    z
+      .object({
+        trigger: webhookTriggerHealthSchema,
+        replayed: z.literal(true),
+        endpointKey: z.never().optional(),
+        signingSecret: z.never().optional(),
+      })
+      .strict(),
+    z
+      .object({
+        trigger: webhookTriggerHealthSchema,
+        replayed: z.literal(false),
+        endpointKey: webhookCredentialSchema.optional(),
+        signingSecret: webhookCredentialSchema.optional(),
+      })
+      .strict(),
+  ],
+);
 export const webhookIngressResponseSchema = z
   .object({ runId: z.uuid(), replayed: z.boolean() })
   .strict();

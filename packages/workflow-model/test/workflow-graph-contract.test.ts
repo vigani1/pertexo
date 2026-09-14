@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
+import { workflowGraphSchema } from '../src/graph-contract.js';
 import {
   EMPTY_WORKFLOW_GRAPH_V1,
   InvalidWorkflowGraphError,
@@ -292,6 +293,7 @@ describe('workflow graph V1 public contract', () => {
       'nodes.0.label.length',
       WORKFLOW_GRAPH_LIMITS.graphBytes - base,
     );
+    expect(workflowGraphSchema.safeParse(exactBytes).success).toBe(true);
     expect(() =>
       parseWorkflowGraphDraft({
         ...exactBytes,
@@ -303,6 +305,17 @@ describe('workflow graph V1 public contract', () => {
         ],
       }),
     ).toThrow();
+    expect(
+      workflowGraphSchema.safeParse({
+        ...exactBytes,
+        nodes: [
+          {
+            ...first(exactBytes.nodes),
+            label: `${first(exactBytes.nodes).label}x`,
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it('enforces structured-loop bounds through the parser seam', () => {
@@ -525,7 +538,11 @@ describe('workflow executable identity V1', () => {
           reordered,
         )}, ${JSON.stringify(TEST_DEFINITION_CATALOG_V1)}))`,
       ],
-      { cwd: new URL('..', import.meta.url), encoding: 'utf8' },
+      {
+        cwd: new URL('..', import.meta.url),
+        encoding: 'utf8',
+        timeout: 10_000,
+      },
     );
     expect(child.stderr).toBe('');
     expect(child.status).toBe(0);

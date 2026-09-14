@@ -7,11 +7,20 @@ type ProviderDispatchState = Pick<
   | 'providerDispatchUnresolved'
 >;
 
+type OptionalNodeExecutionRuntimeFields = Pick<
+  NodeExecutionRuntime,
+  | 'providerIdempotencyKey'
+  | 'providerDispatchBinding'
+  | 'providerDispatchUnresolved'
+  | 'connections'
+  | 'artifacts'
+>;
+
 export function nodeExecutionOptionalFields(
   dispatch: ProviderDispatchState,
   connections: NodeExecutionRuntime['connections'] | undefined,
   artifacts: NodeExecutionRuntime['artifacts'] | undefined,
-): Partial<NodeExecutionRuntime> {
+): Partial<OptionalNodeExecutionRuntimeFields> {
   return {
     ...(dispatch.providerIdempotencyKey === undefined
       ? {}

@@ -36,8 +36,8 @@ describe('Slack provider telemetry', () => {
       tracer: { startActiveSpan } as unknown as Tracer,
     });
     const output = {
-      channelId: 'C123ABC',
-      messageTs: '1724412345.000100',
+      channelId: 'private-channel-sentinel',
+      messageTs: 'private-message-sentinel',
     };
 
     await expect(
@@ -70,6 +70,7 @@ describe('Slack provider telemetry', () => {
       },
       1_000,
     );
+    Object.assign(rateLimited, { privateDetail: 'private-error-sentinel' });
     await expect(
       telemetry.measure(() => Promise.reject(rateLimited)),
     ).rejects.toBe(rateLimited);
@@ -83,6 +84,17 @@ describe('Slack provider telemetry', () => {
       possibly_dispatched: true,
     });
     expect(end).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.stringify({
+        counters: [...counters.values()].map((counter) => counter.mock.calls),
+        histograms: [...histograms.values()].map(
+          (histogram) => histogram.mock.calls,
+        ),
+        span: setAttribute.mock.calls,
+      }),
+    ).not.toMatch(
+      /private-channel-sentinel|private-message-sentinel|private-error-sentinel/u,
+    );
   });
 
   it('does not change provider truth when diagnostics throw', async () => {
@@ -113,5 +125,34 @@ describe('Slack provider telemetry', () => {
     await expect(
       telemetry.measure(() => Promise.resolve(output)),
     ).resolves.toBe(output);
+  });
+
+  it('preserves ordinary and hostile rejection identity', async () => {
+    const telemetry = createProductionSlackProviderTelemetry({
+      meter: {
+        createCounter: () => ({ add: vi.fn() }),
+        createHistogram: () => ({ record: vi.fn() }),
+      } as unknown as Meter,
+      tracer: {
+        startActiveSpan: (
+          _name: string,
+          work: (activeSpan: Span) => Promise<unknown>,
+        ) =>
+          work({
+            end: vi.fn(),
+            setAttribute: vi.fn(),
+            setStatus: vi.fn(),
+          } as unknown as Span),
+      } as unknown as Tracer,
+    });
+    const ordinary = new Error('ordinary');
+    await expect(
+      telemetry.measure(() => Promise.reject(ordinary)),
+    ).rejects.toBe(ordinary);
+    const revoked = Proxy.revocable(new Error('hostile'), {});
+    revoked.revoke();
+    await expect(
+      telemetry.measure(() => Promise.reject(revoked.proxy)),
+    ).rejects.toBe(revoked.proxy);
   });
 });

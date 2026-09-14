@@ -12,6 +12,9 @@ import {
 import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,7 +25,19 @@ import {
 } from '../../src/executions/index.js';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import {
+  WorkflowRunIdempotencyConflictError,
+  WorkflowRunNotCancelableError,
+  WorkflowRunNotExecutableError,
+} from '../../src/workflow-runs/errors.js';
+import { WorkflowRunNotFoundError } from '../../src/workflow-runs/use-cases.js';
+import {
+  ExecutionStateConflictError,
+  IdempotencyRequestConflictError,
   RegionalWriteAdmissionPausedError,
+  WorkspaceRunAdmissionDeniedError,
+  WorkspaceRunQuotaExceededError,
+  WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
+  WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   parseDatabaseConfig,
   type WorkflowRunDatabase,
 } from '@pertexo/database/testing';
@@ -175,6 +190,149 @@ function forEachExecutable() {
   };
 }
 
+function parallelExecutable(version: 1 | 2 | 3) {
+  const nodeRelease =
+    version === 1
+      ? PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE
+      : version === 2
+        ? PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE
+        : PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE;
+  const release = composeExecutableCompatibilityRelease(nodeRelease);
+  const ordinaryNode = (id: string) => ({
+    id,
+    definition: { key: 'core.set', version: 1 },
+    position: { x: 20, y: 0 },
+    configVersion: 1,
+    config: {},
+    inputMappings: { value: { kind: 'literal' as const, value: id } },
+    connectionRefs: {},
+  });
+  return {
+    release,
+    compiled: buildWorkflowExecutableV2({
+      release,
+      graph: {
+        schemaVersion: 1,
+        settings: { maxRunDurationMs: 60_000 },
+        nodes: [
+          {
+            id: 'manual',
+            definition: { key: 'core.manual', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+          {
+            id: 'parallel',
+            definition: { key: 'core.parallel', version },
+            position: { x: 10, y: 0 },
+            configVersion: version,
+            config: {
+              branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+              maxConcurrency: 1,
+            },
+            inputMappings: {},
+            connectionRefs: {},
+          },
+          ordinaryNode('left'),
+          ordinaryNode('right'),
+          {
+            ...ordinaryNode('merge'),
+            definition: { key: 'core.merge', version },
+            configVersion: version,
+            config: {
+              parallelNodeId: 'parallel',
+              policy: { kind: 'all' },
+            },
+            inputMappings: {},
+          },
+          {
+            id: 'terminate',
+            definition: { key: 'core.terminate', version: 1 },
+            position: { x: 40, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {
+              result: {
+                kind: 'node_output',
+                nodeId: 'merge',
+                path: '$',
+              },
+            },
+            connectionRefs: {},
+          },
+        ],
+        edges: [
+          {
+            id: 'manual-parallel',
+            source: { nodeId: 'manual', port: 'out' },
+            target: { nodeId: 'parallel', port: 'in' },
+          },
+          {
+            id: 'parallel-left',
+            source: { nodeId: 'parallel', port: 'branch-01' },
+            target: { nodeId: 'left', port: 'in' },
+          },
+          {
+            id: 'parallel-right',
+            source: { nodeId: 'parallel', port: 'branch-02' },
+            target: { nodeId: 'right', port: 'in' },
+          },
+          {
+            id: 'left-merge',
+            source: { nodeId: 'left', port: 'out' },
+            target: { nodeId: 'merge', port: 'branch-01' },
+          },
+          {
+            id: 'right-merge',
+            source: { nodeId: 'right', port: 'out' },
+            target: { nodeId: 'merge', port: 'branch-02' },
+          },
+          {
+            id: 'merge-terminate',
+            source: { nodeId: 'merge', port: 'out' },
+            target: { nodeId: 'terminate', port: 'in' },
+          },
+        ],
+      },
+    }),
+  };
+}
+
+function projection(
+  compiled: ReturnType<typeof executable>,
+  release: ReturnType<typeof composeExecutableCompatibilityRelease>,
+) {
+  return {
+    id: workflowVersionId,
+    workspaceId,
+    workflowId,
+    versionNumber: 1,
+    schemaVersion: 1 as const,
+    checksum: compiled.checksum,
+    executableSchemaVersion: 2 as const,
+    executableJson: compiled.envelope,
+    compatibilityReleaseEpoch: release.epoch,
+  };
+}
+
+function expectInitialCheckpoint(
+  checkpoint: ReturnType<typeof createInitialWorkflowCheckpoint>,
+  schemaVersion: 1 | 2,
+): void {
+  expect(checkpoint.engineVersion).toBe(API_ENGINE_VERSION);
+  expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+    schemaVersion,
+    workflowVersionId,
+    engineVersion: API_ENGINE_VERSION,
+    revision: 0,
+    nextEventSequence: 2,
+    remainingIterationBudget: 1_000,
+  });
+}
+
 function run() {
   const now = new Date('2026-08-21T12:00:00.000Z');
   return {
@@ -193,7 +351,228 @@ function run() {
   };
 }
 
+function databaseWith(
+  overrides: Partial<WorkflowRunDatabase> = {},
+): WorkflowRunDatabase {
+  return {
+    start: vi.fn<WorkflowRunDatabase['start']>().mockResolvedValue({
+      run: run(),
+      replayed: false,
+    }),
+    replay: vi.fn<WorkflowRunDatabase['replay']>().mockResolvedValue({
+      run: { ...run(), triggerType: 'replay' },
+      replayed: false,
+    }),
+    get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue({
+      run: run(),
+      nodes: [],
+    }),
+    cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
+      run: run(),
+      alreadyRequested: false,
+      eventSequence: 2,
+    }),
+    close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
+    ...overrides,
+  };
+}
+
+const adapterConfig = parseDatabaseConfig({
+  connectionString: 'postgresql://unused.invalid/pertexo',
+});
+
+async function invokePersistence(
+  adapter: ReturnType<typeof createPostgresWorkflowRunPersistence>,
+  operation: 'start' | 'replay' | 'get' | 'cancel',
+): Promise<unknown> {
+  if (operation === 'start')
+    return adapter.persistence.start({
+      actorId,
+      workspaceId,
+      workflowId,
+      idempotencyKeyHash: 'a'.repeat(64),
+      requestHash: 'b'.repeat(64),
+      scope: `workflow:${workflowId}:manual`,
+    });
+  if (operation === 'replay')
+    return adapter.persistence.replay({
+      actorId,
+      workspaceId,
+      sourceRunId: runId,
+      workflowVersionId,
+      idempotencyKeyHash: 'a'.repeat(64),
+      requestHash: 'b'.repeat(64),
+      scope: `workflow:${runId}:replay`,
+      input: null,
+    });
+  if (operation === 'get')
+    return adapter.persistence.get({ workspaceId, runId });
+  return adapter.persistence.cancel({ actorId, workspaceId, runId });
+}
+
 describe('PostgreSQL workflow run persistence adapter', () => {
+  it.each(['start', 'replay', 'get', 'cancel'] as const)(
+    'maps database run-not-found from %s to the public not-found error',
+    async (operation) => {
+      const failure = new DatabaseWorkflowRunNotFoundError();
+      const database = databaseWith({
+        [operation]: vi.fn().mockRejectedValue(failure),
+      });
+      const adapter = createPostgresWorkflowRunPersistence(
+        adapterConfig,
+        database,
+      );
+
+      await expect(
+        invokePersistence(adapter, operation),
+      ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+    },
+  );
+
+  it.each(['start', 'replay'] as const)(
+    'maps database not-executable and idempotency errors from %s',
+    async (operation) => {
+      for (const [failure, expected] of [
+        [
+          new DatabaseWorkflowRunNotExecutableError(),
+          WorkflowRunNotExecutableError,
+        ],
+        [
+          new IdempotencyRequestConflictError(),
+          WorkflowRunIdempotencyConflictError,
+        ],
+      ] as const) {
+        const database = databaseWith({
+          [operation]: vi.fn().mockRejectedValue(failure),
+        });
+        const adapter = createPostgresWorkflowRunPersistence(
+          adapterConfig,
+          database,
+        );
+
+        await expect(
+          invokePersistence(adapter, operation),
+        ).rejects.toBeInstanceOf(expected);
+      }
+    },
+  );
+
+  it.each([
+    [new WorkspaceRunQuotaExceededError(), 'workspace.quota_exceeded'],
+    [new RegionalWriteAdmissionPausedError(), 'platform.write_paused'],
+    [new WorkspaceRunAdmissionDeniedError(), 'workspace.conflict'],
+  ] as const)(
+    'maps acceptance admission failure $expected without leaking its database error',
+    async (failure, expected) => {
+      for (const operation of ['start', 'replay'] as const) {
+        const database = databaseWith({
+          [operation]: vi.fn().mockRejectedValue(failure),
+        });
+        const adapter = createPostgresWorkflowRunPersistence(
+          adapterConfig,
+          database,
+        );
+
+        await expect(
+          invokePersistence(adapter, operation),
+        ).rejects.toMatchObject({ code: expected });
+      }
+    },
+  );
+
+  it.each([
+    'execution.run_terminal',
+    'execution.cancel_request_conflict',
+  ] as const)('maps cancel conflict %s to not-cancelable', async (message) => {
+    const database = databaseWith({
+      cancel: vi
+        .fn()
+        .mockRejectedValue(new ExecutionStateConflictError(message)),
+    });
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      database,
+    );
+
+    await expect(invokePersistence(adapter, 'cancel')).rejects.toBeInstanceOf(
+      WorkflowRunNotCancelableError,
+    );
+  });
+
+  it.each(['start', 'replay', 'get', 'cancel'] as const)(
+    'preserves an unknown %s persistence failure by identity',
+    async (operation) => {
+      const failure = Object.freeze({ operation, reason: 'unknown' });
+      const database = databaseWith({
+        [operation]: vi.fn().mockRejectedValue(failure),
+      });
+      const adapter = createPostgresWorkflowRunPersistence(
+        adapterConfig,
+        database,
+      );
+
+      await expect(invokePersistence(adapter, operation)).rejects.toBe(failure);
+    },
+  );
+
+  it('publishes no hint for replayed acceptance or unchanged cancellation', async () => {
+    const publish = vi.fn().mockResolvedValue({ receivers: 0 });
+    const database = databaseWith({
+      replay: vi.fn<WorkflowRunDatabase['replay']>().mockResolvedValue({
+        run: { ...run(), triggerType: 'replay' },
+        replayed: true,
+      }),
+      cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
+        run: run(),
+        alreadyRequested: true,
+        eventSequence: null,
+      }),
+    });
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      database,
+      {
+        close: vi.fn().mockResolvedValue(undefined),
+        publish,
+        resync: vi.fn().mockResolvedValue({ receivers: 0 }),
+      },
+    );
+
+    await expect(invokePersistence(adapter, 'replay')).resolves.toMatchObject({
+      replayed: true,
+    });
+    await expect(invokePersistence(adapter, 'cancel')).resolves.toMatchObject({
+      alreadyRequested: true,
+    });
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('does not turn committed acceptance or cancellation into rejection when hint publication fails', async () => {
+    const publishFailure = new Error('Redis unavailable');
+    const publish = vi.fn().mockRejectedValue(publishFailure);
+    const database = databaseWith();
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      database,
+      {
+        close: vi.fn().mockResolvedValue(undefined),
+        publish,
+        resync: vi.fn().mockResolvedValue({ receivers: 0 }),
+      },
+    );
+
+    await expect(invokePersistence(adapter, 'start')).resolves.toMatchObject({
+      replayed: false,
+    });
+    await expect(invokePersistence(adapter, 'cancel')).resolves.toMatchObject({
+      alreadyRequested: false,
+    });
+    expect(publish.mock.calls).toEqual([
+      [{ workspaceId, runId, sequence: 1 }],
+      [{ workspaceId, runId, sequence: 2 }],
+    ]);
+  });
+
   it('maps a regional write fence to a retryable service response', async () => {
     const database = {
       start: vi
@@ -357,8 +736,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       describeExecutableCompatibilityRelease(release),
     );
 
+    expectInitialCheckpoint(checkpoint, 2);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [],
     });
   });
@@ -431,8 +810,8 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       describeExecutableCompatibilityRelease(release),
     );
 
+    expectInitialCheckpoint(checkpoint, 2);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [],
     });
   });
@@ -455,10 +834,75 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       describeExecutableCompatibilityRelease(release),
     );
 
+    expectInitialCheckpoint(checkpoint, 2);
     expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
-      schemaVersion: 2,
       branchSelections: [],
     });
+  });
+
+  it.each([1, 2, 3] as const)(
+    'initializes checkpoint V2 for a verified Parallel V%s executable',
+    (version) => {
+      const { compiled, release } = parallelExecutable(version);
+      const checkpoint = createInitialWorkflowCheckpoint(
+        projection(compiled, release),
+        createExecutableCompatibilityReleaseHistory([release]),
+        describeExecutableCompatibilityRelease(release),
+      );
+
+      expectInitialCheckpoint(checkpoint, 2);
+      expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+        branchSelections: [],
+      });
+    },
+  );
+
+  it('initializes checkpoint V1 for a verified root executable', () => {
+    const compiled = executable();
+    const release = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE,
+    );
+    const checkpoint = createInitialWorkflowCheckpoint(
+      projection(compiled, release),
+      createExecutableCompatibilityReleaseHistory([release]),
+      describeExecutableCompatibilityRelease(release),
+    );
+
+    expectInitialCheckpoint(checkpoint, 1);
+  });
+
+  it.each([
+    'unsupported release',
+    'checksum mismatch',
+    'epoch mismatch',
+  ] as const)('rejects an executable with %s', (failureKind) => {
+    const compiled = executable();
+    const release = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE,
+    );
+    const successor = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE_SUCCESSOR,
+    );
+    const original = projection(compiled, release);
+    const invalidProjection =
+      failureKind === 'checksum mismatch'
+        ? { ...original, checksum: '0'.repeat(64) }
+        : failureKind === 'epoch mismatch'
+          ? { ...original, compatibilityReleaseEpoch: successor.epoch }
+          : original;
+    const history = createExecutableCompatibilityReleaseHistory(
+      failureKind === 'unsupported release'
+        ? [successor]
+        : [release, successor],
+    );
+
+    expect(() =>
+      createInitialWorkflowCheckpoint(
+        invalidProjection,
+        history,
+        describeExecutableCompatibilityRelease(successor),
+      ),
+    ).toThrow('not executable by this API release');
   });
 
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {

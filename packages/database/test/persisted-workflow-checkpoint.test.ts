@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { parsePersistedWorkflowCheckpoint } from '../src/compatibility/persisted-workflow-checkpoint.js';
@@ -25,6 +27,56 @@ function checkpointV1() {
     cancelRequested: false,
     deadlineExpired: false,
   } as const;
+}
+
+const mergeKey = `${workflowVersionId}|merge|b:|i:`;
+const joinConformanceCases = JSON.parse(
+  readFileSync(
+    new URL('./fixtures/checkpoint-join-conformance.json', import.meta.url),
+    'utf8',
+  ),
+) as unknown as readonly Readonly<{
+  name: string;
+  status: 'pending' | 'succeeded' | 'failed' | 'canceled';
+  join: Readonly<Record<string, unknown>>;
+}>[];
+
+function mergeCheckpoint(
+  join: Readonly<Record<string, unknown>>,
+  status: 'pending' | 'succeeded' | 'failed' | 'canceled' = 'succeeded',
+) {
+  return {
+    ...checkpointV1(),
+    schemaVersion: 2,
+    branchSelections: [],
+    invocations: [
+      {
+        invocationKey: mergeKey,
+        nodeId: 'merge',
+        status,
+        attemptNumber: 0,
+        branchPath: [],
+        iterationPath: [],
+      },
+    ],
+    joins: [
+      {
+        joinInvocationKey: mergeKey,
+        joinId: 'merge',
+        branchPath: [],
+        iterationPath: [],
+        ...join,
+      },
+    ],
+  };
+}
+
+function expectInvalidCheckpoint(value: unknown): void {
+  expect(() => parsePersistedWorkflowCheckpoint(value)).toThrow(
+    expect.objectContaining({
+      name: 'PersistedWorkflowCheckpointInvalidError',
+    }),
+  );
 }
 
 describe('persisted coordinator checkpoint codec', () => {
@@ -186,6 +238,92 @@ describe('persisted coordinator checkpoint codec', () => {
         },
       ],
     });
+  });
+
+  it('accepts exact all, any, count, and unsatisfied Merge outcomes', () => {
+    const cases = joinConformanceCases.map(({ join, status }) =>
+      mergeCheckpoint(join, status),
+    );
+
+    for (const value of cases)
+      expect(parsePersistedWorkflowCheckpoint(value)).toMatchObject({
+        joins: [expect.objectContaining({ joinId: 'merge' })],
+      });
+    expect(parsePersistedWorkflowCheckpoint(cases[2])).toMatchObject({
+      joins: [
+        {
+          ledger: [
+            { branchId: 'branch-01' },
+            { branchId: 'branch-02' },
+            { branchId: 'branch-03' },
+          ],
+          selectedBranchIds: ['branch-01', 'branch-02'],
+        },
+      ],
+    });
+  });
+
+  it('rejects internally inconsistent Merge state before admission', () => {
+    const settled = {
+      policy: { kind: 'count', count: 1 },
+      ledger: [
+        { branchId: 'branch-01', disposition: 'arrived' },
+        { branchId: 'branch-02', disposition: 'skipped' },
+      ],
+      selectedBranchIds: ['branch-01'],
+    } as const;
+    const invalid = [
+      mergeCheckpoint({
+        ...settled,
+        ledger: [
+          { branchId: 'branch-01', disposition: 'arrived' },
+          { branchId: 'branch-01', disposition: 'skipped' },
+        ],
+      }),
+      mergeCheckpoint({ ...settled, policy: { kind: 'count', count: 3 } }),
+      mergeCheckpoint({ ...settled, selectedBranchIds: ['missing'] }),
+      mergeCheckpoint({ ...settled, selectedBranchIds: ['branch-02'] }),
+      mergeCheckpoint({
+        ...settled,
+        ledger: [
+          { branchId: 'branch-01', disposition: 'arrived' },
+          { branchId: 'branch-02', disposition: 'pending' },
+        ],
+      }),
+      mergeCheckpoint({
+        ...settled,
+        unsatisfiedReasonCode: 'insufficient_arrivals',
+      }),
+      mergeCheckpoint(
+        {
+          policy: { kind: 'all' },
+          ledger: [{ branchId: 'branch-01', disposition: 'failed' }],
+          unsatisfiedReasonCode: 'branch_canceled',
+        },
+        'failed',
+      ),
+      {
+        ...mergeCheckpoint(settled),
+        joins: [
+          ...mergeCheckpoint(settled).joins,
+          ...mergeCheckpoint(settled).joins,
+        ],
+      },
+      { ...mergeCheckpoint(settled), invocations: [] },
+      mergeCheckpoint(settled, 'pending'),
+      mergeCheckpoint({
+        ...settled,
+        ledger: [
+          {
+            branchId: 'branch-01',
+            disposition: 'arrived',
+            output: { kind: 'artifact', artifactId: 'not-a-uuid' },
+          },
+        ],
+      }),
+    ];
+
+    for (const value of invalid) expectInvalidCheckpoint(value);
   });
 
   it('accepts exact scoped For Each state and preserves loop-free V2', () => {

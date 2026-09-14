@@ -16,6 +16,66 @@ const summary = (value = 10) => ({
   coefficientOfVariation: 0,
 });
 
+function sqlWorkload(statementExecutions = 3, serverExecutionMs = 4) {
+  const measurement = (roundIndex, statements = 0, executionMs = 0) => ({
+    roundIndex,
+    statementExecutions: statements,
+    serverExecutionMs: executionMs,
+  });
+  return {
+    scope: 'scenarioIncludingWarmupAndFixtures',
+    statementExecutions,
+    serverExecutionMs,
+    phaseMeasurements: {
+      fixtureReset: [
+        measurement(-1),
+        ...Array.from({ length: 5 }, (_, index) => measurement(index)),
+      ],
+      warmupWorkload: [measurement(-1)],
+      measuredWorkload: Array.from({ length: 5 }, (_, index) =>
+        measurement(
+          index,
+          index === 0 ? statementExecutions : 0,
+          index === 0 ? serverExecutionMs : 0,
+        ),
+      ),
+    },
+    unclassified: { statementExecutions: 0, serverExecutionMs: 0 },
+  };
+}
+
+const databaseRuntime = Object.freeze({
+  database: 'pertexo',
+  role: 'pertexo_maintenance',
+  serverVersion: '18.0',
+  serverVersionNumber: 180000,
+  extensions: [{ name: 'pg_stat_statements', version: '1.11' }],
+  settings: {
+    maxConnections: 100,
+    pgStatStatementsMax: 20_000,
+    sharedBuffers: '128MB',
+    workMem: '4MB',
+    effectiveCacheSize: '4GB',
+    jit: 'off',
+    trackIoTiming: 'off',
+    pgStatStatementsTrack: 'top',
+  },
+  serviceIdentity: {
+    image: 'postgres:18@sha256:fixture',
+    hostScope: 'loopback',
+    portScope: 'ephemeral-loopback',
+  },
+});
+
+function sourceEvidence(fingerprint) {
+  return {
+    started: { workingTreeSha256: fingerprint },
+    afterBuild: { workingTreeSha256: fingerprint },
+    completed: { workingTreeSha256: fingerprint },
+    stable: true,
+  };
+}
+
 const measuredSample = (overrides = {}) => ({
   name: 'operation',
   startedAtUnixMs: 100,
@@ -75,11 +135,18 @@ function evidence(overrides = {}) {
     lockWaitCount: summary(0),
   };
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     status: 'complete',
     recordedAt: '2026-09-10T10:00:00.000Z',
     manifestSha256: 'manifest',
-    source: { workingTreeSha256: 'source-a' },
+    source: sourceEvidence('source-a'),
+    build: {
+      command: 'pnpm build',
+      qualifiedSourceSha256: 'source-a',
+      started: { outputSha256: 'build-a', fileCount: 1 },
+      completed: { outputSha256: 'build-a', fileCount: 1 },
+      stable: true,
+    },
     environment: {
       node: 'v24',
       pnpm: '11',
@@ -98,7 +165,7 @@ function evidence(overrides = {}) {
     postgresEvidence: {
       available: true,
       poolCheckoutWaitSeconds: [0.05, 0.06, 0.07],
-      instrumentedSqlRoundTrips: 1,
+      instrumentedSqlQueryCount: 1,
       queryPlans: [
         'retention-keyset',
         'artifact-version-listing',
@@ -109,8 +176,24 @@ function evidence(overrides = {}) {
       ].map((name) => ({
         name,
         role: 'pertexo_maintenance',
-        plan: { Plan: { 'Node Type': 'Result' }, 'Execution Time': 1 },
+        planScope: 'outer-function-call',
+        internalStatementPlanAvailable: false,
+        representativeRows: {
+          artifacts: 400,
+          purgeWorkspaces: 4,
+          workspaces: 44,
+        },
+        plan: {
+          Plan: {
+            'Node Type': 'Result',
+            'Actual Rows': 1,
+            'Actual Loops': 1,
+          },
+          'Planning Time': 0.1,
+          'Execution Time': 1,
+        },
       })),
+      databaseRuntime: clone(databaseRuntime),
     },
     scenarios: [
       {
@@ -142,7 +225,7 @@ function evidence(overrides = {}) {
         workloadProcessPeakCpuPercent: summary(3),
         workloadProcessPeakCount: summary(2),
         workloadProcessRssDeltaBytes: summary(20),
-        databaseWorkload: { sqlRoundTrips: 3, serverExecutionMs: 4 },
+        databaseWorkload: sqlWorkload(),
         rounds: Array.from({ length: 5 }, () =>
           measuredRound([measuredSample()]),
         ),
@@ -161,7 +244,7 @@ function sharedScenario() {
   });
   return {
     ...evidence().scenarios[0],
-    databaseWorkload: { sqlRoundTrips: 0, serverExecutionMs: 0 },
+    databaseWorkload: sqlWorkload(0, 0),
     operationBreakdown: {
       retention: {
         latencyMs: summary(),
@@ -202,7 +285,7 @@ function sharedScenario() {
     targetDatabase: {
       databaseName: targetDatabaseName,
       scope: 'runner-owned shared disposable database',
-      workload: { sqlRoundTrips: 3, serverExecutionMs: 4 },
+      workload: sqlWorkload(),
       observations: evidence().databaseObservations,
     },
     rounds: Array.from({ length: 5 }, () => {
@@ -254,7 +337,7 @@ function sharedScenario() {
 function fixtureOwnedScenario() {
   const scenario = {
     ...evidence().scenarios[0],
-    databaseWorkload: { sqlRoundTrips: 0, serverExecutionMs: 0 },
+    databaseWorkload: sqlWorkload(0, 0),
     configuration: {
       ...evidence().scenarios[0].configuration,
       databaseScope: 'runner-owned-fixture',
@@ -262,7 +345,7 @@ function fixtureOwnedScenario() {
     targetDatabase: {
       databaseName: 'pertexo_q11_fixture',
       scope: 'runner-owned fixture database',
-      workload: { sqlRoundTrips: 3, serverExecutionMs: 4 },
+      workload: sqlWorkload(),
       observations: evidence().databaseObservations,
     },
   };
@@ -275,7 +358,11 @@ function fixtureOwnedScenario() {
 test('compares operation variability, throughput, process, SQL and database evidence', () => {
   const baseline = evidence();
   const candidate = evidence({
-    source: { workingTreeSha256: 'source-b' },
+    source: sourceEvidence('source-b'),
+    build: {
+      ...evidence().build,
+      qualifiedSourceSha256: 'source-b',
+    },
     scenarios: [
       {
         ...evidence().scenarios[0],
@@ -301,10 +388,7 @@ test('compares operation variability, throughput, process, SQL and database evid
     comparison.scenarios.fixture.operations.operation.latencyMs.mean.ratio,
     0.8,
   );
-  assert.deepEqual(comparison.scenarios.fixture.sql.baseline, {
-    sqlRoundTrips: 3,
-    serverExecutionMs: 4,
-  });
+  assert.deepEqual(comparison.scenarios.fixture.sql.baseline, sqlWorkload());
   assert.deepEqual(comparison.databaseObservations.baseline, {
     ...baseline.databaseObservations,
   });
@@ -434,7 +518,7 @@ test('rejects incomplete PostgreSQL evidence promised by the generator', () => {
       ];
     },
     (candidate) => {
-      candidate.postgresEvidence.instrumentedSqlRoundTrips = -1;
+      candidate.postgresEvidence.instrumentedSqlQueryCount = -1;
     },
     (candidate) => candidate.postgresEvidence.queryPlans.pop(),
     (candidate) => {
@@ -443,12 +527,93 @@ test('rejects incomplete PostgreSQL evidence promised by the generator', () => {
     (candidate) => {
       candidate.postgresEvidence.queryPlans[0].plan = {};
     },
+    (candidate) => {
+      candidate.postgresEvidence.queryPlans[0].plan.Plan = null;
+    },
+    (candidate) => {
+      candidate.postgresEvidence.queryPlans[1].name =
+        candidate.postgresEvidence.queryPlans[0].name;
+    },
+    (candidate) => {
+      candidate.postgresEvidence.queryPlans[0].planScope = 'internal-statement';
+    },
+    (candidate) => {
+      candidate.postgresEvidence.databaseRuntime.settings.workMem = '';
+    },
   ]) {
     const candidate = evidence();
     mutate(candidate);
     assert.throws(
       () => compareEvidence(evidence(), candidate),
       /required PostgreSQL evidence is invalid/u,
+    );
+  }
+});
+
+test('rejects zero observed workload processes but preserves terminal zero and zero CPU samples', () => {
+  const absent = evidence();
+  for (const round of absent.scenarios[0].rounds) {
+    round.workloadProcessMetrics.samples = [
+      { elapsedMs: 1, processCount: 0, rssBytes: 0, cpuPercent: 0 },
+    ];
+    round.workloadProcessMetrics.peakRssBytes = 0;
+    round.workloadProcessMetrics.peakCpuPercent = 0;
+    round.workloadProcessMetrics.peakProcessCount = 0;
+    round.workloadProcessMetrics.rssTrendBytes = {
+      first: 0,
+      last: 0,
+      delta: 0,
+    };
+  }
+  absent.scenarios[0].workloadProcessPeakRssBytes = summary(0);
+  absent.scenarios[0].workloadProcessPeakCpuPercent = summary(0);
+  absent.scenarios[0].workloadProcessPeakCount = summary(0);
+  absent.scenarios[0].workloadProcessRssDeltaBytes = summary(0);
+  assert.throws(
+    () => compareEvidence(evidence(), absent),
+    /process measurements are invalid/u,
+  );
+
+  const terminalZero = evidence();
+  for (const round of terminalZero.scenarios[0].rounds) {
+    round.workloadProcessMetrics.samples = [
+      { elapsedMs: 1, processCount: 1, rssBytes: 100, cpuPercent: 0 },
+      { elapsedMs: 2, processCount: 0, rssBytes: 0, cpuPercent: 0 },
+    ];
+    round.workloadProcessMetrics.peakRssBytes = 100;
+    round.workloadProcessMetrics.peakCpuPercent = 0;
+    round.workloadProcessMetrics.peakProcessCount = 1;
+    round.workloadProcessMetrics.rssTrendBytes = {
+      first: 100,
+      last: 0,
+      delta: -100,
+    };
+  }
+  terminalZero.scenarios[0].workloadProcessPeakRssBytes = summary(100);
+  terminalZero.scenarios[0].workloadProcessPeakCpuPercent = summary(0);
+  terminalZero.scenarios[0].workloadProcessPeakCount = summary(1);
+  terminalZero.scenarios[0].workloadProcessRssDeltaBytes = summary(-100);
+  assert.doesNotThrow(() => compareEvidence(terminalZero, clone(terminalZero)));
+});
+
+test('rejects missing, mislabeled, or unreconciled SQL phase measurements', () => {
+  for (const mutate of [
+    (workload) => workload.phaseMeasurements.measuredWorkload.pop(),
+    (workload) => {
+      workload.phaseMeasurements.fixtureReset[0].roundIndex = 0;
+    },
+    (workload) => {
+      workload.scope = 'operationOnly';
+    },
+    (workload) => {
+      workload.phaseMeasurements.measuredWorkload[0].statementExecutions += 1;
+    },
+  ]) {
+    const candidate = evidence();
+    mutate(candidate.scenarios[0].databaseWorkload);
+    assert.throws(
+      () => compareEvidence(evidence(), candidate),
+      /SQL (?:phase|measurement)|required SQL/u,
     );
   }
 });
@@ -503,14 +668,14 @@ test('accepts zero base activity only when a runner-owned target has positive SQ
   assert.doesNotThrow(() => compareEvidence(fixtureOwned, clone(fixtureOwned)));
 
   const missingTargetActivity = clone(fixtureOwned);
-  missingTargetActivity.scenarios[0].targetDatabase.workload.sqlRoundTrips = 0;
+  missingTargetActivity.scenarios[0].targetDatabase.workload.statementExecutions = 0;
   assert.throws(
     () => compareEvidence(fixtureOwned, missingTargetActivity),
     /targetDatabase\.sql required SQL measurement is absent/u,
   );
 
   const configuredBase = evidence();
-  configuredBase.scenarios[0].databaseWorkload.sqlRoundTrips = 0;
+  configuredBase.scenarios[0].databaseWorkload.statementExecutions = 0;
   assert.throws(
     () => compareEvidence(configuredBase, evidence()),
     /fixture\.sql required SQL measurement is absent/u,
@@ -557,7 +722,16 @@ test('rejects incomplete identities and benchmark environments on either side', 
         value.manifestSha256 = '';
       },
       (value) => {
-        value.source.workingTreeSha256 = '';
+        value.source.completed.workingTreeSha256 = '';
+      },
+      (value) => {
+        value.source.afterBuild.workingTreeSha256 = 'drifted';
+      },
+      (value) => {
+        value.build.completed.outputSha256 = 'drifted';
+      },
+      (value) => {
+        value.build.qualifiedSourceSha256 = 'wrong-source';
       },
       (value) => {
         value.environment = { measuredRounds: 5 };
@@ -571,7 +745,7 @@ test('rejects incomplete identities and benchmark environments on either side', 
       mutate(side === 'baseline' ? baseline : candidate);
       assert.throws(
         () => compareEvidence(baseline, candidate),
-        /identity is missing|fingerprint is missing|environment is incomplete/u,
+        /identity is missing|fingerprint is missing|environment is incomplete|build identity is missing or stale/u,
       );
     }
   }
@@ -724,10 +898,23 @@ test('rejects host, runtime, service and manifest mismatches but allows source c
     () => compareEvidence(evidence(), differentService),
     /service configuration/u,
   );
+  const differentDatabaseSetting = evidence();
+  differentDatabaseSetting.postgresEvidence.databaseRuntime.settings.workMem =
+    '8MB';
+  assert.throws(
+    () => compareEvidence(evidence(), differentDatabaseSetting),
+    /PostgreSQL runtime or service configuration/u,
+  );
   assert.doesNotThrow(() =>
     compareEvidence(
       evidence(),
-      evidence({ source: { workingTreeSha256: 'candidate' } }),
+      evidence({
+        source: sourceEvidence('candidate'),
+        build: {
+          ...evidence().build,
+          qualifiedSourceSha256: 'candidate',
+        },
+      }),
     ),
   );
 });

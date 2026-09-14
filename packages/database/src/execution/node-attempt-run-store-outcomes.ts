@@ -23,6 +23,10 @@ type ExecutorOutcome = Extract<
   CompletionInput['outcome'],
   { status: 'executor_failure' }
 >;
+type SuspendedOutcome = Extract<
+  CompletionInput['outcome'],
+  { status: 'suspended' }
+>;
 
 export interface CompletionReceiptRow {
   readonly completed_at: Date | null;
@@ -30,6 +34,7 @@ export interface CompletionReceiptRow {
 }
 
 export interface LockedAttemptRow {
+  readonly current_attempt: boolean;
   readonly attempt_status: string;
   readonly error_summary: string | null;
   readonly executor_error_kind: string | null;
@@ -43,6 +48,7 @@ export interface LockedAttemptRow {
   readonly output_ref: unknown;
   readonly safe_error_code: string | null;
   readonly retry_decision: string | null;
+  readonly suspension_recorded: boolean;
   readonly wait_kind: string | null;
 }
 
@@ -51,31 +57,48 @@ interface CompletionFields {
   readonly errorSummary: string | null;
   readonly executorOutcome: ExecutorOutcome | undefined;
   readonly safeErrorCode: string | null;
+  readonly suspendedOutcome: SuspendedOutcome | undefined;
 }
 
 function completionFields(input: CompletionInput): CompletionFields {
-  const executorOutcome =
-    input.outcome.status === 'executor_failure' ? input.outcome : undefined;
-  return {
-    executorOutcome,
-    durableStatus:
-      executorOutcome !== undefined
-        ? 'failed'
-        : input.outcome.status === 'suspended'
-          ? 'succeeded'
-          : input.outcome.status,
-    safeErrorCode:
-      input.outcome.status === 'succeeded' ||
-      input.outcome.status === 'suspended'
-        ? null
-        : input.outcome.safeErrorCode,
-    errorSummary:
-      input.outcome.status === 'succeeded' ||
-      input.outcome.status === 'suspended' ||
-      input.outcome.status === 'executor_failure'
-        ? null
-        : (input.outcome.errorSummary ?? null),
-  };
+  const outcome = input.outcome;
+  switch (outcome.status) {
+    case 'succeeded':
+      return {
+        durableStatus: 'succeeded',
+        errorSummary: null,
+        executorOutcome: undefined,
+        safeErrorCode: null,
+        suspendedOutcome: undefined,
+      };
+    case 'suspended':
+      return {
+        durableStatus: 'succeeded',
+        errorSummary: null,
+        executorOutcome: undefined,
+        safeErrorCode: null,
+        suspendedOutcome: outcome,
+      };
+    case 'executor_failure':
+      return {
+        durableStatus: 'failed',
+        errorSummary: null,
+        executorOutcome: outcome,
+        safeErrorCode: outcome.safeErrorCode,
+        suspendedOutcome: undefined,
+      };
+    case 'canceled':
+    case 'failed':
+    case 'outcome_unknown':
+    case 'timed_out':
+      return {
+        durableStatus: outcome.status,
+        errorSummary: outcome.errorSummary ?? null,
+        executorOutcome: undefined,
+        safeErrorCode: outcome.safeErrorCode,
+        suspendedOutcome: undefined,
+      };
+  }
 }
 
 async function duplicateCompletion(
@@ -113,8 +136,7 @@ async function duplicateCompletion(
     (fields.executorOutcome === undefined &&
       input.outcome.status !== 'suspended' &&
       row.node_status !== fields.durableStatus) ||
-    (input.outcome.status === 'suspended' &&
-      (row.node_status !== 'waiting' || row.wait_kind !== 'node_wait')) ||
+    (input.outcome.status === 'suspended' && !row.suspension_recorded) ||
     persistedOutput !== serializedOutput ||
     row.safe_error_code !== fields.safeErrorCode ||
     row.error_summary !== fields.errorSummary ||
@@ -139,6 +161,7 @@ function assertActiveLease(
 ): void {
   if (
     row.attempt_status !== 'running' ||
+    !row.current_attempt ||
     row.node_status !== 'running' ||
     row.lease_owner !== input.lease.workerId ||
     Number(row.fence_token) !== input.lease.fenceToken ||
@@ -220,12 +243,8 @@ async function commitAndReceipt(
 
 async function commitSuspension(
   client: PoolClient,
-  input: CompletionInput & {
-    readonly outcome: Extract<
-      CompletionInput['outcome'],
-      { status: 'suspended' }
-    >;
-  },
+  input: CompletionInput,
+  outcome: SuspendedOutcome,
   serializedOutput: string | null,
 ): Promise<CompleteNodeAttemptResult> {
   const suspended = await client.query<{ resume_at: Date }>(
@@ -241,7 +260,7 @@ async function commitSuspension(
       input.lease.workspaceId,
       input.lease.nodeRunId,
       serializedOutput,
-      input.outcome.durationSeconds,
+      outcome.durationSeconds,
       input.lease.attemptId,
     ],
   );
@@ -336,6 +355,7 @@ export async function applyNodeAttemptCompletion(
   row: LockedAttemptRow,
   receipt: CompletionReceiptRow,
   serializedOutput: string | null,
+  controlActive: boolean,
 ): Promise<CompleteNodeAttemptResult> {
   const fields = completionFields(input);
   const duplicate = await duplicateCompletion(
@@ -347,22 +367,19 @@ export async function applyNodeAttemptCompletion(
     fields,
   );
   if (duplicate !== undefined) return duplicate;
+  if (fields.suspendedOutcome !== undefined && controlActive)
+    throw new NodeAttemptReconciliationRequiredError();
   assertActiveLease(input, row, receipt);
   await updateAttempt(client, input, serializedOutput, fields);
   if (fields.executorOutcome !== undefined) {
     return commitAndReceipt(client, input);
   }
-  if (input.outcome.status === 'suspended') {
+  if (fields.suspendedOutcome !== undefined)
     return commitSuspension(
       client,
-      input as CompletionInput & {
-        readonly outcome: Extract<
-          CompletionInput['outcome'],
-          { status: 'suspended' }
-        >;
-      },
+      input,
+      fields.suspendedOutcome,
       serializedOutput,
     );
-  }
   return commitTerminal(client, input, serializedOutput, fields);
 }

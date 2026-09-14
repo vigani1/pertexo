@@ -3,7 +3,7 @@ import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
 
@@ -39,12 +39,17 @@ const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
+function validatedDatabaseName(value: string): string {
+  if (!/^[a-z][a-z0-9_]{0,62}$/u.test(value))
+    throw new Error('Q11 runner-owned database name is invalid');
+  return value;
+}
 const databaseName = (() => {
   if (!runnerOwnsDatabase)
     return `pertexo_test_0016_run_store_${randomUUID().replaceAll('-', '')}`;
   const value = process.env.PERTEXO_Q11_DATABASE_NAME;
   if (!value) throw new Error('Q11 runner-owned database name is required');
-  return value;
+  return validatedDatabaseName(value);
 })();
 const zeroDatabaseName = `pertexo_test_0016_zero_${randomUUID().replaceAll('-', '')}`;
 const priorHeadDatabaseName = `pertexo_test_0030_upgrade_${randomUUID().replaceAll('-', '')}`;
@@ -62,6 +67,7 @@ const retainedLegacyInvocationKey = 'legacy/node#1';
 const notificationConnectionId = randomUUID();
 const notificationSecretVersionId = randomUUID();
 const notificationDestinationId = randomUUID();
+const coordinatorStoreApplicationName = `coordinator-fixture-${String(process.pid)}`;
 
 function namedDatabaseUrl(base: string, name: string): string {
   const value = new URL(base);
@@ -71,6 +77,12 @@ function namedDatabaseUrl(base: string, name: string): string {
 
 function databaseUrl(base: string): string {
   return namedDatabaseUrl(base, databaseName);
+}
+
+function databaseUrlWithApplicationName(base: string, name: string): string {
+  const value = new URL(databaseUrl(base));
+  value.searchParams.set('application_name', name);
+  return value.toString();
 }
 
 const migrationConfig = {
@@ -84,24 +96,54 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-const rawStore = createCoordinatorRunStore(
-  parseDatabaseConfig({
-    connectionString: databaseUrl(workerBaseUrl),
+let rawStore: ReturnType<typeof createCoordinatorRunStore>;
+let nodeAttemptStore: ReturnType<typeof createNodeAttemptRunStore>;
+const storesToClose: { close(): Promise<void> }[] = [];
+
+function createStores(): void {
+  const config = parseDatabaseConfig({
+    connectionString: databaseUrlWithApplicationName(
+      workerBaseUrl,
+      coordinatorStoreApplicationName,
+    ),
     max: 6,
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
-  }),
-  undefined,
-  { runTimeoutFailureContextEnabled: true },
-);
-const nodeAttemptStore = createNodeAttemptRunStore(
-  parseDatabaseConfig({
-    connectionString: databaseUrl(workerBaseUrl),
-    max: 6,
-    ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
-  }),
-);
+  });
+  rawStore = createCoordinatorRunStore(config, undefined, {
+    runTimeoutFailureContextEnabled: true,
+  });
+  storesToClose.push(rawStore);
+  nodeAttemptStore = createNodeAttemptRunStore(config);
+  storesToClose.push(nodeAttemptStore);
+}
+
+async function waitForApplicationLocks(
+  applicationName: string,
+  minimum: number,
+): Promise<void> {
+  const observer = new Pool({
+    connectionString: databaseUrl(adminBaseUrl),
+    max: 1,
+  });
+  try {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const result = await observer.query<{ waiting: number }>(
+        `select count(*)::int waiting from pg_stat_activity
+         where datname=current_database() and application_name=$1
+           and wait_event_type='Lock'`,
+        [applicationName],
+      );
+      if ((result.rows[0]?.waiting ?? 0) >= minimum) return;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    throw new Error(
+      `Expected ${String(minimum)} PostgreSQL lock waiters for ${applicationName}`,
+    );
+  } finally {
+    await observer.end();
+  }
+}
 
 function checkpoint(input: {
   workflowVersionId?: string;
@@ -148,7 +190,9 @@ async function createDatabase(): Promise<void> {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      `grant connect on database "${databaseName}" to pertexo_migration,
+       pertexo_api,pertexo_worker,pertexo_dispatcher,pertexo_operator,
+       pertexo_maintenance,pertexo_lifecycle_command`,
     );
   } finally {
     await admin.end();
@@ -156,14 +200,34 @@ async function createDatabase(): Promise<void> {
 }
 
 async function dropDatabase(): Promise<void> {
-  await Promise.all([store.close(), nodeAttemptStore.close()]);
-  if (runnerOwnsDatabase) return;
+  const failures: unknown[] = [];
+  const closed = await Promise.allSettled(
+    storesToClose.splice(0).map(async (store) => store.close()),
+  );
+  for (const result of closed)
+    if (result.status === 'rejected') failures.push(result.reason);
+  testDeliveries.clear();
+  if (runnerOwnsDatabase) {
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Coordinator fixture cleanup failed');
+    return;
+  }
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
-    await dropDisconnectedDatabase(admin, databaseName);
+    try {
+      await dropDisconnectedDatabase(admin, databaseName);
+    } catch (error: unknown) {
+      failures.push(error);
+    }
   } finally {
-    await admin.end();
+    try {
+      await admin.end();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
   }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Coordinator fixture cleanup failed');
 }
 
 async function migrateThrough0014(): Promise<void> {
@@ -230,12 +294,13 @@ async function migrateThrough0030(
 
 async function asOwner<T>(
   workspaceId: string,
-  operation: (client: Pool) => Promise<T>,
+  operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = new Pool({
+  const pool = new Pool({
     connectionString: databaseUrl(migrationBaseUrl),
     max: 1,
   });
+  const client = await pool.connect();
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
@@ -249,7 +314,11 @@ async function asOwner<T>(
     await client.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    await client.end();
+    try {
+      client.release();
+    } finally {
+      await pool.end();
+    }
   }
 }
 
@@ -268,9 +337,10 @@ async function asAdmin<T>(operation: (client: Pool) => Promise<T>): Promise<T> {
 async function asRuntime<T>(
   baseUrl: string,
   workspaceId: string,
-  operation: (client: Pool) => Promise<T>,
+  operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = new Pool({ connectionString: databaseUrl(baseUrl), max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl(baseUrl), max: 1 });
+  const client = await pool.connect();
   try {
     await client.query('begin');
     await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -283,7 +353,11 @@ async function asRuntime<T>(
     await client.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    await client.end();
+    try {
+      client.release();
+    } finally {
+      await pool.end();
+    }
   }
 }
 
@@ -329,7 +403,10 @@ function testDelivery(
   return created;
 }
 
-const store = Object.freeze({
+// This convenience facade deliberately creates and owns a matching outbox
+// delivery before commits that omit one. Identity/replay tests use rawStore and
+// explicit deliveries instead.
+const ownedDeliveryStore = Object.freeze({
   acknowledgeAdvanceDelivery: (input: TestAcknowledgeInput) =>
     rawStore.acknowledgeAdvanceDelivery(input),
   close: () => rawStore.close(),
@@ -638,6 +715,7 @@ beforeAll(async () => {
   );
   await migrateDatabase(migrationConfig);
   await seedIdentityAndExecutables();
+  createStores();
 }, 60_000);
 
 afterAll(dropDatabase);
@@ -669,6 +747,7 @@ export {
   createFailureNotificationStore,
   createHash,
   createNodeAttemptRunStore,
+  coordinatorStoreApplicationName,
   databaseName,
   databaseUrl,
   dropDatabase,
@@ -698,12 +777,13 @@ export {
   rm,
   seedIdentityAndExecutables,
   seedSucceededFact,
-  store,
+  ownedDeliveryStore,
   testDeliveries,
   testDelivery,
   tmpdir,
   versionA,
   versionB,
+  waitForApplicationLocks,
   workerBaseUrl,
   workflowA,
   workflowB,

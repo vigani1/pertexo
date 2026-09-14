@@ -80,4 +80,98 @@ describe('parseRecoveryConfig', () => {
       }),
     ).toThrow('regions must be distinct');
   });
+
+  it('rejects a ledger page size above its record bound', () => {
+    expect(() =>
+      parseRecoveryConfig({
+        ...environment,
+        RESTORE_LEDGER_MAX_PAGES: '1',
+        RESTORE_LEDGER_MAX_RECORDS: '3',
+        RESTORE_LEDGER_PAGE_SIZE: '4',
+      }),
+    ).toThrow('RESTORE_LEDGER_PAGE_SIZE cannot exceed the record bound');
+  });
+
+  it('accepts an exact ledger page capacity', () => {
+    expect(
+      parseRecoveryConfig({
+        ...environment,
+        RESTORE_LEDGER_MAX_PAGES: '2',
+        RESTORE_LEDGER_MAX_RECORDS: '4',
+        RESTORE_LEDGER_PAGE_SIZE: '2',
+      }).coordinator,
+    ).toMatchObject({ maxPages: 2, maxRecords: 4, pageSize: 2 });
+  });
+
+  it.each([
+    [
+      'primary artifact principal and primary ledger principal',
+      {
+        ARTIFACT_STORE_ACCESS_KEY_ID: environment.CONTROL_LEDGER_ACCESS_KEY_ID,
+      },
+    ],
+    [
+      'primary artifact principal and recovery ledger principal',
+      {
+        ARTIFACT_STORE_ACCESS_KEY_ID:
+          environment.CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID,
+      },
+    ],
+    [
+      'recovery artifact principal and primary ledger principal',
+      {
+        ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID:
+          environment.CONTROL_LEDGER_ACCESS_KEY_ID,
+      },
+    ],
+    [
+      'recovery artifact principal and recovery ledger principal',
+      {
+        ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID:
+          environment.CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID,
+      },
+    ],
+    [
+      'primary artifact bucket and primary ledger bucket',
+      { ARTIFACT_STORE_BUCKET: environment.CONTROL_LEDGER_BUCKET },
+    ],
+    [
+      'primary artifact bucket and recovery ledger bucket',
+      {
+        ARTIFACT_STORE_BUCKET: environment.CONTROL_LEDGER_RECOVERY_BUCKET,
+      },
+    ],
+    [
+      'recovery artifact bucket and primary ledger bucket',
+      {
+        ARTIFACT_STORE_RECOVERY_BUCKET: environment.CONTROL_LEDGER_BUCKET,
+      },
+    ],
+    [
+      'recovery artifact bucket and recovery ledger bucket',
+      {
+        ARTIFACT_STORE_RECOVERY_BUCKET:
+          environment.CONTROL_LEDGER_RECOVERY_BUCKET,
+      },
+    ],
+  ] as const)('rejects shared %s', (label, change) => {
+    expect(() => parseRecoveryConfig({ ...environment, ...change })).toThrow(
+      label.includes('bucket')
+        ? 'Control ledger buckets must be distinct from artifact store buckets'
+        : 'Tenant artifacts and control ledgers require distinct principals and buckets',
+    );
+  });
+
+  it('requires telemetry export in production and accepts an explicit endpoint', () => {
+    expect(() =>
+      parseRecoveryConfig({ ...environment, NODE_ENV: 'production' }),
+    ).toThrow('Production recovery job requires OTLP telemetry export');
+    expect(
+      parseRecoveryConfig({
+        ...environment,
+        NODE_ENV: 'production',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
+      }).observability.otlpHttpEndpoint,
+    ).toBe('https://otel.example.test');
+  });
 });

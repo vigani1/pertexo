@@ -90,6 +90,7 @@ env:
   CONTROL_LEDGER_RECOVERY_REQUEST_TIMEOUT_MS: '5000'
   CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS: '30'
   CONTROL_LEDGER_INTEGRATION: 'true'
+  CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true'
   CONTROL_LEDGER_INTEGRATION_PROVIDER: minio
   API_SSE_INTEGRATION: 'true'
   API_IDENTITY_INTEGRATION: 'true'
@@ -121,6 +122,10 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Validate ordinary CI gate policy
+        run: pnpm ci:gates:check
+      - name: Build workspace
+        run: pnpm build
       - name: Run quality checks
         run: |
           set -o pipefail
@@ -132,13 +137,18 @@ jobs:
             pnpm network-registry:check
             pnpm dependencies:check
             pnpm database:schema:check
-            pnpm build
             pnpm lint
             pnpm complexity:check
             pnpm duplication:check
             pnpm contracts:check
             pnpm typecheck
           } 2>&1 | tee artifacts/quality.log
+      - name: Validate architecture boundaries
+        run: pnpm architecture:check
+      - name: Validate built package exports
+        run: pnpm built-exports:check
+      - name: Validate local quality runner contracts
+        run: pnpm quality:local:check
       - name: Upload quality log
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -360,7 +370,7 @@ jobs:
             --exclude test/platform/compatibility-rollout.integration.test.ts \
             --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove new regression tests fail under selected mutations
-        run: node infrastructure/verify-mutation-sensitivity.mjs
+        run: pnpm mutation:check
       - name: Prove every required integration cohort executed
         run: |
           node infrastructure/validate-vitest-gate-report.mjs \
@@ -428,6 +438,8 @@ jobs:
       - name: Run destructive crash, outage, and recovery proofs
         env:
           API_SSE_RESILIENCE_INTEGRATION: 'true'
+          API_SSE_RESILIENCE_DISPOSABLE_TARGET: 'true'
+          API_SSE_RESILIENCE_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
           WORKER_TRANSPORT_RESILIENCE: 'true'
         run: |
           set -euo pipefail

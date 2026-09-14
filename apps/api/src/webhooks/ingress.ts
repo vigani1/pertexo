@@ -64,6 +64,18 @@ export function registerWebhookIngress(
         await problem(reply, 413, 'webhook.payload_too_large', requestId);
         return;
       }
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'statusCode' in error &&
+        error.statusCode === 415
+      ) {
+        record(() => {
+          telemetry.delivery('invalid_request');
+        });
+        await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+        return;
+      }
       record(() => {
         telemetry.delivery('unavailable');
       });
@@ -84,7 +96,7 @@ export function registerWebhookIngress(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
       (request, reply) =>
-        telemetry.trace(singleHeader(request, 'traceparent'), () =>
+        traceAcceptance(telemetry, singleHeader(request, 'traceparent'), () =>
           withRequestOperationSignal(request, (signal) =>
             acceptWebhook(request, reply, dependencies, telemetry, signal),
           ),
@@ -92,6 +104,26 @@ export function registerWebhookIngress(
     );
     done();
   });
+}
+
+function traceAcceptance<T>(
+  telemetry: WebhookIngressTelemetry,
+  traceparent: string | undefined,
+  work: () => Promise<T>,
+): Promise<T> {
+  let acceptancePromise: Promise<T> | undefined;
+  const acceptOnce = (): Promise<T> => {
+    acceptancePromise ??= Promise.resolve().then(work);
+    return acceptancePromise;
+  };
+  let tracePromise: Promise<T> | undefined;
+  try {
+    tracePromise = telemetry.trace(traceparent, acceptOnce);
+  } catch {
+    return acceptOnce();
+  }
+  void Promise.resolve(tracePromise).catch(() => undefined);
+  return acceptancePromise ?? acceptOnce();
 }
 
 async function acceptWebhook(
@@ -210,7 +242,7 @@ async function acceptWebhook(
     `${verification.endpointId}\0${sha256(body)}\0application/json`,
   );
   try {
-    const traceparent = telemetry.traceparent();
+    const traceparent = diagnosticTraceparent(telemetry);
     encryptionSignal.throwIfAborted();
     const result = await dependencies.database.acceptVerifiedDelivery({
       verification,
@@ -271,6 +303,16 @@ async function acceptWebhook(
       return;
     }
     throw error;
+  }
+}
+
+function diagnosticTraceparent(
+  telemetry: WebhookIngressTelemetry,
+): string | undefined {
+  try {
+    return telemetry.traceparent();
+  } catch {
+    return undefined;
   }
 }
 

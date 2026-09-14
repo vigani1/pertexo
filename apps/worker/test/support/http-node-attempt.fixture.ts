@@ -1,11 +1,12 @@
-import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
   acceptWorkflowRun,
   createConnectionDatabase,
   createWorkspaceDatabase,
+  migrateDatabase as migrateSchema,
   parseDatabaseConfig,
+  parseMigrationConfig,
   requestWorkflowRunCancellation,
   type ConnectionDatabase,
 } from '@pertexo/database/testing';
@@ -29,6 +30,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { activateCompatibilityReleaseFixture } from './compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
+import { createRedisTestNamespace } from './redis-test-namespace.js';
 import { queryAsWorkspaceRole } from './workspace-query.js';
 
 export const httpNodeAttemptIntegrationEnabled =
@@ -51,11 +53,12 @@ export const operatorUrl =
   'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
-export const redisUrl = (() => {
-  const parsed = new URL(configuredRedisUrl);
-  parsed.pathname = '/14';
-  return parsed.toString();
-})();
+const redisNamespace = createRedisTestNamespace(
+  configuredRedisUrl,
+  14,
+  'http-node-attempt',
+);
+export const redisUrl = redisNamespace.redisUrl;
 
 const databaseName = `pertexo_test_http_attempt_${randomUUID().replaceAll('-', '')}`;
 export const workspaceId = randomUUID();
@@ -100,21 +103,16 @@ export function redisConnection() {
   };
 }
 
-const ownerPool = new Pool({
-  connectionString: databaseUrl(migrationUrl),
-  max: 1,
-});
-const workerPool = new Pool({
-  connectionString: databaseUrl(workerUrl),
-  max: 3,
-});
-const operatorPool = new Pool({
-  connectionString: databaseUrl(operatorUrl),
-  max: 1,
-});
-const apiDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
-);
+let ownerPool!: Pool;
+let workerPool!: Pool;
+let operatorPool!: Pool;
+let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+let ownerPoolCreated = false;
+let workerPoolCreated = false;
+let operatorPoolCreated = false;
+let apiDatabaseCreated = false;
+let databaseCreated = false;
+let redisNamespaceAcquired = false;
 export let connectionDatabase: ConnectionDatabase | undefined;
 
 export async function withOwner<T>(work: (client: PoolClient) => Promise<T>) {
@@ -165,31 +163,13 @@ export async function waitFor<T>(
 }
 
 async function migrateDatabase(): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      [
-        '--filter',
-        '@pertexo/database',
-        '--fail-if-no-match',
-        'exec',
-        'tsx',
-        'src/migrate.ts',
-      ],
-      {
-        cwd: new URL('../../../', import.meta.url).pathname,
-        env: {
-          ...process.env,
-          DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
-        },
-        stdio: 'inherit',
-      },
-    );
-    child.once('exit', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`HTTP attempt migration failed: ${String(code)}`));
-    });
-  });
+  await migrateSchema(
+    parseMigrationConfig({
+      ...process.env,
+      DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
+      NODE_ENV: 'test',
+    }),
+  );
 }
 
 async function activateRelease(
@@ -423,6 +403,18 @@ class ContextKeyProvider implements EnvelopeKeyProvider {
   }
 }
 
+async function sealAndZero(
+  encryption: ConnectionEnvelopeEncryption,
+  plaintext: Uint8Array,
+  context: ConnectionSecretContext,
+) {
+  try {
+    return await encryption.seal(plaintext, context);
+  } finally {
+    plaintext.fill(0);
+  }
+}
+
 export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   const executable = buildWorkflowExecutableV2({
     graph: graph(),
@@ -477,7 +469,7 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
       headers: { authorization: plaintextSecret },
     }),
   );
-  const sealed = await encryption.seal(secret, {
+  const sealed = await sealAndZero(encryption, secret, {
     workspaceId,
     connectionId,
     secretVersionId,
@@ -505,7 +497,7 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
       botToken: slackBotToken,
     }),
   );
-  const sealedSlackSecret = await encryption.seal(slackSecret, {
+  const sealedSlackSecret = await sealAndZero(encryption, slackSecret, {
     workspaceId,
     connectionId: slackConnectionId,
     secretVersionId: slackSecretVersionId,
@@ -530,7 +522,7 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
       fromEmail: 'sender@example.test',
     }),
   );
-  const sealedEmailSecret = await encryption.seal(emailSecret, {
+  const sealedEmailSecret = await sealAndZero(encryption, emailSecret, {
     workspaceId,
     connectionId: emailConnectionId,
     secretVersionId: emailSecretVersionId,
@@ -548,6 +540,37 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
     requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
   });
   return encryption;
+}
+
+/**
+ * Restore the shared schema fixture's provider rows to the immutable seeded
+ * versions before each independently named scenario. Runtime state, requests,
+ * queues, and run identities remain scenario-local; audit assertions use
+ * per-scenario baselines because the immutable connection history is retained.
+ */
+export async function resetProviderScenarioIsolation(): Promise<void> {
+  await withOwner(async (client) => {
+    await client.query(
+      `update app.connections
+          set current_secret_version_id=case id
+                when $2::uuid then $3::uuid
+                when $4::uuid then $5::uuid
+                when $6::uuid then $7::uuid
+              end,
+              updated_at=clock_timestamp()
+        where workspace_id=$1 and id=any($8::uuid[])`,
+      [
+        workspaceId,
+        connectionId,
+        secretVersionId,
+        slackConnectionId,
+        slackSecretVersionId,
+        emailConnectionId,
+        emailSecretVersionId,
+        [connectionId, slackConnectionId, emailConnectionId],
+      ],
+    );
+  });
 }
 
 export async function acceptRun() {
@@ -729,40 +752,142 @@ export async function continuation(runId: string, excluded: readonly string[]) {
   return rows[0].id;
 }
 
+let fixtureCleanupPromise: Promise<void> | undefined;
+
+function cleanupHttpNodeAttemptFixture(): Promise<void> {
+  fixtureCleanupPromise ??= (async () => {
+    const errors: unknown[] = [];
+    const attempt = async (
+      label: string,
+      operation: () => unknown,
+    ): Promise<void> => {
+      await Promise.resolve()
+        .then(operation)
+        .catch((cause: unknown) => {
+          errors.push(
+            new Error(`HTTP attempt fixture cleanup failed: ${label}`, {
+              cause,
+            }),
+          );
+        });
+    };
+    const activeConnectionDatabase = connectionDatabase;
+    connectionDatabase = undefined;
+    if (activeConnectionDatabase !== undefined)
+      await attempt('connection database', () =>
+        activeConnectionDatabase.close(),
+      );
+    if (apiDatabaseCreated) {
+      await attempt('API database', () => apiDatabase.close());
+      apiDatabaseCreated = false;
+    }
+    if (operatorPoolCreated) {
+      await attempt('operator pool', () => operatorPool.end());
+      operatorPoolCreated = false;
+    }
+    if (workerPoolCreated) {
+      await attempt('worker pool', () => workerPool.end());
+      workerPoolCreated = false;
+    }
+    if (ownerPoolCreated) {
+      await attempt('owner pool', () => ownerPool.end());
+      ownerPoolCreated = false;
+    }
+    if (redisNamespaceAcquired) {
+      await attempt('Redis namespace', () => redisNamespace.close());
+      redisNamespaceAcquired = false;
+    }
+    if (databaseCreated) {
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      await attempt('drop disposable database', async () => {
+        await dropDisconnectedDatabase(admin, databaseName);
+        databaseCreated = false;
+      });
+      await attempt('admin pool', () => admin.end());
+    }
+    if (errors.length > 0)
+      throw new AggregateError(errors, 'HTTP attempt fixture cleanup failed');
+  })();
+  return fixtureCleanupPromise;
+}
+
 export function installHttpNodeAttemptFixture(): void {
   beforeAll(async () => {
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
     try {
-      await admin.query(
-        `create database "${databaseName}" owner pertexo_owner`,
+      if (!httpNodeAttemptIntegrationEnabled) return;
+      await redisNamespace.acquire();
+      redisNamespaceAcquired = true;
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      let setupError: unknown;
+      try {
+        await admin.query(
+          `create database "${databaseName}" owner pertexo_owner`,
+        );
+        databaseCreated = true;
+        await admin.query(
+          `revoke all on database "${databaseName}" from public`,
+        );
+        await admin.query(
+          `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_operator`,
+        );
+      } catch (error: unknown) {
+        setupError = error;
+      }
+      await admin.end().catch((error: unknown) => {
+        setupError =
+          setupError === undefined
+            ? error
+            : new AggregateError(
+                [setupError, error],
+                'HTTP attempt database setup failed',
+              );
+      });
+      if (setupError !== undefined)
+        throw setupError instanceof Error
+          ? setupError
+          : new Error('HTTP attempt database setup failed', {
+              cause: setupError,
+            });
+      await migrateDatabase();
+
+      ownerPool = new Pool({
+        connectionString: databaseUrl(migrationUrl),
+        max: 1,
+      });
+      ownerPoolCreated = true;
+      workerPool = new Pool({
+        connectionString: databaseUrl(workerUrl),
+        max: 3,
+      });
+      workerPoolCreated = true;
+      operatorPool = new Pool({
+        connectionString: databaseUrl(operatorUrl),
+        max: 1,
+      });
+      operatorPoolCreated = true;
+      apiDatabase = createWorkspaceDatabase(
+        parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
       );
-      await admin.query(`revoke all on database "${databaseName}" from public`);
-      await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_operator`,
+      apiDatabaseCreated = true;
+      for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1).filter(
+        (candidate) => candidate.epoch <= activeRelease.epoch,
+      ))
+        await activateRelease(release);
+    } catch (setupError: unknown) {
+      let cleanupError: unknown;
+      await cleanupHttpNodeAttemptFixture().catch((error: unknown) => {
+        cleanupError = error;
+      });
+      if (cleanupError === undefined) throw setupError;
+      throw new AggregateError(
+        [setupError, cleanupError],
+        'HTTP attempt fixture setup failed',
       );
-    } finally {
-      await admin.end();
     }
-    await migrateDatabase();
-    for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1).filter(
-      (candidate) => candidate.epoch <= activeRelease.epoch,
-    ))
-      await activateRelease(release);
   }, 60_000);
 
   afterAll(async () => {
-    await Promise.allSettled([
-      connectionDatabase?.close(),
-      apiDatabase.close(),
-      ownerPool.end(),
-      operatorPool.end(),
-      workerPool.end(),
-    ]);
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await dropDisconnectedDatabase(admin, databaseName);
-    } finally {
-      await admin.end();
-    }
+    if (!httpNodeAttemptIntegrationEnabled) return;
+    await cleanupHttpNodeAttemptFixture();
   });
 }

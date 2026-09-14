@@ -19,6 +19,7 @@ import type {
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createApiApplication } from '../../src/app.js';
 import { createOidcSecretEncryptionAdapter } from '../../src/identity-infrastructure/index.js';
+import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { Pool, type PoolClient } from 'pg';
 import { expect } from 'vitest';
 import {
@@ -26,20 +27,33 @@ import {
   loginThroughOidc,
   type HttpSessionCookies,
 } from './real-oidc-http.fixture.js';
+import {
+  FixtureResourceOwner,
+  rethrowFixtureSetupFailure,
+} from './fixture-resource-owner.js';
+import { assertIntegrationGateConfigured } from './integration-gate.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo';
+const migrationUrl = process.env.DATABASE_MIGRATION_URL;
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
-const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
+const redisUrl = process.env.REDIS_URL;
+const workflowLifecycleIntegrationRequested =
+  process.env.API_IDENTITY_INTEGRATION === 'true';
+assertIntegrationGateConfigured({
+  name: 'workflow lifecycle HTTP integration',
+  requested: workflowLifecycleIntegrationRequested,
+  required: {
+    DATABASE_API_URL: apiUrl,
+    DATABASE_MIGRATION_URL: migrationUrl,
+    REDIS_URL: redisUrl,
+  },
+});
 const issuer = `https://${randomUUID()}.workflow-lifecycle.integration.test`;
 const clientId = 'workflow-lifecycle-real-api';
 const encryptionKey = Buffer.alloc(32, 0x6b).toString('base64');
 
 export const workflowLifecycleIntegrationEnabled =
-  process.env.API_IDENTITY_INTEGRATION === 'true' && apiUrl !== undefined;
+  workflowLifecycleIntegrationRequested;
 
 export const workflowLifecycleDatabaseConfig = parseDatabaseConfig({
   connectionString:
@@ -97,16 +111,20 @@ export type WorkflowLifecycleApiFixture = Readonly<{
   identityDatabase: IdentityWorkspaceDatabase;
   workspaceId: string;
   ownerUserId: string;
+  builderUserId: string;
   operatorUserId: string;
   viewerUserId: string;
   ids: LifecycleWorkflowIds;
-  login(subject: 'owner' | 'operator' | 'viewer'): Promise<SessionCookies>;
+  login(
+    subject: 'owner' | 'builder' | 'operator' | 'viewer',
+  ): Promise<SessionCookies>;
   withOwner<T>(work: (client: PoolClient) => Promise<T>): Promise<T>;
   setWorkspaceStatus(
     status: 'active' | 'suspended' | 'pending_deletion',
   ): Promise<void>;
   readLifecycle(workflowId: string): Promise<WorkflowLifecycleState>;
   readHistory(workflowId: string): Promise<WorkflowHistory>;
+  createForeignVersion(): Promise<string>;
   close(): Promise<void>;
 }>;
 
@@ -127,51 +145,90 @@ const telemetry: TelemetryLifecycle = {
 };
 
 export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifecycleApiFixture> {
-  const provider = createFakeOidcProvider({
-    issuer,
-    clientId,
-    displayNamePrefix: 'Lifecycle',
-  });
-  const identityDatabase = createIdentityWorkspaceDatabase(
-    workflowLifecycleDatabaseConfig,
-  );
-  const transactions = createOidcLoginTransactionStore(
-    workflowLifecycleDatabaseConfig,
-    createOidcSecretEncryptionAdapter({
-      current: { version: 'workflow-lifecycle-v1', key: encryptionKey },
-    }),
-  );
-  const workspaceDatabase = createWorkspaceDatabase(
-    workflowLifecycleDatabaseConfig,
-  );
-  const subjects = {
-    owner: await resolveIdentity(identityDatabase, 'owner'),
-    operator: await resolveIdentity(identityDatabase, 'operator'),
-    viewer: await resolveIdentity(identityDatabase, 'viewer'),
-  } as const;
-  const workspaceId = randomUUID();
-  const ids = {
-    unpublished: randomUUID(),
-    published: randomUUID(),
-    publishedVersion: randomUUID(),
-    run: randomUUID(),
-  } as const;
-
-  const ownerPool = new Pool({
-    connectionString: databaseUrl(migrationUrl, databaseNameFromUrl()),
-    max: 1,
-  });
-  const apiPool = new Pool({
-    connectionString: workflowLifecycleDatabaseConfig.connectionString,
-    max: 1,
-  });
-  const withOwner = async <T>(
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => withOwnerClient(ownerPool, workspaceId, work);
-  const withApi = async <T>(
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> => withApiClient(apiPool, workspaceId, work);
+  const resources = new FixtureResourceOwner();
   try {
+    const provider = createFakeOidcProvider({
+      issuer,
+      clientId,
+      displayNamePrefix: 'Lifecycle',
+    });
+    const identityDatabase = resources.acquire(
+      'identity database',
+      createIdentityWorkspaceDatabase(workflowLifecycleDatabaseConfig),
+      (database) => database.close(),
+    );
+    const transactions = resources.acquire(
+      'OIDC transaction store',
+      createOidcLoginTransactionStore(
+        workflowLifecycleDatabaseConfig,
+        createOidcSecretEncryptionAdapter({
+          current: { version: 'workflow-lifecycle-v1', key: encryptionKey },
+        }),
+      ),
+      (store) => store.close(),
+    );
+    const identityConfig = apiConfig().identity;
+    if (identityConfig === undefined)
+      throw new Error('Workflow lifecycle identity configuration is missing');
+    // The runtime takes ownership as soon as construction starts and also
+    // closes these dependencies if its own construction fails.
+    resources.transfer(identityDatabase);
+    resources.transfer(transactions);
+    const identityRuntime = resources.acquire(
+      'identity runtime',
+      await createApiIdentityRuntime(
+        identityConfig,
+        workflowLifecycleDatabaseConfig,
+        {
+          provider,
+          persistence: { database: identityDatabase, transactions },
+        },
+      ),
+      (runtime) => runtime.close(),
+    );
+    const workspaceDatabase = resources.acquire(
+      'workspace database',
+      createWorkspaceDatabase(workflowLifecycleDatabaseConfig),
+      (database) => database.close(),
+    );
+    const subjects = {
+      owner: await resolveIdentity(identityDatabase, 'owner'),
+      builder: await resolveIdentity(identityDatabase, 'builder'),
+      operator: await resolveIdentity(identityDatabase, 'operator'),
+      viewer: await resolveIdentity(identityDatabase, 'viewer'),
+    } as const;
+    const workspaceId = randomUUID();
+    const ids = {
+      unpublished: randomUUID(),
+      published: randomUUID(),
+      publishedVersion: randomUUID(),
+      run: randomUUID(),
+    } as const;
+    const ownerPool = resources.acquire(
+      'owner pool',
+      new Pool({
+        connectionString: databaseUrl(
+          requireIntegrationUrl(migrationUrl, 'DATABASE_MIGRATION_URL'),
+          databaseNameFromUrl(),
+        ),
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    const apiPool = resources.acquire(
+      'API verification pool',
+      new Pool({
+        connectionString: workflowLifecycleDatabaseConfig.connectionString,
+        max: 1,
+      }),
+      (pool) => pool.end(),
+    );
+    const withOwner = async <T>(
+      work: (client: PoolClient) => Promise<T>,
+    ): Promise<T> => withOwnerClient(ownerPool, workspaceId, work);
+    const withApi = async <T>(
+      work: (client: PoolClient) => Promise<T>,
+    ): Promise<T> => withApiClient(apiPool, workspaceId, work);
     await withOwner(async (client) => {
       await client.query(
         `insert into app.workspaces
@@ -189,11 +246,13 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
            (workspace_id,user_id,role,status)
          values
            ($1,$2,'owner','active'),
-           ($1,$3,'operator','active'),
-           ($1,$4,'viewer','active')`,
+           ($1,$3,'builder','active'),
+           ($1,$4,'operator','active'),
+           ($1,$5,'viewer','active')`,
         [
           workspaceId,
           subjects.owner.user.id,
+          subjects.builder.user.id,
           subjects.operator.user.id,
           subjects.viewer.user.id,
         ],
@@ -209,29 +268,33 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       );
     });
 
-    const application = await createApiApplication(apiConfig(), {
-      database: workspaceDatabase,
-      identityOverrides: {
-        provider,
-        database: identityDatabase,
-        transactions,
-      },
-      rateLimitConsumer: {
-        consume: () => Promise.resolve({ allowed: true as const }),
-      },
-      logger,
-      telemetry,
-    });
+    const application = resources.acquire(
+      'API application',
+      await createApiApplication(apiConfig(), {
+        database: borrowedWorkspaceDatabase(workspaceDatabase),
+        identityRuntime: {
+          dependencies: identityRuntime.dependencies,
+          close: () => Promise.resolve(),
+        },
+        rateLimitConsumer: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+        logger,
+        telemetry,
+      }),
+      (app) => app.close(),
+    );
     return Object.freeze({
       application,
       workspaceDatabase,
       identityDatabase,
       workspaceId,
       ownerUserId: subjects.owner.user.id,
+      builderUserId: subjects.builder.user.id,
       operatorUserId: subjects.operator.user.id,
       viewerUserId: subjects.viewer.user.id,
       ids,
-      login: (subject: 'owner' | 'operator' | 'viewer') =>
+      login: (subject: 'owner' | 'builder' | 'operator' | 'viewer') =>
         loginThroughOidc(application, subject),
       withOwner,
       setWorkspaceStatus: (status) =>
@@ -243,32 +306,19 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
         ),
       readLifecycle: (workflowId) => readWorkflowLifecycle(withApi, workflowId),
       readHistory: (workflowId) => readWorkflowHistory(withApi, workflowId),
-      close: async () => {
-        await Promise.allSettled([
-          application.close(),
-          workspaceDatabase.close(),
-          identityDatabase.close(),
-          ownerPool.end(),
-          apiPool.end(),
-        ]);
-      },
+      createForeignVersion: () =>
+        createForeignVersionWithOwner(ownerPool, subjects.owner.user.id),
+      close: () => resources.close(),
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      transactions.close(),
-      identityDatabase.close(),
-      workspaceDatabase.close(),
-      ownerPool.end(),
-      apiPool.end(),
-    ]);
-    throw error;
+    return await rethrowFixtureSetupFailure(resources, error);
   }
 }
 
 export async function closeWorkflowLifecycleApiFixture(
-  fixture: WorkflowLifecycleApiFixture,
+  fixture: WorkflowLifecycleApiFixture | undefined,
 ): Promise<void> {
-  await fixture.close();
+  await fixture?.close();
 }
 
 export function mutationHeaders(
@@ -354,8 +404,28 @@ function apiConfig(): ApiConfig {
       serviceVersion: 'workflow-lifecycle-integration',
     },
     port: 3000,
-    redisUrl,
+    redisUrl: requireIntegrationUrl(redisUrl, 'REDIS_URL'),
   };
+}
+
+function requireIntegrationUrl(
+  value: string | undefined,
+  name: string,
+): string {
+  if (value === undefined || value.trim() === '')
+    throw new Error(`Workflow lifecycle integration requires ${name}`);
+  return value;
+}
+
+function borrowedWorkspaceDatabase(
+  database: WorkspaceDatabase,
+): WorkspaceDatabase {
+  return Object.freeze({
+    withWorkspace: database.withWorkspace.bind(database),
+    checkReadiness: database.checkReadiness.bind(database),
+    checkCompatibility: database.checkCompatibility.bind(database),
+    close: () => Promise.resolve(),
+  });
 }
 
 async function seedWorkflowRows(
@@ -408,6 +478,55 @@ async function seedWorkflowRows(
     `update app.workflows set published_version_id=$2 where id=$1`,
     [ids.published, ids.publishedVersion],
   );
+}
+
+async function createForeignVersionWithOwner(
+  ownerPool: Pool,
+  ownerUserId: string,
+): Promise<string> {
+  const foreignWorkspaceId = randomUUID();
+  const foreignWorkflowId = randomUUID();
+  const foreignVersionId = randomUUID();
+  const graph = parseWorkflowGraphDraft({
+    schemaVersion: 1,
+    nodes: [],
+    edges: [],
+    settings: {},
+  });
+  const checksum = workflowRetainedExecutableChecksum(graph);
+  await withOwnerClient(ownerPool, foreignWorkspaceId, async (client) => {
+    await client.query(
+      `insert into app.workspaces (id,name,slug,status,created_by)
+       values ($1,'Foreign version source',$2,'active',$3)`,
+      [
+        foreignWorkspaceId,
+        `foreign-version-${foreignWorkspaceId.slice(0, 12)}`,
+        ownerUserId,
+      ],
+    );
+    await client.query(
+      `insert into app.workflows
+         (id,workspace_id,name,lifecycle_status,activation_status,
+          lifecycle_revision,published_version_id,created_by)
+       values ($1,$2,'Foreign workflow','active','inactive',1,null,$3)`,
+      [foreignWorkflowId, foreignWorkspaceId, ownerUserId],
+    );
+    await client.query(
+      `insert into app.workflow_versions
+         (id,workspace_id,workflow_id,version_number,schema_version,
+          graph_json,checksum,published_by)
+       values ($1,$2,$3,1,1,$4::jsonb,$5,$6)`,
+      [
+        foreignVersionId,
+        foreignWorkspaceId,
+        foreignWorkflowId,
+        JSON.stringify(graph),
+        checksum,
+        ownerUserId,
+      ],
+    );
+  });
+  return foreignVersionId;
 }
 
 async function setWorkspaceStatusWithOwner(

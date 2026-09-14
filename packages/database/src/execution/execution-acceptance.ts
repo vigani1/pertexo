@@ -15,6 +15,7 @@ import {
   workflowRuns,
 } from '../schema.js';
 import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
+import { resolveWorkflowFailureNotificationPolicy } from './failure-notification-policy.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { sha256HexSchema as sha256Schema } from '../validation/persisted-primitives.js';
 const traceparentSchema = z
@@ -136,17 +137,37 @@ export class RegionalWriteAdmissionPausedError extends Error {
   }
 }
 
-function admissionError(error: unknown): never {
+type AdmissionSqlState = 'PTA01' | 'PTA02' | 'PTA03';
+
+function inspectAdmissionSqlState(error: unknown): AdmissionSqlState | null {
+  const visited = new Set<object>();
   let current = error;
-  while (current instanceof Error) {
-    if ('code' in current && current.code === 'PTA02')
-      throw new WorkspaceRunQuotaExceededError();
-    if ('code' in current && current.code === 'PTA03')
-      throw new RegionalWriteAdmissionPausedError();
-    if ('code' in current && current.code === 'PTA01')
-      throw new WorkspaceRunAdmissionDeniedError();
-    current = current.cause;
+  for (let depth = 0; depth < 16; depth += 1) {
+    if (
+      (typeof current !== 'object' && typeof current !== 'function') ||
+      current === null
+    )
+      return null;
+    if (visited.has(current)) return null;
+    visited.add(current);
+    try {
+      if (!(current instanceof Error)) return null;
+      const code = Reflect.get(current, 'code') as unknown;
+      if (code === 'PTA01' || code === 'PTA02' || code === 'PTA03') return code;
+      current = Reflect.get(current, 'cause');
+    } catch {
+      return null;
+    }
   }
+  return null;
+}
+
+/** Operation-local SQLSTATE mapping for queued workflow-run admission. */
+export function throwWorkflowRunAdmissionError(error: unknown): never {
+  const code = inspectAdmissionSqlState(error);
+  if (code === 'PTA02') throw new WorkspaceRunQuotaExceededError();
+  if (code === 'PTA03') throw new RegionalWriteAdmissionPausedError();
+  if (code === 'PTA01') throw new WorkspaceRunAdmissionDeniedError();
   throw error;
 }
 
@@ -162,94 +183,9 @@ async function assertWorkspaceAcceptsNewRuns(
   }
 }
 
-type ResolvedFailureNotificationPolicy = Readonly<{
-  policyVersion: 1;
-  destinationId: string;
-  destinationConfigVersion: number;
-  sideEffectClass: 'idempotent_with_key' | 'unsafe';
-  connectionSecretVersionId: string;
-}>;
-
-/** Shared acceptance-time resolver for manual, webhook, and schedule admission. */
-async function resolveWorkflowFailureNotificationPolicy(
-  transaction: WorkspaceTransaction,
-  workflowId: string,
-): Promise<ResolvedFailureNotificationPolicy | undefined> {
-  const destinationResult = await transaction.db.execute<{
-    connection_id: string | null;
-    destination_id: string;
-    current_config_version: number;
-    destination_status: string;
-    side_effect_class: 'idempotent_with_key' | 'unsafe';
-    kind: 'email' | 'slack';
-  }>(sql`
-    select * from app.lock_workflow_failure_notification_policy(
-      ${transaction.workspaceId},${workflowId}
-    )
-  `);
-  const destination = destinationResult.rows[0];
-  if (
-    destination?.connection_id == null ||
-    destination.destination_status !== 'enabled' ||
-    (destination.kind === 'slack' &&
-      destination.side_effect_class !== 'unsafe') ||
-    (destination.kind === 'email' &&
-      destination.side_effect_class !== 'idempotent_with_key')
-  )
-    return undefined;
-
-  const connectionResult = await transaction.db.execute<{
-    auth_type: string;
-    current_secret_version_id: string;
-    provider_key: string;
-    status: string;
-  }>(sql`
-    select connection.auth_type,
-           connection.current_secret_version_id,
-           connection.provider_key,
-           connection.status
-    from app.connections connection
-    where connection.workspace_id = ${transaction.workspaceId}
-      and connection.id = ${destination.connection_id}
-    for share of connection
-  `);
-  const connection = connectionResult.rows[0];
-  if (
-    connection?.status !== 'active' ||
-    (destination.kind === 'slack' &&
-      (connection.provider_key !== 'slack' ||
-        connection.auth_type !== 'slack_bot_token')) ||
-    (destination.kind === 'email' &&
-      (connection.provider_key !== 'email' ||
-        connection.auth_type !== 'resend_api_key'))
-  )
-    return undefined;
-
-  const secretResult = await transaction.db.execute<{ id: string }>(sql`
-    select secret.id
-    from app.connection_secret_versions secret
-    where secret.workspace_id = ${transaction.workspaceId}
-      and secret.connection_id = ${destination.connection_id}
-      and secret.id = ${connection.current_secret_version_id}
-  `);
-  if (secretResult.rows[0] === undefined) return undefined;
-
-  return Object.freeze({
-    policyVersion: 1,
-    destinationId: z.uuid().parse(destination.destination_id),
-    destinationConfigVersion: z
-      .number()
-      .int()
-      .positive()
-      .parse(destination.current_config_version),
-    sideEffectClass: z
-      .enum(['idempotent_with_key', 'unsafe'])
-      .parse(destination.side_effect_class),
-    connectionSecretVersionId: z
-      .uuid()
-      .parse(connection.current_secret_version_id),
-  });
-}
+type ReplayValidation =
+  | Readonly<{ kind: 'request_only' }>
+  | Readonly<{ kind: 'exact_initial_checkpoint'; hash: string }>;
 
 async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
@@ -257,8 +193,7 @@ async function readExistingAcceptance(
     z.output<typeof acceptWorkflowRunInputSchema>,
     'keyHash' | 'operation' | 'requestHash' | 'scope'
   >,
-  initialCheckpointHash: string | undefined,
-  verifyInitialCheckpointHash = true,
+  replayValidation: ReplayValidation,
 ): Promise<AcceptedWorkflowRun | null> {
   const rows = await transaction.db
     .select({
@@ -305,8 +240,8 @@ async function readExistingAcceptance(
     throw new IdempotencyRecordCorruptError();
   }
   if (
-    verifyInitialCheckpointHash &&
-    resultRef.data.initialCheckpointHash !== initialCheckpointHash
+    replayValidation.kind === 'exact_initial_checkpoint' &&
+    resultRef.data.initialCheckpointHash !== replayValidation.hash
   ) {
     throw new IdempotencyRequestConflictError();
   }
@@ -337,7 +272,7 @@ export async function readWorkflowRunAcceptanceReplay(
   input: WorkflowRunAcceptanceReplayInput,
 ): Promise<AcceptedWorkflowRun | null> {
   const parsed = acceptanceReplayInputSchema.parse(input);
-  return readExistingAcceptance(transaction, parsed, undefined, false);
+  return readExistingAcceptance(transaction, parsed, { kind: 'request_only' });
 }
 
 export async function acceptWorkflowRun(
@@ -372,11 +307,10 @@ export async function acceptWorkflowRun(
   const initialCheckpointHash = createHash('sha256')
     .update(initialCheckpointJson)
     .digest('hex');
-  const existing = await readExistingAcceptance(
-    transaction,
-    parsed,
-    initialCheckpointHash,
-  );
+  const existing = await readExistingAcceptance(transaction, parsed, {
+    kind: 'exact_initial_checkpoint',
+    hash: initialCheckpointHash,
+  });
   if (existing !== null) return existing;
 
   try {
@@ -385,7 +319,7 @@ export async function acceptWorkflowRun(
     );
     await assertWorkspaceAcceptsNewRuns(transaction);
   } catch (error: unknown) {
-    admissionError(error);
+    throwWorkflowRunAdmissionError(error);
   }
   const failureNotificationPolicy =
     await resolveWorkflowFailureNotificationPolicy(
@@ -424,11 +358,10 @@ export async function acceptWorkflowRun(
     .returning({ id: idempotencyRecords.id });
 
   if (insertedClaim.length === 0) {
-    const racedAcceptance = await readExistingAcceptance(
-      transaction,
-      parsed,
-      initialCheckpointHash,
-    );
+    const racedAcceptance = await readExistingAcceptance(transaction, parsed, {
+      kind: 'exact_initial_checkpoint',
+      hash: initialCheckpointHash,
+    });
     if (racedAcceptance === null) throw new IdempotencyRecordCorruptError();
     return racedAcceptance;
   }
@@ -476,7 +409,7 @@ export async function acceptWorkflowRun(
       })
       .returning({ acceptedAt: workflowRuns.createdAt });
   } catch (error: unknown) {
-    admissionError(error);
+    throwWorkflowRunAdmissionError(error);
   }
   const insertedRun = insertedRuns[0];
   if (insertedRun === undefined) {

@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0086_operator_attempt_reclaim_state.sql",
+  "transactionalThrough": "0089_oidc_capacity_lock_time.sql",
   "migrations": {}
 }

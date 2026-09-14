@@ -12,6 +12,28 @@ const currentKey = randomBytes(32).toString('base64');
 const previousKey = randomBytes(32).toString('base64');
 const associatedData = 'pertexo/oidc-login/state-digest/code_verifier';
 
+type ClearedBufferObservation = Readonly<{
+  kind: string;
+  bytes: Buffer;
+}>;
+
+function clearedBufferObserver(observations: ClearedBufferObservation[]) {
+  return (kind: string, buffer: Buffer): void => {
+    observations.push({ kind, bytes: Buffer.from(buffer) });
+  };
+}
+
+function expectEveryObservedBufferCleared(
+  observations: readonly ClearedBufferObservation[],
+): void {
+  expect(observations.length).toBeGreaterThan(0);
+  for (const observation of observations) {
+    expect(
+      observation.bytes.equals(Buffer.alloc(observation.bytes.length)),
+    ).toBe(true);
+  }
+}
+
 function expectSealingError(operation: () => unknown): void {
   let failure: unknown;
   try {
@@ -37,6 +59,57 @@ describe('OIDC AES-256-GCM secret encryption', () => {
     expect(sealed.nonce).toMatch(/^[A-Za-z0-9_-]+$/u);
     expect(sealed.tag).toMatch(/^[A-Za-z0-9_-]+$/u);
     expect(adapter.open(sealed, associatedData)).toBe('verifier plaintext');
+  });
+
+  it('clears owned plaintext buffers after sealing and opening', () => {
+    const observations: ClearedBufferObservation[] = [];
+    const adapter = new Aes256GcmOidcSecretEncryption(
+      { current: { version: 'v2', key: currentKey } },
+      clearedBufferObserver(observations),
+    );
+    const sealed = adapter.seal('owned verifier plaintext', associatedData);
+
+    expect(adapter.open(sealed, associatedData)).toBe(
+      'owned verifier plaintext',
+    );
+    expect(observations.map(({ kind }) => kind)).toEqual(
+      expect.arrayContaining([
+        'seal-plaintext',
+        'open-plaintext-update',
+        'open-plaintext-final',
+        'open-plaintext-output',
+      ]),
+    );
+    expectEveryObservedBufferCleared(observations);
+  });
+
+  it('clears partial plaintext when authentication fails', () => {
+    const writer = new Aes256GcmOidcSecretEncryption({
+      current: { version: 'v1', key: currentKey },
+    });
+    const sealed = writer.seal('partial verifier plaintext', associatedData);
+    const observations: ClearedBufferObservation[] = [];
+    const reader = new Aes256GcmOidcSecretEncryption(
+      { current: { version: 'v1', key: currentKey } },
+      clearedBufferObserver(observations),
+    );
+
+    expectSealingError(() =>
+      reader.open(
+        {
+          ...sealed,
+          tag: `${sealed.tag.startsWith('A') ? 'B' : 'A'}${sealed.tag.slice(1)}`,
+        },
+        associatedData,
+      ),
+    );
+    expect(observations.map(({ kind }) => kind)).toContain(
+      'open-plaintext-update',
+    );
+    expect(observations.map(({ kind }) => kind)).not.toContain(
+      'open-plaintext-output',
+    );
+    expectEveryObservedBufferCleared(observations);
   });
 
   it('uses a fresh random nonce for each seal', () => {
@@ -127,6 +200,38 @@ describe('OIDC AES-256-GCM secret encryption', () => {
     }
   });
 
+  it('validates duplicate versions before decoding and clears prior keys after a later decode failure', () => {
+    const duplicateObservations: ClearedBufferObservation[] = [];
+    expectSealingError(
+      () =>
+        new Aes256GcmOidcSecretEncryption(
+          {
+            current: { version: 'v1', key: currentKey },
+            previous: [{ version: 'v1', key: 'not-base64' }],
+          },
+          clearedBufferObserver(duplicateObservations),
+        ),
+    );
+    expect(duplicateObservations).toEqual([]);
+
+    const partialObservations: ClearedBufferObservation[] = [];
+    expectSealingError(
+      () =>
+        new Aes256GcmOidcSecretEncryption(
+          {
+            current: { version: 'v2', key: currentKey },
+            previous: [{ version: 'v1', key: 'not-base64' }],
+          },
+          clearedBufferObserver(partialObservations),
+        ),
+    );
+    expect(partialObservations.map(({ kind }) => kind)).toEqual([
+      'configuration-key',
+      'configuration-key',
+    ]);
+    expectEveryObservedBufferCleared(partialObservations);
+  });
+
   it('rejects a non-canonical base64url key with unused trailing bits', () => {
     const canonical = Buffer.alloc(32).toString('base64url');
     const nonCanonical = `${canonical.slice(0, -1)}B`;
@@ -178,7 +283,12 @@ describe('OIDC AES-256-GCM secret encryption', () => {
     });
     expectSealingError(() => adapter.seal('', associatedData));
     expectSealingError(() => adapter.seal('verifier plaintext', ''));
-    expectSealingError(() => adapter.seal('x'.repeat(16_385), associatedData));
+    const exactUtf8Plaintext = 'é'.repeat(8_192);
+    const sealed = adapter.seal(exactUtf8Plaintext, associatedData);
+    expect(adapter.open(sealed, associatedData)).toBe(exactUtf8Plaintext);
+    expectSealingError(() =>
+      adapter.seal(`${exactUtf8Plaintext}é`, associatedData),
+    );
     expectSealingError(() =>
       adapter.seal('verifier plaintext', 'x'.repeat(513)),
     );

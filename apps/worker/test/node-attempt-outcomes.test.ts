@@ -12,7 +12,10 @@ import {
   HttpRequestExecutorError,
 } from '@pertexo/integrations/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import {
+  WorkflowEngineError,
+  type NodeExecutionRegistry,
+} from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -75,6 +78,452 @@ function heartbeatCancellationHandler(
 }
 
 describe('NodeAttemptHandler', () => {
+  it('stops heartbeat ownership when an attempt capability constructor fails', async () => {
+    vi.useFakeTimers();
+    try {
+      const heartbeat = vi
+        .fn<NodeAttemptRunStore['heartbeat']>()
+        .mockResolvedValue({
+          abortRequested: false,
+          leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
+        });
+      const constructorError = new Error('connection capability failed');
+      const runStore = executionStore({ heartbeat });
+      const handler = createNodeAttemptHandler({
+        engine: {
+          prepare: vi.fn().mockReturnValue(registryPreparedAttempt()),
+        },
+        heartbeatIntervalMillis: 10,
+        leaseDurationSeconds: 1,
+        reader: {
+          close: vi.fn(),
+          readForExecution: vi.fn().mockResolvedValue({
+            kind: 'v2_projection',
+            workflowVersion: projection(),
+          }),
+        },
+        registry: { execute: vi.fn() },
+        runStore,
+        runtimeCapabilities: {
+          connections: () => {
+            throw constructorError;
+          },
+        },
+        workerId: 'worker-1',
+      });
+
+      await expect(
+        handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBe(constructorError);
+      await vi.advanceTimersByTimeAsync(50);
+      expect(heartbeat).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['resolve', 'reject'] as const)(
+    'awaits a cancellation-ignoring heartbeat that settles late by %s',
+    async (settlement) => {
+      vi.useFakeTimers();
+      try {
+        const heartbeatResult = Promise.withResolvers<{
+          abortRequested: false;
+          leaseExpiresAt: Date;
+        }>();
+        const heartbeat = vi
+          .fn<NodeAttemptRunStore['heartbeat']>()
+          .mockReturnValue(heartbeatResult.promise);
+        const contextAbort = new AbortController();
+        const handled = heartbeatCancellationHandler(
+          executionStore({ heartbeat }),
+        ).handle(delivery(), { signal: contextAbort.signal });
+        const settled = vi.fn();
+        void handled.then(settled, settled);
+
+        await vi.advanceTimersByTimeAsync(10);
+        expect(heartbeat).toHaveBeenCalledOnce();
+        contextAbort.abort();
+        await Promise.resolve();
+        expect(settled).not.toHaveBeenCalled();
+        if (settlement === 'resolve')
+          heartbeatResult.resolve({
+            abortRequested: false,
+            leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
+          });
+        else heartbeatResult.reject(new Error('late heartbeat failure'));
+        await expect(handled).rejects.toMatchObject({
+          code: 'attempt_aborted',
+        });
+        expect(settled).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(50);
+        expect(heartbeat).toHaveBeenCalledOnce();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('normalizes a heartbeat rejection whose prototype inspection is hostile', async () => {
+    vi.useFakeTimers();
+    try {
+      const hostile = new Proxy(Object.create(null) as object, {
+        getPrototypeOf: () => {
+          throw new Error('hostile prototype');
+        },
+      });
+      const heartbeat = vi
+        .fn<NodeAttemptRunStore['heartbeat']>()
+        .mockRejectedValue(hostile);
+      const handled = heartbeatCancellationHandler(
+        executionStore({ heartbeat }),
+      ).handle(delivery(), { signal: new AbortController().signal });
+      const outcome = handled.then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+
+      await vi.advanceTimersByTimeAsync(10);
+      const failure = await outcome;
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure).toMatchObject({
+        message: 'Node attempt heartbeat failed',
+      });
+      expect((failure as Error).cause).toBe(hostile);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['succeeds', 'rejects'] as const)(
+    'gives a heartbeat authority failure precedence when execution ignores abort and %s',
+    async (executionSettlement) => {
+      vi.useFakeTimers();
+      try {
+        const heartbeatError = new Error('heartbeat authority unavailable');
+        const execution = Promise.withResolvers<{
+          runId: string;
+          nodeRunId: string;
+          attemptId: string;
+          invocationKey: string;
+          nodeId: string;
+          kind: 'succeeded';
+          output: null;
+        }>();
+        const complete = vi.fn<NodeAttemptRunStore['complete']>();
+        const runStore = executionStore({
+          complete,
+          heartbeat: vi.fn().mockRejectedValue(heartbeatError),
+        });
+        const handler = createNodeAttemptHandler({
+          engine: {
+            prepare: vi.fn().mockReturnValue({
+              upstreamNodeOutputs: [],
+              execute: vi.fn().mockReturnValue(execution.promise),
+            }),
+          },
+          heartbeatIntervalMillis: 10,
+          leaseDurationSeconds: 1,
+          reader: {
+            close: vi.fn(),
+            readForExecution: vi.fn().mockResolvedValue({
+              kind: 'v2_projection',
+              workflowVersion: projection(),
+            }),
+          },
+          registry: { execute: vi.fn() },
+          runStore,
+          workerId: 'worker-1',
+        });
+        const handled = handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        });
+        const outcome = handled.then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+
+        await vi.advanceTimersByTimeAsync(10);
+        if (executionSettlement === 'succeeds')
+          execution.resolve({
+            runId: lease().runId,
+            nodeRunId: lease().nodeRunId,
+            attemptId: lease().attemptId,
+            invocationKey: lease().invocationKey,
+            nodeId: lease().nodeId,
+            kind: 'succeeded',
+            output: null,
+          });
+        else execution.reject(new Error('executor also failed'));
+        await expect(outcome).resolves.toBe(heartbeatError);
+        expect(complete).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('does not reinterpret a completion-store rejection as an executor outcome', async () => {
+    const persistenceError = new NodeExecutorFailure({
+      kind: 'retry',
+      errorKind: 'provider',
+      possiblyDispatched: false,
+    });
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockRejectedValue(persistenceError);
+    const runStore = executionStore({ complete });
+
+    await expect(
+      executionHandler(runStore).handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(persistenceError);
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['matching evidence', false],
+    ['different evidence', true],
+  ] as const)(
+    'grants one dispatch permission while durable %s is pending',
+    async (_label, useDifferentEvidence) => {
+      const marker = Promise.withResolvers<{ dispatchedAt: Date }>();
+      const markDispatched = vi
+        .fn<NodeAttemptRunStore['markDispatched']>()
+        .mockReturnValue(marker.promise);
+      const providerIo = vi.fn();
+      const firstEvidence = {
+        connectionFence: {
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          expectedProviderKey: 'email',
+          expectedAuthType: 'resend_api_key',
+          secretVersionId: '22222222-2222-4222-8222-222222222222',
+        },
+        providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+      } as const;
+      const secondEvidence = useDifferentEvidence
+        ? {
+            connectionFence: {
+              ...firstEvidence.connectionFence,
+              secretVersionId: '33333333-3333-4333-8333-333333333333',
+            },
+            providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
+          }
+        : firstEvidence;
+      const registry: NodeExecutionRegistry = {
+        dispatchMode: () => 'executor_controlled',
+        execute: vi.fn(
+          async (request: Parameters<NodeExecutionRegistry['execute']>[0]) => {
+            const first = request.runtime?.beforeDispatch(firstEvidence);
+            await Promise.resolve();
+            await expect(
+              request.runtime?.beforeDispatch(secondEvidence),
+            ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+            expect(markDispatched).toHaveBeenCalledOnce();
+            marker.resolve({ dispatchedAt: new Date() });
+            await first;
+            providerIo();
+            return { kind: 'succeeded', output: null } as const;
+          },
+        ),
+      };
+      const runStore = executionStore({ markDispatched });
+      const handler = createNodeAttemptHandler({
+        engine: {
+          prepare: vi.fn().mockReturnValue(registryPreparedAttempt()),
+        },
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 30,
+        reader: {
+          close: vi.fn(),
+          readForExecution: vi.fn().mockResolvedValue({
+            kind: 'v2_projection',
+            workflowVersion: projection(),
+          }),
+        },
+        registry,
+        runStore,
+        workerId: 'worker-1',
+      });
+
+      await expect(
+        handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind: 'committed' });
+      expect(providerIo).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('keeps a queue abort from reopening a pending dispatch marker', async () => {
+    const marker = Promise.withResolvers<{ dispatchedAt: Date }>();
+    const markDispatched = vi
+      .fn<NodeAttemptRunStore['markDispatched']>()
+      .mockReturnValue(marker.promise);
+    const complete = vi.fn<NodeAttemptRunStore['complete']>();
+    const contextAbort = new AbortController();
+    const registry: NodeExecutionRegistry = {
+      dispatchMode: () => 'executor_controlled',
+      execute: vi.fn(
+        async (request: Parameters<NodeExecutionRegistry['execute']>[0]) => {
+          const first = request.runtime?.beforeDispatch();
+          await Promise.resolve();
+          await expect(request.runtime?.beforeDispatch()).rejects.toMatchObject(
+            {
+              code: 'duplicate_dispatch',
+            },
+          );
+          contextAbort.abort();
+          marker.reject(contextAbort.signal.reason);
+          await first;
+          return { kind: 'succeeded', output: null } as const;
+        },
+      ),
+    };
+    const runStore = executionStore({ complete, markDispatched });
+    const handler = createNodeAttemptHandler({
+      engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry,
+      runStore,
+      workerId: 'worker-1',
+    });
+
+    const failure = await handler
+      .handle(delivery(), { signal: contextAbort.signal })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(failure).toBe(contextAbort.signal.reason);
+    expect(markDispatched).toHaveBeenCalledOnce();
+    expect(markDispatched.mock.calls[0]?.[0].signal.aborted).toBe(true);
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('uses the combined execution signal but the exact queue signal for completion', async () => {
+    const contextAbort = new AbortController();
+    let executionSignal: AbortSignal | undefined;
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const runStore = executionStore({ complete });
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({
+          upstreamNodeOutputs: [],
+          execute: vi.fn(
+            (input: Parameters<PreparedNodeAttempt['execute']>[0]) => {
+              executionSignal = input.signal;
+              return Promise.resolve({
+                runId: lease().runId,
+                nodeRunId: lease().nodeRunId,
+                attemptId: lease().attemptId,
+                invocationKey: lease().invocationKey,
+                nodeId: lease().nodeId,
+                kind: 'succeeded',
+                output: null,
+              } as const);
+            },
+          ),
+        }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: { execute: vi.fn() },
+      runStore,
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(), { signal: contextAbort.signal }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(executionSignal).toBeInstanceOf(AbortSignal);
+    expect(executionSignal).not.toBe(contextAbort.signal);
+    expect(complete.mock.calls[0]?.[0].signal).toBe(contextAbort.signal);
+  });
+
+  it.each([
+    [new NodeAttemptConnectionFenceError(), 'provider_connection_fence_failed'],
+    [
+      new NodeAttemptDispatchBindingMismatchError(),
+      'provider_dispatch_binding_mismatch',
+    ],
+    [new Error('queue marker aborted'), undefined],
+  ] as const)(
+    'does not reopen dispatch permission after a pending marker rejects',
+    async (markerError, mappedCode) => {
+      const marker = Promise.withResolvers<{ dispatchedAt: Date }>();
+      const markDispatched = vi
+        .fn<NodeAttemptRunStore['markDispatched']>()
+        .mockReturnValue(marker.promise);
+      const complete = vi.fn<NodeAttemptRunStore['complete']>();
+      const registry: NodeExecutionRegistry = {
+        dispatchMode: () => 'executor_controlled',
+        execute: vi.fn(
+          async (request: Parameters<NodeExecutionRegistry['execute']>[0]) => {
+            const first = request.runtime?.beforeDispatch();
+            await Promise.resolve();
+            await expect(
+              request.runtime?.beforeDispatch({
+                providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+              }),
+            ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+            marker.reject(markerError);
+            await first;
+            return { kind: 'succeeded', output: null } as const;
+          },
+        ),
+      };
+      const runStore = executionStore({ complete, markDispatched });
+      const handler = createNodeAttemptHandler({
+        engine: {
+          prepare: vi.fn().mockReturnValue(registryPreparedAttempt()),
+        },
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 30,
+        reader: {
+          close: vi.fn(),
+          readForExecution: vi.fn().mockResolvedValue({
+            kind: 'v2_projection',
+            workflowVersion: projection(),
+          }),
+        },
+        registry,
+        runStore,
+        workerId: 'worker-1',
+      });
+
+      const handled = expect(
+        handler.handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects;
+      if (mappedCode === undefined) await handled.toBe(markerError);
+      else await handled.toMatchObject({ code: mappedCode });
+      expect(markDispatched).toHaveBeenCalledOnce();
+      expect(complete).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     [new NodeAttemptConnectionFenceError(), 'provider_connection_fence_failed'],
     [

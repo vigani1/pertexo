@@ -12,7 +12,7 @@ import {
   createRetentionEnforcementCoordinator,
 } from '../../src/lifecycle/retention.js';
 import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/run-artifact-retention.js';
-import { dropDisconnectedDatabase } from './disposable-database.js';
+import { createDisposableDatabaseFixture } from './disposable-database.js';
 
 export const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -43,18 +43,22 @@ export async function waitForPostgresLock(
 ): Promise<void> {
   const monitor = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    for (let attempt = 0; attempt < 200; attempt += 1) {
+    const deadline = Date.now() + 5_000;
+    do {
       const result = await monitor.query<{ blocked: boolean }>(
         `select exists (
            select 1 from pg_stat_activity
-            where application_name=$1 and wait_event_type='Lock'
+            where application_name=$1 and datname=$2
+              and wait_event_type='Lock'
          ) blocked`,
-        [applicationName],
+        [applicationName, databaseName],
       );
       if (result.rows[0]?.blocked === true) return;
       await new Promise<void>((resolve) => setImmediate(resolve));
-    }
-    throw new Error(`PostgreSQL application ${applicationName} did not block`);
+    } while (Date.now() < deadline);
+    throw new Error(
+      `PostgreSQL application ${applicationName} did not block in ${databaseName} within 5000ms`,
+    );
   } finally {
     await monitor.end();
   }
@@ -63,6 +67,10 @@ export const migrationUrl = withDatabase(migrationBaseUrl);
 export const maintenanceUrl = withDatabase(
   process.env.DATABASE_MAINTENANCE_URL ??
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+);
+export const apiUrl = withDatabase(
+  process.env.DATABASE_API_URL ??
+    'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo',
 );
 export const operatorUrl = withDatabase(
   process.env.DATABASE_OPERATOR_URL ??
@@ -78,50 +86,61 @@ export const runIds = [
 ] as const;
 export const cutoffAt = new Date('2026-08-01T00:00:00.000Z');
 export const zeroHash = '0'.repeat(64);
-export const retention = createRetentionDatabase(
-  parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
-  {
-    leaseOwner: 'retention-integration',
-    leaseSeconds: 60,
-    maxPagesPerBatch: 10,
-    pageSize: 2,
-  },
-);
-export const operator = createOperatorCommandDatabase(
-  parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
-);
-export let owner: Pool;
+export let retention!: ReturnType<typeof createRetentionDatabase>;
+export let operator!: ReturnType<typeof createOperatorCommandDatabase>;
+export let owner!: Pool;
+let databaseCreated = false;
+let retentionCreated = false;
+let operatorCreated = false;
+let ownerCreated = false;
+const disposable = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_maintenance',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
 
 beforeAll(async () => {
-  if (!sharedDatabase) {
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await admin.query(
-        `create database "${databaseName}" owner pertexo_owner`,
-      );
-      await admin.query(`revoke all on database "${databaseName}" from public`);
-      await admin.query(
-        `grant connect on database "${databaseName}" to pertexo_migration,
-         pertexo_maintenance,pertexo_api,pertexo_worker,pertexo_dispatcher,
-         pertexo_lifecycle_command,pertexo_operator`,
-      );
-    } finally {
-      await admin.end();
-    }
-    await migrateDatabase({
-      apiRuntimeRole: 'pertexo_api',
-      connectionString: migrationUrl,
-      dispatcherRole: 'pertexo_dispatcher',
-      lifecycleCommandRole: 'pertexo_lifecycle_command',
-      operatorRole: 'pertexo_operator',
-      maintenanceRole: 'pertexo_maintenance',
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    });
-  }
-  owner = new Pool({ connectionString: migrationUrl, max: 1 });
-  await owner.query('begin');
   try {
+    if (!sharedDatabase) {
+      await disposable.create();
+      databaseCreated = true;
+      await migrateDatabase({
+        apiRuntimeRole: 'pertexo_api',
+        connectionString: migrationUrl,
+        dispatcherRole: 'pertexo_dispatcher',
+        lifecycleCommandRole: 'pertexo_lifecycle_command',
+        operatorRole: 'pertexo_operator',
+        maintenanceRole: 'pertexo_maintenance',
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      });
+    }
+    retention = createRetentionDatabase(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+      {
+        leaseOwner: 'retention-integration',
+        leaseSeconds: 60,
+        maxPagesPerBatch: 10,
+        pageSize: 2,
+      },
+    );
+    retentionCreated = true;
+    operator = createOperatorCommandDatabase(
+      parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+    );
+    operatorCreated = true;
+    owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    ownerCreated = true;
+    await owner.query('begin');
     await owner.query('set local role pertexo_owner');
     await owner.query("select set_config('app.workspace_id',$1,true)", [
       workspaceId,
@@ -163,23 +182,49 @@ beforeAll(async () => {
     await owner.query('alter table app.workflow_runs force row level security');
     await owner.query('commit');
   } catch (error: unknown) {
-    await owner.query('rollback').catch(() => undefined);
-    throw error;
+    const failures: unknown[] = [error];
+    if (ownerCreated) await owner.query('rollback').catch(() => undefined);
+    const closed = await Promise.allSettled([
+      ...(retentionCreated ? [retention.close()] : []),
+      ...(operatorCreated ? [operator.close()] : []),
+      ...(ownerCreated ? [owner.end()] : []),
+    ]);
+    for (const result of closed)
+      if (result.status === 'rejected') failures.push(result.reason);
+    retentionCreated = false;
+    operatorCreated = false;
+    ownerCreated = false;
+    if (!sharedDatabase && databaseCreated) {
+      try {
+        await disposable.drop();
+        databaseCreated = false;
+      } catch (cleanupError: unknown) {
+        failures.push(cleanupError);
+      }
+    }
+    throw new AggregateError(failures, 'Retention fixture setup failed');
   }
 }, 120_000);
 
 afterAll(async () => {
-  await retention.close();
-  await operator.close();
-  await owner.end();
-  if (!sharedDatabase) {
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  const failures: unknown[] = [];
+  const closed = await Promise.allSettled([
+    ...(retentionCreated ? [retention.close()] : []),
+    ...(operatorCreated ? [operator.close()] : []),
+    ...(ownerCreated ? [owner.end()] : []),
+  ]);
+  for (const outcome of closed)
+    if (outcome.status === 'rejected') failures.push(outcome.reason);
+  if (!sharedDatabase && databaseCreated) {
     try {
-      await dropDisconnectedDatabase(admin, databaseName);
-    } finally {
-      await admin.end();
+      await disposable.drop();
+      databaseCreated = false;
+    } catch (error: unknown) {
+      failures.push(error);
     }
   }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Retention fixture cleanup failed');
 });
 
 export {

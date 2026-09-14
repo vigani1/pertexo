@@ -6,7 +6,6 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
   acceptPreviewRun,
-  readPreviewRun,
 } from './preview-execution-acceptance.js';
 export type {
   AcceptedPreviewRun,
@@ -14,6 +13,12 @@ export type {
   PreviewRunRecord,
   PreviewStatus,
 } from './preview-execution-acceptance.js';
+export { readPreviewRun } from './preview-execution-read.js';
+export { resolvePreviewReplay } from './preview-execution-replay.js';
+export type {
+  PreviewReplayRecord,
+  ResolvePreviewReplayInput,
+} from './preview-execution-replay.js';
 
 // ---------------------------------------------------------------------------
 // Worker-side execution seam.

@@ -1,8 +1,5 @@
 import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
-import type {
-  AcceptedPreviewRun,
-  WorkflowDraftRecord,
-} from '@pertexo/database/testing';
+import type { AcceptedPreviewRun } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingController } from '../../src/node-testing/controller.js';
@@ -12,57 +9,20 @@ import {
   GetPreviewRunUseCase,
   TestWorkflowNodeUseCase,
 } from '../../src/node-testing/use-case.js';
+import {
+  nodeTestingAcceptedAt,
+  nodeTestingDraft,
+  nodeTestingIds,
+  nodeTestingPreview,
+} from './fixture.js';
 
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const { actorId, workspaceId, workflowId } = nodeTestingIds;
 const guardActorId = '99999999-9999-4999-8999-999999999999';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const connectionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const previewRunId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const acceptedAt = new Date('2026-08-22T20:00:00.000Z');
+const acceptedAt = nodeTestingAcceptedAt;
 const expiresAt = new Date('2026-08-22T21:00:00.000Z');
 
-function draft(): WorkflowDraftRecord {
-  return {
-    workflowId,
-    workspaceId,
-    revision: 3,
-    schemaVersion: 1,
-    graphJson: {
-      schemaVersion: 1,
-      nodes: [
-        {
-          id: 'http',
-          definition: { key: 'http.request', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: {
-            method: 'POST',
-            url: 'https://provider.example.test/resource',
-            headers: {},
-            timeoutMillis: 1_000,
-            maxRedirects: 1,
-            maxResponseBytes: 1_024,
-            inlineResponseBytes: 512,
-          },
-          inputMappings: {
-            body: { kind: 'run_input', path: '$.body' },
-          },
-          connectionRefs: { http_headers: connectionId },
-        },
-      ],
-      edges: [],
-      settings: {},
-    },
-    compatibility: {
-      compatible: true,
-      fingerprint: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.fingerprint,
-      issues: [],
-    },
-    updatedBy: actorId,
-    updatedAt: new Date('2026-08-22T19:00:00.000Z'),
-  };
-}
+const draft = nodeTestingDraft;
 
 function controller() {
   const accepted: AcceptedPreviewRun = {
@@ -77,24 +37,10 @@ function controller() {
   const persistence = {
     getDraft: vi.fn().mockResolvedValue(draft()),
     acceptPreview: vi.fn().mockResolvedValue(accepted),
-    readPreview: vi.fn().mockResolvedValue({
-      id: previewRunId,
-      workspaceId,
-      workflowId,
-      draftRevision: 3,
-      nodeId: 'http',
-      status: 'queued' as const,
-      sideEffectClass: 'unsafe' as const,
-      mayContactProvider: true,
-      mayCauseExternalSideEffect: true,
-      dryRun: 'not_supported' as const,
-      output: null,
-      safeErrorCode: null,
-      createdAt: acceptedAt,
-      startedAt: null,
-      completedAt: null,
-      expiresAt,
-    }),
+    resolvePreviewReplay: vi.fn().mockResolvedValue(null),
+    readPreview: vi
+      .fn()
+      .mockResolvedValue(nodeTestingPreview({ id: previewRunId, expiresAt })),
   };
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
@@ -119,7 +65,7 @@ function controller() {
   };
 }
 
-function request(headers: Record<string, string> = {}) {
+function request(headers: Record<string, string | readonly string[]> = {}) {
   return {
     headers,
     requestId: 'request-node-test',
@@ -222,12 +168,58 @@ describe('node testing controller', () => {
     expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
     expect(execute).not.toHaveBeenCalled();
   });
+
+  it('maps deeply nested authenticated input to request.invalid before preview work', async () => {
+    const execute = vi.fn();
+    const instance = new NodeTestingController(
+      { execute } as never,
+      { execute: vi.fn() } as never,
+    );
+    const authenticated = request({
+      cookie: 'pertexo_session=session; pertexo_csrf=csrf-token',
+      'x-csrf-token': 'csrf-token',
+    });
+    const authorizedWorkspace = {
+      actor: {
+        actorId,
+        kind: 'user' as const,
+        workspaceId,
+        sessionId: authenticated.identitySession.sessionId,
+        requestId: authenticated.requestId,
+        traceId: authenticated.traceId,
+      },
+      workspaceId,
+      role: 'owner' as const,
+      capability: 'workflow:update' as const,
+    };
+    const sampleInput = JSON.parse(
+      `${'['.repeat(10_000)}null${']'.repeat(10_000)}`,
+    ) as unknown;
+
+    let thrown: unknown;
+    try {
+      await instance.test(
+        { ...authenticated, authorizedWorkspace },
+        params,
+        { mode: 'validate', expectedRevision: 3, sampleInput },
+        { status: vi.fn() },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(mapNodeTestingError(thrown)).toMatchObject({
+      code: 'request.invalid',
+    });
+    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('returns validation at 200 without requiring or using idempotency', async () => {
     const fixture = controller();
     const response = { status: vi.fn() };
     await expect(
       fixture.controller.test(
-        request(),
+        request({ 'Idempotency-Key': ['ignored', 'duplicate'] }),
         params,
         {
           mode: 'validate',
@@ -248,7 +240,11 @@ describe('node testing controller', () => {
     const response = { status: vi.fn() };
     await expect(
       fixture.controller.test(
-        request({ 'Idempotency-Key': 'preview-key' }),
+        request({
+          'Idempotency-Key': 'preview-key',
+          traceparent:
+            '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+        }),
         params,
         {
           mode: 'test_execute',
@@ -267,6 +263,11 @@ describe('node testing controller', () => {
     });
     expect(response.status).toHaveBeenCalledWith(202);
     expect(fixture.persistence.acceptPreview).toHaveBeenCalledTimes(1);
+    expect(fixture.persistence.acceptPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+      }),
+    );
   });
 
   it('maps missing execution idempotency to the stable precondition problem', async () => {
@@ -289,6 +290,35 @@ describe('node testing controller', () => {
     });
     expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['', 'empty'],
+    ['contains space', 'malformed'],
+    ['first,second', 'comma-folded'],
+    [['first', 'second'], 'multiple'],
+  ] as const)(
+    'rejects %s execution idempotency as %s',
+    async (value, label) => {
+      void label;
+      const fixture = controller();
+
+      await expect(
+        fixture.controller.test(
+          request({ 'Idempotency-Key': value }),
+          params,
+          {
+            mode: 'test_execute',
+            expectedRevision: 3,
+            acknowledgeSideEffects: true,
+            input: { kind: 'manual', value: {} },
+          },
+          { status: vi.fn() },
+        ),
+      ).rejects.toMatchObject({ name: 'InvalidIdempotencyKeyError' });
+      expect(fixture.persistence.resolvePreviewReplay).not.toHaveBeenCalled();
+      expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
+    },
+  );
 
   it('reads one scoped preview status without using production events', async () => {
     const fixture = controller();

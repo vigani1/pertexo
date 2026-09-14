@@ -31,21 +31,26 @@ export function coordinatorRuntimeProvider(
         )
       )
         return undefined;
-      return createCoordinatorRuntime({
-        database: config.database,
-        ...(dependencies.databaseRuntime === undefined
+      return createCoordinatorRuntime(
+        {
+          database: config.database,
+          ...(dependencies.databaseRuntime === undefined
+            ? {}
+            : { databaseRuntime: dependencies.databaseRuntime }),
+          dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
+          dueWakeupPollIntervalMillis:
+            config.coordinator.dueWakeupPollIntervalMillis,
+          maximumAdmissions: config.coordinator.maximumAdmissions,
+          runTimeoutFailureContextEnabled:
+            config.coordinator.runTimeoutFailureContextEnabled,
+          observer,
+          releaseCohort: config.nodeCompatibilityCohort,
+          redisUrl: config.redisUrl,
+        },
+        dependencies.logger === undefined
           ? {}
-          : { databaseRuntime: dependencies.databaseRuntime }),
-        dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
-        dueWakeupPollIntervalMillis:
-          config.coordinator.dueWakeupPollIntervalMillis,
-        maximumAdmissions: config.coordinator.maximumAdmissions,
-        runTimeoutFailureContextEnabled:
-          config.coordinator.runTimeoutFailureContextEnabled,
-        observer,
-        releaseCohort: config.nodeCompatibilityCohort,
-        redisUrl: config.redisUrl,
-      });
+          : { logger: dependencies.logger },
+      );
     },
   };
 }

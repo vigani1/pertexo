@@ -2,40 +2,22 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import {
   canonicalOutboxPayloadChecksum,
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
   createIdentityWorkspaceDatabase,
   createOutboxDispatcherDatabase,
   createScheduleTriggerScanner,
   createWorkflowAuthoringDatabase,
-  migrateDatabase,
-  parseDatabaseConfig,
-  type DatabaseConfig,
 } from '@pertexo/database/testing';
-import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
-} from '@pertexo/node-catalog';
 import {
   createQueueProducer,
   JOB_NAME,
   jobIdForOutboxEvent,
-  QUEUE_NAME,
 } from '@pertexo/queue';
-import {
-  buildWorkflowExecutableV2,
-  composeExecutableCompatibilityRelease,
-  createCheckpoint,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
-  describeExecutableCompatibilityRelease,
-} from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
-import { Queue } from 'bullmq';
-import { Pool, type QueryResultRow } from 'pg';
+import type { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
@@ -43,6 +25,11 @@ import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.j
 import { createTriggerRuntime } from '../src/triggers/trigger-runtime.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
+import {
+  createBenchmarkScanGate,
+  type BenchmarkScanGate,
+} from './support/benchmark-scan-gate.js';
+import { createScheduleTriggerFixture } from './support/schedule-trigger-fixture.js';
 
 function recordBenchmarkOperation(startedAt: number): void {
   if (process.env.PERTEXO_Q11_OPERATION_TIMING !== '1') return;
@@ -54,416 +41,72 @@ function recordBenchmarkOperation(startedAt: number): void {
 
 const enabled = process.env.WORKER_TRIGGER_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiBaseUrl =
-  process.env.DATABASE_API_URL ??
-  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerBaseUrl =
-  process.env.DATABASE_WORKER_URL ??
-  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
-const dispatcherBaseUrl =
-  process.env.DATABASE_DISPATCHER_URL ??
-  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
-const configuredRedisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
-const redisUrl = (() => {
-  const parsed = new URL(configuredRedisUrl);
-  parsed.pathname = '/13';
-  return parsed.toString();
-})();
-const runnerOwnsDatabase = process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
-const databaseName = (() => {
-  if (!runnerOwnsDatabase)
-    return `pertexo_test_worker_schedule_${randomUUID().replaceAll('-', '')}`;
-  const value = process.env.PERTEXO_Q11_DATABASE_NAME;
-  if (!value) throw new Error('Q11 runner-owned database name is required');
-  return value;
-})();
-const databaseUrl = (base: string): string => {
-  const parsed = new URL(base);
-  parsed.pathname = `/${databaseName}`;
-  return parsed.toString();
-};
-const databaseConfig = (base: string, max: number): DatabaseConfig =>
-  parseDatabaseConfig({ connectionString: databaseUrl(base), max });
-const actorId = randomUUID();
-const workspaceId = randomUUID();
-const releaseCohort = 'schedule_activation' as const;
-const scheduleCompatibility = createExecutableCompatibilityReleaseSupport(
-  platformRegistryReleaseSupport(releaseCohort).map(
-    composeExecutableCompatibilityRelease,
-  ),
-).descriptions;
-
-function authoringOptions() {
-  const nodeReleases = platformExecutableRegistryHistory(releaseCohort);
-  const history = createExecutableCompatibilityReleaseHistory(
-    nodeReleases.map(composeExecutableCompatibilityRelease),
-  );
-  const readiness = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
-  );
-  const variants = nodeReleases.map((nodeRelease) => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease);
-    const description = history.descriptions.find(
-      ({ epoch, fingerprint }) =>
-        epoch === release.epoch && fingerprint === release.fingerprint,
-    );
-    if (description === undefined)
-      throw new Error('Schedule compatibility description is missing');
-    const catalog = (placement: boolean) =>
-      Object.freeze({
-        schemaVersion: 1 as const,
-        releaseFingerprint: release.fingerprint,
-        definitions: Object.freeze(
-          nodeRelease.definitions
-            .filter(
-              (manifest) =>
-                (manifest.lifecycle === 'active' ||
-                  (!placement && manifest.lifecycle === 'deprecated')) &&
-                nodeRelease.executors.some(
-                  (executor) =>
-                    executor.lifecycle === 'active' &&
-                    executor.executor.key === manifest.executor.key &&
-                    executor.executor.version === manifest.executor.version,
-                ),
-            )
-            .map(({ definition, integration, connectionRequirements }) =>
-              Object.freeze({
-                ...definition,
-                ...(integration === undefined
-                  ? {}
-                  : {
-                      integration: Object.freeze({
-                        ...integration,
-                        connectionSlots: Object.freeze([
-                          ...connectionRequirements,
-                        ]),
-                      }),
-                    }),
-              }),
-            ),
-        ),
-      });
-    return {
-      compatibilityRelease: description,
-      definitionCatalog: catalog(false),
-      placementDefinitionCatalog: catalog(true),
-      executableCompiler: (
-        graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
-      ) => {
-        const compiled = buildWorkflowExecutableV2({ graph, release });
-        return {
-          checksum: compiled.checksum,
-          executableSchemaVersion: 2 as const,
-          executableJson: compiled.envelope,
-          compatibilityReleaseEpoch:
-            compiled.envelope.compatibilityReleaseEpoch,
-          compatibilityReleaseFingerprint:
-            compiled.envelope.compatibilityReleaseFingerprint,
-        };
-      },
-    };
-  });
-  const latest = variants.at(-1);
-  if (latest === undefined)
-    throw new Error('Schedule release history is empty');
-  return {
-    definitionCatalog: latest.definitionCatalog,
-    databaseOptions: {
-      compatibilityReadinessReleases: readiness.descriptions,
-      compatibilityReleaseVariants: variants,
-    },
-  };
-}
-
-function bullConnection() {
-  const parsed = new URL(redisUrl);
-  return {
-    db: Number(parsed.pathname.slice(1)),
-    host: parsed.hostname,
-    port: Number(parsed.port || 6379),
-    ...(parsed.password === ''
-      ? {}
-      : { password: decodeURIComponent(parsed.password) }),
-  };
-}
-
-async function dropDatabase(): Promise<void> {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    for (let attempt = 0; attempt < 500; attempt += 1) {
-      const active = await admin.query<{ count: number }>(
-        `select count(*)::int count from pg_stat_activity
-          where datname=$1 and pid<>pg_backend_pid()`,
-        [databaseName],
-      );
-      if (active.rows[0]?.count === 0) {
-        await admin.query(`drop database if exists "${databaseName}"`);
-        return;
-      }
-      await admin.query('select pg_sleep(0.02)');
-    }
-    throw new Error('Disposable schedule database retained connections');
-  } finally {
-    await admin.end();
-  }
-}
+const fixture = createScheduleTriggerFixture();
+const {
+  actorId,
+  apiConfig,
+  apiQuery,
+  authoringOptions,
+  dispatcherConfig,
+  ownerQuery,
+  ownerQueryIn,
+  redisUrl,
+  releaseCohort,
+  scheduleCompatibility,
+  workerConfig,
+  workerQuery,
+  workspaceId,
+} = fixture;
 
 describeIntegration('direct Schedule worker integration gate', () => {
-  const apiConfig = databaseConfig(apiBaseUrl, 8);
-  const workerConfig = databaseConfig(workerBaseUrl, 8);
-  const dispatcherConfig = databaseConfig(dispatcherBaseUrl, 2);
-  const owner = new Pool({
-    connectionString: databaseUrl(migrationBaseUrl),
-    max: 2,
-  });
-  const apiEvidence = new Pool({
-    connectionString: databaseUrl(apiBaseUrl),
-    max: 1,
-  });
-  const workerEvidence = new Pool({
-    connectionString: databaseUrl(workerBaseUrl),
-    max: 1,
-  });
-  const queue = new Queue(QUEUE_NAME.triggerLifecycle, {
-    connection: bullConnection(),
-  });
+  let queue: Queue;
   const resources: { close(): Promise<void> }[] = [];
+  let benchmarkScanGate: BenchmarkScanGate | undefined;
 
-  async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    return ownerQueryIn<Row>(workspaceId, statement, parameters);
+  function registerResource<Resource extends { close(): Promise<void> }>(
+    resource: Resource,
+  ): Resource {
+    resources.push(resource);
+    return resource;
   }
 
-  async function ownerQueryIn<Row extends QueryResultRow = QueryResultRow>(
-    scopedWorkspaceId: string,
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    const client = await owner.connect();
-    try {
-      await client.query('begin');
-      await client.query('set local role pertexo_owner');
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        scopedWorkspaceId,
-      ]);
-      const result = await client.query<Row>(statement, parameters);
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    const client = await workerEvidence.connect();
-    try {
-      await client.query('begin');
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
-      const result = await client.query<Row>(statement, parameters);
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
-    statement: string,
-    parameters: unknown[] = [],
-  ) {
-    const client = await apiEvidence.connect();
-    try {
-      await client.query('begin');
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
-      const result = await client.query<Row>(statement, parameters);
-      await client.query('commit');
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async function activateRelease(
-    targetRelease: ReturnType<typeof platformExecutableRegistryHistory>[number],
-  ): Promise<void> {
-    const target = describeExecutableCompatibilityRelease(
-      composeExecutableCompatibilityRelease(targetRelease),
-    );
-    const currentResult = await ownerQuery<{
-      catalog_json: unknown;
-      epoch: number;
-      fingerprint: string;
-    }>(
-      `select current.epoch,current.fingerprint,release.catalog_json
-         from app.node_compatibility_current current
-         join app.node_compatibility_releases release
-           on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-    );
-    const current = currentResult.rows[0];
-    if (current === undefined)
-      throw new Error('Compatibility pointer is missing');
-    if (
-      current.epoch === target.epoch &&
-      current.fingerprint === target.fingerprint
-    )
-      return;
-    const predecessor = {
-      catalogJson:
-        typeof current.catalog_json === 'string'
-          ? current.catalog_json
-          : JSON.stringify(current.catalog_json),
-      epoch: current.epoch,
-      fingerprint: current.fingerprint,
-    };
-    const maintenance = createCompatibilityReleaseMaintenance(
-      databaseConfig(migrationBaseUrl, 1),
-    );
-    const apiProbe = createCompatibilityReleaseReadinessProbe(apiConfig, [
-      predecessor,
-      target,
-    ]);
-    const workerProbe = createCompatibilityReleaseReadinessProbe(workerConfig, [
-      predecessor,
-      target,
-    ]);
-    const deploymentId = `schedule-release-${String(target.epoch)}-${randomUUID()}`;
-    const approvalId = randomUUID();
-    try {
-      await maintenance.prepare({
-        actorId: 'schedule-integration',
-        actorKind: 'deployment',
-        expectedPredecessor: predecessor,
-        reason: 'Prepare direct Schedule integration release',
-        target,
-      });
-      await Promise.all([
-        apiProbe.checkTarget(target),
-        workerProbe.checkTarget(target),
-      ]);
-      for (const roleKind of ['api', 'worker'] as const)
-        await maintenance.recordPreactivation({
-          artifactId: `schedule-${roleKind}-${String(target.epoch)}`,
-          checkId: randomUUID(),
-          deploymentId,
-          roleKind,
-          target,
-        });
-      await maintenance.approve({
-        actorId: 'schedule-integration',
-        approvalId,
-        deploymentId,
-        reason: 'Approve direct Schedule integration release',
-        requiredApiArtifacts: [`schedule-api-${String(target.epoch)}`],
-        requiredWorkerArtifacts: [`schedule-worker-${String(target.epoch)}`],
-        target,
-      });
-      await maintenance.activate({
-        activationId: randomUUID(),
-        actorId: 'schedule-integration',
-        actorKind: 'deployment',
-        approvalId,
-        expectedPredecessor: predecessor,
-        reason: 'Activate direct Schedule integration release',
-      });
-    } finally {
-      await Promise.allSettled([
-        maintenance.close(),
-        apiProbe.close(),
-        workerProbe.close(),
-      ]);
-    }
+  function transferResource(resource: { close(): Promise<void> }): void {
+    const index = resources.indexOf(resource);
+    if (index === -1)
+      throw new Error('Schedule fixture resource ownership is missing');
+    resources.splice(index, 1);
   }
 
   beforeAll(async () => {
-    if (!runnerOwnsDatabase) {
-      const admin = new Pool({ connectionString: adminUrl, max: 1 });
-      try {
-        await admin.query(
-          `create database "${databaseName}" owner pertexo_owner`,
-        );
-        await admin.query(
-          `revoke all on database "${databaseName}" from public`,
-        );
-        await admin.query(
-          `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
-        );
-      } finally {
-        await admin.end();
-      }
-    }
-    await migrateDatabase({
-      connectionString: databaseUrl(migrationBaseUrl),
-      ownerRole: 'pertexo_owner',
-      apiRuntimeRole: 'pertexo_api',
-      workerRuntimeRole: 'pertexo_worker',
-      dispatcherRole: 'pertexo_dispatcher',
-      maintenanceRole: 'pertexo_maintenance',
-      lifecycleCommandRole: 'pertexo_lifecycle_command',
-      operatorRole: 'pertexo_operator',
-    });
-    const releases = platformExecutableRegistryHistory(releaseCohort);
-    const currentResult = await ownerQuery<{
-      epoch: number;
-      fingerprint: string;
-    }>(
-      `select epoch,fingerprint
-         from app.node_compatibility_current
-        where singleton=true`,
-    );
-    const current = currentResult.rows[0];
-    const currentIndex = releases.findIndex((release) => {
-      const composed = composeExecutableCompatibilityRelease(release);
-      return (
-        composed.epoch === current?.epoch &&
-        composed.fingerprint === current.fingerprint
-      );
-    });
-    if (currentIndex === -1)
-      throw new Error('Current schedule compatibility release is unsupported');
-    for (const release of releases.slice(currentIndex))
-      await activateRelease(release);
-    await queue.obliterate({ force: true });
+    await fixture.setup();
+    queue = fixture.queue;
   }, 60_000);
 
   afterAll(async () => {
-    await Promise.allSettled(
-      resources.splice(0).map((resource) => resource.close()),
-    );
-    await Promise.allSettled([
-      queue.obliterate({ force: true }),
-      owner.end(),
-      apiEvidence.end(),
-      workerEvidence.end(),
-    ]);
-    await queue.close();
-    if (!runnerOwnsDatabase) await dropDatabase();
+    benchmarkScanGate?.release();
+    const cleanupErrors: unknown[] = [];
+    const attempt = async (
+      label: string,
+      operation: () => void | Promise<void>,
+    ): Promise<void> => {
+      await Promise.resolve()
+        .then(operation)
+        .catch((cause: unknown) => {
+          cleanupErrors.push(
+            new Error(`Schedule integration cleanup failed: ${label}`, {
+              cause,
+            }),
+          );
+        });
+    };
+    for (const resource of resources.splice(0).reverse())
+      await attempt('runtime resource', () => resource.close());
+    await attempt('fixture', () => fixture.close());
+    if (cleanupErrors.length > 0)
+      throw new AggregateError(
+        cleanupErrors,
+        'Schedule integration cleanup failed',
+      );
   }, 60_000);
 
   it('keeps PostgreSQL authoritative through reconciliation, contention, saturation, recovery, and drain', async () => {
@@ -480,13 +123,13 @@ describeIntegration('direct Schedule worker integration gate', () => {
       trace: () => undefined,
       warn: () => undefined,
     };
-    const identity = createIdentityWorkspaceDatabase(apiConfig);
-    const compatibility = authoringOptions();
-    const authoring = createWorkflowAuthoringDatabase(
-      apiConfig,
-      compatibility.databaseOptions,
+    const identity = registerResource(
+      createIdentityWorkspaceDatabase(apiConfig),
     );
-    resources.push(identity, authoring);
+    const compatibility = authoringOptions;
+    const authoring = registerResource(
+      createWorkflowAuthoringDatabase(apiConfig, compatibility.databaseOptions),
+    );
     await identity.createUser({
       id: actorId,
       email: `worker-schedule-${actorId}@example.test`,
@@ -530,6 +173,12 @@ describeIntegration('direct Schedule worker integration gate', () => {
       actorId,
       workspaceId,
       workflowId: created.workflowId,
+      representationTag: workflowDraftRepresentationTag({
+        workflowId: created.workflowId,
+        revision: created.draft.revision,
+        graph: created.draft.graphJson,
+        compatibilityFingerprint: created.draft.compatibility.fingerprint,
+      }),
       expectedRevision: 1,
       graphJson: graph,
     });
@@ -555,89 +204,103 @@ describeIntegration('direct Schedule worker integration gate', () => {
     const publicationEvent = await ownerQuery<{
       id: string;
       payload: Record<string, unknown>;
+      payload_checksum: string;
     }>(
-      `select id,payload from app.outbox_events where aggregate_id=$1
+      `select id,payload,payload_checksum from app.outbox_events where aggregate_id=$1
         and job_name='reconcile-workflow-triggers'`,
       [created.workflowId],
     );
     const event = publicationEvent.rows[0];
     if (event === undefined) throw new Error('Publication outbox is missing');
 
-    const runtimeScanner = createScheduleTriggerScanner(
-      workerConfig,
-      scheduleCompatibility,
-      workerConfig,
+    const runtimeScanner = registerResource(
+      createScheduleTriggerScanner(
+        workerConfig,
+        scheduleCompatibility,
+        workerConfig,
+      ),
     );
-    const benchmarkScanRelease = Promise.withResolvers<undefined>();
-    let benchmarkScanReleased =
-      process.env.PERTEXO_Q11_OPERATION_TIMING !== '1';
-    if (benchmarkScanReleased) benchmarkScanRelease.resolve(undefined);
-    let runtime = await createTriggerRuntime(
-      {
-        batchSize: 10,
+    benchmarkScanGate = createBenchmarkScanGate(
+      process.env.PERTEXO_Q11_OPERATION_TIMING === '1',
+    );
+    let runtime = registerResource(
+      await createTriggerRuntime(
+        {
+          batchSize: 10,
+          database: workerConfig,
+          leaseDurationSeconds: 5,
+          leaseOwner: 'schedule-runtime-one',
+          pollIntervalMillis: 25,
+          redisUrl,
+          releaseCohort,
+        },
+        {
+          logger,
+          scanner: {
+            close: () => {
+              return runtimeScanner.close();
+            },
+            scanDue: async (input) => {
+              await benchmarkScanGate?.wait(input.signal);
+              if (input.signal?.aborted === true) throw input.signal.reason;
+              const result = await runtimeScanner.scanDue(input);
+              scanResults.push(result);
+              return result;
+            },
+          },
+        },
+      ),
+    );
+    transferResource(runtimeScanner);
+    await runtime.consumer.waitUntilReady(5_000);
+    const coordinator = registerResource(
+      await createCoordinatorRuntime({
         database: workerConfig,
-        leaseDurationSeconds: 5,
-        leaseOwner: 'schedule-runtime-one',
-        pollIntervalMillis: 25,
+        maximumAdmissions: 10,
         redisUrl,
         releaseCohort,
-      },
-      {
-        logger,
-        scanner: {
-          close: () => {
-            benchmarkScanRelease.resolve(undefined);
-            return runtimeScanner.close();
-          },
-          scanDue: async (input) => {
-            await benchmarkScanRelease.promise;
-            const result = await runtimeScanner.scanDue(input);
-            scanResults.push(result);
-            return result;
-          },
-        },
-      },
+      }),
     );
-    resources.push(runtime);
-    await runtime.consumer.waitUntilReady(5_000);
-    const coordinator = await createCoordinatorRuntime({
-      database: workerConfig,
-      maximumAdmissions: 10,
-      redisUrl,
-      releaseCohort,
-    });
-    resources.push(coordinator);
     await coordinator.consumer.waitUntilReady(5_000);
     const drain = new WorkerDrainState();
-    const dispatcher = new OutboxDispatcher(
+    const dispatcherDatabase = registerResource(
       createOutboxDispatcherDatabase(dispatcherConfig),
-      createQueueProducer({ redisUrl }),
-      drain,
-      {
-        batchSize: 10,
-        enabledJobNames: [
-          JOB_NAME.reconcileWorkflowTriggers,
-          JOB_NAME.advanceWorkflowRun,
-        ],
-        leaseDurationMillis: 1_000,
-        leaseOwner: 'schedule-publication-dispatcher',
-        maxAttempts: 3,
-        operationTimeoutMillis: 5_000,
-        retryDelayMillis: 10,
-      },
-      undefined,
-      createDispatchConsumerCapabilityRegistry([
-        {
-          jobName: JOB_NAME.reconcileWorkflowTriggers,
-          consumer: runtime.consumer,
-        },
-        {
-          jobName: JOB_NAME.advanceWorkflowRun,
-          consumer: coordinator.consumer,
-        },
-      ]),
     );
-    resources.push(dispatcher);
+    const dispatcherProducer = registerResource(
+      createQueueProducer({ redisUrl }),
+    );
+    const dispatcher = registerResource(
+      new OutboxDispatcher(
+        dispatcherDatabase,
+        dispatcherProducer,
+        drain,
+        {
+          batchSize: 10,
+          enabledJobNames: [
+            JOB_NAME.reconcileWorkflowTriggers,
+            JOB_NAME.advanceWorkflowRun,
+          ],
+          leaseDurationMillis: 1_000,
+          leaseOwner: 'schedule-publication-dispatcher',
+          maxAttempts: 3,
+          operationTimeoutMillis: 5_000,
+          retryDelayMillis: 10,
+        },
+        undefined,
+        createDispatchConsumerCapabilityRegistry([
+          {
+            jobName: JOB_NAME.reconcileWorkflowTriggers,
+            consumer: runtime.consumer,
+          },
+          {
+            jobName: JOB_NAME.advanceWorkflowRun,
+            consumer: coordinator.consumer,
+          },
+        ]),
+      ),
+    );
+    transferResource(dispatcherDatabase);
+    transferResource(dispatcherProducer);
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
       published: 1,
     });
@@ -653,8 +316,23 @@ describeIntegration('direct Schedule worker integration gate', () => {
       },
       { timeout: 5_000, interval: 25 },
     );
-    await queue.remove(jobIdForOutboxEvent(event.id));
-    const duplicateProducer = createQueueProducer({ redisUrl });
+    const publicationJobId = jobIdForOutboxEvent(event.id);
+    await vi.waitFor(
+      async () => {
+        const publicationJob = await queue.getJob(publicationJobId);
+        const state = await publicationJob?.getState();
+        if (state === 'failed')
+          throw new Error('Publication reconciliation job failed');
+        expect(state).toBe('completed');
+      },
+      { timeout: 5_000, interval: 25 },
+    );
+    const publicationJob = await queue.getJob(publicationJobId);
+    await publicationJob?.remove();
+    await expect(queue.getJob(publicationJobId)).resolves.toBeUndefined();
+    const duplicateProducer = registerResource(
+      createQueueProducer({ redisUrl }),
+    );
     await duplicateProducer.waitUntilReady(5_000);
     await duplicateProducer.publish({
       name: JOB_NAME.reconcileWorkflowTriggers,
@@ -667,6 +345,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       },
     });
     await duplicateProducer.close();
+    transferResource(duplicateProducer);
     await vi.waitFor(
       async () => {
         const duplicateJob = await queue.getJob(jobIdForOutboxEvent(event.id));
@@ -726,10 +405,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       trigger_status: 'active',
     });
     const operationStartedAt = performance.now();
-    if (!benchmarkScanReleased) {
-      benchmarkScanReleased = true;
-      benchmarkScanRelease.resolve(undefined);
-    }
+    benchmarkScanGate.release();
     await vi.waitFor(
       async () => {
         const occurrences = await ownerQuery<{ count: string }>(
@@ -780,18 +456,21 @@ describeIntegration('direct Schedule worker integration gate', () => {
     recordBenchmarkOperation(operationStartedAt);
 
     await runtime.close();
-    resources.splice(resources.indexOf(runtime), 1);
-    const scannerOne = createScheduleTriggerScanner(
-      workerConfig,
-      scheduleCompatibility,
-      workerConfig,
+    transferResource(runtime);
+    const scannerOne = registerResource(
+      createScheduleTriggerScanner(
+        workerConfig,
+        scheduleCompatibility,
+        workerConfig,
+      ),
     );
-    const scannerTwo = createScheduleTriggerScanner(
-      workerConfig,
-      scheduleCompatibility,
-      workerConfig,
+    const scannerTwo = registerResource(
+      createScheduleTriggerScanner(
+        workerConfig,
+        scheduleCompatibility,
+        workerConfig,
+      ),
     );
-    resources.push(scannerOne, scannerTwo);
     const duplicateCheckpointFactory = () => ({
       engineVersion: 'phase3-engine-v1',
       checkpoint: createCheckpoint({
@@ -871,6 +550,13 @@ describeIntegration('direct Schedule worker integration gate', () => {
         actorId: scopedActorId,
         workspaceId: scopedWorkspaceId,
         workflowId: createdSchedule.workflowId,
+        representationTag: workflowDraftRepresentationTag({
+          workflowId: createdSchedule.workflowId,
+          revision: createdSchedule.draft.revision,
+          graph: createdSchedule.draft.graphJson,
+          compatibilityFingerprint:
+            createdSchedule.draft.compatibility.fingerprint,
+        }),
         expectedRevision: 1,
         graphJson: graph,
       });
@@ -903,39 +589,49 @@ describeIntegration('direct Schedule worker integration gate', () => {
       'fair',
     );
 
-    runtime = await createTriggerRuntime({
-      batchSize: 10,
-      database: workerConfig,
-      leaseDurationSeconds: 5,
-      leaseOwner: 'schedule-runtime-reconstructed',
-      pollIntervalMillis: 25,
-      redisUrl,
-      releaseCohort,
-    });
-    resources.push(runtime);
-    await runtime.consumer.waitUntilReady(5_000);
-    const recoveryDispatcher = new OutboxDispatcher(
-      createOutboxDispatcherDatabase(dispatcherConfig),
-      createQueueProducer({ redisUrl }),
-      new WorkerDrainState(),
-      {
+    runtime = registerResource(
+      await createTriggerRuntime({
         batchSize: 10,
-        enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
-        leaseDurationMillis: 1_000,
-        leaseOwner: 'schedule-recovery-dispatcher',
-        maxAttempts: 3,
-        operationTimeoutMillis: 5_000,
-        retryDelayMillis: 10,
-      },
-      undefined,
-      createDispatchConsumerCapabilityRegistry([
-        {
-          jobName: JOB_NAME.reconcileWorkflowTriggers,
-          consumer: runtime.consumer,
-        },
-      ]),
+        database: workerConfig,
+        leaseDurationSeconds: 5,
+        leaseOwner: 'schedule-runtime-reconstructed',
+        pollIntervalMillis: 25,
+        redisUrl,
+        releaseCohort,
+      }),
     );
-    resources.push(recoveryDispatcher);
+    await runtime.consumer.waitUntilReady(5_000);
+    const recoveryDatabase = registerResource(
+      createOutboxDispatcherDatabase(dispatcherConfig),
+    );
+    const recoveryProducer = registerResource(
+      createQueueProducer({ redisUrl }),
+    );
+    const recoveryDispatcher = registerResource(
+      new OutboxDispatcher(
+        recoveryDatabase,
+        recoveryProducer,
+        new WorkerDrainState(),
+        {
+          batchSize: 10,
+          enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+          leaseDurationMillis: 1_000,
+          leaseOwner: 'schedule-recovery-dispatcher',
+          maxAttempts: 3,
+          operationTimeoutMillis: 5_000,
+          retryDelayMillis: 10,
+        },
+        undefined,
+        createDispatchConsumerCapabilityRegistry([
+          {
+            jobName: JOB_NAME.reconcileWorkflowTriggers,
+            consumer: runtime.consumer,
+          },
+        ]),
+      ),
+    );
+    transferResource(recoveryDatabase);
+    transferResource(recoveryProducer);
     await expect(recoveryDispatcher.dispatchOnce()).resolves.toMatchObject({
       published: 2,
     });
@@ -991,7 +687,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
         [seededTriggerId, ageMinutes],
       );
     await runtime.close();
-    resources.splice(resources.indexOf(runtime), 1);
+    transferResource(runtime);
     await seedDue(workspaceId, saturatedTriggerId, 4);
     await seedDue(otherWorkspaceId, fairTriggerId, 3);
 
@@ -1114,8 +810,8 @@ describeIntegration('direct Schedule worker integration gate', () => {
       due: true,
       lease_owner: null,
     });
-    expect(canonicalOutboxPayloadChecksum(event.payload)).toMatch(
-      /^[0-9a-f]{64}$/u,
+    expect(event.payload_checksum).toBe(
+      canonicalOutboxPayloadChecksum(event.payload),
     );
     console.info(
       `Schedule worker integration completed in ${String(Math.round(performance.now() - startedAt))}ms`,

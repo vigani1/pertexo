@@ -8,6 +8,7 @@ export type {
   OperatorCommandDatabaseOptions,
 } from './operator-command-contracts.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { serializeBoundedPlainJson } from '../execution/outbox.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { OperatorCommandConflictError } from './operator-command-errors.js';
@@ -57,11 +58,7 @@ const targetWorkflowInputSchema = baseCommandInputSchema
   .strict();
 const replayRunInputSchema = baseCommandInputSchema
   .extend({
-    runInput: z
-      .json()
-      .refine(
-        (value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 65_536,
-      ),
+    runInput: z.unknown(),
     sourceRunId: z.uuid(),
     workflowVersionId: z.uuid(),
   })
@@ -77,7 +74,10 @@ const unknownEvidenceInputSchema = baseCommandInputSchema
   .extend({
     attemptId: z.uuid(),
     evidenceKind: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
-    evidenceRef: z.record(z.string(), z.unknown()),
+    evidenceRef: z.custom<Readonly<Record<string, unknown>>>(
+      (value) =>
+        typeof value === 'object' && value !== null && !Array.isArray(value),
+    ),
   })
   .strict();
 
@@ -196,6 +196,60 @@ const commandTypeSchema = z.enum([
   'trigger.reconcile',
   'unknown-outcome.record-evidence',
 ]);
+const persistedDateSchema = z
+  .union([z.date(), z.string()])
+  .pipe(z.coerce.date());
+const commandRecordRowSchema = z.object({
+  command_id: z.uuid(),
+  command_type: commandTypeSchema,
+  completed_at: persistedDateSchema.nullable(),
+  created_at: persistedDateSchema,
+  dry_run: z.boolean(),
+  command_outcome: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/u),
+  request_fingerprint: sha256HexSchema,
+  command_status: z.enum(['completed', 'failed', 'pending']),
+  result: z.record(z.string(), z.unknown()),
+});
+const redispatchRowSchema = z.object({
+  command_id: z.uuid(),
+  command_outcome: z.union([outcomeSchema, z.literal('conflict')]),
+  command_status: z.literal('completed'),
+  replayed: z.boolean(),
+});
+
+function decodeCommandRecord(
+  response: Readonly<{ rows: readonly Record<string, unknown>[] }>,
+): OperatorCommandRecord | null {
+  const source = response.rows[0];
+  if (source === undefined) return null;
+  const row = commandRecordRowSchema.parse(source);
+  const priorFailedAtSource = row.result.priorFailedAt ?? null;
+  const priorFailedAt = z
+    .union([persistedDateSchema, z.null()])
+    .parse(priorFailedAtSource);
+  return Object.freeze({
+    commandId: row.command_id,
+    commandType: row.command_type,
+    completedAt: row.completed_at,
+    createdAt: row.created_at,
+    dryRun: row.dry_run,
+    outcome: row.command_outcome,
+    priorErrorCode: z
+      .string()
+      .nullable()
+      .parse(row.result.priorErrorCode ?? null),
+    priorFailedAt,
+    priorPublishAttempts: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .nullable()
+      .parse(row.result.priorPublishAttempts ?? null),
+    result: Object.freeze(row.result),
+    requestFingerprint: row.request_fingerprint,
+    status: row.command_status,
+  });
+}
 
 export function createOperatorCommandDatabase(
   config: DatabaseConfig,
@@ -241,60 +295,28 @@ export function createOperatorCommandDatabase(
         })
         .strict()
         .parse(input);
-      const result = await runtime.transaction(
+      return runtime.transactionDecoded<
+        Record<string, unknown>,
+        OperatorCommandRecord | null
+      >(
         `select * from app.get_operator_command(
             $1::uuid,$2::uuid,$3::varchar,$4::varchar)`,
         [parsed.commandId, parsed.workspaceId, parsed.actorRef, parsed.reason],
+        decodeCommandRecord,
         parsed.signal,
       );
-      const row = result.rows[0];
-      if (row === undefined) return null;
-      const commandResult = z.record(z.string(), z.unknown()).parse(row.result);
-      return Object.freeze({
-        commandId: z.uuid().parse(row.command_id),
-        commandType: commandTypeSchema.parse(row.command_type),
-        completedAt:
-          row.completed_at === null
-            ? null
-            : new Date(z.union([z.string(), z.date()]).parse(row.completed_at)),
-        createdAt: new Date(
-          z.union([z.string(), z.date()]).parse(row.created_at),
-        ),
-        dryRun: z.boolean().parse(row.dry_run),
-        outcome: z
-          .string()
-          .regex(/^[a-z][a-z0-9_]{0,31}$/u)
-          .parse(row.command_outcome),
-        priorErrorCode: z
-          .string()
-          .nullable()
-          .parse(commandResult.priorErrorCode ?? null),
-        priorFailedAt:
-          commandResult.priorFailedAt == null
-            ? null
-            : new Date(
-                z
-                  .union([z.string(), z.date()])
-                  .parse(commandResult.priorFailedAt),
-              ),
-        priorPublishAttempts: z.coerce
-          .number()
-          .int()
-          .nonnegative()
-          .nullable()
-          .parse(commandResult.priorPublishAttempts ?? null),
-        result: Object.freeze(commandResult),
-        requestFingerprint: sha256HexSchema.parse(row.request_fingerprint),
-        status: z
-          .enum(['completed', 'failed', 'pending'])
-          .parse(row.command_status),
-      });
     },
     redispatchFailedOutbox: async (
       input: RedispatchFailedOutboxInput,
     ): Promise<OperatorCommandResult> => {
       const parsed = redispatchInputSchema.parse(input);
-      const result = await runtime.transaction(
+      const decoded = await runtime.transactionDecoded<
+        Record<string, unknown>,
+        Readonly<{
+          conflict: boolean;
+          result?: OperatorCommandResult;
+        }>
+      >(
         `select * from app.redispatch_failed_outbox_event(
             $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)`,
         [
@@ -305,19 +327,28 @@ export function createOperatorCommandDatabase(
           parsed.reason,
           parsed.dryRun,
         ],
+        (response) => {
+          const source = response.rows[0];
+          if (source === undefined)
+            throw new Error('Operator command returned no result');
+          const row = redispatchRowSchema.parse(source);
+          if (row.command_outcome === 'conflict') return { conflict: true };
+          return Object.freeze({
+            conflict: false,
+            result: Object.freeze({
+              commandId: row.command_id,
+              outcome: row.command_outcome,
+              replayed: row.replayed,
+              status: row.command_status,
+            }),
+          });
+        },
         parsed.signal,
       );
-      const row = result.rows[0];
-      if (row === undefined)
-        throw new Error('Operator command returned no result');
-      if (row.command_outcome === 'conflict')
-        throw new OperatorCommandConflictError();
-      return Object.freeze({
-        commandId: z.uuid().parse(row.command_id),
-        outcome: outcomeSchema.parse(row.command_outcome),
-        replayed: z.boolean().parse(row.replayed),
-        status: z.literal('completed').parse(row.command_status),
-      });
+      if (decoded.conflict) throw new OperatorCommandConflictError();
+      if (decoded.result === undefined)
+        throw new Error('Operator command result decoder is incomplete');
+      return decoded.result;
     },
     reconcileAttempt: async (input: ReconcileOperatorAttemptInput) => {
       const parsed = reconcileAttemptInputSchema.parse(input);
@@ -341,9 +372,11 @@ export function createOperatorCommandDatabase(
       input: RecordUnknownOutcomeEvidenceInput,
     ) => {
       const parsed = unknownEvidenceInputSchema.parse(input);
-      const serialized = JSON.stringify(parsed.evidenceRef);
-      if (Buffer.byteLength(serialized, 'utf8') > 4096)
-        throw new TypeError('Unknown outcome evidence exceeds 4096 bytes');
+      const serialized = serializeBoundedPlainJson(
+        parsed.evidenceRef,
+        4096,
+        'Unknown outcome evidence',
+      );
       return runtime.execute(
         `select * from app.record_operator_unknown_outcome_evidence(
           $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::jsonb,$6::varchar,$7::varchar)`,
@@ -376,6 +409,11 @@ export function createOperatorCommandDatabase(
     },
     replayRun: async (input: ReplayOperatorRunInput) => {
       const parsed = replayRunInputSchema.parse(input);
+      const serializedRunInput = serializeBoundedPlainJson(
+        parsed.runInput,
+        65_536,
+        'Operator replay input',
+      );
       return runtime.execute(
         'select * from app.request_operator_run_replay($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::jsonb,$6::varchar,$7::varchar,$8::boolean)',
         [
@@ -383,7 +421,7 @@ export function createOperatorCommandDatabase(
           parsed.workspaceId,
           parsed.sourceRunId,
           parsed.workflowVersionId,
-          JSON.stringify(parsed.runInput),
+          serializedRunInput,
           parsed.actorRef,
           parsed.reason,
           parsed.dryRun,

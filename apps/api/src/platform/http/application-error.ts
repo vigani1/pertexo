@@ -37,14 +37,17 @@ export function applicationError(
 }
 
 export function isApplicationError(value: unknown): value is ApplicationError {
-  if (typeof value !== 'object' || value === null || !('code' in value)) {
+  if (typeof value !== 'object' || value === null) return false;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, 'code');
+    if (descriptor === undefined || !('value' in descriptor)) return false;
+    return (
+      typeof descriptor.value === 'string' &&
+      Object.hasOwn(APPLICATION_ERROR_CATALOG, descriptor.value)
+    );
+  } catch {
     return false;
   }
-
-  const code = value.code;
-  return (
-    typeof code === 'string' && Object.hasOwn(APPLICATION_ERROR_CATALOG, code)
-  );
 }
 
 export function throwApplicationError(error: ApplicationError): never {

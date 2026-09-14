@@ -10,6 +10,11 @@ ADR 015 remains authoritative for those objectives.
 Each evidence file records the base commit plus a SHA-256 digest over the path
 and bytes of every tracked and untracked, non-ignored source file. A dirty-file
 count makes it explicit that the base commit alone is not the candidate. The
+runner captures that identity before the build, after the build and after all
+workloads. It runs `pnpm build` itself and hashes every generated `dist` file
+before and after measurement. A build-time source change aborts before workload
+execution; a later source or build-output change makes the evidence partial and
+therefore unacceptable to the producer, full runner and comparator. The
 record also includes OS release, architecture, CPU model/count, total memory,
 Node and pnpm versions, the declared harness seed, warmup rounds, measured
 rounds, named operation contracts, fixture populations and concurrency. Each
@@ -25,7 +30,10 @@ normalizes ephemeral loopback ports while retaining semantic configuration.
 The runner requires `PERTEXO_Q11_ISOLATED=1`. Set that flag only inside the
 Q02-owned local-quality service lifecycle, so a performance run cannot silently
 reuse a developer's PostgreSQL, Redis or object-store state. Evidence output is
-opened exclusively and cannot overwrite a prior run.
+reserved exclusively before the build or any workload starts. The producer
+validates its complete in-memory result before writing through that reservation,
+and a failed run removes only the exact file inode it created. It cannot
+overwrite or delete a prior run.
 
 The complete local qualification runs the checked-in manifest after it starts
 and migrates its owned services, writing the evidence beside that run's
@@ -96,8 +104,14 @@ boundary the harness resolves the measured database OID, resets only that OID's
 statistics, and filters the aggregate SQL calls and server execution time by the
 same `dbid`, without retaining statement text. This prevents the base and
 runner-owned shared databases from contaminating one another. Counts include
-the warmup and five measured commands and describe the scenario process tree,
-not one domain operation.
+fixture resets, the warmup and five measured commands and describe the scenario
+process tree, not one domain operation. Schema v5 calls these values statement
+executions rather than wire round trips and retains separate raw
+`fixtureReset`, `warmupWorkload`, `measuredWorkload` and `unclassified`
+measurements that reconcile to the scenario total. The owned PostgreSQL service
+sets `pg_stat_statements.max=20000`; the actual value is retained as a comparison
+setting so a different statistics capacity cannot masquerade as a comparable
+result.
 
 The runner samples every owned workload process group at 100 ms, including
 descendants after their launcher exits. Each round retains timestamped RSS,
@@ -113,14 +127,48 @@ PostgreSQL database size, connection count, active task count and lock waits
 every 250 ms without retaining a connection string. Repository-owned pools also
 emit a bounded checkout-duration histogram. The evidence fixture uses that
 production seam against the real maintenance role and records three deliberately
-contended acquisitions; SQL round trips observed by that instrumented client
-are retained as a count. Every runner-owned scenario gets a sampler connected
+contended acquisitions; SQL queries observed by that instrumented client are
+retained as a count. Every runner-owned scenario gets a sampler connected
 to the actual target database; it stops before database teardown and retains
 target-specific activity and `pg_stat_statements` totals. Runner-owned fixture
 databases retain the extension and sampler while the runner resets only their
 disposable application schemas before each warmup or measured command. This
 preserves each fixture's pristine-database contract without losing target-wide
 workload evidence.
+
+## Qualified schema-v5 evidence
+
+Disposable partial qualification run
+`2026-09-13t17-57-30-944z-28200-1dae2183` produced a complete schema-v5
+artifact with SHA-256
+`000b0ffc3a1fc9b65aa37cde28af76bcd5a8dd574961813720500c81b8507b67`.
+The producer and an independent self-comparison both accepted all eight
+scenarios. The source identity remained
+`e34c938ec7cce7057117305d03ca4f41ff9168636ceee4e29a2be8833b31ad6a`
+before build, after build and after measurement; the 2,839-file build identity
+remained
+`66e9d2b2b008d17e9a3578a7582ad88e76d64bf27c26f281f7ef45ff12956f50`.
+The checkout was explicitly dirty and bound by its complete source inventory,
+not represented as commit-only evidence.
+
+Each scenario retained five measured rounds with positive workload-process
+observations. Configured-base statement totals were 456 for event visibility
+and 8,964 for artifact streaming. Runner-owned target totals were 15,564 for
+authoring/publication, 22,176 for webhook admission, 21,665 for
+schedule-to-start, 13,260 for bounded loop, 1,836 for foreground alone and
+2,868 for retention versus foreground; the independently sampled base remained
+zero for those target-owned scenarios. The runtime record identifies PostgreSQL
+18.6, `pg_stat_statements` 1.12 with a 20,000-entry ceiling, three positive
+instrumented queries and all six structured maintenance-role outer-function
+plans. Source/build drift, missing process observations, absent SQL, malformed
+plans, incompatible settings and unreconciled phase totals all remain
+qualification failures. The run-owned containers and volumes were absent after
+cleanup.
+
+This local artifact supplies PF-06's measurement prerequisite but did not show
+a specific code, schema or index regression that justifies an optimization.
+The historical investigation bands remain non-SLO diagnostics; no automated
+latency gate was introduced.
 
 ## Historical schema-v2 baseline
 

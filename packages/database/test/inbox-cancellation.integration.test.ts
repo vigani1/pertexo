@@ -27,10 +27,15 @@ const withDatabase = (baseUrl: string) => {
   return url.toString();
 };
 const migrationUrl = withDatabase(migrationBaseUrl);
-const workerUrl = withDatabase(
-  process.env.DATABASE_WORKER_URL ??
-    'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
+const workerUrlValue = new URL(
+  withDatabase(
+    process.env.DATABASE_WORKER_URL ??
+      'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo',
+  ),
 );
+const workerApplicationName = `inbox-cancellation-${randomUUID()}`;
+workerUrlValue.searchParams.set('application_name', workerApplicationName);
+const workerUrl = workerUrlValue.toString();
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
@@ -83,14 +88,20 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await workerDatabase.close();
-  await owner?.end();
+  const closed = await Promise.allSettled([
+    workerDatabase.close(),
+    owner?.end(),
+  ]);
+  const closeFailure = closed.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  );
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }
+  if (closeFailure !== undefined) throw closeFailure.reason;
 });
 
 describe('inbox PostgreSQL cancellation', () => {
@@ -125,9 +136,42 @@ describe('inbox PostgreSQL cancellation', () => {
       },
       { signal: controller.signal },
     );
-    await queryStarted.promise;
-    controller.abort(new Error('cancel inbox transaction'));
-    await expect(consuming).rejects.toMatchObject({ name: 'AbortError' });
+    const consumingOutcome = consuming.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (error: unknown) => ({ error, status: 'rejected' as const }),
+    );
+    let aborted = false;
+    try {
+      await queryStarted.promise;
+      const observer = new Pool({ connectionString: adminUrl, max: 1 });
+      try {
+        await expect
+          .poll(async () => {
+            const observed = await observer.query<{ running: boolean }>(
+              `select exists(
+               select 1 from pg_stat_activity
+                where datname=$1 and usename='pertexo_worker'
+                  and query like '%pg_sleep%'
+                  and state='active'
+             ) running`,
+              [databaseName],
+            );
+            return observed.rows[0]?.running;
+          })
+          .toBe(true);
+      } finally {
+        await observer.end();
+      }
+      controller.abort(new Error('cancel inbox transaction'));
+      aborted = true;
+      const canceled = await consumingOutcome;
+      expect(canceled.status).toBe('rejected');
+      if (canceled.status === 'rejected')
+        expect(canceled.error).toMatchObject({ name: 'AbortError' });
+    } finally {
+      if (!aborted) controller.abort(new Error('cancel failed inbox test'));
+      await consumingOutcome;
+    }
 
     await owner.query('begin');
     try {

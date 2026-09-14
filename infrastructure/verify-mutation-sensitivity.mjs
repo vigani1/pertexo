@@ -21,6 +21,7 @@ import {
   OwnedProcessSupervisor,
   runManagedCommand,
 } from './owned-process-tree.mjs';
+import { isolatedGitEnvironment } from './git-environment.mjs';
 import { preserveTemporaryDirectoryFailure } from './temporary-directory-cleanup.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -74,7 +75,7 @@ export const MUTATIONS = Object.freeze([
       'exec',
       'vitest',
       'run',
-      'test/node-attempt-handler-part-2.test.ts',
+      'test/node-attempt-outcomes.test.ts',
       '-t',
       'preserves prior dispatch uncertainty',
     ],
@@ -172,19 +173,25 @@ export const MUTATIONS = Object.freeze([
   }),
 ]);
 
-async function sourceFiles() {
-  const result = await run(
+async function sourceFiles(sourceRoot = root, environment = process.env) {
+  const result = await runMutationCommand(
     'git',
     ['ls-files', '-co', '--exclude-standard', '-z'],
-    root,
+    sourceRoot,
+    180_000,
+    environment,
   );
   if (!result.ok) throw new Error('Could not enumerate the candidate source');
   return result.stdout.split('\0').filter(Boolean).sort();
 }
 
-async function copyCandidate(destination) {
-  for (const relative of await sourceFiles()) {
-    const source = path.join(root, relative);
+export async function copyMutationCandidate(
+  destination,
+  sourceRoot = root,
+  environment = process.env,
+) {
+  for (const relative of await sourceFiles(sourceRoot, environment)) {
+    const source = path.join(sourceRoot, relative);
     const target = path.join(destination, relative);
     let metadata;
     try {
@@ -200,59 +207,133 @@ async function copyCandidate(destination) {
   }
 }
 
-async function run(command, args, cwd, timeoutMillis = 180_000) {
-  const supervisor = new OwnedProcessSupervisor();
+export async function runMutationCommand(
+  command,
+  args,
+  cwd,
+  timeoutMillis = 180_000,
+  environment = process.env,
+  dependencies = {},
+) {
+  const supervisor = dependencies.supervisor ?? new OwnedProcessSupervisor();
   let stdout = '';
   let stderr = '';
   let timedOut = false;
+  let timeoutTermination;
+  const append = (current, chunk, streamName) => {
+    const next = current + String(chunk);
+    if (Buffer.byteLength(next) > 16 * 1024 * 1024)
+      throw new Error(
+        `${command} ${streamName} exceeded the 16 MiB capture limit`,
+      );
+    return next;
+  };
   const timeout = setTimeout(() => {
     timedOut = true;
-    void supervisor.terminateAll('SIGTERM').catch(() => undefined);
+    timeoutTermination = supervisor.terminateAll('SIGTERM').then(
+      () => ({ failed: false, error: undefined }),
+      (error) => ({ failed: true, error }),
+    );
   }, timeoutMillis);
   const startedAt = performance.now();
+  let commandError;
+  let commandFailed = false;
   try {
     await runManagedCommand({
       args,
       command,
       failure: (code, signal) =>
         new Error(`${command} failed (${String(code ?? signal)})`),
-      onStdout: (chunk) => (stdout += String(chunk)),
-      onStderr: (chunk) => (stderr += String(chunk)),
+      onStdout: (chunk) => (stdout = append(stdout, chunk, 'stdout')),
+      onStderr: (chunk) => (stderr = append(stderr, chunk, 'stderr')),
       releaseOwned: supervisor.release.bind(supervisor),
       spawnOwned: (file, arguments_, options) =>
         supervisor.spawn(file, arguments_, options),
-      spawnOptions: { cwd, env: { ...process.env, CI: '1' } },
+      spawnOptions: {
+        cwd,
+        env: { ...isolatedGitEnvironment(environment), CI: '1' },
+      },
     });
-    return {
-      ok: true,
-      stdout,
-      stderr,
-      durationMs: performance.now() - startedAt,
-    };
   } catch (error) {
-    if (timedOut)
-      throw new Error(
-        `${command} timed out after ${String(timeoutMillis)} ms`,
-        {
-          cause: error,
-        },
-      );
-    return {
-      ok: false,
-      stdout,
-      stderr,
-      error: error instanceof Error ? error.message : String(error),
-      durationMs: performance.now() - startedAt,
-    };
-  } finally {
-    clearTimeout(timeout);
-    await supervisor.terminateAll('SIGKILL').catch(() => undefined);
+    commandFailed = true;
+    commandError = error;
   }
+  clearTimeout(timeout);
+  const cleanupFailures = [];
+  const timedTermination = await timeoutTermination;
+  if (timedTermination?.failed) cleanupFailures.push(timedTermination.error);
+  try {
+    await supervisor.terminateAll('SIGKILL');
+  } catch (error) {
+    cleanupFailures.push(error);
+  }
+  if (timedOut) {
+    const timeoutError = new Error(
+      `${command} timed out after ${String(timeoutMillis)} ms`,
+      commandFailed ? { cause: commandError } : undefined,
+    );
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [timeoutError, ...cleanupFailures],
+        `${command} timed out and cleanup failed`,
+      );
+    throw timeoutError;
+  }
+  if (cleanupFailures.length > 0) {
+    const errors = commandFailed
+      ? [commandError, ...cleanupFailures]
+      : cleanupFailures;
+    throw errors.length === 1
+      ? errors[0]
+      : new AggregateError(errors, `${command} cleanup failed`);
+  }
+  const durationMs = performance.now() - startedAt;
+  return commandFailed
+    ? {
+        ok: false,
+        stdout,
+        stderr,
+        error:
+          commandError instanceof Error
+            ? commandError.message
+            : String(commandError),
+        durationMs,
+      }
+    : { ok: true, stdout, stderr, durationMs };
 }
 
-async function requireGreen(command, cwd, label) {
+export async function initializeSnapshotRepository(
+  snapshot,
+  environment = process.env,
+) {
+  for (const [command, label] of [
+    [['git', 'init'], 'Snapshot Git initialization'],
+    [
+      ['git', 'config', 'user.name', 'Pertexo mutation verifier'],
+      'Snapshot Git user',
+    ],
+    [
+      ['git', 'config', 'user.email', 'mutation-verifier@invalid.test'],
+      'Snapshot Git email',
+    ],
+    [['git', 'add', '-A'], 'Snapshot Git staging'],
+    [
+      ['git', 'commit', '-m', 'test: snapshot mutation candidate'],
+      'Snapshot Git commit',
+    ],
+  ])
+    await requireGreen(command, snapshot, label, environment);
+}
+
+async function requireGreen(command, cwd, label, environment = process.env) {
   const [file, ...args] = command;
-  const result = await run(file, args, cwd);
+  const result = await runMutationCommand(
+    file,
+    args,
+    cwd,
+    180_000,
+    environment,
+  );
   if (!result.ok)
     throw new Error(
       `${label} did not pass:\n${`${result.stdout}\n${result.stderr}`.slice(-4_000)}`,
@@ -290,7 +371,7 @@ export function validateMutationDefinitions(mutations = MUTATIONS) {
   return mutations;
 }
 
-export async function verifyMutationSensitivity() {
+export async function verifyMutationSensitivity(environment = process.env) {
   validateMutationDefinitions();
   const directory = await mkdtemp(
     path.join(os.tmpdir(), 'pertexo-mutation-sensitivity-'),
@@ -300,34 +381,20 @@ export async function verifyMutationSensitivity() {
   let primary = { error: undefined, failed: false };
   try {
     await mkdir(snapshot);
-    await copyCandidate(snapshot);
+    await copyMutationCandidate(snapshot, root, environment);
     await requireGreen(
       ['pnpm', 'install', '--offline', '--frozen-lockfile', '--ignore-scripts'],
       snapshot,
       'Snapshot dependency installation',
-    );
-    await requireGreen(['pnpm', 'build'], snapshot, 'Snapshot build');
-    await requireGreen(
-      ['git', 'init'],
-      snapshot,
-      'Snapshot Git initialization',
+      environment,
     );
     await requireGreen(
-      ['git', 'config', 'user.name', 'Pertexo mutation verifier'],
+      ['pnpm', 'build'],
       snapshot,
-      'Snapshot Git user',
+      'Snapshot build',
+      environment,
     );
-    await requireGreen(
-      ['git', 'config', 'user.email', 'mutation-verifier@invalid.test'],
-      snapshot,
-      'Snapshot Git email',
-    );
-    await requireGreen(['git', 'add', '-A'], snapshot, 'Snapshot Git staging');
-    await requireGreen(
-      ['git', 'commit', '-m', 'test: snapshot mutation candidate'],
-      snapshot,
-      'Snapshot Git commit',
-    );
+    await initializeSnapshotRepository(snapshot, environment);
     for (const mutation of MUTATIONS) {
       process.stderr.write(`Mutation red/green: ${mutation.id}\n`);
       const original = await applyMutation(
@@ -340,9 +407,16 @@ export async function verifyMutationSensitivity() {
           mutation.prepare,
           snapshot,
           `${mutation.id} red build`,
+          environment,
         );
       const [file, ...args] = mutation.command;
-      const red = await run(file, args, snapshot);
+      const red = await runMutationCommand(
+        file,
+        args,
+        snapshot,
+        180_000,
+        environment,
+      );
       const redOutput = `${red.stdout}\n${red.stderr}`;
       if (
         red.ok ||
@@ -358,11 +432,13 @@ export async function verifyMutationSensitivity() {
           mutation.prepare,
           snapshot,
           `${mutation.id} restored build`,
+          environment,
         );
       const green = await requireGreen(
         mutation.command,
         snapshot,
         `${mutation.id} restored test`,
+        environment,
       );
       evidence.push({
         id: mutation.id,

@@ -87,20 +87,41 @@ describe('preview worker attempt lifecycle', () => {
     expect(completed.kind).toBe('committed');
 
     const runState = await scopedQuery<{
+      attempt_output_ref: unknown;
+      attempt_output_type: string | null;
       status: string;
       output_ref: unknown;
+      output_type: string | null;
       safe_error_code: string | null;
       completed_at: Date | null;
     }>(
-      `select status,output_ref,safe_error_code,completed_at
-       from app.preview_runs where workspace_id=$1 and id=$2`,
+      `select run.status,run.output_ref,run.safe_error_code,run.completed_at,
+              jsonb_typeof(run.output_ref) as output_type,
+              attempt.output_ref as attempt_output_ref,
+              jsonb_typeof(attempt.output_ref) as attempt_output_type
+       from app.preview_runs run
+       join app.preview_attempts attempt
+         on attempt.workspace_id=run.workspace_id
+        and attempt.preview_run_id=run.id
+       where run.workspace_id=$1 and run.id=$2`,
       [workspaceId, claimed.fixture.previewRunId],
     );
     expect(runState.rows[0]).toMatchObject({
+      attempt_output_ref: {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: { done: true },
+      },
+      attempt_output_type: 'object',
+      output_ref: {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: { done: true },
+      },
+      output_type: 'object',
       safe_error_code: null,
       status: 'succeeded',
     });
-    expect(runState.rows[0]?.output_ref).not.toBeNull();
     expect(runState.rows[0]?.completed_at).not.toBeNull();
 
     const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
@@ -207,6 +228,99 @@ describe('preview worker attempt lifecycle', () => {
     const facts = await previewTerminalFacts(fixture.previewRunId);
     expect(facts.audit).toHaveLength(1);
     expect(facts.usage).toHaveLength(1);
+  });
+
+  it('rejects changed terminal replay values and identities without new facts', async () => {
+    const success = await claimFixture(
+      await acceptFixture(),
+      'worker-preview-exact-success',
+    );
+    const originalOutput = {
+      schemaVersion: 1,
+      kind: 'inline',
+      value: { quoted: 'a "quote" and a \\ slash' },
+    } as const;
+    await completePreviewAttempt(workerPool, {
+      delivery: success.fixture.delivery,
+      lease: success.lease,
+      outcome: { output: originalOutput, status: PREVIEW_STATUS.succeeded },
+      workerId: success.workerId,
+    });
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: success.fixture.delivery,
+        lease: success.lease,
+        outcome: { output: originalOutput, status: PREVIEW_STATUS.succeeded },
+        workerId: success.workerId,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: success.fixture.delivery,
+        lease: success.lease,
+        outcome: {
+          output: {
+            schemaVersion: 1,
+            kind: 'inline',
+            value: { quoted: 'changed' },
+          },
+          status: PREVIEW_STATUS.succeeded,
+        },
+        workerId: success.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'completion_lost' });
+
+    const failure = await claimFixture(
+      await acceptFixture(),
+      'worker-preview-exact-failure',
+    );
+    await completePreviewAttempt(workerPool, {
+      delivery: failure.fixture.delivery,
+      lease: failure.lease,
+      outcome: {
+        safeErrorCode: 'preview.provider_rejected',
+        status: PREVIEW_STATUS.failed,
+      },
+      workerId: failure.workerId,
+    });
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: failure.fixture.delivery,
+        lease: failure.lease,
+        outcome: {
+          safeErrorCode: 'preview.changed_error',
+          status: PREVIEW_STATUS.failed,
+        },
+        workerId: failure.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'completion_lost' });
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: success.fixture.delivery,
+        lease: { ...success.lease, previewRunId: failure.fixture.previewRunId },
+        outcome: { output: originalOutput, status: PREVIEW_STATUS.succeeded },
+        workerId: success.workerId,
+      }),
+    ).rejects.toBeInstanceOf(PreviewDeliveryMismatchError);
+
+    const successFacts = await previewTerminalFacts(
+      success.fixture.previewRunId,
+    );
+    const failureFacts = await previewTerminalFacts(
+      failure.fixture.previewRunId,
+    );
+    expect(successFacts.audit).toHaveLength(1);
+    expect(successFacts.usage).toHaveLength(1);
+    expect(failureFacts.audit).toHaveLength(1);
+    expect(failureFacts.usage).toHaveLength(1);
+    const mismatchFacts = await scopedQuery<{ count: string }>(
+      `select count(*)::text count
+       from app.transport_security_audit_facts
+       where workspace_id=$1 and consumer_name='preview-attempt-worker'
+         and message_id=$2`,
+      [workspaceId, success.fixture.delivery.outboxEventId],
+    );
+    expect(mismatchFacts.rows).toEqual([{ count: '1' }]);
   });
 
   it('rolls the terminal transition back when its facts cannot commit', async () => {
@@ -451,5 +565,145 @@ describe('preview worker attempt lifecycle', () => {
         workerId: second.workerId,
       }),
     ).rejects.toMatchObject({ code: 'connection_fence_failed' });
+  });
+
+  it('separates lease expiry from fence replacement for truthful completion', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-preview-expired-current',
+      5,
+    );
+    await expireLease(claimed.fixture.previewAttemptId);
+
+    await expect(
+      markPreviewDispatched(workerPool, {
+        lease: claimed.lease,
+        workerId: claimed.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'dispatch_marker_lost' });
+    await expect(
+      heartbeatPreviewLease(workerPool, {
+        lease: claimed.lease,
+        leaseDurationSeconds: 30,
+        workerId: claimed.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'heartbeat_lost' });
+
+    // Expiry stops new provider authority, while an unchanged owner/token may
+    // still record provider truth until reconciliation replaces the fence.
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: claimed.fixture.delivery,
+        lease: claimed.lease,
+        outcome: {
+          output: { schemaVersion: 1, kind: 'inline', value: 'confirmed' },
+          status: PREVIEW_STATUS.succeeded,
+        },
+        workerId: claimed.workerId,
+      }),
+    ).resolves.toEqual({ kind: 'committed' });
+  });
+
+  it('bounds claim ownership by the immutable execution deadline', async () => {
+    const executionDeadlineAt = new Date(Date.now() + 2_000);
+    const claimed = await claimFixture(
+      await acceptFixture({
+        executionDeadlineAt,
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+      'worker-preview-deadline-bounded',
+      3_600,
+    );
+    expect(claimed.lease.executionDeadlineAt.getTime()).toBe(
+      executionDeadlineAt.getTime(),
+    );
+    const state = await scopedQuery<{ lease_expires_at: Date }>(
+      `select lease_expires_at from app.preview_attempts
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, claimed.fixture.previewAttemptId],
+    );
+    expect(state.rows[0]?.lease_expires_at.getTime()).toBeLessThanOrEqual(
+      executionDeadlineAt.getTime(),
+    );
+  });
+
+  it('terminalizes a queued preview before a post-deadline claim reaches a provider', async () => {
+    const executionDeadlineAt = new Date(Date.now() + 1_500);
+    const fixture = await acceptFixture({
+      executionDeadlineAt,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    let deadlineReached = false;
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      const clock = await scopedQuery<{ reached: boolean }>(
+        `select clock_timestamp() >= $1::timestamptz reached`,
+        [executionDeadlineAt],
+      );
+      deadlineReached = clock.rows[0]?.reached === true;
+      if (deadlineReached) break;
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    }
+    expect(deadlineReached).toBe(true);
+
+    await expect(
+      claimPreviewDelivery(workerPool, {
+        delivery: fixture.delivery,
+        leaseDurationSeconds: 30,
+        previewAttemptId: fixture.previewAttemptId,
+        previewRunId: fixture.previewRunId,
+        workerId: 'worker-preview-after-deadline',
+        workspaceId,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+
+    const state = await scopedQuery<{
+      attempt_fence_token: string;
+      attempt_status: string;
+      completed_receipts: number;
+      reconciliation_deliveries: number;
+      run_status: string;
+    }>(
+      `select attempt.status attempt_status,run.status run_status,
+              attempt.fence_token::text attempt_fence_token,
+              (select count(*)::int from app.inbox_receipts
+                where workspace_id=$1 and message_id=$4
+                  and completed_at is not null) completed_receipts,
+              (select count(*)::int from app.outbox_events
+                where workspace_id=$1 and aggregate_id=$2
+                  and job_name='reconcile-preview-attempt')
+                reconciliation_deliveries
+         from app.preview_runs run
+         join app.preview_attempts attempt
+           on attempt.workspace_id=run.workspace_id
+          and attempt.preview_run_id=run.id
+        where run.workspace_id=$1 and run.id=$2 and attempt.id=$3`,
+      [
+        workspaceId,
+        fixture.previewRunId,
+        fixture.previewAttemptId,
+        fixture.delivery.outboxEventId,
+      ],
+    );
+    expect(state.rows).toEqual([
+      {
+        attempt_fence_token: '1',
+        attempt_status: PREVIEW_STATUS.timedOut,
+        completed_receipts: 1,
+        reconciliation_deliveries: 0,
+        run_status: PREVIEW_STATUS.timedOut,
+      },
+    ]);
+    const facts = await previewTerminalFacts(fixture.previewRunId);
+    expect(facts.audit).toHaveLength(1);
+    expect(facts.audit[0]?.metadata).toMatchObject({
+      previewAttemptId: fixture.previewAttemptId,
+      status: PREVIEW_STATUS.timedOut,
+    });
+    expect(facts.usage).toHaveLength(1);
+    expect(facts.usage[0]).toMatchObject({
+      idempotency_key: `preview-terminal:${fixture.previewRunId}`,
+      metadata: { status: PREVIEW_STATUS.timedOut },
+      quantity: '1',
+    });
   });
 });

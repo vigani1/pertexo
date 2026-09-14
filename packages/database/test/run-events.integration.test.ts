@@ -13,13 +13,26 @@ import {
   appendRunEvent,
   readRunEventsAfter,
 } from '../src/execution/run-events.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_events_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_worker'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
 const worker = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
 );
@@ -102,9 +115,31 @@ async function acceptRun(): Promise<string> {
   });
 }
 
-beforeAll(() => migrateDatabase(migrationConfig));
+beforeAll(async () => {
+  await disposableDatabase.create();
+  try {
+    await migrateDatabase(migrationConfig);
+  } catch (error: unknown) {
+    await disposableDatabase.drop().catch(() => undefined);
+    throw error;
+  }
+});
 beforeEach(resetFixture);
-afterAll(() => worker.close());
+afterAll(async () => {
+  const failures: unknown[] = [];
+  try {
+    await worker.close();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  try {
+    await disposableDatabase.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Run-event fixture cleanup failed');
+});
 
 describe('run event persistence', () => {
   it('appends bounded versioned events and reads a gapless page', async () => {
@@ -157,6 +192,66 @@ describe('run event persistence', () => {
         }),
       ),
     ).rejects.toThrow('execution.run_event_gap');
+  });
+
+  it('serializes concurrent appends into consecutive event identities', async () => {
+    const runId = await acceptRun();
+    const sequences = await Promise.all(
+      [25, 50].map((progress) =>
+        worker.withWorkspace(workspaceId, (transaction) =>
+          appendRunEvent(transaction, {
+            event: { payload: { progress }, type: 'node.progress' },
+            runId,
+          }),
+        ),
+      ),
+    );
+    expect(sequences.toSorted()).toEqual([2, 3]);
+    const page = await worker.withWorkspace(workspaceId, (transaction) =>
+      readRunEventsAfter(transaction, {
+        afterSequence: 1,
+        limit: 10,
+        runId,
+      }),
+    );
+    expect(page.events.map((event) => event.sequence)).toEqual([2, 3]);
+    expect(page.highWaterSequence).toBe(3);
+  });
+
+  it('keeps empty, middle, tail, and beyond-history page metadata coherent', async () => {
+    const runId = await acceptRun();
+    for (const progress of [25, 50, 75])
+      await worker.withWorkspace(workspaceId, (transaction) =>
+        appendRunEvent(transaction, {
+          event: { payload: { progress }, type: 'node.progress' },
+          runId,
+        }),
+      );
+
+    const read = (afterSequence: number, limit: number) =>
+      worker.withWorkspace(workspaceId, (transaction) =>
+        readRunEventsAfter(transaction, { afterSequence, limit, runId }),
+      );
+    await expect(read(1, 2)).resolves.toMatchObject({
+      events: [{ sequence: 2 }, { sequence: 3 }],
+      hasMore: true,
+      highWaterSequence: 4,
+    });
+    await expect(read(3, 2)).resolves.toMatchObject({
+      events: [{ sequence: 4 }],
+      hasMore: false,
+      highWaterSequence: 4,
+    });
+    await expect(read(4, 2)).resolves.toEqual({
+      events: [],
+      hasMore: false,
+      highWaterSequence: 4,
+    });
+    await expect(read(99, 2)).resolves.toEqual({
+      events: [],
+      hasMore: false,
+      highWaterSequence: 4,
+    });
   });
 
   it('rejects accessors and proxies without invoking application hooks', async () => {

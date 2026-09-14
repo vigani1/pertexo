@@ -29,6 +29,22 @@ function serialized(spans: readonly FinishedSpan[]): string {
   );
 }
 
+async function cleanupAll(
+  ...steps: readonly (() => Promise<void> | void)[]
+): Promise<void> {
+  const failures: unknown[] = [];
+  for (const step of steps) {
+    try {
+      await step();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0) {
+    throw new AggregateError(failures, 'Telemetry test cleanup failed');
+  }
+}
+
 describe('non-HTTP telemetry error privacy', () => {
   it('sanitizes errors exported by the configured Nest instrumentation', async () => {
     const { exporter, provider } = traceHarness();
@@ -46,8 +62,6 @@ describe('non-HTTP telemetry error privacy', () => {
     };
     const getMetadataKeys = metadataReflect.getMetadataKeys;
     const defineMetadata = metadataReflect.defineMetadata;
-    metadataReflect.getMetadataKeys = () => [];
-    metadataReflect.defineMetadata = () => true;
 
     class RouterExecutionContext {
       public create(
@@ -61,13 +75,18 @@ describe('non-HTTP telemetry error privacy', () => {
     const module = { RouterExecutionContext };
     const definition =
       instrumentation.getRouterExecutionContextFileInstrumentation(['>=4 <12']);
-    definition.patch(module, '11.2.1');
+    let patchAttempted = false;
     const statusSecret = 'SYNTHETIC_SECRET_123';
     const typeSecret = 'SyntheticSecretType';
     const failure = new Error(statusSecret);
     failure.name = typeSecret;
 
     try {
+      metadataReflect.getMetadataKeys = () => [];
+      metadataReflect.defineMetadata = () => true;
+      patchAttempted = true;
+      definition.patch(module, '11.2.1');
+
       const handler = new RouterExecutionContext().create(
         { constructor: { name: 'FailureController' } },
         function failRequest() {
@@ -98,19 +117,29 @@ describe('non-HTTP telemetry error privacy', () => {
       );
       expect(serialized(spans)).not.toContain(statusSecret);
     } finally {
-      definition.unpatch(module, '11.2.1');
-      if (getMetadataKeys === undefined) {
-        delete metadataReflect.getMetadataKeys;
-      } else {
-        metadataReflect.getMetadataKeys = getMetadataKeys;
-      }
-      if (defineMetadata === undefined) {
-        delete metadataReflect.defineMetadata;
-      } else {
-        metadataReflect.defineMetadata = defineMetadata;
-      }
-      instrumentation.disable();
-      await provider.shutdown();
+      await cleanupAll(
+        () => {
+          if (patchAttempted) definition.unpatch(module, '11.2.1');
+        },
+        () => {
+          if (getMetadataKeys === undefined) {
+            delete metadataReflect.getMetadataKeys;
+          } else {
+            metadataReflect.getMetadataKeys = getMetadataKeys;
+          }
+        },
+        () => {
+          if (defineMetadata === undefined) {
+            delete metadataReflect.defineMetadata;
+          } else {
+            metadataReflect.defineMetadata = defineMetadata;
+          }
+        },
+        () => {
+          instrumentation.disable();
+        },
+        () => provider.shutdown(),
+      );
     }
   });
 
@@ -157,9 +186,11 @@ describe('non-HTTP telemetry error privacy', () => {
     if (definition.patch === undefined) {
       throw new Error('Expected PG module patch');
     }
-    definition.patch(module, '8.23.0');
+    let patchAttempted = false;
 
     try {
+      patchAttempted = true;
+      definition.patch(module, '8.23.0');
       await expect(new Client().query()).rejects.toBe(failure);
       const spans = exporter.getFinishedSpans();
       expect(spans).toHaveLength(1);
@@ -170,9 +201,15 @@ describe('non-HTTP telemetry error privacy', () => {
       });
       expect(serialized(spans)).not.toContain(statusSecret);
     } finally {
-      definition.unpatch?.(module, '8.23.0');
-      instrumentation.disable();
-      await provider.shutdown();
+      await cleanupAll(
+        () => {
+          if (patchAttempted) definition.unpatch?.(module, '8.23.0');
+        },
+        () => {
+          instrumentation.disable();
+        },
+        () => provider.shutdown(),
+      );
     }
   });
 });

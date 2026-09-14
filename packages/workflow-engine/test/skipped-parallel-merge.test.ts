@@ -13,12 +13,14 @@ import {
   createCheckpointV2,
   executeNodeAttempt,
   invocationKey,
+  parseCheckpoint,
+  verifyWorkflowExecutableV2,
+} from '../src/index.js';
+import {
   nodeRelease,
   pairedParallelGraph,
-  verifyWorkflowExecutableV2,
 } from './executable-workflow.fixtures.js';
 import { deriveReadyNodes } from '../src/testing.js';
-import { parseCheckpoint } from '../src/index.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000601';
 const occurredAt = '2026-09-06T00:00:00.000Z';

@@ -11,8 +11,8 @@ import {
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
-describe('worker rolling compatibility cohort', () => {
-  it('reports and executes every exact release pair in one additive artifact', async () => {
+describe('worker rolling compatibility smoke test', () => {
+  it('reports the overlap and executes one pinned definition in both releases', async () => {
     const target = CORE_REGISTRY_RELEASE_SUCCESSOR;
     const currentExecutableRelease = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,

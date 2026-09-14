@@ -23,9 +23,22 @@ import {
   workspaceA,
   workspaceCreatorId,
   workflowId,
+  workflowVersionId,
 } from './execution-acceptance.fixtures.js';
 
 installExecutionAcceptanceFixture();
+
+function hasPostgresConstraint(expected: string): (error: unknown) => boolean {
+  return (error: unknown): boolean => {
+    let current: unknown = error;
+    while (current instanceof Error) {
+      if ('constraint' in current && current.constraint === expected)
+        return true;
+      current = current.cause;
+    }
+    return false;
+  };
+}
 
 describe('workflow run notification pinning', () => {
   it('rejects malformed destination pins and inactive acceptance identities atomically', async () => {
@@ -86,17 +99,48 @@ describe('workflow run notification pinning', () => {
     );
     await setFixtureStatus('workspaces', workspaceA, 'active');
 
+    for (const config of [
+      { connectionId: 'malformed', toEmail: 'pin@example.test' },
+      { connectionId: null, toEmail: 'pin@example.test' },
+      { connectionId: 7, toEmail: 'pin@example.test' },
+      { connectionId: valid.connectionId, toEmail: null },
+      {
+        connectionId: valid.connectionId,
+        toEmail: { value: 'pin@example.test' },
+      },
+    ])
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+          db.execute(sql`
+            insert into app.failure_notification_destination_versions
+              (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+            values (${workspaceA},${randomUUID()},1,'email','idempotent_with_key',
+              ${JSON.stringify(config)}::jsonb,${workspaceCreatorId})
+          `),
+        ),
+      ).rejects.toSatisfy(
+        hasPostgresConstraint(
+          'failure_notification_destination_versions_config_strict',
+        ),
+      );
+
     await expect(
       apiDatabase.withWorkspace(workspaceA, ({ db }) =>
         db.execute(sql`
-          insert into app.failure_notification_destination_versions
-            (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
-          values (${workspaceA},${randomUUID()},1,'email','idempotent_with_key',
-            ${JSON.stringify({ connectionId: 'malformed', toEmail: 'pin@example.test' })}::jsonb,
-            ${workspaceCreatorId})
+          insert into app.workflow_runs (
+            id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+            failure_notification_destination_id
+          ) values (
+            ${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
+            'manual','queued',${valid.destinationId}
+          )
         `),
       ),
-    ).rejects.toSatisfy(hasPostgresCode('23514'));
+    ).rejects.toSatisfy(
+      hasPostgresConstraint(
+        'workflow_runs_failure_notification_policy_complete',
+      ),
+    );
   });
 
   it('serializes destination disable before acceptance and persists no stale pin', async () => {
@@ -104,6 +148,7 @@ describe('workflow run notification pinning', () => {
     await setNotificationPolicy(fixture.destinationId);
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     const disabling = await pool.connect();
+    let acceptance: ReturnType<typeof acceptWorkflowRun> | undefined;
     const disablingProcessId = await disabling
       .query<{ process_id: number }>('select pg_backend_pid() process_id')
       .then(({ rows }) => rows[0]?.process_id);
@@ -119,11 +164,17 @@ describe('workflow run notification pinning', () => {
           where workspace_id=$1 and id=$2`,
         [workspaceA, fixture.destinationId],
       );
-      const acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
         acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      const observedAcceptance = acceptance.then(
+        () => undefined,
+        (error: unknown) => error,
       );
       await waitForDatabaseLock(disablingProcessId);
       await disabling.query('commit');
+      const earlyFailure = await observedAcceptance;
+      if (earlyFailure instanceof Error) throw earlyFailure;
       const accepted = await acceptance;
       const pin = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
         db.execute<{ destination_id: string | null }>(sql`
@@ -134,6 +185,7 @@ describe('workflow run notification pinning', () => {
       expect(pin.rows[0]).toEqual({ destination_id: null });
     } finally {
       await disabling.query('rollback').catch(() => undefined);
+      if (acceptance !== undefined) await Promise.allSettled([acceptance]);
       disabling.release();
       await pool.end();
     }
@@ -145,6 +197,7 @@ describe('workflow run notification pinning', () => {
     const nextSecretVersionId = randomUUID();
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     const rotating = await pool.connect();
+    let acceptance: ReturnType<typeof acceptWorkflowRun> | undefined;
     const rotatingProcessId = await rotating
       .query<{ process_id: number }>('select pg_backend_pid() process_id')
       .then(({ rows }) => rows[0]?.process_id);
@@ -173,11 +226,17 @@ describe('workflow run notification pinning', () => {
           where workspace_id=$1 and id=$2`,
         [workspaceA, fixture.connectionId, nextSecretVersionId],
       );
-      const acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
         acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      const observedAcceptance = acceptance.then(
+        () => undefined,
+        (error: unknown) => error,
       );
       await waitForDatabaseLock(rotatingProcessId);
       await rotating.query('commit');
+      const earlyFailure = await observedAcceptance;
+      if (earlyFailure instanceof Error) throw earlyFailure;
       const accepted = await acceptance;
       const pin = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
         db.execute<{ secret_version_id: string | null }>(sql`
@@ -188,6 +247,7 @@ describe('workflow run notification pinning', () => {
       expect(pin.rows[0]).toEqual({ secret_version_id: nextSecretVersionId });
     } finally {
       await rotating.query('rollback').catch(() => undefined);
+      if (acceptance !== undefined) await Promise.allSettled([acceptance]);
       rotating.release();
       await pool.end();
     }

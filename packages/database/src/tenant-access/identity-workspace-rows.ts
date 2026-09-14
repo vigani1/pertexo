@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { parsePersistedIdentityMetadata } from './identity-workspace-support.js';
 
 import type {
   AuthIdentityRecord,
@@ -10,9 +11,6 @@ import type {
 } from './identity-workspace-contracts.js';
 
 const uuidSchema = z.uuid();
-const metadataSchema = z
-  .record(z.string(), z.json())
-  .refine((value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 8192);
 const userRowSchema = z
   .object({
     id: uuidSchema,
@@ -29,7 +27,7 @@ const authIdentityRowSchema = z
     user_id: uuidSchema,
     issuer: z.url().max(2048),
     provider_subject: z.string().min(1).max(255),
-    profile_metadata: metadataSchema,
+    profile_metadata: z.unknown(),
     created_at: z.coerce.date(),
     updated_at: z.coerce.date(),
   })
@@ -104,7 +102,7 @@ export function mapAuthIdentity(
     userId: parsed.user_id,
     issuer: parsed.issuer,
     providerSubject: parsed.provider_subject,
-    profileMetadata: parsed.profile_metadata,
+    profileMetadata: parsePersistedIdentityMetadata(parsed.profile_metadata),
     createdAt: parsed.created_at,
     updatedAt: parsed.updated_at,
   });

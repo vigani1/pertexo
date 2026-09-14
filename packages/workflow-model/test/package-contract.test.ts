@@ -236,7 +236,7 @@ describe('workflow-model package contract', () => {
     });
   });
 
-  it('converts aggregate descriptor traps into the browser contract issue', () => {
+  it('parses the admitted snapshot without rereading source descriptors', () => {
     const graph = {
       schemaVersion: 1,
       nodes: [],
@@ -247,34 +247,171 @@ describe('workflow-model package contract', () => {
     const hostile = new Proxy(graph, {
       getOwnPropertyDescriptor(target, key) {
         if (key === 'nodes' && ++nodeDescriptorReads > 2)
-          throw new Error('aggregate descriptor trap');
+          throw new Error('source descriptor reread');
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
     });
     const result = workflowGraphSchema.safeParse(hostile);
-    expect(result.success).toBe(false);
-    if (result.success) throw new Error('expected browser rejection');
-    expect(result.error.issues).toEqual([
-      {
-        code: 'custom',
-        path: [],
-        message: 'workflow graph exceeds the bounded JSON contract',
-      },
-    ]);
+    expect(result.success).toBe(true);
+    expect(nodeDescriptorReads).toBe(2);
 
     let serverNodeDescriptorReads = 0;
     const serverHostile = new Proxy(graph, {
       getOwnPropertyDescriptor(target, key) {
-        if (key === 'nodes' && ++serverNodeDescriptorReads > 3)
-          throw new Error('aggregate descriptor trap');
+        if (key === 'nodes' && ++serverNodeDescriptorReads > 2)
+          throw new Error('source descriptor reread');
         return Reflect.getOwnPropertyDescriptor(target, key);
       },
     });
     const serverResult = safeParseWorkflowGraphDraft(serverHostile);
-    expect(serverResult.success).toBe(false);
-    if (serverResult.success) throw new Error('expected server rejection');
-    if (!(serverResult.error instanceof z.ZodError))
-      throw new Error('expected aggregate Zod rejection');
-    expect(serverResult.error.issues).toEqual(result.error.issues);
+    expect(serverResult.success).toBe(true);
+    expect(serverNodeDescriptorReads).toBe(2);
+  });
+
+  it('applies config, literal, and reserved-key admission facts in both entrypoints', () => {
+    const nested = (depth: number): unknown => {
+      let value: unknown = null;
+      for (let index = 1; index < depth; index += 1) value = { child: value };
+      return value;
+    };
+    const node = (config: unknown, inputMappings: Record<string, unknown>) => ({
+      id: 'bounded',
+      definition: { key: 'core.set', version: 1 },
+      position: { x: 0, y: 0 },
+      configVersion: 1,
+      config,
+      inputMappings,
+      connectionRefs: {},
+    });
+    const graph = (candidate: ReturnType<typeof node>) => ({
+      schemaVersion: 1,
+      nodes: [candidate],
+      edges: [],
+      settings: {},
+    });
+    const candidates = [
+      graph(node(nested(64), {})),
+      graph(node({}, { value: { kind: 'literal', value: nested(64) } })),
+    ];
+    for (const candidate of candidates) {
+      expect(workflowGraphSchema.safeParse(candidate).success).toBe(true);
+      expect(safeParseWorkflowGraphDraft(candidate).success).toBe(true);
+    }
+    const rejected = [
+      graph(node(nested(65), {})),
+      graph(node({}, { value: { kind: 'literal', value: nested(65) } })),
+      graph(node({}, { ['constructor']: { kind: 'run_input', path: '$' } })),
+    ];
+    for (const candidate of rejected) {
+      expect(workflowGraphSchema.safeParse(candidate).success).toBe(false);
+      const server = safeParseWorkflowGraphDraft(candidate);
+      expect(server.success).toBe(false);
+      if (server.success) throw new Error('expected server rejection');
+      expect(server.error).toBeInstanceOf(WorkflowGraphContractError);
+    }
+  });
+
+  it('contains hostile reflection failures and parses descriptor snapshots', () => {
+    const graph = {
+      schemaVersion: 1,
+      nodes: [],
+      edges: [],
+      settings: {},
+    };
+    const throwingRead = new Proxy(graph, {
+      get() {
+        throw new Error('structural read escaped');
+      },
+    });
+    expect(workflowGraphSchema.safeParse(throwingRead).success).toBe(true);
+    expect(safeParseWorkflowGraphDraft(throwingRead).success).toBe(true);
+
+    const secondary = new Proxy(graph, {
+      ownKeys() {
+        throw new Proxy(new Error('primary trap'), {
+          getPrototypeOf: () => {
+            throw new Error('secondary trap');
+          },
+        });
+      },
+    });
+    expect(() => workflowGraphSchema.safeParse(secondary)).not.toThrow();
+    expect(workflowGraphSchema.safeParse(secondary).success).toBe(false);
+    expect(() => safeParseWorkflowGraphDraft(secondary)).not.toThrow();
+    expect(safeParseWorkflowGraphDraft(secondary).success).toBe(false);
+
+    const revoked = Proxy.revocable(graph, {});
+    revoked.revoke();
+    expect(() => workflowGraphSchema.safeParse(revoked.proxy)).not.toThrow();
+    expect(workflowGraphSchema.safeParse(revoked.proxy).success).toBe(false);
+    expect(() => safeParseWorkflowGraphDraft(revoked.proxy)).not.toThrow();
+    expect(safeParseWorkflowGraphDraft(revoked.proxy).success).toBe(false);
+
+    let getterCalls = 0;
+    const getterBearing = {
+      ...graph,
+      get settings() {
+        getterCalls += 1;
+        return {};
+      },
+    };
+    expect(workflowGraphSchema.safeParse(getterBearing).success).toBe(false);
+    expect(safeParseWorkflowGraphDraft(getterBearing).success).toBe(false);
+    expect(getterCalls).toBe(0);
+  });
+
+  it('agrees on cycles and shared references without rereading originals', () => {
+    const shared = {};
+    const node = {
+      id: 'shared',
+      definition: { key: 'core.set', version: 1 },
+      position: { x: 0, y: 0 },
+      configVersion: 1,
+      config: shared,
+      inputMappings: {},
+      connectionRefs: shared,
+    };
+    const graph = { schemaVersion: 1, nodes: [node], edges: [], settings: {} };
+    expect(workflowGraphSchema.safeParse(graph).success).toBe(true);
+    expect(safeParseWorkflowGraphDraft(graph).success).toBe(true);
+
+    const nodes = [node];
+    Object.defineProperty(nodes, 'metadata', {
+      enumerable: true,
+      value: 'ignored by JSON array semantics',
+    });
+    const arrayPropertyGraph = { ...graph, nodes };
+    expect(workflowGraphSchema.safeParse(arrayPropertyGraph).success).toBe(
+      true,
+    );
+    expect(safeParseWorkflowGraphDraft(arrayPropertyGraph).success).toBe(true);
+
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    const cyclicGraph = { ...graph, settings: cyclic };
+    expect(workflowGraphSchema.safeParse(cyclicGraph).success).toBe(false);
+    expect(safeParseWorkflowGraphDraft(cyclicGraph).success).toBe(false);
+  });
+
+  it('rejects an array from its minimum byte footprint before index inspection', () => {
+    let indexDescriptorReads = 0;
+    const oversized = new Proxy(
+      new Array<unknown>(WORKFLOW_GRAPH_CONTRACT_LIMITS.graphBytes),
+      {
+        getOwnPropertyDescriptor(target, key) {
+          if (key !== 'length') indexDescriptorReads += 1;
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+      },
+    );
+    const graph = {
+      schemaVersion: 1,
+      nodes: oversized,
+      edges: [],
+      settings: {},
+    };
+    expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
+    expect(safeParseWorkflowGraphDraft(graph).success).toBe(false);
+    expect(indexDescriptorReads).toBe(0);
   });
 });
