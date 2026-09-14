@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+!infrastructure/coverage/
+!infrastructure/coverage/**
 *.tsbuildinfo
 .env
 .env.*

@@ -61,7 +61,7 @@ describe('contracts package boundary', () => {
       execFileAsync(process.execPath, [
         resolve(
           repositoryRoot,
-          'infrastructure/browser-entry-dependencies.mjs',
+          'infrastructure/checks/browser-entry-dependencies.mjs',
         ),
         '--root',
         repositoryRoot,

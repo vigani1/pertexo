@@ -1,6 +1,6 @@
 /**
  * Human-reviewed normalization of the IANA special-purpose registries.
- * Upstream byte drift is checked by infrastructure/validate-iana-address-registry.mjs.
+ * Upstream byte drift is checked by infrastructure/checks/validate-iana-address-registry.mjs.
  */
 export const IANA_ADDRESS_REGISTRY_SNAPSHOT = Object.freeze({
   approvedAt: '2026-09-05',

@@ -24,8 +24,8 @@ import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
 import {
   OwnedProcessSupervisor,
   runManagedCommand,
-} from '../owned-process-tree.mjs';
-import { isolatedGitEnvironment } from '../git-environment.mjs';
+} from '../support/owned-process-tree.mjs';
+import { isolatedGitEnvironment } from '../support/git-environment.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const requireDatabaseDependency = createRequire(

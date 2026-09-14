@@ -297,7 +297,7 @@ jobs:
           output-file: artifacts/production-image.scan.json
       - name: Bind image evidence to the built digest
         run: |
-          node infrastructure/create-image-provenance.mjs \
+          node infrastructure/checks/create-image-provenance.mjs \
             artifacts/production-image.build.json \
             artifacts/production-image.sbom.json \
             artifacts/production-image.scan.json \
@@ -373,15 +373,15 @@ jobs:
         run: pnpm mutation:check
       - name: Prove every required integration cohort executed
         run: |
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/artifact-store-gates.json 'artifact-store integration gates' 5 3
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/queue-gates.json 'queue integration gates' 1
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/database-gates.json 'database integration gates' 383
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/worker-gates.json 'worker integration gates' 30
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/api-gates.json 'API integration gates' 32
       - name: Capture integration logs
         if: failure()
@@ -455,11 +455,11 @@ jobs:
             --reporter=json --outputFile=../../artifacts/recovery-api-gates.json
           pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts \
             --reporter=json --outputFile=../../artifacts/transport-resilience-gates.json
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/recovery-worker-gates.json 'worker recovery gates' 4
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/recovery-api-gates.json 'API SSE recovery gates' 1
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/transport-resilience-gates.json 'worker transport recovery gates' 1
       - name: Capture recovery service logs
         if: failure()
@@ -512,9 +512,9 @@ jobs:
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
             test/oidc-browser-binding-migration.integration.test.ts \
             --reporter=json --outputFile=../../artifacts/database-compatibility-gates.json
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/api-compatibility-gates.json 'API compatibility gates' 1
-          node infrastructure/validate-vitest-gate-report.mjs \
+          node infrastructure/coverage/validate-vitest-gate-report.mjs \
             artifacts/database-compatibility-gates.json 'database compatibility gates' 1
       - name: Capture compatibility database logs
         if: failure()
