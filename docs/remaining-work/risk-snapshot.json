@@ -600,7 +600,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 11304.08,
+          "durationMs": 9483.08,
           "totalTests": 744,
           "passedTests": 744,
           "failedTests": 0,
@@ -737,7 +737,7 @@
     "reviewedCount": 405,
     "unreviewedCount": 0
   },
-  "generatedAt": "2026-09-14T10:18:13.975Z",
+  "generatedAt": "2026-09-14T11:58:32.185Z",
   "uncoveredBranches": [
     {
       "cohort": "artifact-store",
