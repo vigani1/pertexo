@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-09-14T10:18:13.975Z",
+  "generatedAt": "2026-09-14T11:58:32.185Z",
   "sourceFingerprint": "sha256:52bccd43d4b33466f1d2228a9a4edb663eae9ca0fdceebc65610ecc6fd07e9cd",
   "scope": "Every apps/*/src and packages/*/src TypeScript file. Coverage presence is selected-cohort evidence, not proof that every path ran. For unselected runtime files, ownerTestSuites records exact test files with a static relative-import path to the source; this proves source ownership, not execution. Empty ownerTestSuites are explicit unmapped evidence gaps. Declaration-only files retain build, type, and export-contract evidence.",
   "sourceFiles": 691,
@@ -89,14 +89,14 @@
           "coverageFile": "coverage/worker/coverage-final.json",
           "coverageSha256": "sha256:58f5b680d53b4fd34628b3580ebaebcd540532ae25bca79ec885d75b64c88984",
           "resultFile": "coverage/worker/test-results.json",
-          "resultSha256": "sha256:1285279edd120d7da9a509a3575230a6db48128777d53c23201e47feb45525fc"
+          "resultSha256": "sha256:01d4034259f6002b50e58511675a2fa3c33e76605ac026ad550ab87fa0a2a8c0"
         },
         {
           "cohort": "worker-lifecycle",
           "coverageFile": "coverage/worker-lifecycle/coverage-final.json",
           "coverageSha256": "sha256:9dca26c0fe072266bc35032a917744992554e37d7a4b94a2720e496e6d494066",
           "resultFile": "coverage/worker-lifecycle/test-results.json",
-          "resultSha256": "sha256:1014428bc0dad341141b62e24a694804d77de99fb3a797b5bcd08646516c43ff"
+          "resultSha256": "sha256:dcae703a39da322a806eaa041c8b37ddb2a948dc6d17fe02a50063cabaf418d6"
         },
         {
           "cohort": "worker-entrypoints",
@@ -218,9 +218,9 @@
           "resultSha256": "sha256:3cf3ecf6c910832bb3b01ab288c0000d328ce6c61d84996ffce62a9c025aa234"
         }
       ],
-      "producerManifest": "sha256:21dbd304dbb0863ccc873eae7bc2ed0876a62fabd5e622677c04b7e3c4568bf9",
+      "producerManifest": "sha256:6497539dc10fc1a8721bc8714f6019fcdd7b66072ee50c4bfb284c7754ffdbd5",
       "reviewManifest": "sha256:a42d1d2b51d1d331a35e23271563ae93fb7093d2f16c75da0cef88585ebb1f49",
-      "riskReport": "sha256:0499131e22550655d72a19c159eed65762b30b5a0067fcea56dfa444e6f999fc"
+      "riskReport": "sha256:3f5f2ae279dfcb251ca39293aef4c178128579c10bae62ee490302f2c7ac2bab"
     },
     "riskSourceRevision": "sha256:0c7bac7b3e8a4a5d8f332757936b3bd5323f9b363357fe615cff94fcc9b3d3ef"
   },
