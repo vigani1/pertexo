@@ -32,7 +32,10 @@ import {
   validatePostgresEvidence,
 } from './postgres-evidence.mjs';
 import { validateBenchmarkEvidence } from './compare-local-benchmark.mjs';
-import { processExists, waitForFile } from '../test-process-observation.mjs';
+import {
+  processExists,
+  waitForFile,
+} from '../support/test-process-observation.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const benchmarkOperationFixture = fileURLToPath(

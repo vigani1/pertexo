@@ -5,7 +5,7 @@ import { URL } from 'node:url';
 import {
   describeBoundedChildFailure,
   runBoundedChildProcess,
-} from '../bounded-child-process.mjs';
+} from '../support/bounded-child-process.mjs';
 
 function positiveDuration(value, label) {
   if (!Number.isSafeInteger(value) || value < 1)

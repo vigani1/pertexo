@@ -39,7 +39,7 @@ describe('@pertexo/nodes-core package contract', () => {
       execFileAsync(process.execPath, [
         resolve(
           packageDirectory,
-          '../../infrastructure/browser-entry-dependencies.mjs',
+          '../../infrastructure/checks/browser-entry-dependencies.mjs',
         ),
         '--root',
         resolve(packageDirectory, '../..'),

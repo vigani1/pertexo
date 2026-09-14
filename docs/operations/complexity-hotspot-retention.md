@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-03
 
-This historical register records the occurrences accepted after the A-06 refactor on the date above. Current accepted occurrences and ceilings are owned by [the executable baseline](../../infrastructure/complexity-baseline.json); subsequent removals and refactors are recorded in [the structure audit](../repository-structure-audit.md). The original measurements below are not current file sizes or permission to restore removed allowances. A baseline entry is permission not to worsen measured debt, not permission to add behavior or raise the baseline; remove it when a verified refactor brings it within budget.
+This register records the occurrences accepted after the A-06 refactor on the date above. Current accepted occurrences and ceilings are owned by [the executable baseline](../../infrastructure/quality/complexity-baseline.json). The original measurements below are not current file sizes or permission to restore removed allowances. A baseline entry is permission not to worsen measured debt, not permission to add behavior or raise the baseline; remove it when a verified refactor brings it within budget.
 
 ## File hotspots
 
@@ -68,7 +68,7 @@ This historical register records the occurrences accepted after the A-06 refacto
 | `packages/database/src/execution/node-attempt-run-store-inputs.ts#loadNodeAttemptInputs` | 303 | 2 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
 | `packages/database/src/execution/node-attempt-run-store-inputs.ts#<ArrowFunction:3>` | 264 | 43 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
 | `packages/database/src/operator/operator-commands.ts#createOperatorCommandDatabase` | 230 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
-| `packages/database/src/compatibility/persisted-workflow-checkpoint.ts#<ArrowFunction:16>` | 142 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+| `packages/database/src/compatibility/persisted-workflow-checkpoint.ts#<ArrowFunction:16>` | 142 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and changes must preserve protocol semantics. |
 | `packages/database/src/execution/preview-execution-reconciliation.ts#reconcilePreviewDelivery` | 277 | 4 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
 | `packages/database/src/execution/preview-execution-reconciliation.ts#<ArrowFunction:4>` | 236 | 22 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
 | `packages/database/src/lifecycle/retention.ts#createRetentionDatabase` | 374 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
@@ -82,12 +82,12 @@ This historical register records the occurrences accepted after the A-06 refacto
 | `packages/database/src/lifecycle/workspace-purge.ts#processNext` | 533 | 19 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
 | `packages/node-sdk/src/server.ts#createNodeRegistry` | 287 | 22 | Registry construction keeps compatibility selection and immutable release validation in one public boundary. |
 | `packages/observability/src/transport-metrics.ts#createTransportMetrics` | 216 | 1 | Metrics factory centralizes bounded-cardinality instruments and adapter methods; low branch count makes further splitting low value. |
-| `packages/workflow-engine/src/checkpoint-v1-join.ts#parseJoin` | 201 | 41 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
-| `packages/workflow-engine/src/checkpoint-v1-loop.ts#parseLoop` | 222 | 25 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
-| `packages/workflow-engine/src/checkpoint-v1.ts#parseCheckpointV1Boundary` | 272 | 39 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
-| `packages/workflow-engine/src/coordinator-observations.ts#forEachCoordinatorObservations` | 220 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
-| `packages/workflow-engine/src/graph-scheduler.ts#deriveReadyNodes` | 202 | 35 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
-| `packages/workflow-engine/src/operations.ts#assertCheckpointMatchesExecutable` | 178 | 42 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+| `packages/workflow-engine/src/checkpoint-v1-join.ts#parseJoin` | 201 | 41 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it; leave parser semantics unchanged without new evidence. |
+| `packages/workflow-engine/src/checkpoint-v1-loop.ts#parseLoop` | 222 | 25 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it; leave parser semantics unchanged without new evidence. |
+| `packages/workflow-engine/src/checkpoint-v1.ts#parseCheckpointV1Boundary` | 272 | 39 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it; leave parser semantics unchanged without new evidence. |
+| `packages/workflow-engine/src/coordinator-observations.ts#forEachCoordinatorObservations` | 220 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and changes must preserve protocol semantics. |
+| `packages/workflow-engine/src/graph-scheduler.ts#deriveReadyNodes` | 202 | 35 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and changes must preserve protocol semantics. |
+| `packages/workflow-engine/src/operations.ts#assertCheckpointMatchesExecutable` | 178 | 42 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and changes must preserve protocol semantics. |
 
 ## Focused Q07 connection-persistence review
 
@@ -163,7 +163,7 @@ lock order, and external-I/O concurrency are unchanged.
 
 ## Verification
 
-`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 85 physical lines after its exact exports were delegated to capability-owned testing barrels.
+`node infrastructure/quality/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 85 physical lines after its exact exports were delegated to capability-owned testing barrels.
 
 That statement is complexity evidence at this historical register revision, not
 a claim that every retained module was behaviorally complete. The later

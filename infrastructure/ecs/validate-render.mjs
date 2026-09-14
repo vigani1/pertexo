@@ -6,8 +6,8 @@ import process from 'node:process';
 import {
   describeBoundedChildFailure,
   runBoundedChildProcess,
-} from '../bounded-child-process.mjs';
-import { preserveTemporaryDirectoryFailure } from '../temporary-directory-cleanup.mjs';
+} from '../support/bounded-child-process.mjs';
+import { preserveTemporaryDirectoryFailure } from '../support/temporary-directory-cleanup.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const renderer = resolve(

@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import {
   describeBoundedChildFailure,
   runBoundedChildProcess,
-} from '../bounded-child-process.mjs';
+} from '../support/bounded-child-process.mjs';
 
 const COLLECTOR_IMAGE =
   'otel/opentelemetry-collector-contrib:0.136.0@sha256:45392d534c1edcc809c2d112394029246bc679d2ae5ea7081414a1fc74f2c621';

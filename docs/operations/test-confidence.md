@@ -74,10 +74,10 @@ The JSON-path case was the only selected decision without a direct faulting
 input, so `packages/workflow-model/test/mapping.test.ts` now supplies both an
 owned and inherited property. Existing malformed-input controls remain owned by
 `packages/node-sdk/test/registry.test.ts` and
-`infrastructure/browser-entry-dependencies.test.mjs`. Mutable image references
-are rejected by `infrastructure/validate-image-pins.test.mjs`; missing, failed,
+`infrastructure/checks/browser-entry-dependencies.test.mjs`. Mutable image references
+are rejected by `infrastructure/checks/validate-image-pins.test.mjs`; missing, failed,
 skipped, mismatched and stale integration evidence is rejected by
-`infrastructure/report-risk-coverage.test.mjs`. Those negative fixtures are
+`infrastructure/coverage/report-risk-coverage.test.mjs`. Those negative fixtures are
 kept distinct from the six source-policy perturbations above.
 
 During a full `pnpm quality:local` run, integration-only branch reviews are

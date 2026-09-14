@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-09-14T09:50:12.095Z",
-  "sourceFingerprint": "sha256:b460ce440131ff15831907d051f0b062f7f1e943ad538925a4c2bd6872c7d01c",
+  "generatedAt": "2026-09-14T10:18:13.975Z",
+  "sourceFingerprint": "sha256:52bccd43d4b33466f1d2228a9a4edb663eae9ca0fdceebc65610ecc6fd07e9cd",
   "scope": "Every apps/*/src and packages/*/src TypeScript file. Coverage presence is selected-cohort evidence, not proof that every path ran. For unselected runtime files, ownerTestSuites records exact test files with a static relative-import path to the source; this proves source ownership, not execution. Empty ownerTestSuites are explicit unmapped evidence gaps. Declaration-only files retain build, type, and export-contract evidence.",
   "sourceFiles": 691,
   "dispositionCounts": {
@@ -54,175 +54,175 @@
           "coverageFile": "coverage/api/coverage-final.json",
           "coverageSha256": "sha256:ff188457b672a1704b3ed4a0b6d74d02a1c059789cfdb4fae9f593af15f47216",
           "resultFile": "coverage/api/test-results.json",
-          "resultSha256": "sha256:8ac95b491da3f46606aca7794aaa7c32f683808f0eca9914dec159f08cb121e7"
+          "resultSha256": "sha256:d11569abc5781b96106429a8ba9f993a1899258f23c0dd573a472f535d0dd325"
         },
         {
           "cohort": "api-orchestration",
           "coverageFile": "coverage/api-orchestration/coverage-final.json",
-          "coverageSha256": "sha256:c85960a083ead529c09699aa4dfee22d266c47039d8d4d0304e57abd74d22931",
+          "coverageSha256": "sha256:9ed1d1c9f34761694df7bba0045ddeb7c1124104bb914fd75ae7b44c5e5a450f",
           "resultFile": "coverage/api-orchestration/test-results.json",
-          "resultSha256": "sha256:c678cb8b085fa5d715ef29f3822d55a577205f50086a8009181b76910551b767"
+          "resultSha256": "sha256:d3e2a6fa85dff91abf90b357cb24d86cd9bfdf8018205bbe3c7d4ca3220aaf40"
         },
         {
           "cohort": "api-priority",
           "coverageFile": "coverage/api-priority/coverage-final.json",
           "coverageSha256": "sha256:172fe9abc2bf1bb9cb192597f625a44941efb63887a900bb15da170dfb70d108",
           "resultFile": "coverage/api-priority/test-results.json",
-          "resultSha256": "sha256:1cdadefb51b6b12ac14aa9790f1e24edc5890333a6386822a47ff536fcd6501b"
+          "resultSha256": "sha256:bdb7aece95eeee8390fbde9cb143920f9756c0e92464d3df8a72582a0be0f9a1"
         },
         {
           "cohort": "api-run-event-publisher",
           "coverageFile": "coverage/api-run-event-publisher/coverage-final.json",
           "coverageSha256": "sha256:8444bd921275b6b3bea105741f981827a7857d513b94aae91e1f01a0f4c5c9ea",
           "resultFile": "coverage/api-run-event-publisher/test-results.json",
-          "resultSha256": "sha256:c0f9a63d802d49675e64c5f7727f07f732d4a7ea73cfb799193fa0234e371c76"
+          "resultSha256": "sha256:2359495dbb86e42d9a734e8de30b135f6cdc6a8ef0869a7e607995ddeefc5f9b"
         },
         {
           "cohort": "api-entrypoints",
           "coverageFile": "coverage/api-entrypoints/coverage-final.json",
           "coverageSha256": "sha256:b76f06194105c0e65ad7084a78ad032aeea67550f371ea2c8de5f5d205ef5903",
           "resultFile": "coverage/api-entrypoints/test-results.json",
-          "resultSha256": "sha256:cb9a91c83e958313942fc9a3cb5940f22ca20eb3dc49234f544b5f8a015a6343"
+          "resultSha256": "sha256:a2c87a9d993f024f608a105ec2350923acfe81570e1f1de73886944958f9be72"
         },
         {
           "cohort": "worker",
           "coverageFile": "coverage/worker/coverage-final.json",
           "coverageSha256": "sha256:58f5b680d53b4fd34628b3580ebaebcd540532ae25bca79ec885d75b64c88984",
           "resultFile": "coverage/worker/test-results.json",
-          "resultSha256": "sha256:0add2c0417f4ed4c573b3c0070468602e68fe92e341790e5df9cb1fd6df4f671"
+          "resultSha256": "sha256:1285279edd120d7da9a509a3575230a6db48128777d53c23201e47feb45525fc"
         },
         {
           "cohort": "worker-lifecycle",
           "coverageFile": "coverage/worker-lifecycle/coverage-final.json",
           "coverageSha256": "sha256:9dca26c0fe072266bc35032a917744992554e37d7a4b94a2720e496e6d494066",
           "resultFile": "coverage/worker-lifecycle/test-results.json",
-          "resultSha256": "sha256:50bbee97aad4dbc1c81dc22ce6c5c47dd24d7b47a29ec028f17245dd7e75e076"
+          "resultSha256": "sha256:1014428bc0dad341141b62e24a694804d77de99fb3a797b5bcd08646516c43ff"
         },
         {
           "cohort": "worker-entrypoints",
           "coverageFile": "coverage/worker-entrypoints/coverage-final.json",
           "coverageSha256": "sha256:d6b50674b9269289e8a2fc6421b68dd129f1feb2b7e69b97b87b5c1e6e8750c1",
           "resultFile": "coverage/worker-entrypoints/test-results.json",
-          "resultSha256": "sha256:9340eaf4e8bb1b33c75bd0c19bbccc4a9b180461be24368849011b134e2d96a2"
+          "resultSha256": "sha256:147240a52be22fe0a88a8ae00cbc57a34ffea3ef29bcbb3e6f833d415be949da"
         },
         {
           "cohort": "operator-command-entrypoints",
           "coverageFile": "coverage/operator-command-entrypoints/coverage-final.json",
           "coverageSha256": "sha256:542b753a2a7941b68b2abb0e774d2c1dd84a19967de89bf3ca2c1fb386ada0a0",
           "resultFile": "coverage/operator-command-entrypoints/test-results.json",
-          "resultSha256": "sha256:046f0097715b3b2a3e4084c527034062cc84ed62dcc3fdfd08dba08b13e6d202"
+          "resultSha256": "sha256:6cd64258cdea3692a5b70323881db8a7ccafc1bb12ea02290f51843e21ece3da"
         },
         {
           "cohort": "recovery-entrypoints",
           "coverageFile": "coverage/recovery-entrypoints/coverage-final.json",
           "coverageSha256": "sha256:f824a142a77bd8b974e7dba341b4db03ba66ee179d64e4565e71e911a440088b",
           "resultFile": "coverage/recovery-entrypoints/test-results.json",
-          "resultSha256": "sha256:5665d47fe38018ef326420786e4edbe767c85c5a28fd80ed4016f30d839fd7aa"
+          "resultSha256": "sha256:905b126eab3f936a3c349aeb1cd1521f76ba8f54fcf460f8e03ebbd43ccbaef3"
         },
         {
           "cohort": "retention-entrypoints",
           "coverageFile": "coverage/retention-entrypoints/coverage-final.json",
           "coverageSha256": "sha256:ce0a3296a9ed2d421ae2063e820d5375104ac41bd68ec549cc6b72595709873f",
           "resultFile": "coverage/retention-entrypoints/test-results.json",
-          "resultSha256": "sha256:53b079f1f50f069f5ec4c0b5567f7382a3b0ec71272af640a46bca5b48657db0"
+          "resultSha256": "sha256:2097502c7b5783712d181b7cb4b8f8dffa3d70ec6d6a0d380a640247ff4b37ad"
         },
         {
           "cohort": "database",
           "coverageFile": "coverage/database/coverage-final.json",
           "coverageSha256": "sha256:65e5f965e715a49f8b5f50c4592bf3b5b7fa6e50c55cfa301760820f600a178a",
           "resultFile": "coverage/database/test-results.json",
-          "resultSha256": "sha256:1c09031834b226263221cad892fa182b3b9b95db5c24a3c7cc85e3fd8c64f8d1"
+          "resultSha256": "sha256:00f32a61fe0750bc213d3f7f6ea02bd8e56b7842c7cdea1f74f4d20e9a85a516"
         },
         {
           "cohort": "artifact-store",
           "coverageFile": "coverage/artifact-store/coverage-final.json",
           "coverageSha256": "sha256:08395d23de0f2d957c1cad11872dc5031f757691463eee4cc62434b972b0aa2c",
           "resultFile": "coverage/artifact-store/test-results.json",
-          "resultSha256": "sha256:74fa125978ad7650ad8a5f899acf525af4678a957a3a865d1502cb89c2b2a33e"
+          "resultSha256": "sha256:5d93804b5923500dcbba1206162f68195f54c6823bfeac17edc0ade20c8b7fbf"
         },
         {
           "cohort": "contracts",
           "coverageFile": "coverage/contracts/coverage-final.json",
           "coverageSha256": "sha256:e28abaa60804b8540c82d80e050aa275da03c512fc6799f4952565acfdfce67f",
           "resultFile": "coverage/contracts/test-results.json",
-          "resultSha256": "sha256:04ef9c438e6184e89512683e3f0b6efaf8a549dcafa74c31d898e4afe8b52341"
+          "resultSha256": "sha256:384ea9e9ceaa14a19b57faf85f1a9bed57355d5c55b4e38d5dd21e634cbdecb9"
         },
         {
           "cohort": "integrations",
           "coverageFile": "coverage/integrations/coverage-final.json",
-          "coverageSha256": "sha256:f10b4ecaa0ae686ae87dc8f6b895a0f1bf999f54a2d7a3759f64e17c934dc561",
+          "coverageSha256": "sha256:a5ab4a3ecb7ec15f9917eeb56022e02fd09c1420da0b51f800c5e7b8066e843c",
           "resultFile": "coverage/integrations/test-results.json",
-          "resultSha256": "sha256:0e9488d19024c0e8c4c7a6fb4de49ad7f901521529b3f548fdf9f58fcada06ac"
+          "resultSha256": "sha256:53eafdff820bc4189bb86ec6c122361fbc94c8a3edd955b3d1fc56b3f98c7948"
         },
         {
           "cohort": "workflow-engine",
           "coverageFile": "coverage/workflow-engine/coverage-final.json",
           "coverageSha256": "sha256:a981ba8d405c02537b914f3f4296486d5a41ff86676d4de0e77c1da70dcb725b",
           "resultFile": "coverage/workflow-engine/test-results.json",
-          "resultSha256": "sha256:3723fa253e37b096138991ca5ea8ff9f027b1c50cdc4aa3ff97d797fbcd26ea6"
+          "resultSha256": "sha256:a37c79b58480796309a71f9670b51a9594825eac006f37fda2d39f65b634eee5"
         },
         {
           "cohort": "workflow-model",
           "coverageFile": "coverage/workflow-model/coverage-final.json",
           "coverageSha256": "sha256:05c353d0b9fb6cdb3826bad6a3f940f0ec4f04395782bd28d7d28ed0a8e3d22c",
           "resultFile": "coverage/workflow-model/test-results.json",
-          "resultSha256": "sha256:456b5e5ec11e90181fb583a9f125ce1425efef48eb2f864827e14a5305d0d499"
+          "resultSha256": "sha256:6422359c74805211cd9d39b497ff2293df467de3cece7f2d73ac21d1c7708574"
         },
         {
           "cohort": "node-sdk",
           "coverageFile": "coverage/node-sdk/coverage-final.json",
           "coverageSha256": "sha256:ce0f0d6dcfc3a912c802c56f6d65393b91135131e778c0ef9336ac5db421c0eb",
           "resultFile": "coverage/node-sdk/test-results.json",
-          "resultSha256": "sha256:3d7f1451d1cde4c4615c44142af280dee1c5a1e3b93eb87c5b7275471b2fc5f1"
+          "resultSha256": "sha256:1317a0e4b6b9f1d1b7866d5a278a7718b64335d28b9f8174894ab085093729ab"
         },
         {
           "cohort": "node-catalog",
           "coverageFile": "coverage/node-catalog/coverage-final.json",
           "coverageSha256": "sha256:b5de827d3159a4d6ffdff065154f6dc5289ad0f75fe5142c5955bb9141df9399",
           "resultFile": "coverage/node-catalog/test-results.json",
-          "resultSha256": "sha256:acc901aa7055ba9755e1dd5affde56da043fe6ce7ecc519cf913c615c918b225"
+          "resultSha256": "sha256:9ff554b310be3b6b749614369d99c83dba9e90ca7ff2f13c1e14dc37020cbf90"
         },
         {
           "cohort": "nodes-core",
           "coverageFile": "coverage/nodes-core/coverage-final.json",
           "coverageSha256": "sha256:26197c27ee96a281e00856696ce6963e697d8ae4c89919f2b151beeafbc22920",
           "resultFile": "coverage/nodes-core/test-results.json",
-          "resultSha256": "sha256:07449cd7e7ce2a40a64163527f885f28fb72e3594c1c3adcd983468749dbdfd4"
+          "resultSha256": "sha256:6f691f4ef18006211f3d83ecabaa6b64583e1994b61197dbbd8defca395c3921"
         },
         {
           "cohort": "observability",
           "coverageFile": "coverage/observability/coverage-final.json",
           "coverageSha256": "sha256:deaa144b6debc836b4cfc54c23e1c79964ca43afd637555cfa8e2ebf60161bb3",
           "resultFile": "coverage/observability/test-results.json",
-          "resultSha256": "sha256:4d9c6aa3b999be412abf89d0e2a3d16a27dfd73eadddc0b1bb6b1b1c59f8d29e"
+          "resultSha256": "sha256:05d4d7590b0987c562ca3424e454726304234ef7ea579cfa57e6b718f23d8871"
         },
         {
           "cohort": "queue",
           "coverageFile": "coverage/queue/coverage-final.json",
           "coverageSha256": "sha256:f093a58102b56b8b09c9693ade4ce736c5c999ea034b81c0aab18ab8a7bf4573",
           "resultFile": "coverage/queue/test-results.json",
-          "resultSha256": "sha256:497b0f164132dca306d2394cfcb2928026ccdc56e591394787c9db78c389d47f"
+          "resultSha256": "sha256:9864c9d67d5c58dfebddfb5f916601eb0d05ef3693a2582cf46eb6c17da15fdd"
         },
         {
           "cohort": "rate-limit",
           "coverageFile": "coverage/rate-limit/coverage-final.json",
           "coverageSha256": "sha256:adac37eefb8adbeaf77ddcb187d7b95a3b32b18deb58f9c5fbc8d2c0a99db69c",
           "resultFile": "coverage/rate-limit/test-results.json",
-          "resultSha256": "sha256:1ba3cc40e624c17d193aba2a7d63d60bf50324163bb60bfa19d617ab0ff37a21"
+          "resultSha256": "sha256:f868c183f1edd4b34fb0d4926092470c84be0d86a538887289d1ef2d20fe35ac"
         },
         {
           "cohort": "lifecycle-command",
           "coverageFile": "coverage/lifecycle-command/coverage-final.json",
           "coverageSha256": "sha256:ae63d523aed35a85ea95f6800453f1ebeb9e222bfab0a428d69b86efc8a7c9d5",
           "resultFile": "coverage/lifecycle-command/test-results.json",
-          "resultSha256": "sha256:98ca249b9428753a463f4f72f4138204dfc5d5e15f4fd676f27e91e46ee75ac7"
+          "resultSha256": "sha256:3cf3ecf6c910832bb3b01ab288c0000d328ce6c61d84996ffce62a9c025aa234"
         }
       ],
-      "producerManifest": "sha256:a936050a5fae2cb7aae9ec32cd4512d6e8069698f0599e669e8c610549cec496",
+      "producerManifest": "sha256:21dbd304dbb0863ccc873eae7bc2ed0876a62fabd5e622677c04b7e3c4568bf9",
       "reviewManifest": "sha256:a42d1d2b51d1d331a35e23271563ae93fb7093d2f16c75da0cef88585ebb1f49",
-      "riskReport": "sha256:f770b4c308c3d2db4f7053b44992a61158d1d0eb3a6c07981319a8eda4bc2be6"
+      "riskReport": "sha256:0499131e22550655d72a19c159eed65762b30b5a0067fcea56dfa444e6f999fc"
     },
-    "riskSourceRevision": "sha256:fedefe4773f21838e0b6e2046ad3ef8e15f302098870a07614900bb8316f2e25"
+    "riskSourceRevision": "sha256:0c7bac7b3e8a4a5d8f332757936b3bd5323f9b363357fe615cff94fcc9b3d3ef"
   },
   "files": [
     {
@@ -15027,7 +15027,7 @@
     {
       "file": "packages/integrations/src/http/iana-address-policy-snapshot.ts",
       "kind": "runtime-statements-present",
-      "sha256": "431cb77129a40828ac0a54f06bd60c354c13363d5a1a40fac090a41b751d3cfa",
+      "sha256": "2efe99bcc5960fb12a5af8d78b7a4fd483345d087eb33b0402772518b18d8141",
       "owner": "packages/integrations",
       "measurementDisposition": "measured-runtime",
       "coverage": [

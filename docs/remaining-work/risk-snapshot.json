@@ -1,6 +1,6 @@
 {
   "schemaVersion": 7,
-  "sourceRevision": "sha256:fedefe4773f21838e0b6e2046ad3ef8e15f302098870a07614900bb8316f2e25",
+  "sourceRevision": "sha256:0c7bac7b3e8a4a5d8f332757936b3bd5323f9b363357fe615cff94fcc9b3d3ef",
   "scope": {
     "kind": "selected-critical-module-files",
     "cohorts": [
@@ -43,7 +43,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 13092.58,
+          "durationMs": 12912.58,
           "totalTests": 1269,
           "passedTests": 1269,
           "failedTests": 0,
@@ -80,7 +80,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 601.19,
+          "durationMs": 607.2,
           "totalTests": 8,
           "passedTests": 8,
           "failedTests": 0,
@@ -120,7 +120,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 12973.59,
+          "durationMs": 13108.33,
           "totalTests": 1269,
           "passedTests": 1269,
           "failedTests": 0,
@@ -171,7 +171,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 13114.46,
+          "durationMs": 12966.46,
           "totalTests": 1269,
           "passedTests": 1269,
           "failedTests": 0,
@@ -228,7 +228,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 665.19,
+          "durationMs": 667.23,
           "totalTests": 333,
           "passedTests": 333,
           "failedTests": 0,
@@ -291,7 +291,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 536.09,
+          "durationMs": 537.58,
           "totalTests": 70,
           "passedTests": 70,
           "failedTests": 0,
@@ -329,7 +329,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 7703.55,
+          "durationMs": 7829.71,
           "totalTests": 759,
           "passedTests": 759,
           "failedTests": 0,
@@ -400,7 +400,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 858.79,
+          "durationMs": 949.14,
           "totalTests": 385,
           "passedTests": 385,
           "failedTests": 0,
@@ -440,7 +440,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 1907.45,
+          "durationMs": 1950.84,
           "totalTests": 27,
           "passedTests": 27,
           "failedTests": 0,
@@ -477,7 +477,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 489.51,
+          "durationMs": 450.18,
           "totalTests": 9,
           "passedTests": 9,
           "failedTests": 0,
@@ -514,7 +514,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 514.58,
+          "durationMs": 532.14,
           "totalTests": 12,
           "passedTests": 12,
           "failedTests": 0,
@@ -551,7 +551,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 537.18,
+          "durationMs": 539.67,
           "totalTests": 17,
           "passedTests": 17,
           "failedTests": 0,
@@ -600,7 +600,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 11249.08,
+          "durationMs": 11304.08,
           "totalTests": 744,
           "passedTests": 744,
           "failedTests": 0,
@@ -637,7 +637,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 647.23,
+          "durationMs": 670.31,
           "totalTests": 9,
           "passedTests": 9,
           "failedTests": 0,
@@ -721,7 +721,7 @@
           }
         },
         "testHealth": {
-          "durationMs": 3035.67,
+          "durationMs": 3087.35,
           "totalTests": 375,
           "passedTests": 375,
           "failedTests": 0,
@@ -737,7 +737,7 @@
     "reviewedCount": 405,
     "unreviewedCount": 0
   },
-  "generatedAt": "2026-09-14T09:50:12.095Z",
+  "generatedAt": "2026-09-14T10:18:13.975Z",
   "uncoveredBranches": [
     {
       "cohort": "artifact-store",
@@ -5173,7 +5173,7 @@
       "column": 14,
       "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
       "reviewStatus": "reviewed",
-      "evidenceState": "executed",
+      "evidenceState": "referenced-only",
       "classification": "integration",
       "justification": "The named artifact-reference integration streams a normal node output through the database-backed pending-artifact persistence adapter.",
       "evidenceId": "worker-artifact-reference",
@@ -5181,9 +5181,7 @@
         "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
         "testFile": "apps/worker/test/artifact-reference.integration.test.ts",
         "testName": "streams a bounded node response through worker metadata and object-store adapters",
-        "evidenceState": "executed",
-        "runId": "pertexo-local-quality-2026-09-14t09-35-41-831z-24290-031bb08c",
-        "candidateFingerprint": "37fb33395ed496f5fbfb5dda82ac221c03bbc54b802155569a37ae6079d28743"
+        "evidenceState": "referenced-only"
       }
     },
     {
@@ -5210,7 +5208,7 @@
       "column": 13,
       "sourceFingerprint": "sha256:a58cf9d06efbb2a9e5cbff0417ac1e2e20c552b8c66f9a38c70ca9690f2af85e",
       "reviewStatus": "reviewed",
-      "evidenceState": "executed",
+      "evidenceState": "referenced-only",
       "classification": "integration",
       "justification": "The named HTTP node-attempt integration composes the dual-region artifact store and verifies the persisted streamed response.",
       "evidenceId": "worker-http-node-attempt",
@@ -5218,9 +5216,7 @@
         "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
         "testFile": "apps/worker/test/http-node-attempt.integration.test.ts",
         "testName": "commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials",
-        "evidenceState": "executed",
-        "runId": "pertexo-local-quality-2026-09-14t09-35-41-831z-24290-031bb08c",
-        "candidateFingerprint": "37fb33395ed496f5fbfb5dda82ac221c03bbc54b802155569a37ae6079d28743"
+        "evidenceState": "referenced-only"
       }
     },
     {
@@ -5275,7 +5271,7 @@
       "column": 40,
       "sourceFingerprint": "sha256:4b8169a02a5b0b1bb10f63797980733d29b2026cd5c797fb0787333db248e69f",
       "reviewStatus": "reviewed",
-      "evidenceState": "executed",
+      "evidenceState": "referenced-only",
       "classification": "integration",
       "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed heartbeat operation.",
       "evidenceId": "worker-preview-delivery",
@@ -5283,9 +5279,7 @@
         "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
         "testFile": "apps/worker/test/preview-consumer-delivery.integration.test.ts",
         "testName": "executes an accepted preview through BullMQ once and duplicates safely",
-        "evidenceState": "executed",
-        "runId": "pertexo-local-quality-2026-09-14t09-35-41-831z-24290-031bb08c",
-        "candidateFingerprint": "37fb33395ed496f5fbfb5dda82ac221c03bbc54b802155569a37ae6079d28743"
+        "evidenceState": "referenced-only"
       }
     },
     {
@@ -5312,7 +5306,7 @@
       "column": 40,
       "sourceFingerprint": "sha256:4b8169a02a5b0b1bb10f63797980733d29b2026cd5c797fb0787333db248e69f",
       "reviewStatus": "reviewed",
-      "evidenceState": "executed",
+      "evidenceState": "referenced-only",
       "classification": "integration",
       "justification": "The named preview-delivery integration executes the production handler and database-backed completion path with the queue transport signal.",
       "evidenceId": "worker-preview-delivery",
@@ -5320,9 +5314,7 @@
         "command": "pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts",
         "testFile": "apps/worker/test/preview-consumer-delivery.integration.test.ts",
         "testName": "executes an accepted preview through BullMQ once and duplicates safely",
-        "evidenceState": "executed",
-        "runId": "pertexo-local-quality-2026-09-14t09-35-41-831z-24290-031bb08c",
-        "candidateFingerprint": "37fb33395ed496f5fbfb5dda82ac221c03bbc54b802155569a37ae6079d28743"
+        "evidenceState": "referenced-only"
       }
     },
     {

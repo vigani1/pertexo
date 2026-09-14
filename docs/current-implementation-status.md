@@ -1,188 +1,71 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-13
+Updated: 2026-09-14
 
 ## Delivery state
 
-The completed Q01–Q13 remediation is recorded in the
-[backend quality improvement plan](./backend-quality-improvement-plan.md#implementation-record),
-and its authorized follow-up is tracked in the
-[next-stage implementation record](./backend-quality-next-stage-plan.md#implementation-record--maintain-during-execution).
-The Q01 record binds the uncommitted implementation to the exact base commit,
-tracked patch and untracked-file hashes. That historical Q01-bound risk report
-contains 468 reviewed and 22 unreviewed branches; the audit closeout's 23 is a
-retained preceding observation, not the result of that later run. Neither local
-result is production qualification.
+The backend implementation through Phase 6 is complete. Phase 7 is **in
+progress**: repository-local implementation and qualification are substantially
+complete, but production deployment, provider, resilience, and operational
+evidence still require the authorized external environments. The authoritative
+phase checklist and evidence journal are in
+[`implementation-progress.md`](./implementation-progress.md); the blueprint is
+[`workflow-platform-backend-plan.md`](./workflow-platform-backend-plan.md).
 
-The next-stage record is the current disposition entrypoint. Its predecessor's supporting operational
-contracts are the [isolated local qualification](./operations/local-quality-verification.md),
-[test-confidence evidence](./operations/test-confidence.md),
-[local performance baseline](./operations/local-performance-evidence.md),
-[compatibility retirement inventory](./operations/compatibility-retirement-inventory.md),
-and [ADR 022's notification rollout](./adr/022-run-failure-notification.md).
-The final Q13 report supersedes the 468/22 observation above and records its own
-exact candidate identity; this paragraph does not relabel historical coverage
-output.
+The backend fixes are recorded in commit `f0484564`. The final SSE
+public-projection follow-up preserves the original projection error, starts
+bounded transport cleanup even when a nested iterator is uncooperative, and
+observes late fulfillment or rejection without leaking listeners or timers.
+The full API run passed 97 files / 1,277 tests.
 
-The completed repository-local Q9 code-quality pass is specified by the
-[Q9 plan](./backend-code-quality-9-plan.md) and tracked separately in its
-[implementation record](./backend-code-quality-9-implementation.md). That record
-is the current repository-local code-quality entrypoint. The reopened
-provenance, combined-failure, bounded-work and API consumer-proof gaps are
-implemented. Review corrections now release every PostgreSQL benchmark sample
-client and use explicit failure state for `undefined` promise rejections; all
-43 occurrences map to exact named assertions. Final source-stable run
-`2026-09-10t18-24-31-402z-18163-d7e439f0` passed all 21 cohorts, 2,500 unit
-assertions and 520 local-service assertions at one stable candidate
-fingerprint; its risk report records 477 reviewed and zero unreviewed selected
-branches. The six Q9 scores are final. This completion does not replace
-separately gated AWS/deployment evidence or change backend phase status.
-
-The subsequent [whole-codebase review](./whole-codebase-review/implementation-order.md) and
-its [live implementation record](./whole-codebase-implementation-progress.md)
-are the current repository-quality entrypoint. They preserve the Q9 run above
-as dated evidence rather than relabeling it. Q05–Q41 and the Q42 documentation
-reconciliation are verified locally; Q01–Q04 still have explicit final
-producer/isolation or stable-source evidence gates, so the whole review is not
-yet complete.
-
-The platform is **not production-ready**. The follow-up cron traversal bound,
-artifact policy/contract corrections, and lifecycle-command CI coverage
-ratchet are verified locally.
-The merge gate also exposed a concurrent schedule-claim race; its forward
-migration passes local race, worker, and exact prior-head upgrade regressions.
-Required CI remains the merge authority; PR #51 records that historical gate
-outcome. All four previously unallocated API discovery surfaces are now
-implemented and verified locally, including 469 isolated-service integration
-tests (three AWS-only cases skipped). External production gates
-remain open.
-The [implementation tracker](./implementation-progress.md#independent-audit-remediation--follow-up-corrections)
-is the single mutable checkpoint/status inventory; its summary and individual
-finding evidence take precedence over the historical verification below.
-
-The [requirement-to-evidence matrix](./implementation-progress.md#backend-requirement-traceability)
-links canonical owners, tests and ADRs. Its
-[API discovery gap closure](./implementation-progress.md#api-discovery-gap-closure)
-section records the allocated scope, implementation and verification;
-neither the matrix nor local tests declare the complete blueprint delivered.
-
-The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the
-[database readiness contract](../packages/database/src/platform/readiness.ts),
-with execution modes in the [migration execution plan](../packages/database/migrations/migration-execution-plan.json).
-Do not infer the current head from a historical phase-completion entry.
+The documentation and infrastructure cleanup passes `pnpm prepush:check`
+(static checks, unit tests, and fresh coverage), deployment/image/exercise
+checks, and regenerated source/risk evidence. The
+[qualification record](./implementation-progress.md#current-qualification)
+distinguishes these post-cleanup checks from the earlier full local-service
+qualification and its three AWS-only exclusions. Neither establishes
+production readiness.
 
 ## Open production evidence
 
-- IAM admission and immutable task/image invocation in the target AWS account.
-- Versioned tenant buckets, Object Lock, legal hold/deletion, and replication.
-- Deployed load, noisy-tenant fairness, provider-failure, and backpressure runs.
-- Pager delivery latency and operator response exercise.
-- Writer fencing, failover/failback, PITR, regional restore, RPO, and RTO drills.
-- API/worker autoscaling observations and worst-case PostgreSQL connection
-  capacity, including jobs, maintenance, migrations, and headroom.
+- AWS IAM admission, immutable image/task invocation, versioned tenant buckets,
+  Object Lock, legal hold/deletion, and dual-region control-ledger behavior.
+- Deployed webhook/fan-out/long-wait/noisy-tenant load, fair admission,
+  provider-failure, backpressure, worker-drain, Redis-loss, and object-storage
+  failure exercises.
+- Pager routing and response latency for API, queues, workers, triggers,
+  PostgreSQL, Redis, object storage, and destructive maintenance.
+- PostgreSQL backup/PITR, failover/failback, regional restore, writer fencing,
+  five-minute RPO, 24-hour RTO, replica admission, and capacity observations.
+- Production-like DNS/connect/TLS concurrency and latency evidence before any
+  change to the safe no-pooling network policy.
+- Deployed API/worker autoscaling observations under representative load and
+  saturation.
 
-These require the deployment account and cannot be replaced by repository-only
-tests. The exact report schema and validator already live under
-`infrastructure/exercises`.
+The named external evidence families remain open: ART-002, ART-008, DB-011,
+DB-017, INT-010, INT-013, OBS-006, and RL-002. The separately authorized
+Q14/E01 packet defines per-drill identity, access, command, capability, and
+cleanup fields for deployment, storage/security, providers, load/failure,
+pager, migration/PITR, regional recovery, deletion, restore, and purge. A
+filled packet is not execution evidence; local fakes, mocks, and repository
+tests cannot close these obligations. The exact schemas and validation live in
+[`infrastructure/ecs/external-platform-contract.json`](../infrastructure/ecs/external-platform-contract.json)
+and [`operations/external-platform-contract.md`](./operations/external-platform-contract.md).
 
-## Historical engineering remediation at the pinned tree
+## Current guidance
 
-Audited implementation tree: `d1b41b6e9b6122de9914298e486c4b4635742f28`
+- Use the [codebase map](./codebase-map.md) for ownership and placement.
+- Use the [local quality runbook](./operations/local-quality-verification.md)
+  for isolated service-backed verification and its explicit exclusions.
+- Use the [database readiness contract](../packages/database/src/platform/readiness.ts),
+  [function-readiness runbook](./operations/database-function-readiness.md),
+  [release/security gate](./operations/release-security-gate.md), and
+  [regional recovery runbook](./operations/regional-recovery.md) for operational
+  procedures and boundaries.
+- All accepted architecture decisions remain under [`adr/`](./adr/). They are
+  governing contracts, not proof that external obligations have been run.
 
-The following results describe that earlier audit and its follow-ups. Claims of
-completion, current scope or passing checks in this section are historical,
-not the current independent-remediation verdict.
-
-The 2026-09-03 whole-repository audit's repository-controlled correctness,
-security, and runtime findings are complete at the implementation tree above.
-That includes the worker production dependency and image role-load proof, owned
-process shutdown, bounded logger redaction, patched dependencies, security
-admission, selected risk coverage, production complexity decomposition,
-UUIDv7/schema/RLS conventions, bounded async outcomes, package surfaces, and
-public governance. A-11 is now complete: owner-local support modules remove
-genuinely shared split-suite setup, while scenario state and assertions remain
-visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 6 groups/267
-lines (0.28%), and a pinned semantic baseline now rejects unexplained drift in
-the root and protected CI checks. Database internals moved from 122 flat root
-files to ten capability directories behind 12 stable entry points; the public
-testing barrel fell from 567 to 85 physical lines. The latest
-audit follow-up also makes persisted artifact identities UUIDv7, retains leases
-while late publication marks settle, and proves compiled workers exit cleanly
-after SIGINT or SIGTERM with consumers disabled or active and during bootstrap
-failure.
-
-The code audit now formalizes all currently evidenced residual implementation
-work as C-21 through C-28. C-21/A-11, C-22, C-26, and C-28 are complete. C-23
-is ratcheted complexity debt at 35 files and 40 functions; C-24 is continuous
-risk-based coverage expansion; C-25 has an explicit ownership policy and is
-mutation/profiling-gated; and C-27 activates when a large domain-shaped `.mjs`
-tool changes materially. These do not change the
-completed status of Phases 0–6 or turn evidence-gated/conditional cleanup into
-an instruction for a mechanical repository-wide rewrite.
-The exact findings and evidence are in `docs/whole-repository-audit.md`. These
-do not change Phases 0–6; Phase 7 remains in progress only because its live
-external evidence has not been executed.
-
-Fresh local verification at this implementation tree passes `pnpm check`,
-`pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check` with 1,892
-non-integration tests. The current `pnpm test:integration` run passes all 330
-PostgreSQL tests; artifact-store, queue, worker, and API integration cohorts
-collect cleanly but skip because their opt-in service configuration is absent
-from this shell. Coverage remains explicitly limited to 105 selected
-files/4,938 coverable lines with 501 reviewed and zero unreviewed uncovered
-branches.
-
-The protected recovery fixture keeps its original Parallel/Merge V1 graph
-paired with the epoch-12 Merge-active release. The V3 contract addition is
-verified separately through additive release-history and public consumer tests;
-it does not rewrite retained V1 recovery evidence. The focused Retry/Wait loop
-and the combined Retry/Wait, Parallel/Merge, and For Each recovery cohort pass
-against local PostgreSQL and Redis after this correction.
-
-The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
-merged to `main` through pull request #7. It
-stabilizes destructive PostgreSQL service control, aligns Node 24 ambient and
-runtime surfaces, reduces all eight named complexity hotspots, centralizes the
-two same-owner helpers, binds local image evidence to its digest, splits
-dependency compatibility groups, and strengthens risk-coverage evidence.
-
-Local repository verification and all protected contexts in CI run
-`33465359665` are green, including recovery. The later runtime-compatibility
-pull request #23 run `33625443334` is also fully green after one retry of an
-existing timing-sensitive integration assertion; its successful checks contain
-no Node.js 20 action-runtime deprecation annotations. Live-production,
-provider-canary, registry-signing, promotion, and independent-review findings
-remain open until observed externally; they are not repository implementation
-defects disguised as completed evidence.
-
-The subsequent evidence correction structurally parses workflow YAML, fails
-closed on dynamic or file-based Node selectors, and binds each selector to its
-exact `setup-node` step, including case-insensitive GitHub repository identity
-matching. The CI action pins now use immutable v6 releases that declare Node
-24. The repository documentation command now structurally validates local
-targets and anchors plus a shared merge-stable implementation tree. Protected
-quality CI invokes it with complete history, and a fixture recreates the
-candidate on a different parent to prove the supported rebase-style flow.
-Pull request #26 and exact-main CI both executed that protected gate
-successfully, closing C-12. Risk coverage names 105 exact selected files with
-repository-relative paths. Public-interface tests measure 85.45% workflow-
-engine, 95.38% database, 94.95% worker, 90.89% integrations, 84.22%
-artifact-store, 98.36% contracts, and 100% API branch coverage across 4,938
-coverable lines. All 501 uncovered instrumentation
-branches have exact source-fingerprinted reviews; the eight integration-only
-reviews each bind an exact command, file, and test name. The former 26 generic
-integration classifications were withdrawn. The report rejects malformed,
-duplicate, stale-source, and unsupported integration evidence, closing C-06
-for the current selected cohort. The remediation also
-centralizes the coordinator validation primitives privately and records the
-fixed-revision
-latency/memory/query comparison in
-[`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md).
-
-## Sources of truth
-
-- [Authoritative backend plan](./workflow-platform-backend-plan.md)
-- [Detailed implementation evidence and history](./implementation-progress.md)
-- [Independent whole-repository audit baseline](./independent-whole-repository-audit.md)
-- [Historical whole-repository audit](./whole-repository-audit.md)
-- [Architecture decisions](./adr/)
+The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the database
+readiness contract, with execution modes in the
+[migration execution plan](../packages/database/migrations/migration-execution-plan.json).
+Do not infer the current head from historical phase evidence.
