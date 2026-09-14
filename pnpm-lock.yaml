@@ -113,8 +113,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
       jose:
-        specifier: 6.2.9
-        version: 6.2.9
+        specifier: 6.2.12
+        version: 6.2.12
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
@@ -405,8 +405,8 @@ importers:
         specifier: 8.23.0
         version: 8.23.0
       uuid:
-        specifier: 13.0.1
-        version: 13.0.1
+        specifier: 13.0.2
+        version: 13.0.2
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -768,15 +768,15 @@ packages:
     resolution: {integrity: sha512-gLNsunvwf3mCi5u5o46/Z/JcJMnhbHSaZ69rkgPzNM3J4s8hWwpPUQB6/tt0EDFyCiWzxANlx+2LJwpYj4zS1w==}
     engines: {node: '>=20.19.0'}
 
-  '@csstools/css-calc@3.4.0':
-    resolution: {integrity: sha512-XQKj5B7QiZcHiegCOCAzcAOJdhGgWOHbbu62h5e5mkHnn8lWcfiJhllkqWmxu5zWR9jucPHuo1iTB56P033hcg==}
+  '@csstools/css-calc@3.3.0':
+    resolution: {integrity: sha512-c5ihYsPkdG6JCkU2zTMm4+k6r7RXuGxtWYhu5DHMIiF1FHzrfmHL5so11AoFpUv/tu61xfcmT4AmKoFfMPoqdQ==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       '@csstools/css-parser-algorithms': ^4.0.0
       '@csstools/css-tokenizer': ^4.0.0
 
-  '@csstools/css-color-parser@4.2.3':
-    resolution: {integrity: sha512-y4LpL+lmpuyKDiEFq2PnZUVFdAjsoB/qQJod79yLNokXyW7jewi+/WJ69EfItj8A2unWtxXnGjw6LYXgXu5ZjA==}
+  '@csstools/css-color-parser@4.2.2':
+    resolution: {integrity: sha512-3QKjR/vxyjcSXBLgb6lP0S3MGdvwbmqSsvLPbYdVORqPDc8FX1HAJ0Spk38bxaRXgvENTA47tlhhbb5Z2e8hEg==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       '@csstools/css-parser-algorithms': ^4.0.0
@@ -2910,8 +2910,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jose@6.2.9:
-    resolution: {integrity: sha512-XrchZOFZUl/T3vTwRe8XK+cJrGtMF4th1ARnDfwbBXFKThGhlsxEE4Zu03AD/bjJSt/9jT/mxrOCkJWOg77aPA==}
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-stringify@1.0.2:
     resolution: {integrity: sha512-rtS5ATOo2Q5k1G+DADISilDA6lv79zIiwFd6CcjuIxGKLFm5C+RLImRscVap9k55i+MOZwgliw+NejvkLuGD5g==}
@@ -3840,8 +3840,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  uuid@13.0.1:
-    resolution: {integrity: sha512-9ezox2roIft6ExBVTVqibSd5dc5/47Sw/uY6b4SjQUT2TzQ0tltNquWA46y4xPQmdZYqvnio22SgWd41M86+jw==}
+  uuid@13.0.2:
+    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
     hasBin: true
 
   vite@8.3.0:
@@ -4064,8 +4064,8 @@ snapshots:
 
   '@asamuzakjp/css-color@6.0.7':
     dependencies:
-      '@csstools/css-calc': 3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-color-parser': 4.2.3(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-calc': 3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-color-parser': 4.2.2(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
       lru-cache: 11.5.2
@@ -4400,15 +4400,15 @@ snapshots:
 
   '@csstools/color-helpers@6.1.1': {}
 
-  '@csstools/css-calc@3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-calc@3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
     dependencies:
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
 
-  '@csstools/css-color-parser@4.2.3(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-color-parser@4.2.2(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
     dependencies:
       '@csstools/color-helpers': 6.1.1
-      '@csstools/css-calc': 3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-calc': 3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
 
@@ -6395,7 +6395,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@6.2.9: {}
+  jose@6.2.12: {}
 
   js-stringify@1.0.2: {}
 
@@ -7283,7 +7283,7 @@ snapshots:
     dependencies:
       react: 19.3.0
 
-  uuid@13.0.1: {}
+  uuid@13.0.2: {}
 
   vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0):
     dependencies:
