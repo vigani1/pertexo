@@ -9,7 +9,7 @@ const mode = process.argv[2];
 const markerPath = process.argv[3];
 
 if (
-  !['active', 'bootstrap-failure'].includes(mode) ||
+  !['active', 'bootstrap-failure', 'metrics-failure'].includes(mode) ||
   typeof markerPath !== 'string' ||
   markerPath.length === 0
 )
@@ -154,10 +154,14 @@ const modules = {
     createStructuredLogger: () => logger,
   },
   observability: {
-    createMaintenanceMetrics: () => ({
-      recordControlLedgerReconciliation: () => undefined,
-      recordLifecycleCommand: () => undefined,
-    }),
+    createMaintenanceMetrics: () => {
+      if (mode === 'metrics-failure')
+        throw new Error('fixture metrics construction failure');
+      return {
+        recordControlLedgerReconciliation: () => undefined,
+        recordLifecycleCommand: () => undefined,
+      };
+    },
   },
   worker: { runLifecycleCommandWorker },
 };
@@ -172,17 +176,12 @@ try {
   });
   report('bootstrap.completed');
 } catch (error) {
-  report(
+  const expectedFailure =
     error instanceof Error &&
-      error.message === 'fixture coordinator construction failure'
-      ? 'bootstrap.failed'
-      : 'bootstrap.unexpected',
-  );
-  process.exitCode =
-    error instanceof Error &&
-    error.message === 'fixture coordinator construction failure'
-      ? 0
-      : 1;
+    (error.message === 'fixture coordinator construction failure' ||
+      error.message === 'fixture metrics construction failure');
+  report(expectedFailure ? 'bootstrap.failed' : 'bootstrap.unexpected');
+  process.exitCode = expectedFailure ? 0 : 1;
 } finally {
   clearInterval(keepAlive);
 }

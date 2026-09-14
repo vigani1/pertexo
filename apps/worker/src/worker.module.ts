@@ -19,15 +19,23 @@ import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
 import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
 import type { TriggerRuntime } from './triggers/trigger-runtime.js';
-import { DatabaseModule } from './platform/database/database.module.js';
+import {
+  DatabaseModule,
+  WORKSPACE_DATABASE,
+} from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
-import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
+import {
+  WorkerReadinessMonitor,
+  type WorkerReadinessMarker,
+} from './runtime/worker-readiness-monitor.js';
 import { WorkerResourceMonitor } from './runtime/worker-resource-monitor.js';
 import { WorkerDrainState } from './runtime/worker-drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/worker-process-keepalive.js';
+import { WorkerShutdownCoordinator } from './runtime/worker-shutdown-coordinator.js';
 import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
+import { OutboxDispatcherLifecycle } from './transport/transport-lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
@@ -43,6 +51,7 @@ export type WorkerModuleDependencies = Readonly<{
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
   transportMetrics?: TransportMetrics;
+  readinessMarker?: WorkerReadinessMarker;
 }>;
 
 @Module({})
@@ -120,11 +129,18 @@ export class WorkerModule {
       providers: [
         WorkerReadiness,
         WorkerProcessKeepalive,
+        WorkerShutdownCoordinator,
         {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
-            new WorkerReadinessMonitor(readiness, dependencies.logger),
+            new WorkerReadinessMonitor(
+              readiness,
+              dependencies.logger,
+              dependencies.readinessMarker,
+              undefined,
+              config.outboxDispatcher.operationTimeoutMillis,
+            ),
         },
         {
           provide: WorkerResourceMonitor,
@@ -136,28 +152,34 @@ export class WorkerModule {
               dependencies.logger,
             ),
         },
-        ...(dependencies.databaseRuntime === undefined
-          ? []
-          : [
-              {
-                provide: Symbol('DATABASE_RUNTIME_SHUTDOWN'),
-                useValue: {
-                  onApplicationShutdown: () =>
-                    dependencies.databaseRuntime?.close(),
-                },
-              },
-            ]),
-        ...(dependencies.dispatcherDatabaseRuntime === undefined
-          ? []
-          : [
-              {
-                provide: Symbol('DISPATCHER_DATABASE_RUNTIME_SHUTDOWN'),
-                useValue: {
-                  onApplicationShutdown: () =>
-                    dependencies.dispatcherDatabaseRuntime?.close(),
-                },
-              },
-            ]),
+        {
+          provide: Symbol('WORKER_RESOURCE_OWNERS'),
+          inject: [
+            WorkerShutdownCoordinator,
+            OutboxDispatcherLifecycle,
+            WORKSPACE_DATABASE,
+          ],
+          useFactory: (
+            shutdown: WorkerShutdownCoordinator,
+            transport: OutboxDispatcherLifecycle,
+            database: WorkspaceDatabase,
+          ) => {
+            shutdown.register('transport', () => transport.close());
+            shutdown.register('database', () => database.close());
+            if (dependencies.databaseRuntime !== undefined)
+              shutdown.register('database-runtime', () =>
+                dependencies.databaseRuntime?.close(),
+              );
+            if (dependencies.dispatcherDatabaseRuntime !== undefined)
+              shutdown.register('dispatcher-database-runtime', () =>
+                dependencies.dispatcherDatabaseRuntime?.close(),
+              );
+            shutdown.register('telemetry', () =>
+              dependencies.telemetry.shutdown(),
+            );
+            return Object.freeze({ registered: true });
+          },
+        },
       ],
     };
   }

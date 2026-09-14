@@ -40,6 +40,14 @@ function failedRegionRole(
   return 'recovery';
 }
 
+function isArtifactIntegrityFailure(error: unknown): boolean {
+  try {
+    return error instanceof ArtifactIntegrityError;
+  } catch {
+    return false;
+  }
+}
+
 export interface DualRegionArtifactStoreReadiness extends ArtifactStoreReadiness {
   readonly primary: ArtifactStoreReadiness;
   readonly recovery: ArtifactStoreReadiness;
@@ -325,8 +333,9 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         );
       return;
     }
+    let download: ArtifactDownload | undefined;
     try {
-      const download = await this.primary.getStream({
+      download = await this.primary.getStream({
         artifactId: metadata.artifactId,
         workspaceId: metadata.workspaceId,
         ...(signal === undefined ? {} : { signal }),
@@ -337,9 +346,16 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
         ...(signal === undefined ? {} : { signal }),
       });
     } catch (error: unknown) {
-      if (error instanceof ArtifactIntegrityError) throw error;
+      if (isArtifactIntegrityFailure(error)) throw error;
       this.observe('artifact_replication', 'replicate', 'partial', 'recovery');
       throw new ArtifactPartialReplicationError();
+    } finally {
+      try {
+        if (download !== undefined && !download.body.destroyed)
+          download.body.destroy();
+      } catch {
+        // Replication outcome remains authoritative over terminal stream cleanup.
+      }
     }
   }
 }

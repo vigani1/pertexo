@@ -31,13 +31,15 @@ export class WorkflowAuthoringModule {
     dependencies: WorkflowAuthoringDependencies,
     identityModule: DynamicModule,
   ): DynamicModule {
+    const telemetry =
+      dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY;
     const providers: Provider[] = [
       {
         provide: RestoreWorkflowVersionUseCase,
         useValue: new RestoreWorkflowVersionUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -45,7 +47,7 @@ export class WorkflowAuthoringModule {
         useValue: new TransitionWorkflowLifecycleUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -61,7 +63,7 @@ export class WorkflowAuthoringModule {
         useValue: new ListWorkflowsUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -69,7 +71,7 @@ export class WorkflowAuthoringModule {
         useValue: new CreateWorkflowUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -77,7 +79,7 @@ export class WorkflowAuthoringModule {
         useValue: new GetWorkflowDraftUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -85,7 +87,7 @@ export class WorkflowAuthoringModule {
         useValue: new SaveWorkflowDraftUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -93,7 +95,7 @@ export class WorkflowAuthoringModule {
         useValue: new ValidateWorkflowDraftUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -101,7 +103,7 @@ export class WorkflowAuthoringModule {
         useValue: new PublishWorkflowUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
       {
@@ -109,7 +111,7 @@ export class WorkflowAuthoringModule {
         useValue: new ListWorkflowVersionsUseCase(
           dependencies.persistence,
           dependencies.authorization,
-          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+          telemetry,
         ),
       },
     ];

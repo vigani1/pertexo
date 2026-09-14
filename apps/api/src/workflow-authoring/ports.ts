@@ -1,6 +1,5 @@
 import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
 import type {
-  WorkspaceAuthorizationPort,
   ActorContext,
   AuthorizedWorkspaceContext,
 } from '../workspaces/index.js';
@@ -22,7 +21,7 @@ export type WorkflowAuthoringPersistence = Pick<
 
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
-  authorization: WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
+  authorization: WorkspaceAuthorizationSource;
   telemetry?: WorkflowAuthoringTelemetry;
 }>;
 

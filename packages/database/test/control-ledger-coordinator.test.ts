@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { PoolClient } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   CONTROL_LEDGER_ZERO_HASH,
@@ -161,6 +161,10 @@ function fakeDatabase(
   events: string[],
   processId?: number,
   inventory: string[] = [workspaceId],
+  cleanupFailures: Readonly<{
+    rollback?: unknown;
+    unlock?: unknown;
+  }> = {},
 ) {
   const releaseErrors: (Error | boolean | undefined)[] = [];
   const timeouts: string[] = [];
@@ -190,6 +194,8 @@ function fakeDatabase(
       if (normalized.includes('pg_advisory_lock')) {
         return { rowCount: 1, rows: [{ pg_advisory_lock: null }] };
       } else if (normalized.includes('pg_advisory_unlock')) {
+        if (Object.hasOwn(cleanupFailures, 'unlock'))
+          throw cleanupFailures.unlock;
         return { rowCount: 1, rows: [{ unlocked: true }] };
       } else if (normalized === 'begin') {
         events.push('BEGIN');
@@ -290,6 +296,8 @@ function fakeDatabase(
       } else if (normalized === 'commit') events.push('COMMIT');
       else if (normalized === 'rollback') {
         events.push('ROLLBACK');
+        if (Object.hasOwn(cleanupFailures, 'rollback'))
+          throw cleanupFailures.rollback;
         projections.clear();
         for (const [key, value] of transactionProjectionSnapshot)
           projections.set(key, value);
@@ -304,6 +312,7 @@ function fakeDatabase(
   } as unknown as PoolClient;
   return {
     pool: {
+      options: { max: 2 },
       connect: async () => {
         await Promise.resolve();
         return client;
@@ -361,14 +370,11 @@ describe('control ledger coordinator', () => {
     await expect(coordinator.placeLegalHold(input())).resolves.toMatchObject({
       sequence: 1,
     });
-    for (const externalEvent of ['reconcile:0', 'append']) {
-      const index = events.indexOf(externalEvent);
-      expect(events[index - 1]).toBe('RELEASE');
-      expect(events.slice(index + 1)).toContain('BEGIN');
-    }
+    expect(events[events.indexOf('reconcile:0') - 1]).toBe('RELEASE');
+    expect(events[events.indexOf('append') - 1]).toBe('COMMIT');
+    expect(events.slice(events.indexOf('append') + 1)).toContain('BEGIN');
     expect(events.indexOf('PROJECT')).toBeGreaterThan(events.indexOf('append'));
-    expect(events.at(-2)).toBe('COMMIT');
-    expect(events.at(-1)).toBe('RELEASE');
+    expect(events.slice(-2)).toEqual(['COMMIT', 'RELEASE']);
     expect(database.timeouts[0]).toContain("lock_timeout='1234ms'");
     expect(database.timeouts[0]).toContain("statement_timeout='2345ms'");
     expect(database.timeouts[0]).not.toContain(
@@ -392,6 +398,63 @@ describe('control ledger coordinator', () => {
     expect(events.at(-1)).toBe('RELEASE');
     expect(database.projections.size).toBe(0);
   });
+
+  it.each([
+    ['Error', new Error('rollback cleanup')],
+    ['string', 'rollback cleanup'],
+    ['null', null],
+    ['undefined', undefined],
+  ])(
+    'disposes the transaction client when rollback rejects %s',
+    async (_label, rejection) => {
+      const events: string[] = [];
+      const database = fakeDatabase(events, undefined, [workspaceId], {
+        rollback: rejection,
+      });
+      const ledger = new MemoryLedger();
+      ledger.records.push(record(1, CONTROL_LEDGER_ZERO_HASH));
+      database.setFailProjection(true);
+      const coordinator = createControlLedgerCoordinator(config, ledger, {
+        pool: database.pool,
+      });
+
+      await expect(
+        coordinator.reconcileWorkspace({ workspaceId }),
+      ).rejects.toThrow('projection failed');
+      expect(database.releaseErrors).toHaveLength(2);
+      expect(database.releaseErrors.at(-1)).toMatchObject({
+        message: 'Control ledger transaction cleanup failed',
+      });
+    },
+  );
+
+  it.each([
+    ['Error', new Error('unlock cleanup')],
+    ['string', 'unlock cleanup'],
+    ['null', null],
+    ['undefined', undefined],
+  ])(
+    'disposes the transaction client when advisory unlock rejects %s',
+    async (_label, rejection) => {
+      const events: string[] = [];
+      const database = fakeDatabase(events, undefined, [workspaceId], {
+        unlock: rejection,
+      });
+      const coordinator = createControlLedgerCoordinator(
+        config,
+        new MemoryLedger(),
+        { pool: database.pool },
+      );
+
+      await expect(
+        coordinator.reconcileWorkspace({ workspaceId }),
+      ).rejects.toBe(rejection);
+      expect(database.releaseErrors).toHaveLength(1);
+      expect(database.releaseErrors[0]).toMatchObject({
+        message: 'Control ledger transaction cleanup failed',
+      });
+    },
+  );
 
   it('recovers an append-success projection failure on exact retry', async () => {
     const events: string[] = [];
@@ -505,6 +568,73 @@ describe('control ledger coordinator', () => {
       coordinator.placeLegalHold(input({ reason: 'Different reason' })),
     ).rejects.toBeInstanceOf(ControlLedgerCommandConflictError);
     expect(ledger.records).toHaveLength(1);
+  });
+
+  it.each([
+    ['invalid date', { occurredAt: 'not-a-date' }],
+    ['invalid hash', { recordHash: 'not-a-hash' }],
+    ['noncanonical actor', { actorRef: ' operator:test ' }],
+  ])('rejects %s in an existing projected replay', async (_label, override) => {
+    const database = fakeDatabase([]);
+    database.projections.set(
+      commandId,
+      record(1, CONTROL_LEDGER_ZERO_HASH, {
+        actorRef: 'operator:test',
+        commandId,
+        commandType: 'legal_hold_placed',
+        legalAuthority: 'case-123',
+        occurredAt,
+        reason: 'Preserve records',
+        subjectId: holdId,
+        workspaceId,
+        ...override,
+      }),
+    );
+    const coordinator = createControlLedgerCoordinator(
+      config,
+      new MemoryLedger(),
+      { pool: database.pool },
+    );
+
+    await expect(coordinator.placeLegalHold(input())).rejects.toBeInstanceOf(
+      ControlLedgerCommandConflictError,
+    );
+  });
+
+  it.each([
+    [
+      'mismatched page end',
+      {
+        hasMore: false,
+        pageEndHash: 'f'.repeat(64),
+        pageEndSequence: 0,
+        reachedHighWater: true,
+        records: [],
+      },
+    ],
+    [
+      'contradictory high-water flags',
+      {
+        hasMore: false,
+        pageEndHash: CONTROL_LEDGER_ZERO_HASH,
+        pageEndSequence: 0,
+        reachedHighWater: false,
+        records: [],
+      },
+    ],
+  ])('rejects an external page with %s', async (_label, page) => {
+    const database = fakeDatabase([]);
+    const ledger: ControlLedger = {
+      append: vi.fn(),
+      reconcile: vi.fn(() => Promise.resolve(page)),
+    };
+    const coordinator = createControlLedgerCoordinator(config, ledger, {
+      pool: database.pool,
+    });
+
+    await expect(
+      coordinator.reconcileWorkspace({ workspaceId }),
+    ).rejects.toBeInstanceOf(ControlLedgerReconciliationError);
   });
 
   it('preflights invalid hold transitions before creating external records', async () => {
@@ -764,6 +894,7 @@ describe('control ledger coordinator', () => {
       resolveClient = resolve;
     });
     const pool = {
+      options: { max: 2 },
       connect: () => connection,
       end: async () => Promise.resolve(),
     };

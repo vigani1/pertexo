@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
+import * as productionEngine from '../src/index.js';
+import * as testingEngine from '../src/testing.js';
 import {
-  productionEngine,
-  testingEngine,
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
@@ -10,11 +12,32 @@ import {
   executeNodeAttempt,
   verifyWorkflowExecutableV2,
   invocationKey,
-  createHash,
+} from '../src/index.js';
+import {
   nodeRelease,
   forEachGraph,
   nestedForEachGraph,
 } from './executable-workflow.fixtures.js';
+
+function structuredAttemptFixture() {
+  const executable = buildWorkflowExecutableV2({
+    graph: forEachGraph(),
+    release: composeExecutableCompatibilityRelease(
+      nodeRelease({ forEach: true }),
+    ),
+  });
+  const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
+  const collection = [{ name: 'first' }, { name: 'nearest' }] as const;
+  const declaredCollectionChecksum = createHash('sha256')
+    .update(JSON.stringify(collection))
+    .digest('hex');
+  return {
+    collection,
+    declaredCollectionChecksum,
+    executable,
+    iterationPath,
+  };
+}
 
 describe('For Each production operations', () => {
   it.each([
@@ -289,18 +312,13 @@ describe('For Each production operations', () => {
     ).toMatchObject({ status: 'succeeded' });
   });
 
-  it('executes structured input and exact scoped upstream output at the attempt seam', async () => {
-    const executable = buildWorkflowExecutableV2({
-      graph: forEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true }),
-      ),
-    });
-    const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
-    const collection = [{ name: 'first' }, { name: 'nearest' }] as const;
-    const declaredCollectionChecksum = createHash('sha256')
-      .update(JSON.stringify(collection))
-      .digest('hex');
+  it('resolves exact same-iteration upstream output', async () => {
+    const {
+      collection,
+      declaredCollectionChecksum,
+      executable,
+      iterationPath,
+    } = structuredAttemptFixture();
     let received: unknown;
     await executeNodeAttempt({
       runId: 'run-foreach',
@@ -346,6 +364,16 @@ describe('For Each production operations', () => {
       signal: new AbortController().signal,
     });
     expect(received).toEqual({ value: { from: 'same-iteration' } });
+  });
+
+  it('resolves the nearest structured collection item', async () => {
+    const {
+      collection,
+      declaredCollectionChecksum,
+      executable,
+      iterationPath,
+    } = structuredAttemptFixture();
+    let received: unknown;
 
     await expect(
       executeNodeAttempt({
@@ -383,6 +411,11 @@ describe('For Each production operations', () => {
       }),
     ).resolves.toMatchObject({ kind: 'succeeded' });
     expect(received).toEqual({ value: { name: 'nearest' } });
+  });
+
+  it('rejects a tampered structured collection checksum', async () => {
+    const { declaredCollectionChecksum, executable, iterationPath } =
+      structuredAttemptFixture();
 
     await expect(
       executeNodeAttempt({
@@ -413,7 +446,9 @@ describe('For Each production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ code: 'attempt_invalid' });
+  });
 
+  it('resolves the nearest item in a nested structured scope', async () => {
     const nestedExecutable = buildWorkflowExecutableV2({
       graph: nestedForEachGraph(),
       release: composeExecutableCompatibilityRelease(

@@ -3,6 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
+import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 import { databaseSchema } from '../schema.js';
 
 const workspaceIdSchema = z.uuid();
@@ -117,15 +118,23 @@ async function runTransaction<T>(
   const releaseForAbort = (): void => {
     if (clientReleased) return;
     clientReleased = true;
-    // PoolClient.release(error) removes the connection from the pool and
-    // force-closes an active query. This is the only reliable cancellation
-    // seam available to node-postgres for a query already on the wire.
-    client.release(abortError);
+    // A pool error release removes the client; the shared helper also sends a
+    // CancelRequest because PostgreSQL may otherwise finish a sleeping or
+    // blocked statement after its application socket disappears.
+    try {
+      destroyCanceledPoolClient(client, abortError);
+    } catch {
+      // The caller's abort remains authoritative even if pool bookkeeping
+      // itself fails after the socket has been terminated.
+    }
   };
   const destroyClient = (): void => {
     if (clientReleased) return;
     clientReleased = true;
     client.release(true);
+  };
+  const assertNotAborted = (): void => {
+    if (options.signal?.aborted) throw abortError;
   };
 
   if (options.signal?.aborted) {
@@ -136,12 +145,14 @@ async function runTransaction<T>(
 
   try {
     await assertNoTenantContext(client);
+    assertNotAborted();
     await client.query(
       mode === 'repeatable_read_only'
         ? 'begin isolation level repeatable read read only'
         : 'begin',
     );
     transactionOpen = true;
+    assertNotAborted();
     if (scope === undefined) {
       // Platform-global transactions deliberately install no tenant context.
     } else if (scope.actorId === undefined) {
@@ -154,17 +165,23 @@ async function runTransaction<T>(
         [scope.workspaceId, scope.actorId],
       );
     }
+    assertNotAborted();
     if (statementTimeoutMillis !== undefined) {
       await client.query("select set_config('statement_timeout', $1, true)", [
         `${String(statementTimeoutMillis)}ms`,
       ]);
     }
-    if (scope !== undefined)
+    assertNotAborted();
+    if (scope !== undefined) {
       await verifyTenantContext(client, scope, statementTimeoutMillis);
+      assertNotAborted();
+    }
 
     const result = await operation(client);
+    assertNotAborted();
     await client.query('commit');
     transactionOpen = false;
+    assertNotAborted();
     await assertNoTenantContext(client);
     clientReleased = true;
     client.release();
@@ -234,7 +251,9 @@ async function acquirePoolClient(
  * with fail-closed hygiene: absent-context proof before use, read-back
  * verification of every configured setting, wire-level cancellation through
  * the abort signal, and client destruction whenever transaction rollback or
- * context cleanup fails so a contaminated client can never be reused.
+ * context cleanup fails so a contaminated client can never be reused. The
+ * callback owns its non-SQL work and must not retain or use the client after it
+ * settles; abort can destroy that client while callback work is still pending.
  */
 export async function withTenantScopedClient<T>(
   pool: Pool,
@@ -304,6 +323,25 @@ export async function withWorkspaceTransaction<T>(
 ): Promise<T> {
   const workspaceId = parseWorkspaceId(workspaceIdInput);
   return withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      const db = drizzle(client, { schema: databaseSchema });
+      return operation(Object.freeze({ db, workspaceId }));
+    },
+    options,
+  );
+}
+
+/** Runs a workspace-scoped read in one stable repeatable-read snapshot. */
+export async function withWorkspaceReadTransaction<T>(
+  pool: Pool,
+  workspaceIdInput: string,
+  operation: (transaction: WorkspaceTransaction) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  const workspaceId = parseWorkspaceId(workspaceIdInput);
+  return withTenantScopedReadClient(
     pool,
     { workspaceId },
     async (client) => {

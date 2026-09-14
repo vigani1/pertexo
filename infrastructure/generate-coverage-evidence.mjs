@@ -8,15 +8,24 @@ import { pathToFileURL } from 'node:url';
 
 import ts from 'typescript';
 
+import {
+  coverageSourceFingerprint,
+  validateCoverageProducerManifest,
+} from './coverage-provenance.mjs';
+
 export const SOURCE_COVERAGE_COHORTS = Object.freeze([
   'api',
   'api-orchestration',
   'api-priority',
   'api-run-event-publisher',
+  'api-entrypoints',
   'worker',
   'worker-lifecycle',
+  'worker-entrypoints',
+  'operator-command-entrypoints',
+  'recovery-entrypoints',
+  'retention-entrypoints',
   'database',
-  'database-integration',
   'artifact-store',
   'contracts',
   'integrations',
@@ -170,12 +179,31 @@ export function mapSourceTestSuites({ sources, tests }) {
   return suitesBySource;
 }
 
-function normalizedCoverageByFile(coverageReports, rootDirectory) {
+export function normalizedCoverageByFile(coverageReports, rootDirectory) {
   const byFile = new Map();
   for (const [cohort, report] of coverageReports) {
     for (const [absoluteFile, coverage] of Object.entries(report)) {
       const file = path.relative(rootDirectory, absoluteFile);
-      const statements = Object.values(coverage.s ?? {});
+      const counters = coverage?.s;
+      const metadata = coverage?.statementMap;
+      if (
+        counters === null ||
+        typeof counters !== 'object' ||
+        Array.isArray(counters) ||
+        metadata === null ||
+        typeof metadata !== 'object' ||
+        Array.isArray(metadata) ||
+        JSON.stringify(Object.keys(counters).sort()) !==
+          JSON.stringify(Object.keys(metadata).sort())
+      )
+        throw new Error(
+          `Malformed Istanbul statement coverage for ${absoluteFile}`,
+        );
+      const statements = Object.values(counters);
+      if (statements.some((hits) => !Number.isSafeInteger(hits) || hits < 0))
+        throw new Error(
+          `Malformed Istanbul statement hits for ${absoluteFile}`,
+        );
       const item = {
         cohort,
         statementLocations: statements.length,
@@ -237,9 +265,7 @@ export function createSourceInventory({
       };
     })
     .sort((left, right) => left.file.localeCompare(right.file));
-  const sourceFingerprint = sha256(
-    files.map((file) => `${file.file}\0${file.sha256}`).join('\n'),
-  );
+  const sourceFingerprint = coverageSourceFingerprint(sources);
   const counts = files.reduce(
     (summary, file) => {
       summary[file.measurementDisposition] += 1;
@@ -264,7 +290,7 @@ export function createSourceInventory({
   return {
     schemaVersion: 3,
     generatedAt,
-    sourceFingerprint: `sha256:${sourceFingerprint}`,
+    sourceFingerprint,
     scope:
       'Every apps/*/src and packages/*/src TypeScript file. Coverage presence is selected-cohort evidence, not proof that every path ran. For unselected runtime files, ownerTestSuites records exact test files with a static relative-import path to the source; this proves source ownership, not execution. Empty ownerTestSuites are explicit unmapped evidence gaps. Declaration-only files retain build, type, and export-contract evidence.',
     sourceFiles: files.length,
@@ -346,6 +372,12 @@ async function optionalSha256(file) {
   }
 }
 
+async function assertInputUnchanged(file, expected) {
+  const current = await readFile(file);
+  if (sha256(current) !== sha256(expected))
+    throw new Error(`Coverage evidence input changed while reading: ${file}`);
+}
+
 async function main() {
   const rootDirectory = process.cwd();
   const sourcePaths = (
@@ -378,15 +410,41 @@ async function main() {
       ]),
     ),
   );
-  const coverageReports = new Map(
+  const artifacts = new Map(
     await Promise.all(
-      SOURCE_COVERAGE_COHORTS.map(async (cohort) => [
-        cohort,
-        await readJson(
-          path.join(rootDirectory, 'coverage', cohort, 'coverage-final.json'),
-        ),
-      ]),
+      SOURCE_COVERAGE_COHORTS.map(async (cohort) => {
+        const coverageFile = path.join(
+          rootDirectory,
+          'coverage',
+          cohort,
+          'coverage-final.json',
+        );
+        const resultFile = path.join(
+          rootDirectory,
+          'coverage',
+          cohort,
+          'test-results.json',
+        );
+        const [coverageBytes, resultBytes] = await Promise.all([
+          readFile(coverageFile),
+          readFile(resultFile),
+        ]);
+        return [
+          cohort,
+          {
+            coverageBytes,
+            resultBytes,
+            result: JSON.parse(resultBytes.toString('utf8')),
+          },
+        ];
+      }),
     ),
+  );
+  const coverageReports = new Map(
+    [...artifacts].map(([cohort, artifact]) => [
+      cohort,
+      JSON.parse(artifact.coverageBytes.toString('utf8')),
+    ]),
   );
   const riskFile = path.join(
     rootDirectory,
@@ -396,26 +454,48 @@ async function main() {
     rootDirectory,
     'infrastructure/risk-coverage-reviews.json',
   );
-  const riskReport = await readJson(riskFile);
-  const coverageArtifacts = await Promise.all(
-    SOURCE_COVERAGE_COHORTS.map(async (cohort) => {
-      const coverageFile = `coverage/${cohort}/coverage-final.json`;
-      const resultFile = `coverage/${cohort}/test-results.json`;
-      return {
-        cohort,
-        coverageFile,
-        coverageSha256: await optionalSha256(coverageFile),
-        resultFile,
-        resultSha256: await optionalSha256(resultFile),
-      };
-    }),
-  );
+  const riskReportBytes = await readFile(riskFile);
+  const riskReport = JSON.parse(riskReportBytes.toString('utf8'));
+  const coverageArtifacts = SOURCE_COVERAGE_COHORTS.map((cohort) => {
+    const coverageFile = `coverage/${cohort}/coverage-final.json`;
+    const resultFile = `coverage/${cohort}/test-results.json`;
+    const artifact = artifacts.get(cohort);
+    return {
+      cohort,
+      coverageFile,
+      coverageSha256: `sha256:${sha256(artifact.coverageBytes)}`,
+      resultFile,
+      resultSha256: `sha256:${sha256(artifact.resultBytes)}`,
+    };
+  });
   const packageJson = await readJson(path.join(rootDirectory, 'package.json'));
+  const producerManifestFile = path.join(
+    rootDirectory,
+    'coverage/coverage-producer-manifest.json',
+  );
+  const producerManifestBytes = await readFile(producerManifestFile);
+  const producerManifest = JSON.parse(producerManifestBytes.toString('utf8'));
+  const sourceWitnessFile = path.join(
+    rootDirectory,
+    'coverage/coverage-source-witness.json',
+  );
+  const sourceWitnessBytes = await readFile(sourceWitnessFile);
+  const sourceWitness = JSON.parse(sourceWitnessBytes.toString('utf8'));
+  validateCoverageProducerManifest({
+    artifacts,
+    manifest: producerManifest,
+    packageManager: packageJson.packageManager,
+    riskReport,
+    riskReportBytes,
+    sourceWitness,
+    sources,
+  });
   const inventory = createSourceInventory({
     artifactHashes: {
       coverage: coverageArtifacts,
+      producerManifest: `sha256:${sha256(producerManifestBytes)}`,
       reviewManifest: await optionalSha256(reviewFile),
-      riskReport: await optionalSha256(riskFile),
+      riskReport: `sha256:${sha256(riskReportBytes)}`,
     },
     coverageReports,
     generatedAt: riskReport.generatedAt,
@@ -425,6 +505,27 @@ async function main() {
     sources,
     testSuitesBySource: mapSourceTestSuites({ sources, tests }),
   });
+  await Promise.all([
+    ...sourcePaths.map((file) =>
+      assertInputUnchanged(
+        file,
+        sources.get(path.relative(rootDirectory, file)),
+      ),
+    ),
+    ...[...artifacts.entries()].flatMap(([cohort, artifact]) => [
+      assertInputUnchanged(
+        path.join(rootDirectory, 'coverage', cohort, 'coverage-final.json'),
+        artifact.coverageBytes,
+      ),
+      assertInputUnchanged(
+        path.join(rootDirectory, 'coverage', cohort, 'test-results.json'),
+        artifact.resultBytes,
+      ),
+    ]),
+    assertInputUnchanged(riskFile, riskReportBytes),
+    assertInputUnchanged(producerManifestFile, producerManifestBytes),
+    assertInputUnchanged(sourceWitnessFile, sourceWitnessBytes),
+  ]);
   await writeFile(
     path.join(rootDirectory, 'docs/remaining-work/source-inventory.json'),
     `${JSON.stringify(inventory, null, 2)}\n`,

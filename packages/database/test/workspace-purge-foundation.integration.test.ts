@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
+import {
+  createControlLedgerCoordinator,
+  type AppendControlLedgerRecord,
+  type ControlLedger,
+  type ControlLedgerRecord,
+} from '../src/lifecycle/control-ledger-coordinator.js';
 import {
   createWorkspacePurgeCoordinator,
   type WorkspacePurgeLedger,
@@ -28,6 +34,10 @@ const maintenanceUrl = withDatabase(
   process.env.DATABASE_MAINTENANCE_URL ??
     'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
+const operatorUrl = withDatabase(
+  process.env.DATABASE_OPERATOR_URL ??
+    'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo',
+);
 const migrationConfig = {
   connectionString: databaseUrl,
   ownerRole: 'pertexo_owner',
@@ -40,11 +50,14 @@ const migrationConfig = {
 } as const;
 let maintenance: Pool | undefined;
 let owner: Pool | undefined;
+let operator: Pool | undefined;
 
 class MemoryPurgeLedger implements WorkspacePurgeLedger {
   public appendCalls = 0;
   public failCommandType: WorkspacePurgeLedgerRecord['commandType'] | undefined;
   public failAfterFirstAppend = false;
+  public malformedNextPageEnd = false;
+  public repeatPreviousHashOnNextAppend = false;
   private readonly records = new Map<string, WorkspacePurgeLedgerRecord[]>();
 
   public async append(input: Parameters<WorkspacePurgeLedger['append']>[0]) {
@@ -57,9 +70,13 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
     if (existing !== undefined) return existing;
     const { signal, ...material } = input;
     signal?.throwIfAborted();
+    const recordHash = this.repeatPreviousHashOnNextAppend
+      ? input.previousHash
+      : (input.sequence === 2 ? 'a' : 'b').repeat(64);
+    this.repeatPreviousHashOnNextAppend = false;
     const record = {
       ...material,
-      recordHash: (input.sequence === 2 ? 'a' : 'b').repeat(64),
+      recordHash,
       schemaVersion: 1,
     };
     this.records.set(input.workspaceId, [...workspaceRecords, record]);
@@ -88,9 +105,12 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
       input.repairCommandId !== records[0]?.commandId
     )
       throw new Error('repair command mismatch');
+    const pageEndHash = records.at(-1)?.recordHash ?? input.projectedHash;
+    const malformedPageEnd = this.malformedNextPageEnd;
+    this.malformedNextPageEnd = false;
     return {
       hasMore: unprojected.length > records.length,
-      pageEndHash: records.at(-1)?.recordHash ?? input.projectedHash,
+      pageEndHash: malformedPageEnd ? 'f'.repeat(64) : pageEndHash,
       pageEndSequence: records.at(-1)?.sequence ?? input.projectedSequence,
       reachedHighWater: true,
       records,
@@ -153,6 +173,55 @@ async function createDueWorkspace(): Promise<string> {
   return workspaceId;
 }
 
+async function advanceToPurgeStartCandidate(
+  coordinator: ReturnType<typeof createWorkspacePurgeCoordinator>,
+  targetWorkspaceId: string,
+): Promise<void> {
+  if (maintenance === undefined)
+    throw new Error('Maintenance pool unavailable');
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const [step, completion, start] = await Promise.all([
+      maintenance.query('select * from app.find_due_workspace_purge_step()'),
+      maintenance.query(
+        'select * from app.find_due_workspace_purge_completion()',
+      ),
+      maintenance.query<{ workspace_id: string }>(
+        'select * from app.find_due_workspace_purge()',
+      ),
+    ]);
+    if (
+      step.rows[0] === undefined &&
+      completion.rows[0] === undefined &&
+      start.rows[0]?.workspace_id === targetWorkspaceId
+    )
+      return;
+    await coordinator.processNext();
+  }
+  throw new Error(
+    `Purge start candidate was not reached: ${targetWorkspaceId}`,
+  );
+}
+
+async function waitForApplicationLock(applicationName: string): Promise<void> {
+  const observer = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await expect
+      .poll(async () => {
+        const activity = await observer.query<{ blocked: boolean }>(
+          `select exists(
+             select 1 from pg_stat_activity
+              where application_name=$1 and wait_event_type='Lock'
+           ) blocked`,
+          [applicationName],
+        );
+        return activity.rows[0]?.blocked;
+      })
+      .toBe(true);
+  } finally {
+    await observer.end();
+  }
+}
+
 beforeAll(async () => {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
@@ -161,7 +230,7 @@ beforeAll(async () => {
     await admin.query(
       `grant connect on database "${databaseName}" to pertexo_migration,
        pertexo_maintenance,pertexo_api,pertexo_worker,pertexo_dispatcher,
-       pertexo_lifecycle_command`,
+       pertexo_lifecycle_command,pertexo_operator`,
     );
   } finally {
     await admin.end();
@@ -169,11 +238,13 @@ beforeAll(async () => {
   await migrateDatabase(migrationConfig);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 1 });
   owner = new Pool({ connectionString: databaseUrl, max: 1 });
+  operator = new Pool({ connectionString: operatorUrl, max: 1 });
 });
 
 afterAll(async () => {
   await maintenance?.end();
   await owner?.end();
+  await operator?.end();
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
@@ -520,11 +591,27 @@ describe('workspace purge foundation', () => {
   });
 
   it('persists one fenced command, starts purge, and leaves a held step retryable', async () => {
-    if (maintenance === undefined || owner === undefined)
+    if (
+      maintenance === undefined ||
+      owner === undefined ||
+      operator === undefined
+    )
       throw new Error('Database pools unavailable');
     const workspaceId = randomUUID();
     const userId = randomUUID();
     const artifactId = randomUUID();
+    const workflowId = randomUUID();
+    const publishedVersionId = randomUUID();
+    const historicalVersionId = randomUUID();
+    const workflowRunId = randomUUID();
+    const nodeRunId = randomUUID();
+    const nodeAttemptId = randomUUID();
+    const connectionId = randomUUID();
+    const firstSecretId = randomUUID();
+    const currentSecretId = randomUUID();
+    const destinationId = randomUUID();
+    const previewRunId = randomUUID();
+    const previewAttemptId = randomUUID();
     const requestHash = '1'.repeat(64);
     await owner.query('begin');
     try {
@@ -532,6 +619,17 @@ describe('workspace purge foundation', () => {
       await owner.query("select set_config('app.workspace_id',$1,true)", [
         workspaceId,
       ]);
+      for (const table of [
+        'workflow_runs',
+        'node_runs',
+        'node_attempts',
+        'preview_runs',
+        'preview_attempts',
+        'artifact_links',
+      ])
+        await owner.query(
+          `alter table app.${table} no force row level security`,
+        );
       await owner.query(
         "insert into app.users(id,email,display_name) values($1,$2,'Purge owner')",
         [userId, `${userId}@example.test`],
@@ -577,6 +675,168 @@ describe('workspace purge foundation', () => {
           'application/json',2,$3,clock_timestamp()+interval '1 day')`,
         [artifactId, workspaceId, '9'.repeat(64)],
       );
+      await owner.query(
+        `insert into app.workflows(id,workspace_id,name,created_by)
+         values($1,$2,'Purge dependency graph',$3)`,
+        [workflowId, workspaceId, userId],
+      );
+      await owner.query(
+        `insert into app.workflow_versions(
+          id,workspace_id,workflow_id,version_number,schema_version,graph_json,
+          checksum,published_by,published_at
+        ) values
+          ($1,$3,$4,1,1,'{}',$5,$6,clock_timestamp()),
+          ($2,$3,$4,2,1,'{}',$7,$6,clock_timestamp())`,
+        [
+          historicalVersionId,
+          publishedVersionId,
+          workspaceId,
+          workflowId,
+          `wf:v1:sha256:${'7'.repeat(64)}`,
+          userId,
+          `wf:v1:sha256:${'8'.repeat(64)}`,
+        ],
+      );
+      await owner.query(
+        `update app.workflows
+            set published_version_id=$2,activation_status='active'
+          where id=$1`,
+        [workflowId, publishedVersionId],
+      );
+      await owner.query(
+        `insert into app.workflow_runs(
+          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+          input_ref,input_ref_expires_at,output_ref,started_at,completed_at
+        ) values($1,$2,$3,$4,'manual','succeeded',
+          '{"kind":"inline","schemaVersion":1,"value":"input"}',
+          clock_timestamp()+interval '1 day',
+          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          clock_timestamp(),clock_timestamp())`,
+        [workflowRunId, workspaceId, workflowId, publishedVersionId],
+      );
+      await owner.query(
+        `insert into app.node_runs(
+          id,workspace_id,workflow_run_id,node_id,invocation_key,
+          branch_context,status,side_effect_class,input_ref,output_ref,
+          started_at,completed_at
+        ) values($1,$2,$3,'node-1','node-1','{}','succeeded','safe',
+          '{"kind":"inline","schemaVersion":1,"value":"input"}',
+          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          clock_timestamp(),clock_timestamp())`,
+        [nodeRunId, workspaceId, workflowRunId],
+      );
+      await owner.query(
+        `insert into app.node_attempts(
+          id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+          output_ref,started_at,completed_at
+        ) values($1,$2,$3,1,'succeeded','safe',
+          '{"kind":"inline","schemaVersion":1,"value":"output"}',
+          clock_timestamp(),clock_timestamp())`,
+        [nodeAttemptId, workspaceId, nodeRunId],
+      );
+      await owner.query(
+        `update app.node_runs
+            set current_attempt_id=$2,current_attempt_number=1
+          where id=$1`,
+        [nodeRunId, nodeAttemptId],
+      );
+      await owner.query(
+        `insert into app.connections(
+          id,workspace_id,provider_key,name,auth_type,status,
+          current_secret_version_id,created_by
+        ) values($1,$2,'email','Purge email','resend_api_key','active',$3,$4)`,
+        [connectionId, workspaceId, firstSecretId, userId],
+      );
+      for (const secretId of [firstSecretId, currentSecretId])
+        await owner.query(
+          `insert into app.connection_secret_versions(
+            id,workspace_id,connection_id,schema_version,kms_key_reference,
+            encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+          ) values($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+            'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+          [secretId, workspaceId, connectionId, userId],
+        );
+      await owner.query(
+        'update app.connections set current_secret_version_id=$2 where id=$1',
+        [connectionId, currentSecretId],
+      );
+      await owner.query(
+        `insert into app.failure_notification_destinations(
+          id,workspace_id,kind,status,current_config_version,created_by
+        ) values($1,$2,'email','enabled',1,$3)`,
+        [destinationId, workspaceId, userId],
+      );
+      for (const version of [1, 2])
+        await owner.query(
+          `insert into app.failure_notification_destination_versions(
+            workspace_id,destination_id,version,kind,side_effect_class,config,
+            created_by
+          ) values($1,$2,$3,'email','idempotent_with_key',$4::jsonb,$5)`,
+          [
+            workspaceId,
+            destinationId,
+            version,
+            JSON.stringify({
+              connectionId,
+              toEmail: `purge-${String(version)}@example.test`,
+            }),
+            userId,
+          ],
+        );
+      await owner.query(
+        `update app.failure_notification_destinations
+            set current_config_version=2 where id=$1`,
+        [destinationId],
+      );
+      await owner.query(
+        `insert into app.preview_runs(
+          id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,
+          definition_key,definition_version,executor_key,executor_version,
+          compatibility_release_epoch,compatibility_release_fingerprint,
+          actor_user_id,idempotency_key_hash,request_hash,executable_node_json,
+          input_ref,side_effect_class,may_contact_provider,
+          may_cause_external_side_effect,dry_run,execution_deadline_at,expires_at
+        )
+        select $1,$2,$3,1,$4,'node-1','core.set',1,'core.set',1,
+          current.epoch,current.fingerprint,$5,$6,$7,
+          '{"id":"node-1","type":"core.set"}'::jsonb,
+          '{"kind":"inline","schemaVersion":1,"value":null}'::jsonb,
+          'safe',false,false,'not_supported',
+          clock_timestamp()+interval '1 hour',
+          clock_timestamp()+interval '2 days'
+        from app.node_compatibility_current current`,
+        [
+          previewRunId,
+          workspaceId,
+          workflowId,
+          'a'.repeat(64),
+          userId,
+          'b'.repeat(64),
+          'c'.repeat(64),
+        ],
+      );
+      await owner.query(
+        `insert into app.preview_attempts(
+          id,workspace_id,preview_run_id,status,side_effect_class
+        ) values($1,$2,$3,'queued','safe')`,
+        [previewAttemptId, workspaceId, previewRunId],
+      );
+      await owner.query(
+        `insert into app.artifact_links(
+          workspace_id,artifact_id,owner_kind,owner_id
+        ) values($1,$2,'preview_run',$3)`,
+        [workspaceId, artifactId, previewRunId],
+      );
+      await owner.query('set constraints all immediate');
+      for (const table of [
+        'workflow_runs',
+        'node_runs',
+        'node_attempts',
+        'preview_runs',
+        'preview_attempts',
+        'artifact_links',
+      ])
+        await owner.query(`alter table app.${table} force row level security`);
       await owner.query('commit');
     } catch (error: unknown) {
       await owner.query('rollback');
@@ -631,6 +891,20 @@ describe('workspace purge foundation', () => {
     expect(Number(retry.rows[0]?.lease_fence)).toBe(
       Number(firstJob?.lease_fence) + 1,
     );
+    const rerunCommandId = randomUUID();
+    await expect(
+      operator.query(
+        "select * from app.request_operator_maintenance_rerun($1,$2,'workspace_purge_job',$3,'operator:purge-test','Prove maintenance rerun tenant cleanup',false)",
+        [rerunCommandId, workspaceId, retry.rows[0]?.job_id],
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        expect.objectContaining({
+          command_outcome: 'rerun_requested',
+          command_status: 'pending',
+        }),
+      ],
+    });
     const purgeHash = '2'.repeat(64);
     await maintenance.query(
       'select app.project_workspace_purge_started($1,$2,$3,2,$4,$5)',
@@ -723,7 +997,7 @@ describe('workspace purge foundation', () => {
       workspaceId,
     ]);
     let tenantRowsCompleted = false;
-    for (let page = 0; page < 20 && !tenantRowsCompleted; page += 1) {
+    for (let page = 0; page < 80 && !tenantRowsCompleted; page += 1) {
       const claim = await maintenance.query<{
         lease_fence: string;
         lease_token: string;
@@ -752,6 +1026,20 @@ describe('workspace purge foundation', () => {
       tenantRowsCompleted = executed.rows[0]?.completed === true;
     }
     expect(tenantRowsCompleted).toBe(true);
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await expect(
+        owner.query(
+          'select count(*)::int count from app.operator_maintenance_rerun_requests where command_id=$1',
+          [rerunCommandId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback');
+      throw error;
+    }
     await expect(
       maintenance.query(
         `select app.project_workspace_deletion(
@@ -929,6 +1217,274 @@ describe('workspace purge foundation', () => {
       await blocker.query('rollback').catch(() => undefined);
       blocker.release();
       await observer.end();
+      await coordinator.close();
+    }
+  });
+
+  it('serializes an authoritative hold append after purge-step freshness', async () => {
+    const workspaceId = await createDueWorkspace();
+    const holdId = randomUUID();
+    const commandId = randomUUID();
+    const records: ControlLedgerRecord[] = [];
+    const freshnessStarted = Promise.withResolvers<undefined>();
+    const releaseFreshness = Promise.withResolvers<undefined>();
+    let pauseFreshness = false;
+    let pausedFreshness = false;
+    const reconcile = async (input: {
+      maxRecords: number;
+      projectedHash: string;
+      projectedSequence: number;
+      repairCommandId?: string;
+      signal?: AbortSignal;
+      workspaceId: string;
+    }) => {
+      if (pauseFreshness && !pausedFreshness) {
+        pausedFreshness = true;
+        freshnessStarted.resolve(undefined);
+        await releaseFreshness.promise;
+      }
+      const available = records
+        .filter(
+          (record) =>
+            record.workspaceId === input.workspaceId &&
+            record.sequence > input.projectedSequence,
+        )
+        .slice(0, input.maxRecords);
+      const last = available.at(-1);
+      const hasMore = records.some(
+        (record) =>
+          record.workspaceId === input.workspaceId &&
+          record.sequence > (last?.sequence ?? input.projectedSequence),
+      );
+      return {
+        hasMore,
+        pageEndHash: last?.recordHash ?? input.projectedHash,
+        pageEndSequence: last?.sequence ?? input.projectedSequence,
+        reachedHighWater: !hasMore,
+        records: available,
+      };
+    };
+    const appendRecord = (input: {
+      actorRef: string;
+      commandId: string;
+      commandType: ControlLedgerRecord['commandType'];
+      legalAuthority?: string;
+      occurredAt: string;
+      previousHash: string;
+      reason: string;
+      sequence: number;
+      signal?: AbortSignal;
+      subjectId: string;
+      workspaceId: string;
+    }): ControlLedgerRecord => {
+      input.signal?.throwIfAborted();
+      const { signal: _signal, ...material } = input;
+      void _signal;
+      const record = Object.freeze({
+        ...material,
+        recordHash: input.sequence.toString(16).padStart(64, '0'),
+        schemaVersion: 1,
+      });
+      records.push(record);
+      return record;
+    };
+    const controlAppend = vi.fn((input: AppendControlLedgerRecord) =>
+      Promise.resolve(appendRecord(input)),
+    );
+    const controlLedger: ControlLedger = {
+      append: controlAppend,
+      reconcile,
+    };
+    const purgeLedger: WorkspacePurgeLedger = {
+      append: (input) => Promise.resolve(appendRecord(input)),
+      reconcile: async (input) => {
+        const page = await reconcile(input);
+        return {
+          ...page,
+          records: page.records,
+        };
+      },
+    };
+    const objectStore = new MemoryObjectPurgeStore();
+    const purgeCoordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      purgeLedger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 5_000,
+        leaseOwner: 'purge-hold-race',
+        leaseSeconds: 30,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    const commandApplicationName = `purge-command-${randomUUID()}`;
+    const commandUrl = new URL(maintenanceUrl);
+    commandUrl.searchParams.set('application_name', commandApplicationName);
+    const commandCoordinator = createControlLedgerCoordinator(
+      {
+        connectionString: commandUrl.toString(),
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      controlLedger,
+      { externalOperationTimeoutMs: 5_000 },
+    );
+    let purgeResult: Promise<unknown> | undefined;
+    let holdResult: Promise<unknown> | undefined;
+    try {
+      await advanceToPurgeStartCandidate(purgeCoordinator, workspaceId);
+      await expect(purgeCoordinator.processNext()).resolves.toMatchObject({
+        status: 'started',
+        workspaceId,
+      });
+      const objectCallsBeforeRace = objectStore.calls;
+      pauseFreshness = true;
+      purgeResult = purgeCoordinator.processNext();
+      await freshnessStarted.promise;
+      holdResult = commandCoordinator.placeLegalHold({
+        actorRef: 'legal-admin',
+        commandId,
+        holdId,
+        legalAuthority: 'case-workspace-purge-race',
+        occurredAt: '2026-09-08T00:00:00.000Z',
+        reason: 'serialize workspace purge race',
+        workspaceId,
+      });
+      await waitForApplicationLock(commandApplicationName);
+      expect(controlAppend).not.toHaveBeenCalled();
+      expect(objectStore.calls).toBe(objectCallsBeforeRace);
+
+      releaseFreshness.resolve(undefined);
+      await expect(purgeResult).resolves.toMatchObject({
+        status: 'progressed',
+        workspaceId,
+      });
+      await expect(holdResult).resolves.toMatchObject({
+        commandId,
+        holdId,
+        replayed: false,
+        workspaceId,
+      });
+      expect(objectStore.calls).toBe(objectCallsBeforeRace + 1);
+      expect(controlAppend).toHaveBeenCalledOnce();
+      await commandCoordinator.releaseLegalHold({
+        actorRef: 'legal-admin',
+        commandId: randomUUID(),
+        holdId,
+        legalAuthority: 'case-workspace-purge-race',
+        occurredAt: '2026-09-08T00:00:01.000Z',
+        reason: 'release workspace purge race hold',
+        workspaceId,
+      });
+      let completed = false;
+      for (let attempt = 0; attempt < 20 && !completed; attempt += 1) {
+        const outcome = await purgeCoordinator.processNext();
+        completed =
+          outcome.status === 'completed' && outcome.workspaceId === workspaceId;
+      }
+      expect(completed).toBe(true);
+    } finally {
+      releaseFreshness.resolve(undefined);
+      await Promise.allSettled([
+        purgeResult ?? Promise.resolve(),
+        holdResult ?? Promise.resolve(),
+      ]);
+      await Promise.all([purgeCoordinator.close(), commandCoordinator.close()]);
+    }
+  });
+
+  it('rejects a malformed ledger page boundary before preparing purge work', async () => {
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 1_000,
+        leaseOwner: 'purge-malformed-page',
+        leaseSeconds: 5,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      await advanceToPurgeStartCandidate(coordinator, workspaceId);
+      const appendCallsBeforeMalformedPage = ledger.appendCalls;
+      const objectCallsBeforeMalformedPage = objectStore.calls;
+      ledger.malformedNextPageEnd = true;
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'Workspace purge requires exact control ledger high water',
+      );
+      expect(ledger.appendCalls).toBe(appendCallsBeforeMalformedPage);
+      expect(objectStore.calls).toBe(objectCallsBeforeMalformedPage);
+
+      let completed = false;
+      for (let attempt = 0; attempt < 20 && !completed; attempt += 1) {
+        const outcome = await coordinator.processNext();
+        completed =
+          outcome.status === 'completed' && outcome.workspaceId === workspaceId;
+      }
+      expect(completed).toBe(true);
+    } finally {
+      await coordinator.close();
+    }
+  });
+
+  it('rejects a ledger record whose hash repeats its previous hash', async () => {
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 1_000,
+        leaseOwner: 'purge-repeated-hash',
+        leaseSeconds: 5,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      await advanceToPurgeStartCandidate(coordinator, workspaceId);
+      const appendCallsBeforeRepeatedHash = ledger.appendCalls;
+      const objectCallsBeforeRepeatedHash = objectStore.calls;
+      ledger.repeatPreviousHashOnNextAppend = true;
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'released',
+        workspaceId,
+      });
+      expect(ledger.appendCalls).toBe(appendCallsBeforeRepeatedHash + 1);
+      expect(objectStore.calls).toBe(objectCallsBeforeRepeatedHash);
+    } finally {
       await coordinator.close();
     }
   });

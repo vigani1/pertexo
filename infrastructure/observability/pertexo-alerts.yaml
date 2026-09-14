@@ -175,15 +175,16 @@ groups:
             completing gracefully.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerforceddrain
       - alert: PertexoWorkerRestartBurst
-        expr: increase(pertexo_worker_process_starts_total[15m]) > 5
+        expr: |
+          count(pertexo_worker_process_start_time_seconds > time() - 900) > 5
         for: 5m
         labels:
           severity: ticket
         annotations:
           summary: Worker process starts indicate elevated churn
           description:
-            More than five successful worker compositions were observed in
-            fifteen minutes.
+            More than five distinct worker telemetry writers reported a start
+            time in the last fifteen minutes.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerrestartburst
       - alert: PertexoDatabasePoolSaturated
         expr: |
@@ -272,9 +273,14 @@ groups:
     rules:
       - alert: PertexoRegionalWriteAdmissionPaused
         expr: |
-          max_over_time(pertexo_regional_replica_admission_blocked[30s]) == 1
-          or max_over_time(pertexo_regional_replica_replay_lag_seconds[30s]) >= 300
-          or absent_over_time(pertexo_regional_replica_admission_blocked[30s]) == 1
+          max(pertexo_regional_replica_admission_blocked
+            and on (service_instance_id)
+            topk(1, pertexo_regional_replica_observation_timestamp_seconds)) == 1
+          or max(pertexo_regional_replica_replay_lag_seconds
+            and on (service_instance_id)
+            topk(1, pertexo_regional_replica_observation_timestamp_seconds)) >= 300
+          or time() - max(pertexo_regional_replica_observation_timestamp_seconds) > 90
+          or absent(pertexo_regional_replica_observation_timestamp_seconds) == 1
         for: 1m
         labels:
           severity: page

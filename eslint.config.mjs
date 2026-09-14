@@ -1,6 +1,10 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
+const nodeGlobals = Object.fromEntries(
+  Object.getOwnPropertyNames(globalThis).map((name) => [name, 'readonly']),
+);
+
 export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
@@ -545,5 +549,9 @@ export default tseslint.config(
   {
     files: ['**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: nodeGlobals,
+    },
   },
 );

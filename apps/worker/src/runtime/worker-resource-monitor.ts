@@ -33,6 +33,7 @@ export class WorkerResourceMonitor
   private readonly signal: () => void;
   private consecutiveUnhealthySamples = 0;
   private drainStarted = false;
+  private stopped = false;
   private timer: NodeJS.Timeout | undefined;
 
   public constructor(
@@ -55,6 +56,7 @@ export class WorkerResourceMonitor
   }
 
   public onApplicationBootstrap(): void {
+    if (this.stopped || this.timer !== undefined) return;
     this.eventLoopDelay.enable();
     this.timer = setInterval(() => {
       this.sample();
@@ -63,13 +65,15 @@ export class WorkerResourceMonitor
   }
 
   public beforeApplicationShutdown(): void {
+    if (this.stopped) return;
+    this.stopped = true;
     if (this.timer !== undefined) clearInterval(this.timer);
     this.timer = undefined;
     this.eventLoopDelay.disable();
   }
 
   public sample(): void {
-    if (this.drainStarted) return;
+    if (this.drainStarted || this.stopped) return;
     const sample = this.sampleResourceUsage();
     this.eventLoopDelay.reset();
     const unhealthy =
@@ -85,10 +89,22 @@ export class WorkerResourceMonitor
 
     this.drainStarted = true;
     this.drainState.beginDrain();
-    this.logger.warn('worker.resource_unhealthy_drain', {
-      eventLoopDelayP99Millis: sample.eventLoopDelayP99Millis,
-      rssBytes: sample.rssBytes,
-    });
-    this.signal();
+    try {
+      this.logger.warn('worker.resource_unhealthy_drain', {
+        eventLoopDelayP99Millis: sample.eventLoopDelayP99Millis,
+        rssBytes: sample.rssBytes,
+      });
+    } catch {
+      // Diagnostics cannot prevent the required shutdown signal.
+    }
+    try {
+      this.signal();
+    } catch (error: unknown) {
+      try {
+        this.logger.error('worker.resource_shutdown_signal_failed', {}, error);
+      } catch {
+        // A secondary diagnostic failure cannot escape the interval callback.
+      }
+    }
   }
 }

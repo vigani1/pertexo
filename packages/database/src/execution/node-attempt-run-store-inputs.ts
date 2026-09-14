@@ -21,6 +21,10 @@ import {
 } from './stored-execution-value.js';
 
 type ParsedCheckpoint = ReturnType<typeof parsePersistedWorkflowCheckpoint>;
+type StructuredLoopDeclaration = Extract<
+  ParsedCheckpoint,
+  { schemaVersion: 2 }
+>['loops'][number];
 type UpstreamOutputRow = Readonly<{
   invocation_key: string;
   node_id: string;
@@ -123,13 +127,30 @@ function selectStructuredLoopDeclarations(
     z.output<typeof loadInputsSchema>['lease']['branchPath']
   >,
 ) {
+  const loopsByIdAndAncestry = new Map<
+    string,
+    Map<string, StructuredLoopDeclaration[]>
+  >();
+  for (const loop of checkpoint.loops) {
+    let byAncestry = loopsByIdAndAncestry.get(loop.loopId);
+    if (byAncestry === undefined) {
+      byAncestry = new Map();
+      loopsByIdAndAncestry.set(loop.loopId, byAncestry);
+    }
+    const ancestryKey = serializeStoredExecutionJsonValue(loop.iterationPath);
+    const candidates = byAncestry.get(ancestryKey);
+    if (candidates === undefined) byAncestry.set(ancestryKey, [loop]);
+    else candidates.push(loop);
+  }
   return iterationPath.map((scope, index) => {
     const enclosingIterationPath = iterationPath.slice(0, index);
-    const matches = checkpoint.loops.filter(
+    const ancestryKey = serializeStoredExecutionJsonValue(
+      enclosingIterationPath,
+    );
+    const matches = (
+      loopsByIdAndAncestry.get(scope.loopNodeId)?.get(ancestryKey) ?? []
+    ).filter(
       (loop) =>
-        loop.loopId === scope.loopNodeId &&
-        serializeStoredExecutionJsonValue(loop.iterationPath) ===
-          serializeStoredExecutionJsonValue(enclosingIterationPath) &&
         loop.branchPath.length <= branchPath.length &&
         loop.branchPath.every((part, branchIndex) => {
           const leasePart = branchPath[branchIndex];

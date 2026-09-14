@@ -11,13 +11,19 @@ import type {
 import type { ApiConfig } from './platform/config/api-config.js';
 import { CatalogModule } from './catalog/index.js';
 
-import { DatabaseModule } from './platform/database/database.module.js';
+import {
+  DatabaseModule,
+  WORKSPACE_DATABASE,
+} from './platform/database/database.module.js';
 import { LiveController } from './platform/health/live.controller.js';
 import {
   API_RUNTIME_READINESS,
   ReadyController,
 } from './platform/health/ready.controller.js';
-import { ApiLifecycleModule } from './platform/health/drain-state.js';
+import {
+  ApiLifecycleModule,
+  ApiShutdownCoordinator,
+} from './platform/health/drain-state.js';
 import { HttpPlatformModule } from './platform/http/http.module.js';
 import type {
   HttpErrorLogEntry,
@@ -112,8 +118,6 @@ export class AppModule {
       dependencies.identityRuntime === undefined
         ? undefined
         : IdentityRuntimeModule.register(dependencies.identityRuntime);
-    const authorization =
-      dependencies.identityRuntime?.dependencies.authorization;
     const webhookRuntime = dependencies.webhookRuntime;
     const scheduleRuntime = dependencies.scheduleRuntime;
     const workflowRuntime = dependencies.workflowRuntime;
@@ -132,62 +136,11 @@ export class AppModule {
               ]);
             },
           };
-    const featureModules =
-      identityModule === undefined
-        ? []
-        : [
-            CatalogModule.register(
-              { cohort: config.nodeCompatibilityCohort },
-              identityModule,
-            ),
-            ...(dependencies.workflowRuntime === undefined
-              ? [identityModule]
-              : [
-                  WorkflowRuntimeModule.register(
-                    dependencies.workflowRuntime,
-                    identityModule,
-                  ),
-                ]),
-            ...(dependencies.connectionRuntime === undefined
-              ? []
-              : [
-                  ConnectionRuntimeModule.register(
-                    dependencies.connectionRuntime,
-                    identityModule,
-                  ),
-                ]),
-            ...(webhookRuntime === undefined || authorization === undefined
-              ? []
-              : [
-                  WebhookModule.register(
-                    webhookRuntime.service,
-                    authorization,
-                    identityModule,
-                  ),
-                ]),
-            ...(scheduleRuntime === undefined || authorization === undefined
-              ? []
-              : [
-                  ScheduleModule.register(
-                    scheduleRuntime.service,
-                    authorization,
-                    identityModule,
-                  ),
-                ]),
-            ...(artifactRuntime === undefined || authorization === undefined
-              ? []
-              : [
-                  ArtifactRuntimeModule.register(
-                    artifactRuntime,
-                    identityModule,
-                    {
-                      maxObjectBytes:
-                        config.artifacts?.primary.maxObjectBytes ??
-                        DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
-                    },
-                  ),
-                ]),
-          ];
+    const featureModules = registerFeatureModules(
+      config,
+      dependencies,
+      identityModule,
+    );
 
     return {
       module: AppModule,
@@ -207,43 +160,109 @@ export class AppModule {
       ],
       controllers: [LiveController, ReadyController],
       providers: [
-        ...(webhookRuntime === undefined
-          ? []
-          : [
-              {
-                provide: Symbol('WEBHOOK_RUNTIME_SHUTDOWN'),
-                useValue: {
-                  onApplicationShutdown: () => webhookRuntime.close(),
-                },
-              },
-            ]),
+        {
+          provide: Symbol('API_RESOURCE_OWNERS'),
+          inject: [ApiShutdownCoordinator, WORKSPACE_DATABASE],
+          useFactory: (
+            shutdown: ApiShutdownCoordinator,
+            database: WorkspaceDatabase,
+          ) => {
+            if (dependencies.databaseRuntime !== undefined)
+              shutdown.register('database-runtime', () =>
+                dependencies.databaseRuntime?.close(),
+              );
+            shutdown.register('database', () => database.close());
+            if (dependencies.identityRuntime !== undefined)
+              shutdown.register('identity', () =>
+                dependencies.identityRuntime?.close(),
+              );
+            if (workflowRuntime !== undefined)
+              shutdown.register('workflow', () => workflowRuntime.close());
+            if (dependencies.connectionRuntime !== undefined)
+              shutdown.register('connection', () =>
+                dependencies.connectionRuntime?.close(),
+              );
+            if (webhookRuntime !== undefined)
+              shutdown.register('webhook', () => webhookRuntime.close());
+            if (scheduleRuntime !== undefined)
+              shutdown.register('schedule', () => scheduleRuntime.close());
+            if (artifactRuntime !== undefined)
+              shutdown.register('artifact', () => artifactRuntime.close());
+            shutdown.register('telemetry', () =>
+              dependencies.telemetry.shutdown(),
+            );
+            return Object.freeze({ registered: true });
+          },
+        },
         ...(runtimeReadiness === undefined
           ? []
           : [{ provide: API_RUNTIME_READINESS, useValue: runtimeReadiness }]),
-        ...(scheduleRuntime === undefined
-          ? []
-          : [
-              {
-                provide: Symbol('SCHEDULE_RUNTIME_SHUTDOWN'),
-                useValue: {
-                  onApplicationShutdown: () => scheduleRuntime.close(),
-                },
-              },
-            ]),
-        ...(dependencies.databaseRuntime === undefined
-          ? []
-          : [
-              {
-                provide: Symbol('DATABASE_RUNTIME_SHUTDOWN'),
-                useValue: {
-                  onApplicationShutdown: () =>
-                    dependencies.databaseRuntime?.close(),
-                },
-              },
-            ]),
       ],
     };
   }
+}
+
+function registerFeatureModules(
+  config: ApiConfig,
+  dependencies: ApiModuleDependencies,
+  identityModule: DynamicModule | undefined,
+): DynamicModule[] {
+  if (identityModule === undefined) return [];
+  const modules = [
+    CatalogModule.register(
+      { cohort: config.nodeCompatibilityCohort },
+      identityModule,
+    ),
+  ];
+  if (dependencies.workflowRuntime === undefined) modules.push(identityModule);
+  else
+    modules.push(
+      WorkflowRuntimeModule.register(
+        dependencies.workflowRuntime,
+        identityModule,
+      ),
+    );
+
+  if (dependencies.connectionRuntime !== undefined)
+    modules.push(
+      ConnectionRuntimeModule.register(
+        dependencies.connectionRuntime,
+        identityModule,
+      ),
+    );
+
+  const authorization =
+    dependencies.identityRuntime?.dependencies.authorization;
+  if (authorization === undefined) return modules;
+  if (dependencies.webhookRuntime !== undefined)
+    modules.push(
+      WebhookModule.register(
+        dependencies.webhookRuntime.service,
+        authorization,
+        identityModule,
+      ),
+    );
+  if (dependencies.scheduleRuntime !== undefined)
+    modules.push(
+      ScheduleModule.register(
+        dependencies.scheduleRuntime.service,
+        authorization,
+        identityModule,
+      ),
+    );
+  if (dependencies.artifactRuntime !== undefined)
+    modules.push(
+      ArtifactRuntimeModule.register(
+        dependencies.artifactRuntime,
+        identityModule,
+        {
+          maxObjectBytes:
+            config.artifacts?.primary.maxObjectBytes ??
+            DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
+        },
+      ),
+    );
+  return modules;
 }
 
 function logHttpError(

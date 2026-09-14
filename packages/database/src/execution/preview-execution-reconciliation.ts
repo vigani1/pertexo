@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { PREVIEW_STATUS } from './preview-execution-acceptance.js';
@@ -53,36 +53,36 @@ export type PreviewDeliveryReconciliationResult =
       usesConnection: boolean;
     }>;
 
-/**
- * Bounded stored-value contract check for executor outputs before a
- * succeeded completion is attempted.
- */
-function isStrictJsonValue(value: unknown, depth: number): boolean {
-  if (depth > 64) return false;
-  if (value === null || typeof value === 'string' || typeof value === 'boolean')
-    return true;
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (Array.isArray(value))
-    return value.every((member) => isStrictJsonValue(member, depth + 1));
-  if (
-    typeof value === 'object' &&
-    Object.getPrototypeOf(value) === Object.prototype
-  )
-    return Object.entries(value).every(
-      ([key, member]) => key.length > 0 && isStrictJsonValue(member, depth + 1),
-    );
-  // Functions, symbols, bigints, class instances, and host objects are all
-  // outside the stored-value contract.
-  return false;
-}
+type PreviewReconciliationScope = Readonly<{
+  attemptFenceToken: number;
+  previewAttemptId: string;
+  previewRunId: string;
+  workspaceId: string;
+}>;
+
+type LockedPreviewReconciliationState = Readonly<{
+  attempt_status: string;
+  dispatch_marked_at: Date | null;
+  fence_token: string;
+  lease_live: boolean;
+  lease_expires_at: Date | null;
+  may_contact_provider: boolean;
+  may_cause_external_side_effect: boolean;
+  operation_key: string | null;
+  provider_key: string | null;
+  run_deadline_expired: boolean;
+  run_status: string;
+  side_effect_class: string;
+  uses_connection: boolean;
+}>;
 
 export function isValidStoredExecutionOutput(
   value: unknown,
 ): value is StoredExecutionValueV1 {
-  if (!isStrictJsonValue(value, 0)) return false;
   try {
-    // Serialization alone can silently drop hostile members; a lossless
-    // canonical roundtrip additionally proves byte-stable truth.
+    // The descriptor-based stored-value module is the single admission
+    // contract. It rejects accessors, proxies and lossy JSON shapes without
+    // invoking caller-controlled properties, then proves canonical stability.
     const serialized = serializeStoredExecutionValueV1(value);
     const reparsed = parseStoredExecutionValueV1(serialized);
     return serializeStoredExecutionValueV1(reparsed) === serialized;
@@ -202,6 +202,89 @@ export async function reconcileExpiredPreviewAttempt(
   );
 }
 
+async function completeExpiredOrUnsafePreview(
+  client: PoolClient,
+  scope: PreviewReconciliationScope,
+  state: LockedPreviewReconciliationState,
+  completeReceipt: () => Promise<void>,
+): Promise<
+  Extract<PreviewDeliveryReconciliationResult, { kind: 'completed' }>
+> {
+  const unsafePossiblyDispatched =
+    state.dispatch_marked_at !== null && state.side_effect_class === 'unsafe';
+  const status = unsafePossiblyDispatched
+    ? PREVIEW_STATUS.outcomeUnknown
+    : PREVIEW_STATUS.timedOut;
+  const safeErrorCode = unsafePossiblyDispatched
+    ? 'preview.outcome_unknown'
+    : 'preview.deadline_exceeded';
+  const reason = unsafePossiblyDispatched
+    ? 'lease_expired_after_unsafe_dispatch'
+    : 'run_deadline_expired_before_reclaim';
+  const reconciliationRef = JSON.stringify({
+    schemaVersion: 1,
+    reason,
+    attemptFenceToken: scope.attemptFenceToken,
+  });
+  const attempt = await client.query(
+    `update app.preview_attempts
+     set status=$4,
+         safe_error_code=$5,
+         reconciliation_ref=$6::jsonb,
+         completed_at=clock_timestamp(),
+         lease_owner=null,
+         lease_expires_at=null,
+         fence_token=fence_token+1,
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and id=$2 and preview_run_id=$3
+       and status='running' and fence_token=$7`,
+    [
+      scope.workspaceId,
+      scope.previewAttemptId,
+      scope.previewRunId,
+      status,
+      safeErrorCode,
+      reconciliationRef,
+      scope.attemptFenceToken,
+    ],
+  );
+  if (attempt.rowCount !== 1)
+    throw new PreviewAttemptStateError('reconciliation_lost');
+  const run = await client.query(
+    `update app.preview_runs
+     set status=$3,
+         safe_error_code=$4,
+         completed_at=clock_timestamp(),
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and id=$2
+       and status in ('queued','running')`,
+    [scope.workspaceId, scope.previewRunId, status, safeErrorCode],
+  );
+  if (run.rowCount !== 1) throw new PreviewAttemptStateError('run_sync_lost');
+  await appendPreviewTerminalFacts(client, {
+    previewAttemptId: scope.previewAttemptId,
+    previewRunId: scope.previewRunId,
+    status,
+    workspaceId: scope.workspaceId,
+  });
+  await completeReceipt();
+  return Object.freeze({
+    kind: 'completed',
+    mayContactProvider: state.may_contact_provider,
+    mayCauseExternalSideEffect: state.may_cause_external_side_effect,
+    ...(state.operation_key === null
+      ? {}
+      : { operationKey: state.operation_key }),
+    possiblyDispatched: state.dispatch_marked_at !== null,
+    ...(state.provider_key === null ? {} : { providerKey: state.provider_key }),
+    sideEffectClass: z
+      .enum(['safe', 'idempotent_with_key', 'unsafe'])
+      .parse(state.side_effect_class),
+    status,
+    usesConnection: state.uses_connection,
+  });
+}
+
 /**
  * Handles one durable reconciliation wake-up for a specific lease fence.
  * Every non-duplicate decision, its successor outbox delivery, and its inbox
@@ -248,21 +331,7 @@ export async function reconcilePreviewDelivery(
         )
           return Object.freeze({ kind: 'duplicate' });
 
-        const locked = await client.query<{
-          attempt_status: string;
-          dispatch_marked_at: Date | null;
-          fence_token: string;
-          lease_live: boolean;
-          lease_expires_at: Date | null;
-          may_contact_provider: boolean;
-          may_cause_external_side_effect: boolean;
-          operation_key: string | null;
-          provider_key: string | null;
-          run_deadline_expired: boolean;
-          run_status: string;
-          side_effect_class: string;
-          uses_connection: boolean;
-        }>(
+        const locked = await client.query<LockedPreviewReconciliationState>(
           `select attempt.status as attempt_status,
                   attempt.dispatch_marked_at,
                   attempt.fence_token,
@@ -339,82 +408,13 @@ export async function reconcilePreviewDelivery(
           state.dispatch_marked_at !== null &&
           state.side_effect_class === 'unsafe';
         const runDeadlineExpired = state.run_deadline_expired;
-        if (unsafePossiblyDispatched || runDeadlineExpired) {
-          const status = unsafePossiblyDispatched
-            ? PREVIEW_STATUS.outcomeUnknown
-            : PREVIEW_STATUS.timedOut;
-          const safeErrorCode = unsafePossiblyDispatched
-            ? 'preview.outcome_unknown'
-            : 'preview.deadline_exceeded';
-          const reason = unsafePossiblyDispatched
-            ? 'lease_expired_after_unsafe_dispatch'
-            : 'run_deadline_expired_before_reclaim';
-          const reconciliationRef = JSON.stringify({
-            schemaVersion: 1,
-            reason,
-            attemptFenceToken: scope.attemptFenceToken,
-          });
-          const attempt = await client.query(
-            `update app.preview_attempts
-             set status=$4,
-                 safe_error_code=$5,
-                 reconciliation_ref=$6::jsonb,
-                 completed_at=clock_timestamp(),
-                 lease_owner=null,
-                 lease_expires_at=null,
-                 fence_token=fence_token+1,
-                 updated_at=clock_timestamp()
-             where workspace_id=$1 and id=$2 and preview_run_id=$3
-               and status='running' and fence_token=$7`,
-            [
-              scope.workspaceId,
-              scope.previewAttemptId,
-              scope.previewRunId,
-              status,
-              safeErrorCode,
-              reconciliationRef,
-              scope.attemptFenceToken,
-            ],
+        if (unsafePossiblyDispatched || runDeadlineExpired)
+          return completeExpiredOrUnsafePreview(
+            client,
+            scope,
+            state,
+            completeReceipt,
           );
-          if (attempt.rowCount !== 1)
-            throw new PreviewAttemptStateError('reconciliation_lost');
-          const run = await client.query(
-            `update app.preview_runs
-             set status=$3,
-                 safe_error_code=$4,
-                 completed_at=clock_timestamp(),
-                 updated_at=clock_timestamp()
-             where workspace_id=$1 and id=$2
-               and status in ('queued','running')`,
-            [scope.workspaceId, scope.previewRunId, status, safeErrorCode],
-          );
-          if (run.rowCount !== 1)
-            throw new PreviewAttemptStateError('run_sync_lost');
-          await appendPreviewTerminalFacts(client, {
-            previewAttemptId: scope.previewAttemptId,
-            previewRunId: scope.previewRunId,
-            status,
-            workspaceId: scope.workspaceId,
-          });
-          await completeReceipt();
-          return Object.freeze({
-            kind: 'completed',
-            mayContactProvider: state.may_contact_provider,
-            mayCauseExternalSideEffect: state.may_cause_external_side_effect,
-            ...(state.operation_key === null
-              ? {}
-              : { operationKey: state.operation_key }),
-            possiblyDispatched: state.dispatch_marked_at !== null,
-            ...(state.provider_key === null
-              ? {}
-              : { providerKey: state.provider_key }),
-            sideEffectClass: z
-              .enum(['safe', 'idempotent_with_key', 'unsafe'])
-              .parse(state.side_effect_class),
-            status,
-            usesConnection: state.uses_connection,
-          });
-        }
 
         // Fence the expired owner before making the replacement delivery
         // visible. The stable provider key and prior dispatch marker remain

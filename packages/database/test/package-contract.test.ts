@@ -1,9 +1,15 @@
 import { readFile } from 'node:fs/promises';
 
-import { describe, expect, it } from 'vitest';
+import { Pool } from 'pg';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApiConnectionDatabase } from '../src/connections/connections.js';
 import { createWorkerConnectionResolutionDatabase } from '../src/connections/connections.js';
+import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
+import type {
+  ApiConnectionDatabase,
+  WorkerConnectionResolutionDatabase,
+} from '../src/connections/connection-persistence.js';
 
 const supportedSurfaces = [
   'api',
@@ -99,9 +105,16 @@ describe('@pertexo/database package contract', () => {
       ownerRole: 'pertexo_owner',
       workerRuntimeRole: 'pertexo_worker',
     } as const;
-    const api = createApiConnectionDatabase(config);
-    const worker = createWorkerConnectionResolutionDatabase(config);
+    const connect = vi.spyOn(Pool.prototype, 'connect');
+    const runtime = createDatabaseRuntime(config, {
+      monitorLockWaits: false,
+      role: 'api',
+    });
+    let api: ApiConnectionDatabase | undefined;
+    let worker: WorkerConnectionResolutionDatabase | undefined;
     try {
+      api = createApiConnectionDatabase(config, runtime);
+      worker = createWorkerConnectionResolutionDatabase(config, runtime);
       expect(Object.keys(api).sort()).toEqual([
         'abandonConnectionTest',
         'close',
@@ -120,8 +133,15 @@ describe('@pertexo/database package contract', () => {
         'close',
         'resolveConnectionSecret',
       ]);
+      expect(connect).not.toHaveBeenCalled();
     } finally {
-      await Promise.all([api.close(), worker.close()]);
+      await Promise.allSettled([
+        Promise.resolve().then(() => api?.close()),
+        Promise.resolve().then(() => worker?.close()),
+      ]);
+      await runtime.close();
+      connect.mockRestore();
     }
+    expect(connect).not.toHaveBeenCalled();
   });
 });

@@ -64,6 +64,15 @@ function values(
   return measurements.get(name) ?? [];
 }
 
+function recordedMeasurements(harness: MetricHarness): readonly Measurement[] {
+  return [
+    ...harness.counters.values(),
+    ...harness.gauges.values(),
+    ...harness.histograms.values(),
+    ...harness.upDownCounters.values(),
+  ].flat();
+}
+
 describe('createTransportMetrics', () => {
   it('records bounded outbox claim, backlog, and lease measurements', () => {
     const harness = metricHarness();
@@ -301,55 +310,114 @@ describe('createTransportMetrics', () => {
     expect(serialized).not.toContain('outbox_event_id');
   });
 
-  it('counts every successful worker process start without dynamic labels', () => {
+  it('records this writer process start time without dynamic labels', () => {
     const harness = metricHarness();
-    const metrics = createTransportMetrics({ meter: harness.meter });
+    const metrics = createTransportMetrics({
+      meter: harness.meter,
+      now: () => 1_750_000_000_000,
+    });
 
     metrics.recordWorkerProcessStart();
     metrics.recordWorkerProcessStart();
 
     expect(
-      values(harness.counters, TRANSPORT_METRIC_NAME.workerProcessStarts),
+      values(harness.gauges, TRANSPORT_METRIC_NAME.workerProcessStartTime),
     ).toEqual([
-      { attributes: undefined, value: 1 },
-      { attributes: undefined, value: 1 },
+      { attributes: undefined, value: 1_750_000_000 },
+      { attributes: undefined, value: 1_750_000_000 },
     ]);
   });
 
   it.each([
-    () => {
-      createTransportMetrics().recordOutboxClaim({ batchSize: -1 });
+    {
+      name: 'negative claim size',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordOutboxClaim({ batchSize: -1 });
+      },
     },
-    () => {
-      createTransportMetrics().observeOutbox({ backlog: -1 });
+    {
+      name: 'negative backlog',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeOutbox({ backlog: -1 });
+      },
     },
-    () => {
-      createTransportMetrics().recordOutboxLeaseEvent('expired', 0);
+    {
+      name: 'valid backlog followed by an invalid age',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeOutbox({ backlog: 4, oldestAgeSeconds: -1 });
+      },
     },
-    () => {
-      createTransportMetrics().recordHandlerFinished({
-        durationSeconds: Number.NaN,
-        jobName: 'expire-artifacts',
-        outcome: 'completed',
-        queueName: 'maintenance',
-      });
+    {
+      name: 'valid artifact count followed by invalid bytes',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeArtifacts({ bytes: -1, count: 2, status: 'available' });
+      },
     },
-    () => {
-      createTransportMetrics().observeQueue({
-        depth: 1.5,
-        oldestJobAgeSeconds: 0,
-        queueName: 'maintenance',
-      });
+    {
+      name: 'valid execution count followed by invalid bytes',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeExecutionStorage({
+          bytes: -1,
+          count: 2,
+          surface: 'event',
+        });
+      },
     },
-    () => {
-      createTransportMetrics().addActiveConcurrency({
-        // @ts-expect-error exercises the runtime boundary for untyped callers.
-        delta: 0,
-        jobName: 'expire-artifacts',
-        queueName: 'maintenance',
-      });
+    {
+      name: 'non-positive lease count',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordOutboxLeaseEvent('expired', 0);
+      },
     },
-  ])('rejects invalid measurements before they reach the meter', (act) => {
-    expect(act).toThrow(RangeError);
+    {
+      name: 'non-finite handler duration',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordHandlerFinished({
+          durationSeconds: Number.NaN,
+          jobName: 'expire-artifacts',
+          outcome: 'completed',
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'fractional queue depth',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeQueue({
+          depth: 1.5,
+          oldestJobAgeSeconds: 0,
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'valid queue depth followed by an invalid age',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeQueue({
+          depth: 1,
+          oldestJobAgeSeconds: -1,
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'invalid active-concurrency delta',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.addActiveConcurrency({
+          // @ts-expect-error exercises the runtime boundary for untyped callers.
+          delta: 0,
+          jobName: 'expire-artifacts',
+          queueName: 'maintenance',
+        });
+      },
+    },
+  ])('rejects $name before any instrument write', ({ act }) => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    expect(() => {
+      act(metrics);
+    }).toThrow(RangeError);
+    expect(recordedMeasurements(harness)).toEqual([]);
   });
 });

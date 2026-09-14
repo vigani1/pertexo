@@ -1,5 +1,3 @@
-/* global process */
-
 import {
   claimPreviewDelivery,
   completePreviewAttempt,
@@ -13,9 +11,30 @@ import { Pool } from 'pg';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.ts';
 import { createDatabasePreviewAttemptRunStore } from '../src/execution/preview-attempt-runtime.ts';
 
-const input = JSON.parse(
+const rawInput = JSON.parse(
   process.env.PREVIEW_RECONCILIATION_CHILD_INPUT ?? '{}',
 );
+if (
+  typeof rawInput !== 'object' ||
+  rawInput === null ||
+  Array.isArray(rawInput) ||
+  typeof rawInput.workerUrl !== 'string' ||
+  typeof rawInput.redisUrl !== 'string' ||
+  typeof rawInput.workspaceId !== 'string' ||
+  typeof rawInput.workerId !== 'string' ||
+  !Number.isSafeInteger(rawInput.leaseDurationSeconds) ||
+  rawInput.leaseDurationSeconds < 1
+)
+  throw new TypeError('Preview reconciliation child input is invalid');
+const supportedModes = new Set([
+  'before-dispatch-commit',
+  'after-dispatch-before-provider',
+  'after-provider-before-outcome',
+  'after-outcome-before-ack',
+]);
+if (typeof rawInput.mode === 'string' && !supportedModes.has(rawInput.mode))
+  throw new TypeError('Preview reconciliation child mode is unsupported');
+const input = rawInput;
 
 function emit(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -43,6 +62,36 @@ async function recordProviderEffect() {
         [input.workspaceId, input.providerEffectKey],
       ),
   );
+}
+
+async function runWithCleanup(operation, cleanup, label) {
+  let operationError;
+  let operationFailed = false;
+  try {
+    await operation();
+  } catch (error) {
+    operationError = error;
+    operationFailed = true;
+  }
+  let cleanupError;
+  try {
+    await cleanup();
+  } catch (error) {
+    cleanupError = error;
+  }
+  if (operationFailed && cleanupError !== undefined)
+    throw new AggregateError(
+      [operationError, cleanupError],
+      `${label}: operation and cleanup failed`,
+    );
+  if (operationFailed)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error(`${label}: operation failed`, { cause: operationError });
+  if (cleanupError !== undefined)
+    throw cleanupError instanceof Error
+      ? cleanupError
+      : new Error(`${label}: cleanup failed`, { cause: cleanupError });
 }
 
 async function runComposedConsumer() {
@@ -75,40 +124,51 @@ async function runComposedConsumer() {
       return result;
     },
   };
-  const runtime = await createNodeAttemptRuntime({
-    database: parseDatabaseConfig({ connectionString: input.workerUrl }),
-    heartbeatIntervalMillis: 100,
-    leaseDurationSeconds: input.leaseDurationSeconds,
-    preview: {
-      invoker: {
-        invoke: async ({ runtime: executionRuntime }) => {
-          if (executionRuntime === undefined)
-            throw new Error('preview runtime missing');
-          await executionRuntime.beforeDispatch();
-          await recordProviderEffect();
-          return {
-            output: {
-              executed: true,
-              providerEffectKey: input.providerEffectKey,
+  let runtime;
+  await runWithCleanup(
+    async () => {
+      runtime = await createNodeAttemptRuntime({
+        database: parseDatabaseConfig({ connectionString: input.workerUrl }),
+        heartbeatIntervalMillis: 100,
+        leaseDurationSeconds: input.leaseDurationSeconds,
+        preview: {
+          invoker: {
+            invoke: async ({ runtime: executionRuntime }) => {
+              if (executionRuntime === undefined)
+                throw new Error('preview runtime missing');
+              await executionRuntime.beforeDispatch();
+              await recordProviderEffect();
+              return {
+                output: {
+                  executed: true,
+                  providerEffectKey: input.providerEffectKey,
+                },
+                status: 'succeeded',
+              };
             },
-            status: 'succeeded',
-          };
+          },
+          runStore,
         },
-      },
-      runStore,
+        redisUrl: input.redisUrl,
+        releaseCohort: 'core',
+        workerId: input.workerId,
+      });
+      await runtime.consumer.waitUntilReady(5_000);
+      emit({ injectionPoint: 'preview.consumer_ready', pid: process.pid });
+      await new Promise(() => undefined);
     },
-    redisUrl: input.redisUrl,
-    releaseCohort: 'core',
-    workerId: input.workerId,
-  });
-  try {
-    await runtime.consumer.waitUntilReady(5_000);
-    emit({ injectionPoint: 'preview.consumer_ready', pid: process.pid });
-    await new Promise(() => undefined);
-  } finally {
-    await runtime.close();
-    await databaseStore.close();
-  }
+    async () => {
+      const errors = [];
+      await runtime?.close().catch((error) => errors.push(error));
+      await databaseStore.close().catch((error) => errors.push(error));
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Preview reconciliation child cleanup failed',
+        );
+    },
+    'Preview reconciliation child',
+  );
 }
 
 try {

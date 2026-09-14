@@ -5,10 +5,11 @@ import { z } from 'zod';
 import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
+import { raceWithSignal } from './control-ledger-postgres.js';
 import {
-  acquirePoolClient,
-  raceWithSignal,
-} from './control-ledger-postgres.js';
+  inRetentionTransaction,
+  withWorkspaceDestructiveOperationLock,
+} from './retention-transaction.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
@@ -82,6 +83,7 @@ export interface WorkspaceLifecycleCommandCoordinator {
 }
 
 interface ClaimedOperation {
+  [key: string]: unknown;
   actor_user_id: string;
   command_type: string;
   lease_fence: string | number;
@@ -193,9 +195,15 @@ async function query<
 }
 
 function stableFailureCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null) return undefined;
-  const code = 'code' in error ? error.code : undefined;
-  const message = 'message' in error ? error.message : undefined;
+  let code: unknown;
+  let message: unknown;
+  try {
+    if (typeof error !== 'object' || error === null) return undefined;
+    code = Reflect.get(error, 'code');
+    message = Reflect.get(error, 'message');
+  } catch {
+    return undefined;
+  }
   if (
     code === '42501' &&
     message === 'workspace lifecycle authorization was lost'
@@ -215,37 +223,7 @@ async function inTransaction<T>(
   signal: AbortSignal | undefined,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = await acquirePoolClient(pool, signal);
-  let releaseError: Error | undefined;
-  try {
-    await query(client, 'begin', [], signal);
-    await query(
-      client,
-      "select set_config('lock_timeout',$1,true)",
-      [`${String(options.lockTimeoutMs)}ms`],
-      signal,
-    );
-    await query(
-      client,
-      "select set_config('statement_timeout',$1,true)",
-      [`${String(options.statementTimeoutMs)}ms`],
-      signal,
-    );
-    const result = await work(client);
-    await query(client, 'commit', [], signal);
-    return result;
-  } catch (error: unknown) {
-    if (signal?.aborted === true) {
-      releaseError =
-        signal.reason instanceof Error
-          ? signal.reason
-          : new Error('Lifecycle database operation was cancelled');
-    }
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release(releaseError);
-  }
+  return inRetentionTransaction(pool, options, signal, work);
 }
 
 export function createWorkspaceLifecycleCommandCoordinator(
@@ -253,6 +231,10 @@ export function createWorkspaceLifecycleCommandCoordinator(
   ledger: WorkspaceLifecycleLedger,
   input: WorkspaceLifecycleCommandOptions,
 ): WorkspaceLifecycleCommandCoordinator {
+  if (config.max < 2)
+    throw new RangeError(
+      'Workspace lifecycle coordination requires a database pool of at least 2 connections',
+    );
   const options = optionsSchema.parse(input);
   const pool = createDatabasePool({
     connectionString: config.connectionString,
@@ -264,6 +246,7 @@ export function createWorkspaceLifecycleCommandCoordinator(
     lockTimeoutMs: options.lockTimeoutMs,
     statementTimeoutMs: options.statementTimeoutMs,
   };
+  let closePromise: Promise<void> | undefined;
 
   const coordinator: WorkspaceLifecycleCommandCoordinator = {
     checkReadiness: async (input): Promise<void> => {
@@ -276,16 +259,19 @@ export function createWorkspaceLifecycleCommandCoordinator(
         })
         .strict()
         .parse(input);
-      const result = await pool.query<{
-        boundary_compatible: boolean;
-        current_user: string;
-        migration_head: string | null;
-        postgres_major: number;
-      }>({
-        ...(parsedInput.signal === undefined
-          ? {}
-          : { signal: parsedInput.signal }),
-        text: `select current_user,
+      const result = await inTransaction(
+        pool,
+        transactionOptions,
+        parsedInput.signal,
+        (client) =>
+          query<{
+            boundary_compatible: boolean;
+            current_user: string;
+            migration_head: string | null;
+            postgres_major: number;
+          }>(
+            client,
+            `select current_user,
           current_setting('server_version_num')::integer/10000 postgres_major,
           (select name from pertexo_internal.schema_migrations
             order by name desc limit 1) migration_head,
@@ -316,13 +302,14 @@ export function createWorkspaceLifecycleCommandCoordinator(
                   'app.'||protected.table_name,'DELETE,TRUNCATE,TRIGGER'))
             as boundary_compatible
           from pg_roles role where role.rolname=current_user`,
-        values: [
-          parsedInput.expectedLifecycleCommandRole,
-          config.ownerRole,
-          config.workerRuntimeRole,
-        ],
-      });
-      parsedInput.signal?.throwIfAborted();
+            [
+              parsedInput.expectedLifecycleCommandRole,
+              config.ownerRole,
+              config.workerRuntimeRole,
+            ],
+            parsedInput.signal,
+          ),
+      );
       const row = result.rows[0];
       if (
         result.rowCount !== 1 ||
@@ -333,17 +320,24 @@ export function createWorkspaceLifecycleCommandCoordinator(
       )
         throw new Error('Lifecycle command database boundary is incompatible');
     },
-    close: async () => pool.end(),
+    close: () => (closePromise ??= pool.end()),
     processNext: async (processInput = {}) => {
       const { signal } = processInput;
       signal?.throwIfAborted();
-      const claim = await pool.query<ClaimedOperation>({
-        ...(signal === undefined ? {} : { signal }),
-        text: `select * from app.claim_workspace_lifecycle_operations(
+      const claim = await inTransaction(
+        pool,
+        transactionOptions,
+        signal,
+        (client) =>
+          query<ClaimedOperation>(
+            client,
+            `select * from app.claim_workspace_lifecycle_operations(
                  $1,1,make_interval(secs=>$2::double precision)
                )`,
-        values: [options.leaseOwner, options.leaseDurationMs / 1_000],
-      });
+            [options.leaseOwner, options.leaseDurationMs / 1_000],
+            signal,
+          ),
+      );
       const operation = claim.rows[0];
       if (operation === undefined) return { status: 'idle' };
       const commandType = commandTypeSchema.parse(operation.command_type);
@@ -377,116 +371,128 @@ export function createWorkspaceLifecycleCommandCoordinator(
           },
         );
 
-        const prepared = await inTransaction(
+        await withWorkspaceDestructiveOperationLock(
           pool,
-          transactionOptions,
+          operation.workspace_id,
           signal,
-          async (client) => {
-            const lockedResult = await query<LockedOperation>(
-              client,
-              'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
-              lease,
+          async () => {
+            const prepared = await inTransaction(
+              pool,
+              transactionOptions,
               signal,
+              async (client) => {
+                const lockedResult = await query<LockedOperation>(
+                  client,
+                  'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
+                  lease,
+                  signal,
+                );
+                const locked = lockedResult.rows[0];
+                if (locked?.append_authorized !== true)
+                  throw new Error(
+                    'Lifecycle command authorization is not durable',
+                  );
+                return Object.freeze({
+                  expectedSequence: sequence(locked.control_sequence) + 1,
+                  previousHash: hashSchema.parse(locked.control_hash),
+                } satisfies PreparedLifecycleAppend);
+              },
             );
-            const locked = lockedResult.rows[0];
-            if (locked?.append_authorized !== true)
-              throw new Error('Lifecycle command authorization is not durable');
-            return Object.freeze({
-              expectedSequence: sequence(locked.control_sequence) + 1,
-              previousHash: hashSchema.parse(locked.control_hash),
-            } satisfies PreparedLifecycleAppend);
-          },
-        );
 
-        const operationSignal = AbortSignal.any([
-          ...(signal === undefined ? [] : [signal]),
-          AbortSignal.timeout(options.externalOperationTimeoutMs),
-        ]);
-        const reconciliation = await raceWithSignal(
-          ledger.reconcile({
-            maxRecords: 2,
-            projectedHash: prepared.previousHash,
-            projectedSequence: prepared.expectedSequence - 1,
-            repairCommandId: operation.operation_id,
-            signal: operationSignal,
-            workspaceId: uuidSchema.parse(operation.workspace_id),
-          }),
-          operationSignal,
-        );
-        if (
-          reconciliation.hasMore ||
-          !reconciliation.reachedHighWater ||
-          reconciliation.records.length > 1
-        )
-          throw new Error(
-            'Lifecycle ledger has unrelated unprojected commands',
-          );
-        let record = reconciliation.records[0];
-        const pageEndSequence =
-          record?.sequence ?? reconciliation.pageEndSequence;
-        const pageEndHash = record?.recordHash ?? reconciliation.pageEndHash;
-        if (
-          reconciliation.pageEndSequence !== pageEndSequence ||
-          reconciliation.pageEndHash !== pageEndHash ||
-          (record === undefined &&
-            (pageEndSequence !== prepared.expectedSequence - 1 ||
-              pageEndHash !== prepared.previousHash))
-        )
-          throw new Error('Lifecycle ledger high water is inconsistent');
-        record ??= await raceWithSignal(
-          ledger.append({
-            actorRef: operation.actor_user_id,
-            commandId: operation.operation_id,
-            commandType,
-            occurredAt: occurredAt(operation.occurred_at),
-            previousHash: prepared.previousHash,
-            reason: operation.reason,
-            sequence: prepared.expectedSequence,
-            signal: operationSignal,
-            subjectId: operation.workspace_id,
-            workspaceId: operation.workspace_id,
-          }),
-          operationSignal,
-        );
-        verifyRecord(
-          record,
-          operation,
-          prepared.previousHash,
-          prepared.expectedSequence,
-        );
-        signal?.throwIfAborted();
-
-        await inTransaction(
-          pool,
-          transactionOptions,
-          signal,
-          async (client) => {
-            const lockedResult = await query<LockedOperation>(
-              client,
-              'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
-              lease,
-              signal,
+            const operationSignal = AbortSignal.any([
+              ...(signal === undefined ? [] : [signal]),
+              AbortSignal.timeout(options.externalOperationTimeoutMs),
+            ]);
+            const reconciliation = await raceWithSignal(
+              ledger.reconcile({
+                maxRecords: 2,
+                projectedHash: prepared.previousHash,
+                projectedSequence: prepared.expectedSequence - 1,
+                repairCommandId: operation.operation_id,
+                signal: operationSignal,
+                workspaceId: uuidSchema.parse(operation.workspace_id),
+              }),
+              operationSignal,
             );
-            const locked = lockedResult.rows[0];
             if (
-              locked?.append_authorized !== true ||
-              sequence(locked.control_sequence) + 1 !==
-                prepared.expectedSequence ||
-              hashSchema.parse(locked.control_hash) !== prepared.previousHash
+              reconciliation.hasMore ||
+              !reconciliation.reachedHighWater ||
+              reconciliation.records.length > 1
             )
-              throw new Error('Lifecycle command projection fence changed');
-            await query(
-              client,
-              `select app.project_and_complete_workspace_lifecycle_operation(
-               $1,$2,$3,$4,$5,$6
-             )`,
-              [
-                ...lease,
-                record.sequence,
-                record.previousHash,
-                record.recordHash,
-              ],
+              throw new Error(
+                'Lifecycle ledger has unrelated unprojected commands',
+              );
+            let record = reconciliation.records[0];
+            const pageEndSequence =
+              record?.sequence ?? reconciliation.pageEndSequence;
+            const pageEndHash =
+              record?.recordHash ?? reconciliation.pageEndHash;
+            if (
+              reconciliation.pageEndSequence !== pageEndSequence ||
+              reconciliation.pageEndHash !== pageEndHash ||
+              (record === undefined &&
+                (pageEndSequence !== prepared.expectedSequence - 1 ||
+                  pageEndHash !== prepared.previousHash))
+            )
+              throw new Error('Lifecycle ledger high water is inconsistent');
+            record ??= await raceWithSignal(
+              ledger.append({
+                actorRef: operation.actor_user_id,
+                commandId: operation.operation_id,
+                commandType,
+                occurredAt: occurredAt(operation.occurred_at),
+                previousHash: prepared.previousHash,
+                reason: operation.reason,
+                sequence: prepared.expectedSequence,
+                signal: operationSignal,
+                subjectId: operation.workspace_id,
+                workspaceId: operation.workspace_id,
+              }),
+              operationSignal,
+            );
+            verifyRecord(
+              record,
+              operation,
+              prepared.previousHash,
+              prepared.expectedSequence,
+            );
+            signal?.throwIfAborted();
+
+            await inTransaction(
+              pool,
+              transactionOptions,
               signal,
+              async (client) => {
+                const lockedResult = await query<LockedOperation>(
+                  client,
+                  'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
+                  lease,
+                  signal,
+                );
+                const locked = lockedResult.rows[0];
+                if (
+                  locked?.append_authorized !== true ||
+                  sequence(locked.control_sequence) + 1 !==
+                    prepared.expectedSequence ||
+                  hashSchema.parse(locked.control_hash) !==
+                    prepared.previousHash
+                )
+                  throw new Error('Lifecycle command projection fence changed');
+                const projected = await query<{ projected: boolean }>(
+                  client,
+                  `select app.project_and_complete_workspace_lifecycle_operation(
+               $1,$2,$3,$4,$5,$6
+             ) projected`,
+                  [
+                    ...lease,
+                    record.sequence,
+                    record.previousHash,
+                    record.recordHash,
+                  ],
+                  signal,
+                );
+                z.boolean().parse(projected.rows[0]?.projected);
+              },
             );
           },
         );
@@ -497,22 +503,39 @@ export function createWorkspaceLifecycleCommandCoordinator(
         };
       } catch (error: unknown) {
         const failureCode = stableFailureCode(error);
-        const result = await pool.query<{ changed: boolean }>(
-          failureCode === undefined
-            ? 'select app.release_workspace_lifecycle_operation($1,$2,$3) changed'
-            : 'select app.fail_workspace_lifecycle_operation($1,$2,$3,$4) changed',
-          failureCode === undefined ? lease : [...lease, failureCode],
-        );
-        if (signal?.aborted === true) throw signal.reason;
+        const cleanupSignal = AbortSignal.timeout(options.statementTimeoutMs);
+        let changed: boolean;
+        try {
+          changed = await inTransaction(
+            pool,
+            transactionOptions,
+            cleanupSignal,
+            async (client) => {
+              const result = await query<{ changed: boolean }>(
+                client,
+                failureCode === undefined
+                  ? 'select app.release_workspace_lifecycle_operation($1,$2,$3) changed'
+                  : 'select app.fail_workspace_lifecycle_operation($1,$2,$3,$4) changed',
+                failureCode === undefined ? lease : [...lease, failureCode],
+                cleanupSignal,
+              );
+              return z.boolean().parse(result.rows[0]?.changed);
+            },
+          );
+        } catch (cleanupError: unknown) {
+          throw new AggregateError(
+            [error, cleanupError],
+            'Lifecycle command failure and lease cleanup both failed',
+          );
+        }
+        if (failureCode === undefined) {
+          if (signal?.aborted === true) signal.throwIfAborted();
+          throw error;
+        }
         return {
           commandType,
           operationId: operation.operation_id,
-          status:
-            result.rows[0]?.changed === true
-              ? failureCode === undefined
-                ? 'released'
-                : 'failed'
-              : 'stale',
+          status: changed ? 'failed' : 'stale',
         };
       }
     },

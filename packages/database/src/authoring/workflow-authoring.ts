@@ -1,24 +1,16 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
-import type { Pool } from 'pg';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  EMPTY_DEFINITION_CATALOG_V1,
-  type WorkflowDefinitionCatalogV1,
-  type WorkflowGraph,
+import type {
+  WorkflowDefinitionCatalogV1,
+  WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
 import type { DatabaseConfig } from '../config.js';
-import {
-  lockExpectedCompatibilityReleaseWithClient,
-  lockExpectedCompatibilityReleaseSetWithClient,
-  parseCompatibilityReleaseExpectation,
-  parseCompatibilityReleaseExpectationHistory,
-  parseCompatibilityReleaseExpectationSet,
-} from '../compatibility/compatibility-release.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
+import { normalizeWorkflowAuthoringCompatibility } from './workflow-authoring-compatibility.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
@@ -41,11 +33,13 @@ import {
 import {
   acceptPreviewRun,
   readPreviewRun,
+  resolvePreviewReplay,
 } from '../execution/preview-execution.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
 } from '../tenant-access/workspace.js';
+import { rolesForCapability } from '../tenant-access/workspace-policy.js';
 import type { WorkflowAuthoringDatabaseOptions } from './workflow-authoring-types.js';
 export type {
   WorkflowAuthoringDatabaseOptions,
@@ -222,10 +216,11 @@ async function requireWorkspaceAuthor(
      join app.users actor on actor.id = membership.user_id
      join app.workspaces workspace on workspace.id = membership.workspace_id
      where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active' and membership.role in ('owner', 'admin', 'builder')
+       and membership.status = 'active' and membership.role = any($3::text[])
        and actor.status = 'active'
-       and workspace.status = 'active'`,
-    [workspaceId, actorId],
+       and workspace.status = 'active'
+     for share of membership, actor, workspace`,
+    [workspaceId, actorId, [...rolesForCapability('workflow:update')]],
   );
   if (result.rowCount !== 1)
     throw new WorkflowNotFoundError('Workflow is not visible');
@@ -257,6 +252,8 @@ function keyDigest(key: string): string {
 
 function durablePublishResult(
   value: unknown,
+  expectedWorkspaceId: string,
+  expectedWorkflowId: string,
 ): Omit<PublishWorkflowResult, 'replayed'> {
   const parsed = z
     .object({
@@ -277,6 +274,13 @@ function durablePublishResult(
     })
     .strict()
     .parse(value);
+  if (
+    parsed.version.workspaceId !== expectedWorkspaceId ||
+    parsed.version.workflowId !== expectedWorkflowId
+  )
+    throw new Error(
+      'Durable workflow publication result identity does not match its claim',
+    );
   const version = mapVersion({
     id: parsed.version.id,
     workspace_id: parsed.version.workspaceId,
@@ -294,149 +298,34 @@ function durablePublishResult(
   });
 }
 
+function createPreviewStore(
+  pool: Pool,
+): Pick<
+  WorkflowAuthoringDatabase,
+  'acceptPreview' | 'readPreview' | 'resolvePreviewReplay'
+> {
+  return {
+    acceptPreview: async ({ workspaceId, ...input }) =>
+      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
+        acceptPreviewRun(transaction, input),
+      ),
+    readPreview: async ({ workspaceId, ...input }) =>
+      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
+        readPreviewRun(transaction, input),
+      ),
+    resolvePreviewReplay: async ({ workspaceId, ...input }) =>
+      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
+        resolvePreviewReplay(transaction, input),
+      ),
+  };
+}
+
 export function createWorkflowAuthoringDatabase(
   config: DatabaseConfig,
   options: WorkflowAuthoringDatabaseOptions = {},
 ): WorkflowAuthoringDatabase {
-  if (
-    options.compatibilityReleaseVariants !== undefined &&
-    (options.compatibilityRelease !== undefined ||
-      options.definitionCatalog !== undefined ||
-      options.placementDefinitionCatalog !== undefined ||
-      options.executableCompiler !== undefined)
-  )
-    throw new TypeError(
-      'Compatibility release variants cannot be combined with singular publication options',
-    );
-  if (
-    options.compatibilityReadinessReleases !== undefined &&
-    options.compatibilityReleaseVariants === undefined
-  )
-    throw new TypeError(
-      'Compatibility readiness releases require publication variants',
-    );
-  const defaultDefinitionCatalog =
-    options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1;
-  const compatibilityRelease =
-    options.compatibilityRelease === undefined
-      ? undefined
-      : parseCompatibilityReleaseExpectation(options.compatibilityRelease);
-  if (
-    options.executableCompiler !== undefined &&
-    (compatibilityRelease === undefined ||
-      defaultDefinitionCatalog.releaseFingerprint !==
-        compatibilityRelease.fingerprint)
-  ) {
-    throw new TypeError(
-      'Executable workflow publication requires matching compatibility authority',
-    );
-  }
-  if (
-    options.placementDefinitionCatalog !== undefined &&
-    (compatibilityRelease === undefined ||
-      options.placementDefinitionCatalog.releaseFingerprint !==
-        compatibilityRelease.fingerprint)
-  ) {
-    throw new TypeError(
-      'Workflow placement requires matching compatibility authority',
-    );
-  }
-  const compatibilityReleaseVariants = options.compatibilityReleaseVariants;
-  const compatibilityVariants =
-    compatibilityReleaseVariants === undefined
-      ? undefined
-      : Object.freeze(
-          parseCompatibilityReleaseExpectationHistory(
-            compatibilityReleaseVariants.map(
-              ({ compatibilityRelease: release }) => release,
-            ),
-          ).map((release) => {
-            const variant = compatibilityReleaseVariants.find(
-              ({ compatibilityRelease: candidate }) =>
-                candidate.epoch === release.epoch &&
-                candidate.fingerprint === release.fingerprint &&
-                candidate.catalogJson === release.catalogJson,
-            );
-            if (
-              variant?.definitionCatalog.releaseFingerprint !==
-                release.fingerprint ||
-              variant.placementDefinitionCatalog.releaseFingerprint !==
-                release.fingerprint
-            )
-              throw new TypeError(
-                'Executable workflow publication requires matching compatibility variants',
-              );
-            return Object.freeze({
-              compatibilityRelease: release,
-              definitionCatalog: variant.definitionCatalog,
-              placementDefinitionCatalog: variant.placementDefinitionCatalog,
-              executableCompiler: variant.executableCompiler,
-            });
-          }),
-        );
-  const compatibilityReadinessReleases =
-    options.compatibilityReadinessReleases === undefined
-      ? undefined
-      : parseCompatibilityReleaseExpectationSet(
-          options.compatibilityReadinessReleases,
-        );
-  if (
-    compatibilityVariants !== undefined &&
-    compatibilityVariants.length > 2 &&
-    compatibilityReadinessReleases === undefined
-  )
-    throw new TypeError(
-      'Retained publication history requires bounded compatibility readiness releases',
-    );
-  if (
-    compatibilityReadinessReleases?.some(
-      (readiness) =>
-        !compatibilityVariants?.some(
-          ({ compatibilityRelease: variant }) =>
-            variant.epoch === readiness.epoch &&
-            variant.fingerprint === readiness.fingerprint &&
-            variant.catalogJson === readiness.catalogJson,
-        ),
-    ) === true
-  )
-    throw new TypeError(
-      'Compatibility readiness release is missing a publication variant',
-    );
-  const defaultVariant = Object.freeze({
-    compatibilityRelease,
-    definitionCatalog: defaultDefinitionCatalog,
-    placementDefinitionCatalog: options.placementDefinitionCatalog,
-    executableCompiler: options.executableCompiler,
-  });
-  const selectCompatibilityVariant = async (
-    client: Pick<PoolClient, 'query'>,
-  ): Promise<typeof defaultVariant> => {
-    if (compatibilityVariants === undefined) {
-      if (compatibilityRelease !== undefined)
-        await lockExpectedCompatibilityReleaseWithClient(
-          client,
-          compatibilityRelease,
-        );
-      return defaultVariant;
-    }
-    const selected = await lockExpectedCompatibilityReleaseSetWithClient(
-      client,
-      compatibilityReadinessReleases ??
-        compatibilityVariants.map(
-          ({ compatibilityRelease: release }) => release,
-        ),
-    );
-    const variant = compatibilityVariants.find(
-      ({ compatibilityRelease: release }) =>
-        release.epoch === selected.epoch &&
-        release.fingerprint === selected.fingerprint &&
-        release.catalogJson === selected.catalogJson,
-    );
-    if (variant === undefined)
-      throw new Error('Locked compatibility release variant is unavailable');
-    return variant;
-  };
-  // Runtime import is kept here so the public package remains straightforward to test.
+  const compatibility = normalizeWorkflowAuthoringCompatibility(options);
+  const selectCompatibilityVariant = compatibility.selectLocked;
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
   const authoringContext: WorkflowVersionRestoreContext = {
@@ -464,14 +353,7 @@ export function createWorkflowAuthoringDatabase(
       withAuthorTransaction(pool, workspaceId, actorId, operation),
   });
   return Object.freeze({
-    acceptPreview: async ({ workspaceId, ...input }) =>
-      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
-        acceptPreviewRun(transaction, input),
-      ),
-    readPreview: async ({ workspaceId, ...input }) =>
-      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
-        readPreviewRun(transaction, input),
-      ),
+    ...createPreviewStore(pool),
     ...createWorkflowAuthoringDraftStore({
       ...authoringContext,
       keyDigest,

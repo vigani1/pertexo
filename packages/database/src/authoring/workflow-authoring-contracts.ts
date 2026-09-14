@@ -2,6 +2,8 @@ import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
   PreviewRunRecord,
+  PreviewReplayRecord,
+  ResolvePreviewReplayInput,
 } from '../execution/preview-execution.js';
 import type {
   WorkflowDraftRecord,
@@ -28,6 +30,8 @@ export type SaveWorkflowDraftInput = Readonly<{
   workspaceId: string;
   workflowId: string;
   actorId: string;
+  /** Original opaque If-Match value, rechecked under write-time compatibility authority. */
+  representationTag: string;
   expectedRevision: number;
   graphJson: unknown;
   requestId?: string;
@@ -107,6 +111,9 @@ export type WorkflowAuthoringDatabase = Readonly<{
       previewRunId: string;
     }>,
   ): Promise<PreviewRunRecord | null>;
+  resolvePreviewReplay(
+    input: ResolvePreviewReplayInput & Readonly<{ workspaceId: string }>,
+  ): Promise<PreviewReplayRecord | null>;
   createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
   listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
   getDraft(

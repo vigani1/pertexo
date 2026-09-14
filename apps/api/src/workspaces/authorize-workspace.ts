@@ -65,12 +65,18 @@ export type AssertAuthorizedWorkspaceContextInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
   capability: AuthorizationCapability;
+  disclosure?: DisclosurePolicy;
+  allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
+  signal?: AbortSignal;
 }>;
 
 export type AuthorizeWorkspaceOperationInput = AuthorizeWorkspaceInput &
   Readonly<{ authorizedWorkspace?: AuthorizedWorkspaceContext }>;
 
-const issuedAuthorizationContexts = new WeakSet<object>();
+const issuedAuthorizationContexts = new WeakMap<
+  object,
+  Readonly<{ workspaceStatus: WorkspaceStatus }>
+>();
 
 function denied(
   disclosure: DisclosurePolicy,
@@ -180,14 +186,18 @@ export async function authorizeWorkspace(
     role: record.role,
     capability: input.capability,
   });
-  issuedAuthorizationContexts.add(context);
+  issuedAuthorizationContexts.set(
+    context,
+    Object.freeze({ workspaceStatus: record.workspaceStatus }),
+  );
   return context;
 }
 
 export function assertAuthorizedWorkspaceContext(
   input: AssertAuthorizedWorkspaceContextInput,
 ): AuthorizedWorkspaceContext {
-  if (!issuedAuthorizationContexts.has(input.context)) {
+  const proof = issuedAuthorizationContexts.get(input.context);
+  if (proof === undefined) {
     throw invalid(
       'authorization context was not established by the guard seam',
     );
@@ -207,23 +217,34 @@ export function assertAuthorizedWorkspaceContext(
       'authorization context does not match the operation',
     );
   }
+  input.signal?.throwIfAborted();
+  const allowedWorkspaceStatuses = input.allowedWorkspaceStatuses ?? ['active'];
+  if (!allowedWorkspaceStatuses.includes(proof.workspaceStatus)) {
+    throw denied(
+      input.disclosure ?? 'forbidden',
+      'workspace lifecycle does not allow this action',
+    );
+  }
   return input.context;
 }
 
-export function authorizeWorkspaceOperation(
+export async function authorizeWorkspaceOperation(
   input: AuthorizeWorkspaceOperationInput,
 ): Promise<AuthorizedWorkspaceContext> {
   if (input.authorizedWorkspace === undefined || input.actor === undefined) {
     return authorizeWorkspace(input);
   }
-  return Promise.resolve(
-    assertAuthorizedWorkspaceContext({
-      context: input.authorizedWorkspace,
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability: input.capability,
-    }),
-  );
+  return assertAuthorizedWorkspaceContext({
+    context: input.authorizedWorkspace,
+    actor: input.actor,
+    routeWorkspaceId: input.routeWorkspaceId,
+    capability: input.capability,
+    ...(input.disclosure === undefined ? {} : { disclosure: input.disclosure }),
+    ...(input.allowedWorkspaceStatuses === undefined
+      ? {}
+      : { allowedWorkspaceStatuses: input.allowedWorkspaceStatuses }),
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+  });
 }
 
 export type { WorkspaceStatus };

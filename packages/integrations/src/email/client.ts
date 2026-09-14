@@ -87,7 +87,12 @@ export function createResendClient(
               new TextDecoder('utf-8', { fatal: true }).decode(response.body),
             );
           } catch {
-            return Object.freeze({ kind: 'invalid_response' as const });
+            return response.status >= 200 && response.status <= 299
+              ? Object.freeze({ kind: 'invalid_response' as const })
+              : Object.freeze({
+                  kind: 'http_failure' as const,
+                  status: response.status,
+                });
           }
           if (response.status >= 200 && response.status <= 299) {
             const parsed = successSchema.safeParse(decoded);

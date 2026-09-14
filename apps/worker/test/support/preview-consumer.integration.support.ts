@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -7,6 +6,8 @@ import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
 import { dropDisconnectedDatabase } from './disposable-database.js';
+import { createRedisTestNamespace } from './redis-test-namespace.js';
+import { runWithCleanup } from './test-operation.js';
 
 import {
   acceptWorkflowRun,
@@ -14,7 +15,9 @@ import {
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
   databaseSchema,
+  migrateDatabase,
   parseDatabaseConfig,
+  parseMigrationConfig,
   parseWorkspaceId,
   withTenantScopedClient,
   type AcceptWorkflowRunInput,
@@ -63,11 +66,12 @@ export const maintenanceUrl =
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
-export const redisUrl = (() => {
-  const parsed = new URL(configuredRedisUrl);
-  parsed.pathname = '/13';
-  return parsed.toString();
-})();
+const redisNamespace = createRedisTestNamespace(
+  configuredRedisUrl,
+  13,
+  'preview-consumer',
+);
+export const redisUrl = redisNamespace.redisUrl;
 
 const databaseName = `pertexo_test_preview_transport_${randomUUID().replaceAll('-', '')}`;
 export const workspaceId = randomUUID();
@@ -132,15 +136,10 @@ export function databaseUrl(base: string): string {
   return url.toString();
 }
 
-const apiPool = new Pool({ connectionString: databaseUrl(apiUrl), max: 4 });
-export const workerPool = new Pool({
-  connectionString: databaseUrl(workerUrl),
-  max: 4,
-});
-const ownerPool = new Pool({
-  connectionString: databaseUrl(migrationUrl),
-  max: 1,
-});
+let apiPool: Pool;
+export let workerPool: Pool;
+let ownerPool: Pool;
+let databaseCreated = false;
 
 async function withOwner<T>(
   work: (client: PoolClient) => Promise<T>,
@@ -353,65 +352,80 @@ export async function activateArtifactRelease(
         parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
         pairDescriptions,
       );
-      const workerProbe = createCompatibilityReleaseReadinessProbe(
-        parseDatabaseConfig({
-          connectionString: databaseUrl(workerUrl),
-          max: 1,
-        }),
-        pairDescriptions,
-      );
+      let workerProbe:
+        ReturnType<typeof createCompatibilityReleaseReadinessProbe> | undefined;
       const deploymentId = `preview-transport-${cohort}-${String(next.epoch)}-${randomUUID()}`;
       const approvalId = randomUUID();
       const apiArtifact = `preview-transport-api-${String(next.epoch)}`;
       const workerArtifact = `preview-transport-worker-${String(next.epoch)}`;
-      try {
-        await maintenance.prepare({
-          actorId: 'preview-transport-integration',
-          actorKind: 'deployment',
-          expectedPredecessor,
-          reason: `Prepare ${cohort} epoch ${String(next.epoch)}`,
-          target: next,
-        });
-        await expect(apiProbe.checkTarget(next)).resolves.toMatchObject({
-          role: 'pertexo_api',
-        });
-        await expect(workerProbe.checkTarget(next)).resolves.toMatchObject({
-          role: 'pertexo_worker',
-        });
-        await maintenance.recordPreactivation({
-          artifactId: apiArtifact,
-          checkId: randomUUID(),
-          deploymentId,
-          roleKind: 'api',
-          target: next,
-        });
-        await maintenance.recordPreactivation({
-          artifactId: workerArtifact,
-          checkId: randomUUID(),
-          deploymentId,
-          roleKind: 'worker',
-          target: next,
-        });
-        await maintenance.approve({
-          actorId: 'preview-transport-integration',
-          approvalId,
-          deploymentId,
-          reason: `Approve ${cohort} epoch ${String(next.epoch)}`,
-          requiredApiArtifacts: [apiArtifact],
-          requiredWorkerArtifacts: [workerArtifact],
-          target: next,
-        });
-        await maintenance.activate({
-          activationId: randomUUID(),
-          actorId: 'preview-transport-integration',
-          actorKind: 'deployment',
-          approvalId,
-          expectedPredecessor,
-          reason: `Activate ${cohort} epoch ${String(next.epoch)}`,
-        });
-      } finally {
-        await Promise.allSettled([apiProbe.close(), workerProbe.close()]);
-      }
+      await runWithCleanup(
+        async () => {
+          workerProbe = createCompatibilityReleaseReadinessProbe(
+            parseDatabaseConfig({
+              connectionString: databaseUrl(workerUrl),
+              max: 1,
+            }),
+            pairDescriptions,
+          );
+          await maintenance.prepare({
+            actorId: 'preview-transport-integration',
+            actorKind: 'deployment',
+            expectedPredecessor,
+            reason: `Prepare ${cohort} epoch ${String(next.epoch)}`,
+            target: next,
+          });
+          await expect(apiProbe.checkTarget(next)).resolves.toMatchObject({
+            role: 'pertexo_api',
+          });
+          await expect(workerProbe.checkTarget(next)).resolves.toMatchObject({
+            role: 'pertexo_worker',
+          });
+          await maintenance.recordPreactivation({
+            artifactId: apiArtifact,
+            checkId: randomUUID(),
+            deploymentId,
+            roleKind: 'api',
+            target: next,
+          });
+          await maintenance.recordPreactivation({
+            artifactId: workerArtifact,
+            checkId: randomUUID(),
+            deploymentId,
+            roleKind: 'worker',
+            target: next,
+          });
+          await maintenance.approve({
+            actorId: 'preview-transport-integration',
+            approvalId,
+            deploymentId,
+            reason: `Approve ${cohort} epoch ${String(next.epoch)}`,
+            requiredApiArtifacts: [apiArtifact],
+            requiredWorkerArtifacts: [workerArtifact],
+            target: next,
+          });
+          await maintenance.activate({
+            activationId: randomUUID(),
+            actorId: 'preview-transport-integration',
+            actorKind: 'deployment',
+            approvalId,
+            expectedPredecessor,
+            reason: `Activate ${cohort} epoch ${String(next.epoch)}`,
+          });
+        },
+        async () => {
+          const errors: unknown[] = [];
+          await workerProbe
+            ?.close()
+            .catch((error: unknown) => errors.push(error));
+          await apiProbe.close().catch((error: unknown) => errors.push(error));
+          if (errors.length > 0)
+            throw new AggregateError(
+              errors,
+              'Preview compatibility probe cleanup failed',
+            );
+        },
+        'Preview compatibility probes',
+      );
     }
   } finally {
     await maintenance.close();
@@ -524,37 +538,48 @@ export async function withPublishedPreviewDelivery<T>(
   const queue = new Queue(QUEUE_NAME.nodeAttempts, {
     connection: redisConnectionOptions(),
   });
-  try {
-    await Promise.all([
-      runtime.consumer.waitUntilReady(5_000),
-      producer.waitUntilReady(5_000),
-    ]);
-    const job = await producer.publish({
-      data: delivery.job.data,
-      name: delivery.job.name,
-    });
-    expect(job.jobId).toBe(`outbox-${delivery.accepted.outboxEventId}`);
-    // A replay already has a succeeded database row. Observe this delivery's
-    // consumer completion before comparing durable state, not just old success.
-    const deliveredJob = await waitFor(
-      () => queue.getJob(job.jobId),
-      (value) => value !== undefined,
-    );
-    if (deliveredJob === undefined)
-      throw new Error('published preview job missing');
-    const deliveredState = await waitFor(
-      () => deliveredJob.getState(),
-      (value) => value === 'completed' || value === 'failed',
-    );
-    expect(deliveredState).toBe('completed');
-    const state = await waitFor(
-      () => previewState(delivery.accepted.previewRunId),
-      (value) => value?.run_status === 'succeeded',
-    );
-    return await work({ job, producer, queue, state });
-  } finally {
-    await Promise.allSettled([producer.close(), queue.close()]);
-  }
+  return runWithCleanup(
+    async () => {
+      await Promise.all([
+        runtime.consumer.waitUntilReady(5_000),
+        producer.waitUntilReady(5_000),
+      ]);
+      const job = await producer.publish({
+        data: delivery.job.data,
+        name: delivery.job.name,
+      });
+      expect(job.jobId).toBe(`outbox-${delivery.accepted.outboxEventId}`);
+      // A replay already has a succeeded database row. Observe this delivery's
+      // consumer completion before comparing durable state, not just old success.
+      const deliveredJob = await waitFor(
+        () => queue.getJob(job.jobId),
+        (value) => value !== undefined,
+      );
+      if (deliveredJob === undefined)
+        throw new Error('published preview job missing');
+      const deliveredState = await waitFor(
+        () => deliveredJob.getState(),
+        (value) => value === 'completed' || value === 'failed',
+      );
+      expect(deliveredState).toBe('completed');
+      const state = await waitFor(
+        () => previewState(delivery.accepted.previewRunId),
+        (value) => value?.run_status === 'succeeded',
+      );
+      return work({ job, producer, queue, state });
+    },
+    async () => {
+      const errors: unknown[] = [];
+      await producer.close().catch((error: unknown) => errors.push(error));
+      await queue.close().catch((error: unknown) => errors.push(error));
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Published preview delivery cleanup failed',
+        );
+    },
+    'Published preview delivery',
+  );
 }
 
 export function withTenantAccept(input: AcceptPreviewRunInput) {
@@ -754,62 +779,121 @@ export function withTenantScopedWorker<T>(
   return withTenantScopedClient(workerPool, { workspaceId }, work);
 }
 
+let redisNamespaceAcquired = false;
+let fixtureCleanupPromise: Promise<void> | undefined;
+
+function cleanupPreviewIntegrationFixture(): Promise<void> {
+  fixtureCleanupPromise ??= (async () => {
+    const cleanupErrors: unknown[] = [];
+    const attempt = async (
+      label: string,
+      operation: () => unknown,
+    ): Promise<void> => {
+      await Promise.resolve()
+        .then(operation)
+        .catch((cause: unknown) => {
+          cleanupErrors.push(
+            new Error(`Preview integration cleanup failed: ${label}`, {
+              cause,
+            }),
+          );
+        });
+    };
+    if (redisNamespaceAcquired)
+      await attempt('clear node-attempt queue', clearNodeAttemptQueue);
+    await attempt('close API pool', () => apiPool.end());
+    await attempt('close worker pool', () => workerPool.end());
+    await attempt('close owner pool', () => ownerPool.end());
+    if (redisNamespaceAcquired) {
+      await attempt('release Redis namespace', () => redisNamespace.close());
+      redisNamespaceAcquired = false;
+    }
+    if (databaseCreated) {
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      await attempt('drop disposable database', async () => {
+        await dropDisconnectedDatabase(admin, databaseName);
+        databaseCreated = false;
+      });
+      await attempt('close cleanup admin pool', () => admin.end());
+    }
+    if (cleanupErrors.length > 0)
+      throw new AggregateError(
+        cleanupErrors,
+        'Preview integration cleanup failed',
+      );
+  })();
+  return fixtureCleanupPromise;
+}
+
 beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  if (!workerTransportIntegrationEnabled) return;
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_maintenance`,
-    );
-  } finally {
-    await admin.end();
-  }
-  // Migration runs through the database package's own reviewed CLI so this
-  // suite exercises exactly the shipped migration path.
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      [
-        '--filter',
-        '@pertexo/database',
-        '--fail-if-no-match',
-        'exec',
-        'tsx',
-        'src/migrate.ts',
-      ],
-      {
-        stdio: 'inherit',
-        cwd: new URL('../../../../', import.meta.url).pathname,
-        env: {
-          ...process.env,
-          DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
-        },
-      },
-    );
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(`preview transport migration failed: ${String(code)}`));
+    const admin = new Pool({ connectionString: adminUrl, max: 1 });
+    let setupError: unknown;
+    try {
+      await admin.query(
+        `create database "${databaseName}" owner pertexo_owner`,
+      );
+      databaseCreated = true;
+      await admin.query(`revoke all on database "${databaseName}" from public`);
+      await admin.query(
+        `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_maintenance`,
+      );
+    } catch (error: unknown) {
+      setupError = error;
+    }
+    await admin.end().catch((error: unknown) => {
+      setupError =
+        setupError === undefined
+          ? error
+          : new AggregateError(
+              [setupError, error],
+              'Preview integration database setup failed',
+            );
     });
-  });
-  await seedIdentity();
-  await activateArtifactRelease('core');
-  await clearNodeAttemptQueue();
+    if (setupError !== undefined)
+      throw setupError instanceof Error
+        ? setupError
+        : new Error('Preview integration database setup failed', {
+            cause: setupError,
+          });
+    await redisNamespace.acquire();
+    redisNamespaceAcquired = true;
+    await migrateDatabase(
+      parseMigrationConfig({
+        ...process.env,
+        DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
+        NODE_ENV: 'test',
+      }),
+    );
+    apiPool = new Pool({ connectionString: databaseUrl(apiUrl), max: 4 });
+    workerPool = new Pool({
+      connectionString: databaseUrl(workerUrl),
+      max: 4,
+    });
+    ownerPool = new Pool({
+      connectionString: databaseUrl(migrationUrl),
+      max: 1,
+    });
+    await seedIdentity();
+    await activateArtifactRelease('core');
+    await clearNodeAttemptQueue();
+  } catch (setupError: unknown) {
+    let cleanupError: unknown;
+    await cleanupPreviewIntegrationFixture().catch((error: unknown) => {
+      cleanupError = error;
+    });
+    if (cleanupError === undefined) throw setupError;
+    throw new AggregateError(
+      [setupError, cleanupError],
+      'Preview integration fixture setup failed',
+    );
+  }
 }, 60_000);
 
 afterAll(async () => {
-  await clearNodeAttemptQueue().catch(() => undefined);
-  await Promise.allSettled([apiPool.end(), workerPool.end(), ownerPool.end()]);
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
+  if (!workerTransportIntegrationEnabled) return;
+  await cleanupPreviewIntegrationFixture();
 });
 
 export const validTraceparent =

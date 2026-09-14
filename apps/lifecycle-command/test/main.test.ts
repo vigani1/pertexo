@@ -3,7 +3,9 @@ import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lif
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
 import { parseLifecycleCommandConfig } from '../src/config.js';
 import {
@@ -67,6 +69,10 @@ const config = parseLifecycleCommandConfig({
   DATABASE_LIFECYCLE_COMMAND_URL:
     'postgresql://lifecycle:secret@localhost:5432/pertexo',
   LIFECYCLE_COMMAND_LEASE_OWNER: 'lifecycle:test-1',
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 function processDouble() {
@@ -315,9 +321,57 @@ describe('lifecycle command bootstrap', () => {
     ).rejects.toBe(failure);
     expect(Reflect.get(logger, 'fatal')).toHaveBeenCalledWith(
       'lifecycle_command.bootstrap_failed',
-      { errorType: 'object' },
+      { errorType: 'NonError' },
       failure,
     );
+  });
+
+  it('cleans every acquired owner when metrics and fatal diagnostics throw before handoff', async () => {
+    const process = processDouble();
+    const telemetry = telemetryDouble();
+    const readiness = {
+      clear: vi.fn(() => Promise.resolve()),
+      mark: vi.fn(() => Promise.resolve()),
+    };
+    const ledger = modules().artifactStore.createDualRegionControlLedger(
+      config.ledger.primary,
+      config.ledger.recovery,
+    );
+    const coordinator =
+      modules().database.createWorkspaceLifecycleCommandCoordinator(
+        config.database,
+        ledger,
+        config.coordinator,
+      );
+    const logger = modules().logging.createStructuredLogger(
+      config.observability,
+    );
+    const metricsError = new Error('metrics construction failed');
+    const runWorker = vi.fn(() => Promise.resolve());
+    const loaded = modules({ coordinator, ledger, logger, runWorker });
+    loaded.observability.createMaintenanceMetrics = vi.fn(() => {
+      throw metricsError;
+    });
+    vi.mocked(logger.fatal).mockImplementationOnce(() => {
+      throw new Error('fatal logging failed');
+    });
+
+    await expect(
+      bootstrapLifecycleCommand({
+        config,
+        createReadinessMarker: () => readiness,
+        createTelemetryLifecycle: () => telemetry,
+        loadModules: () => Promise.resolve(loaded),
+        process,
+      }),
+    ).rejects.toBe(metricsError);
+
+    expect(runWorker).not.toHaveBeenCalled();
+    expect(readiness.clear).toHaveBeenCalledOnce();
+    expect(coordinator.close).toHaveBeenCalledOnce();
+    expect(ledger.close).toHaveBeenCalledOnce();
+    expect(telemetry.shutdown).toHaveBeenCalledOnce();
+    expect(process.removeListener).toHaveBeenCalledTimes(2);
   });
 
   it('uses production defaults when dependency overrides are omitted', async () => {
@@ -346,8 +400,6 @@ describe('lifecycle command bootstrap', () => {
         loadModules: () => Promise.resolve(modules()),
       }),
     ).resolves.toBeUndefined();
-
-    vi.unstubAllEnvs();
   });
 
   it('loads the runtime modules through the production dynamic-import path', async () => {

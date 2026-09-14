@@ -1,4 +1,4 @@
-import type { Pool, PoolClient, QueryConfig, QueryResult } from 'pg';
+import type { Pool, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -12,6 +12,7 @@ import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
 } from '../platform/readiness.js';
+import { runOperatorTransaction } from './operator-transaction.js';
 
 type RuntimeOptions = Readonly<{
   forbiddenRoles: readonly string[];
@@ -54,28 +55,44 @@ export interface OperatorCommandRuntime {
     values: readonly unknown[],
     signal?: AbortSignal,
   ): Promise<QueryResult<Row>>;
+  transactionDecoded<Row extends Record<string, unknown>, Result>(
+    text: string,
+    values: readonly unknown[],
+    decode: (result: QueryResult<Row>) => Result,
+    signal?: AbortSignal,
+  ): Promise<Result>;
 }
 
-async function query<Row extends Record<string, unknown>>(
-  pool: Pool | PoolClient,
-  text: string,
-  values: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  signal?.throwIfAborted();
-  const request: QueryConfig<unknown[]> & { readonly signal?: AbortSignal } = {
-    ...(signal === undefined ? {} : { signal }),
-    text,
-    values: [...values],
-  };
-  try {
-    const result = await pool.query<Row>(request);
-    signal?.throwIfAborted();
-    return result;
-  } catch (error: unknown) {
-    if (signal?.aborted === true) throw signal.reason;
-    throw error;
-  }
+const genericCommandRowSchema = z.object({
+  command_id: z.uuid(),
+  command_outcome: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/u),
+  command_status: z.enum(['completed', 'failed', 'pending']),
+  replayed: z.boolean(),
+  result: z.record(z.string(), z.unknown()),
+});
+
+type DecodedGenericCommand = Readonly<{
+  conflict: boolean;
+  result: GenericOperatorCommandResult;
+}>;
+
+function decodeGenericCommand(
+  response: QueryResult<Record<string, unknown>>,
+): DecodedGenericCommand {
+  const source = response.rows[0];
+  if (source === undefined)
+    throw new Error('Operator command returned no result');
+  const row = genericCommandRowSchema.parse(source);
+  return Object.freeze({
+    conflict: row.command_outcome === 'conflict',
+    result: Object.freeze({
+      commandId: row.command_id,
+      outcome: row.command_outcome,
+      replayed: row.replayed,
+      result: Object.freeze(row.result),
+      status: row.command_status,
+    }),
+  });
 }
 
 function parseOptions(input: OperatorCommandDatabaseOptions): RuntimeOptions {
@@ -115,65 +132,51 @@ export function createOperatorCommandRuntime(
   const options = parseOptions(inputOptions);
   const pool = createDatabasePool({ ...poolConfig, max: 1 });
   pool.on('error', () => undefined);
+  let closePromise: Promise<void> | undefined;
 
   const transaction = async <Row extends Record<string, unknown>>(
     text: string,
     values: readonly unknown[],
     signal?: AbortSignal,
-  ): Promise<QueryResult<Row>> => {
-    const client = await pool.connect();
-    try {
-      await query(client, 'begin', [], signal);
-      await query(
-        client,
-        "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-        [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-        signal,
-      );
-      const result = await query<Row>(client, text, values, signal);
-      await query(client, 'commit', [], signal);
-      return result;
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<QueryResult<Row>> =>
+    runOperatorTransaction<Row>(pool, options, text, values, signal);
+
+  const transactionDecoded = <Row extends Record<string, unknown>, Result>(
+    text: string,
+    values: readonly unknown[],
+    decode: (result: QueryResult<Row>) => Result,
+    signal?: AbortSignal,
+  ): Promise<Result> =>
+    runOperatorTransaction<Row, Result>(
+      pool,
+      options,
+      text,
+      values,
+      signal,
+      decode,
+    );
 
   const execute = async (
     text: string,
     values: readonly unknown[],
     signal?: AbortSignal,
   ): Promise<GenericOperatorCommandResult> => {
-    const response = await transaction(text, values, signal);
-    const row = response.rows[0];
-    if (row === undefined)
-      throw new Error('Operator command returned no result');
-    if (row.command_outcome === 'conflict')
-      throw new OperatorCommandConflictError();
-    return Object.freeze({
-      commandId: z.uuid().parse(row.command_id),
-      outcome: z
-        .string()
-        .regex(/^[a-z][a-z0-9_]{0,31}$/u)
-        .parse(row.command_outcome),
-      replayed: z.boolean().parse(row.replayed),
-      result: Object.freeze(
-        z.record(z.string(), z.unknown()).parse(row.result),
-      ),
-      status: z
-        .enum(['completed', 'failed', 'pending'])
-        .parse(row.command_status),
-    });
+    const decoded = await transactionDecoded<
+      Record<string, unknown>,
+      DecodedGenericCommand
+    >(text, values, decodeGenericCommand, signal);
+    if (decoded.conflict) throw new OperatorCommandConflictError();
+    return decoded.result;
   };
 
   return Object.freeze({
     checkReadiness: (signal?: AbortSignal) =>
       checkReadiness(pool, ownerRole, operatorRole, options, signal),
-    close: () => pool.end(),
+    close: () =>
+      (closePromise ??= Promise.resolve().then(async () => pool.end())),
     execute,
     transaction,
+    transactionDecoded,
   });
 }
 
@@ -204,18 +207,10 @@ async function loadOperatorReadinessSnapshot(
   options: RuntimeOptions,
   signal?: AbortSignal,
 ): Promise<OperatorReadinessRow | undefined> {
-  const client = await pool.connect();
-  try {
-    await query(client, 'begin', [], signal);
-    await query(
-      client,
-      "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-      [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-      signal,
-    );
-    const response = await query<OperatorReadinessRow>(
-      client,
-      `select
+  const response = await runOperatorTransaction<OperatorReadinessRow>(
+    pool,
+    options,
+    `select
           current_setting('server_version_num')::integer/10000 postgres_major,
           role.rolsuper,role.rolbypassrls,
           pg_has_role(current_user,$1::name,'MEMBER') owner_member,
@@ -246,17 +241,10 @@ async function loadOperatorReadinessSnapshot(
           has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
         from pg_roles role where role.rolname=current_user`,
-      [ownerRole, operatorRole, options.forbiddenRoles],
-      signal,
-    );
-    await query(client, 'commit', [], signal);
-    return response.rows[0];
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+    [ownerRole, operatorRole, options.forbiddenRoles],
+    signal,
+  );
+  return response.rows[0];
 }
 
 function incompatibleOperatorBoundary(): never {

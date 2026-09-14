@@ -39,7 +39,7 @@ export interface DatabasePoolDiagnostics {
 type DatabasePoolDiagnosticEvent = Readonly<{
   operation: 'idle_pool_error' | 'lock_wait_sample';
   poolRole: DatabasePoolRole;
-  errorType: string;
+  errorType: 'Error' | 'NonError';
 }>;
 
 type QueryOperation =
@@ -88,17 +88,27 @@ function safeRecord(
 
 function safeDiagnostic(
   diagnostics: DatabasePoolDiagnostics | undefined,
-  event: DatabasePoolDiagnosticEvent,
+  operation: DatabasePoolDiagnosticEvent['operation'],
+  poolRole: DatabasePoolRole,
+  error: unknown,
 ): void {
   try {
-    diagnostics?.record(event);
+    diagnostics?.record({
+      operation,
+      poolRole,
+      errorType: safeErrorType(error),
+    });
   } catch {
-    // Diagnostics must never affect database availability or shutdown.
+    // Classification and reporting must not affect database availability.
   }
 }
 
-function errorType(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
+function safeErrorType(error: unknown): 'Error' | 'NonError' {
+  try {
+    return error instanceof Error ? 'Error' : 'NonError';
+  } catch {
+    return 'NonError';
+  }
 }
 
 function stateFor(meter: Meter): MeterState {
@@ -415,6 +425,7 @@ function startLockWaitMonitor(
   >();
   let closed = false;
   let sampling = false;
+  let samplePromise: Promise<void> | undefined;
   monitorPool.on('error', () => undefined);
   const monitor: LockWaitMonitor = {
     active: 0,
@@ -423,61 +434,63 @@ function startLockWaitMonitor(
     async close(): Promise<void> {
       closed = true;
       clearInterval(timer);
-      await monitorPool.end().catch(() => undefined);
+      await samplePromise;
+      await monitorPool.end();
     },
   };
 
-  const sample = async (): Promise<void> => {
-    if (closed || sampling) return;
+  const sample = (): Promise<void> => {
+    if (closed || sampling) return Promise.resolve();
     sampling = true;
-    try {
-      const result = await monitorPool.query<{ pid: number }>(
-        `select pid
+    samplePromise = (async (): Promise<void> => {
+      try {
+        const result = await monitorPool.query<{ pid: number }>(
+          `select pid
            from pg_catalog.pg_stat_activity
           where datname = current_database()
             and backend_type = 'client backend'
             and pid = any($1::integer[])
             and wait_event_type = 'Lock'`,
-        [[...backendPids]],
-      );
-      const sampledAt = performance.now();
-      const active = new Set(result.rows.map((row) => row.pid));
-      monitor.active = active.size;
-      for (const pid of active) {
-        const observation = observations.get(pid);
-        if (observation === undefined) {
-          observations.set(pid, {
-            firstObservedAt: sampledAt,
-            lastObservedAt: sampledAt,
-          });
-        } else {
-          observation.lastObservedAt = sampledAt;
-        }
-      }
-      for (const [pid, observation] of observations) {
-        if (active.has(pid)) continue;
-        safeRecord(
-          state.lockWaitDuration,
-          (observation.lastObservedAt - observation.firstObservedAt) / 1_000,
-          { outcome: 'completed' },
+          [[...backendPids]],
         );
-        observations.delete(pid);
+        const sampledAt = performance.now();
+        const active = new Set(result.rows.map((row) => row.pid));
+        monitor.active = active.size;
+        for (const pid of active) {
+          const observation = observations.get(pid);
+          if (observation === undefined) {
+            observations.set(pid, {
+              firstObservedAt: sampledAt,
+              lastObservedAt: sampledAt,
+            });
+          } else {
+            observation.lastObservedAt = sampledAt;
+          }
+        }
+        for (const [pid, observation] of observations) {
+          if (active.has(pid)) continue;
+          safeRecord(
+            state.lockWaitDuration,
+            (observation.lastObservedAt - observation.firstObservedAt) / 1_000,
+            { outcome: 'completed' },
+          );
+          observations.delete(pid);
+        }
+      } catch (error: unknown) {
+        monitor.active = 0;
+        observations.clear();
+        safeDiagnostic(diagnostics, 'lock_wait_sample', role, error);
+        // A failed sample is unknown, not evidence that a prior wait is active.
+      } finally {
+        sampling = false;
       }
-    } catch (error: unknown) {
-      monitor.active = 0;
-      observations.clear();
-      safeDiagnostic(diagnostics, {
-        operation: 'lock_wait_sample',
-        poolRole: role,
-        errorType: errorType(error),
-      });
-      // A failed sample is unknown, not evidence that a prior wait is active.
-    } finally {
-      sampling = false;
-    }
+    })();
+    return samplePromise;
   };
 
-  const timer = setInterval(() => void sample(), intervalMs);
+  const timer = setInterval(() => {
+    void sample();
+  }, intervalMs);
   timer.unref();
   void sample();
 
@@ -506,30 +519,36 @@ function acquireLockWaitMonitor(
   intervalMs: number,
   role: DatabasePoolRole,
   diagnostics: DatabasePoolDiagnostics | undefined,
-): LockWaitMonitor {
+): Pick<LockWaitMonitor, 'backendPids' | 'close'> {
   const key = monitorKey(config, intervalMs, role);
-  const existing = state.monitors.get(key);
-  if (existing !== undefined) {
-    existing.references += 1;
-    return existing;
+  let monitor = state.monitors.get(key);
+  if (monitor === undefined) {
+    monitor = startLockWaitMonitor(
+      config,
+      state,
+      intervalMs,
+      new Set(),
+      role,
+      diagnostics,
+    );
+    state.monitors.set(key, monitor);
+  } else {
+    monitor.references += 1;
   }
-  const monitor = startLockWaitMonitor(
-    config,
-    state,
-    intervalMs,
-    new Set(),
-    role,
-    diagnostics,
-  );
-  state.monitors.set(key, monitor);
-  const close = monitor.close.bind(monitor);
-  monitor.close = async (): Promise<void> => {
+  let releasePromise: Promise<void> | undefined;
+  const release = async (): Promise<void> => {
     monitor.references -= 1;
     if (monitor.references > 0) return;
     state.monitors.delete(key);
-    await close();
+    await monitor.close();
   };
-  return monitor;
+  return Object.freeze({
+    backendPids: monitor.backendPids,
+    close: (): Promise<void> => {
+      releasePromise ??= release();
+      return releasePromise;
+    },
+  });
 }
 
 export function createDatabasePool(
@@ -548,11 +567,7 @@ export function createDatabasePool(
   const boundedConfig = withDatabaseDeadlineBudget(config, role);
   const pool = new Pool(boundedConfig);
   pool.on('error', (error) => {
-    safeDiagnostic(options.diagnostics, {
-      operation: 'idle_pool_error',
-      poolRole: role,
-      errorType: errorType(error),
-    });
+    safeDiagnostic(options.diagnostics, 'idle_pool_error', role, error);
   });
   instrumentPoolCheckout(pool, state.poolCheckoutDuration, role, (client) => {
     instrumentClientRelease(client, state);
@@ -578,27 +593,31 @@ export function createDatabasePool(
     }
   });
   const originalEnd = pool.end.bind(pool);
-  pool.end = async (): Promise<void> => {
-    let poolEndFailed = false;
-    let poolEndError: unknown;
-    try {
-      await originalEnd();
-    } catch (error) {
-      poolEndFailed = true;
-      poolEndError = error;
-    }
-    state.pools.delete(pool);
-    try {
-      await monitor?.close();
-    } catch (monitorCloseError) {
-      if (poolEndFailed)
-        throw new AggregateError(
-          [poolEndError, monitorCloseError],
-          'PostgreSQL pool and lock-wait monitor cleanup both failed',
-        );
-      throw cleanupError(monitorCloseError);
-    }
-    if (poolEndFailed) throw cleanupError(poolEndError);
+  let endPromise: Promise<void> | undefined;
+  pool.end = (): Promise<void> => {
+    endPromise ??= (async (): Promise<void> => {
+      let poolEndFailed = false;
+      let poolEndError: unknown;
+      try {
+        await originalEnd();
+      } catch (error) {
+        poolEndFailed = true;
+        poolEndError = error;
+      }
+      state.pools.delete(pool);
+      try {
+        await monitor?.close();
+      } catch (monitorCloseError) {
+        if (poolEndFailed)
+          throw new AggregateError(
+            [poolEndError, monitorCloseError],
+            'PostgreSQL pool and lock-wait monitor cleanup both failed',
+          );
+        throw cleanupError(monitorCloseError);
+      }
+      if (poolEndFailed) throw cleanupError(poolEndError);
+    })();
+    return endPromise;
   };
   return pool;
 }

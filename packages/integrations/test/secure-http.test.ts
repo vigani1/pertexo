@@ -1,4 +1,8 @@
 import { createServer, validateHeaderValue } from 'node:http';
+import { execFile } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,6 +22,8 @@ import {
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const execFileAsync = promisify(execFile);
+const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 class FakeResolver implements SecureHttpResolver {
   public readonly calls: string[] = [];
@@ -628,6 +634,32 @@ describe('secure HTTP client', () => {
     expect(transport.requests).toHaveLength(1);
   });
 
+  it('preserves dispatch truth when a redirect targets a blocked literal', async () => {
+    const resolver = new FakeResolver({
+      'first.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const redirect = transportResponse(302, {
+      location: 'http://127.0.0.1/internal',
+    });
+    const transport = new FakeTransport(() =>
+      Promise.resolve(redirect.response),
+    );
+
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, transport).execute(
+        request({ url: 'http://first.example.test/' }),
+      ),
+      {
+        code: SECURE_HTTP_ERROR_CODE.ssrfBlocked,
+        classification: 'definite_failure',
+        possiblyDispatched: true,
+      },
+    );
+    expect(resolver.calls).toEqual(['first.example.test']);
+    expect(transport.requests).toHaveLength(1);
+    expect(redirect.close).toHaveBeenCalledOnce();
+  });
+
   it('never forwards credential values across an origin-changing redirect', async () => {
     const resolver = new FakeResolver({
       'first.example.test': [{ address: '8.8.8.8', family: 4 }],
@@ -1012,7 +1044,7 @@ describe('secure HTTP client', () => {
     expect(failedClose).toHaveBeenCalledOnce();
   });
 
-  it('classifies marker, DNS, transport, cancellation, and total timeout failures safely', async () => {
+  it('classifies a dispatch-marker failure without retaining its details', async () => {
     const publicResolver = new FakeResolver({
       'api.example.test': [{ address: '8.8.8.8', family: 4 }],
     });
@@ -1033,21 +1065,32 @@ describe('secure HTTP client', () => {
       classification: 'definite_failure',
       possiblyDispatched: false,
     });
+  });
 
+  it('classifies a DNS failure without retaining resolver details', async () => {
     const dnsFailure = new SecureHttpClient(
       new FakeResolver({
         'api.example.test': new Error('resolver-host-secret'),
       }),
-      unusedTransport,
+      new FakeTransport(() =>
+        Promise.reject(new Error('transport must not dispatch')),
+      ),
     ).execute(request());
     await expectSecureFailure(dnsFailure, {
       code: SECURE_HTTP_ERROR_CODE.dnsFailed,
       possiblyDispatched: false,
     });
+  });
 
+  it('classifies a transport failure without retaining its cause', async () => {
+    const transport = new FakeTransport(() =>
+      Promise.reject(new Error('transport-internal-secret')),
+    );
     const networkFailure = new SecureHttpClient(
-      publicResolver,
-      unusedTransport,
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
     ).execute(request());
     const networkError = await networkFailure.catch((error: unknown) => error);
     expect(networkError).toMatchObject({
@@ -1059,24 +1102,36 @@ describe('secure HTTP client', () => {
     expect(JSON.stringify(networkError)).not.toContain(
       'transport-internal-secret',
     );
+  });
 
+  it('classifies pre-dispatch caller cancellation without inspecting its reason', async () => {
     const controller = new AbortController();
     controller.abort(new Error('caller-secret'));
     await expectSecureFailure(
-      new SecureHttpClient(publicResolver, unusedTransport).execute(
-        request({ signal: controller.signal }),
-      ),
+      new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        new FakeTransport(() =>
+          Promise.reject(new Error('transport must not dispatch')),
+        ),
+      ).execute(request({ signal: controller.signal })),
       {
         code: SECURE_HTTP_ERROR_CODE.canceled,
         possiblyDispatched: false,
       },
     );
+  });
 
+  it('classifies a total request timeout after transport dispatch', async () => {
     const hungTransport = new FakeTransport(() => new Promise(() => undefined));
     await expectSecureFailure(
-      new SecureHttpClient(publicResolver, hungTransport).execute(
-        request({ timeoutMillis: 5 }),
-      ),
+      new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        hungTransport,
+      ).execute(request({ timeoutMillis: 5 })),
       {
         code: SECURE_HTTP_ERROR_CODE.timedOut,
         classification: 'ambiguous',
@@ -1129,6 +1184,228 @@ describe('secure HTTP client', () => {
       });
     },
   );
+
+  it('settles a hostile rejection in isolation without an unhandled derived promise', async () => {
+    await expect(
+      execFileAsync(process.execPath, [
+        '--import',
+        'tsx',
+        resolve(
+          packageDirectory,
+          'test/secure-http-hostile-rejection.fixture.ts',
+        ),
+      ]),
+    ).resolves.toMatchObject({ stderr: '' });
+  });
+
+  it.each([
+    {
+      name: 'revoked proxy',
+      create: () => {
+        const { proxy, revoke } = Proxy.revocable({}, {});
+        revoke();
+        return proxy;
+      },
+    },
+    {
+      name: 'throwing prototype trap',
+      create: () =>
+        new Proxy(
+          {},
+          {
+            getPrototypeOf: () => {
+              throw new Error('prototype-trap');
+            },
+          },
+        ),
+    },
+    {
+      name: 'throwing timeout properties',
+      create: () =>
+        Object.defineProperties(Object.create(Error.prototype), {
+          code: {
+            get: () => {
+              throw new Error('code-trap');
+            },
+          },
+          name: {
+            get: () => {
+              throw new Error('name-trap');
+            },
+          },
+        }) as unknown,
+    },
+  ])(
+    'settles once for a hostile transport rejection: $name',
+    async ({ create }) => {
+      const client = new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        new FakeTransport(() => {
+          // Deliberately model an untrusted transport rejection.
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          return Promise.reject(create());
+        }),
+      );
+
+      await expectSecureFailure(client.execute(request()), {
+        code: SECURE_HTTP_ERROR_CODE.networkFailed,
+        classification: 'ambiguous',
+        possiblyDispatched: true,
+      });
+    },
+  );
+
+  it('classifies a hostile abort reason without inspecting it unsafely', async () => {
+    const controller = new AbortController();
+    const reason = Object.defineProperty({}, 'name', {
+      get: () => {
+        throw new Error('abort-name-trap');
+      },
+    });
+    controller.abort(reason);
+    const transport = new FakeTransport(() =>
+      Promise.reject(new Error('must not dispatch')),
+    );
+
+    await expectSecureFailure(
+      new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        transport,
+      ).execute(request({ signal: controller.signal })),
+      {
+        code: SECURE_HTTP_ERROR_CODE.canceled,
+        classification: 'definite_failure',
+        possiblyDispatched: false,
+      },
+    );
+    expect(transport.requests).toHaveLength(0);
+  });
+
+  it('observes a transport rejection after synchronous abort and settles cancellation once', async () => {
+    const controller = new AbortController();
+    let rejectLate: ((reason: unknown) => void) | undefined;
+    const lateWork = new Promise<SecureHttpTransportResponse>(
+      (_resolve, reject) => {
+        rejectLate = reject;
+      },
+    );
+    const transport = new FakeTransport(() => {
+      controller.abort(new Error('synchronous adapter abort'));
+      return lateWork;
+    });
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
+    ).execute(request({ signal: controller.signal }));
+
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      classification: 'ambiguous',
+      possiblyDispatched: true,
+    });
+    // This rejection is delivered to the handler installed before the
+    // synchronous abort was observed.
+    rejectLate?.(
+      new Proxy(
+        {},
+        {
+          getPrototypeOf: () => {
+            throw new Error('late-prototype-trap');
+          },
+        },
+      ),
+    );
+    await Promise.resolve();
+    expect(transport.requests).toHaveLength(1);
+  });
+
+  it('closes a transport response that fulfills after cancellation', async () => {
+    const controller = new AbortController();
+    let resolveLate:
+      ((response: SecureHttpTransportResponse) => void) | undefined;
+    const lateWork = new Promise<SecureHttpTransportResponse>((resolve) => {
+      resolveLate = resolve;
+    });
+    const transport = new FakeTransport(() => lateWork);
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      transport,
+    ).execute(request({ signal: controller.signal }));
+    await vi.waitFor(() => {
+      expect(transport.requests).toHaveLength(1);
+    });
+    controller.abort();
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      possiblyDispatched: true,
+    });
+
+    const late = transportResponse(200);
+    resolveLate?.(late.response);
+    await vi.waitFor(() => {
+      expect(late.close).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('closes exactly once when fulfillment and abort occur in adjacent microtasks', async () => {
+    const controller = new AbortController();
+    const fixture = transportResponse(200);
+    const transport = new FakeTransport(
+      () =>
+        new Promise((resolve) => {
+          queueMicrotask(() => {
+            resolve(fixture.response);
+          });
+          queueMicrotask(() => {
+            controller.abort();
+          });
+        }),
+    );
+
+    await expectSecureFailure(
+      new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        transport,
+      ).execute(request({ signal: controller.signal })),
+      {
+        code: SECURE_HTTP_ERROR_CODE.canceled,
+        possiblyDispatched: true,
+      },
+    );
+    await vi.waitFor(() => {
+      expect(fixture.close).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('does not dispose a successful response before body ownership completes', async () => {
+    const fixture = transportResponse(200, {}, ['body']);
+    let closedWhileConsuming = false;
+    const response = await new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      new FakeTransport(() => Promise.resolve(fixture.response)),
+    ).executeStreaming(request(), async (stream) => {
+      closedWhileConsuming = fixture.close.mock.calls.length > 0;
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream.body) chunks.push(chunk);
+      return decoder.decode(Buffer.concat(chunks));
+    });
+
+    expect(response.body).toBe('body');
+    expect(closedWhileConsuming).toBe(false);
+    expect(fixture.close).toHaveBeenCalledOnce();
+  });
 
   it('lets cancellation win after transport dispatch has started', async () => {
     const controller = new AbortController();
@@ -1322,5 +1599,45 @@ describe('Node HTTP transport', () => {
     });
     for await (const _chunk of postResponse.body) void _chunk;
     postResponse.close();
+  });
+
+  it('destroys a native request when cancellation wins before response acquisition', async () => {
+    let requestStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      requestStarted = resolve;
+    });
+    let socketClosed: (() => void) | undefined;
+    const closed = new Promise<void>((resolve) => {
+      socketClosed = resolve;
+    });
+    const server = createServer((incoming) => {
+      requestStarted?.();
+      incoming.socket.once('close', () => {
+        socketClosed?.();
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    if (address === null || typeof address === 'string')
+      throw new Error('test server did not bind a TCP port');
+    const controller = new AbortController();
+    const pending = new NodeHttpTransport().dispatch({
+      url: new URL(
+        `http://does-not-resolve.invalid:${String(address.port)}/cancel`,
+      ),
+      address: { address: '127.0.0.1', family: 4 },
+      method: 'GET',
+      headers: {},
+      timeoutMillis: 1_000,
+      signal: controller.signal,
+    });
+    await started;
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await closed;
   });
 });

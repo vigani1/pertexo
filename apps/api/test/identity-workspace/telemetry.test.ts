@@ -139,6 +139,83 @@ describe('identity/workspace telemetry', () => {
       ),
     ).resolves.toBe('committed');
   });
+
+  it.each([
+    {
+      name: 'a synchronous trace failure before its callback',
+      startActiveSpan: <T>(): Promise<T> => {
+        throw new Error('trace failed before callback');
+      },
+    },
+    {
+      name: 'a synchronous trace failure after its callback',
+      startActiveSpan: <T>(
+        _name: string,
+        callback: (span: IdentityWorkspaceSpan) => Promise<T>,
+      ): Promise<T> => {
+        void callback({ end: vi.fn(), setAttribute: vi.fn() });
+        throw new Error('trace failed after callback');
+      },
+    },
+    {
+      name: 'a trace rejection before its callback',
+      startActiveSpan: <T>(): Promise<T> =>
+        Promise.reject(new Error('trace rejected before callback')),
+    },
+    {
+      name: 'a trace rejection after its callback',
+      startActiveSpan: <T>(
+        _name: string,
+        callback: (span: IdentityWorkspaceSpan) => Promise<T>,
+      ): Promise<T> => {
+        void callback({ end: vi.fn(), setAttribute: vi.fn() });
+        return Promise.reject(new Error('trace rejected after callback'));
+      },
+    },
+  ] satisfies readonly Readonly<{
+    name: string;
+    startActiveSpan: IdentityWorkspaceTracer['startActiveSpan'];
+  }>[])('runs work exactly once through $name', async ({ startActiveSpan }) => {
+    const fixture = telemetryFixture([100, 110]);
+    const telemetry = createIdentityWorkspaceTelemetry({
+      ...fixture.options,
+      tracer: { startActiveSpan },
+    });
+    const result = Object.freeze({ id: 'authoritative-result' });
+    const work = vi.fn(() => Promise.resolve(result));
+
+    await expect(
+      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.workspaceCreate, work),
+    ).resolves.toBe(result);
+    expect(work).toHaveBeenCalledOnce();
+    expect(fixture.counter.add).toHaveBeenCalledOnce();
+    expect(fixture.histogram.record).toHaveBeenCalledOnce();
+  });
+
+  it('returns the same business promise when tracing invokes its callback twice', async () => {
+    const fixture = telemetryFixture([100, 110]);
+    const work = vi.fn(() => Promise.resolve('committed'));
+    const telemetry = createIdentityWorkspaceTelemetry({
+      ...fixture.options,
+      tracer: {
+        startActiveSpan: (_name, callback) => {
+          const span: IdentityWorkspaceSpan = {
+            end: () => undefined,
+            setAttribute: () => undefined,
+          };
+          const first = callback(span);
+          const second = callback(span);
+          expect(second).toBe(first);
+          return first;
+        },
+      },
+    });
+
+    await expect(
+      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.workspaceCreate, work),
+    ).resolves.toBe('committed');
+    expect(work).toHaveBeenCalledOnce();
+  });
 });
 
 function telemetryFixture(nowValues: readonly number[]) {

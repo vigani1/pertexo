@@ -4,6 +4,7 @@ import {
   ControlLedgerClosedError,
   ControlLedgerConflictError,
   ControlLedgerIntegrityError,
+  createControlLedger,
 } from '../src/control-ledger.js';
 import type {
   AppendControlLedgerRecord,
@@ -19,6 +20,12 @@ import {
   ControlLedgerPartialReplicationError,
   createDualRegionControlLedger,
 } from '../src/dual-region-control-ledger.js';
+import {
+  bucketPolicy,
+  command as regionalCommand,
+  key as regionalKey,
+  MemoryS3,
+} from './support/control-ledger.fixture.js';
 
 const WORKSPACE_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01';
 const COMMAND_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02';
@@ -465,6 +472,156 @@ describe('dual-region control ledger', () => {
     expect(primary.appendRequests).toHaveLength(0);
     expect(recovery.appendRequests).toHaveLength(0);
   });
+
+  it.each(['both', 'primary', 'recovery'] as const)(
+    'normalizes replay material before %s-region comparison and repair',
+    async (presentRegion) => {
+      const { ledger, primary, recovery } = fixture();
+      if (presentRegion !== 'recovery') primary.storedRecord = record();
+      if (presentRegion !== 'primary') recovery.storedRecord = record();
+      const signal = new AbortController().signal;
+
+      await expect(
+        ledger.append(
+          appendRequest({
+            actorRef: '  operator:test  ',
+            reason: '  workspace owner request  ',
+            signal,
+          }),
+        ),
+      ).resolves.toEqual(record());
+
+      const dispatched = [
+        ...primary.appendRequests,
+        ...recovery.appendRequests,
+      ];
+      expect(dispatched).toHaveLength(presentRegion === 'both' ? 0 : 1);
+      if (dispatched.length === 1) {
+        expect(dispatched[0]).toEqual({
+          ...appendRequest(),
+          signal,
+        });
+        expect(dispatched[0]?.signal).toBe(signal);
+        expect(Object.isFrozen(dispatched[0])).toBe(true);
+      }
+    },
+  );
+
+  it('normalizes legal authority and dispatches one identical frozen request to both regions', async () => {
+    const { ledger, primary, recovery } = fixture();
+    const request = appendRequest({
+      actorRef: ' operator:test ',
+      commandType: 'legal_hold_placed',
+      legalAuthority: ' court order ',
+      reason: ' workspace owner request ',
+    });
+    const heldRecord = record({
+      commandType: 'legal_hold_placed',
+      legalAuthority: 'court order',
+    });
+    primary.appendImplementation = () => Promise.resolve(heldRecord);
+    recovery.appendImplementation = () => Promise.resolve(heldRecord);
+
+    await expect(ledger.append(request)).resolves.toEqual(heldRecord);
+    expect(primary.appendRequests).toHaveLength(1);
+    expect(recovery.appendRequests).toHaveLength(1);
+    expect(primary.appendRequests[0]).toBe(recovery.appendRequests[0]);
+    expect(primary.appendRequests[0]).toMatchObject({
+      actorRef: 'operator:test',
+      legalAuthority: 'court order',
+      reason: 'workspace owner request',
+    });
+    expect(Object.isFrozen(primary.appendRequests[0])).toBe(true);
+  });
+
+  it('replays normalized material through two real regional ledger adapters', async () => {
+    const createRegional = (bucket: string, region: string) => {
+      const client = new MemoryS3();
+      client.locationConstraint = region === 'us-east-1' ? null : region;
+      client.policy = bucketPolicy(
+        {
+          Action: [
+            's3:DeleteObject',
+            's3:DeleteObjectVersion',
+            's3:ReplicateDelete',
+            's3:ReplicateObject',
+          ],
+          Effect: 'Deny',
+          Principal: '*',
+          Resource: `arn:aws:s3:::${bucket}/control-ledger/*`,
+        },
+        {
+          Action: 's3:PutObject',
+          Condition: { Null: { 's3:if-none-match': 'true' } },
+          Effect: 'Deny',
+          Principal: '*',
+          Resource: `arn:aws:s3:::${bucket}/control-ledger/*`,
+        },
+      );
+      return {
+        client,
+        ledger: createControlLedger(
+          {
+            accessKeyId: `${region}-access`,
+            bucket,
+            endpoint: 'http://localhost:9090',
+            forcePathStyle: true,
+            minRetentionDays: 30,
+            region,
+            requestTimeoutMs: 100,
+            secretAccessKey: 'secret',
+          },
+          {
+            client,
+            now: () => new Date('2026-08-26T00:00:00.000Z'),
+          },
+        ),
+      };
+    };
+    const primary = createRegional('ledger-primary', 'us-east-1');
+    const recovery = createRegional('ledger-recovery', 'eu-west-1');
+    const ledger = createDualRegionControlLedger(
+      primary.ledger,
+      recovery.ledger,
+      { ledgerOwnership: 'borrowed' },
+    );
+    const request = regionalCommand({
+      actorRef: ' operator:test ',
+      reason: ' workspace owner request ',
+    });
+
+    const first = await ledger.append(request);
+    const replay = await ledger.append(request);
+
+    expect(replay).toEqual(first);
+    expect(primary.client.getRequired(regionalKey(1))).toEqual(
+      recovery.client.getRequired(regionalKey(1)),
+    );
+    expect(
+      primary.client.getRequired(regionalKey(1)).toString('utf8'),
+    ).toContain('"reason":"workspace owner request"');
+  });
+
+  it.each([
+    ['unknown field', { unexpected: true }],
+    ['authority on deletion', { legalAuthority: 'not admitted' }],
+    [
+      'missing hold authority',
+      { commandType: 'legal_hold_placed', legalAuthority: undefined },
+    ],
+  ] as const)(
+    'rejects invalid normalized append material: %s',
+    async (_case, override) => {
+      const { ledger, primary, recovery } = fixture();
+      await expect(
+        ledger.append(
+          appendRequest(override as Partial<AppendControlLedgerRecord>),
+        ),
+      ).rejects.toThrow();
+      expect(primary.appendRequests).toHaveLength(0);
+      expect(recovery.appendRequests).toHaveLength(0);
+    },
+  );
 
   it('rejects divergent records already present in both regions without writing', async () => {
     const { ledger, primary, recovery } = fixture();

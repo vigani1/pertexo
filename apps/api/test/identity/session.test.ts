@@ -119,47 +119,61 @@ describe('opaque browser sessions', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
     expect(JSON.stringify(persisted)).not.toContain(defined(sink.token));
-    await expect(
-      service.authenticate(defined(sink.token)),
-    ).resolves.toMatchObject({ userId });
+    const authenticated = await service.authenticate(defined(sink.token));
+    expect(authenticated).toMatchObject({ userId });
+    expect(authenticated.expiresAt).toEqual(persisted.expiresAt);
+    expect(authenticated.expiresAt).not.toBe(persisted.expiresAt);
+    authenticated.expiresAt.setUTCFullYear(2030);
+    expect(persisted.expiresAt.getUTCFullYear()).toBe(2026);
   });
 
-  it('rejects revoked and expired sessions, and rotates a valid session', async () => {
+  it('rejects a revoked stored session', async () => {
+    const store = new FakeSessions();
+    const cookie = new CookieSink();
+    const service = new OpaqueSessionService(store, {
+      clock: new FakeClock(),
+      ttlMillis: 60_000,
+    });
+    await service.issue({ userId }, cookie);
+    await service.revoke(defined(cookie.token));
+
+    await expect(
+      service.authenticate(defined(cookie.token)),
+    ).rejects.toMatchObject({
+      code: 'identity.session_revoked',
+    });
+  });
+
+  it('rejects a session at its exact expiry boundary', async () => {
     const clock = new FakeClock();
     const store = new FakeSessions();
-    const firstCookie = new CookieSink();
+    const cookie = new CookieSink();
     const service = new OpaqueSessionService(store, {
       clock,
       ttlMillis: 60_000,
     });
-    await service.issue({ userId }, firstCookie);
-    await service.revoke(defined(firstCookie.token));
-    await expect(
-      service.authenticate(defined(firstCookie.token)),
-    ).rejects.toMatchObject({
-      code: 'identity.session_revoked',
-    });
-
-    const secondCookie = new CookieSink();
-    await service.issue({ userId }, secondCookie);
+    await service.issue({ userId }, cookie);
     clock.current = new Date('2026-08-20T12:01:00.000Z');
+
     await expect(
-      service.authenticate(defined(secondCookie.token)),
+      service.authenticate(defined(cookie.token)),
     ).rejects.toMatchObject({
       code: 'identity.session_expired',
     });
+  });
 
-    const thirdCookie = new CookieSink();
+  it('revokes the old session and authenticates the rotated session', async () => {
     const rotateClock = new FakeClock();
     const rotateStore = new FakeSessions();
     const rotateService = new OpaqueSessionService(rotateStore, {
       clock: rotateClock,
     });
     const oldCookie = new CookieSink();
+    const rotatedCookie = new CookieSink();
     await rotateService.issue({ userId }, oldCookie);
     const rotated = await rotateService.rotate(
       defined(oldCookie.token),
-      thirdCookie,
+      rotatedCookie,
     );
     expect(rotated.sessionId).not.toBe(
       defined([...rotateStore.records.values()][0]).sessionId,
@@ -170,7 +184,7 @@ describe('opaque browser sessions', () => {
       code: 'identity.session_revoked',
     });
     await expect(
-      rotateService.authenticate(defined(thirdCookie.token)),
+      rotateService.authenticate(defined(rotatedCookie.token)),
     ).resolves.toMatchObject({
       userId,
     });
@@ -236,6 +250,27 @@ describe('opaque browser sessions', () => {
     });
     const persisted = defined([...store.records.values()][0]);
     expect(persisted.revokedAt).toBeInstanceOf(Date);
+  });
+
+  it('preserves the cookie-delivery failure when cleanup revocation also fails', async () => {
+    const revokeFailure = new Error('revocation database unavailable');
+    const store: SessionStorePort = {
+      create: () => Promise.resolve(),
+      findByDigest: () => Promise.resolve(undefined),
+      revokeByDigest: () => Promise.reject(revokeFailure),
+    };
+    const service = new OpaqueSessionService(store);
+
+    await expect(
+      service.issue(
+        { userId },
+        {
+          writeSessionCookie: () => {
+            throw new Error('cookie delivery unavailable');
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
   });
 
   it('rejects malformed store identifiers and invalid dates at the session boundary', async () => {

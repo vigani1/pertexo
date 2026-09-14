@@ -18,6 +18,10 @@ services:
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - ./pertexo-alerts.yaml:/etc/prometheus/pertexo-alerts.yaml:ro
+      - ./pertexo-alerts.test.yaml:/etc/prometheus/pertexo-alerts.test.yaml:ro
+    tmpfs:
+      - /prometheus:mode=1777
+      - /tmp:mode=1777
     ports:
       - 127.0.0.1:9093:9090
   grafana:

@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -15,6 +16,20 @@ const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const databaseName = `pertexo_test_migration_repair_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
 const databaseUrl = (() => {
   const url = new URL(migrationBaseUrl);
   url.pathname = `/${databaseName}`;
@@ -33,19 +48,10 @@ const migrationConfig = {
 let priorDirectory = '';
 
 beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to
-       pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher,
-       pertexo_maintenance,pertexo_lifecycle_command,pertexo_operator`,
-    );
-  } finally {
-    await admin.end();
-  }
-  priorDirectory = await mkdtemp('/tmp/pertexo-migration-repair-');
+  await fixture.create();
+  priorDirectory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-migration-repair-'),
+  );
   for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
     if (/^\d{4}_.+\.sql$/u.test(name) && name < '0067_') {
       await copyFile(
@@ -58,17 +64,24 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  if (priorDirectory !== '') await rm(priorDirectory, { recursive: true });
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
+  const outcomes = await Promise.allSettled([
+    priorDirectory === ''
+      ? Promise.resolve()
+      : rm(priorDirectory, { force: true, recursive: true }),
+    fixture.drop(),
+  ]);
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Migration repair fixture cleanup failed',
+    );
 });
 
-describe('published migration repair upgrade', () => {
-  it('accepts published checksums and converges missing corrections', async () => {
+describe('selected published migration repair upgrade', () => {
+  it('accepts two retained checksums and reconciles their damaged schema', async () => {
     const owner = new Pool({ connectionString: databaseUrl, max: 1 });
     try {
       await owner.query('begin');
@@ -119,6 +132,9 @@ describe('published migration repair upgrade', () => {
       '0084_workspace_member_discovery_index.sql',
       '0085_artifact_media_type_http_safety.sql',
       '0086_operator_attempt_reclaim_state.sql',
+      '0087_workspace_maintenance_rerun_purge.sql',
+      '0088_sql_boundary_integrity.sql',
+      '0089_oidc_capacity_lock_time.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

@@ -85,12 +85,68 @@ function requireDatabaseWorkload(value, label, options = {}) {
   if (
     value === null ||
     typeof value !== 'object' ||
-    !Number.isSafeInteger(value.sqlRoundTrips) ||
-    value.sqlRoundTrips < minimumCalls ||
+    value.scope !== 'scenarioIncludingWarmupAndFixtures' ||
+    !Number.isSafeInteger(value.statementExecutions) ||
+    value.statementExecutions < minimumCalls ||
     !Number.isFinite(value.serverExecutionMs) ||
-    value.serverExecutionMs < 0
+    value.serverExecutionMs < 0 ||
+    !Number.isSafeInteger(options.warmupRounds) ||
+    !Number.isSafeInteger(options.measuredRounds)
   )
     throw new Error(`${label} required SQL measurement is absent`);
+  const expectedIndexes = {
+    fixtureReset: [
+      ...Array.from({ length: options.warmupRounds }, (_, index) => -index - 1),
+      ...Array.from({ length: options.measuredRounds }, (_, index) => index),
+    ],
+    warmupWorkload: Array.from(
+      { length: options.warmupRounds },
+      (_, index) => -index - 1,
+    ),
+    measuredWorkload: Array.from(
+      { length: options.measuredRounds },
+      (_, index) => index,
+    ),
+  };
+  const measurements = [];
+  for (const [phase, indexes] of Object.entries(expectedIndexes)) {
+    const phaseMeasurements = value.phaseMeasurements?.[phase];
+    if (
+      !Array.isArray(phaseMeasurements) ||
+      phaseMeasurements.length !== indexes.length ||
+      phaseMeasurements.some(
+        (measurement, index) =>
+          measurement?.roundIndex !== indexes[index] ||
+          !Number.isSafeInteger(measurement.statementExecutions) ||
+          measurement.statementExecutions < 0 ||
+          !Number.isFinite(measurement.serverExecutionMs) ||
+          measurement.serverExecutionMs < 0,
+      )
+    )
+      throw new Error(`${label} SQL phase measurements are incomplete`);
+    measurements.push(...phaseMeasurements);
+  }
+  const unclassified = value.unclassified;
+  if (
+    !Number.isSafeInteger(unclassified?.statementExecutions) ||
+    unclassified.statementExecutions < 0 ||
+    !Number.isFinite(unclassified?.serverExecutionMs) ||
+    unclassified.serverExecutionMs < 0
+  )
+    throw new Error(`${label} SQL phase measurements are incomplete`);
+  const classifiedStatements = measurements.reduce(
+    (sum, measurement) => sum + measurement.statementExecutions,
+    unclassified.statementExecutions,
+  );
+  const classifiedExecutionMs = measurements.reduce(
+    (sum, measurement) => sum + measurement.serverExecutionMs,
+    unclassified.serverExecutionMs,
+  );
+  if (
+    classifiedStatements !== value.statementExecutions ||
+    !approximatelyEqual(classifiedExecutionMs, value.serverExecutionMs)
+  )
+    throw new Error(`${label} SQL phase measurements do not reconcile`);
   return value;
 }
 
@@ -341,7 +397,10 @@ function assertRoundProcessEvidence(round, roundIndex, label) {
         Number.isFinite(sample?.cpuPercent) &&
         sample.cpuPercent >= 0,
     );
-  if (!everyProcessSampleIsValid)
+  const observedWorkload =
+    everyProcessSampleIsValid &&
+    processMetrics.samples.some((sample) => sample.processCount > 0);
+  if (!observedWorkload)
     throw new Error(
       `${label}.rounds[${roundIndex}] process measurements are invalid`,
     );
@@ -401,9 +460,16 @@ function assertAggregateOperationEvidence(
   }
 }
 
-function requireTargetDatabaseEvidence(scenario, databaseScope, label) {
+function requireTargetDatabaseEvidence(
+  scenario,
+  databaseScope,
+  label,
+  roundCounts,
+) {
   if (databaseScope === 'configured-base') {
-    requireDatabaseWorkload(scenario.databaseWorkload, `${label}.sql`);
+    requireDatabaseWorkload(scenario.databaseWorkload, `${label}.sql`, {
+      ...roundCounts,
+    });
     if (
       scenario.targetDatabase !== null &&
       scenario.targetDatabase !== undefined
@@ -420,6 +486,7 @@ function requireTargetDatabaseEvidence(scenario, databaseScope, label) {
     throw new Error(`${label} database scope is invalid`);
   requireDatabaseWorkload(scenario.databaseWorkload, `${label}.baseSql`, {
     allowZero: true,
+    ...roundCounts,
   });
   const target = scenario.targetDatabase;
   const expectedScope =
@@ -436,7 +503,11 @@ function requireTargetDatabaseEvidence(scenario, databaseScope, label) {
     throw new Error(
       `${label} required shared target database evidence is absent`,
     );
-  requireDatabaseWorkload(target.workload, `${label}.targetDatabase.sql`);
+  requireDatabaseWorkload(
+    target.workload,
+    `${label}.targetDatabase.sql`,
+    roundCounts,
+  );
   requireDatabaseObservations(
     target.observations,
     `${label}.targetDatabase.observations`,
@@ -637,7 +708,10 @@ function requireScenarioDatabaseEvidence(scenario, label) {
     label,
   );
   const databaseScope = scenario.configuration?.databaseScope;
-  const target = requireTargetDatabaseEvidence(scenario, databaseScope, label);
+  const target = requireTargetDatabaseEvidence(scenario, databaseScope, label, {
+    measuredRounds: scenario.environmentMeasuredRounds,
+    warmupRounds: scenario.environmentWarmupRounds,
+  });
   if (databaseScope === 'runner-owned-shared')
     assertSharedDatabaseEvidence(
       scenario,
@@ -669,7 +743,7 @@ function compareSummary(baseline, candidate, label, options = {}) {
 }
 
 function assertEvidence(evidence, label) {
-  if (evidence?.schemaVersion !== 4)
+  if (evidence?.schemaVersion !== 5)
     throw new Error(`${label} uses an incompatible evidence schema`);
   if (evidence.status !== 'complete')
     throw new Error(`${label} evidence is stale or partial`);
@@ -682,11 +756,33 @@ function assertEvidence(evidence, label) {
     evidence.manifestSha256.length === 0
   )
     throw new Error(`${label} manifest identity is missing`);
+  const sourceFingerprints = [
+    evidence.source?.started?.workingTreeSha256,
+    evidence.source?.afterBuild?.workingTreeSha256,
+    evidence.source?.completed?.workingTreeSha256,
+  ];
   if (
-    typeof evidence.source?.workingTreeSha256 !== 'string' ||
-    evidence.source.workingTreeSha256.length === 0
+    evidence.source?.stable !== true ||
+    sourceFingerprints.some(
+      (fingerprint) =>
+        typeof fingerprint !== 'string' || fingerprint.length === 0,
+    ) ||
+    new Set(sourceFingerprints).size !== 1
   )
     throw new Error(`${label} source fingerprint is missing`);
+  const build = evidence.build;
+  if (
+    build?.command !== 'pnpm build' ||
+    build.stable !== true ||
+    build.qualifiedSourceSha256 !== sourceFingerprints[0] ||
+    typeof build.started?.outputSha256 !== 'string' ||
+    build.started.outputSha256.length === 0 ||
+    !Number.isSafeInteger(build.started.fileCount) ||
+    build.started.fileCount < 1 ||
+    build.completed?.outputSha256 !== build.started.outputSha256 ||
+    build.completed?.fileCount !== build.started.fileCount
+  )
+    throw new Error(`${label} build identity is missing or stale`);
   assertBenchmarkEnvironment(evidence.environment, label);
   scenarioMap(evidence.scenarios, label);
   requireDatabaseObservations(
@@ -702,6 +798,7 @@ function assertEvidence(evidence, label) {
       {
         ...scenario,
         environmentMeasuredRounds: evidence.environment?.measuredRounds,
+        environmentWarmupRounds: evidence.environment?.warmupRounds,
       },
       `${label}.${scenario.name}`,
     );
@@ -821,6 +918,11 @@ export function compareEvidence(baseline, candidate) {
       throw new Error(
         `Host, runtime, or service configuration differs at ${key}`,
       );
+  if (
+    stable(baseline.postgresEvidence.databaseRuntime) !==
+    stable(candidate.postgresEvidence.databaseRuntime)
+  )
+    throw new Error('PostgreSQL runtime or service configuration differs');
   const candidateByName = scenarioMap(candidate.scenarios, 'Candidate');
   if (candidateByName.size !== baseline.scenarios.length)
     throw new Error('Candidate scenarios are missing or extra');
@@ -903,17 +1005,18 @@ export function compareEvidence(baseline, candidate) {
     };
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     baseline: {
       recordedAt: baseline.recordedAt,
-      source: baseline.source.workingTreeSha256,
+      source: baseline.source.completed.workingTreeSha256,
     },
     candidate: {
       recordedAt: candidate.recordedAt,
-      source: candidate.source.workingTreeSha256,
+      source: candidate.source.completed.workingTreeSha256,
     },
     sourceChanged:
-      baseline.source.workingTreeSha256 !== candidate.source.workingTreeSha256,
+      baseline.source.completed.workingTreeSha256 !==
+      candidate.source.completed.workingTreeSha256,
     scenarios,
     databaseObservations: {
       baseline: baseline.databaseObservations,

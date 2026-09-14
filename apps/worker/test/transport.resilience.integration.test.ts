@@ -11,7 +11,9 @@ import {
   createWorkspaceDatabase,
   EXPECTED_MIGRATION_HEAD,
   insertOutboxEvent,
+  migrateDatabase,
   parseDatabaseConfig,
+  parseMigrationConfig,
 } from '@pertexo/database/testing';
 import {
   createQueueConsumer,
@@ -30,6 +32,9 @@ import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createDockerComposeServiceController } from './support/compose-service-control.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createRedisTestNamespace } from './support/redis-test-namespace.js';
+import { runWithCleanup } from './support/test-operation.js';
 
 const execFileAsync = promisify(execFile);
 const enabled = process.env.WORKER_TRANSPORT_RESILIENCE === 'true';
@@ -42,6 +47,8 @@ const serviceController = createDockerComposeServiceController({
   cwd: repositoryRoot,
   operationTimeoutMillis: SERVICE_OPERATION_TIMEOUT_MS,
 });
+type StoppedService = Awaited<ReturnType<typeof serviceController.stop>>;
+const stoppedServices = new Map<'postgres' | 'redis', StoppedService>();
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -56,6 +63,10 @@ const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
 const redisPassword = process.env.REDIS_PASSWORD ?? 'pertexo-local-redis';
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres';
+const databaseName = `pertexo_test_transport_resilience_${randomUUID().replaceAll('-', '')}`;
 
 interface OutboxProofState {
   readonly failed_at: Date | null;
@@ -105,22 +116,33 @@ function localUrl(
   return parsed;
 }
 
-const localMigrationUrl = localUrl(
+const localAdminUrl = localUrl(adminUrl, 'DATABASE_ADMIN_URL', 'postgresql:');
+const localMigrationBaseUrl = localUrl(
   migrationUrl,
   'DATABASE_MIGRATION_URL',
   'postgresql:',
 );
-const localApiUrl = localUrl(apiUrl, 'DATABASE_API_URL', 'postgresql:');
-const localDispatcherUrl = localUrl(
+const localApiBaseUrl = localUrl(apiUrl, 'DATABASE_API_URL', 'postgresql:');
+const localDispatcherBaseUrl = localUrl(
   dispatcherUrl,
   'DATABASE_DISPATCHER_URL',
   'postgresql:',
 );
-const redisUrl = (() => {
-  const parsed = localUrl(configuredRedisUrl, 'REDIS_URL', 'redis:');
-  parsed.pathname = `/${String(REDIS_PROOF_DATABASE)}`;
-  return parsed.toString();
-})();
+function disposableDatabaseUrl(baseUrl: URL): URL {
+  const parsed = new URL(baseUrl);
+  parsed.pathname = `/${databaseName}`;
+  return parsed;
+}
+
+const localMigrationUrl = disposableDatabaseUrl(localMigrationBaseUrl);
+const localApiUrl = disposableDatabaseUrl(localApiBaseUrl);
+const localDispatcherUrl = disposableDatabaseUrl(localDispatcherBaseUrl);
+const redisNamespace = createRedisTestNamespace(
+  localUrl(configuredRedisUrl, 'REDIS_URL', 'redis:').toString(),
+  REDIS_PROOF_DATABASE,
+  'transport-resilience',
+);
+const redisUrl = redisNamespace.redisUrl;
 
 function redisConnection(): {
   db: number;
@@ -139,6 +161,93 @@ function redisConnection(): {
   };
 }
 
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+let proofDatabaseCreated = false;
+
+async function createProofDatabase(): Promise<void> {
+  const admin = new Pool({
+    connectionString: localAdminUrl.toString(),
+    max: 1,
+  });
+  let operationError: unknown;
+  try {
+    await admin.query(
+      `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(ownerRole)}`,
+    );
+    proofDatabaseCreated = true;
+    await admin.query(
+      `revoke all on database ${quoteIdentifier(databaseName)} from public`,
+    );
+    await admin.query(
+      `grant connect on database ${quoteIdentifier(databaseName)} to ${[
+        process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration',
+        process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
+        process.env.POSTGRES_DISPATCHER_RUNTIME_USER ?? 'pertexo_dispatcher',
+      ]
+        .map(quoteIdentifier)
+        .join(',')}`,
+    );
+  } catch (error: unknown) {
+    operationError = error;
+  }
+  await admin.end().catch((error: unknown) => {
+    operationError =
+      operationError === undefined
+        ? error
+        : new AggregateError(
+            [operationError, error],
+            'Transport resilience database setup failed',
+          );
+  });
+  if (operationError !== undefined)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error('Transport resilience database setup failed', {
+          cause: operationError,
+        });
+  await migrateDatabase(
+    parseMigrationConfig({
+      ...process.env,
+      DATABASE_MIGRATION_URL: localMigrationUrl.toString(),
+      NODE_ENV: 'test',
+    }),
+  );
+}
+
+async function dropProofDatabase(): Promise<void> {
+  if (!proofDatabaseCreated) return;
+  const admin = new Pool({
+    connectionString: localAdminUrl.toString(),
+    max: 1,
+  });
+  let operationError: unknown;
+  await dropDisconnectedDatabase(admin, databaseName)
+    .then(() => {
+      proofDatabaseCreated = false;
+    })
+    .catch((error: unknown) => {
+      operationError = error;
+    });
+  await admin.end().catch((error: unknown) => {
+    operationError =
+      operationError === undefined
+        ? error
+        : new AggregateError(
+            [operationError, error],
+            'Transport resilience database cleanup failed',
+          );
+  });
+  if (operationError !== undefined)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error('Transport resilience database cleanup failed', {
+          cause: operationError,
+        });
+}
+
 async function compose(...arguments_: readonly string[]): Promise<string> {
   const result = await execFileAsync('docker', ['compose', ...arguments_], {
     cwd: repositoryRoot,
@@ -149,7 +258,35 @@ async function compose(...arguments_: readonly string[]): Promise<string> {
 }
 
 async function restoreServices(): Promise<void> {
-  await compose('up', '-d', '--wait', 'postgres', 'redis');
+  const errors: unknown[] = [];
+  for (const [service, stopped] of [...stoppedServices])
+    await serviceController
+      .start(stopped)
+      .then(() => stoppedServices.delete(service))
+      .catch((error: unknown) => errors.push(error));
+  if (errors.length > 0)
+    throw new AggregateError(
+      errors,
+      'Transport resilience service restore failed',
+    );
+}
+
+async function stopProofService(
+  service: 'postgres' | 'redis',
+): Promise<StoppedService> {
+  if (stoppedServices.has(service))
+    throw new Error(
+      `Compose service ${service} is already stopped by this proof`,
+    );
+  const stopped = await serviceController.stop(service);
+  stoppedServices.set(service, stopped);
+  return stopped;
+}
+
+async function startProofService(stopped: StoppedService): Promise<number> {
+  const duration = await serviceController.start(stopped);
+  stoppedServices.delete(stopped.service);
+  return duration;
 }
 
 async function flushProofRedis(): Promise<void> {
@@ -196,16 +333,6 @@ async function withDeadline<T>(
   });
 }
 
-function migrationPool(): Pool {
-  const pool = new Pool({
-    connectionString: localMigrationUrl.toString(),
-    connectionTimeoutMillis: 1_000,
-    max: 1,
-  });
-  pool.on('error', () => undefined);
-  return pool;
-}
-
 function dispatcherPool(): Pool {
   const pool = new Pool({
     connectionString: localDispatcherUrl.toString(),
@@ -234,9 +361,8 @@ async function insertProofEvent(
       await insertOutboxEvent(transaction, {
         aggregateId: notificationIntentId,
         aggregateType: 'run-failure-notification',
-        // The dispatcher is intentionally cross-workspace. Make this proof row
-        // deterministically earlier than unrelated local development rows so
-        // a bounded global claim always includes the row under test.
+        // The dispatcher is intentionally cross-workspace, but this disposable
+        // database contains only proof-owned rows.
         availableAt: new Date('1900-01-01T00:00:00.000Z'),
         id,
         jobName: JOB_NAME.deliverRunFailureNotification,
@@ -296,32 +422,6 @@ async function assertCleanOutbox(workspaceId: string): Promise<void> {
   }
 }
 
-async function cleanupWorkspace(workspaceId: string): Promise<void> {
-  if (!/^[a-z_][a-z0-9_]*$/u.test(ownerRole)) {
-    throw new Error('POSTGRES_OWNER_USER is not a safe SQL identifier');
-  }
-  const pool = migrationPool();
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(`set local role "${ownerRole}"`);
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
-    ]);
-    await client.query(
-      'delete from app.outbox_events where workspace_id = $1',
-      [workspaceId],
-    );
-    await client.query('commit');
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-    await pool.end();
-  }
-}
-
 function createDispatcher(
   drainState: WorkerDrainState,
   leaseOwner: string,
@@ -376,16 +476,15 @@ function createDispatcher(
 
 async function waitForJob(queue: Queue, outboxId: string): Promise<void> {
   const expectedJobId = `outbox-${outboxId}`;
-  await withDeadline(
-    (async () => {
-      while ((await queue.getJob(expectedJobId)) === undefined) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, 20);
-        });
-      }
-    })(),
-    `queue job ${expectedJobId}`,
-  );
+  const deadline = Date.now() + PROOF_OPERATION_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if ((await queue.getJob(expectedJobId)) !== undefined) return;
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 20);
+      timer.unref();
+    });
+  }
+  throw new Error(`queue job ${expectedJobId} exceeded its proof deadline`);
 }
 
 async function dependencyEvidence(
@@ -449,300 +548,335 @@ describeResilience(
       let drainedDispatcher: OutboxDispatcher | undefined;
       let consumer: QueueConsumer | undefined;
       let consumerProducer: QueueProducer | undefined;
+      let redisNamespaceAcquired = false;
+      let proofCompleted = false;
 
-      try {
-        await restoreServices();
-        await flushProofRedis();
-        await assertCleanOutbox(workspaceId);
-        await dependencyEvidence(measurements);
-        expect(measurements.migrationHead).toBe(EXPECTED_MIGRATION_HEAD);
+      await runWithCleanup(
+        async () => {
+          await redisNamespace.acquire();
+          redisNamespaceAcquired = true;
+          await createProofDatabase();
+          await flushProofRedis();
+          await assertCleanOutbox(workspaceId);
+          await dependencyEvidence(measurements);
+          expect(measurements.migrationHead).toBe(EXPECTED_MIGRATION_HEAD);
 
-        queue = new Queue(QUEUE_NAME.maintenance, {
-          connection: redisConnection(),
-        });
-        await queue.waitUntilReady();
-
-        const redisBoundaries = createDispatcher(
-          new WorkerDrainState(),
-          'resilience-redis',
-        );
-        redisDispatcher = redisBoundaries.dispatcher;
-        await redisDispatcher.checkReadiness();
-
-        // Failure point: enqueue succeeds, the dispatcher has not marked the
-        // PostgreSQL outbox row, and every Redis key is then lost.
-        await insertProofEvent(workspaceId, queueLossEventId);
-        const claimed = await redisBoundaries.database.claimBatch({
-          enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
-          leaseDurationMillis: 1_000,
-          leaseOwner: 'resilience-crashed',
-          leaseToken: randomUUID(),
-          limit: 1,
-          maxAttempts: 5,
-        });
-        expect(claimed.events).toHaveLength(1);
-        const leased = claimed.events[0];
-        if (leased === undefined) throw new Error('Outbox claim disappeared');
-        await redisBoundaries.producer.publish(
-          parseQueueJob({
-            name: leased.jobName,
-            data: {
-              ...(typeof leased.payload === 'object' &&
-              leased.payload !== null &&
-              !Array.isArray(leased.payload)
-                ? leased.payload
-                : {}),
-              outboxEventId: leased.id,
-              schemaVersion: leased.schemaVersion,
-              workspaceId: leased.workspaceId,
-            },
-          }),
-        );
-        await waitForJob(queue, queueLossEventId);
-        await flushProofRedis();
-        expect(
-          await queue.getJob(`outbox-${queueLossEventId}`),
-        ).toBeUndefined();
-
-        const queueRecoveryStartedAt = performance.now();
-        // Measure recovery after the real PostgreSQL outbox lease expires while
-        // Redis has lost the corresponding queue job.
-        await new Promise<void>((resolve) => setTimeout(resolve, 1_100));
-        await redisDispatcher.dispatchOnce();
-        await waitForJob(queue, queueLossEventId);
-        measurements.queueLossRecoveryMs =
-          performance.now() - queueRecoveryStartedAt;
-        const queueRecovered = await outboxState(queueLossEventId);
-        measurements.queueLossRecoveredPublishAttempts =
-          queueRecovered.publish_attempts;
-        expect(queueRecovered.publish_attempts).toBe(2);
-        expect(queueRecovered.published_at).toBeInstanceOf(Date);
-
-        // Failure point: Redis is fully stopped while a durable outbox row is
-        // waiting. Publishing fails closed and releases the PostgreSQL lease.
-        await insertProofEvent(workspaceId, redisLossEventId);
-        const stoppedRedis = await serviceController.stop('redis');
-        const redisDetectionStartedAt = performance.now();
-        await expect(redisDispatcher.checkReadiness()).rejects.toThrow();
-        measurements.redisFailureDetectionMs =
-          performance.now() - redisDetectionStartedAt;
-        await expect(redisDispatcher.dispatchOnce()).resolves.toEqual({
-          claimed: 1,
-          failed: 1,
-          outcomeUnknown: 0,
-          published: 0,
-          stale: 0,
-        });
-        const redisUnavailable = await outboxState(redisLossEventId);
-        measurements.redisUnavailableBacklog =
-          redisUnavailable.published_at === null &&
-          redisUnavailable.failed_at === null
-            ? 1
-            : 0;
-        measurements.redisUnavailableLeaseReleased =
-          redisUnavailable.lease_owner === null &&
-          redisUnavailable.lease_expires_at === null;
-        measurements.redisUnavailablePublishAttempts =
-          redisUnavailable.publish_attempts;
-        expect(redisUnavailable).toMatchObject({
-          failed_at: null,
-          last_error_code: 'queue.publish_failed',
-          lease_expires_at: null,
-          lease_owner: null,
-          publish_attempts: 1,
-          published_at: null,
-        });
-
-        const redisRecoveryStartedAt = performance.now();
-        await serviceController.start(stoppedRedis);
-        await withDeadline(
-          redisDispatcher.checkReadiness(),
-          'Redis readiness recovery',
-        );
-        await waitForJob(queue, queueLossEventId);
-        measurements.redisRestartRetainedJobs = 1;
-        await redisDispatcher.dispatchOnce();
-        await waitForJob(queue, redisLossEventId);
-        measurements.redisRecoveryMs =
-          performance.now() - redisRecoveryStartedAt;
-        const redisRecovered = await outboxState(redisLossEventId);
-        measurements.redisRecoveredPublishAttempts =
-          redisRecovered.publish_attempts;
-        expect(redisRecovered.publish_attempts).toBe(2);
-        expect(redisRecovered.published_at).toBeInstanceOf(Date);
-
-        await redisDispatcher.close();
-        redisDispatcher = undefined;
-        await queue.close();
-        queue = undefined;
-        await flushProofRedis();
-
-        // Create the authority record while PostgreSQL is healthy, close its
-        // serving connection, then start a dispatcher while PostgreSQL is down.
-        await insertProofEvent(workspaceId, postgresLossEventId);
-        const stoppedPostgres = await serviceController.stop('postgres');
-        const postgresBoundaries = createDispatcher(
-          new WorkerDrainState(),
-          'resilience-postgres',
-        );
-        postgresDispatcher = postgresBoundaries.dispatcher;
-        const postgresDetectionStartedAt = performance.now();
-        await expect(postgresDispatcher.checkReadiness()).rejects.toThrow();
-        measurements.postgresFailureDetectionMs =
-          performance.now() - postgresDetectionStartedAt;
-        await expect(postgresDispatcher.dispatchOnce()).rejects.toThrow();
-
-        queue = new Queue(QUEUE_NAME.maintenance, {
-          connection: redisConnection(),
-        });
-        await queue.waitUntilReady();
-        expect(
-          await queue.getJob(`outbox-${postgresLossEventId}`),
-        ).toBeUndefined();
-
-        const postgresRecoveryStartedAt = performance.now();
-        await serviceController.start(stoppedPostgres);
-        await withDeadline(
-          postgresDispatcher.checkReadiness(),
-          'PostgreSQL readiness recovery',
-        );
-        await postgresDispatcher.dispatchOnce();
-        await waitForJob(queue, postgresLossEventId);
-        measurements.postgresRecoveryMs =
-          performance.now() - postgresRecoveryStartedAt;
-        const postgresRecovered = await outboxState(postgresLossEventId);
-        measurements.postgresRecoveredPublishAttempts =
-          postgresRecovered.publish_attempts;
-        expect(postgresRecovered.publish_attempts).toBe(1);
-        expect(postgresRecovered.published_at).toBeInstanceOf(Date);
-
-        await postgresDispatcher.close();
-        postgresDispatcher = undefined;
-        await queue.close();
-        queue = undefined;
-        await flushProofRedis();
-
-        // Real drain proof: readiness falls before drain, dispatch admits no
-        // row, and both dispatcher and an active consumer close within bounds.
-        await insertProofEvent(workspaceId, drainEventId);
-        const drainState = new WorkerDrainState();
-        const drainBoundaries = createDispatcher(
-          drainState,
-          'resilience-drain',
-        );
-        drainedDispatcher = drainBoundaries.dispatcher;
-        await drainedDispatcher.checkReadiness();
-        drainState.beginDrain();
-        await expect(drainedDispatcher.checkReadiness()).rejects.toThrow(
-          /draining/u,
-        );
-        await expect(drainedDispatcher.dispatchOnce()).resolves.toEqual({
-          claimed: 0,
-          failed: 0,
-          outcomeUnknown: 0,
-          published: 0,
-          stale: 0,
-        });
-        const drainedOutbox = await outboxState(drainEventId);
-        measurements.drainNoNewClaimAttempts = drainedOutbox.publish_attempts;
-        expect(drainedOutbox).toMatchObject({
-          lease_owner: null,
-          publish_attempts: 0,
-          published_at: null,
-        });
-        const drainCloseStartedAt = performance.now();
-        await drainedDispatcher.close();
-        measurements.drainCloseMs = performance.now() - drainCloseStartedAt;
-        expect(measurements.drainCloseMs).toBeLessThan(2_000);
-        drainedDispatcher = undefined;
-
-        const handlerStarted = (() => {
-          let resolveStarted: (() => void) | undefined;
-          const promise = new Promise<void>((resolve) => {
-            resolveStarted = resolve;
+          queue = new Queue(QUEUE_NAME.maintenance, {
+            connection: redisConnection(),
           });
-          return {
-            promise,
-            resolve: (): void => resolveStarted?.(),
-          };
-        })();
-        consumer = createQueueConsumer({
-          drainTimeoutMs: 50,
-          handler: async (_delivery, context) => {
-            handlerStarted.resolve();
-            await new Promise<never>((_resolve, reject) => {
-              context.signal.addEventListener(
-                'abort',
-                () => {
-                  reject(
-                    context.signal.reason instanceof Error
-                      ? context.signal.reason
-                      : new Error('Consumer proof aborted'),
-                  );
-                },
-                { once: true },
-              );
-            });
-          },
-          queueName: QUEUE_NAME.workflowCoordinator,
-          redisUrl,
-          timeoutMs: 5_000,
-        });
-        consumerProducer = createQueueProducer({ redisUrl });
-        await Promise.all([
-          consumer.waitUntilReady(),
-          consumerProducer.waitUntilReady(),
-        ]);
-        const consumerRunId = randomUUID();
-        await consumerProducer.publish({
-          name: JOB_NAME.advanceWorkflowRun,
-          data: {
-            outboxEventId: consumerEventId,
-            runId: consumerRunId,
-            schemaVersion: 1,
-            workspaceId,
-          },
-        });
-        await withDeadline(handlerStarted.promise, 'consumer admission');
-        const consumerCloseStartedAt = performance.now();
-        const closeResult = await consumer.close();
-        measurements.forcedConsumerCloseMs =
-          performance.now() - consumerCloseStartedAt;
-        expect(closeResult).toEqual({ abortedJobs: 1, forced: true });
-        expect(consumer.isReady()).toBe(false);
-        expect(measurements.forcedConsumerCloseMs).toBeLessThan(2_000);
-        consumer = undefined;
+          await queue.waitUntilReady();
 
-        expect(measurements).toMatchObject({
-          bullmqVersion: '6.1.2',
-          migrationHead: EXPECTED_MIGRATION_HEAD,
-        });
-      } finally {
-        await restoreServices();
-        await Promise.allSettled([
-          redisDispatcher?.close() ?? Promise.resolve(),
-          postgresDispatcher?.close() ?? Promise.resolve(),
-          drainedDispatcher?.close() ?? Promise.resolve(),
-          consumer?.close() ?? Promise.resolve(),
-          consumerProducer?.close() ?? Promise.resolve(),
-          queue?.close() ?? Promise.resolve(),
-        ]);
-        await flushProofRedis();
-        await cleanupWorkspace(workspaceId);
-        process.stdout.write(
-          `PHASE_0D_RESILIENCE_METRICS ${JSON.stringify({
-            ...measurements,
-            failureInjectionPoints: [
-              'enqueue-before-outbox-mark then Redis DB loss',
-              'Redis service stop before outbox dispatch',
-              'PostgreSQL service stop before outbox claim',
-              'drain before dispatcher claim',
-              'drain deadline during active BullMQ handler',
-            ],
-            redisDatabase: REDIS_PROOF_DATABASE,
-          })}\n`,
-        );
-      }
+          const redisBoundaries = createDispatcher(
+            new WorkerDrainState(),
+            'resilience-redis',
+          );
+          redisDispatcher = redisBoundaries.dispatcher;
+          await redisDispatcher.checkReadiness();
+
+          // Failure point: enqueue succeeds, the dispatcher has not marked the
+          // PostgreSQL outbox row, and every Redis key is then lost.
+          await insertProofEvent(workspaceId, queueLossEventId);
+          const claimed = await redisBoundaries.database.claimBatch({
+            enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
+            leaseDurationMillis: 1_000,
+            leaseOwner: 'resilience-crashed',
+            leaseToken: randomUUID(),
+            limit: 1,
+            maxAttempts: 5,
+          });
+          expect(claimed.events).toHaveLength(1);
+          const leased = claimed.events[0];
+          if (leased === undefined) throw new Error('Outbox claim disappeared');
+          await redisBoundaries.producer.publish(
+            parseQueueJob({
+              name: leased.jobName,
+              data: {
+                ...(typeof leased.payload === 'object' &&
+                leased.payload !== null &&
+                !Array.isArray(leased.payload)
+                  ? leased.payload
+                  : {}),
+                outboxEventId: leased.id,
+                schemaVersion: leased.schemaVersion,
+                workspaceId: leased.workspaceId,
+              },
+            }),
+          );
+          await waitForJob(queue, queueLossEventId);
+          await flushProofRedis();
+          expect(
+            await queue.getJob(`outbox-${queueLossEventId}`),
+          ).toBeUndefined();
+
+          const queueRecoveryStartedAt = performance.now();
+          // Measure recovery after the real PostgreSQL outbox lease expires while
+          // Redis has lost the corresponding queue job.
+          await new Promise<void>((resolve) => setTimeout(resolve, 1_100));
+          await redisDispatcher.dispatchOnce();
+          await waitForJob(queue, queueLossEventId);
+          measurements.queueLossRecoveryMs =
+            performance.now() - queueRecoveryStartedAt;
+          const queueRecovered = await outboxState(queueLossEventId);
+          measurements.queueLossRecoveredPublishAttempts =
+            queueRecovered.publish_attempts;
+          expect(queueRecovered.publish_attempts).toBe(2);
+          expect(queueRecovered.published_at).toBeInstanceOf(Date);
+
+          // Failure point: Redis is fully stopped while a durable outbox row is
+          // waiting. Publishing fails closed and releases the PostgreSQL lease.
+          await insertProofEvent(workspaceId, redisLossEventId);
+          const stoppedRedis = await stopProofService('redis');
+          const redisDetectionStartedAt = performance.now();
+          await expect(redisDispatcher.checkReadiness()).rejects.toThrow();
+          measurements.redisFailureDetectionMs =
+            performance.now() - redisDetectionStartedAt;
+          await expect(redisDispatcher.dispatchOnce()).resolves.toEqual({
+            claimed: 1,
+            failed: 1,
+            outcomeUnknown: 0,
+            published: 0,
+            stale: 0,
+          });
+          const redisUnavailable = await outboxState(redisLossEventId);
+          measurements.redisUnavailableBacklog =
+            redisUnavailable.published_at === null &&
+            redisUnavailable.failed_at === null
+              ? 1
+              : 0;
+          measurements.redisUnavailableLeaseReleased =
+            redisUnavailable.lease_owner === null &&
+            redisUnavailable.lease_expires_at === null;
+          measurements.redisUnavailablePublishAttempts =
+            redisUnavailable.publish_attempts;
+          expect(redisUnavailable).toMatchObject({
+            failed_at: null,
+            last_error_code: 'queue.publish_failed',
+            lease_expires_at: null,
+            lease_owner: null,
+            publish_attempts: 1,
+            published_at: null,
+          });
+
+          const redisRecoveryStartedAt = performance.now();
+          await startProofService(stoppedRedis);
+          await withDeadline(
+            redisDispatcher.checkReadiness(),
+            'Redis readiness recovery',
+          );
+          await waitForJob(queue, queueLossEventId);
+          measurements.redisRestartRetainedJobs = 1;
+          await redisDispatcher.dispatchOnce();
+          await waitForJob(queue, redisLossEventId);
+          measurements.redisRecoveryMs =
+            performance.now() - redisRecoveryStartedAt;
+          const redisRecovered = await outboxState(redisLossEventId);
+          measurements.redisRecoveredPublishAttempts =
+            redisRecovered.publish_attempts;
+          expect(redisRecovered.publish_attempts).toBe(2);
+          expect(redisRecovered.published_at).toBeInstanceOf(Date);
+
+          await redisDispatcher.close();
+          redisDispatcher = undefined;
+          await queue.close();
+          queue = undefined;
+          await flushProofRedis();
+
+          // Create the authority record while PostgreSQL is healthy, close its
+          // serving connection, then start a dispatcher while PostgreSQL is down.
+          await insertProofEvent(workspaceId, postgresLossEventId);
+          const stoppedPostgres = await stopProofService('postgres');
+          const postgresBoundaries = createDispatcher(
+            new WorkerDrainState(),
+            'resilience-postgres',
+          );
+          postgresDispatcher = postgresBoundaries.dispatcher;
+          const postgresDetectionStartedAt = performance.now();
+          await expect(postgresDispatcher.checkReadiness()).rejects.toThrow();
+          measurements.postgresFailureDetectionMs =
+            performance.now() - postgresDetectionStartedAt;
+          await expect(postgresDispatcher.dispatchOnce()).rejects.toThrow();
+
+          queue = new Queue(QUEUE_NAME.maintenance, {
+            connection: redisConnection(),
+          });
+          await queue.waitUntilReady();
+          expect(
+            await queue.getJob(`outbox-${postgresLossEventId}`),
+          ).toBeUndefined();
+
+          const postgresRecoveryStartedAt = performance.now();
+          await startProofService(stoppedPostgres);
+          await withDeadline(
+            postgresDispatcher.checkReadiness(),
+            'PostgreSQL readiness recovery',
+          );
+          await postgresDispatcher.dispatchOnce();
+          await waitForJob(queue, postgresLossEventId);
+          measurements.postgresRecoveryMs =
+            performance.now() - postgresRecoveryStartedAt;
+          const postgresRecovered = await outboxState(postgresLossEventId);
+          measurements.postgresRecoveredPublishAttempts =
+            postgresRecovered.publish_attempts;
+          expect(postgresRecovered.publish_attempts).toBe(1);
+          expect(postgresRecovered.published_at).toBeInstanceOf(Date);
+
+          await postgresDispatcher.close();
+          postgresDispatcher = undefined;
+          await queue.close();
+          queue = undefined;
+          await flushProofRedis();
+
+          // Real drain proof: readiness falls before drain, dispatch admits no
+          // row, and both dispatcher and an active consumer close within bounds.
+          await insertProofEvent(workspaceId, drainEventId);
+          const drainState = new WorkerDrainState();
+          const drainBoundaries = createDispatcher(
+            drainState,
+            'resilience-drain',
+          );
+          drainedDispatcher = drainBoundaries.dispatcher;
+          await drainedDispatcher.checkReadiness();
+          drainState.beginDrain();
+          await expect(drainedDispatcher.checkReadiness()).rejects.toThrow(
+            /draining/u,
+          );
+          await expect(drainedDispatcher.dispatchOnce()).resolves.toEqual({
+            claimed: 0,
+            failed: 0,
+            outcomeUnknown: 0,
+            published: 0,
+            stale: 0,
+          });
+          const drainedOutbox = await outboxState(drainEventId);
+          measurements.drainNoNewClaimAttempts = drainedOutbox.publish_attempts;
+          expect(drainedOutbox).toMatchObject({
+            lease_owner: null,
+            publish_attempts: 0,
+            published_at: null,
+          });
+          const drainCloseStartedAt = performance.now();
+          await drainedDispatcher.close();
+          measurements.drainCloseMs = performance.now() - drainCloseStartedAt;
+          expect(measurements.drainCloseMs).toBeLessThan(2_000);
+          drainedDispatcher = undefined;
+
+          const handlerStarted = (() => {
+            let resolveStarted: (() => void) | undefined;
+            const promise = new Promise<void>((resolve) => {
+              resolveStarted = resolve;
+            });
+            return {
+              promise,
+              resolve: (): void => resolveStarted?.(),
+            };
+          })();
+          consumer = createQueueConsumer({
+            drainTimeoutMs: 50,
+            handler: async (_delivery, context) => {
+              handlerStarted.resolve();
+              await new Promise<never>((_resolve, reject) => {
+                context.signal.addEventListener(
+                  'abort',
+                  () => {
+                    reject(
+                      context.signal.reason instanceof Error
+                        ? context.signal.reason
+                        : new Error('Consumer proof aborted'),
+                    );
+                  },
+                  { once: true },
+                );
+              });
+            },
+            queueName: QUEUE_NAME.workflowCoordinator,
+            redisUrl,
+            timeoutMs: 5_000,
+          });
+          consumerProducer = createQueueProducer({ redisUrl });
+          await Promise.all([
+            consumer.waitUntilReady(),
+            consumerProducer.waitUntilReady(),
+          ]);
+          const consumerRunId = randomUUID();
+          await consumerProducer.publish({
+            name: JOB_NAME.advanceWorkflowRun,
+            data: {
+              outboxEventId: consumerEventId,
+              runId: consumerRunId,
+              schemaVersion: 1,
+              workspaceId,
+            },
+          });
+          await withDeadline(handlerStarted.promise, 'consumer admission');
+          const consumerCloseStartedAt = performance.now();
+          const closeResult = await consumer.close();
+          measurements.forcedConsumerCloseMs =
+            performance.now() - consumerCloseStartedAt;
+          expect(closeResult).toEqual({ abortedJobs: 1, forced: true });
+          expect(consumer.isReady()).toBe(false);
+          expect(measurements.forcedConsumerCloseMs).toBeLessThan(2_000);
+          consumer = undefined;
+
+          expect(measurements).toMatchObject({
+            bullmqVersion: '6.1.2',
+            migrationHead: EXPECTED_MIGRATION_HEAD,
+          });
+          proofCompleted = true;
+        },
+        async () => {
+          const errors: unknown[] = [];
+          const attempt = async (
+            label: string,
+            operation: () => unknown,
+          ): Promise<void> => {
+            await Promise.resolve()
+              .then(operation)
+              .catch((cause: unknown) => {
+                errors.push(
+                  new Error(`Transport resilience cleanup failed: ${label}`, {
+                    cause,
+                  }),
+                );
+              });
+          };
+          await attempt('restore Compose services', restoreServices);
+          await attempt('Redis dispatcher', () => redisDispatcher?.close());
+          await attempt('PostgreSQL dispatcher', () =>
+            postgresDispatcher?.close(),
+          );
+          await attempt('drained dispatcher', () => drainedDispatcher?.close());
+          await attempt('consumer', () => consumer?.close());
+          await attempt('consumer producer', () => consumerProducer?.close());
+          await attempt('inspection queue', () => queue?.close());
+          if (redisNamespaceAcquired) {
+            await attempt('flush private Redis database', flushProofRedis);
+            await attempt('release Redis namespace', () =>
+              redisNamespace.close(),
+            );
+          }
+          await attempt('drop disposable database', dropProofDatabase);
+          process.stdout.write(
+            `PHASE_0D_RESILIENCE_METRICS ${JSON.stringify({
+              ...measurements,
+              qualificationStatus: proofCompleted ? 'completed' : 'failed',
+              failureInjectionPoints: [
+                'enqueue-before-outbox-mark then Redis DB loss',
+                'Redis service stop before outbox dispatch',
+                'PostgreSQL service stop before outbox claim',
+                'drain before dispatcher claim',
+                'drain deadline during active BullMQ handler',
+              ],
+              redisDatabase: REDIS_PROOF_DATABASE,
+            })}\n`,
+          );
+          if (errors.length > 0)
+            throw new AggregateError(
+              errors,
+              'Transport resilience cleanup failed',
+            );
+        },
+        'Transport resilience proof',
+      );
     });
   },
 );

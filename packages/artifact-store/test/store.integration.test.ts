@@ -21,7 +21,7 @@ async function readAll(body: Readable): Promise<Buffer> {
 }
 
 integrationDescribe('ArtifactStore S3 integration', () => {
-  it('persists, verifies, streams, isolates, and deletes an artifact', async () => {
+  it('persists, verifies, streams, isolates, and hides an artifact through provider deletion', async () => {
     const config = parseArtifactStoreConfig(process.env);
     const store = createArtifactStore(config);
     const body = Buffer.from('real S3-compatible artifact fixture');
@@ -132,14 +132,26 @@ integrationDescribe('ArtifactStore S3 integration', () => {
         body,
         headers: upload.headers,
         method: upload.method,
+        signal: AbortSignal.timeout(config.requestTimeoutMs),
       });
-      expect(response.ok).toBe(true);
+      try {
+        expect(response.ok).toBe(true);
+        await response.arrayBuffer();
+      } finally {
+        await response.body?.cancel().catch(() => undefined);
+      }
       const duplicate = await fetch(upload.url, {
         body,
         headers: upload.headers,
         method: upload.method,
+        signal: AbortSignal.timeout(config.requestTimeoutMs),
       });
-      expect(duplicate.status).toBe(412);
+      try {
+        expect(duplicate.status).toBe(412);
+        await duplicate.arrayBuffer();
+      } finally {
+        await duplicate.body?.cancel().catch(() => undefined);
+      }
 
       await expect(store.validateDirectUpload(metadata)).resolves.toEqual(
         metadata,
@@ -158,9 +170,14 @@ integrationDescribe('ArtifactStore S3 integration', () => {
       ).toBe('attachment');
       const downloadResponse = await fetch(download.url, {
         method: download.method,
+        signal: AbortSignal.timeout(config.requestTimeoutMs),
       });
-      expect(downloadResponse.ok).toBe(true);
-      expect(Buffer.from(await downloadResponse.arrayBuffer())).toEqual(body);
+      try {
+        expect(downloadResponse.ok).toBe(true);
+        expect(Buffer.from(await downloadResponse.arrayBuffer())).toEqual(body);
+      } finally {
+        await downloadResponse.body?.cancel().catch(() => undefined);
+      }
     } finally {
       await store.delete(metadata).catch(() => undefined);
       store.close();

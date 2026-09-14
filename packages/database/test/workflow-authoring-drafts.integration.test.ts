@@ -1,25 +1,98 @@
 import { describe, expect, it } from 'vitest';
+import { workflowRetainedExecutableChecksum } from '@pertexo/workflow-model/graph';
 
 import {
   WorkflowIdempotencyConflictError,
+  WorkflowNotFoundError,
   actorId,
   apiPool,
   authoring,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
+  finishTransactionClient,
   otherActorId,
   otherVersionId,
   otherWorkflowId,
   otherWorkspaceId,
   queryAsOwner,
   randomUUID,
+  saveCurrentDraft,
   workerPool,
   workflowId,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
 
 describe('workflow draft persistence', () => {
+  it('requires the full current representation tag while revision CAS remains authoritative', async () => {
+    const created = await authoring.createWorkflow({
+      actorId,
+      emptyGraph,
+      idempotencyKey: 'create-save-tag-authority',
+      name: 'Save tag authority',
+      workspaceId,
+    });
+    const input = {
+      actorId,
+      expectedRevision: 1,
+      graphJson: emptyGraph,
+      workflowId: created.workflowId,
+      workspaceId,
+    } as const;
+    const currentTag = await currentRepresentationTag(
+      authoring,
+      workspaceId,
+      created.workflowId,
+      actorId,
+    );
+
+    await expect(
+      authoring.saveDraft({ ...input, representationTag: 'not-a-draft-tag' }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+
+    const wrongTag = `"draft-v1.${'A'.repeat(43)}"`;
+    await expect(
+      authoring.saveDraft({ ...input, representationTag: wrongTag }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'WorkflowRevisionConflictError',
+        currentRevision: 1,
+        currentEtag: currentTag,
+      }),
+    );
+    await expect(
+      authoring.getDraft(workspaceId, created.workflowId, actorId),
+    ).resolves.toMatchObject({ revision: 1 });
+
+    const saved = await authoring.saveDraft({
+      ...input,
+      representationTag: currentTag,
+    });
+    expect(saved.revision).toBe(2);
+    const savedTag = await currentRepresentationTag(
+      authoring,
+      workspaceId,
+      created.workflowId,
+      actorId,
+    );
+    await expect(
+      authoring.saveDraft({ ...input, representationTag: currentTag }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'WorkflowRevisionConflictError',
+        currentRevision: 2,
+        currentEtag: savedTag,
+      }),
+    );
+    await expect(
+      authoring.saveDraft({
+        ...input,
+        representationTag: currentTag,
+        workflowId: otherWorkflowId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+  });
+
   it('atomically creates a workflow with exactly one revision-1 draft', async () => {
     let workflowId = '';
     const createInput = {
@@ -44,9 +117,8 @@ describe('workflow draft persistence', () => {
     await expect(
       authoring.createWorkflow({ ...createInput, name: 'Changed request' }),
     ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
-    await expect(
-      authoring.listWorkflows({ workspaceId, actorId }),
-    ).resolves.toMatchObject({ items: [{ id: workflowId }] });
+    const workflows = await authoring.listWorkflows({ workspaceId, actorId });
+    expect(workflows.items.some(({ id }) => id === workflowId)).toBe(true);
 
     const concurrentInput = {
       ...createInput,
@@ -75,8 +147,11 @@ describe('workflow draft persistence', () => {
     expect(firstWorkflow).toBeDefined();
     if (firstWorkflow === undefined) throw new Error('Missing first page row');
     const rename = await apiPool.connect();
+    let renameOpen = false;
+    let renameError: unknown;
     try {
       await rename.query('begin');
+      renameOpen = true;
       await rename.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -85,9 +160,15 @@ describe('workflow draft persistence', () => {
         [firstWorkflow.id],
       );
       await rename.query('commit');
-    } finally {
-      rename.release();
+      renameOpen = false;
+    } catch (error: unknown) {
+      renameError = error;
     }
+    await finishTransactionClient(rename, {
+      label: 'Between-pages workflow rename',
+      primaryError: renameError,
+      transactionOpen: renameOpen,
+    });
     const secondPage = await authoring.listWorkflows({
       workspaceId,
       actorId,
@@ -108,6 +189,8 @@ describe('workflow draft persistence', () => {
     ).rejects.toThrow('Workflow is not visible');
 
     const api = await apiPool.connect();
+    let apiOpen = false;
+    let apiError: unknown;
     try {
       const absent = await api.query<{ drafts: string }>(
         `select (
@@ -120,6 +203,7 @@ describe('workflow draft persistence', () => {
       );
       expect(absent.rows[0]?.drafts).toBe('0');
       await api.query('begin');
+      apiOpen = true;
       await api.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -143,7 +227,9 @@ describe('workflow draft persistence', () => {
         ),
       ).rejects.toMatchObject({ code: '42501' });
       await api.query('rollback');
+      apiOpen = false;
       await api.query('begin');
+      apiOpen = true;
       await api.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -153,9 +239,15 @@ describe('workflow draft persistence', () => {
         ]),
       ).rejects.toMatchObject({ code: '42501' });
       await api.query('rollback');
-    } finally {
-      api.release();
+      apiOpen = false;
+    } catch (error: unknown) {
+      apiError = error;
     }
+    await finishTransactionClient(api, {
+      label: 'Workflow draft RLS proof',
+      primaryError: apiError,
+      transactionOpen: apiOpen,
+    });
   });
 
   it('rejects absent-context and cross-tenant writes for every publication relation', async () => {
@@ -205,8 +297,11 @@ describe('workflow draft persistence', () => {
     ];
     for (const [statement, parameters] of attempts) {
       const client = await apiPool.connect();
+      let transactionOpen = false;
+      let primaryError: unknown;
       try {
         await client.query('begin');
+        transactionOpen = true;
         await client.query("select set_config('app.workspace_id', $1, true)", [
           workspaceId,
         ]);
@@ -214,9 +309,15 @@ describe('workflow draft persistence', () => {
           { code: '42501' },
         );
         await client.query('rollback');
-      } finally {
-        client.release();
+        transactionOpen = false;
+      } catch (error: unknown) {
+        primaryError = error;
       }
+      await finishTransactionClient(client, {
+        label: 'Cross-tenant publication relation proof',
+        primaryError,
+        transactionOpen,
+      });
     }
 
     const absent = await apiPool.connect();
@@ -289,7 +390,7 @@ describe('workflow draft persistence', () => {
       }),
     ).rejects.toThrow();
     await expect(
-      authoring.saveDraft({
+      saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 1,
         graphJson: { ...emptyGraph, unknown: true },
@@ -306,8 +407,11 @@ describe('workflow draft persistence', () => {
       workspaceId,
     });
     const api = await apiPool.connect();
+    let transactionOpen = false;
+    let primaryError: unknown;
     try {
       await api.query('begin');
+      transactionOpen = true;
       await api.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -316,83 +420,93 @@ describe('workflow draft persistence', () => {
         [corrupted.workflowId],
       );
       await api.query('commit');
-    } finally {
-      api.release();
+      transactionOpen = false;
+    } catch (error: unknown) {
+      primaryError = error;
     }
+    await finishTransactionClient(api, {
+      label: 'Corrupt draft fixture update',
+      primaryError,
+      transactionOpen,
+    });
     await expect(
       authoring.getDraft(workspaceId, corrupted.workflowId, actorId),
     ).rejects.toThrow();
   });
 
-  it('rejects a retained version whose checksum does not match its graph', async () => {
-    const corrupted = await authoring.createWorkflow({
-      actorId,
-      emptyGraph,
-      idempotencyKey: 'create-corrupt-version-proof',
-      name: 'Corrupt version proof',
-      workspaceId,
-    });
-    const versionId = randomUUID();
-    const corruptingClient = await apiPool.connect();
-    try {
-      await corruptingClient.query('begin');
-      await corruptingClient.query(
-        "select set_config('app.workspace_id', $1, true)",
-        [workspaceId],
-      );
-      await corruptingClient.query(
-        `insert into app.workflow_versions
-           (id, workspace_id, workflow_id, version_number, schema_version,
-            graph_json, checksum, published_by)
-         values ($1, $2, $3, 1, 1, $4::jsonb, $5, $6)`,
-        [
-          versionId,
-          workspaceId,
-          corrupted.workflowId,
-          JSON.stringify(emptyGraph),
-          `wf:v1:sha256:${'f'.repeat(64)}`,
-          actorId,
-        ],
-      );
-      await corruptingClient.query('commit');
-    } catch (error: unknown) {
-      await corruptingClient.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      corruptingClient.release();
-    }
-
-    await expect(
-      authoring.getVersion(
+  it.each(['first', 'middle', 'last'] as const)(
+    'rejects a corrupt %s retained version before publication mutation',
+    async (position) => {
+      const corrupted = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: `create-corrupt-version-${position}`,
+        name: `Corrupt version ${position}`,
         workspaceId,
-        corrupted.workflowId,
-        versionId,
-        actorId,
-      ),
-    ).rejects.toThrow('checksum does not match its graph');
-    await expect(
-      authoring.publishWorkflow({
-        actorId,
-        representationTag: await currentRepresentationTag(
-          authoring,
+      });
+      const graphs = [
+        emptyGraph,
+        { ...emptyGraph, settings: { maxRunDurationMs: 1_000 } },
+        { ...emptyGraph, settings: { maxRunDurationMs: 2_000 } },
+      ] as const;
+      const corruptIndex =
+        position === 'first' ? 0 : position === 'middle' ? 1 : 2;
+      const versions = graphs.map(() => randomUUID());
+      for (const [index, graph] of graphs.entries())
+        await queryAsOwner(
+          `insert into app.workflow_versions
+             (id,workspace_id,workflow_id,version_number,schema_version,
+              graph_json,checksum,published_by)
+           values($1,$2,$3,$4,1,$5::jsonb,$6,$7)
+           returning id`,
+          [
+            versions[index],
+            workspaceId,
+            corrupted.workflowId,
+            index + 1,
+            JSON.stringify(graph),
+            index === corruptIndex
+              ? `wf:v1:sha256:${'f'.repeat(64)}`
+              : workflowRetainedExecutableChecksum(graph),
+            actorId,
+          ],
+          workspaceId,
+        );
+      const versionId = versions[corruptIndex];
+      if (versionId === undefined)
+        throw new Error('Corruption target is missing');
+
+      await expect(
+        authoring.getVersion(
           workspaceId,
           corrupted.workflowId,
+          versionId,
           actorId,
         ),
-        idempotencyKey: 'publish-corrupt-version-proof',
-        requestHash: 'f'.repeat(64),
-        workflowId: corrupted.workflowId,
-        workspaceId,
-      }),
-    ).rejects.toThrow('checksum does not match its graph');
+      ).rejects.toThrow('checksum does not match its graph');
+      await expect(
+        authoring.publishWorkflow({
+          actorId,
+          representationTag: await currentRepresentationTag(
+            authoring,
+            workspaceId,
+            corrupted.workflowId,
+            actorId,
+          ),
+          idempotencyKey: `publish-after-corrupt-version-${position}`,
+          requestHash: 'f'.repeat(64),
+          workflowId: corrupted.workflowId,
+          workspaceId,
+        }),
+      ).rejects.toThrow('checksum does not match its graph');
 
-    const durableState = await queryAsOwner<{
-      audits: string;
-      outbox: string;
-      published_version_id: string | null;
-      versions: string;
-    }>(
-      `select workflow.published_version_id,
+      const durableState = await queryAsOwner<{
+        audits: string;
+        outbox: string;
+        published_version_id: string | null;
+        versions: string;
+      }>(
+        `select workflow.published_version_id,
               (select count(*) from app.workflow_versions version
                where version.workflow_id = workflow.id)::text as versions,
               (select count(*) from app.audit_events audit
@@ -402,14 +516,15 @@ describe('workflow draft persistence', () => {
                where event.aggregate_id = workflow.id
                  and event.job_name = 'reconcile-workflow-triggers')::text as outbox
        from app.workflows workflow where workflow.id = $1`,
-      [corrupted.workflowId],
-      workspaceId,
-    );
-    expect(durableState[0]).toEqual({
-      audits: '0',
-      outbox: '0',
-      published_version_id: null,
-      versions: '1',
-    });
-  });
+        [corrupted.workflowId],
+        workspaceId,
+      );
+      expect(durableState[0]).toEqual({
+        audits: '0',
+        outbox: '0',
+        published_version_id: null,
+        versions: '3',
+      });
+    },
+  );
 });

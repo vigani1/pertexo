@@ -12,6 +12,15 @@ pager delivery or autoscaling. That live proof is E01-11 in the
 and requires exact alarm/scalable-target selectors, a bounded test window,
 notification recipients, cleanup and approval before threshold injection.
 
+`pnpm observability:qualify` is a disposable **local** datapoint-flow check. It
+starts the exact digest-pinned collector and Prometheus images, submits two
+same-service writers plus a restarted writer, validates the scrape, and proves
+writer-separated counter, gauge and histogram aggregation. It exports no host,
+process, tenant or request identity. This local result is distinct from E01-11
+and does not prove deployed telemetry, alert delivery or pager routing. Metric
+writer identity and source freshness follow
+[ADR 036](../adr/036-metric-writer-identity-and-freshness.md).
+
 ## Shared Triage
 
 1. Confirm the alert expression has current samples and note only bounded labels
@@ -121,8 +130,12 @@ or timeout-envelope issue.
 ## PertexoWorkerRestartBurst
 
 Correlate worker starts with deployments, task health events, and forced drains.
-This counter does not distinguish planned rollout from crash churn by itself.
-Inspect process CPU, RSS, heap, event-loop delay, and platform task-exit telemetry.
+The expression counts distinct opaque telemetry writers whose start-time gauge
+is newer than 15 minutes; it does not distinguish planned rollout from crash
+churn by itself. Worker composition requests an immediate bounded metric flush,
+but a collector/network failure can still lose a rapid-crash observation.
+Inspect process CPU, RSS, heap, event-loop delay and the external supervisor's
+task-start/task-exit events before classifying or clearing churn.
 
 ## PertexoDatabasePoolSaturated
 
@@ -175,9 +188,12 @@ Confirm the retention maintenance task is running and inspect its
 `retention.regional_replica_lag` or `retention.regional_replica_lag_failed`
 events. Verify that the authenticated RDS replica identity is
 `pertexo-eu-west-1`, its state is streaming, and replay lag is below five
-minutes. Do not bypass the database admission fence. Restore a fresh observation
-by repairing monitoring or replication; admission resumes automatically only
-after the persisted lag returns below the bound.
+minutes. Freshness uses the originating observation timestamp, not the collector
+scrape time: it fails closed after the tested 90-second SDK/batch/scrape delivery
+bound even if a stopped producer's last gauge remains cached. Do not bypass the
+database admission fence. Restore a fresh observation by repairing monitoring or
+replication; admission resumes automatically only after the persisted lag
+returns below the bound.
 
 ## PertexoWorkspacePurgeReleasedOrStale
 

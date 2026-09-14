@@ -1,8 +1,4 @@
-import type {
-  DynamicModule,
-  OnApplicationShutdown,
-  Provider,
-} from '@nestjs/common';
+import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import type {
   DatabaseReadiness,
@@ -22,9 +18,7 @@ import {
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
-export class NestWorkspaceDatabase
-  implements WorkspaceDatabase, OnApplicationShutdown
-{
+export class NestWorkspaceDatabase implements WorkspaceDatabase {
   public constructor(
     private readonly database: WorkspaceDatabase,
     private readonly expectedWorkerRole: string,
@@ -33,7 +27,8 @@ export class NestWorkspaceDatabase
   public withWorkspace: WorkspaceDatabase['withWorkspace'] = (
     workspaceId,
     operation,
-  ) => this.database.withWorkspace(workspaceId, operation);
+    options,
+  ) => this.database.withWorkspace(workspaceId, operation, options);
 
   public async checkReadiness(): Promise<DatabaseReadiness> {
     const readiness = await this.database.checkReadiness();
@@ -53,10 +48,6 @@ export class NestWorkspaceDatabase
 
   public close(): ReturnType<WorkspaceDatabase['close']> {
     return this.database.close();
-  }
-
-  public async onApplicationShutdown(): Promise<void> {
-    await this.close();
   }
 }
 

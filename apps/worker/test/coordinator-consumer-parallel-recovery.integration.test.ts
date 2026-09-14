@@ -1,36 +1,37 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '@pertexo/node-catalog';
+import { parseCheckpoint } from '@pertexo/workflow-engine';
 
-import {
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  cleanupFixture,
-  databaseUrl,
-  enabled,
-  parseCheckpoint,
-  parseDatabaseConfig,
-  restoreServices,
-  setupFixture,
-  workerQuery,
-  workerUrl,
-  workspaceId,
-} from './coordinator-consumer.fixtures.js';
+import { PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE } from '@pertexo/node-catalog';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
 import {
   acceptNestedParallelRun,
   acceptParallelRun,
 } from './support/coordinator-run-fixtures.js';
 import { createCoordinatorRecoveryHarness } from './support/coordinator-recovery-harness.js';
 
+const {
+  databaseUrl,
+  enabled,
+  restoreServicesAndClose,
+  setup,
+  workerQuery,
+  workerUrl,
+  workspaceId,
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Parallel and Merge Redis-loss recovery', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('recovers bounded Parallel and settled Merge after Redis loss on fresh workers', async () => {
     const accepted = await acceptParallelRun();
+    const connectionResolve = vi.fn(() =>
+      Promise.reject(new Error('not used')),
+    );
+    const artifactWrite = vi.fn(() => Promise.reject(new Error('not used')));
     const recovery = await createCoordinatorRecoveryHarness({
       accepted,
       database: parseDatabaseConfig({
@@ -39,12 +40,8 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
       }),
       registryRelease: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
       runtimeCapabilities: {
-        connections: () => ({
-          resolve: vi.fn(() => Promise.reject(new Error('not used'))),
-        }),
-        artifacts: () => ({
-          write: vi.fn(() => Promise.reject(new Error('not used'))),
-        }),
+        connections: () => ({ resolve: connectionResolve }),
+        artifacts: () => ({ write: artifactWrite }),
       },
       workerIdPrefix: 'parallel',
     });
@@ -55,7 +52,8 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
       await recovery.continueAfter(2);
       const parallelAttempt = await recovery.executeNext('parallel');
       const parallelContinuation = await recovery.nextCoordinatorOutbox();
-      await recovery.redeliverAttempt(parallelAttempt);
+      const redelivery = await recovery.redeliverAttempt(parallelAttempt);
+      expect(redelivery.entriesAfter).toBe(redelivery.entriesBefore + 1);
       await recovery.restart({ obliterateQueues: true });
 
       await recovery.publishCoordinator(parallelContinuation, 3);
@@ -112,6 +110,8 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
           },
         ],
       });
+      expect(connectionResolve).not.toHaveBeenCalled();
+      expect(artifactWrite).not.toHaveBeenCalled();
     } finally {
       await recovery.close();
     }
@@ -119,6 +119,10 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
 
   it('persists nested Parallel caps independently per For Each iteration', async () => {
     const accepted = await acceptNestedParallelRun();
+    const connectionResolve = vi.fn(() =>
+      Promise.reject(new Error('not used')),
+    );
+    const artifactWrite = vi.fn(() => Promise.reject(new Error('not used')));
     const recovery = await createCoordinatorRecoveryHarness({
       accepted,
       database: parseDatabaseConfig({
@@ -127,12 +131,8 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
       }),
       registryRelease: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
       runtimeCapabilities: {
-        connections: () => ({
-          resolve: vi.fn(() => Promise.reject(new Error('not used'))),
-        }),
-        artifacts: () => ({
-          write: vi.fn(() => Promise.reject(new Error('not used'))),
-        }),
+        connections: () => ({ resolve: connectionResolve }),
+        artifacts: () => ({ write: artifactWrite }),
       },
       workerIdPrefix: 'nested-parallel',
     });
@@ -217,6 +217,8 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
           },
         ],
       });
+      expect(connectionResolve).not.toHaveBeenCalled();
+      expect(artifactWrite).not.toHaveBeenCalled();
     } finally {
       await recovery.close();
     }

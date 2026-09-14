@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type CancellationDecision,
   assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
@@ -13,6 +14,21 @@ import {
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 
+function assertCancellationDecisionIsExhaustive(
+  decision: CancellationDecision,
+): void {
+  switch (decision.kind) {
+    case 'await_reconciliation':
+    case 'canceled':
+    case 'outcome_unknown':
+      return;
+    default: {
+      const unreachable: never = decision;
+      return unreachable;
+    }
+  }
+}
+
 describe('retry, wait, cancellation, and transition policy', () => {
   const policy = {
     maximumAttempts: 3,
@@ -20,6 +36,10 @@ describe('retry, wait, cancellation, and transition policy', () => {
     maximumDelayMs: 500,
     retryableErrorCodes: ['rate_limited', 'rate_limit', 'network'],
   } as const;
+
+  it('exposes only cancellation decisions the runtime can produce', () => {
+    assertCancellationDecisionIsExhaustive(decideCancellation([]));
+  });
 
   it('uses bounded deterministic backoff and stable provider identity', () => {
     expect(

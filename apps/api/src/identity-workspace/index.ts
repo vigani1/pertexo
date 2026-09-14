@@ -1,7 +1,6 @@
 export { IdentityWorkspaceModule } from './module.js';
+export { OidcController, SessionController } from './auth-controllers.js';
 export {
-  OidcController,
-  SessionController,
   UserController,
   WorkspaceMembersController,
   WorkspaceController,

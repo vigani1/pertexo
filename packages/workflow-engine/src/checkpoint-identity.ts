@@ -26,10 +26,16 @@ export function assertCanonicalTimestamp(
   value: unknown,
   label: string,
 ): string {
+  const milliseconds = typeof value === 'string' ? Date.parse(value) : NaN;
+  const expected =
+    typeof value === 'string' && !value.includes('.')
+      ? value.replace(/Z$/u, '.000Z')
+      : value;
   if (
     typeof value !== 'string' ||
     !canonicalTimestampPattern.test(value) ||
-    !Number.isFinite(Date.parse(value))
+    !Number.isFinite(milliseconds) ||
+    new Date(milliseconds).toISOString() !== expected
   )
     invalid(`${label} must be a canonical UTC timestamp`);
   return value;

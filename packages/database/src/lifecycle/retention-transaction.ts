@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { destroyCanceledPoolClient } from '../platform/pool-client-disposal.js';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 export type RetentionTransactionOptions = Readonly<{
@@ -9,10 +10,34 @@ export type RetentionTransactionOptions = Readonly<{
   statementTimeoutMs: number;
 }>;
 
+export interface WorkspaceControlLedgerReader {
+  reconcile(input: {
+    readonly maxRecords: number;
+    readonly projectedHash: string;
+    readonly projectedSequence: number;
+    readonly signal?: AbortSignal;
+    readonly workspaceId: string;
+  }): Promise<{
+    readonly hasMore: boolean;
+    readonly pageEndHash: string;
+    readonly pageEndSequence: number;
+    readonly reachedHighWater: boolean;
+    readonly records: readonly unknown[];
+  }>;
+}
+
+export type WorkspaceDestructiveAuthorization<T> =
+  Readonly<{ status: 'stale' }> | Readonly<{ status: 'authorized'; value: T }>;
+
 const WORKSPACE_DESTRUCTIVE_LOCK_SALT = 1_934_781_127;
 
 function throwableError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error });
+  try {
+    if (error instanceof Error) return error;
+  } catch {
+    // Hostile rejection inspection is never allowed to bypass lock cleanup.
+  }
+  return new Error(message, { cause: error });
 }
 
 interface DestructiveLockPool extends Pick<Pool, 'connect'> {
@@ -174,7 +199,7 @@ export async function withWorkspaceDestructiveOperationLock<T>(
   pool: DestructiveLockPool,
   workspaceId: string,
   signal: AbortSignal | undefined,
-  work: () => Promise<T>,
+  work: (lockClient: PoolClient) => Promise<T>,
 ): Promise<T> {
   const releasePermit = await acquireDestructiveLockPermit(pool, signal);
   let client: PoolClient;
@@ -196,9 +221,14 @@ export async function withWorkspaceDestructiveOperationLock<T>(
     // QueryConfig.signal. Destroying the checked-out connection terminates its
     // PostgreSQL backend, releases any concurrently granted session lock, and
     // keeps a cancelled waiter from occupying pool capacity.
-    client.release(
-      throwableError(signal?.reason, 'Workspace lifecycle lock aborted'),
-    );
+    try {
+      destroyCanceledPoolClient(
+        client,
+        throwableError(signal?.reason, 'Workspace lifecycle lock aborted'),
+      );
+    } catch {
+      // The canceled lock wait is already terminal for this client.
+    }
   };
   signal?.addEventListener('abort', releaseLockWaitForAbort, { once: true });
   if (signal?.aborted === true) releaseLockWaitForAbort();
@@ -211,7 +241,7 @@ export async function withWorkspaceDestructiveOperationLock<T>(
     // PostgreSQL may grant a lock concurrently with cancellation. Re-check
     // after the awaited acquisition before destructive work can begin.
     signal?.throwIfAborted();
-    result = await work();
+    result = await work(client);
   } catch (error: unknown) {
     operationFailed = true;
     operationError =
@@ -232,31 +262,53 @@ export async function withWorkspaceDestructiveOperationLock<T>(
       unlockError = error;
     }
   }
+  let releaseFailed = false;
+  let releaseError: unknown;
   try {
-    if (!clientState.released)
-      client.release(
-        unlockError instanceof Error
-          ? unlockError
-          : !unlockFailed
-            ? undefined
-            : new Error('Workspace destructive-operation lock release failed'),
-      );
+    if (!clientState.released) {
+      const disposalReason = unlockFailed
+        ? throwableError(
+            unlockError,
+            'Workspace destructive-operation lock release failed',
+          )
+        : operationFailed
+          ? throwableError(
+              operationError,
+              'Workspace destructive operation failed',
+            )
+          : undefined;
+      try {
+        client.release(disposalReason);
+      } catch (error: unknown) {
+        releaseFailed = true;
+        releaseError = error;
+      }
+    }
   } finally {
     releasePermit();
   }
-  if (operationFailed && !unlockFailed)
+  if (operationFailed && !unlockFailed && !releaseFailed)
     throw throwableError(
       operationError,
       'Workspace destructive operation failed',
     );
-  if (!operationFailed && unlockFailed)
+  if (!operationFailed && unlockFailed && !releaseFailed)
     throw throwableError(
       unlockError,
       'Workspace destructive-operation lock release failed',
     );
-  if (operationFailed && unlockFailed)
+  if (!operationFailed && !unlockFailed && releaseFailed)
+    throw throwableError(
+      releaseError,
+      'Workspace destructive-operation client release failed',
+    );
+  if (operationFailed || unlockFailed || releaseFailed)
     throw new AggregateError(
-      [operationError, unlockError],
+      [
+        ...(operationFailed ? [operationError] : []),
+        ...(unlockFailed ? [unlockError] : []),
+        ...(releaseFailed ? [releaseError] : []),
+      ],
       'Workspace destructive operation did not complete cleanly',
     );
   return result as T;
@@ -278,7 +330,7 @@ function parseLockedRetentionControl(
   });
 }
 
-export async function lockWorkspaceRetentionControl(
+async function lockWorkspaceRetentionControl(
   pool: Pool,
   options: RetentionTransactionOptions,
   signal: AbortSignal | undefined,
@@ -297,6 +349,64 @@ export async function lockWorkspaceRetentionControl(
     if (row === undefined) throw new Error(missingRowMessage);
     return parseLockedRetentionControl(row);
   });
+}
+
+/**
+ * Holds the workspace session lock across the final authoritative-ledger read
+ * and the destructive effect. Control-ledger append owners take the same lock,
+ * so a newer record either projects first or waits until this operation ends.
+ * Database transactions remain short and never span external I/O.
+ */
+export function withWorkspaceDestructiveAuthorization<T>(
+  pool: Pool,
+  options: RetentionTransactionOptions,
+  signal: AbortSignal | undefined,
+  workspaceId: string,
+  ledger: WorkspaceControlLedgerReader,
+  externalOperationTimeoutMs: number,
+  work: (
+    highWater: Readonly<{ hash: string; sequence: number }>,
+    externalSignal: AbortSignal,
+  ) => Promise<T>,
+): Promise<WorkspaceDestructiveAuthorization<T>> {
+  return withWorkspaceDestructiveOperationLock(
+    pool,
+    workspaceId,
+    signal,
+    async () => {
+      const highWater = await lockWorkspaceRetentionControl(
+        pool,
+        options,
+        signal,
+        workspaceId,
+        'Workspace retention control lock was not returned',
+      );
+      const timeoutSignal = AbortSignal.timeout(externalOperationTimeoutMs);
+      const externalSignal =
+        signal === undefined
+          ? timeoutSignal
+          : AbortSignal.any([signal, timeoutSignal]);
+      const reconciliation = await ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: highWater.hash,
+        projectedSequence: highWater.sequence,
+        signal: externalSignal,
+        workspaceId,
+      });
+      if (
+        !reconciliation.reachedHighWater ||
+        reconciliation.hasMore ||
+        reconciliation.records.length !== 0 ||
+        reconciliation.pageEndSequence !== highWater.sequence ||
+        reconciliation.pageEndHash !== highWater.hash
+      )
+        return Object.freeze({ status: 'stale' as const });
+      return Object.freeze({
+        status: 'authorized' as const,
+        value: await work(highWater, externalSignal),
+      });
+    },
+  );
 }
 
 export async function inRetentionTransaction<T>(

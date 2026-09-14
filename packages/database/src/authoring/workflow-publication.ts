@@ -73,7 +73,11 @@ type PublicationVariant = Readonly<{
 }>;
 
 export type WorkflowPublicationDependencies = Readonly<{
-  durableResult(value: unknown): Omit<PublishWorkflowResult, 'replayed'>;
+  durableResult(
+    value: unknown,
+    expectedWorkspaceId: string,
+    expectedWorkflowId: string,
+  ): Omit<PublishWorkflowResult, 'replayed'>;
   keyDigest(key: string): string;
   mapDraft(
     row: Record<string, unknown>,
@@ -154,7 +158,11 @@ async function claimPublication(
     replay:
       claimed.status === 'completed'
         ? Object.freeze({
-            ...dependencies.durableResult(claimed.result_ref),
+            ...dependencies.durableResult(
+              claimed.result_ref,
+              input.workspaceId,
+              workflowId,
+            ),
             replayed: true,
           })
         : null,

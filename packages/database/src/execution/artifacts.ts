@@ -8,8 +8,12 @@ import {
   runEvents,
 } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
-
-const HTTP_FIELD_VALUE = /^[\t\x20-\x7e\x80-\xff]+$/u;
+import {
+  artifactByteLengthSchema,
+  artifactMediaTypeSchema,
+  artifactMetadataMatches,
+  artifactSha256Schema,
+} from './artifact-metadata-contract.js';
 
 export const ARTIFACT_STATUS = {
   available: 'available',
@@ -34,19 +38,9 @@ export type ExecutionStorageObservation = Readonly<{
 
 const metadataSchema = z.object({
   artifactId: z.uuid(),
-  byteLength: z
-    .number()
-    .int()
-    .min(0)
-    .max(5 * 1024 * 1024 * 1024),
-  mediaType: z
-    .string()
-    .trim()
-    .min(3)
-    .max(255)
-    .regex(/^[^\s/;]+\/[^\r\n]+$/u)
-    .regex(HTTP_FIELD_VALUE),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+  byteLength: artifactByteLengthSchema,
+  mediaType: artifactMediaTypeSchema,
+  sha256: artifactSha256Schema,
   storageKey: z.string().min(1).max(512),
 });
 const pendingArtifactSchema = metadataSchema.extend({
@@ -196,9 +190,7 @@ function exactMetadataMatches(
   return (
     artifact.workspaceId === validated.workspaceId &&
     artifact.id === validated.artifactId &&
-    artifact.byteLength === validated.byteLength &&
-    artifact.mediaType === validated.mediaType &&
-    artifact.sha256 === validated.sha256 &&
+    artifactMetadataMatches(artifact, validated) &&
     artifact.storageKey === validated.storageKey
   );
 }

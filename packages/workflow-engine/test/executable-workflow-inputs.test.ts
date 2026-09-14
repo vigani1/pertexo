@@ -1,8 +1,11 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import {
+  NodeExecutionAbortedError,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 
 import {
-  NodeExecutionAbortedError,
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
@@ -10,12 +13,37 @@ import {
   executeNodeAttempt,
   invocationKey,
   resolveSingleNodePreviewInput,
-  nodeRelease,
-  graph,
-} from './executable-workflow.fixtures.js';
+} from '../src/index.js';
+import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 const expressionEvaluator = new JsonataEvaluator();
 afterAll(async () => expressionEvaluator.shutdown());
+
+function mappedExecutable() {
+  const mappedGraph = structuredClone(graph());
+  Object.assign(mappedGraph.nodes[1], {
+    inputMappings: {
+      literal: { kind: 'literal', value: null },
+      fromRun: { kind: 'run_input', path: '$.name' },
+      fromNode: {
+        kind: 'node_output',
+        nodeId: 'manual',
+        path: '$.base',
+      },
+      missing: { kind: 'run_input', path: '$.absent' },
+      expression: {
+        kind: 'expression',
+        language: 'jsonata',
+        expression: 'runInput.count + nodeOutputs.manual.base',
+        policyVersion: 1,
+      },
+    },
+  });
+  return buildWorkflowExecutableV2({
+    graph: mappedGraph,
+    release: composeExecutableCompatibilityRelease(nodeRelease()),
+  });
+}
 
 describe('input resolution production operations', () => {
   it.each([2, 3] as const)(
@@ -124,31 +152,8 @@ describe('input resolution production operations', () => {
       ).rejects.toMatchObject({ code: 'observation_invalid' });
   });
 
-  it('resolves mapped inputs and preserves confirmed success after abort', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const mappedGraph = structuredClone(graph());
-    Object.assign(mappedGraph.nodes[1], {
-      inputMappings: {
-        literal: { kind: 'literal', value: null },
-        fromRun: { kind: 'run_input', path: '$.name' },
-        fromNode: {
-          kind: 'node_output',
-          nodeId: 'manual',
-          path: '$.base',
-        },
-        missing: { kind: 'run_input', path: '$.absent' },
-        expression: {
-          kind: 'expression',
-          language: 'jsonata',
-          expression: 'runInput.count + nodeOutputs.manual.base',
-          policyVersion: 1,
-        },
-      },
-    });
-    const executable = buildWorkflowExecutableV2({
-      graph: mappedGraph,
-      release,
-    });
+  it('resolves mapped input sources independently', async () => {
+    const executable = mappedExecutable();
     let received: unknown;
     const registry = {
       execute: (request: { readonly input: unknown }) => {
@@ -214,6 +219,17 @@ describe('input resolution production operations', () => {
         '00000000-0000-4000-8000-000000000001|set|b:condition%3Atrue|i:',
       kind: 'succeeded',
     });
+  });
+
+  it('rejects invalid attempt and upstream identities before execution', async () => {
+    const executable = mappedExecutable();
+    const registry = {
+      execute: (request: { readonly input: unknown }) =>
+        Promise.resolve({
+          kind: 'succeeded' as const,
+          output: request.input as never,
+        }),
+    };
     await expect(
       executeNodeAttempt({
         runId: 'run-1',
@@ -248,6 +264,10 @@ describe('input resolution production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ code: 'attempt_invalid' });
+  });
+
+  it('preserves confirmed registry success after in-flight abort', async () => {
+    const executable = mappedExecutable();
 
     const controller = new AbortController();
     await expect(
@@ -280,6 +300,10 @@ describe('input resolution production operations', () => {
       attemptId: 'attempt-1',
       kind: 'succeeded',
     });
+  });
+
+  it('preserves typed executor failures and normalizes other rejections', async () => {
+    const executable = mappedExecutable();
 
     await expect(
       executeNodeAttempt({
@@ -303,7 +327,6 @@ describe('input resolution production operations', () => {
       }),
     ).rejects.toMatchObject({ code: 'attempt_aborted' });
 
-    const { NodeExecutorFailure } = await import('@pertexo/node-sdk/server');
     const unknownOutcome = new NodeExecutorFailure({
       kind: 'outcome_unknown',
       errorKind: 'provider',
@@ -401,6 +424,97 @@ describe('input resolution production operations', () => {
       code: 'attempt_invalid',
       message: 'node execution failed',
     });
+  });
+
+  it('contains hostile registry and expression-evaluator rejections', async () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const expressionGraph = structuredClone(graph());
+    Object.assign(expressionGraph.nodes[1], {
+      inputMappings: {
+        expression: {
+          kind: 'expression',
+          language: 'jsonata',
+          expression: 'runInput.value',
+          policyVersion: 1,
+        },
+      },
+    });
+    const expressionExecutable = buildWorkflowExecutableV2({
+      graph: expressionGraph,
+      release,
+    });
+    const throwingName = new Error('private registry message');
+    Object.defineProperty(throwingName, 'name', {
+      get() {
+        throw new Error('secondary name failure');
+      },
+    });
+    const prototypeTrap = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('secondary prototype failure');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
+
+    const base = {
+      runId: 'run-hostile',
+      nodeRunId: 'node-run-hostile',
+      attemptId: 'attempt-hostile',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      invocationKey: invocationKey({
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        nodeId: 'set',
+      }),
+      nodeId: 'set',
+      runInput: { value: 1 },
+      completedNodeOutputs: { manual: {} },
+      signal: new AbortController().signal,
+    } as const;
+    for (const rejection of [throwingName, prototypeTrap, revoked.proxy])
+      await expect(
+        executeNodeAttempt({
+          ...base,
+          executable,
+          registry: {
+            // Exercises classification of hostile non-Error Promise rejections.
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            execute: () => Promise.reject(rejection),
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'attempt_invalid',
+        message: 'node execution failed',
+      });
+
+    for (const rejection of [prototypeTrap, revoked.proxy]) {
+      let registryCalls = 0;
+      await expect(
+        executeNodeAttempt({
+          ...base,
+          executable: expressionExecutable,
+          expressionEvaluator: {
+            // Exercises classification of hostile non-Error Promise rejections.
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            evaluate: () => Promise.reject(rejection),
+          },
+          registry: {
+            execute: () => {
+              registryCalls += 1;
+              return Promise.resolve({ kind: 'succeeded', output: {} });
+            },
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'attempt_invalid',
+        message: 'mapping failed',
+      });
+      expect(registryCalls).toBe(0);
+    }
   });
 
   it.each([

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 import { apiProblemIssueSchema } from '../errors/api-problem.js';
+import {
+  boundedNodeTestJsonInputSchema,
+  NODE_TEST_JSON_MAX_DEPTH,
+} from './bounded-json-input.js';
+
+export { NODE_TEST_JSON_MAX_DEPTH };
 
 export const NODE_TEST_LIMITS_V1 = Object.freeze({
   validationIssues: 100,
@@ -36,7 +42,12 @@ export const nodeSideEffectDisclosureSchema = z
   .strict();
 
 export const nodeTestInputSourceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('manual'), value: z.json() }).strict(),
+  z
+    .object({
+      kind: z.literal('manual'),
+      value: boundedNodeTestJsonInputSchema,
+    })
+    .strict(),
   z
     .object({
       kind: z.literal('prior_preview'),
@@ -49,7 +60,7 @@ export const nodeValidateRequestSchema = z
   .object({
     mode: z.literal('validate'),
     expectedRevision: z.number().int().positive(),
-    sampleInput: z.json().optional(),
+    sampleInput: boundedNodeTestJsonInputSchema.optional(),
   })
   .strict();
 

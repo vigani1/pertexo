@@ -106,7 +106,7 @@
           "refId": "B"
         },
         {
-          "expr": "sum(increase(pertexo_worker_process_starts_total[15m]))",
+          "expr": "count(pertexo_worker_process_start_time_seconds > time() - 900)",
           "legendFormat": "worker starts",
           "refId": "C"
         }

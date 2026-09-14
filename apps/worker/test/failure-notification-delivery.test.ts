@@ -486,6 +486,85 @@ describe('provider failure notification delivery', () => {
     );
   });
 
+  it('binds every Resend dispatch identity field deterministically', async () => {
+    const bindingFor = async (
+      overrides: {
+        secretVersionId?: string;
+        fromEmail?: string;
+        toEmail?: string;
+        idempotencyKey?: string;
+        context?: typeof context;
+      } = {},
+    ): Promise<string> => {
+      const persistence = store('email');
+      const secretVersionId =
+        overrides.secretVersionId ?? identity.connectionSecretVersionId;
+      vi.mocked(persistence.loadDestination).mockResolvedValue({
+        kind: 'email',
+        connectionId: '88888888-8888-4888-8888-888888888888',
+        secretVersionId,
+        sealed,
+        toEmail: overrides.toEmail ?? 'ops@example.test',
+      });
+      const delivery = createProviderFailureNotificationDelivery({
+        store: persistence,
+        encryption: {
+          open: vi.fn(() =>
+            Promise.resolve(
+              new TextEncoder().encode(
+                JSON.stringify({
+                  schemaVersion: 1,
+                  type: 'resend_api_key',
+                  apiKey: 're_12345678',
+                  fromEmail: overrides.fromEmail ?? 'sender@example.test',
+                }),
+              ),
+            ),
+          ),
+        },
+        slack: { sendMessage: vi.fn() },
+        email: {
+          sendNotification: vi.fn<ResendClient['sendNotification']>(
+            async (input) => {
+              await input.beforeDispatch();
+              return { kind: 'succeeded', emailId: 'email-1' };
+            },
+          ),
+        },
+        workerId: 'worker-1',
+      });
+      await delivery.deliver({
+        ...identity,
+        connectionSecretVersionId: secretVersionId,
+        idempotencyKey: overrides.idempotencyKey ?? identity.idempotencyKey,
+        context: overrides.context ?? context,
+        sideEffectClass: 'idempotent_with_key',
+      });
+      const binding = vi.mocked(persistence.fenceDispatch).mock.calls[0]?.[0]
+        .deliveryBinding;
+      if (binding === undefined)
+        throw new Error('email binding was not fenced');
+      return binding;
+    };
+
+    const baseline = await bindingFor();
+    await expect(bindingFor()).resolves.toBe(baseline);
+    expect(baseline).toMatch(/^email:v1:sha256:[0-9a-f]{64}$/u);
+    const variants = [
+      await bindingFor({
+        secretVersionId: '99999999-9999-4999-8999-999999999999',
+      }),
+      await bindingFor({ fromEmail: 'other-sender@example.test' }),
+      await bindingFor({ toEmail: 'other-ops@example.test' }),
+      await bindingFor({ idempotencyKey: `${identity.idempotencyKey}:other` }),
+      await bindingFor({
+        context: { ...context, workflowId: crypto.randomUUID() },
+      }),
+    ];
+    expect(new Set(variants).size).toBe(variants.length);
+    for (const binding of variants) expect(binding).not.toBe(baseline);
+  });
+
   it.each([
     [
       'post-dispatch HTTP 5xx',
@@ -503,22 +582,26 @@ describe('provider failure notification delivery', () => {
     'settles email %s from persisted ambiguity',
     async (_name, providerResult, initial, unresolved) => {
       const persistence = store('email');
+      const credentialBytes: Uint8Array[] = [];
+      const sendNotification = vi.fn().mockResolvedValue(providerResult);
       const delivery = createProviderFailureNotificationDelivery({
         store: persistence,
         encryption: {
-          open: vi.fn().mockResolvedValue(
-            new TextEncoder().encode(
+          open: vi.fn(() => {
+            const bytes = new TextEncoder().encode(
               JSON.stringify({
                 schemaVersion: 1,
                 type: 'resend_api_key',
                 apiKey: 're_12345678',
                 fromEmail: 'sender@example.test',
               }),
-            ),
-          ),
+            );
+            credentialBytes.push(bytes);
+            return Promise.resolve(bytes);
+          }),
         },
         slack: { sendMessage: vi.fn() },
-        email: { sendNotification: vi.fn().mockResolvedValue(providerResult) },
+        email: { sendNotification },
         workerId: 'worker-1',
       });
 
@@ -536,6 +619,10 @@ describe('provider failure notification delivery', () => {
           sideEffectClass: 'idempotent_with_key',
         }),
       ).resolves.toMatchObject(unresolved);
+      expect(sendNotification).toHaveBeenCalledTimes(2);
+      expect(credentialBytes).toHaveLength(2);
+      for (const bytes of credentialBytes)
+        expect([...bytes].every((byte) => byte === 0)).toBe(true);
     },
   );
 
@@ -972,4 +1059,63 @@ describe('provider failure notification delivery', () => {
       safeErrorCode: 'delivery.identity_changed',
     });
   });
+
+  it.each(['destination', 'credential', 'provider'] as const)(
+    'contains hostile %s classification without replacing policy truth',
+    async (stage) => {
+      const hostile = new Proxy(
+        {},
+        {
+          getPrototypeOf() {
+            throw new Error('hostile prototype');
+          },
+        },
+      );
+      const persistence = store('email');
+      if (stage === 'destination')
+        vi.mocked(persistence.loadDestination).mockRejectedValue(hostile);
+      const provider = vi.fn<ResendClient['sendNotification']>(
+        async (input) => {
+          await input.beforeDispatch();
+          // Intentionally exercise containment of a hostile legacy rejection.
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
+          throw hostile;
+        },
+      );
+      const delivery = createProviderFailureNotificationDelivery({
+        store: persistence,
+        encryption: {
+          open:
+            stage === 'credential'
+              ? vi.fn().mockRejectedValue(hostile)
+              : vi.fn(() =>
+                  Promise.resolve(
+                    new TextEncoder().encode(
+                      JSON.stringify({
+                        schemaVersion: 1,
+                        type: 'resend_api_key',
+                        apiKey: 're_12345678',
+                        fromEmail: 'sender@example.test',
+                      }),
+                    ),
+                  ),
+                ),
+        },
+        slack: { sendMessage: vi.fn() },
+        email: { sendNotification: provider },
+        workerId: 'worker-1',
+      });
+
+      const operation = delivery.deliver({
+        ...identity,
+        sideEffectClass: 'idempotent_with_key',
+      });
+      if (stage === 'destination')
+        await expect(operation).resolves.toMatchObject({
+          kind: 'retry',
+          possiblyDispatched: false,
+        });
+      else await expect(operation).rejects.toBe(hostile);
+    },
+  );
 });

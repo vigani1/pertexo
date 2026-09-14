@@ -59,7 +59,7 @@ describe('Compose service control', () => {
     const stopped = await controller.stop('postgres');
     await expect(controller.start(stopped)).resolves.toBe(20);
 
-    expect(compose.mock.calls).toEqual([
+    expect(compose.mock.calls.map(([arguments_]) => [arguments_])).toEqual([
       [['ps', '--all', '--quiet', 'postgres']],
       [['stop', '--timeout', '10', 'postgres']],
       [['ps', '--all', '--quiet', 'postgres']],
@@ -70,6 +70,75 @@ describe('Compose service control', () => {
       [['ps', '--all', '--quiet', 'postgres']],
       [['ps', '--all', '--quiet', 'postgres']],
     ]);
+  });
+
+  it('does not admit another start after a clean-exit retry consumes the deadline', async () => {
+    let now = 0;
+    const composeCalls: string[][] = [];
+    const compose = vi.fn((arguments_: readonly string[]) => {
+      composeCalls.push([...arguments_]);
+      return Promise.resolve(
+        arguments_[0] === 'ps' ? 'postgres-container' : '',
+      );
+    });
+    const controller = createComposeServiceController({
+      compose,
+      inspect: vi.fn().mockResolvedValue({
+        exitCode: 0,
+        health: null,
+        status: 'exited',
+      }),
+      now: () => now,
+      pollIntervalMillis: 10,
+      startDeadlineMillis: 10,
+      wait: (millis) => {
+        now += millis;
+        return Promise.resolve();
+      },
+    });
+
+    await expect(
+      controller.start({
+        containerId: 'postgres-container',
+        service: 'postgres',
+      }),
+    ).rejects.toThrow(/recovery deadline/u);
+    expect(
+      composeCalls.filter((arguments_) => arguments_[0] === 'start'),
+    ).toHaveLength(1);
+  });
+
+  it('passes the shrinking recovery budget to every admitted command', async () => {
+    let now = 0;
+    const timeouts: number[] = [];
+    const compose = vi.fn(
+      (arguments_: readonly string[], timeoutMillis?: number) => {
+        if (timeoutMillis !== undefined) timeouts.push(timeoutMillis);
+        now += 2;
+        return Promise.resolve(arguments_[0] === 'ps' ? 'redis-container' : '');
+      },
+    );
+    const controller = createComposeServiceController({
+      compose,
+      inspect: (_containerId, timeoutMillis) => {
+        if (timeoutMillis !== undefined) timeouts.push(timeoutMillis);
+        now += 2;
+        return Promise.resolve({
+          exitCode: 0,
+          health: 'healthy' as const,
+          status: 'running' as const,
+        });
+      },
+      now: () => now,
+      pollIntervalMillis: 10,
+      startDeadlineMillis: 20,
+      wait: () => Promise.resolve(),
+    });
+
+    await expect(
+      controller.start({ containerId: 'redis-container', service: 'redis' }),
+    ).resolves.toBe(8);
+    expect(timeouts).toEqual([20, 18, 16, 14]);
   });
 
   it('fails a genuinely unhealthy service without retrying it', async () => {

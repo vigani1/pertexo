@@ -3,7 +3,6 @@ import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
 export type DraftRepresentation = Readonly<{
   workflowId: string;
   revision: number;
-  schemaVersion: number;
   graph: unknown;
   compatibilityFingerprint: string;
 }>;

@@ -80,16 +80,19 @@ function boundedBytes(
   return new Uint8Array(value);
 }
 
+export function isValidEnvelopeKeyReference(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    Buffer.byteLength(value, 'utf8') <= MAX_KEY_REFERENCE_BYTES
+  );
+}
+
 function validKeyReference(
   value: unknown,
   createFailure: FailureFactory,
 ): string {
-  if (
-    typeof value !== 'string' ||
-    value.length === 0 ||
-    Buffer.byteLength(value, 'utf8') > MAX_KEY_REFERENCE_BYTES
-  )
-    fail(createFailure);
+  if (!isValidEnvelopeKeyReference(value)) fail(createFailure);
   return value;
 }
 
@@ -111,15 +114,21 @@ function decode(
   maximum: number,
   createFailure: FailureFactory,
 ): Uint8Array {
-  if (!/^[A-Za-z0-9_-]*$/u.test(value)) fail(createFailure);
-  const decoded = Buffer.from(value, 'base64url');
-  if (
-    decoded.byteLength < minimum ||
-    decoded.byteLength > maximum ||
-    decoded.toString('base64url') !== value
-  )
+  const maximumEncodedLength = Math.ceil((maximum * 4) / 3);
+  if (value.length > maximumEncodedLength || !/^[A-Za-z0-9_-]*$/u.test(value))
     fail(createFailure);
-  return new Uint8Array(decoded);
+  const decoded = Buffer.from(value, 'base64url');
+  try {
+    if (
+      decoded.byteLength < minimum ||
+      decoded.byteLength > maximum ||
+      decoded.toString('base64url') !== value
+    )
+      fail(createFailure);
+    return new Uint8Array(decoded);
+  } finally {
+    decoded.fill(0);
+  }
 }
 
 function kmsOptions(
@@ -249,6 +258,8 @@ export class AwsKmsEnvelopeKeyProviderCore<
       providerPlaintext?.fill(0);
       plaintextKey?.fill(0);
       throw this.createFailure();
+    } finally {
+      boundedEncryptedKey.fill(0);
     }
   }
 }
@@ -273,6 +284,13 @@ export class EnvelopeCipher<Context> {
     let ownedPlaintext: Uint8Array | undefined;
     let providerKey: Uint8Array | undefined;
     let key: Uint8Array | undefined;
+    let providerEncryptedDataKey: Uint8Array | undefined;
+    let encryptedDataKey: Uint8Array | undefined;
+    let nonce: Buffer | undefined;
+    let authTag: Buffer | undefined;
+    let cipherUpdate: Buffer | undefined;
+    let cipherFinal: Buffer | undefined;
+    let ciphertext: Buffer | undefined;
     try {
       assertNotAborted(signal, this.options.createFailure);
       const requiredBytes = this.options.exactPlaintextBytes ?? 1;
@@ -292,24 +310,25 @@ export class EnvelopeCipher<Context> {
         this.options.createFailure,
       );
       providerKey.fill(0);
-      const encryptedDataKey = boundedBytes(
-        generated.encryptedDataKey,
+      providerEncryptedDataKey = generated.encryptedDataKey;
+      encryptedDataKey = boundedBytes(
+        providerEncryptedDataKey,
         1,
         MAX_ENCRYPTED_DATA_KEY_BYTES,
         this.options.createFailure,
       );
+      providerEncryptedDataKey.fill(0);
       const keyReference = validKeyReference(
         generated.keyReference,
         this.options.createFailure,
       );
-      const nonce = randomBytes(GCM_NONCE_BYTES);
+      nonce = randomBytes(GCM_NONCE_BYTES);
       const cipher = createCipheriv('aes-256-gcm', key, nonce);
       cipher.setAAD(this.options.associatedData(context));
-      const ciphertext = Buffer.concat([
-        cipher.update(ownedPlaintext),
-        cipher.final(),
-      ]);
-      const authTag = cipher.getAuthTag();
+      cipherUpdate = cipher.update(ownedPlaintext);
+      cipherFinal = cipher.final();
+      ciphertext = Buffer.concat([cipherUpdate, cipherFinal]);
+      authTag = cipher.getAuthTag();
       assertNotAborted(signal, this.options.createFailure);
       if (authTag.byteLength !== GCM_TAG_BYTES)
         fail(this.options.createFailure);
@@ -325,6 +344,13 @@ export class EnvelopeCipher<Context> {
     } finally {
       if (this.options.clearCallerPlaintext === true) plaintext.fill(0);
       ownedPlaintext?.fill(0);
+      authTag?.fill(0);
+      nonce?.fill(0);
+      encryptedDataKey?.fill(0);
+      providerEncryptedDataKey?.fill(0);
+      ciphertext?.fill(0);
+      cipherFinal?.fill(0);
+      cipherUpdate?.fill(0);
       key?.fill(0);
       providerKey?.fill(0);
     }
@@ -339,16 +365,46 @@ export class EnvelopeCipher<Context> {
     let key: Uint8Array | undefined;
     let result: Uint8Array | undefined;
     let plaintext: Buffer | undefined;
+    let decipherUpdate: Buffer | undefined;
+    let decipherFinal: Buffer | undefined;
+    let encryptedDataKey: Uint8Array | undefined;
+    let nonce: Uint8Array | undefined;
+    let authTag: Uint8Array | undefined;
+    let ciphertext: Uint8Array | undefined;
     try {
       assertNotAborted(signal, this.options.createFailure);
+      encryptedDataKey = decode(
+        envelope.encryptedDataKey,
+        1,
+        MAX_ENCRYPTED_DATA_KEY_BYTES,
+        this.options.createFailure,
+      );
+      const keyReference = validKeyReference(
+        envelope.keyReference,
+        this.options.createFailure,
+      );
+      nonce = decode(
+        envelope.nonce,
+        GCM_NONCE_BYTES,
+        GCM_NONCE_BYTES,
+        this.options.createFailure,
+      );
+      authTag = decode(
+        envelope.authTag,
+        GCM_TAG_BYTES,
+        GCM_TAG_BYTES,
+        this.options.createFailure,
+      );
+      const requiredBytes = this.options.exactPlaintextBytes ?? 1;
+      ciphertext = decode(
+        envelope.ciphertext,
+        requiredBytes,
+        this.options.exactPlaintextBytes ?? this.options.maximumPlaintextBytes,
+        this.options.createFailure,
+      );
       providerKey = await this.keys.decryptDataKey(
-        decode(
-          envelope.encryptedDataKey,
-          1,
-          MAX_ENCRYPTED_DATA_KEY_BYTES,
-          this.options.createFailure,
-        ),
-        validKeyReference(envelope.keyReference, this.options.createFailure),
+        encryptedDataKey,
+        keyReference,
         context,
         signal,
       );
@@ -360,32 +416,12 @@ export class EnvelopeCipher<Context> {
         this.options.createFailure,
       );
       providerKey.fill(0);
-      const nonce = decode(
-        envelope.nonce,
-        GCM_NONCE_BYTES,
-        GCM_NONCE_BYTES,
-        this.options.createFailure,
-      );
-      const authTag = decode(
-        envelope.authTag,
-        GCM_TAG_BYTES,
-        GCM_TAG_BYTES,
-        this.options.createFailure,
-      );
-      const requiredBytes = this.options.exactPlaintextBytes ?? 1;
-      const ciphertext = decode(
-        envelope.ciphertext,
-        requiredBytes,
-        this.options.exactPlaintextBytes ?? this.options.maximumPlaintextBytes,
-        this.options.createFailure,
-      );
       const decipher = createDecipheriv('aes-256-gcm', key, nonce);
       decipher.setAAD(this.options.associatedData(context));
       decipher.setAuthTag(authTag);
-      plaintext = Buffer.concat([
-        decipher.update(ciphertext),
-        decipher.final(),
-      ]);
+      decipherUpdate = decipher.update(ciphertext);
+      decipherFinal = decipher.final();
+      plaintext = Buffer.concat([decipherUpdate, decipherFinal]);
       if (
         plaintext.byteLength < requiredBytes ||
         plaintext.byteLength >
@@ -402,6 +438,12 @@ export class EnvelopeCipher<Context> {
       throw this.options.createFailure();
     } finally {
       plaintext?.fill(0);
+      decipherFinal?.fill(0);
+      decipherUpdate?.fill(0);
+      ciphertext?.fill(0);
+      authTag?.fill(0);
+      nonce?.fill(0);
+      encryptedDataKey?.fill(0);
       key?.fill(0);
       providerKey?.fill(0);
     }

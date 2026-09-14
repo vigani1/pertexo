@@ -14,14 +14,19 @@ import {
   currentRepresentationTag,
   deferred,
   emptyGraph,
+  finishControlledScenario,
+  finishTransactionClient,
   migrationUrl,
   otherWorkflowId,
   parseDatabaseConfig,
   baselineEmptyDefinitionCatalog,
   queryAsOwner,
+  randomUUID,
+  saveCurrentDraft,
   workflowId,
   workspaceId,
   waitForPostgresLock,
+  waitForOperationEntry,
   withApplicationName,
 } from './support/workflow-authoring.integration.support.js';
 
@@ -63,6 +68,7 @@ describe('workflow authoring coordination', () => {
       max: 1,
     });
     const owner = await pointerPool.connect();
+    let rollbackFailure: unknown;
     try {
       const created = await lockingAuthoring.createWorkflow({
         actorId,
@@ -86,7 +92,11 @@ describe('workflow authoring coordination', () => {
         workflowId: created.workflowId,
         workspaceId,
       });
-      await releaseLocked.promise;
+      await waitForOperationEntry(
+        releaseLocked.promise,
+        publication,
+        'compatibility-locked publication',
+      );
 
       await owner.query('begin');
       await owner.query('set local role pertexo_owner');
@@ -111,10 +121,20 @@ describe('workflow authoring coordination', () => {
       await owner.query('commit');
     } catch (error: unknown) {
       releasePublication.resolve();
-      await owner.query('rollback').catch(() => undefined);
+      try {
+        await owner.query('rollback');
+      } catch (rollbackError: unknown) {
+        rollbackFailure = rollbackError;
+      }
       throw error;
     } finally {
-      owner.release();
+      owner.release(
+        rollbackFailure === undefined
+          ? undefined
+          : new Error('Compatibility pointer proof rollback failed', {
+              cause: rollbackFailure,
+            }),
+      );
       await pointerPool.end();
       await lockingAuthoring.close();
     }
@@ -122,14 +142,14 @@ describe('workflow authoring coordination', () => {
 
   it('allows exactly one racing compare-and-swap save', async () => {
     const results = await Promise.allSettled([
-      authoring.saveDraft({
+      saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 1,
         graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 1_000 } },
         workflowId,
         workspaceId,
       }),
-      authoring.saveDraft({
+      saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 1,
         graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 2_000 } },
@@ -168,8 +188,11 @@ describe('workflow authoring coordination', () => {
       workspaceId,
     });
     const client = await apiPool.connect();
+    let transactionOpen = false;
+    let primaryError: unknown;
     try {
       await client.query('begin');
+      transactionOpen = true;
       await client.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -178,12 +201,18 @@ describe('workflow authoring coordination', () => {
         [created.workflowId],
       );
       await client.query('commit');
-    } finally {
-      client.release();
+      transactionOpen = false;
+    } catch (error: unknown) {
+      primaryError = error;
     }
+    await finishTransactionClient(client, {
+      label: 'Archived workflow fixture update',
+      primaryError,
+      transactionOpen,
+    });
 
     await expect(
-      authoring.saveDraft({
+      saveCurrentDraft(authoring, {
         actorId,
         expectedRevision: 1,
         graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 1_000 } },
@@ -203,6 +232,196 @@ describe('workflow authoring coordination', () => {
     expect(facts[0]).toEqual({ audits: '0', revision: 1 });
   });
 
+  it.each(['save', 'publish', 'lifecycle'] as const)(
+    'holds actor authority stable until the %s command commits',
+    async (command) => {
+      const created = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: `create-authority-${command}-${randomUUID()}`,
+        name: `Authority ${command}`,
+        workspaceId,
+      });
+      const entered = deferred();
+      const releaseOperation = deferred();
+      const authorityApplication = `wa-${command}-${randomUUID()}`;
+      const controlled = createWorkflowAuthoringDatabase(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+        {
+          testHooks: {
+            ...(command === 'save'
+              ? {
+                  afterSaveCas: async () => {
+                    entered.resolve();
+                    await releaseOperation.promise;
+                  },
+                }
+              : {}),
+            ...(command === 'publish'
+              ? {
+                  afterPublishDraftLock: async () => {
+                    entered.resolve();
+                    await releaseOperation.promise;
+                  },
+                }
+              : {}),
+            ...(command === 'lifecycle'
+              ? {
+                  afterLifecycleStep: async (step) => {
+                    if (step !== 'workflow') return;
+                    entered.resolve();
+                    await releaseOperation.promise;
+                  },
+                }
+              : {}),
+          },
+        },
+      );
+      const authorityPool = new Pool({
+        connectionString: withApplicationName(
+          migrationUrl,
+          authorityApplication,
+        ),
+        max: 1,
+      });
+      const authority = await authorityPool.connect();
+      let operation: Promise<unknown> | undefined;
+      let suspension: Promise<unknown> | undefined;
+      let authorityOpen = false;
+      let primaryError: unknown;
+      let cleanupFailures: unknown[] = [];
+      try {
+        operation =
+          command === 'save'
+            ? saveCurrentDraft(controlled, {
+                actorId,
+                expectedRevision: 1,
+                graphJson: {
+                  ...emptyGraph,
+                  settings: { maxRunDurationMs: 5_000 },
+                },
+                workflowId: created.workflowId,
+                workspaceId,
+              })
+            : command === 'publish'
+              ? controlled.publishWorkflow({
+                  actorId,
+                  representationTag: await currentRepresentationTag(
+                    controlled,
+                    workspaceId,
+                    created.workflowId,
+                    actorId,
+                  ),
+                  idempotencyKey: `publish-authority-${created.workflowId}`,
+                  requestHash: '9'.repeat(64),
+                  workflowId: created.workflowId,
+                  workspaceId,
+                })
+              : controlled.transitionWorkflowLifecycle({
+                  actorId,
+                  command: 'archive',
+                  expectedLifecycleRevision: 1,
+                  idempotencyKey: `archive-authority-${created.workflowId}`,
+                  workflowId: created.workflowId,
+                  workspaceId,
+                });
+        await waitForOperationEntry(
+          entered.promise,
+          operation,
+          `${command} authority command`,
+        );
+
+        await authority.query('begin');
+        authorityOpen = true;
+        await authority.query('set local role pertexo_owner');
+        await authority.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        suspension = authority.query(
+          `update app.workspace_memberships set status='suspended'
+            where workspace_id=$1 and user_id=$2`,
+          [workspaceId, actorId],
+        );
+        void suspension.catch(() => undefined);
+        await waitForPostgresLock(authorityApplication);
+        releaseOperation.resolve();
+        await expect(operation).resolves.toBeDefined();
+        await expect(suspension).resolves.toMatchObject({ rowCount: 1 });
+        await authority.query('rollback');
+        authorityOpen = false;
+
+        const facts = await queryAsOwner<{
+          audits: string;
+          lifecycle_revision: number;
+          published_version_id: string | null;
+          revision: number;
+        }>(
+          `select draft.revision, workflow.lifecycle_revision,
+                  workflow.published_version_id,
+                  (select count(*) from app.audit_events audit
+                    where audit.target_id=workflow.id
+                      and audit.action = $2)::text audits
+             from app.workflows workflow
+             join app.workflow_drafts draft on draft.workflow_id=workflow.id
+            where workflow.id=$1`,
+          [
+            created.workflowId,
+            command === 'save'
+              ? 'workflow.draft_saved'
+              : command === 'publish'
+                ? 'workflow.published'
+                : 'workflow.archived',
+          ],
+          workspaceId,
+        );
+        expect(facts[0]).toMatchObject({
+          audits: '1',
+          lifecycle_revision: command === 'lifecycle' ? 2 : 1,
+          revision: command === 'save' ? 2 : 1,
+        });
+        if (command === 'publish')
+          expect(facts[0]?.published_version_id).toEqual(expect.any(String));
+        else expect(facts[0]?.published_version_id).toBeNull();
+      } catch (error: unknown) {
+        primaryError = error;
+      } finally {
+        releaseOperation.resolve();
+        if (authorityOpen)
+          await authority.query('rollback').catch(() => undefined);
+        await Promise.allSettled(
+          [operation, suspension].filter(
+            (value): value is Promise<unknown> => value !== undefined,
+          ),
+        );
+        authority.release();
+        const cleanup = await Promise.allSettled([
+          authorityPool.end(),
+          controlled.close(),
+        ]);
+        cleanupFailures = cleanup.flatMap((result) =>
+          result.status === 'rejected' ? [result.reason as unknown] : [],
+        );
+      }
+      if (primaryError !== undefined) {
+        if (cleanupFailures.length > 0)
+          throw new AggregateError(
+            [primaryError, ...cleanupFailures],
+            `${command} authority proof and cleanup failed`,
+          );
+        if (primaryError instanceof Error) throw primaryError;
+        throw new Error(`${command} authority proof failed`, {
+          cause: primaryError,
+        });
+      }
+      if (cleanupFailures.length > 0)
+        throw new AggregateError(
+          cleanupFailures,
+          `${command} authority proof cleanup failed`,
+        );
+    },
+    15_000,
+  );
+
   it('lists immutable versions with a bounded deterministic cursor', async () => {
     const created = await authoring.createWorkflow({
       actorId,
@@ -213,7 +432,7 @@ describe('workflow authoring coordination', () => {
     });
     for (const [index, duration] of [undefined, 1_000, 2_000].entries()) {
       if (duration !== undefined) {
-        await authoring.saveDraft({
+        await saveCurrentDraft(authoring, {
           actorId,
           expectedRevision: index,
           graphJson: {
@@ -306,8 +525,11 @@ describe('workflow authoring coordination', () => {
         max: 1,
       }),
     );
+    let save: Promise<unknown> | undefined;
+    let publish: Promise<unknown> | undefined;
+    let primaryError: unknown;
     try {
-      const save = saveFirstDatabase.saveDraft({
+      save = saveCurrentDraft(saveFirstDatabase, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -317,8 +539,8 @@ describe('workflow authoring coordination', () => {
         workflowId: saveFirstDraft.workflowId,
         workspaceId,
       });
-      await saveLocked.promise;
-      const publish = saveFirstPublisher.publishWorkflow({
+      await waitForOperationEntry(saveLocked.promise, save, 'save-first save');
+      publish = saveFirstPublisher.publishWorkflow({
         actorId,
         representationTag: saveFirstTag,
         idempotencyKey: 'publish-save-first-race',
@@ -333,12 +555,19 @@ describe('workflow authoring coordination', () => {
       releaseSave.resolve();
       await expect(save).resolves.toMatchObject({ revision: 2 });
       await publishExpectation;
-    } finally {
-      await Promise.all([
-        saveFirstDatabase.close(),
-        saveFirstPublisher.close(),
-      ]);
+    } catch (error: unknown) {
+      primaryError = error;
     }
+    await finishControlledScenario({
+      close: [
+        () => saveFirstDatabase.close(),
+        () => saveFirstPublisher.close(),
+      ],
+      label: 'save-first authoring race',
+      operations: [save, publish],
+      primaryError,
+      release: releaseSave.resolve,
+    });
 
     const publishFirstDraft = await authoring.createWorkflow({
       actorId,
@@ -376,8 +605,11 @@ describe('workflow authoring coordination', () => {
         max: 1,
       }),
     );
+    let publishFirstOperation: Promise<unknown> | undefined;
+    let saveAfterPublish: Promise<unknown> | undefined;
+    primaryError = undefined;
     try {
-      const publish = publishFirstDatabase.publishWorkflow({
+      publishFirstOperation = publishFirstDatabase.publishWorkflow({
         actorId,
         representationTag: publishFirstTag,
         idempotencyKey: 'publish-publish-first-race',
@@ -385,8 +617,12 @@ describe('workflow authoring coordination', () => {
         workflowId: publishFirstDraft.workflowId,
         workspaceId,
       });
-      await publishLocked.promise;
-      const save = publishFirstSaver.saveDraft({
+      await waitForOperationEntry(
+        publishLocked.promise,
+        publishFirstOperation,
+        'publish-first publication',
+      );
+      saveAfterPublish = saveCurrentDraft(publishFirstSaver, {
         actorId,
         expectedRevision: 1,
         graphJson: {
@@ -396,20 +632,27 @@ describe('workflow authoring coordination', () => {
         workflowId: publishFirstDraft.workflowId,
         workspaceId,
       });
-      const saveExpectation = expect(save).resolves.toMatchObject({
+      const saveExpectation = expect(saveAfterPublish).resolves.toMatchObject({
         revision: 2,
       });
       await waitForPostgresLock(publishFirstSaverApplication);
       releasePublish.resolve();
-      await expect(publish).resolves.toMatchObject({
+      await expect(publishFirstOperation).resolves.toMatchObject({
         version: { graphJson: emptyGraph },
       });
       await saveExpectation;
-    } finally {
-      await Promise.all([
-        publishFirstDatabase.close(),
-        publishFirstSaver.close(),
-      ]);
+    } catch (error: unknown) {
+      primaryError = error;
     }
+    await finishControlledScenario({
+      close: [
+        () => publishFirstDatabase.close(),
+        () => publishFirstSaver.close(),
+      ],
+      label: 'publish-first authoring race',
+      operations: [publishFirstOperation, saveAfterPublish],
+      primaryError,
+      release: releasePublish.resolve,
+    });
   });
 });

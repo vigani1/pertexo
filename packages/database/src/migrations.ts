@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Pool, type PoolClient } from 'pg';
 
 import type { MigrationConfig } from './config.js';
+import { applyMigrationExecution } from './migration-application.js';
 import {
   loadMigrationExecutionPlan,
   type MigrationExecution,
@@ -14,7 +15,9 @@ import {
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
 const migrationNamePattern = /^\d{4}_[a-z0-9_]+\.sql$/u;
-const migrationRunnerOptionsSchema = Object.freeze({
+const maximumPostgresTimeoutMs = 2_147_483_647;
+const migrationRunnerDefaults = Object.freeze({
+  connectionTimeoutMs: 10_000,
   lockTimeoutMs: 10_000,
   statementTimeoutMs: 300_000,
 });
@@ -31,11 +34,14 @@ function preserveMigrationFailureDuringCleanup(
     );
   if (cleanupErrors.length === 1) {
     const [cleanupError] = cleanupErrors;
-    throw cleanupError instanceof Error
-      ? cleanupError
-      : new Error('Migration database cleanup failed', {
-          cause: cleanupError,
-        });
+    try {
+      if (cleanupError instanceof Error) throw cleanupError;
+    } catch (error: unknown) {
+      if (error === cleanupError) throw error;
+    }
+    throw new Error('Migration database cleanup failed', {
+      cause: cleanupError,
+    });
   }
   throw new AggregateError(
     cleanupErrors,
@@ -52,9 +58,28 @@ export type MigrationProgressEvent = Readonly<{
 }>;
 
 export interface MigrationRunnerOptions {
+  readonly connectionTimeoutMs?: number;
   readonly lockTimeoutMs?: number;
   readonly onProgress?: (event: MigrationProgressEvent) => void;
   readonly statementTimeoutMs?: number;
+}
+
+function parseMigrationTimeout(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  label: string,
+): number {
+  const selected = value ?? fallback;
+  if (
+    !Number.isSafeInteger(selected) ||
+    selected < minimum ||
+    selected > maximumPostgresTimeoutMs
+  )
+    throw new TypeError(
+      `Migration ${label} timeout must be between ${String(minimum)}ms and ${String(maximumPostgresTimeoutMs)}ms`,
+    );
+  return selected;
 }
 
 // These checksums were published before corrections were folded back into the
@@ -117,158 +142,6 @@ export function isCompatibleMigrationChecksum(
   );
 }
 
-type MigrationTransaction = <T>(work: () => Promise<T>) => Promise<T>;
-
-type NonTransactionalMigrationInput = Readonly<{
-  readonly checksum: string;
-  readonly client: PoolClient;
-  readonly config: MigrationConfig;
-  readonly emitProgress: (event: MigrationProgressEvent) => void;
-  readonly execution: Exclude<MigrationExecution, { mode: 'transactional' }>;
-  readonly lockTimeoutMs: number;
-  readonly name: string;
-  readonly rendered: string;
-  readonly transaction: MigrationTransaction;
-}>;
-
-async function assertMigrationDatabaseSize(
-  input: NonTransactionalMigrationInput,
-): Promise<void> {
-  const size = await input.client.query<{ bytes: string }>(
-    'select pg_database_size(current_database())::text bytes',
-  );
-  const databaseBytes = Number(size.rows[0]?.bytes);
-  if (!Number.isSafeInteger(databaseBytes) || databaseBytes < 0)
-    throw new Error(
-      `Migration database-size preflight was invalid: ${input.name}`,
-    );
-  if (databaseBytes > input.execution.maximumDatabaseBytes)
-    throw new Error(`Migration database-size preflight failed: ${input.name}`);
-}
-
-async function runOnlineMigration(
-  input: NonTransactionalMigrationInput,
-): Promise<void> {
-  if (/\b(?:BEGIN|COMMIT|ROLLBACK)\b/iu.test(input.rendered))
-    throw new Error(
-      `Online migration controls transactions directly: ${input.name}`,
-    );
-  await input.client.query(
-    `set role ${quoteIdentifier(input.config.ownerRole)}`,
-  );
-  try {
-    await input.client.query("select set_config('lock_timeout',$1,false)", [
-      `${String(input.lockTimeoutMs)}ms`,
-    ]);
-    await input.client.query(input.rendered);
-  } finally {
-    await input.client.query('reset role').catch(() => undefined);
-  }
-  await input.transaction(() =>
-    input.client.query(
-      'insert into pertexo_internal.schema_migrations (name, checksum) values ($1, $2)',
-      [input.name, input.checksum],
-    ),
-  );
-}
-
-async function runResumableMigration(
-  input: NonTransactionalMigrationInput,
-  execution: Extract<MigrationExecution, { mode: 'resumable' }>,
-): Promise<void> {
-  let completed = false;
-  for (let batch = 0; batch < execution.batchLimit; batch += 1) {
-    const progress = await input.transaction(async () => {
-      await input.client.query(
-        `insert into pertexo_internal.migration_jobs(name,checksum)
-         values($1,$2) on conflict(name) do nothing`,
-        [input.name, input.checksum],
-      );
-      const job = await input.client.query<{
-        batches_completed: string;
-        checksum: string;
-        rows_processed: string;
-        status: string;
-      }>(
-        `select checksum,batches_completed::text,rows_processed::text,status
-         from pertexo_internal.migration_jobs where name=$1 for update`,
-        [input.name],
-      );
-      const current = job.rows[0];
-      if (current?.checksum !== input.checksum)
-        throw new Error(`Resumable migration checksum changed: ${input.name}`);
-      if (current.status === 'completed')
-        return {
-          batchesCompleted: Number(current.batches_completed),
-          completed: true,
-          rowsProcessed: Number(current.rows_processed),
-        };
-      const result = await input.client.query<{
-        completed: boolean;
-        processed_count: string | number;
-      }>(input.rendered);
-      const row = result.rows[0];
-      const processed = Number(row?.processed_count);
-      if (
-        typeof row?.completed !== 'boolean' ||
-        !Number.isSafeInteger(processed) ||
-        processed < 0
-      )
-        throw new Error(
-          `Resumable migration returned invalid progress: ${input.name}`,
-        );
-      const updated = await input.client.query<{
-        batches_completed: string;
-        rows_processed: string;
-      }>(
-        `update pertexo_internal.migration_jobs set
-           batches_completed=batches_completed+1,
-           rows_processed=rows_processed+$2,
-           status=case when $3 then 'completed' else 'pending' end,
-           updated_at=clock_timestamp()
-         where name=$1 returning batches_completed::text,rows_processed::text`,
-        [input.name, processed, row.completed],
-      );
-      if (row.completed)
-        await input.client.query(
-          'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
-          [input.name, input.checksum],
-        );
-      return {
-        batchesCompleted: Number(updated.rows[0]?.batches_completed),
-        completed: row.completed,
-        rowsProcessed: Number(updated.rows[0]?.rows_processed),
-      };
-    });
-    input.emitProgress({
-      batchesCompleted: progress.batchesCompleted,
-      mode: execution.mode,
-      name: input.name,
-      phase: progress.completed ? 'completed' : 'started',
-      rowsProcessed: progress.rowsProcessed,
-    });
-    if (progress.completed) {
-      completed = true;
-      break;
-    }
-  }
-  if (!completed)
-    throw new Error(
-      `Resumable migration requires another bounded run: ${input.name}`,
-    );
-}
-
-async function runNonTransactionalMigration(
-  input: NonTransactionalMigrationInput,
-): Promise<void> {
-  await assertMigrationDatabaseSize(input);
-  if (input.execution.mode === 'online') {
-    await runOnlineMigration(input);
-    return;
-  }
-  await runResumableMigration(input, input.execution);
-}
-
 async function loadMigrations(migrationsDirectory: string): Promise<
   Readonly<{
     names: readonly string[];
@@ -296,20 +169,44 @@ export async function migrateDatabase(
   runnerOptions: MigrationRunnerOptions = {},
 ): Promise<readonly string[]> {
   const applied: string[] = [];
-  const lockTimeoutMs =
-    runnerOptions.lockTimeoutMs ?? migrationRunnerOptionsSchema.lockTimeoutMs;
-  const statementTimeoutMs =
-    runnerOptions.statementTimeoutMs ??
-    migrationRunnerOptionsSchema.statementTimeoutMs;
-  if (!Number.isInteger(lockTimeoutMs) || lockTimeoutMs < 100)
-    throw new TypeError('Migration lock timeout must be at least 100ms');
-  if (!Number.isInteger(statementTimeoutMs) || statementTimeoutMs < 1_000)
-    throw new TypeError('Migration statement timeout must be at least 1000ms');
-  const pool = new Pool({ connectionString: config.connectionString, max: 1 });
-  const client = await pool.connect().catch(async (error: unknown) => {
-    await pool.end();
-    throw error;
+  const connectionTimeoutMs = parseMigrationTimeout(
+    runnerOptions.connectionTimeoutMs,
+    migrationRunnerDefaults.connectionTimeoutMs,
+    100,
+    'connection',
+  );
+  const lockTimeoutMs = parseMigrationTimeout(
+    runnerOptions.lockTimeoutMs,
+    migrationRunnerDefaults.lockTimeoutMs,
+    100,
+    'lock',
+  );
+  const statementTimeoutMs = parseMigrationTimeout(
+    runnerOptions.statementTimeoutMs,
+    migrationRunnerDefaults.statementTimeoutMs,
+    1_000,
+    'statement',
+  );
+  const pool = new Pool({
+    connectionString: config.connectionString,
+    connectionTimeoutMillis: connectionTimeoutMs,
+    max: 1,
   });
+  let client: PoolClient;
+  try {
+    client = await pool.connect();
+  } catch (error: unknown) {
+    try {
+      await pool.end();
+    } catch (cleanupError: unknown) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'Migration connection acquisition and pool cleanup failed',
+      );
+    }
+    // Preserve legacy non-Error adapter rejection values.
+    throw error;
+  }
   const emitProgress = (event: MigrationProgressEvent): void => {
     try {
       runnerOptions.onProgress?.(event);
@@ -344,6 +241,9 @@ export async function migrateDatabase(
 
     await client.query("select set_config('statement_timeout',$1,false)", [
       `${String(statementTimeoutMs)}ms`,
+    ]);
+    await client.query("select set_config('lock_timeout',$1,false)", [
+      `${String(lockTimeoutMs)}ms`,
     ]);
     await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
     await client.query(`set role ${quoteIdentifier(config.ownerRole)}`);
@@ -401,30 +301,17 @@ export async function migrateDatabase(
         phase: 'started',
       });
       const rendered = renderMigration(sql, config);
-      if (execution.mode === 'transactional') {
-        if (/\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\b/iu.test(rendered))
-          throw new Error(
-            `Concurrent index migration must declare online mode: ${name}`,
-          );
-        await transaction(async () => {
-          await client.query(rendered);
-          await client.query(
-            'insert into pertexo_internal.schema_migrations (name, checksum) values ($1, $2)',
-            [name, checksum],
-          );
-        });
-      } else
-        await runNonTransactionalMigration({
-          checksum,
-          client,
-          config,
-          emitProgress,
-          execution,
-          lockTimeoutMs,
-          name,
-          rendered,
-          transaction,
-        });
+      await applyMigrationExecution({
+        checksum,
+        client,
+        config,
+        emitProgress,
+        execution,
+        lockTimeoutMs,
+        name,
+        rendered,
+        transaction,
+      });
       applied.push(name);
       emitProgress({
         mode: execution.mode,
@@ -458,7 +345,8 @@ export async function migrateDatabase(
       cleanupErrors.push(error);
     }
     try {
-      client.release();
+      if (cleanupErrors.length > 0) client.release(true);
+      else client.release();
     } catch (error) {
       cleanupErrors.push(error);
     }

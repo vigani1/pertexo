@@ -5,13 +5,17 @@ import {
   apiPool,
   apiUrl,
   authoring,
+  createHash,
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
   deferred,
   emptyGraph,
+  finishTransactionClient,
   parseDatabaseConfig,
+  queryAsOwner,
   randomUUID,
   waitForPostgresLock,
+  waitForOperationEntry,
   withApplicationName,
   workspaceId,
 } from './support/workflow-authoring.integration.support.js';
@@ -27,6 +31,52 @@ type LifecycleFacts = Readonly<{
 }>;
 
 describe('workflow lifecycle command persistence', () => {
+  it.each(['workspaceId', 'id'] as const)(
+    'rejects a replay whose durable lifecycle workflow %s does not match its claim',
+    async (identityField) => {
+      const created = await authoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: `lifecycle-corrupt-create-${identityField}`,
+        name: `Lifecycle corrupt ${identityField}`,
+        workspaceId,
+      });
+      const idempotencyKey = `lifecycle-corrupt-archive-${identityField}`;
+      const command = {
+        actorId,
+        command: 'archive' as const,
+        expectedLifecycleRevision: 1,
+        idempotencyKey,
+        workflowId: created.workflowId,
+        workspaceId,
+      };
+      await expect(
+        authoring.transitionWorkflowLifecycle(command),
+      ).resolves.toMatchObject({ replayed: false });
+      await queryAsOwner(
+        `update app.idempotency_records
+            set result_ref=jsonb_set(
+              result_ref,$2::text[],to_jsonb($3::text),false)
+          where workspace_id=$4 and operation='workflow.archive'
+            and key_hash=$1
+          returning key_hash`,
+        [
+          createHash('sha256').update(idempotencyKey).digest('hex'),
+          ['workflow', identityField],
+          randomUUID(),
+          workspaceId,
+        ],
+        workspaceId,
+      );
+
+      await expect(
+        authoring.transitionWorkflowLifecycle(command),
+      ).rejects.toThrow(
+        'Durable workflow lifecycle result identity does not match its claim',
+      );
+    },
+  );
+
   it('grants the API runtime only the new lifecycle revision column', async () => {
     const result = await apiPool.query<{
       lifecycle_revision: boolean;
@@ -173,7 +223,11 @@ describe('workflow lifecycle command persistence', () => {
         workflowId: archiveFirst.workflowId,
         workspaceId,
       });
-      await archiveLocked.promise;
+      await waitForOperationEntry(
+        archiveLocked.promise,
+        archive,
+        'archive-first lifecycle command',
+      );
       const publish = archiveFirstPublisher.publishWorkflow({
         actorId,
         representationTag: await currentRepresentationTag(
@@ -262,7 +316,11 @@ describe('workflow lifecycle command persistence', () => {
         workflowId: publicationFirst.workflowId,
         workspaceId,
       });
-      await publishLocked.promise;
+      await waitForOperationEntry(
+        publishLocked.promise,
+        publish,
+        'publication-first command',
+      );
       const archive = publicationFirstArchive.transitionWorkflowLifecycle({
         actorId,
         command: 'archive',
@@ -304,8 +362,12 @@ describe('workflow lifecycle command persistence', () => {
 
 async function lifecycleFacts(workflowId: string): Promise<LifecycleFacts> {
   const client = await apiPool.connect();
+  let transactionOpen = false;
+  let primaryError: unknown;
+  let facts: LifecycleFacts | undefined;
   try {
     await client.query('begin');
+    transactionOpen = true;
     await client.query("select set_config('app.workspace_id', $1, true)", [
       workspaceId,
     ]);
@@ -332,7 +394,8 @@ async function lifecycleFacts(workflowId: string): Promise<LifecycleFacts> {
     const row = result.rows[0];
     if (row === undefined) throw new Error('workflow facts missing');
     await client.query('commit');
-    return {
+    transactionOpen = false;
+    facts = {
       lifecycleStatus: row.lifecycle_status,
       lifecycleRevision: row.lifecycle_revision,
       activationStatus: row.activation_status,
@@ -342,9 +405,14 @@ async function lifecycleFacts(workflowId: string): Promise<LifecycleFacts> {
       auditEvents: Number(row.audit_events),
     };
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
+    primaryError = error;
   }
+  await finishTransactionClient(client, {
+    label: 'Lifecycle facts query',
+    primaryError,
+    transactionOpen,
+  });
+  if (facts === undefined)
+    throw new Error('Lifecycle facts query returned no facts');
+  return facts;
 }

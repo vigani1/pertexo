@@ -2,12 +2,13 @@ import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 
-function processGroupExists(pid) {
+export function processGroupExists(pid, kill = process.kill) {
   try {
-    process.kill(-pid, 0);
+    kill(-pid, 0);
     return true;
   } catch (error) {
     if (error?.code === 'ESRCH') return false;
+    if (error?.code === 'EPERM') return true;
     throw error;
   }
 }
@@ -53,9 +54,14 @@ export async function terminateProcessTree(
 export class OwnedProcessSupervisor {
   #owned = new Map();
   #terminate;
+  #terminateSync;
 
-  constructor(terminate = terminateProcessTree) {
+  constructor(
+    terminate = terminateProcessTree,
+    terminateSync = signalProcessGroup,
+  ) {
     this.#terminate = terminate;
+    this.#terminateSync = terminateSync;
   }
 
   spawn(command, args, options = {}) {
@@ -104,7 +110,19 @@ export class OwnedProcessSupervisor {
   }
 
   killAllSync() {
-    for (const pid of this.#owned.keys()) signalProcessGroup(pid, 'SIGKILL');
+    const failures = [];
+    for (const pid of this.#owned.keys())
+      try {
+        this.#terminateSync(pid, 'SIGKILL');
+      } catch (error) {
+        failures.push(error);
+      }
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1)
+      throw new AggregateError(
+        failures,
+        'Synchronous owned process cleanup failed',
+      );
   }
 }
 
@@ -126,6 +144,8 @@ export async function runManagedCommand({
   releaseOwned,
   spawnOptions,
   spawnOwned,
+  timeoutFailure,
+  timeoutMillis,
 }) {
   const child = spawnOwned(command, args, spawnOptions);
   let exitResult;
@@ -135,22 +155,26 @@ export async function runManagedCommand({
     child.once('close', (code, signal) => resolve({ code, signal }));
   });
   await new Promise((resolve) => {
+    let timeout;
+    let settled = false;
     const recordCommandError = (error) => {
       if (!commandFailed) {
         commandFailed = true;
         commandError = error;
       }
+      settled = true;
+      clearTimeout(timeout);
       resolve();
     };
-    const consumeOutput = (consumer) => (chunk) => {
+    const consumeOutput = (consumer, stream) => (chunk) => {
       try {
-        consumer?.(chunk);
+        consumer?.(chunk, stream);
       } catch (error) {
         recordCommandError(error);
       }
     };
-    child.stdout?.on('data', consumeOutput(onStdout));
-    child.stderr?.on('data', consumeOutput(onStderr));
+    child.stdout?.on('data', consumeOutput(onStdout, child.stdout));
+    child.stderr?.on('data', consumeOutput(onStderr, child.stderr));
     // Keep these listeners for the owned objects' lifetime. EventEmitter removes
     // a `once` listener after the first error, which would let a second stream
     // or child error escape before lifecycle settlement.
@@ -158,6 +182,7 @@ export async function runManagedCommand({
     child.stderr?.on('error', recordCommandError);
     child.on('error', recordCommandError);
     child.once('exit', (code, signal) => {
+      clearTimeout(timeout);
       exitResult = { code, signal };
       if (!commandFailed && code !== 0) {
         commandFailed = true;
@@ -169,6 +194,21 @@ export async function runManagedCommand({
       onStarted?.(child);
     } catch (error) {
       recordCommandError(error);
+    }
+    if (timeoutMillis !== undefined && !settled) {
+      if (!Number.isSafeInteger(timeoutMillis) || timeoutMillis < 1)
+        recordCommandError(new Error('Command timeout must be positive'));
+      else
+        timeout = setTimeout(
+          () =>
+            recordCommandError(
+              timeoutFailure?.() ??
+                new Error(
+                  `${command} timed out after ${String(timeoutMillis)} ms`,
+                ),
+            ),
+          timeoutMillis,
+        );
     }
   });
 

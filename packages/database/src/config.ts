@@ -13,17 +13,30 @@ function postgresRole(defaultRole: string) {
     .default(defaultRole);
 }
 
-const connectionTimeoutMillis = z.number().int().positive().default(5_000);
-const idleTimeoutMillis = z.number().int().positive().default(30_000);
+const maximumPostgresTimeoutMillis = 2_147_483_647;
+const connectionTimeoutMillis = z
+  .number()
+  .int()
+  .positive()
+  .max(maximumPostgresTimeoutMillis)
+  .default(5_000);
+const idleTimeoutMillis = z
+  .number()
+  .int()
+  .positive()
+  .max(maximumPostgresTimeoutMillis)
+  .default(30_000);
 const environmentConnectionTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
+  .max(maximumPostgresTimeoutMillis)
   .default(5_000);
 const environmentIdleTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
+  .max(maximumPostgresTimeoutMillis)
   .default(30_000);
 const conservativePoolMax = z.coerce
   .number()

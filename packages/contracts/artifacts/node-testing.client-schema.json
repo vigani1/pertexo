@@ -132,7 +132,42 @@
               "maximum": 9007199254740991
             },
             "sampleInput": {
-              "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
+              "$ref": "#/schemas/NodeTestRequest/oneOf/0/properties/sampleInput/$defs/jsonValue",
+              "$defs": {
+                "jsonValue": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/schemas/NodeTestRequest/oneOf/0/properties/sampleInput/$defs/jsonValue"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/NodeTestRequest/oneOf/0/properties/sampleInput/$defs/jsonValue"
+                      }
+                    }
+                  ]
+                }
+              },
+              "description": "JSON input. Runtime validation rejects values deeper than 256 containers before recursive schema parsing.",
+              "x-pertexo-runtime-max-depth": 256
             }
           },
           "required": [
@@ -163,7 +198,42 @@
                       "const": "manual"
                     },
                     "value": {
-                      "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
+                      "$ref": "#/schemas/NodeTestRequest/oneOf/1/properties/input/oneOf/0/properties/value/$defs/jsonValue",
+                      "$defs": {
+                        "jsonValue": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/schemas/NodeTestRequest/oneOf/1/properties/input/oneOf/0/properties/value/$defs/jsonValue"
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "$ref": "#/schemas/NodeTestRequest/oneOf/1/properties/input/oneOf/0/properties/value/$defs/jsonValue"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "description": "JSON input. Runtime validation rejects values deeper than 256 containers before recursive schema parsing.",
+                      "x-pertexo-runtime-max-depth": 256
                     }
                   },
                   "required": [
@@ -206,71 +276,7 @@
           ],
           "additionalProperties": false
         }
-      ],
-      "$defs": {
-        "__schema0": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            },
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
-              }
-            },
-            {
-              "type": "object",
-              "propertyNames": {
-                "type": "string"
-              },
-              "additionalProperties": {
-                "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
-              }
-            }
-          ]
-        },
-        "__schema1": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            },
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
-              }
-            },
-            {
-              "type": "object",
-              "propertyNames": {
-                "type": "string"
-              },
-              "additionalProperties": {
-                "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
-              }
-            }
-          ]
-        }
-      }
+      ]
     },
     "NodeSideEffectDisclosure": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

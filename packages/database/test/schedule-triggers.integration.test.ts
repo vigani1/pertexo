@@ -6,21 +6,18 @@ import { canonicalOutboxPayloadChecksum } from '../src/execution/outbox.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
-const schedule = createScheduleTriggerTestEnvironment();
+const schedule = createScheduleTriggerTestEnvironment({
+  includeOperator: true,
+  scannerCount: 2,
+});
 const {
   actorId,
   checkpointFactory,
-  identity,
   notificationDestinationId,
   notificationSecretVersionId,
-  operator,
   ownerQuery,
-  replayStore,
-  scannerOne,
-  scannerTwo,
   triggerId,
   versionId,
-  worker,
   workflowId,
   workspaceId,
 } = schedule;
@@ -34,7 +31,7 @@ afterAll(schedule.close);
 describe('schedule trigger PostgreSQL slice', () => {
   it('requests and worker-admits a replay with immutable lineage', async () => {
     await expect(
-      operator.replayRun({
+      schedule.operator.replayRun({
         actorRef: 'integration-operator',
         commandId: randomUUID(),
         dryRun: true,
@@ -60,23 +57,26 @@ describe('schedule trigger PostgreSQL slice', () => {
       workflowVersionId: versionId,
       workspaceId,
     } as const;
-    const requested = await operator.replayRun(command);
+    const requested = await schedule.operator.replayRun(command);
     expect(requested).toMatchObject({
       outcome: 'replay_requested',
       replayed: false,
       status: 'pending',
     });
-    expect(await operator.replayRun(command)).toEqual({
+    expect(await schedule.operator.replayRun(command)).toEqual({
       ...requested,
       replayed: true,
     });
     await expect(
-      operator.replayRun({ ...command, runInput: { conflicting: true } }),
+      schedule.operator.replayRun({
+        ...command,
+        runInput: { conflicting: true },
+      }),
     ).rejects.toThrow('conflicts');
 
     const outboxEventId = requested.result.outboxEventId;
     expect(outboxEventId).toEqual(expect.any(String));
-    const processed = await replayStore.replay({
+    const processed = await schedule.replayStore.replay({
       commandId,
       delivery: {
         outboxEventId: String(outboxEventId),
@@ -92,6 +92,28 @@ describe('schedule trigger PostgreSQL slice', () => {
     expect(processed.kind).toBe('processed');
     expect(typeof processed.runId).toBe('string');
     const replayRunId = processed.runId;
+    await expect(
+      schedule.replayStore.replay({
+        commandId,
+        delivery: {
+          outboxEventId: String(outboxEventId),
+          payloadChecksum: canonicalOutboxPayloadChecksum({
+            commandId,
+            outboxEventId,
+            schemaVersion: 1,
+            workspaceId,
+          }),
+        },
+        workspaceId,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      schedule.replayStore.fail({
+        commandId,
+        safeErrorCode: 'operator.late_failure',
+        workspaceId,
+      }),
+    ).resolves.toBeUndefined();
     const lineage = await ownerQuery<{
       replay_command_id: string;
       replay_source_run_id: string;
@@ -108,7 +130,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       trigger_type: 'replay',
       workflow_version_id: versionId,
     });
-    const completed = await operator.getCommand({
+    const completed = await schedule.operator.getCommand({
       actorRef: 'integration-operator',
       commandId,
       reason: 'verify replay completion',
@@ -127,8 +149,93 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
   });
 
+  it('atomically arbitrates replay completion against concurrent failure', async () => {
+    const commandId = randomUUID();
+    const requested = await schedule.operator.replayRun({
+      actorRef: 'integration-operator',
+      commandId,
+      dryRun: false,
+      reason: 'race replay completion with failure persistence',
+      runInput: { race: 'completion-vs-failure' },
+      sourceRunId: replaySourceRunId,
+      workflowVersionId: versionId,
+      workspaceId,
+    });
+    const outboxEventId = String(requested.result.outboxEventId);
+    const delivery = {
+      outboxEventId,
+      payloadChecksum: canonicalOutboxPayloadChecksum({
+        commandId,
+        outboxEventId,
+        schemaVersion: 1,
+        workspaceId,
+      }),
+    };
+
+    const [completion, failure] = await Promise.allSettled([
+      schedule.replayStore.replay({ commandId, delivery, workspaceId }),
+      schedule.replayStore.fail({
+        commandId,
+        safeErrorCode: 'operator.race_failure',
+        workspaceId,
+      }),
+    ]);
+    expect(failure.status).toBe('fulfilled');
+
+    const facts = await ownerQuery<{
+      command_outcome: string;
+      command_status: string;
+      completed_receipts: number;
+      replay_runs: number;
+      request_error: string | null;
+      request_status: string;
+    }>(
+      `select command.status command_status,command.outcome command_outcome,
+          request.status request_status,request.safe_error_code request_error,
+          (select count(*)::integer from app.workflow_runs run
+            where run.workspace_id=$2 and run.replay_command_id=$1) replay_runs,
+          (select count(*)::integer from app.inbox_receipts receipt
+            where receipt.workspace_id=$2
+              and receipt.consumer_name='operator-run-replay'
+              and receipt.message_id=$3 and receipt.completed_at is not null)
+            completed_receipts
+       from app.operator_commands command
+       join app.operator_run_replay_requests request
+         on request.command_id=command.id
+       where command.id=$1 and request.workspace_id=$2`,
+      [commandId, workspaceId, outboxEventId],
+    );
+    const fact = facts.rows[0];
+    if (fact === undefined) throw new Error('Replay race state missing');
+    expect(fact.request_status).toBe(fact.command_status);
+    if (fact.request_status === 'completed') {
+      expect(completion).toMatchObject({
+        status: 'fulfilled',
+        value: { kind: 'processed' },
+      });
+      expect(fact).toMatchObject({
+        command_outcome: 'replay_created',
+        command_status: 'completed',
+        completed_receipts: 1,
+        replay_runs: 1,
+        request_error: null,
+      });
+    } else {
+      expect(fact.request_status).toBe('failed');
+      expect(completion.status).toBe('rejected');
+      expect(fact).toEqual({
+        command_outcome: 'replay_failed',
+        command_status: 'failed',
+        completed_receipts: 0,
+        replay_runs: 0,
+        request_error: 'operator.race_failure',
+        request_status: 'failed',
+      });
+    }
+  });
+
   it('dry-runs and exactly replays a fresh operator reconciliation request', async () => {
-    const dryRun = await operator.retryTriggerReconciliation({
+    const dryRun = await schedule.operator.retryTriggerReconciliation({
       actorRef: 'integration-operator',
       commandId: randomUUID(),
       dryRun: true,
@@ -146,8 +253,8 @@ describe('schedule trigger PostgreSQL slice', () => {
       workflowId,
       workspaceId,
     } as const;
-    const first = await operator.retryTriggerReconciliation(command);
-    const replay = await operator.retryTriggerReconciliation(command);
+    const first = await schedule.operator.retryTriggerReconciliation(command);
+    const replay = await schedule.operator.retryTriggerReconciliation(command);
     expect(first).toMatchObject({
       outcome: 'retry_requested',
       replayed: false,
@@ -185,7 +292,7 @@ describe('schedule trigger PostgreSQL slice', () => {
     const otherVersionId = randomUUID();
     const oldestTriggerId = randomUUID();
     const otherTriggerId = randomUUID();
-    await identity.createWorkspaceWithOwner({
+    await schedule.identity.createWorkspaceWithOwner({
       id: otherWorkspaceId,
       name: 'Other Schedule Workspace',
       slug: `schedule-other-${otherWorkspaceId}`,
@@ -257,7 +364,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         scopedWorkspace,
       );
     }
-    const first = await worker.query<{
+    const first = await schedule.worker.query<{
       trigger_id: string;
       lease_token: string;
     }>(
@@ -265,11 +372,35 @@ describe('schedule trigger PostgreSQL slice', () => {
       ['fairness-one'],
     );
     expect(first.rows[0]?.trigger_id).toBe(oldestTriggerId);
-    await worker.query('select app.defer_trigger_schedule_claim($1,$2,5)', [
-      oldestTriggerId,
-      first.rows[0]?.lease_token,
-    ]);
-    const second = await worker.query<{
+    await expect(
+      schedule.worker.query(
+        'select app.defer_trigger_schedule_claim($1,$2,null)',
+        [oldestTriggerId, first.rows[0]?.lease_token],
+      ),
+    ).rejects.toMatchObject({ code: '22023' });
+    await expect(
+      ownerQuery<{
+        admission_deferred_until: Date | null;
+        lease_token: string | null;
+      }>(
+        `select lease_token::text,admission_deferred_until
+           from app.trigger_schedules where trigger_id=$1`,
+        [oldestTriggerId],
+        workspaceId,
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          admission_deferred_until: null,
+          lease_token: first.rows[0]?.lease_token,
+        },
+      ],
+    });
+    await schedule.worker.query(
+      'select app.defer_trigger_schedule_claim($1,$2,5)',
+      [oldestTriggerId, first.rows[0]?.lease_token],
+    );
+    const second = await schedule.worker.query<{
       trigger_id: string;
       lease_token: string;
     }>(
@@ -277,10 +408,10 @@ describe('schedule trigger PostgreSQL slice', () => {
       ['fairness-two'],
     );
     expect(second.rows[0]?.trigger_id).toBe(otherTriggerId);
-    await worker.query('select app.release_trigger_schedule_claim($1,$2)', [
-      otherTriggerId,
-      second.rows[0]?.lease_token,
-    ]);
+    await schedule.worker.query(
+      'select app.release_trigger_schedule_claim($1,$2)',
+      [otherTriggerId, second.rows[0]?.lease_token],
+    );
     await ownerQuery(
       "update app.trigger_schedules set status='disabled' where trigger_id=$1",
       [oldestTriggerId],
@@ -320,7 +451,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       [failedTriggerId, workspaceId, fingerprint],
     );
     await expect(
-      scannerOne.scanDue({
+      schedule.scannerOne.scanDue({
         leaseOwner: 'failed-scanner',
         limit: 1,
         leaseSeconds: 30,
@@ -352,17 +483,19 @@ describe('schedule trigger PostgreSQL slice', () => {
   });
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
-    await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0086_operator_attempt_reclaim_state.sql',
+    await expect(
+      checkDatabaseReadiness(schedule.worker),
+    ).resolves.toMatchObject({
+      migrationHead: '0089_oidc_capacity_lock_time.sql',
       role: 'pertexo_worker',
     });
-    const crashed = await worker.query<{ trigger_id: string }>(
+    const crashed = await schedule.worker.query<{ trigger_id: string }>(
       'select * from app.claim_due_trigger_schedules($1,1,1)',
       ['crashed-scanner'],
     );
     expect(crashed.rowCount).toBe(1);
     await expect(
-      scannerOne.scanDue({
+      schedule.scannerOne.scanDue({
         leaseOwner: 'blocked-scanner',
         limit: 1,
         leaseSeconds: 30,
@@ -377,13 +510,13 @@ describe('schedule trigger PostgreSQL slice', () => {
       [crashed.rows[0]?.trigger_id],
     );
     const results = await Promise.all([
-      scannerOne.scanDue({
+      schedule.scannerOne.scanDue({
         leaseOwner: 'scanner-one',
         limit: 10,
         leaseSeconds: 30,
         checkpointFactory,
       }),
-      scannerTwo.scanDue({
+      schedule.scannerTwo.scanDue({
         leaseOwner: 'scanner-two',
         limit: 10,
         leaseSeconds: 30,

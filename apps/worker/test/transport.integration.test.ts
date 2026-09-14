@@ -29,124 +29,32 @@ import {
   DispatchConsumerCapabilityError,
 } from '../src/transport/dispatch-consumer-capabilities.js';
 import { createQueueMetricsObserver } from '../src/transport/transport-metrics-adapter.js';
-import { createWorkerTransportTestEnvironment } from './support/transport.integration.support.js';
+import {
+  closeHttpServer,
+  createTransportTestCleanupStack,
+  createWorkerTransportTestEnvironment,
+  listenOnLoopback,
+} from './support/transport.integration.support.js';
 
 const integration = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = integration ? describe : describe.skip;
 const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
-const transport = createWorkerTransportTestEnvironment();
-const {
-  apiDatabase,
-  checksum,
-  createDispatcher,
-  deferred,
-  dispatcherUrl,
-  insertRunEvent,
-  redisConnection,
-  redisUrl,
-  workerDatabase,
-  workspaceId,
-} = transport;
-
-async function consumeProof(
-  messageId: string,
-  logicalAttemptId: string,
-  providerIntent?: Readonly<{
-    attemptId: string;
-    idempotencyKey: string;
-    nodeRunId: string;
-    outboxEventId: string;
-    runId: string;
-    traceparent?: string;
-  }>,
-) {
-  return consumeInboxMessage(
-    workerDatabase,
-    workspaceId,
-    {
-      consumerName: 'worker.phase0-proof',
-      messageId,
-      payloadChecksum: checksum({ logicalAttemptId }),
-    },
-    async (transaction) => {
-      const { db, workspaceId: activeWorkspaceId } = transaction;
-      await db.execute(sql`
-        insert into app.queue_duplicate_probe_attempts
-          (id, workspace_id, logical_attempt_id)
-        values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId})
-      `);
-      await db.execute(sql`
-        insert into app.queue_duplicate_probe_events
-          (id, workspace_id, logical_attempt_id, sequence)
-        values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId}, 1)
-      `);
-      await db.execute(sql`
-        insert into app.queue_duplicate_probe_usage
-          (id, workspace_id, idempotency_key, quantity)
-        values (${randomUUID()}, ${activeWorkspaceId}, ${`usage:${logicalAttemptId}`}, 1)
-      `);
-      if (providerIntent !== undefined) {
-        const payload = {
-          attemptId: providerIntent.attemptId,
-          nodeRunId: providerIntent.nodeRunId,
-          runId: providerIntent.runId,
-          ...(providerIntent.traceparent
-            ? { traceparent: providerIntent.traceparent }
-            : {}),
-        };
-        await insertOutboxEvent(transaction, {
-          aggregateId: providerIntent.attemptId,
-          aggregateType: 'provider-intent',
-          id: providerIntent.outboxEventId,
-          jobName: JOB_NAME.executeNodeAttempt,
-          payload,
-          payloadChecksum: checksum(payload),
-          schemaVersion: 1,
-        });
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_provider_intents
-            (
-              id,
-              workspace_id,
-              logical_attempt_id,
-              outbox_event_id,
-              idempotency_key
-            )
-          values (
-            ${providerIntent.attemptId},
-            ${activeWorkspaceId},
-            ${logicalAttemptId},
-            ${providerIntent.outboxEventId},
-            ${providerIntent.idempotencyKey}
-          )
-        `);
-      }
-      return logicalAttemptId;
-    },
-  );
-}
-
-async function dispatchFairRounds(
-  dispatchers: readonly ReturnType<typeof createDispatcher>[],
-  expectedClaims: number,
-): Promise<Readonly<{ claimed: number; failed: number; published: number }>> {
-  const totals = { claimed: 0, failed: 0, published: 0 };
-  const maximumRounds = expectedClaims + 2;
-  for (let round = 0; round < maximumRounds; round += 1) {
-    const results = await Promise.all(
-      dispatchers.map((dispatcher) => dispatcher.dispatchOnce()),
-    );
-    for (const result of results) {
-      totals.claimed += result.claimed;
-      totals.failed += result.failed;
-      totals.published += result.published;
-    }
-    if (totals.claimed >= expectedClaims) return totals;
-  }
-  throw new Error(
-    `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
-  );
-}
+type TransportEnvironment = ReturnType<
+  typeof createWorkerTransportTestEnvironment
+>;
+let transport: TransportEnvironment;
+let apiDatabase: TransportEnvironment['apiDatabase'];
+let checksum: TransportEnvironment['checksum'];
+let consumeProof: TransportEnvironment['consumeProof'];
+let createDispatcher: TransportEnvironment['createDispatcher'];
+let deferred: TransportEnvironment['deferred'];
+let dispatchFairRounds: TransportEnvironment['dispatchFairRounds'];
+let dispatcherUrl: TransportEnvironment['dispatcherUrl'];
+let insertRunEvent: TransportEnvironment['insertRunEvent'];
+let redisConnection: TransportEnvironment['redisConnection'];
+let redisUrl: TransportEnvironment['redisUrl'];
+let workerDatabase: TransportEnvironment['workerDatabase'];
+let workspaceId: TransportEnvironment['workspaceId'];
 
 function capturingTransportMetrics(): TransportMetrics {
   return {
@@ -217,16 +125,38 @@ describeIntegration(
   'worker PostgreSQL + Redis transport proof',
   { concurrent: false },
   () => {
-    beforeAll(transport.initialize);
-    afterAll(transport.close);
+    beforeAll(async () => {
+      transport = createWorkerTransportTestEnvironment();
+      await transport.initialize();
+      ({
+        apiDatabase,
+        checksum,
+        consumeProof,
+        createDispatcher,
+        deferred,
+        dispatchFairRounds,
+        dispatcherUrl,
+        insertRunEvent,
+        redisConnection,
+        redisUrl,
+        workerDatabase,
+        workspaceId,
+      } = transport);
+    });
+    afterAll(async () => transport.close());
 
-    it('uses SKIP LOCKED across two dispatchers and publishes every outbox ID once', async () => {
+    it('publishes every target outbox ID under two-dispatcher concurrency', async () => {
       const ids = await Promise.all(
         Array.from({ length: 4 }, () => insertRunEvent()),
       );
-      const first = createDispatcher('integration-a', 2);
-      const second = createDispatcher('integration-b', 2);
+      const cleanup = createTransportTestCleanupStack(
+        'two-dispatcher concurrency proof',
+      );
       try {
+        const first = createDispatcher('integration-a', 2);
+        cleanup.add('first dispatcher', () => first.close());
+        const second = createDispatcher('integration-b', 2);
+        cleanup.add('second dispatcher', () => second.close());
         await Promise.all([first.checkReadiness(), second.checkReadiness()]);
         const result = await dispatchFairRounds([first, second], ids.length);
         expect(result).toMatchObject({ failed: 0 });
@@ -235,16 +165,13 @@ describeIntegration(
         const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
           connection: redisConnection(),
         });
-        try {
-          const jobs = await Promise.all(
-            ids.map((id) => queue.getJob(`outbox-${id}`)),
-          );
-          expect(jobs.every((job) => job !== undefined)).toBe(true);
-        } finally {
-          await queue.close();
-        }
+        cleanup.add('workflow coordinator queue', () => queue.close());
+        const jobs = await Promise.all(
+          ids.map((id) => queue.getJob(`outbox-${id}`)),
+        );
+        expect(jobs.every((job) => job !== undefined)).toBe(true);
       } finally {
-        await Promise.all([first.close(), second.close()]);
+        await cleanup.close();
       }
     });
 
@@ -267,44 +194,57 @@ describeIntegration(
           schemaVersion: 1,
         }).then(() => undefined),
       );
-      const noConsumerDispatcher = createDispatcher(
-        'integration-no-consumer',
-        100,
-        [],
-        createDispatchConsumerCapabilityRegistry([]),
-      );
-      const mismatchedDispatcher = createDispatcher(
-        'integration-mismatched-consumer',
-        100,
-        [JOB_NAME.advanceWorkflowRun],
-        createDispatchConsumerCapabilityRegistry([]),
-      );
-      const enabledQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-        connection: redisConnection(),
-      });
-      const heldQueue = new Queue(QUEUE_NAME.triggerLifecycle, {
-        connection: redisConnection(),
-      });
       const consumerStarted = deferred('ready consumer started');
       const releaseConsumer = deferred('ready consumer released');
-      const consumer = createQueueConsumer({
-        handler: async (delivery) => {
-          if (delivery.data.outboxEventId !== enabledId) return;
-          consumerStarted.resolve();
-          await releaseConsumer.promise;
-        },
-        queueName: QUEUE_NAME.workflowCoordinator,
-        redisUrl,
-      });
-      const dispatcher = createDispatcher(
-        'integration-phase2-allowlist',
-        100,
-        [JOB_NAME.advanceWorkflowRun],
-        createDispatchConsumerCapabilityRegistry([
-          { consumer, jobName: JOB_NAME.advanceWorkflowRun },
-        ]),
+      const cleanup = createTransportTestCleanupStack(
+        'consumer capability proof',
       );
       try {
+        const noConsumerDispatcher = createDispatcher(
+          'integration-no-consumer',
+          100,
+          [],
+          createDispatchConsumerCapabilityRegistry([]),
+        );
+        cleanup.add('no-consumer dispatcher', () =>
+          noConsumerDispatcher.close(),
+        );
+        const mismatchedDispatcher = createDispatcher(
+          'integration-mismatched-consumer',
+          100,
+          [JOB_NAME.advanceWorkflowRun],
+          createDispatchConsumerCapabilityRegistry([]),
+        );
+        cleanup.add('mismatched dispatcher', () =>
+          mismatchedDispatcher.close(),
+        );
+        const enabledQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+          connection: redisConnection(),
+        });
+        cleanup.add('enabled queue', () => enabledQueue.close());
+        const heldQueue = new Queue(QUEUE_NAME.triggerLifecycle, {
+          connection: redisConnection(),
+        });
+        cleanup.add('held queue', () => heldQueue.close());
+        const consumer = createQueueConsumer({
+          handler: async (delivery) => {
+            if (delivery.data.outboxEventId !== enabledId) return;
+            consumerStarted.resolve();
+            await releaseConsumer.promise;
+          },
+          queueName: QUEUE_NAME.workflowCoordinator,
+          redisUrl,
+        });
+        cleanup.add('ready consumer', () => consumer.close());
+        const dispatcher = createDispatcher(
+          'integration-phase2-allowlist',
+          100,
+          [JOB_NAME.advanceWorkflowRun],
+          createDispatchConsumerCapabilityRegistry([
+            { consumer, jobName: JOB_NAME.advanceWorkflowRun },
+          ]),
+        );
+        cleanup.add('enabled dispatcher', () => dispatcher.close());
         await noConsumerDispatcher.checkReadiness();
         await expect(noConsumerDispatcher.dispatchOnce()).resolves.toEqual({
           claimed: 0,
@@ -356,14 +296,7 @@ describeIntegration(
         ]);
       } finally {
         releaseConsumer.resolve();
-        await Promise.all([
-          noConsumerDispatcher.close(),
-          mismatchedDispatcher.close(),
-          dispatcher.close(),
-          consumer.close(),
-          enabledQueue.close(),
-          heldQueue.close(),
-        ]);
+        await cleanup.close();
       }
     });
 
@@ -377,134 +310,144 @@ describeIntegration(
       const providerKey = `provider:${logicalAttemptId}`;
       const acceptedProviderEffects = new Set<string>();
       let providerRequests = 0;
-      const provider = createServer((request, response) => {
-        providerRequests += 1;
-        const key = String(request.headers['idempotency-key']);
-        acceptedProviderEffects.add(key);
-        if (providerRequests === 1) {
-          request.socket.destroy();
-          return;
-        }
-        response.writeHead(200).end();
-      });
-      await new Promise<void>((resolve) =>
-        provider.listen(0, '127.0.0.1', resolve),
+      const cleanup = createTransportTestCleanupStack(
+        'enqueue/redelivery provider proof',
       );
-      const providerAddress = provider.address();
-      if (providerAddress === null || typeof providerAddress === 'string') {
-        throw new Error('Fake provider did not bind');
-      }
-      const rawDispatcher = createOutboxDispatcherDatabase(
-        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
-      );
-      const producer = createQueueProducer({ redisUrl });
-      const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-        connection: redisConnection(),
-      });
-      const dispatcher = createDispatcher('integration-reclaimer');
-      const receiptStatuses: string[] = [];
-      const firstCoordinatorCommit = deferred('first coordinator commit');
-      const duplicateCoordinatorCommit = deferred(
-        'duplicate coordinator commit',
-      );
-      const providerCompleted = deferred('provider completion');
-      let coordinatorDeliveries = 0;
-      let providerDeliveries = 0;
-      const consumerMetrics = capturingTransportMetrics();
-      const consumerObserver = createQueueMetricsObserver(consumerMetrics);
-      const otelTraceRunner = createQueueTraceRunner();
-      const activatedTraceparents: string[] = [];
-      const traceRunner = {
-        run: async <T>(
-          traceparent: string | undefined,
-          observation: {
-            readonly jobName: string;
-            readonly queueName: string;
-          },
-          operation: () => Promise<T>,
-        ): Promise<T> => {
-          if (traceparent !== undefined)
-            activatedTraceparents.push(traceparent);
-          return otelTraceRunner.run(traceparent, observation, operation);
-        },
-      };
-      const coordinatorHandler: QueueJobHandler = async (delivery) => {
-        if (delivery.transport.jobId !== `outbox-${id}`) return;
-        coordinatorDeliveries += 1;
-        const result = await consumeProof(id, logicalAttemptId, {
-          attemptId: providerAttemptId,
-          idempotencyKey: providerKey,
-          nodeRunId: providerNodeRunId,
-          outboxEventId: providerOutboxId,
-          runId: providerRunId,
-          traceparent: TRACEPARENT,
-        });
-        receiptStatuses.push(result.status);
-        if (result.status === 'processed') {
-          firstCoordinatorCommit.resolve();
-          throw new Error('injected crash after coordinator commit before ack');
-        }
-        duplicateCoordinatorCommit.resolve();
-      };
-      const firstCoordinator = createQueueConsumer({
-        handler: coordinatorHandler,
-        observer: consumerObserver,
-        queueName: QUEUE_NAME.workflowCoordinator,
-        redisUrl,
-        traceRunner,
-      });
-      const secondCoordinator = createQueueConsumer({
-        handler: coordinatorHandler,
-        observer: consumerObserver,
-        queueName: QUEUE_NAME.workflowCoordinator,
-        redisUrl,
-        traceRunner,
-      });
-      const providerConsumer = createQueueConsumer({
-        handler: async (delivery) => {
-          if (delivery.transport.jobId !== `outbox-${providerOutboxId}`) {
+      try {
+        const provider = createServer((request, response) => {
+          providerRequests += 1;
+          const key = String(request.headers['idempotency-key']);
+          acceptedProviderEffects.add(key);
+          if (providerRequests === 1) {
+            request.socket.destroy();
             return;
           }
-          providerDeliveries += 1;
-          await fetch(
-            `http://127.0.0.1:${String(providerAddress.port)}/safe-effect`,
-            {
-              method: 'POST',
-              headers: { 'idempotency-key': providerKey },
+          response.writeHead(200).end();
+        });
+        cleanup.add('HTTP provider', () => closeHttpServer(provider));
+        const providerPort = await listenOnLoopback(provider);
+        const rawDispatcher = createOutboxDispatcherDatabase(
+          parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+        );
+        cleanup.add('raw dispatcher database', () => rawDispatcher.close());
+        const producer = createQueueProducer({ redisUrl });
+        cleanup.add('queue producer', () => producer.close());
+        const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
+          connection: redisConnection(),
+        });
+        cleanup.add('workflow coordinator queue', () => queue.close());
+        const dispatcher = createDispatcher('integration-reclaimer');
+        cleanup.add('outbox dispatcher', () => dispatcher.close());
+        const receiptStatuses: string[] = [];
+        const firstCoordinatorCommit = deferred('first coordinator commit');
+        const duplicateCoordinatorCommit = deferred(
+          'duplicate coordinator commit',
+        );
+        const providerCompleted = deferred('provider completion');
+        let coordinatorDeliveries = 0;
+        let providerDeliveries = 0;
+        const consumerMetrics = capturingTransportMetrics();
+        const consumerObserver = createQueueMetricsObserver(consumerMetrics);
+        const otelTraceRunner = createQueueTraceRunner();
+        const activatedTraceparents: string[] = [];
+        const traceRunner = {
+          run: async <T>(
+            traceparent: string | undefined,
+            observation: {
+              readonly jobName: string;
+              readonly queueName: string;
             },
-          );
+            operation: () => Promise<T>,
+          ): Promise<T> => {
+            if (traceparent !== undefined)
+              activatedTraceparents.push(traceparent);
+            return otelTraceRunner.run(traceparent, observation, operation);
+          },
+        };
+        const coordinatorHandler: QueueJobHandler = async (delivery) => {
+          if (delivery.transport.jobId !== `outbox-${id}`) return;
+          coordinatorDeliveries += 1;
           const result = await consumeProof(id, logicalAttemptId, {
             attemptId: providerAttemptId,
             idempotencyKey: providerKey,
             nodeRunId: providerNodeRunId,
             outboxEventId: providerOutboxId,
             runId: providerRunId,
+            traceparent: TRACEPARENT,
           });
-          if (result.status !== 'duplicate') {
+          receiptStatuses.push(result.status);
+          if (result.status === 'processed') {
+            firstCoordinatorCommit.resolve();
             throw new Error(
-              'Provider delivery must follow the committed intent',
+              'injected crash after coordinator commit before ack',
             );
           }
-          await consumeInboxMessage(
-            workerDatabase,
-            workspaceId,
-            {
-              consumerName: 'worker.phase0-provider-proof',
-              messageId: providerOutboxId,
-              payloadChecksum: checksum({
-                attemptId: providerAttemptId,
-                nodeRunId: providerNodeRunId,
-                runId: providerRunId,
-              }),
-            },
-            async ({ db, workspaceId: activeWorkspaceId }) => {
-              await db.execute(sql`
+          duplicateCoordinatorCommit.resolve();
+        };
+        const firstCoordinator = createQueueConsumer({
+          handler: coordinatorHandler,
+          observer: consumerObserver,
+          queueName: QUEUE_NAME.workflowCoordinator,
+          redisUrl,
+          traceRunner,
+        });
+        const closeFirstCoordinator = cleanup.add('first coordinator', () =>
+          firstCoordinator.close(),
+        );
+        const secondCoordinator = createQueueConsumer({
+          handler: coordinatorHandler,
+          observer: consumerObserver,
+          queueName: QUEUE_NAME.workflowCoordinator,
+          redisUrl,
+          traceRunner,
+        });
+        cleanup.add('second coordinator', () => secondCoordinator.close());
+        const providerConsumer = createQueueConsumer({
+          handler: async (delivery) => {
+            if (delivery.transport.jobId !== `outbox-${providerOutboxId}`) {
+              return;
+            }
+            providerDeliveries += 1;
+            await fetch(
+              `http://127.0.0.1:${String(providerPort)}/safe-effect`,
+              {
+                method: 'POST',
+                headers: { 'idempotency-key': providerKey },
+                signal: AbortSignal.timeout(5_000),
+              },
+            );
+            const result = await consumeProof(id, logicalAttemptId, {
+              attemptId: providerAttemptId,
+              idempotencyKey: providerKey,
+              nodeRunId: providerNodeRunId,
+              outboxEventId: providerOutboxId,
+              runId: providerRunId,
+            });
+            if (result.status !== 'duplicate') {
+              throw new Error(
+                'Provider delivery must follow the committed intent',
+              );
+            }
+            await consumeInboxMessage(
+              workerDatabase,
+              workspaceId,
+              {
+                consumerName: 'worker.phase0-provider-proof',
+                messageId: providerOutboxId,
+                payloadChecksum: checksum({
+                  attemptId: providerAttemptId,
+                  nodeRunId: providerNodeRunId,
+                  runId: providerRunId,
+                }),
+              },
+              async ({ db, workspaceId: activeWorkspaceId }) => {
+                await db.execute(sql`
               update app.queue_duplicate_probe_provider_intents
               set outcome = 'accepted', completed_at = clock_timestamp()
               where id = ${providerAttemptId}
                 and outcome = 'pending'
             `);
-              await db.execute(sql`
+                await db.execute(sql`
               insert into app.queue_duplicate_probe_provider_effects
                 (id, workspace_id, idempotency_key, outcome)
               values (
@@ -514,16 +457,16 @@ describeIntegration(
                 'accepted'
               )
             `);
-            },
-          );
-          providerCompleted.resolve();
-        },
-        observer: consumerObserver,
-        queueName: QUEUE_NAME.nodeAttempts,
-        redisUrl,
-        traceRunner,
-      });
-      try {
+              },
+            );
+            providerCompleted.resolve();
+          },
+          observer: consumerObserver,
+          queueName: QUEUE_NAME.nodeAttempts,
+          redisUrl,
+          traceRunner,
+        });
+        cleanup.add('provider consumer', () => providerConsumer.close());
         await Promise.all([
           producer.waitUntilReady(),
           firstCoordinator.waitUntilReady(),
@@ -540,7 +483,7 @@ describeIntegration(
         });
         await firstCoordinatorCommit.promise;
         await waitForRemovableJob(queue, `outbox-${id}`);
-        await firstCoordinator.close();
+        await closeFirstCoordinator();
         await queue.getJob(`outbox-${id}`).then((job) => job?.remove());
         // This proves BullMQ/PostgreSQL lease recovery across two live workers;
         // neither boundary accepts an injected application clock.
@@ -642,21 +585,7 @@ describeIntegration(
           ),
         ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
       } finally {
-        await Promise.all([
-          dispatcher.close(),
-          producer.close(),
-          rawDispatcher.close(),
-          queue.close(),
-          firstCoordinator.close(),
-          secondCoordinator.close(),
-          providerConsumer.close(),
-        ]);
-        await new Promise<void>((resolve, reject) => {
-          provider.close((error) => {
-            if (error === undefined) resolve();
-            else reject(error);
-          });
-        });
+        await cleanup.close();
       }
     });
   },

@@ -7,7 +7,7 @@ import {
   insertRun,
   parseDatabaseConfig,
   seedSucceededFact,
-  store,
+  ownedDeliveryStore,
   workerBaseUrl,
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
@@ -50,7 +50,7 @@ describe('persisted Parallel output material', () => {
         },
       };
       await expect(
-        store.loadAdvanceState({
+        ownedDeliveryStore.loadAdvanceState({
           workspaceId: workspaceA,
           runId,
           signal: new AbortController().signal,

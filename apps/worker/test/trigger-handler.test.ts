@@ -3,13 +3,14 @@ import type {
   WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/testing';
 import {
+  canonicalOutboxPayloadChecksum,
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- assertions target injected seam fakes */
+/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
 import { createTriggerReconciliationHandler } from '../src/triggers/trigger-handler.js';
 
@@ -79,15 +80,58 @@ describe('trigger reconciliation handler', () => {
       workflowVersionId: VERSION_ID,
       signal: context.signal,
     });
-    expect(selected.reconciliation.reconcile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId: WORKSPACE_ID,
-        workflowId: WORKFLOW_ID,
-        publishedVersionId: VERSION_ID,
+    expect(selected.reconciliation.reconcile).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      publishedVersionId: VERSION_ID,
+      outboxEventId: OUTBOX_EVENT_ID,
+      delivery: {
         outboxEventId: OUTBOX_EVENT_ID,
-        delivery: expect.objectContaining({ outboxEventId: OUTBOX_EVENT_ID }),
-      }),
-    );
+        payloadChecksum: canonicalOutboxPayloadChecksum(delivery().data),
+      },
+    });
+  });
+
+  it.each([
+    ['id', { id: crypto.randomUUID() }],
+    ['workflowId', { workflowId: crypto.randomUUID() }],
+    ['workspaceId', { workspaceId: crypto.randomUUID() }],
+  ] as const)(
+    'rejects a publication %s identity mismatch before reconciliation',
+    async (_field, override) => {
+      const selected = dependencies();
+      const current = await selected.reader.readForExecution({
+        workspaceId: WORKSPACE_ID,
+        workflowVersionId: VERSION_ID,
+      });
+      if (current.kind !== 'v2_projection')
+        throw new Error('fixture projection is missing');
+      vi.mocked(selected.reader.readForExecution).mockResolvedValue({
+        kind: 'v2_projection',
+        workflowVersion: { ...current.workflowVersion, ...override },
+      });
+
+      await expect(
+        createTriggerReconciliationHandler(selected).handle(
+          delivery(),
+          context,
+        ),
+      ).rejects.toMatchObject({ name: 'UnrecoverableError' });
+      expect(selected.reconciliation.reconcile).not.toHaveBeenCalled();
+      expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves reader failure without writing reconciliation health', async () => {
+    const selected = dependencies();
+    const failure = new Error('published reader unavailable');
+    vi.mocked(selected.reader.readForExecution).mockRejectedValue(failure);
+
+    await expect(
+      createTriggerReconciliationHandler(selected).handle(delivery(), context),
+    ).rejects.toBe(failure);
+    expect(selected.reconciliation.reconcile).not.toHaveBeenCalled();
+    expect(selected.reconciliation.recordFailure).not.toHaveBeenCalled();
   });
 
   it('safely acknowledges a stale publication job', async () => {
@@ -130,5 +174,39 @@ describe('trigger reconciliation handler', () => {
       publishedVersionId: VERSION_ID,
       reason: 'trigger.reconciliation_failed',
     });
+  });
+
+  it('preserves reconciliation cause when the health write also fails', async () => {
+    const selected = dependencies();
+    const reconciliationFailure = new Error('reconciliation unavailable');
+    vi.mocked(selected.reconciliation.reconcile).mockRejectedValue(
+      reconciliationFailure,
+    );
+    vi.mocked(selected.reconciliation.recordFailure).mockRejectedValue(
+      new Error('health write unavailable'),
+    );
+
+    await expect(
+      createTriggerReconciliationHandler(selected).handle(delivery(), context),
+    ).rejects.toBe(reconciliationFailure);
+    expect(selected.reconciliation.recordFailure).toHaveBeenCalledOnce();
+  });
+
+  it('preserves a hostile reconciliation rejection after recording safe health', async () => {
+    const selected = dependencies();
+    const hostile = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('hostile prototype');
+        },
+      },
+    );
+    vi.mocked(selected.reconciliation.reconcile).mockRejectedValue(hostile);
+
+    await expect(
+      createTriggerReconciliationHandler(selected).handle(delivery(), context),
+    ).rejects.toBe(hostile);
+    expect(selected.reconciliation.recordFailure).toHaveBeenCalledOnce();
   });
 });

@@ -5,11 +5,13 @@ import {
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
 } from '@pertexo/workflow-engine';
+import { z } from 'zod';
 
 type Query = (
   statement: string,
@@ -21,6 +23,36 @@ interface WorkflowIdentity {
   readonly workflowVersionId: string;
 }
 
+type EdgeTuple = readonly [
+  id: string,
+  sourceNodeId: string,
+  sourcePort: string,
+  targetNodeId: string,
+  targetPort: string,
+];
+
+function edgesFromTuples(edges: readonly EdgeTuple[]) {
+  return edges.map(
+    ([id, sourceNodeId, sourcePort, targetNodeId, targetPort]) => ({
+      id,
+      source: { nodeId: sourceNodeId, port: sourcePort },
+      target: { nodeId: targetNodeId, port: targetPort },
+    }),
+  );
+}
+
+const retainedFixtureSchema = z
+  .object({
+    checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
+    executable: z.looseObject({
+      compatibilityReleaseEpoch: z.number().int().positive(),
+    }),
+    format: z.literal('pertexo.retained-workflow-v2-fixture'),
+    graph: z.unknown(),
+    schemaVersion: z.literal(1),
+  })
+  .loose();
+
 export interface CoordinatorWorkflowFixtureIdentities {
   readonly actorId: string;
   readonly workspaceId: string;
@@ -30,6 +62,7 @@ export interface CoordinatorWorkflowFixtureIdentities {
   readonly nestedParallel: WorkflowIdentity;
   readonly parallel: WorkflowIdentity;
   readonly switch: WorkflowIdentity;
+  readonly wait: WorkflowIdentity;
 }
 
 const manualNode = {
@@ -272,18 +305,12 @@ function nestedParallelGraph() {
                 connectionRefs: {},
               },
             ],
-            edges: [
+            edges: edgesFromTuples([
               ['parallel-left', 'parallel', 'branch-01', 'left', 'in'],
               ['parallel-right', 'parallel', 'branch-02', 'right', 'in'],
               ['left-merge', 'left', 'out', 'merge', 'branch-01'],
               ['right-merge', 'right', 'out', 'merge', 'branch-02'],
-            ].map(
-              ([id, sourceNodeId, sourcePort, targetNodeId, targetPort]) => ({
-                id,
-                source: { nodeId: sourceNodeId, port: sourcePort },
-                target: { nodeId: targetNodeId, port: targetPort },
-              }),
-            ),
+            ]),
           },
         },
       },
@@ -360,18 +387,54 @@ function parallelGraph() {
         connectionRefs: {},
       },
     ],
-    edges: [
+    edges: edgesFromTuples([
       ['manual-parallel', 'manual', 'out', 'parallel', 'in'],
       ['parallel-left', 'parallel', 'branch-01', 'left', 'in'],
       ['parallel-right', 'parallel', 'branch-02', 'right', 'in'],
       ['left-merge', 'left', 'out', 'merge', 'branch-01'],
       ['right-merge', 'right', 'out', 'merge', 'branch-02'],
       ['merge-terminate', 'merge', 'out', 'terminate', 'in'],
-    ].map(([id, sourceNodeId, sourcePort, targetNodeId, targetPort]) => ({
-      id,
-      source: { nodeId: sourceNodeId, port: sourcePort },
-      target: { nodeId: targetNodeId, port: targetPort },
-    })),
+    ]),
+  };
+}
+
+function waitGraph() {
+  return {
+    schemaVersion: 1 as const,
+    settings: { maxRunDurationMs: 60_000 },
+    nodes: [
+      manualNode,
+      {
+        id: 'wait',
+        definition: { key: 'core.wait', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: { durationSeconds: 3_600 },
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'terminate',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 20, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+    ],
+    edges: [
+      {
+        id: 'manual-wait',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'wait', port: 'in' },
+      },
+      {
+        id: 'wait-terminate',
+        source: { nodeId: 'wait', port: 'out' },
+        target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
   };
 }
 
@@ -418,16 +481,14 @@ export async function seedCoordinatorWorkflowFixtures(
   query: Query,
   identities: CoordinatorWorkflowFixtureIdentities,
 ): Promise<void> {
-  const retained = JSON.parse(
-    await readFile(
-      new URL('../fixtures/retained-core-workflow-v2.json', import.meta.url),
-      'utf8',
-    ),
-  ) as {
-    checksum: string;
-    executable: { compatibilityReleaseEpoch: number };
-    graph: unknown;
-  };
+  const retained = retainedFixtureSchema.parse(
+    JSON.parse(
+      await readFile(
+        new URL('../fixtures/retained-core-workflow-v2.json', import.meta.url),
+        'utf8',
+      ),
+    ) as unknown,
+  );
   await query(
     `insert into app.users (id, email, display_name, status)
        values ($1, $2, 'Coordinator proof', 'active')`,
@@ -475,6 +536,14 @@ export async function seedCoordinatorWorkflowFixtures(
       identity: identities.forEach,
       name: 'For Each recovery proof',
       release: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+      workspaceId: identities.workspaceId,
+    }),
+    insertCompiledWorkflow(query, {
+      actorId: identities.actorId,
+      graph: waitGraph(),
+      identity: identities.wait,
+      name: 'Wait control precedence proof',
+      release: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
       workspaceId: identities.workspaceId,
     }),
     insertCompiledWorkflow(query, {

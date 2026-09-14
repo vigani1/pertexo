@@ -1,5 +1,10 @@
 # Repository governance
 
+The policy authority is [Repository Governance](../repository-governance.md),
+including its dated solo-maintainer zero-approval and signing exception. This
+runbook defines the operational procedure; it does not by itself prove current
+GitHub collaborator, approval, signing, or protection settings.
+
 `main` is a protected release branch. Normal changes arrive through an
 up-to-date pull request after every required CI and CodeQL check succeeds.
 Force pushes and branch deletion are disabled, and stale approvals are

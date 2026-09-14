@@ -129,6 +129,14 @@ export type AppendControlLedgerRecord = z.input<typeof appendSchema> & {
   readonly signal?: AbortSignal;
 };
 
+export function normalizeAppendControlLedgerRecord(
+  request: AppendControlLedgerRecord,
+): z.output<typeof appendSchema> {
+  const { signal: _signal, ...untrustedCommand } = request;
+  void _signal;
+  return Object.freeze(appendSchema.parse(untrustedCommand));
+}
+
 export interface ControlLedgerReadRequest {
   readonly sequence: number;
   readonly signal?: AbortSignal;
@@ -214,26 +222,38 @@ function hashMaterial(material: unknown): string {
 }
 
 function hasErrorName(error: unknown, name: string): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  return (error as { readonly name?: string }).name === name;
+  try {
+    if (typeof error !== 'object' || error === null) return false;
+    return (error as { readonly name?: string }).name === name;
+  } catch {
+    return false;
+  }
 }
 
 function isPreconditionFailed(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  const candidate = error as {
-    readonly $metadata?: { readonly httpStatusCode?: number };
-    readonly name?: string;
-  };
-  return (
-    candidate.$metadata?.httpStatusCode === 412 ||
-    candidate.name === 'PreconditionFailed'
-  );
+  try {
+    if (typeof error !== 'object' || error === null) return false;
+    const candidate = error as {
+      readonly $metadata?: { readonly httpStatusCode?: number };
+      readonly name?: string;
+    };
+    return (
+      candidate.$metadata?.httpStatusCode === 412 ||
+      candidate.name === 'PreconditionFailed'
+    );
+  } catch {
+    return false;
+  }
 }
 
 function abortError(signal: AbortSignal): Error {
-  return signal.reason instanceof Error
-    ? signal.reason
-    : new Error('Control ledger read aborted');
+  const reason: unknown = signal.reason;
+  try {
+    if (reason instanceof Error) return reason;
+  } catch {
+    // Cancellation values are untrusted at this boundary.
+  }
+  return new Error('Control ledger read aborted', { cause: reason });
 }
 
 async function boundedBody(
@@ -364,9 +384,9 @@ class AwsControlLedger implements ControlLedger {
   ): Promise<ControlLedgerRecord> {
     this.assertOpen();
     await this.ensureReadiness(request.signal);
-    const { signal: requestAbortSignal, ...untrustedCommand } = request;
+    const { signal: requestAbortSignal } = request;
     requestAbortSignal?.throwIfAborted();
-    const command = appendSchema.parse(untrustedCommand);
+    const command = normalizeAppendControlLedgerRecord(request);
     if (command.sequence === 1) {
       if (command.previousHash !== ZERO_HASH) {
         throw new ControlLedgerIntegrityError(
@@ -781,12 +801,18 @@ class ObservedControlLedger implements ControlLedger {
     try {
       return await operation();
     } catch (error: unknown) {
-      const check =
-        error instanceof ControlLedgerReadinessError
-          ? 'control_ledger_readiness'
-          : error instanceof ControlLedgerIntegrityError
-            ? 'control_ledger_integrity'
-            : undefined;
+      let check:
+        'control_ledger_readiness' | 'control_ledger_integrity' | undefined;
+      try {
+        check =
+          error instanceof ControlLedgerReadinessError
+            ? 'control_ledger_readiness'
+            : error instanceof ControlLedgerIntegrityError
+              ? 'control_ledger_integrity'
+              : undefined;
+      } catch {
+        check = undefined;
+      }
       if (check !== undefined) {
         safelyObserveSafetyViolation(this.observer, {
           check,

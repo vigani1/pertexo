@@ -1,11 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
+import {
+  canonicalOutboxPayloadChecksum,
+  InboxChecksumMismatchError,
+  InboxReceiptUnavailableError,
+  UnknownOutcomeReconciliationMismatchError,
+  UnknownOutcomeReconciliationStateError,
+} from '@pertexo/database/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   createUnknownOutcomeReconciliationHandler,
+  mapUnknownOutcomeReconciliationError,
   type UnknownOutcomeReconciliationStore,
 } from '../src/execution/unknown-outcome-reconciliation-runtime.js';
 
@@ -48,5 +55,30 @@ describe('unknown-outcome reconciliation handler', () => {
       signal,
       workspaceId: selected.data.workspaceId,
     });
+  });
+
+  it.each([
+    new UnknownOutcomeReconciliationMismatchError(),
+    new UnknownOutcomeReconciliationStateError(),
+    new InboxChecksumMismatchError(),
+    new InboxReceiptUnavailableError(),
+  ])('maps durable reconciliation error %# as unrecoverable', (error) => {
+    expect(mapUnknownOutcomeReconciliationError(error)).toMatchObject({
+      name: 'UnrecoverableError',
+    });
+  });
+
+  it('preserves ordinary and hostile rejected values', () => {
+    const transient = new Error('postgres unavailable');
+    const hostile = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('hostile prototype');
+        },
+      },
+    );
+    expect(mapUnknownOutcomeReconciliationError(transient)).toBe(transient);
+    expect(mapUnknownOutcomeReconciliationError(hostile)).toBe(hostile);
   });
 });

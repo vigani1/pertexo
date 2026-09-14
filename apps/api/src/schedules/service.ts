@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 
+import type {
+  ScheduleManagementCommandResponse,
+  ScheduleTriggerHealthResponse,
+} from '@pertexo/contracts/schedules';
+
 import {
   ScheduleTriggerError,
   type ScheduleTriggerDatabase,
@@ -27,7 +32,7 @@ export class ScheduleManagementService {
       actorId: string;
       workflowId: string;
     }>,
-  ) {
+  ): Promise<Readonly<{ items: readonly ScheduleTriggerHealthResponse[] }>> {
     return this.telemetry.measure('schedule.list', async () => {
       try {
         const items = await this.database.list(input);
@@ -38,7 +43,10 @@ export class ScheduleManagementService {
     });
   }
 
-  public setEnabled(input: CommandInput, enabled: boolean) {
+  public setEnabled(
+    input: CommandInput,
+    enabled: boolean,
+  ): Promise<ScheduleManagementCommandResponse> {
     const operation = enabled ? 'schedule.enable' : 'schedule.disable';
     return this.telemetry.measure(operation, async () => {
       try {
@@ -62,15 +70,19 @@ export class ScheduleManagementService {
   }
 
   private mapError(error: unknown): never {
-    if (error instanceof ScheduleTriggerError && error.code === 'not_found')
-      return throwApplicationError(applicationError('resource.not_found'));
-    if (error instanceof ScheduleTriggerError)
-      return throwApplicationError(
-        applicationError('request.idempotency_conflict', {
-          safeDetail:
-            'The idempotency key was already used for another request.',
-        }),
-      );
+    if (error instanceof ScheduleTriggerError) {
+      switch (error.code) {
+        case 'not_found':
+          return throwApplicationError(applicationError('resource.not_found'));
+        case 'idempotency_conflict':
+          return throwApplicationError(
+            applicationError('request.idempotency_conflict', {
+              safeDetail:
+                'The idempotency key was already used for another request.',
+            }),
+          );
+      }
+    }
     throw error;
   }
 }
@@ -85,10 +97,21 @@ type CommandInput = Readonly<{
   traceId?: string;
 }>;
 
-function publicSchedule(trigger: ScheduleTriggerRecord) {
+function publicSchedule(
+  trigger: ScheduleTriggerRecord,
+): ScheduleTriggerHealthResponse {
   return {
-    ...trigger,
+    id: trigger.id,
+    workflowId: trigger.workflowId,
+    workflowVersionId: trigger.workflowVersionId,
+    nodeId: trigger.nodeId,
+    kind: trigger.kind,
+    status: trigger.status,
+    healthStatus: trigger.healthStatus,
+    lastErrorCode: trigger.lastErrorCode,
     reconciledAt: trigger.reconciledAt?.toISOString() ?? null,
+    recurrence: trigger.recurrence,
+    misfirePolicy: trigger.misfirePolicy,
     nextFireAt: trigger.nextFireAt.toISOString(),
     lastFireAt: trigger.lastFireAt?.toISOString() ?? null,
   };

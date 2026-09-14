@@ -1,7 +1,8 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { executableNodeSchema } from './preview-execution-acceptance.js';
+import { executableNodeSchema } from './preview-executable-node.js';
+import { appendPreviewTerminalFacts } from './preview-execution-completion.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
@@ -26,7 +27,6 @@ async function loadPreviewLease(
   client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],
   input: Readonly<{
     attemptFenceToken: number;
-    expiresAt: Date;
     previewAttemptId: string;
     previewRunId: string;
     workspaceId: string;
@@ -132,6 +132,58 @@ export type PreviewClaimResult =
   | Readonly<{ kind: 'claimed'; lease: PreviewAttemptLease }>
   | Readonly<{ kind: 'duplicate' }>;
 
+async function terminalizeExpiredPreview(
+  client: PoolClient,
+  input: Readonly<{
+    delivery: PreviewDelivery;
+    previewAttemptId: string;
+    previewRunId: string;
+    workspaceId: string;
+  }>,
+): Promise<void> {
+  const safeErrorCode = 'preview.deadline_exceeded';
+  const attempt = await client.query(
+    `update app.preview_attempts
+     set status='timed_out',safe_error_code=$4,
+         started_at=coalesce(started_at,clock_timestamp()),
+         completed_at=clock_timestamp(),lease_owner=null,
+         lease_expires_at=null,fence_token=fence_token+1,
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and id=$2 and preview_run_id=$3
+       and status in ('queued','running')`,
+    [
+      input.workspaceId,
+      input.previewAttemptId,
+      input.previewRunId,
+      safeErrorCode,
+    ],
+  );
+  if (attempt.rowCount !== 1)
+    throw new PreviewAttemptStateError('deadline_transition_lost');
+  const run = await client.query(
+    `update app.preview_runs
+     set status='timed_out',safe_error_code=$3,
+         started_at=coalesce(started_at,clock_timestamp()),
+         completed_at=clock_timestamp(),updated_at=clock_timestamp()
+     where workspace_id=$1 and id=$2
+       and status in ('queued','running')`,
+    [input.workspaceId, input.previewRunId, safeErrorCode],
+  );
+  if (run.rowCount !== 1) throw new PreviewAttemptStateError('run_sync_lost');
+  await appendPreviewTerminalFacts(client, {
+    previewAttemptId: input.previewAttemptId,
+    previewRunId: input.previewRunId,
+    status: 'timed_out',
+    workspaceId: input.workspaceId,
+  });
+  await completePreviewReceipt(
+    client,
+    previewConsumerName,
+    input.workspaceId,
+    input.delivery,
+  );
+}
+
 export async function claimPreviewDelivery(
   pool: Pool,
   input: Readonly<{
@@ -181,8 +233,8 @@ export async function claimPreviewDelivery(
         const locked = await client.query<{
           attempt_status: string;
           dispatch_marked_at: Date | null;
-          lease_expired: boolean | null;
           live_lease: boolean | null;
+          run_deadline_expired: boolean;
           run_status: string;
           side_effect_class: string;
         }>(
@@ -192,9 +244,8 @@ export async function claimPreviewDelivery(
                 (attempt.lease_expires_at is not null
                    and attempt.lease_expires_at > clock_timestamp())
                   as live_lease,
-                (attempt.lease_expires_at is not null
-                   and attempt.lease_expires_at <= clock_timestamp())
-                  as lease_expired,
+                (run.execution_deadline_at <= clock_timestamp())
+                  as run_deadline_expired,
                 run.status as run_status
          from app.preview_attempts attempt
          join app.preview_runs run
@@ -232,6 +283,16 @@ export async function claimPreviewDelivery(
         )
           throw new PreviewAttemptStateError('expired_after_dispatch');
 
+        if (state.run_deadline_expired) {
+          await terminalizeExpiredPreview(client, {
+            delivery: input.delivery,
+            previewAttemptId: parsed.previewAttemptId,
+            previewRunId: parsed.previewRunId,
+            workspaceId: parsed.workspaceId,
+          });
+          return Object.freeze({ kind: 'duplicate' });
+        }
+
         const claimed = await client.query<{
           fence_token: number;
           lease_expires_at: Date;
@@ -239,13 +300,26 @@ export async function claimPreviewDelivery(
           `update app.preview_attempts
          set status='running',
              lease_owner=$4,
-             lease_expires_at=clock_timestamp() + ($5::int * interval '1 second'),
-             fence_token=fence_token + 1,
-             started_at=coalesce(started_at, clock_timestamp()),
+             lease_expires_at=least(
+               clock_timestamp() + ($5::int * interval '1 second'),
+               run.execution_deadline_at
+             ),
+             fence_token=preview_attempts.fence_token + 1,
+             started_at=coalesce(
+               preview_attempts.started_at,
+               clock_timestamp()
+             ),
              updated_at=clock_timestamp()
-         where workspace_id=$1 and id=$2 and preview_run_id=$3
-           and status in ('queued','running')
-         returning fence_token,lease_expires_at`,
+         from app.preview_runs run
+         where preview_attempts.workspace_id=$1
+           and preview_attempts.id=$2
+           and preview_attempts.preview_run_id=$3
+           and preview_attempts.status in ('queued','running')
+           and run.workspace_id=preview_attempts.workspace_id
+           and run.id=preview_attempts.preview_run_id
+           and run.execution_deadline_at > clock_timestamp()
+         returning preview_attempts.fence_token,
+                   preview_attempts.lease_expires_at`,
           [
             parsed.workspaceId,
             parsed.previewAttemptId,
@@ -267,7 +341,6 @@ export async function claimPreviewDelivery(
         );
         const lease = await loadPreviewLease(client, {
           attemptFenceToken: claimedRow.fence_token,
-          expiresAt: claimedRow.lease_expires_at,
           previewAttemptId: parsed.previewAttemptId,
           previewRunId: parsed.previewRunId,
           workspaceId: parsed.workspaceId,

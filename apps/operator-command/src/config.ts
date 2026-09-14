@@ -225,112 +225,97 @@ export interface OperatorCommandConfig {
   readonly timeoutMs: number;
 }
 
+type ParsedOperatorEnvironment = z.infer<typeof environmentSchema>;
+
+function toOperatorCommand(
+  parsed: ParsedOperatorEnvironment,
+): OperatorCommandConfig['command'] {
+  const auditIdentity = {
+    actorRef: parsed.OPERATOR_ACTOR_REF,
+    commandId: parsed.OPERATOR_COMMAND_ID,
+    reason: parsed.OPERATOR_REASON,
+    workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+  };
+  switch (parsed.OPERATOR_COMMAND_TYPE) {
+    case 'operator.status':
+      return Object.freeze({
+        ...auditIdentity,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'outbox.redispatch':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        outboxEventId: parsed.OPERATOR_OUTBOX_EVENT_ID,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'attempt.reconcile':
+      return Object.freeze({
+        ...auditIdentity,
+        action: parsed.OPERATOR_ATTEMPT_ACTION,
+        attemptId: parsed.OPERATOR_ATTEMPT_ID,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        expectedFenceToken: parsed.OPERATOR_EXPECTED_FENCE_TOKEN,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'due-work.resume':
+    case 'run.cancel':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        runId: parsed.OPERATOR_RUN_ID,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'unknown-outcome.record-evidence':
+      return Object.freeze({
+        ...auditIdentity,
+        attemptId: parsed.OPERATOR_ATTEMPT_ID,
+        evidenceKind: parsed.OPERATOR_EVIDENCE_KIND,
+        evidenceRef: Object.freeze(parsed.OPERATOR_EVIDENCE_REF),
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'trigger.reconcile':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+        workflowId: parsed.OPERATOR_WORKFLOW_ID,
+      });
+    case 'run.replay':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        runInput: parsed.OPERATOR_RUN_INPUT,
+        sourceRunId: parsed.OPERATOR_RUN_ID,
+        type: parsed.OPERATOR_COMMAND_TYPE,
+        workflowVersionId: parsed.OPERATOR_WORKFLOW_VERSION_ID,
+      });
+    case 'retention.rerun':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        targetId: parsed.OPERATOR_RETENTION_BATCH_ID,
+        targetType: 'retention_batch',
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+    case 'purge.rerun':
+      return Object.freeze({
+        ...auditIdentity,
+        dryRun: parsed.OPERATOR_DRY_RUN,
+        targetId: parsed.OPERATOR_PURGE_JOB_ID,
+        targetType: 'workspace_purge_job',
+        type: parsed.OPERATOR_COMMAND_TYPE,
+      });
+  }
+}
+
 export function parseOperatorCommandConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): OperatorCommandConfig {
   const parsed = environmentSchema.parse(environment);
   const database = parseOperatorDatabaseConfig(environment);
   return Object.freeze({
-    command: (() => {
-      switch (parsed.OPERATOR_COMMAND_TYPE) {
-        case 'operator.status':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            reason: parsed.OPERATOR_REASON,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'outbox.redispatch':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            outboxEventId: parsed.OPERATOR_OUTBOX_EVENT_ID,
-            reason: parsed.OPERATOR_REASON,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'attempt.reconcile':
-          return Object.freeze({
-            action: parsed.OPERATOR_ATTEMPT_ACTION,
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            attemptId: parsed.OPERATOR_ATTEMPT_ID,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            expectedFenceToken: parsed.OPERATOR_EXPECTED_FENCE_TOKEN,
-            reason: parsed.OPERATOR_REASON,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'due-work.resume':
-        case 'run.cancel':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            reason: parsed.OPERATOR_REASON,
-            runId: parsed.OPERATOR_RUN_ID,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'unknown-outcome.record-evidence':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            attemptId: parsed.OPERATOR_ATTEMPT_ID,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            evidenceKind: parsed.OPERATOR_EVIDENCE_KIND,
-            evidenceRef: Object.freeze(parsed.OPERATOR_EVIDENCE_REF),
-            reason: parsed.OPERATOR_REASON,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'trigger.reconcile':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            reason: parsed.OPERATOR_REASON,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workflowId: parsed.OPERATOR_WORKFLOW_ID,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'run.replay':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            reason: parsed.OPERATOR_REASON,
-            runInput: parsed.OPERATOR_RUN_INPUT,
-            sourceRunId: parsed.OPERATOR_RUN_ID,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workflowVersionId: parsed.OPERATOR_WORKFLOW_VERSION_ID,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'retention.rerun':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            reason: parsed.OPERATOR_REASON,
-            targetId: parsed.OPERATOR_RETENTION_BATCH_ID,
-            targetType: 'retention_batch' as const,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-        case 'purge.rerun':
-          return Object.freeze({
-            actorRef: parsed.OPERATOR_ACTOR_REF,
-            commandId: parsed.OPERATOR_COMMAND_ID,
-            dryRun: parsed.OPERATOR_DRY_RUN,
-            reason: parsed.OPERATOR_REASON,
-            targetId: parsed.OPERATOR_PURGE_JOB_ID,
-            targetType: 'workspace_purge_job' as const,
-            type: parsed.OPERATOR_COMMAND_TYPE,
-            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          });
-      }
-    })(),
+    command: toOperatorCommand(parsed),
     database,
     forbiddenRoles: Object.freeze([
       parsed.POSTGRES_API_RUNTIME_USER,

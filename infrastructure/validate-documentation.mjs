@@ -73,7 +73,7 @@ function inspectMarkdown(contents) {
   return { anchors, links: links.filter((link) => typeof link === 'string') };
 }
 
-function localTarget(rootDirectory, sourceFile, href) {
+export function localTarget(rootDirectory, sourceFile, href) {
   if (/^[a-z][a-z\d+.-]*:/iu.test(href) || href.startsWith('//')) return null;
   const hashIndex = href.indexOf('#');
   const beforeHash = hashIndex === -1 ? href : href.slice(0, hashIndex);
@@ -86,7 +86,9 @@ function localTarget(rootDirectory, sourceFile, href) {
     const decodedPath = decodeURIComponent(rawPath);
     targetPath = decodedPath.startsWith('/')
       ? path.resolve(rootDirectory, decodedPath.slice(1))
-      : path.resolve(path.dirname(sourceFile), decodedPath || '.');
+      : decodedPath === ''
+        ? sourceFile
+        : path.resolve(path.dirname(sourceFile), decodedPath);
     anchor =
       hashIndex === -1
         ? undefined

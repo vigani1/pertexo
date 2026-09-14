@@ -7,7 +7,10 @@ import {
 } from '@pertexo/database/api';
 
 import { ScheduleManagementService } from '../../schedules/service.js';
-import { createScheduleTelemetry } from '../../schedules/telemetry.js';
+import {
+  createScheduleTelemetry,
+  type ScheduleTelemetry,
+} from '../../schedules/telemetry.js';
 
 export type ApiScheduleRuntime = Readonly<{
   service: ScheduleManagementService;
@@ -15,12 +18,46 @@ export type ApiScheduleRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export function createApiScheduleRuntime(
+export type ApiScheduleRuntimeFactories = Readonly<{
+  database?: typeof createScheduleTriggerDatabase;
+  telemetry?: () => ScheduleTelemetry;
+}>;
+
+export async function createApiScheduleRuntime(
   config: DatabaseConfig,
   override?: ScheduleTriggerDatabase,
   runtime?: DatabaseRuntime,
-): ApiScheduleRuntime {
-  const database = override ?? createScheduleTriggerDatabase(config, runtime);
+  factories: ApiScheduleRuntimeFactories = {},
+): Promise<ApiScheduleRuntime> {
+  let database: ScheduleTriggerDatabase | undefined;
+  try {
+    database =
+      override ??
+      (factories.database ?? createScheduleTriggerDatabase)(config, runtime);
+    const telemetry =
+      factories.telemetry?.() ?? createProductionScheduleTelemetry();
+    const acquiredDatabase = database;
+    let closePromise: Promise<void> | undefined;
+    return Object.freeze({
+      service: new ScheduleManagementService(acquiredDatabase, telemetry),
+      checkReadiness: () => acquiredDatabase.checkReadiness(),
+      close: () => {
+        closePromise ??= Promise.resolve().then(() => acquiredDatabase.close());
+        return closePromise;
+      },
+    });
+  } catch (error: unknown) {
+    const cleanupFailures = await collectScheduleCloseFailures(database);
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [error, ...cleanupFailures],
+        'Schedule runtime construction and cleanup failed',
+      );
+    throw error;
+  }
+}
+
+function createProductionScheduleTelemetry(): ScheduleTelemetry {
   const meter = metrics.getMeter('@pertexo/api.schedules', '0.0.0');
   const count = meter.createCounter('pertexo.schedule.operation.count', {
     description: 'Completed schedule operations by bounded operation/outcome',
@@ -32,7 +69,7 @@ export function createApiScheduleRuntime(
       unit: 's',
     },
   );
-  const telemetry = createScheduleTelemetry({
+  return createScheduleTelemetry({
     count: (operation, outcome) => {
       count.add(1, { operation, outcome });
     },
@@ -40,13 +77,15 @@ export function createApiScheduleRuntime(
       duration.record(seconds, { operation, outcome });
     },
   });
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    service: new ScheduleManagementService(database, telemetry),
-    checkReadiness: () => database.checkReadiness(),
-    close: () => {
-      closePromise ??= database.close();
-      return closePromise;
-    },
-  });
+}
+
+async function collectScheduleCloseFailures(
+  database: ScheduleTriggerDatabase | undefined,
+): Promise<unknown[]> {
+  const result = await Promise.allSettled([
+    Promise.resolve().then(() => database?.close()),
+  ]);
+  return result.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
 }

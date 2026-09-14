@@ -15,6 +15,7 @@ import type { FastifyInstance } from 'fastify';
 import { AppModule } from './app.module.js';
 import type { ApiConfig } from './platform/config/api-config.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
+import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { registerApiMetrics } from './platform/observability/api-metrics.js';
 import {
@@ -110,97 +111,16 @@ export async function createApiApplication(
 ): Promise<NestFastifyApplication> {
   assertValidRuntimeSources(config, dependencies);
   const nestLogger = new NestLoggerAdapter(dependencies.logger);
-  let databaseRuntime: DatabaseRuntime | undefined;
-  let identityRuntime: ApiIdentityRuntime | undefined;
-  let workflowRuntime: ApiWorkflowRuntime | undefined;
-  let connectionRuntime: ApiConnectionRuntime | undefined;
-  let webhookRuntime: ApiWebhookRuntime | undefined;
-  let scheduleRuntime: ApiScheduleRuntime | undefined;
-  let artifactRuntime: ApiArtifactRuntime | undefined;
-  try {
-    databaseRuntime =
-      dependencies.databaseRuntime ??
-      (dependencies.database === undefined
-        ? createDatabaseRuntime(config.database, { role: 'api' })
-        : undefined);
-    identityRuntime =
-      dependencies.identityRuntime ??
-      (config.identity === undefined
-        ? undefined
-        : createApiIdentityRuntime(
-            config.identity,
-            config.database,
-            dependencies.identityOverrides,
-            databaseRuntime,
-          ));
-    workflowRuntime =
-      dependencies.workflowRuntime ??
-      (identityRuntime === undefined
-        ? undefined
-        : createApiWorkflowRuntime(
-            config.database,
-            identityRuntime,
-            config.redisUrl,
-            {
-              ...dependencies.workflowOverrides,
-              releaseCohort: config.nodeCompatibilityCohort,
-            },
-            databaseRuntime,
-          ));
-    connectionRuntime =
-      dependencies.connectionRuntime ??
-      (identityRuntime === undefined || config.connections === undefined
-        ? undefined
-        : createApiConnectionRuntime(
-            config.connections,
-            config.database,
-            identityRuntime,
-            dependencies.connectionOverrides,
-            databaseRuntime,
-          ));
-    webhookRuntime =
-      dependencies.webhookRuntime ??
-      (identityRuntime === undefined || config.webhooks === undefined
-        ? undefined
-        : createApiWebhookRuntime(
-            config.webhooks,
-            config.database,
-            config.nodeCompatibilityCohort,
-            undefined,
-            databaseRuntime,
-          ));
-    scheduleRuntime =
-      dependencies.scheduleRuntime ??
-      (identityRuntime === undefined || dependencies.database !== undefined
-        ? undefined
-        : createApiScheduleRuntime(
-            config.database,
-            undefined,
-            databaseRuntime,
-          ));
-    artifactRuntime =
-      dependencies.artifactRuntime ??
-      (identityRuntime === undefined || config.artifacts === undefined
-        ? undefined
-        : createApiArtifactRuntime(
-            config.artifacts,
-            config.database,
-            identityRuntime,
-            dependencies.artifactOverrides,
-            databaseRuntime,
-          ));
-  } catch (error: unknown) {
-    const cleanupErrors = await cleanupApiRuntimes({
-      artifactRuntime,
-      connectionRuntime,
-      databaseRuntime,
-      identityRuntime,
-      scheduleRuntime,
-      webhookRuntime,
-      workflowRuntime,
-    });
-    throwStartupFailure(error, cleanupErrors);
-  }
+  const runtimes = await acquireApiRuntimes(config, dependencies);
+  const {
+    artifactRuntime,
+    connectionRuntime,
+    databaseRuntime,
+    identityRuntime,
+    scheduleRuntime,
+    webhookRuntime,
+    workflowRuntime,
+  } = runtimes;
   const fastifyAdapter = new FastifyAdapter({
     trustProxy:
       config.trustedProxyCidrs === undefined ||
@@ -232,18 +152,25 @@ export async function createApiApplication(
       { abortOnError: false, logger: nestLogger },
     );
   } catch (error: unknown) {
-    const cleanupErrors = await cleanupApiRuntimes({
-      artifactRuntime,
-      connectionRuntime,
-      databaseRuntime,
-      identityRuntime,
-      scheduleRuntime,
-      webhookRuntime,
-      workflowRuntime,
-    });
+    const cleanupErrors = await cleanupApiRuntimes(runtimes);
     throwStartupFailure(error, cleanupErrors);
   }
 
+  const shutdown = application.get(ApiShutdownCoordinator);
+  const nestClose = application.close.bind(application);
+  let closePromise: Promise<void> | undefined;
+  const coordinatedClose = (): Promise<void> => {
+    closePromise ??= nestClose().then(() => {
+      shutdown.throwIfFailed();
+    });
+    return closePromise;
+  };
+  const lifecycleApplication = new Proxy(application, {
+    get(target, property, receiver) {
+      if (property === 'close') return coordinatedClose;
+      return Reflect.get(target, property, receiver) as unknown;
+    },
+  });
   application.enableShutdownHooks();
   try {
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
@@ -259,14 +186,129 @@ export async function createApiApplication(
     await artifactRuntime?.checkReadiness();
   } catch (error: unknown) {
     try {
-      await application.close();
+      await coordinatedClose();
     } catch (cleanupError: unknown) {
       throwStartupFailure(error, [cleanupError]);
     }
     throw error;
   }
 
-  return application;
+  return lifecycleApplication;
+}
+
+async function acquireApiRuntimes(
+  config: ApiConfig,
+  dependencies: ApiApplicationDependencies,
+): Promise<ApiRuntimeSet> {
+  let databaseRuntime: DatabaseRuntime | undefined;
+  let identityRuntime: ApiIdentityRuntime | undefined;
+  let workflowRuntime: ApiWorkflowRuntime | undefined;
+  let connectionRuntime: ApiConnectionRuntime | undefined;
+  let webhookRuntime: ApiWebhookRuntime | undefined;
+  let scheduleRuntime: ApiScheduleRuntime | undefined;
+  let artifactRuntime: ApiArtifactRuntime | undefined;
+  try {
+    databaseRuntime = dependencies.databaseRuntime;
+    if (databaseRuntime === undefined && dependencies.database === undefined)
+      databaseRuntime = createDatabaseRuntime(config.database, { role: 'api' });
+
+    identityRuntime = dependencies.identityRuntime;
+    if (identityRuntime === undefined && config.identity !== undefined)
+      identityRuntime = await createApiIdentityRuntime(
+        config.identity,
+        config.database,
+        dependencies.identityOverrides,
+        databaseRuntime,
+      );
+
+    workflowRuntime = dependencies.workflowRuntime;
+    if (workflowRuntime === undefined && identityRuntime !== undefined)
+      workflowRuntime = await createApiWorkflowRuntime(
+        config.database,
+        identityRuntime,
+        config.redisUrl,
+        {
+          ...dependencies.workflowOverrides,
+          releaseCohort: config.nodeCompatibilityCohort,
+        },
+        databaseRuntime,
+      );
+
+    connectionRuntime = dependencies.connectionRuntime;
+    if (
+      connectionRuntime === undefined &&
+      identityRuntime !== undefined &&
+      config.connections !== undefined
+    )
+      connectionRuntime = await createApiConnectionRuntime(
+        config.connections,
+        config.database,
+        identityRuntime,
+        dependencies.connectionOverrides,
+        databaseRuntime,
+      );
+
+    webhookRuntime = dependencies.webhookRuntime;
+    if (
+      webhookRuntime === undefined &&
+      identityRuntime !== undefined &&
+      config.webhooks !== undefined
+    )
+      webhookRuntime = await createApiWebhookRuntime(
+        config.webhooks,
+        config.database,
+        config.nodeCompatibilityCohort,
+        undefined,
+        databaseRuntime,
+      );
+
+    scheduleRuntime = dependencies.scheduleRuntime;
+    if (
+      scheduleRuntime === undefined &&
+      identityRuntime !== undefined &&
+      dependencies.database === undefined
+    )
+      scheduleRuntime = await createApiScheduleRuntime(
+        config.database,
+        undefined,
+        databaseRuntime,
+      );
+
+    artifactRuntime = dependencies.artifactRuntime;
+    if (
+      artifactRuntime === undefined &&
+      identityRuntime !== undefined &&
+      config.artifacts !== undefined
+    )
+      artifactRuntime = createApiArtifactRuntime(
+        config.artifacts,
+        config.database,
+        identityRuntime,
+        dependencies.artifactOverrides,
+        databaseRuntime,
+      );
+  } catch (error: unknown) {
+    const runtimes = {
+      artifactRuntime,
+      connectionRuntime,
+      databaseRuntime,
+      identityRuntime,
+      scheduleRuntime,
+      webhookRuntime,
+      workflowRuntime,
+    };
+    const cleanupErrors = await cleanupApiRuntimes(runtimes);
+    throwStartupFailure(error, cleanupErrors);
+  }
+  return {
+    artifactRuntime,
+    connectionRuntime,
+    databaseRuntime,
+    identityRuntime,
+    scheduleRuntime,
+    webhookRuntime,
+    workflowRuntime,
+  };
 }
 
 type ApiRuntimeSet = Readonly<{
@@ -305,8 +347,15 @@ function throwStartupFailure(
   cleanupErrors: readonly unknown[],
 ): never {
   if (cleanupErrors.length === 0) throw startupError;
+  const flattened = cleanupErrors.flatMap((cleanupError) => {
+    if (!(cleanupError instanceof AggregateError)) return [cleanupError];
+    const nested: unknown = (cleanupError as { errors: unknown }).errors;
+    return Array.isArray(nested)
+      ? nested.map((failure: unknown) => failure)
+      : [cleanupError];
+  });
   throw new AggregateError(
-    [startupError, ...cleanupErrors],
+    [startupError, ...flattened],
     'API startup and cleanup did not complete cleanly',
   );
 }

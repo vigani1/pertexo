@@ -22,16 +22,26 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
             and pg_get_constraintdef(oid) = 'CHECK (((auth_type)::text = ANY ((ARRAY[''http_headers''::character varying, ''slack_bot_token''::character varying, ''resend_api_key''::character varying])::text[])))'
         )
         and exists (
-          select 1 from pg_trigger
-          where tgrelid = to_regclass('app.connection_secret_versions')
-            and tgname = 'connection_secret_versions_immutable'
-            and not tgisinternal
+          select 1 from pg_trigger trigger
+          where trigger.tgrelid = to_regclass('app.connection_secret_versions')
+            and trigger.tgname = 'connection_secret_versions_immutable'
+            and trigger.tgenabled = 'O'
+            and trigger.tgtype = 27
+            and trigger.tgfoid = 'app.reject_connection_history_change()'::regprocedure
+            and trigger.tgqual is null
+            and cardinality(trigger.tgattr::smallint[]) = 0
+            and not trigger.tgisinternal
         )
         and exists (
-          select 1 from pg_trigger
-          where tgrelid = to_regclass('app.connection_events')
-            and tgname = 'connection_events_immutable'
-            and not tgisinternal
+          select 1 from pg_trigger trigger
+          where trigger.tgrelid = to_regclass('app.connection_events')
+            and trigger.tgname = 'connection_events_immutable'
+            and trigger.tgenabled = 'O'
+            and trigger.tgtype = 27
+            and trigger.tgfoid = 'app.reject_connection_history_change()'::regprocedure
+            and trigger.tgqual is null
+            and cardinality(trigger.tgattr::smallint[]) = 0
+            and not trigger.tgisinternal
         )
         and not exists (
           select 1 from (values
@@ -48,6 +58,32 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
              or has_table_privilege(current_user, protected_class.oid, 'TRUNCATE')
              or has_table_privilege(current_user, protected_class.oid, 'REFERENCES')
              or has_table_privilege(current_user, protected_class.oid, 'TRIGGER')
+        )
+        and (select count(*) from pg_policy
+          where polrelid in (
+            to_regclass('app.connections'),
+            to_regclass('app.connection_secret_versions'),
+            to_regclass('app.connection_events')
+          )) = 3
+        and not exists (
+          select 1 from (values
+            ('connections', 'connections_workspace_scope'),
+            ('connection_secret_versions', 'connection_secret_versions_workspace_scope'),
+            ('connection_events', 'connection_events_workspace_scope')
+          ) expected(table_name, policy_name)
+          where not exists (
+            select 1 from pg_policy policy
+            where policy.polrelid = to_regclass('app.' || expected.table_name)
+              and policy.polname = expected.policy_name
+              and policy.polcmd = '*'
+              and policy.polpermissive
+              and cardinality(policy.polroles) = 3
+              and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+              and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+              and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+              and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+              and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+          )
         )
         and case when current_user = $2 then
           has_table_privilege(current_user, 'app.connections', 'SELECT')
@@ -170,10 +206,15 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
             and contype = 'f'
         )
         and exists (
-          select 1 from pg_trigger
-          where tgrelid = to_regclass('app.artifact_links')
-            and tgname = 'artifact_link_preview_retention'
-            and not tgisinternal
+          select 1 from pg_trigger trigger
+          where trigger.tgrelid = to_regclass('app.artifact_links')
+            and trigger.tgname = 'artifact_link_preview_retention'
+            and trigger.tgenabled = 'O'
+            and trigger.tgtype = 7
+            and trigger.tgfoid = 'app.enforce_preview_artifact_retention()'::regprocedure
+            and trigger.tgqual is null
+            and cardinality(trigger.tgattr::smallint[]) = 0
+            and not trigger.tgisinternal
         )
         and exists (
           select 1 from pg_proc routine
@@ -324,7 +365,7 @@ export const READINESS_CONNECTIONS_PREVIEW_SQL = `
             and conname = 'preview_runs_integration_identity_consistent'
             and contype = 'c'
             and convalidated
-            and pg_get_constraintdef(oid) = 'CHECK ((((provider_key IS NULL) AND (operation_key IS NULL)) OR (((provider_key)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text) AND ((operation_key)::text ~ ''^[a-z][a-z0-9._:-]{0,127}$''::text))))'
+            and pg_get_constraintdef(oid) = 'CHECK (((((provider_key IS NULL) AND (operation_key IS NULL)) OR ((provider_key IS NOT NULL) AND (operation_key IS NOT NULL) AND ((provider_key)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text) AND ((operation_key)::text ~ ''^[a-z][a-z0-9._:-]{0,127}$''::text))) IS TRUE))'
         )
         and exists (
           select 1 from pg_attribute attribute

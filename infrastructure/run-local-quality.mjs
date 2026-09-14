@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { Buffer } from 'node:buffer';
 import { createHash, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { createWriteStream, readFileSync, rmSync } from 'node:fs';
@@ -19,6 +20,7 @@ import {
 } from './owned-process-tree.mjs';
 import { validateVitestGateReport } from './validate-vitest-gate-report.mjs';
 import { validateBenchmarkEvidence } from './performance/compare-local-benchmark.mjs';
+import { isolatedGitEnvironment } from './git-environment.mjs';
 
 export { terminateProcessTree };
 
@@ -212,7 +214,13 @@ export const LOCAL_QUALITY_COHORTS = Object.freeze([
   Object.freeze({ id: 'deployment', command: ['pnpm', 'deployment:check'] }),
   Object.freeze({ id: 'images', command: ['pnpm', 'images:check'] }),
   Object.freeze({ id: 'exercises', command: ['pnpm', 'exercise:check'] }),
-  Object.freeze({ id: 'cleanup', internal: 'cleanup' }),
+  Object.freeze({
+    id: 'cleanup',
+    internal: 'cleanup',
+    qualificationBefore: [
+      [process.execPath, 'infrastructure/record-coverage-provenance.mjs'],
+    ],
+  }),
 ]);
 
 export const AWS_ONLY_EXCLUSIONS = Object.freeze([
@@ -240,9 +248,11 @@ const requiredServiceFlags = Object.freeze({
   API_IDENTITY_INTEGRATION: 'true',
   API_SSE_INTEGRATION: 'true',
   API_SSE_RESILIENCE_INTEGRATION: 'true',
+  API_SSE_RESILIENCE_DISPOSABLE_TARGET: 'true',
   API_WEBHOOK_INTEGRATION: 'true',
   ARTIFACT_STORE_INTEGRATION: 'true',
   CONTROL_LEDGER_INTEGRATION: 'true',
+  CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true',
   CONTROL_LEDGER_INTEGRATION_PROVIDER: 'minio',
   QUEUE_INTEGRATION: 'true',
   REDIS_RATE_LIMIT_INTEGRATION: 'true',
@@ -343,7 +353,7 @@ const expectedCiServiceLifecycleCommands = Object.freeze(
     'pnpm database:coverage:merge',
     'pnpm db:migrate',
     'pnpm db:migrate',
-    'node infrastructure/verify-mutation-sensitivity.mjs',
+    'pnpm mutation:check',
   ].sort(),
 );
 
@@ -363,7 +373,7 @@ function ciServiceLifecycleCommands(parsed) {
         command === 'pnpm --filter @pertexo/database test:coverage' ||
         command === 'pnpm database:coverage:merge' ||
         command === 'pnpm db:migrate' ||
-        command === 'node infrastructure/verify-mutation-sensitivity.mjs',
+        command === 'pnpm mutation:check',
     )
     .sort();
 }
@@ -399,6 +409,15 @@ export function assertCiLocalQualityContract(source) {
     )
       throw new Error(`CI service environment is missing ${name}=${value}`);
   }
+  if (
+    !environmentDeclarations(
+      parsed,
+      'API_SSE_RESILIENCE_COMPOSE_PROJECT',
+    ).includes('${{ env.COMPOSE_PROJECT_NAME }}')
+  )
+    throw new Error(
+      'CI service environment must bind API_SSE_RESILIENCE_COMPOSE_PROJECT to its owned Compose project',
+    );
   const actualCommands = ciVitestCommands(parsed);
   const expectedCommands = expectedCiVitestCommands();
   if (JSON.stringify(actualCommands) !== JSON.stringify(expectedCommands))
@@ -437,10 +456,36 @@ export function assertQualificationEnvironment(environment) {
 }
 
 export function validateQualificationManifest(manifest) {
+  if (manifest === null || typeof manifest !== 'object')
+    throw new Error('Qualification manifest must be an object');
   if (manifest.mode !== 'qualification')
     throw new Error('Exploratory partial runs are not qualification evidence');
-  if (manifest.source?.stable !== true)
+  if (manifest.outcome !== 'passed')
+    throw new Error('Qualification manifest outcome must be passed');
+  const sourceStarted = manifest.source?.started;
+  const sourceCompleted = manifest.source?.completed;
+  if (
+    manifest.source?.stable !== true ||
+    typeof sourceStarted?.head !== 'string' ||
+    typeof sourceCompleted?.head !== 'string' ||
+    !/^[\da-f]{64}$/u.test(sourceStarted?.fingerprint ?? '') ||
+    !/^[\da-f]{64}$/u.test(sourceCompleted?.fingerprint ?? '') ||
+    !Array.isArray(sourceStarted?.status) ||
+    !Array.isArray(sourceCompleted?.status) ||
+    sourceStarted.fingerprint !== sourceCompleted.fingerprint
+  )
     throw new Error('Qualification source evidence is stale');
+  if (!Array.isArray(manifest.cohorts))
+    throw new Error('Qualification manifest cohorts must be an array');
+  const knownCohorts = new Set(LOCAL_QUALITY_COHORTS.map(({ id }) => id));
+  for (const cohort of manifest.cohorts)
+    if (
+      cohort === null ||
+      typeof cohort !== 'object' ||
+      typeof cohort.id !== 'string' ||
+      !knownCohorts.has(cohort.id)
+    )
+      throw new Error('Qualification manifest contains an unknown cohort');
   for (const definition of LOCAL_QUALITY_COHORTS) {
     const matches = manifest.cohorts.filter(({ id }) => id === definition.id);
     if (matches.length !== 1)
@@ -448,24 +493,57 @@ export function validateQualificationManifest(manifest) {
         `Qualification manifest must contain local cohort ${definition.id} exactly once`,
       );
     const [cohort] = matches;
-    if (cohort.required && cohort.status !== 'passed')
+    if (cohort.required !== true)
+      throw new Error(
+        `Required local cohort ${cohort.id} is not marked required`,
+      );
+    if (cohort.status !== 'passed')
       throw new Error(
         `Required local cohort ${cohort.id} is ${cohort.status ?? 'missing'}`,
       );
-    if (
-      cohort.required &&
-      cohort.reportExpected &&
-      cohort.reportValidated !== true
-    )
+    const reportExpected = definition.report !== undefined;
+    if (cohort.reportExpected !== reportExpected)
+      throw new Error(
+        `Required local cohort ${cohort.id} has inconsistent report expectation`,
+      );
+    if (reportExpected && cohort.reportValidated !== true)
       throw new Error(
         `Required local cohort ${cohort.id} has no complete report`,
       );
+    if (
+      reportExpected &&
+      (typeof cohort.report !== 'string' ||
+        cohort.report.length === 0 ||
+        !Number.isSafeInteger(cohort.result?.passed) ||
+        cohort.result.passed < 1 ||
+        !Number.isSafeInteger(cohort.result?.total) ||
+        cohort.result.total < cohort.result.passed)
+    )
+      throw new Error(
+        `Required local cohort ${cohort.id} has malformed report evidence`,
+      );
   }
+  if (!Array.isArray(manifest.externalExclusions))
+    throw new Error('Qualification external exclusions must be an array');
+  const knownExclusions = new Set(AWS_ONLY_EXCLUSIONS.map(({ id }) => id));
+  for (const exclusion of manifest.externalExclusions)
+    if (
+      exclusion === null ||
+      typeof exclusion !== 'object' ||
+      typeof exclusion.id !== 'string' ||
+      !knownExclusions.has(exclusion.id)
+    )
+      throw new Error('Qualification manifest contains an unknown exclusion');
   for (const exclusion of AWS_ONLY_EXCLUSIONS) {
     const matches = manifest.externalExclusions?.filter(
       ({ id }) => id === exclusion.id,
     );
-    if (matches?.length !== 1 || matches[0].status !== 'skipped')
+    if (
+      matches?.length !== 1 ||
+      matches[0].status !== 'skipped' ||
+      matches[0].test !== exclusion.test ||
+      matches[0].reason !== exclusion.reason
+    )
       throw new Error(
         `Qualification manifest must retain named AWS-only exclusion ${exclusion.id}`,
       );
@@ -473,14 +551,18 @@ export function validateQualificationManifest(manifest) {
   return manifest;
 }
 
-export async function acquireRunLock(lockPath, owner) {
-  await mkdir(path.dirname(lockPath), { recursive: true });
+export async function acquireRunLock(lockPath, owner, operations = {}) {
+  const makeDirectory = operations.mkdir ?? mkdir;
+  const openFile = operations.open ?? open;
+  const readLock = operations.readFile ?? readFile;
+  const removeLock = operations.rm ?? rm;
+  await makeDirectory(path.dirname(lockPath), { recursive: true });
   let handle;
   try {
-    handle = await open(lockPath, 'wx');
+    handle = await openFile(lockPath, 'wx');
   } catch (error) {
     if (error?.code === 'EEXIST') {
-      const existingOwner = await readFile(lockPath, 'utf8').catch(
+      const existingOwner = await readLock(lockPath, 'utf8').catch(
         () => 'unreadable owner',
       );
       throw new Error(
@@ -489,16 +571,35 @@ export async function acquireRunLock(lockPath, owner) {
     }
     throw error;
   }
-  await handle.writeFile(`${JSON.stringify(owner)}\n`);
-  await handle.close();
+  try {
+    await handle.writeFile(`${JSON.stringify(owner)}\n`);
+    await handle.close();
+  } catch (error) {
+    const failures = [error];
+    try {
+      await handle.close();
+    } catch (closeError) {
+      failures.push(closeError);
+    }
+    try {
+      await removeLock(lockPath);
+    } catch (removeError) {
+      failures.push(removeError);
+    }
+    if (failures.length === 1) throw error;
+    throw new AggregateError(
+      failures,
+      'Local quality lock setup failed and cleanup was incomplete',
+    );
+  }
   let released = false;
   return async () => {
     if (released) return;
-    released = true;
-    const current = JSON.parse(await readFile(lockPath, 'utf8'));
+    const current = JSON.parse(await readLock(lockPath, 'utf8'));
     if (current.token !== owner.token)
       throw new Error('Local quality lock ownership changed before release');
-    await rm(lockPath);
+    await removeLock(lockPath);
+    released = true;
   };
 }
 
@@ -544,15 +645,25 @@ function composeArguments(project, ...arguments_) {
   return ['compose', '-p', project, '-f', 'compose.yaml', ...arguments_];
 }
 
-function sourceIdentity(environment) {
+export function sourceIdentity(
+  environment = process.env,
+  sourceRoot = repositoryRoot,
+) {
+  const gitEnvironment = isolatedGitEnvironment(environment);
   return Promise.all([
-    capture('git', ['rev-parse', 'HEAD'], environment),
-    capture('git', ['status', '--porcelain=v1', '-z'], environment),
-    capture('git', ['diff', '--binary', 'HEAD'], environment),
+    capture('git', ['rev-parse', 'HEAD'], gitEnvironment, sourceRoot),
+    capture(
+      'git',
+      ['status', '--porcelain=v1', '-z'],
+      gitEnvironment,
+      sourceRoot,
+    ),
+    capture('git', ['diff', '--binary', 'HEAD'], gitEnvironment, sourceRoot),
     capture(
       'git',
       ['ls-files', '--others', '--exclude-standard', '-z'],
-      environment,
+      gitEnvironment,
+      sourceRoot,
     ),
   ]).then(async ([head, status, diff, untracked]) => {
     const hash = createHash('sha256');
@@ -561,7 +672,7 @@ function sourceIdentity(environment) {
     const untrackedFiles = untracked.stdout.split('\0').filter(Boolean).sort();
     for (const file of untrackedFiles) {
       hash.update(file);
-      hash.update(await readFile(path.join(repositoryRoot, file)));
+      hash.update(await readFile(path.join(sourceRoot, file)));
     }
     return {
       head: head.stdout.trim(),
@@ -572,9 +683,22 @@ function sourceIdentity(environment) {
   });
 }
 
-async function capture(command, arguments_, environment) {
+async function capture(
+  command,
+  arguments_,
+  environment,
+  workingDirectory = repositoryRoot,
+) {
   let stdout = '';
   let stderr = '';
+  const append = (current, chunk, streamName) => {
+    const next = current + String(chunk);
+    if (Buffer.byteLength(next) > 16 * 1024 * 1024)
+      throw new Error(
+        `${command} ${streamName} exceeded the 16 MiB capture limit`,
+      );
+    return next;
+  };
   await runManagedCommand({
     args: arguments_,
     command,
@@ -586,21 +710,24 @@ async function capture(command, arguments_, environment) {
       child.stdout.setEncoding('utf8');
       child.stderr.setEncoding('utf8');
     },
-    onStdout: (chunk) => (stdout += chunk),
-    onStderr: (chunk) => (stderr += chunk),
+    onStdout: (chunk) => (stdout = append(stdout, chunk, 'stdout')),
+    onStderr: (chunk) => (stderr = append(stderr, chunk, 'stderr')),
     releaseOwned: processSupervisor.release.bind(processSupervisor),
     spawnOwned: processSupervisor.spawn.bind(processSupervisor),
     spawnOptions: {
-      cwd: repositoryRoot,
+      cwd: workingDirectory,
       env: environment,
       stdio: ['ignore', 'pipe', 'pipe'],
     },
+    timeoutFailure: () =>
+      new Error(`${command} ${arguments_.join(' ')} timed out after 600000 ms`),
+    timeoutMillis: 600_000,
   });
   return { stdout, stderr };
 }
 
 export function createRunId() {
-  return `${new Date().toISOString().toLowerCase().replaceAll(/[:.]/gu, '-')}-${String(process.pid)}-${randomBytes(4).toString('hex')}`;
+  return `pertexo-local-quality-${new Date().toISOString().toLowerCase().replaceAll(/[:.]/gu, '-')}-${String(process.pid)}-${randomBytes(4).toString('hex')}`;
 }
 
 function localEnvironment(ciEnvironment, ports, project) {
@@ -612,6 +739,7 @@ function localEnvironment(ciEnvironment, ports, project) {
     ...ciEnvironment,
     ...requiredServiceFlags,
     COMPOSE_PROJECT_NAME: project,
+    API_SSE_RESILIENCE_COMPOSE_PROJECT: project,
     POSTGRES_PORT: String(postgres),
     REDIS_PORT: String(redis),
     ARTIFACT_STORE_PORT: String(artifact),
@@ -729,6 +857,66 @@ function requestOwnedProcessTermination(signal = 'SIGTERM') {
   return activeTermination;
 }
 
+function createOutputFlowController(onSinkError) {
+  const blockedBySource = new Map();
+  const pending = new Set();
+  const observed = new Map();
+  const failures = [];
+
+  const recordFailure = (error) => {
+    failures.push(error);
+    onSinkError();
+  };
+  const observe = (sink) => {
+    if (observed.has(sink)) return;
+    const listener = (error) => recordFailure(error);
+    sink.on('error', listener);
+    observed.set(sink, listener);
+  };
+  const write = (source, chunk, sinks) => {
+    for (const sink of sinks) {
+      observe(sink);
+      if (sink.write(chunk) !== false) continue;
+      source?.pause();
+      const blocked = blockedBySource.get(source) ?? new Set();
+      blockedBySource.set(source, blocked);
+      if (blocked.has(sink)) continue;
+      blocked.add(sink);
+      let settlement;
+      settlement = new Promise((resolve) => {
+        const onDrain = () => finish();
+        const onError = (error) => finish(error);
+        const onClose = () =>
+          finish(new Error('Output sink closed before drain'));
+        const finish = (error) => {
+          sink.off('drain', onDrain);
+          sink.off('error', onError);
+          sink.off('close', onClose);
+          blocked.delete(sink);
+          if (blocked.size === 0) {
+            blockedBySource.delete(source);
+            source?.resume();
+          }
+          if (error !== undefined) recordFailure(error);
+          resolve();
+        };
+        sink.once('drain', onDrain);
+        sink.once('error', onError);
+        sink.once('close', onClose);
+      }).finally(() => pending.delete(settlement));
+      pending.add(settlement);
+    }
+  };
+  const finish = async () => {
+    while (pending.size > 0) await Promise.all([...pending]);
+    for (const [sink, listener] of observed) sink.off('error', listener);
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1)
+      throw new AggregateError(failures, 'Command output sinks failed');
+  };
+  return { finish, write };
+}
+
 export async function execute(
   command,
   arguments_,
@@ -743,6 +931,11 @@ export async function execute(
     () => ({ error: undefined, failed: false }),
     (error) => ({ error, failed: true }),
   );
+  const outputFlow = createOutputFlowController(
+    dependencies.requestTermination ?? requestOwnedProcessTermination,
+  );
+  const stdout = dependencies.stdout ?? process.stdout;
+  const stderr = dependencies.stderr ?? process.stderr;
   let completionFailed = false;
   let completionError;
   try {
@@ -758,14 +951,10 @@ export async function execute(
           (dependencies.requestTermination ?? requestOwnedProcessTermination)();
         });
       },
-      onStdout: (chunk) => {
-        process.stdout.write(chunk);
-        log.write(chunk);
-      },
-      onStderr: (chunk) => {
-        process.stderr.write(chunk);
-        log.write(chunk);
-      },
+      onStdout: (chunk, source) =>
+        outputFlow.write(source, chunk, [stdout, log]),
+      onStderr: (chunk, source) =>
+        outputFlow.write(source, chunk, [stderr, log]),
       releaseOwned:
         dependencies.releaseOwned ??
         processSupervisor.release.bind(processSupervisor),
@@ -777,10 +966,28 @@ export async function execute(
         env: environment,
         stdio: ['inherit', 'pipe', 'pipe'],
       },
+      timeoutFailure: () =>
+        new Error(
+          `${command} ${arguments_.join(' ')} timed out after ${String(dependencies.timeoutMillis ?? 3_600_000)} ms`,
+        ),
+      timeoutMillis: dependencies.timeoutMillis ?? 3_600_000,
     });
   } catch (error) {
     completionFailed = true;
     completionError = error;
+  }
+  try {
+    await outputFlow.finish();
+  } catch (error) {
+    if (completionFailed)
+      completionError = new AggregateError(
+        [completionError, error],
+        `${command} failed and its output sinks were incomplete`,
+      );
+    else {
+      completionFailed = true;
+      completionError = error;
+    }
   }
   let logEndFailed = false;
   let logEndError;
@@ -1060,6 +1267,14 @@ async function run() {
           );
           record.evidence = path.relative(repositoryRoot, evidencePath);
         } else if (definition.internal === 'cleanup') {
+          if (options.mode === 'qualification')
+            for (const before of definition.qualificationBefore ?? [])
+              await execute(
+                before[0],
+                before.slice(1),
+                environment,
+                path.join(outputDirectory, `${definition.id}.log`),
+              );
           await cleanup({ releaseLock: false });
         } else {
           const reportPath = definition.report

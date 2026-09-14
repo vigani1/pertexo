@@ -6,99 +6,105 @@ import {
   composeExecutableCompatibilityRelease,
   createCheckpointV2,
   invocationKey,
-  nodeRelease,
-  forEachGraph,
-} from './executable-workflow.fixtures.js';
+} from '../src/index.js';
+import { forEachGraph, nodeRelease } from './executable-workflow.fixtures.js';
+
+async function startForEach() {
+  const executable = buildWorkflowExecutableV2({
+    graph: forEachGraph(),
+    release: composeExecutableCompatibilityRelease(
+      nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
+    ),
+  });
+  const base = {
+    runId: 'run-foreach',
+    executable,
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
+    occurredAt: '2026-08-24T10:00:00.000Z',
+    maximumAdmissions: 1,
+    signal: new AbortController().signal,
+  } as const;
+  const initial = await advanceWorkflow({
+    ...base,
+    checkpoint: createCheckpointV2({
+      engineVersion: 'engine-v1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      iterationBudget: 2,
+    }),
+    observations: [],
+  });
+  const manual = initial.attempts[0];
+  if (manual === undefined) throw new Error('manual attempt missing');
+  const afterManual = await advanceWorkflow({
+    ...base,
+    checkpoint: initial.checkpoint,
+    observations: [
+      {
+        kind: 'outcome',
+        sequence: initial.checkpoint.nextEventSequence,
+        occurredAt: base.occurredAt,
+        invocationKey: manual.invocationKey,
+        attemptId: '00000000-0000-4000-8000-000000000101',
+        attemptNumber: 1,
+        status: 'succeeded',
+        output: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000101',
+        },
+      },
+    ],
+    completedOutputs: [
+      {
+        sequence: initial.checkpoint.nextEventSequence,
+        attemptId: '00000000-0000-4000-8000-000000000101',
+        invocationKey: manual.invocationKey,
+        value: {},
+      },
+    ],
+  });
+  const control = afterManual.attempts[0];
+  if (control === undefined) throw new Error('For Each control missing');
+  const declared = await advanceWorkflow({
+    ...base,
+    checkpoint: afterManual.checkpoint,
+    observations: [
+      {
+        kind: 'outcome',
+        sequence: afterManual.checkpoint.nextEventSequence,
+        occurredAt: base.occurredAt,
+        invocationKey: control.invocationKey,
+        attemptId: '00000000-0000-4000-8000-000000000102',
+        attemptNumber: 1,
+        status: 'succeeded',
+        output: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000102',
+        },
+      },
+    ],
+    completedOutputs: [
+      {
+        sequence: afterManual.checkpoint.nextEventSequence,
+        attemptId: '00000000-0000-4000-8000-000000000102',
+        invocationKey: control.invocationKey,
+        value: { items: ['first', 'second'], iterationCount: 2 },
+      },
+      {
+        sequence: afterManual.checkpoint.nextEventSequence,
+        attemptId: '00000000-0000-4000-8000-000000000102',
+        invocationKey: control.invocationKey,
+        value: { items: ['first', 'second'], iterationCount: 2 },
+      },
+    ],
+  });
+  const firstRoot = declared.attempts[0];
+  if (firstRoot === undefined) throw new Error('first body root missing');
+  return { afterManual, base, control, declared, firstRoot };
+}
 
 describe('For Each production operations', () => {
-  it('schedules a For Each structured body by stable scoped ordinals', async () => {
-    const executable = buildWorkflowExecutableV2({
-      graph: forEachGraph(),
-      release: composeExecutableCompatibilityRelease(
-        nodeRelease({ forEach: true, setRetryClass: 'idempotent-with-key' }),
-      ),
-    });
-    const base = {
-      runId: 'run-foreach',
-      executable,
-      workflowVersionId: '00000000-0000-4000-8000-000000000001',
-      occurredAt: '2026-08-24T10:00:00.000Z',
-      maximumAdmissions: 1,
-      signal: new AbortController().signal,
-    } as const;
-    const initial = await advanceWorkflow({
-      ...base,
-      checkpoint: createCheckpointV2({
-        engineVersion: 'engine-v1',
-        workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        iterationBudget: 2,
-      }),
-      observations: [],
-    });
-    const manual = initial.attempts[0];
-    if (manual === undefined) throw new Error('manual attempt missing');
-    const afterManual = await advanceWorkflow({
-      ...base,
-      checkpoint: initial.checkpoint,
-      observations: [
-        {
-          kind: 'outcome',
-          sequence: initial.checkpoint.nextEventSequence,
-          occurredAt: base.occurredAt,
-          invocationKey: manual.invocationKey,
-          attemptId: '00000000-0000-4000-8000-000000000101',
-          attemptNumber: 1,
-          status: 'succeeded',
-          output: {
-            kind: 'inline',
-            attemptId: '00000000-0000-4000-8000-000000000101',
-          },
-        },
-      ],
-      completedOutputs: [
-        {
-          sequence: initial.checkpoint.nextEventSequence,
-          attemptId: '00000000-0000-4000-8000-000000000101',
-          invocationKey: manual.invocationKey,
-          value: {},
-        },
-      ],
-    });
-    const control = afterManual.attempts[0];
-    if (control === undefined) throw new Error('For Each control missing');
-    const declared = await advanceWorkflow({
-      ...base,
-      checkpoint: afterManual.checkpoint,
-      observations: [
-        {
-          kind: 'outcome',
-          sequence: afterManual.checkpoint.nextEventSequence,
-          occurredAt: base.occurredAt,
-          invocationKey: control.invocationKey,
-          attemptId: '00000000-0000-4000-8000-000000000102',
-          attemptNumber: 1,
-          status: 'succeeded',
-          output: {
-            kind: 'inline',
-            attemptId: '00000000-0000-4000-8000-000000000102',
-          },
-        },
-      ],
-      completedOutputs: [
-        {
-          sequence: afterManual.checkpoint.nextEventSequence,
-          attemptId: '00000000-0000-4000-8000-000000000102',
-          invocationKey: control.invocationKey,
-          value: { items: ['first', 'second'], iterationCount: 2 },
-        },
-        {
-          sequence: afterManual.checkpoint.nextEventSequence,
-          attemptId: '00000000-0000-4000-8000-000000000102',
-          invocationKey: control.invocationKey,
-          value: { items: ['first', 'second'], iterationCount: 2 },
-        },
-      ],
-    });
+  it('declares and replays stable scoped ordinals', async () => {
+    const { afterManual, base, control, declared } = await startForEach();
     expect(declared.checkpoint.remainingIterationBudget).toBe(0);
     expect(
       declared.checkpoint.invocations.find(
@@ -190,9 +196,10 @@ describe('For Each production operations', () => {
         ],
       }),
     ).rejects.toMatchObject({ code: 'observation_invalid' });
+  });
 
-    const firstRoot = declared.attempts[0];
-    if (firstRoot === undefined) throw new Error('first body root missing');
+  it('advances one body ordinal sequentially', async () => {
+    const { base, declared, firstRoot } = await startForEach();
     const afterRoot = await advanceWorkflow({
       ...base,
       checkpoint: declared.checkpoint,
@@ -266,6 +273,10 @@ describe('For Each production operations', () => {
         iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
       }),
     ]);
+  });
+
+  it('retries and terminalizes failed body work', async () => {
+    const { base, control, declared, firstRoot } = await startForEach();
 
     const retryingBody = await advanceWorkflow({
       ...base,
@@ -357,6 +368,10 @@ describe('For Each production operations', () => {
         attemptId: '00000000-0000-4000-8000-000000000102',
       },
     });
+  });
+
+  it('enforces loop budgets and preserves empty or artifact declarations', async () => {
+    const { afterManual, base, control } = await startForEach();
 
     const limitedCheckpoint = structuredClone(afterManual.checkpoint);
     Object.assign(limitedCheckpoint, {
@@ -472,6 +487,10 @@ describe('For Each production operations', () => {
       kind: 'artifact',
       artifactId: '00000000-0000-4000-8000-000000000109',
     });
+  });
+
+  it('rejects tampered loop topology, budget, and scope', async () => {
+    const { base, control, declared, firstRoot } = await startForEach();
 
     const refunded = structuredClone(declared.checkpoint);
     Object.assign(refunded, { remainingIterationBudget: 1 });
@@ -573,6 +592,10 @@ describe('For Each production operations', () => {
         observations: [],
       }),
     ).rejects.toMatchObject({ code: 'workflow_identity_invalid' });
+  });
+
+  it('settles skipped loop bodies without attempts', async () => {
+    const { afterManual, base, control } = await startForEach();
 
     const skippedGraph = structuredClone(forEachGraph());
     const skippedControl = skippedGraph.nodes.find(({ id }) => id === 'loop');
@@ -634,6 +657,10 @@ describe('For Each production operations', () => {
       activeOrdinals: [1],
       terminalOrdinals: [0],
     });
+  });
+
+  it('retains running body truth across cancellation and deadline stops', async () => {
+    const { base, control, declared, firstRoot } = await startForEach();
 
     const canceledBetweenBatches = await advanceWorkflow({
       ...base,
@@ -650,12 +677,16 @@ describe('For Each production operations', () => {
     expect(canceledBetweenBatches.attempts).toEqual([]);
     expect(canceledBetweenBatches.checkpoint.loops[0]).toMatchObject({
       nextOrdinal: 1,
-      activeOrdinals: [],
-      terminalOrdinals: [0],
-      terminalStatus: 'canceled',
+      activeOrdinals: [0],
+      terminalOrdinals: [],
     });
     expect(canceledBetweenBatches.checkpoint.cancelRequested).toBe(true);
-    expect(canceledBetweenBatches.checkpoint.runStatus).toBe('canceled');
+    expect(canceledBetweenBatches.checkpoint.runStatus).toBe('running');
+    expect(
+      canceledBetweenBatches.checkpoint.invocations.find(
+        ({ invocationKey }) => invocationKey === firstRoot.invocationKey,
+      ),
+    ).toMatchObject({ status: 'running' });
     const replayedCancellation = await advanceWorkflow({
       ...base,
       checkpoint: canceledBetweenBatches.checkpoint,
@@ -666,6 +697,64 @@ describe('For Each production operations', () => {
       canceledBetweenBatches.checkpoint.loops,
     );
     expect(replayedCancellation.attempts).toEqual([]);
+    const reconciledCancellation = await advanceWorkflow({
+      ...base,
+      checkpoint: replayedCancellation.checkpoint,
+      observations: [
+        {
+          kind: 'outcome',
+          sequence: replayedCancellation.checkpoint.nextEventSequence,
+          occurredAt: base.occurredAt,
+          invocationKey: firstRoot.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000120',
+          attemptNumber: 1,
+          status: 'succeeded',
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000120',
+          },
+        },
+      ],
+      completedOutputs: [
+        {
+          sequence: replayedCancellation.checkpoint.nextEventSequence,
+          attemptId: '00000000-0000-4000-8000-000000000120',
+          invocationKey: firstRoot.invocationKey,
+          value: { value: 'late-success' },
+        },
+      ],
+    });
+    expect(reconciledCancellation.attempts).toEqual([]);
+    expect(reconciledCancellation.checkpoint.loops[0]).toMatchObject({
+      activeOrdinals: [],
+      terminalOrdinals: [0],
+      terminalStatus: 'canceled',
+    });
+    expect(reconciledCancellation.checkpoint.runStatus).toBe('canceled');
+    const uncertainCancellation = await advanceWorkflow({
+      ...base,
+      checkpoint: replayedCancellation.checkpoint,
+      observations: [
+        {
+          kind: 'outcome',
+          sequence: replayedCancellation.checkpoint.nextEventSequence,
+          occurredAt: base.occurredAt,
+          invocationKey: firstRoot.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000122',
+          attemptNumber: 1,
+          status: 'outcome_unknown',
+          reasonCode: 'provider_result_unknown',
+        },
+      ],
+      completedOutputs: [],
+    });
+    expect(uncertainCancellation.attempts).toEqual([]);
+    expect(uncertainCancellation.checkpoint.loops[0]).toMatchObject({
+      activeOrdinals: [],
+      terminalOrdinals: [0],
+      terminalStatus: 'outcome_unknown',
+    });
+    expect(uncertainCancellation.checkpoint.runStatus).toBe('outcome_unknown');
 
     const expiredActiveLoop = await advanceWorkflow({
       ...base,
@@ -679,16 +768,15 @@ describe('For Each production operations', () => {
       completedOutputs: [],
     });
     expect(expiredActiveLoop.checkpoint.loops[0]).toMatchObject({
-      activeOrdinals: [],
-      terminalOrdinals: [0],
-      terminalStatus: 'timed_out',
+      activeOrdinals: [0],
+      terminalOrdinals: [],
     });
-    expect(expiredActiveLoop.checkpoint.runStatus).toBe('timed_out');
+    expect(expiredActiveLoop.checkpoint.runStatus).toBe('running');
     expect(
       expiredActiveLoop.checkpoint.invocations.find(
         ({ invocationKey }) => invocationKey === control.invocationKey,
       ),
-    ).toMatchObject({ status: 'timed_out' });
+    ).toMatchObject({ status: 'waiting' });
     const replayedDeadline = await advanceWorkflow({
       ...base,
       checkpoint: expiredActiveLoop.checkpoint,
@@ -703,7 +791,40 @@ describe('For Each production operations', () => {
       expiredActiveLoop.checkpoint.invocations.find(
         ({ invocationKey }) => invocationKey === firstRoot.invocationKey,
       ),
-    ).toMatchObject({ status: 'timed_out' });
+    ).toMatchObject({ status: 'running' });
+    const reconciledDeadline = await advanceWorkflow({
+      ...base,
+      checkpoint: replayedDeadline.checkpoint,
+      observations: [
+        {
+          kind: 'outcome',
+          sequence: replayedDeadline.checkpoint.nextEventSequence,
+          occurredAt: base.occurredAt,
+          invocationKey: firstRoot.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000121',
+          attemptNumber: 1,
+          status: 'succeeded',
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000121',
+          },
+        },
+      ],
+      completedOutputs: [
+        {
+          sequence: replayedDeadline.checkpoint.nextEventSequence,
+          attemptId: '00000000-0000-4000-8000-000000000121',
+          invocationKey: firstRoot.invocationKey,
+          value: { value: 'late-success' },
+        },
+      ],
+    });
+    expect(reconciledDeadline.checkpoint.loops[0]).toMatchObject({
+      activeOrdinals: [],
+      terminalOrdinals: [0],
+      terminalStatus: 'timed_out',
+    });
+    expect(reconciledDeadline.checkpoint.runStatus).toBe('timed_out');
 
     const canceledDeadline = await advanceWorkflow({
       ...base,
@@ -722,10 +843,14 @@ describe('For Each production operations', () => {
       completedOutputs: [],
     });
     expect(canceledDeadline.checkpoint.loops[0]).toMatchObject({
-      terminalStatus: 'canceled',
-      terminalOrdinals: [0],
+      activeOrdinals: [0],
+      terminalOrdinals: [],
     });
-    expect(canceledDeadline.checkpoint.runStatus).toBe('canceled');
+    expect(canceledDeadline.checkpoint.runStatus).toBe('running');
+  });
+
+  it('settles concurrent completions independent of observation order', async () => {
+    const { afterManual, base, control } = await startForEach();
 
     const concurrentGraph = structuredClone(forEachGraph());
     const concurrentControl = concurrentGraph.nodes.find(

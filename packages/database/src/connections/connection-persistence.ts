@@ -1,16 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import type { Pool } from 'pg';
-import type { DatabaseError, PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
-
-/**
- * Shared connection persistence vocabulary and transaction mechanics.
- * Lifecycle SQL belongs in the focused persistence modules; this module owns
- * validation, row mapping, authorization checks, and durable result codecs.
- */
+import type { WorkspaceTransactionOptions } from '../tenant-access/workspace.js';
 
 export const uuidSchema = z.uuid();
 export const providerKeySchema = z
@@ -173,6 +167,7 @@ export type ResolveConnectionSecretInput = Readonly<{
   expectedProviderKey: string;
   workerId: string;
   purpose: string;
+  signal?: AbortSignal;
   traceId?: string;
 }>;
 
@@ -182,6 +177,7 @@ export type AssertConnectionSecretCurrentInput = Readonly<{
   expectedProviderKey: string;
   expectedAuthType: ConnectionAuthType;
   secretVersionId: string;
+  signal?: AbortSignal;
 }>;
 
 export type RecordConnectionHealthInput = RequestMetadata &
@@ -433,6 +429,7 @@ export async function withConnectionTransaction<T>(
   workspaceIdInput: string,
   actorId: string | undefined,
   operation: (client: PoolClient, workspaceId: string) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
   const workspaceId = uuidSchema.parse(workspaceIdInput);
   return withTenantScopedClient(
@@ -441,45 +438,8 @@ export async function withConnectionTransaction<T>(
       ? { workspaceId }
       : { workspaceId, actorId: identifierSchema.parse(actorId) },
     (client) => operation(client, workspaceId),
+    options,
   );
-}
-
-export async function requireConnectionManager(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     join app.users actor on actor.id = membership.user_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active'
-       and membership.role in ('owner', 'admin')
-       and workspace.status = 'active' and actor.status = 'active'`,
-    [workspaceId, uuidSchema.parse(actorId)],
-  );
-  if (result.rowCount !== 1)
-    throw new ConnectionNotFoundError('Connection is not visible');
-}
-
-export async function requireConnectionUser(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-     join app.workspaces workspace on workspace.id = membership.workspace_id
-     join app.users actor on actor.id = membership.user_id
-     where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active'
-       and membership.role in ('owner', 'admin', 'builder', 'operator')
-       and workspace.status = 'active' and actor.status = 'active'`,
-    [workspaceId, uuidSchema.parse(actorId)],
-  );
-  if (result.rowCount !== 1)
-    throw new ConnectionNotFoundError('Connection is not visible');
 }
 
 export function parseRequestMetadata(input: RequestMetadata): Readonly<{
@@ -510,15 +470,22 @@ export function databaseConstraint(
   error: unknown,
   constraint: string,
 ): boolean {
-  return (
-    error !== null &&
-    typeof error === 'object' &&
-    (error as DatabaseError).code === '23505' &&
-    (error as DatabaseError).constraint === constraint
-  );
+  try {
+    if (error === null || typeof error !== 'object') return false;
+    const code: unknown = Reflect.get(error, 'code');
+    const actualConstraint: unknown = Reflect.get(error, 'constraint');
+    return (
+      code === '23505' &&
+      typeof actualConstraint === 'string' &&
+      actualConstraint.length <= 128 &&
+      actualConstraint === constraint
+    );
+  } catch {
+    return false;
+  }
 }
 
-export function durableCreateResult(value: unknown): Readonly<{
+function durableCreateResult(value: unknown): Readonly<{
   connectionId: string;
   secretVersionId: string;
 }> {
@@ -546,9 +513,7 @@ const durableConnectionSnapshotSchema = z
   })
   .strict();
 
-export function durableConnectionSnapshot(
-  value: unknown,
-): ConnectionRecord | null {
+function durableConnectionSnapshot(value: unknown): ConnectionRecord | null {
   const parsed = durableConnectionSnapshotSchema.safeParse(value);
   if (!parsed.success) return null;
   return Object.freeze({
@@ -564,6 +529,24 @@ export function durableConnectionSnapshot(
     createdAt: new Date(parsed.data.createdAt),
     updatedAt: new Date(parsed.data.updatedAt),
   });
+}
+
+export type DurableConnectionReplay =
+  | Readonly<{ kind: 'snapshot'; connection: ConnectionRecord }>
+  | Readonly<{
+      kind: 'legacy_pointer';
+      connectionId: string;
+      secretVersionId: string;
+    }>;
+
+export function decodeDurableConnectionReplay(
+  value: unknown,
+): DurableConnectionReplay {
+  const snapshot = durableConnectionSnapshot(value);
+  if (snapshot !== null)
+    return Object.freeze({ kind: 'snapshot' as const, connection: snapshot });
+  const legacy = durableCreateResult(value);
+  return Object.freeze({ kind: 'legacy_pointer' as const, ...legacy });
 }
 
 export function serializeConnectionSnapshot(
@@ -633,18 +616,35 @@ export function connectionTestScope(
 export function connectionTestClaim(
   dispatchToken: string,
   state: 'claimed' | 'dispatched',
+  secretVersionId?: string,
 ) {
-  return Object.freeze({
-    schemaVersion: 1,
-    state,
+  const base = {
+    schemaVersion: 1 as const,
     dispatchToken: uuidSchema.parse(dispatchToken),
+  };
+  if (state === 'claimed') return Object.freeze({ ...base, state });
+  return Object.freeze({
+    ...base,
+    state,
+    secretVersionId: uuidSchema.parse(secretVersionId),
   });
 }
 
-export const connectionTestClaimSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    state: z.enum(['claimed', 'dispatched']),
-    dispatchToken: z.uuid(),
-  })
-  .strict();
+export const connectionTestClaimSchema = z.discriminatedUnion('state', [
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      state: z.literal('claimed'),
+      dispatchToken: z.uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      state: z.literal('dispatched'),
+      dispatchToken: z.uuid(),
+      // Optional only for already-persisted version-1 in-flight claims.
+      secretVersionId: z.uuid().optional(),
+    })
+    .strict(),
+]);

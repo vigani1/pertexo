@@ -3,6 +3,7 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { withPlatformTransaction } from '../tenant-access/workspace.js';
+import { parseClaimedWakeups } from './coordinator-wakeup-scan-result.js';
 
 export interface DueNodeWakeupScanner {
   claimDueWakeups(limit: number, signal?: AbortSignal): Promise<number>;
@@ -29,7 +30,7 @@ export function createDueNodeWakeupScanner(
             'select app.claim_due_node_run_wakeups($1)::integer as claimed',
             [limit],
           );
-          return result.rows[0]?.claimed ?? 0;
+          return parseClaimedWakeups(result.rows, limit);
         },
         signal === undefined ? {} : { signal },
       );

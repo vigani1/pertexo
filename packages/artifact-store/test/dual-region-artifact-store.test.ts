@@ -50,6 +50,7 @@ class FakeArtifactStore
   public deleteError: Error | undefined;
   public directDownloadCalls = 0;
   public failNextPut = false;
+  public failPutBeforeConsumption: Error | undefined;
   public readonly getRequests: ArtifactRequest[] = [];
   public readonly headRequests: ArtifactRequest[] = [];
   public purgeError: Error | undefined;
@@ -58,6 +59,7 @@ class FakeArtifactStore
     deletedCount: 0,
   };
   public stored: { body: Buffer; metadata: ArtifactMetadata } | undefined;
+  public nextDownloadBody: Readable | undefined;
   public readinessError: Error | undefined;
   public readonly putRequests: PutArtifactRequest[] = [];
   public validateError: Error | undefined;
@@ -118,7 +120,7 @@ class FakeArtifactStore
     this.getRequests.push(request);
     if (this.stored === undefined) throw new Error('not found');
     return Promise.resolve({
-      body: Readable.from([this.stored.body]),
+      body: this.nextDownloadBody ?? Readable.from([this.stored.body]),
       metadata: this.stored.metadata,
     });
   }
@@ -139,6 +141,8 @@ class FakeArtifactStore
 
   public async put(request: PutArtifactRequest): Promise<ArtifactMetadata> {
     this.putRequests.push(request);
+    if (this.failPutBeforeConsumption !== undefined)
+      throw this.failPutBeforeConsumption;
     const chunks: Buffer[] = [];
     for await (const chunk of request.body) {
       chunks.push(Buffer.from(chunk as Uint8Array));
@@ -206,6 +210,25 @@ describe('dual-region artifact store', () => {
     await expect(
       store.put({ ...metadata, body: Readable.from(['hello']) }),
     ).resolves.toEqual(metadata);
+  });
+
+  it('destroys an acquired primary download when recovery rejects before consuming it', async () => {
+    const { primary, recovery, store } = fixture();
+    primary.stored = { body: Buffer.from('hello'), metadata };
+    const download = new Readable({
+      read() {
+        // The receiver rejects before requesting a chunk.
+      },
+    });
+    primary.nextDownloadBody = download;
+    recovery.failPutBeforeConsumption = new Error('receiver closed');
+
+    await expect(
+      store.put({ ...metadata, body: Readable.from(['unused']) }),
+    ).rejects.toBeInstanceOf(ArtifactPartialReplicationError);
+
+    expect(download.destroyed).toBe(true);
+    expect(recovery.putRequests).toHaveLength(1);
   });
 
   it('rejects immutable conflicts before writing or replicating', async () => {

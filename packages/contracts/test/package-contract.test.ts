@@ -1,6 +1,14 @@
+import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { describe, expect, it } from 'vitest';
+
+const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const repositoryRoot = resolve(packageDirectory, '../..');
+const execFileAsync = promisify(execFile);
 
 describe('contracts package boundary', () => {
   it('exposes deliberate browser-safe entry points without server dependencies', async () => {
@@ -29,7 +37,7 @@ describe('contracts package boundary', () => {
       './schedules',
     ]);
 
-    const repositoryRoot = new URL('../../../', import.meta.url);
+    const repositoryRootUrl = new URL('../../../', import.meta.url);
     const applicationSources = [
       'apps/api/src/schedules/controllers.ts',
       'apps/api/src/webhooks/controllers.ts',
@@ -39,18 +47,27 @@ describe('contracts package boundary', () => {
     ];
     for (const source of applicationSources) {
       expect(
-        await readFile(new URL(source, repositoryRoot), 'utf8'),
+        await readFile(new URL(source, repositoryRootUrl), 'utf8'),
       ).not.toMatch(/from ['"]@pertexo\/contracts['"]/u);
     }
 
-    for (const exported of Object.values(manifest.exports)) {
-      const source = exported.default
+    const entrySources = Object.values(manifest.exports).map((exported) =>
+      exported.default
         .replace('./dist/', '../src/')
-        .replace(/\.js$/u, '.ts');
-      expect(
-        await readFile(new URL(source, import.meta.url), 'utf8'),
-      ).not.toMatch(/from ['"]node:/u);
-    }
+        .replace(/\.js$/u, '.ts')
+        .replace(/^\.\.\/src\//u, 'packages/contracts/src/'),
+    );
+    await expect(
+      execFileAsync(process.execPath, [
+        resolve(
+          repositoryRoot,
+          'infrastructure/browser-entry-dependencies.mjs',
+        ),
+        '--root',
+        repositoryRoot,
+        ...entrySources,
+      ]),
+    ).resolves.toMatchObject({ stderr: '' });
     expect(
       await readFile(
         new URL('../src/http/workflow-authoring.ts', import.meta.url),

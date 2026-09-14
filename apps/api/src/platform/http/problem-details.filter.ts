@@ -154,7 +154,7 @@ function nestCode(status: number): ApplicationErrorCode {
 }
 
 function safeHttpStatus(status: number): number {
-  return status >= 400 && status <= 599
+  return Number.isInteger(status) && status >= 400 && status <= 599
     ? status
     : APPLICATION_ERROR_CATALOG['internal.unexpected'].status;
 }
@@ -295,6 +295,24 @@ function normalize(
   };
 }
 
+function normalizeFailClosed(
+  exception: unknown,
+  request: HttpRequestLike,
+  applicationErrorMappers: readonly HttpApplicationErrorMapper[],
+): NormalizedProblem {
+  try {
+    return normalize(exception, request, applicationErrorMappers);
+  } catch {
+    const entry = APPLICATION_ERROR_CATALOG['internal.unexpected'];
+    return {
+      code: 'internal.unexpected',
+      status: entry.status,
+      title: entry.title,
+      cause: exception,
+    };
+  }
+}
+
 function instanceFrom(request: HttpRequestLike): string | undefined {
   const url = text(request.url, 2_048);
   if (url === undefined) {
@@ -377,7 +395,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const http = host.switchToHttp();
     const request = http.getRequest<HttpRequestLike>();
     const response = http.getResponse<ProblemResponse>();
-    const normalized = normalize(
+    const normalized = normalizeFailClosed(
       exception,
       request,
       this.applicationErrorMappers,

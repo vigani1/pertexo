@@ -882,13 +882,25 @@ pnpm --filter @pertexo/workflow-engine typecheck
 
 ## PF-07 — evaluator context accessor contract
 
-**Status:** conditional, P3 contract investigation. Current worker isolation is
-not broken and no production HTTP exploit is established.
+**Status:** implemented and verified, P3 no-accessor contract. Worker isolation
+was not broken and no production HTTP exploit was established.
+
+**Decision record (2026-09-13):** the `@pertexo/workflow-model` expression
+evaluator interface owns a no-accessor context contract (option 1 below).
+Repository-wide consumer inspection found only normalized production context
+producers plus deliberate direct adapters/tests, but the private package still
+exports `ExpressionEvaluator` as a supported runtime seam and accepts `unknown`
+defensively. Before repair, top-level and nested accessor probes showed the
+top-level getter executing before worker creation, while nested accessors were
+already rejected. The
+stronger uniform contract therefore closes a real interface inconsistency
+without broadening accepted JSON or changing a published compatibility format.
+Per this plan, that localized contract implementation does not require an ADR.
 
 ### Verification basis
 
-`projectExpressionContext` checks that the context owns `runInput` and
-`nodeOutputs`, then reads those two properties while constructing the value
+Before implementation, `projectExpressionContext` checked that the context
+owned `runInput` and `nodeOutputs`, then read those two properties while constructing the value
 passed to `canonicalizeJson`. A hostile top-level getter therefore executes on
 the host. The evaluator catches its exception before queue admission, so no
 worker is created. Once a top-level data descriptor is obtained,
@@ -950,6 +962,15 @@ The policy-local normalization keeps the two-file implementation sufficient
 and the evaluator's stable `evaluation_failed` result intact.
 No evaluator lifecycle, worker runtime, graph normalization, mapping, or
 production caller needs modification.
+
+**Implementation evidence (2026-09-13):** `projectExpressionContext` now reads
+only own data descriptors and normalizes every reflection or canonicalization
+failure to the fresh constant `TypeError('invalid expression context')`.
+Regression tests prove top-level and nested accessors execute zero times,
+hostile and revoked proxy failures create zero workers, null-prototype contexts
+retain ordinary evaluation behavior, and the full evaluator lifecycle/limit/
+restart suite remains green. Workflow-model typecheck, build, coverage, strict
+ESLint and all downstream API/worker owner cohorts pass.
 
 Acceptance: top-level and nested getter/setter contexts execute zero accessors,
 create zero workers, and return the exact stable failure; proxy descriptor or
@@ -1366,9 +1387,9 @@ Do not mark an item complete while its corresponding unchecked evidence remains.
       operation counts, CPU profiles, and memory evidence.
 - [ ] PF-06 decision: select A and/or B only if each independently meets the
       threshold; otherwise record `KEEP` and make no production change.
-- [ ] PF-07 gate: record the evaluator contract owner/date and compatibility
+- [x] PF-07 gate: record the evaluator contract owner/date and compatibility
       evidence.
-- [ ] PF-07 decision: either implement descriptor-safe extraction and tests or
+- [x] PF-07 decision: either implement descriptor-safe extraction and tests or
       document JSON-only scope and mark the implementation finding unsupported.
 - [ ] WF-S01 gate: prove no supported consumer and inspect the built declaration
       diff.

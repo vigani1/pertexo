@@ -13,30 +13,41 @@ export function awaitWithSignal<T>(
   operation: Promise<T>,
   signal: AbortSignal,
 ): Promise<T> {
-  signal.throwIfAborted();
   return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const normalizeFailure = (failure: unknown, message: string): Error => {
+      try {
+        if (failure instanceof Error) return failure;
+      } catch {
+        // Unknown provider and cancellation values may be hostile proxies.
+      }
+      return new Error(message, { cause: failure });
+    };
+    const settle = (complete: () => void): void => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', aborted);
+      complete();
+    };
     const aborted = () => {
       const reason: unknown = signal.reason;
-      reject(
-        reason instanceof Error
-          ? reason
-          : new Error('Artifact operation aborted', { cause: reason }),
-      );
+      settle(() => {
+        reject(normalizeFailure(reason, 'Artifact operation aborted'));
+      });
     };
-    signal.addEventListener('abort', aborted, { once: true });
     void operation.then(
       (value) => {
-        signal.removeEventListener('abort', aborted);
-        resolve(value);
+        settle(() => {
+          resolve(value);
+        });
       },
       (error: unknown) => {
-        signal.removeEventListener('abort', aborted);
-        reject(
-          error instanceof Error
-            ? error
-            : new Error('Artifact operation failed', { cause: error }),
-        );
+        settle(() => {
+          reject(normalizeFailure(error, 'Artifact operation failed'));
+        });
       },
     );
+    signal.addEventListener('abort', aborted, { once: true });
+    if (signal.aborted) aborted();
   });
 }

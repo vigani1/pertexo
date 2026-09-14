@@ -102,8 +102,8 @@ export class WebhookManagementController {
     endpointKey?: string,
   ) {
     const route = commandRouteSchema.parse(params);
-    return withRequestOperationSignal(request, (signal) =>
-      this.service[operation]({
+    return withRequestOperationSignal(request, (signal) => {
+      const input = {
         workspaceId: route.workspaceId,
         workflowId: route.workflowId,
         triggerId: route.triggerId,
@@ -111,10 +111,19 @@ export class WebhookManagementController {
         idempotencyKey: parseIdempotencyKey(
           request.headers?.['idempotency-key'],
         ),
-        ...(endpointKey === undefined ? {} : { endpointKey }),
         signal,
-      }),
-    );
+      };
+      switch (operation) {
+        case 'provision':
+          return this.service.provision(input);
+        case 'rotateEndpoint':
+          return this.service.rotateEndpoint(input);
+        case 'rotateSecret':
+          if (endpointKey === undefined)
+            throw new Error('Webhook endpoint key was not parsed');
+          return this.service.rotateSecret({ ...input, endpointKey });
+      }
+    });
   }
 }
 

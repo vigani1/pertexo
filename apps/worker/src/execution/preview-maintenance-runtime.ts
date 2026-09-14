@@ -18,6 +18,7 @@ import {
   QUEUE_NAME,
   type QueueConsumer,
   type QueueConsumerObserver,
+  type QueueConsumerOptions,
 } from '@pertexo/queue';
 
 import {
@@ -33,45 +34,138 @@ import {
   mapUnknownOutcomeReconciliationError,
   type UnknownOutcomeReconciliationStore,
 } from './unknown-outcome-reconciliation-runtime.js';
-import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
-import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
 import {
   createFailureNotificationHandler,
   type FailureNotificationDeliveryCapability,
+  type FailureNotificationHandler,
 } from './failure-notification-handler.js';
+import {
+  closePreviewMaintenanceDependencies,
+  createPreviewMaintenanceLifecycle,
+  type PreviewMaintenanceComposition,
+} from './preview-maintenance-lifecycle.js';
 
 export interface PreviewMaintenanceRuntime {
   readonly consumer: QueueConsumer;
+  checkReadiness(): Promise<void>;
+  whenIdle(): Promise<void>;
   close(): Promise<void>;
 }
 
+export type PreviewMaintenanceCompositionFactories = Readonly<{
+  consumer: typeof createQueueConsumer;
+  notifications: Readonly<{
+    handler: typeof createFailureNotificationHandler;
+    store: typeof createFailureNotificationStore;
+  }>;
+  preview: Readonly<{
+    handler: typeof createPreviewReconciliationHandler;
+    store: typeof createDatabasePreviewReconciliationStore;
+  }>;
+  replay: Readonly<{
+    handler: typeof createOperatorRunReplayHandler;
+    store: typeof createDatabaseOperatorRunReplayStore;
+  }>;
+  traceRunner: typeof createQueueTraceRunner;
+  unknownOutcome: Readonly<{
+    handler: typeof createUnknownOutcomeReconciliationHandler;
+    store: typeof createDatabaseUnknownOutcomeReconciliationStore;
+  }>;
+}>;
+
+const productionFactories: PreviewMaintenanceCompositionFactories = {
+  consumer: createQueueConsumer,
+  notifications: {
+    handler: createFailureNotificationHandler,
+    store: createFailureNotificationStore,
+  },
+  preview: {
+    handler: createPreviewReconciliationHandler,
+    store: createDatabasePreviewReconciliationStore,
+  },
+  replay: {
+    handler: createOperatorRunReplayHandler,
+    store: createDatabaseOperatorRunReplayStore,
+  },
+  traceRunner: createQueueTraceRunner,
+  unknownOutcome: {
+    handler: createUnknownOutcomeReconciliationHandler,
+    store: createDatabaseUnknownOutcomeReconciliationStore,
+  },
+};
+
+type PreviewMaintenanceOptions = Readonly<{
+  database: DatabaseConfig;
+  databaseRuntime?: DatabaseRuntime;
+  backgroundTaskShutdownTimeoutMillis?: number;
+  observer?: QueueConsumerObserver;
+  previewReconciliation?: boolean;
+  redisUrl: string;
+  failureNotificationDelivery?: FailureNotificationDeliveryCapability;
+  failureNotificationDeliveryTimeoutMillis?: number;
+  failureNotificationMaxAttempts?: number;
+  failureNotificationRetryDelaySeconds?: number;
+  unknownOutcomeReconciliation?: boolean;
+  runReplay?: boolean;
+  releaseCohort?: PlatformReleaseCohort;
+}>;
+
+type PreviewMaintenanceDependencies = Readonly<{
+  consumerFactory?: typeof createQueueConsumer;
+  reconciliationStore?: PreviewReconciliationStore & {
+    close?: () => Promise<void>;
+  };
+  previewTelemetry?: PreviewTelemetry;
+  failureNotificationStore?: FailureNotificationStore;
+  unknownOutcomeStore?: UnknownOutcomeReconciliationStore & {
+    close?: () => Promise<void>;
+  };
+  runReplayStore?: OperatorRunReplayStore;
+}>;
+
+type MaintenanceBounds = Readonly<{
+  backgroundTaskShutdownTimeoutMillis: number;
+  failureNotificationDeliveryTimeoutMillis: number;
+  failureNotificationMaxAttempts: number;
+  failureNotificationRetryDelaySeconds: number;
+}>;
+
+type MaintenanceHandlers = Readonly<{
+  failureNotification?: FailureNotificationHandler;
+  reconciliation?: ReturnType<typeof createPreviewReconciliationHandler>;
+  replay?: ReturnType<typeof createOperatorRunReplayHandler>;
+  unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
+}>;
+
 export async function createPreviewMaintenanceRuntime(
-  options: Readonly<{
-    database: DatabaseConfig;
-    databaseRuntime?: DatabaseRuntime;
-    backgroundTaskShutdownTimeoutMillis?: number;
-    observer?: QueueConsumerObserver;
-    redisUrl: string;
-    failureNotificationDelivery?: FailureNotificationDeliveryCapability;
-    unknownOutcomeReconciliation?: boolean;
-    runReplay?: boolean;
-    releaseCohort?: PlatformReleaseCohort;
-  }>,
-  dependencies: Readonly<{
-    consumerFactory?: typeof createQueueConsumer;
-    reconciliationStore?: PreviewReconciliationStore & {
-      close?: () => Promise<void>;
-    };
-    previewTelemetry?: PreviewTelemetry;
-    failureNotificationStore?: FailureNotificationStore;
-    unknownOutcomeStore?: UnknownOutcomeReconciliationStore & {
-      close?: () => Promise<void>;
-    };
-    runReplayStore?: OperatorRunReplayStore;
-  }> = {},
+  options: PreviewMaintenanceOptions,
+  dependencies: PreviewMaintenanceDependencies = {},
+  factories: PreviewMaintenanceCompositionFactories = productionFactories,
 ): Promise<PreviewMaintenanceRuntime> {
+  const bounds = maintenanceBounds(options);
+  const composition = await composeMaintenanceRuntime(
+    options,
+    dependencies,
+    factories,
+    bounds,
+  );
+  return createPreviewMaintenanceLifecycle(
+    composition,
+    bounds.backgroundTaskShutdownTimeoutMillis,
+  );
+}
+
+function maintenanceBounds(
+  options: PreviewMaintenanceOptions,
+): MaintenanceBounds {
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+  const failureNotificationDeliveryTimeoutMillis =
+    options.failureNotificationDeliveryTimeoutMillis ?? 30_000;
+  const failureNotificationMaxAttempts =
+    options.failureNotificationMaxAttempts ?? 3;
+  const failureNotificationRetryDelaySeconds =
+    options.failureNotificationRetryDelaySeconds ?? 30;
   if (
     !Number.isSafeInteger(backgroundTaskShutdownTimeoutMillis) ||
     backgroundTaskShutdownTimeoutMillis < 1 ||
@@ -80,155 +174,184 @@ export async function createPreviewMaintenanceRuntime(
     throw new TypeError(
       'Background task shutdown timeout must be between 1 and 120000',
     );
-  const reconciliationStore =
-    dependencies.reconciliationStore ??
-    createDatabasePreviewReconciliationStore(
-      options.database,
-      options.databaseRuntime,
-    );
-  const failureNotificationStore =
-    options.failureNotificationDelivery === undefined
-      ? undefined
-      : (dependencies.failureNotificationStore ??
-        createFailureNotificationStore(
+  if (
+    !Number.isSafeInteger(failureNotificationDeliveryTimeoutMillis) ||
+    failureNotificationDeliveryTimeoutMillis < 1 ||
+    failureNotificationDeliveryTimeoutMillis > 120_000 ||
+    !Number.isSafeInteger(failureNotificationMaxAttempts) ||
+    failureNotificationMaxAttempts < 1 ||
+    failureNotificationMaxAttempts > 100 ||
+    !Number.isSafeInteger(failureNotificationRetryDelaySeconds) ||
+    failureNotificationRetryDelaySeconds < 1 ||
+    failureNotificationRetryDelaySeconds > 86_400
+  )
+    throw new TypeError('Failure notification delivery bounds are invalid');
+
+  return {
+    backgroundTaskShutdownTimeoutMillis,
+    failureNotificationDeliveryTimeoutMillis,
+    failureNotificationMaxAttempts,
+    failureNotificationRetryDelaySeconds,
+  };
+}
+
+async function composeMaintenanceRuntime(
+  options: PreviewMaintenanceOptions,
+  dependencies: PreviewMaintenanceDependencies,
+  factories: PreviewMaintenanceCompositionFactories,
+  bounds: MaintenanceBounds,
+): Promise<PreviewMaintenanceComposition> {
+  const traceRunner = factories.traceRunner();
+  let reconciliationStore:
+    (PreviewReconciliationStore & { close?: () => Promise<void> }) | undefined;
+  let failureNotificationStore: FailureNotificationStore | undefined;
+  let unknownOutcomeStore:
+    | (UnknownOutcomeReconciliationStore & { close?: () => Promise<void> })
+    | undefined;
+  let runReplayStore: OperatorRunReplayStore | undefined;
+  let failureNotification: FailureNotificationHandler | undefined;
+  let consumer: QueueConsumer | undefined;
+  try {
+    if (options.previewReconciliation !== false)
+      reconciliationStore =
+        dependencies.reconciliationStore ??
+        factories.preview.store(options.database, options.databaseRuntime);
+    if (options.failureNotificationDelivery !== undefined)
+      failureNotificationStore =
+        dependencies.failureNotificationStore ??
+        factories.notifications.store(
           options.database,
           options.databaseRuntime,
-        ));
-  const unknownOutcomeStore =
-    options.unknownOutcomeReconciliation === true
-      ? (dependencies.unknownOutcomeStore ??
-        createDatabaseUnknownOutcomeReconciliationStore(
+        );
+    if (options.unknownOutcomeReconciliation === true)
+      unknownOutcomeStore =
+        dependencies.unknownOutcomeStore ??
+        factories.unknownOutcome.store(
           options.database,
           options.databaseRuntime,
-        ))
-      : undefined;
-  const runReplayStore =
-    options.runReplay === true
-      ? (dependencies.runReplayStore ??
-        createDatabaseOperatorRunReplayStore(
+        );
+    if (options.runReplay === true)
+      runReplayStore =
+        dependencies.runReplayStore ??
+        factories.replay.store(
           options.database,
           options.releaseCohort,
           options.databaseRuntime,
-        ))
-      : undefined;
-  const failureNotification =
-    options.failureNotificationDelivery === undefined ||
-    failureNotificationStore === undefined
-      ? undefined
-      : createFailureNotificationHandler({
-          store: failureNotificationStore,
-          delivery: options.failureNotificationDelivery,
-          timeoutMillis: 30_000,
-          maxAttempts: 3,
-          retryDelaySeconds: 30,
-        });
-  const reconciliation = createPreviewReconciliationHandler(
-    reconciliationStore,
-    dependencies.previewTelemetry,
-  );
-  const unknownOutcomeReconciliation =
-    unknownOutcomeStore === undefined
-      ? undefined
-      : createUnknownOutcomeReconciliationHandler(unknownOutcomeStore);
-  const runReplay =
-    runReplayStore === undefined
-      ? undefined
-      : createOperatorRunReplayHandler(runReplayStore);
-  let consumer: QueueConsumer;
-  try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
+        );
+
+    if (
+      options.failureNotificationDelivery !== undefined &&
+      failureNotificationStore !== undefined
+    )
+      failureNotification = factories.notifications.handler({
+        store: failureNotificationStore,
+        delivery: options.failureNotificationDelivery,
+        timeoutMillis: bounds.failureNotificationDeliveryTimeoutMillis,
+        maxAttempts: bounds.failureNotificationMaxAttempts,
+        retryDelaySeconds: bounds.failureNotificationRetryDelaySeconds,
+      });
+    const handlers: MaintenanceHandlers = {
+      ...(reconciliationStore === undefined
+        ? {}
+        : {
+            reconciliation: factories.preview.handler(
+              reconciliationStore,
+              dependencies.previewTelemetry,
+            ),
+          }),
+      ...(unknownOutcomeStore === undefined
+        ? {}
+        : {
+            unknownOutcome:
+              factories.unknownOutcome.handler(unknownOutcomeStore),
+          }),
+      ...(runReplayStore === undefined
+        ? {}
+        : { replay: factories.replay.handler(runReplayStore) }),
+      ...(failureNotification === undefined ? {} : { failureNotification }),
+    };
+    consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.maintenance,
       redisUrl: options.redisUrl,
-      handler: async (delivery, context): Promise<void> => {
-        if (delivery.name === JOB_NAME.reconcilePreviewAttempt) {
-          try {
-            await reconciliation.handle(delivery, context);
-          } catch (error: unknown) {
-            throw mapPreviewReconciliationError(error);
-          }
-          return;
-        }
-        if (delivery.name === JOB_NAME.reconcileUnknownOutcome) {
-          if (unknownOutcomeReconciliation === undefined)
-            throw new InvalidQueueDeliveryError(
-              'Unknown-outcome reconciliation is not enabled',
-            );
-          try {
-            await unknownOutcomeReconciliation.handle(delivery, context);
-          } catch (error: unknown) {
-            throw mapUnknownOutcomeReconciliationError(error);
-          }
-          return;
-        }
-        if (delivery.name === JOB_NAME.replayWorkflowRun) {
-          if (runReplay === undefined)
-            throw new InvalidQueueDeliveryError('Run replay is not enabled');
-          await runReplay.handle(delivery, context);
-          return;
-        }
-        if (delivery.name === JOB_NAME.deliverRunFailureNotification) {
-          if (failureNotification === undefined)
-            throw new InvalidQueueDeliveryError(
-              'Failure notification delivery is not enabled',
-            );
-          await failureNotification.handle(delivery, context);
-          return;
-        }
-        throw new InvalidQueueDeliveryError(
-          `Preview maintenance cannot handle ${delivery.name}`,
-        );
-      },
+      handler: maintenanceDeliveryHandler(handlers),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
-      traceRunner: createQueueTraceRunner(),
+      traceRunner,
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      reconciliationStore.close?.(),
-      unknownOutcomeStore?.close?.(),
-      runReplayStore?.close(),
-      failureNotificationStore?.close(),
-    ]);
+    const cleanup = await closePreviewMaintenanceDependencies(
+      {
+        reconciliationStore,
+        unknownOutcomeStore,
+        runReplayStore,
+        failureNotificationStore,
+      },
+      bounds.backgroundTaskShutdownTimeoutMillis,
+    );
+    if (cleanup.length > 0)
+      throw new AggregateError(
+        [error, ...cleanup],
+        'Preview maintenance construction and cleanup failed',
+      );
     throw error;
   }
 
-  let closePromise: Promise<void> | undefined;
-  const recoveryAbort = new AbortController();
-  const recoveryLoop = (async (): Promise<void> => {
-    while (!recoveryAbort.signal.aborted) {
-      try {
-        await failureNotificationStore?.recoverDue(25, 3, recoveryAbort.signal);
-      } catch {
-        // PostgreSQL authority is retried; dependency readiness remains fail closed.
-      }
-      await waitForSupervisorDelay(1_000, recoveryAbort.signal);
-    }
-  })();
-  return Object.freeze({
+  return {
     consumer,
-    close: (): Promise<void> => {
-      closePromise ??= (async (): Promise<void> => {
-        recoveryAbort.abort();
-        const consumerResult = await Promise.allSettled([consumer.close()]);
-        const recoveryDrainResult = await Promise.allSettled([
-          boundedBackgroundTask(
-            recoveryLoop,
-            backgroundTaskShutdownTimeoutMillis,
-          ),
-        ]);
-        const adapterResults = await Promise.allSettled([
-          reconciliationStore.close?.(),
-          unknownOutcomeStore?.close?.(),
-          runReplayStore?.close(),
-          failureNotificationStore?.close(),
-        ]);
-        const failure = [
-          ...consumerResult,
-          ...recoveryDrainResult,
-          ...adapterResults,
-        ].find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
+    ...(failureNotification === undefined ? {} : { failureNotification }),
+    stores: {
+      ...(reconciliationStore === undefined ? {} : { reconciliationStore }),
+      ...(failureNotificationStore === undefined
+        ? {}
+        : { failureNotificationStore }),
+      ...(unknownOutcomeStore === undefined ? {} : { unknownOutcomeStore }),
+      ...(runReplayStore === undefined ? {} : { runReplayStore }),
     },
-  });
+  };
+}
+
+function maintenanceDeliveryHandler(
+  handlers: MaintenanceHandlers,
+): QueueConsumerOptions['handler'] {
+  return async (delivery, context): Promise<void> => {
+    switch (delivery.name) {
+      case JOB_NAME.reconcilePreviewAttempt:
+        if (handlers.reconciliation === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Preview reconciliation is not enabled',
+          );
+        try {
+          await handlers.reconciliation.handle(delivery, context);
+        } catch (error: unknown) {
+          throw mapPreviewReconciliationError(error);
+        }
+        return;
+      case JOB_NAME.reconcileUnknownOutcome:
+        if (handlers.unknownOutcome === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Unknown-outcome reconciliation is not enabled',
+          );
+        try {
+          await handlers.unknownOutcome.handle(delivery, context);
+        } catch (error: unknown) {
+          throw mapUnknownOutcomeReconciliationError(error);
+        }
+        return;
+      case JOB_NAME.replayWorkflowRun:
+        if (handlers.replay === undefined)
+          throw new InvalidQueueDeliveryError('Run replay is not enabled');
+        await handlers.replay.handle(delivery, context);
+        return;
+      case JOB_NAME.deliverRunFailureNotification:
+        if (handlers.failureNotification === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Failure notification delivery is not enabled',
+          );
+        await handlers.failureNotification.handle(delivery, context);
+        return;
+      default:
+        throw new InvalidQueueDeliveryError(
+          `Preview maintenance cannot handle ${delivery.name}`,
+        );
+    }
+  };
 }

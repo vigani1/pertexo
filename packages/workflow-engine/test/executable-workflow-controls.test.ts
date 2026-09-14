@@ -5,9 +5,8 @@ import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  nodeRelease,
-  graph,
-} from './executable-workflow.fixtures.js';
+} from '../src/index.js';
+import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('wait and control production operations', () => {
   it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
@@ -76,6 +75,32 @@ describe('wait and control production operations', () => {
       advanceWorkflow({
         ...input,
         checkpoint: waiting.checkpoint,
+        observations: [{ ...due, occurredAt: '2026-08-20T10:04:59.999Z' }],
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+    const wholeSecondCheckpoint = {
+      ...waiting.checkpoint,
+      invocations: waiting.checkpoint.invocations.map((invocation) =>
+        invocation.invocationKey === manual.invocationKey
+          ? { ...invocation, resumeAt: '2026-08-20T10:05:00Z' }
+          : invocation,
+      ),
+    };
+    await expect(
+      advanceWorkflow({
+        ...input,
+        checkpoint: wholeSecondCheckpoint,
+        observations: [due],
+      }),
+    ).resolves.toMatchObject({
+      attempts: [
+        expect.objectContaining({ invocationKey: manual.invocationKey }),
+      ],
+    });
+    await expect(
+      advanceWorkflow({
+        ...input,
+        checkpoint: wholeSecondCheckpoint,
         observations: [{ ...due, occurredAt: '2026-08-20T10:04:59.999Z' }],
       }),
     ).rejects.toMatchObject({ code: 'observation_invalid' });
@@ -359,14 +384,35 @@ describe('wait and control production operations', () => {
       observations: [],
       signal: new AbortController().signal,
     });
-    const waiting = structuredClone(started.checkpoint);
-    const invocation = waiting.invocations[0];
-    if (invocation === undefined) throw new Error('manual was not persisted');
-    Object.assign(invocation, {
-      status: 'waiting',
-      resumeAt: '2026-08-21T10:00:00.000Z',
-      waitKind: 'node_wait',
+    const manual = started.attempts[0];
+    if (manual === undefined) throw new Error('manual was not admitted');
+    const waitingPlan = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:00:30.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'wait',
+          eventName: 'node.waiting',
+          sequence: started.checkpoint.nextEventSequence,
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: manual.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000024',
+          attemptNumber: manual.attemptNumber,
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000024',
+          },
+          resumeAt: '2026-08-21T10:00:00.000Z',
+          waitKind: 'node_wait',
+        },
+      ],
+      signal: new AbortController().signal,
     });
+    const waiting = waitingPlan.checkpoint;
 
     const expired = await advanceWorkflow({
       runId: 'run-1',
@@ -418,6 +464,61 @@ describe('wait and control production operations', () => {
       'node.canceled',
       'run.canceled',
     ]);
+
+    for (const observations of [
+      [
+        {
+          kind: 'deadline_expired' as const,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+        {
+          kind: 'cancel_requested' as const,
+          sequence: waiting.nextEventSequence,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+      [
+        {
+          kind: 'cancel_requested' as const,
+          sequence: waiting.nextEventSequence,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+        {
+          kind: 'deadline_expired' as const,
+          occurredAt: '2026-08-20T10:01:00.000Z',
+        },
+      ],
+    ]) {
+      const simultaneous = await advanceWorkflow({
+        runId: 'run-both',
+        executable,
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: waiting,
+        occurredAt: '2026-08-20T10:02:00.000Z',
+        maximumAdmissions: 1,
+        observations,
+        signal: new AbortController().signal,
+      });
+      expect(simultaneous.checkpoint).toMatchObject({
+        cancelRequested: true,
+        deadlineExpired: true,
+        runStatus: 'canceled',
+      });
+      expect(simultaneous.checkpoint.invocations[0]).toMatchObject({
+        status: 'canceled',
+      });
+      expect(simultaneous.checkpoint.invocations[0]).not.toHaveProperty(
+        'resumeAt',
+      );
+      expect(simultaneous.checkpoint.invocations[0]).not.toHaveProperty(
+        'waitKind',
+      );
+      expect(simultaneous.attempts).toEqual([]);
+      expect(simultaneous.events.map(({ name }) => name)).toEqual([
+        'node.canceled',
+        'run.canceled',
+      ]);
+    }
   });
 
   it('plans every materialized node run independently of the attempt cap', async () => {

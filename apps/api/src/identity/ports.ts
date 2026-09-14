@@ -19,10 +19,11 @@ export interface OidcLoginTransactionStore {
   ): Promise<OidcTransactionConsumeResult | undefined>;
 }
 
-export type OidcTransactionConsumeResult = Readonly<{
-  status: 'ok' | 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
-  transaction?: OidcLoginTransaction;
-}>;
+export type OidcTransactionConsumeResult =
+  | Readonly<{ status: 'ok'; transaction: OidcLoginTransaction }>
+  | Readonly<{
+      status: 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
+    }>;
 
 export type OidcAuthorizationRequest = Readonly<{
   state: string;

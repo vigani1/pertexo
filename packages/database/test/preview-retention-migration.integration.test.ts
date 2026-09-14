@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 import { expectedMigrationHistoryFrom } from './support/migration-history-fixture.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
@@ -23,13 +23,22 @@ const apiBaseUrl =
 const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
-const databaseName = `pertexo_test_preview_retention_upgrade_${randomUUID().replaceAll('-', '')}`;
-
-function databaseUrl(base: string): string {
-  const url = new URL(base);
-  url.pathname = `/${databaseName}`;
-  return url.toString();
-}
+const databaseName = `pertexo_test_retention_${randomUUID().replaceAll('-', '')}`;
+const database = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const { databaseUrl } = database;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -41,29 +50,6 @@ const migrationConfig = {
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
-
-async function createDatabase(): Promise<void> {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
-    );
-  } finally {
-    await admin.end();
-  }
-}
-
-async function dropDatabase(): Promise<void> {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
-}
 
 async function migrateThrough0023(): Promise<void> {
   const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0023-'));
@@ -85,8 +71,8 @@ async function migrateThrough0023(): Promise<void> {
   }
 }
 
-beforeAll(createDatabase);
-afterAll(dropDatabase);
+beforeAll(database.create);
+afterAll(database.drop);
 
 describe('preview retention migration', () => {
   it('retires legacy cleanup delivery for a retained 0023 preview', async () => {
@@ -103,29 +89,30 @@ describe('preview retention migration', () => {
     const owner = new Pool({
       connectionString: migrationConfig.connectionString,
     });
+    const ownerClient = await owner.connect();
     try {
-      await owner.query('begin');
-      await owner.query('set local role pertexo_owner');
-      await owner.query(
+      await ownerClient.query('begin');
+      await ownerClient.query('set local role pertexo_owner');
+      await ownerClient.query(
         `insert into app.users (id,email,display_name,status)
          values ($1,$2,'Retention upgrade','active')`,
         [actorUserId, `retention-upgrade-${actorUserId}@example.test`],
       );
-      await owner.query(
+      await ownerClient.query(
         `insert into app.workspaces (id,name,slug,status,created_by)
          values ($1,'Retention upgrade',$2,'active',$3)`,
         [workspaceId, `retention-upgrade-${workspaceId}`, actorUserId],
       );
-      await owner.query("select set_config('app.workspace_id',$1,true)", [
+      await ownerClient.query("select set_config('app.workspace_id',$1,true)", [
         workspaceId,
       ]);
-      await owner.query(
+      await ownerClient.query(
         `insert into app.workflows
            (id,workspace_id,name,lifecycle_status,activation_status,created_by)
          values ($1,$2,'Retention target','active','inactive',$3)`,
         [workflowId, workspaceId, actorUserId],
       );
-      await owner.query(
+      await ownerClient.query(
         `insert into app.preview_runs (
            id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,
            definition_key,definition_version,executor_key,executor_version,
@@ -153,7 +140,7 @@ describe('preview retention migration', () => {
           expiresAt,
         ],
       );
-      await owner.query(
+      await ownerClient.query(
         `insert into app.preview_runs (
            id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,
            definition_key,definition_version,executor_key,executor_version,
@@ -183,7 +170,7 @@ describe('preview retention migration', () => {
           expiresAt,
         ],
       );
-      await owner.query(
+      await ownerClient.query(
         `insert into app.preview_attempts (
            id,workspace_id,preview_run_id,status,side_effect_class,
            safe_error_code,started_at,completed_at
@@ -193,11 +180,12 @@ describe('preview retention migration', () => {
          )`,
         [terminalPreviewAttemptId, workspaceId, terminalPreviewRunId],
       );
-      await owner.query('commit');
+      await ownerClient.query('commit');
     } catch (error: unknown) {
-      await owner.query('rollback').catch(() => undefined);
+      await ownerClient.query('rollback').catch(() => undefined);
       throw error;
     } finally {
+      ownerClient.release();
       await owner.end();
     }
 

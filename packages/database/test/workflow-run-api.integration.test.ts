@@ -14,15 +14,30 @@ import {
   createWorkflowRunDatabase,
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
+  WorkflowRunReadCapacityError,
 } from '../src/execution/workflow-run-api.js';
+import type { ExecutionStateConflictError } from '../src/execution/execution-state.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+const databaseName = `pertexo_test_run_api_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
 const workspaceId = randomUUID();
 const otherWorkspaceId = randomUUID();
 const actorId = randomUUID();
@@ -278,15 +293,36 @@ async function resetFixture(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await migrateDatabase(migrationConfig);
+  await disposableDatabase.create();
+  try {
+    await migrateDatabase(migrationConfig);
+  } catch (error: unknown) {
+    await disposableDatabase.drop().catch(() => undefined);
+    throw error;
+  }
 });
 
 beforeEach(resetFixture);
 
 afterAll(async () => {
-  await database.close();
-  await api.end();
-  await owner.end();
+  const outcomes = await Promise.allSettled([
+    database.close(),
+    api.end(),
+    owner.end(),
+  ]);
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
+  try {
+    await disposableDatabase.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Workflow-run API fixture cleanup failed',
+    );
 });
 
 describe('workflow run API persistence', () => {
@@ -369,6 +405,87 @@ describe('workflow run API persistence', () => {
     expect(effects.rows).toEqual([
       { runs: 1, checkpoints: 1, events: 2, outbox: 2, audits: 2 },
     ]);
+  });
+
+  it('maps a nonempty node snapshot and enforces the exact read-capacity boundary', async () => {
+    const started = await database.start(startInput());
+    await ownerQuery(
+      `insert into app.node_runs
+         (id,workspace_id,workflow_run_id,node_id,invocation_key,
+          branch_context,status,side_effect_class)
+       select gen_random_uuid(),$1,$2,'node-'||ordinal,'node-'||ordinal,
+              '{}'::jsonb,'pending','safe'
+       from generate_series(1,1000) ordinal`,
+      [workspaceId, started.run.id],
+    );
+    const exact = await database.get({ workspaceId, runId: started.run.id });
+    expect(exact?.nodes).toHaveLength(1_000);
+    expect(
+      exact?.nodes.find((node) => node.invocationKey === 'node-1'),
+    ).toMatchObject({
+      currentAttemptNumber: 0,
+      invocationKey: 'node-1',
+      status: 'pending',
+    });
+
+    await ownerQuery(
+      `insert into app.node_runs
+         (id,workspace_id,workflow_run_id,node_id,invocation_key,
+          branch_context,status,side_effect_class)
+       values(gen_random_uuid(),$1,$2,'overflow','overflow','{}','pending','safe')`,
+      [workspaceId, started.run.id],
+    );
+    await expect(
+      database.get({ workspaceId, runId: started.run.id }),
+    ).rejects.toBeInstanceOf(WorkflowRunReadCapacityError);
+  });
+
+  it('distinguishes exact, conflicting, absent-reason, and terminal cancellation', async () => {
+    const started = await database.start(startInput());
+    const first = await database.cancel({
+      actorId,
+      workspaceId,
+      runId: started.run.id,
+    });
+    expect(first).toMatchObject({ alreadyRequested: false, eventSequence: 2 });
+
+    await expect(
+      database.cancel({
+        actorId: randomUUID(),
+        workspaceId,
+        runId: started.run.id,
+      }),
+    ).rejects.toMatchObject({ message: 'execution.cancel_request_conflict' });
+    await expect(
+      database.cancel({
+        actorId,
+        workspaceId,
+        runId: started.run.id,
+        reason: 'different reason',
+      }),
+    ).rejects.toMatchObject({ message: 'execution.cancel_request_conflict' });
+
+    await ownerQuery(
+      `update app.workflow_runs
+          set status='succeeded',started_at=clock_timestamp(),
+              completed_at=clock_timestamp()
+        where id=$1`,
+      [started.run.id],
+    );
+    await expect(
+      database.cancel({ actorId, workspaceId, runId: started.run.id }),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<ExecutionStateConflictError>>({
+        message: 'execution.run_terminal',
+      }),
+    );
+    const effects = await apiQuery(
+      `select
+         (select count(*)::int from app.run_events) events,
+         (select count(*)::int from app.outbox_events) outbox,
+         (select count(*)::int from app.audit_events) audits`,
+    );
+    expect(effects.rows).toEqual([{ events: 2, outbox: 2, audits: 2 }]);
   });
 
   it('rejects a new start when the workflow has no executable publication', async () => {

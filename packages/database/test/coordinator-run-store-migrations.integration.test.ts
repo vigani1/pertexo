@@ -18,7 +18,7 @@ import {
   priorHeadDatabaseName,
   randomUUID,
   retainedRunId,
-  store,
+  ownedDeliveryStore,
   versionA,
   workerBaseUrl,
   workspaceA,
@@ -26,7 +26,7 @@ import {
 } from './coordinator-run-store.fixtures.js';
 
 describe('Coordinator migration and identity invariants', () => {
-  it('migrates a zero database through 0016 and reports readiness', async () => {
+  it('migrates a zero database through the current head and retains the 0016 contract', async () => {
     const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
     try {
       await admin.query(
@@ -56,19 +56,22 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0086_operator_attempt_reclaim_state.sql',
+          migrationHead: '0089_oidc_capacity_lock_time.sql',
           role: 'pertexo_worker',
         });
       } finally {
         await readinessPool.end();
       }
     } finally {
-      await dropDisconnectedDatabase(admin, zeroDatabaseName);
-      await admin.end();
+      try {
+        await dropDisconnectedDatabase(admin, zeroDatabaseName);
+      } finally {
+        await admin.end();
+      }
     }
   }, 60_000);
 
-  it('upgrades the immediate 0030 head to 0031 with compatible readiness and wakeup authority', async () => {
+  it('upgrades the 0030 head through the current head and retains 0031 wakeup authority', async () => {
     const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
     const priorConfig = {
       ...migrationConfig,
@@ -168,6 +171,9 @@ describe('Coordinator migration and identity invariants', () => {
         '0084_workspace_member_discovery_index.sql',
         '0085_artifact_media_type_http_safety.sql',
         '0086_operator_attempt_reclaim_state.sql',
+        '0087_workspace_maintenance_rerun_purge.sql',
+        '0088_sql_boundary_integrity.sql',
+        '0089_oidc_capacity_lock_time.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -183,7 +189,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0086_operator_attempt_reclaim_state.sql',
+          migrationHead: '0089_oidc_capacity_lock_time.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -233,12 +239,15 @@ describe('Coordinator migration and identity invariants', () => {
         await workerPool.end();
       }
     } finally {
-      await dropDisconnectedDatabase(admin, priorHeadDatabaseName);
-      await admin.end();
+      try {
+        await dropDisconnectedDatabase(admin, priorHeadDatabaseName);
+      } finally {
+        await admin.end();
+      }
     }
   }, 60_000);
 
-  it('upgrades 0014 identity binding, reports readiness, and fails closed for legacy checkpoints', async () => {
+  it('retains the 0014 identity upgrade at the current head and fails closed for legacy checkpoints', async () => {
     const readinessPool = new Pool({
       connectionString: databaseUrl(workerBaseUrl),
       max: 1,
@@ -250,7 +259,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -489,7 +498,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
     } finally {
       await readinessPool.end();
@@ -505,7 +514,7 @@ describe('Coordinator migration and identity invariants', () => {
     );
     expect(binding.rows[0]?.matches).toBe(true);
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: retainedRunId,
         signal: new AbortController().signal,
@@ -514,7 +523,7 @@ describe('Coordinator migration and identity invariants', () => {
 
     const legacyExecutable = await insertRun({ schedulerState: {} });
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: legacyExecutable,
         signal: new AbortController().signal,

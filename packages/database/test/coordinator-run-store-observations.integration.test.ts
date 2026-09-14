@@ -15,7 +15,8 @@ import {
   randomUUID,
   retainedLegacyInvocationKey,
   retainedLegacyNodeRunId,
-  store,
+  seedSucceededFact,
+  ownedDeliveryStore,
   versionA,
   versionB,
   workerBaseUrl,
@@ -23,11 +24,45 @@ import {
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
+import { generatePersistedId } from '../src/platform/persisted-id.js';
 
 type ObservedCoordinatorQuery = Readonly<{
   kind: string;
   values: readonly unknown[];
 }>;
+
+async function measureObservationLoad<T>(
+  scenario: 'application_oversized' | 'normal' | 'numeric_expansion',
+  operation: () => Promise<T>,
+): Promise<T> {
+  const heapBefore = process.memoryUsage().heapUsed;
+  let peakHeap = heapBefore;
+  const startedAt = performance.now();
+  let outcome = 'fulfilled';
+  const sampler = setInterval(() => {
+    peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
+  }, 1);
+  sampler.unref();
+  try {
+    return await operation();
+  } catch (error: unknown) {
+    outcome = 'rejected';
+    throw error;
+  } finally {
+    clearInterval(sampler);
+    peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
+    console.info(
+      `Q12_OBSERVATION_MATERIALIZATION_V1=${JSON.stringify({
+        schemaVersion: 1,
+        scenario,
+        outcome,
+        operationMs: performance.now() - startedAt,
+        processPeakHeapDeltaBytes: peakHeap - heapBefore,
+        attributableMemory: false,
+      })}`,
+    );
+  }
+}
 
 function coordinatorQueryKind(text: string): string {
   const normalized = text.replaceAll(/\s+/gu, ' ').trim().toLowerCase();
@@ -67,10 +102,23 @@ function coordinatorQueryKind(text: string): string {
     normalized.includes('left join app.node_attempts attempt')
   )
     return 'checkpoint_physical_state';
+  if (normalized.includes('from app.artifacts')) return 'available_artifacts';
   if (normalized.includes('coalesce(retry_due_at, resume_at) as due_at'))
     return 'due_wakeups';
   if (normalized === 'commit' || normalized === 'rollback') return normalized;
   return 'unexpected';
+}
+
+function hasConstraint(expected: string): (error: unknown) => boolean {
+  return (error: unknown): boolean => {
+    let current: unknown = error;
+    while (current instanceof Error) {
+      if ('constraint' in current && current.constraint === expected)
+        return true;
+      current = current.cause;
+    }
+    return false;
+  };
 }
 
 function queryTextAndValues(arguments_: readonly unknown[]): Readonly<{
@@ -101,6 +149,7 @@ function queryTextAndValues(arguments_: readonly unknown[]): Readonly<{
 
 function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
   const originalConnect = Reflect.get(Pool.prototype, 'connect');
+  const applicationName = `observed-coordinator-${randomUUID()}`;
   const connectWithPromise = originalConnect as unknown as (
     this: PgPool,
   ) => Promise<PoolClient>;
@@ -110,6 +159,24 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
     this: PgPool,
     ...arguments_: unknown[]
   ): unknown {
+    const options = (
+      this as unknown as {
+        options: { application_name?: string; connectionString?: string };
+      }
+    ).options;
+    const ownApplicationName =
+      options.application_name ??
+      (options.connectionString === undefined
+        ? undefined
+        : new URL(options.connectionString).searchParams.get(
+            'application_name',
+          ));
+    if (ownApplicationName !== applicationName)
+      return Reflect.apply(
+        originalConnect as (...values: unknown[]) => unknown,
+        this,
+        arguments_,
+      );
     if (arguments_.length > 0)
       throw new Error('Coordinator test expected promise-based pool checkout');
     return connectWithPromise.call(this).then((client) => {
@@ -131,14 +198,22 @@ function observedCoordinatorStore(afterQuery?: (kind: string) => void) {
       return client;
     });
   } as typeof Pool.prototype.connect;
-  const observedStore = createCoordinatorRunStore(
-    parseDatabaseConfig({
-      connectionString: databaseUrl(workerBaseUrl),
-      max: 1,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    }),
-  );
+  let observedStore: ReturnType<typeof createCoordinatorRunStore>;
+  try {
+    const connectionUrl = new URL(databaseUrl(workerBaseUrl));
+    connectionUrl.searchParams.set('application_name', applicationName);
+    observedStore = createCoordinatorRunStore(
+      parseDatabaseConfig({
+        connectionString: connectionUrl.toString(),
+        max: 1,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+  } catch (error: unknown) {
+    Pool.prototype.connect = originalConnect;
+    throw error;
+  }
   return {
     close: async (): Promise<void> => {
       try {
@@ -162,6 +237,283 @@ function observedKinds(
 }
 
 describe('Coordinator observation integrity invariants', () => {
+  async function seedAvailableArtifact(): Promise<string> {
+    const artifactId = generatePersistedId();
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `insert into app.artifacts (
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at
+         ) values ($1,$2,'node-output',$3,'application/json',1,$4,
+           'available',now()+interval '1 day',now())`,
+        [
+          artifactId,
+          workspaceA,
+          `workspaces/${workspaceA}/artifacts/${artifactId}`,
+          'f'.repeat(64),
+        ],
+      ),
+    );
+    return artifactId;
+  }
+
+  it('loads a fresh artifact completion in one read-only snapshot', async () => {
+    const invocationKey = 'version-a/fresh-artifact';
+    const artifactId = await seedAvailableArtifact();
+    const runId = await insertRun({
+      schedulerState: checkpoint({
+        runStatus: 'running',
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'fresh-artifact',
+            status: 'running',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+      status: 'running',
+    });
+    await seedSucceededFact(runId, invocationKey, {
+      schemaVersion: 1,
+      kind: 'artifact',
+      artifactId,
+    });
+    const observed = observedCoordinatorStore();
+    try {
+      await expect(
+        measureObservationLoad('normal', () =>
+          observed.store.loadAdvanceState({
+            workspaceId: workspaceA,
+            runId,
+            signal: new AbortController().signal,
+          }),
+        ),
+      ).resolves.toMatchObject({
+        kind: 'ready',
+        state: {
+          observations: [
+            { kind: 'outcome', output: { kind: 'artifact', artifactId } },
+          ],
+        },
+      });
+      expect(observedKinds(observed.observedQueries)).toContain(
+        'begin_repeatable_read_only',
+      );
+      expect(observedKinds(observed.observedQueries)).toContain(
+        'available_artifacts',
+      );
+    } finally {
+      await observed.close();
+    }
+  });
+
+  it('loads a retained artifact checkpoint in one read-only snapshot', async () => {
+    const invocationKey = 'version-a/retained-artifact';
+    const artifactId = await seedAvailableArtifact();
+    const runId = await insertRun({ status: 'running' });
+    await seedSucceededFact(runId, invocationKey, {
+      schemaVersion: 1,
+      kind: 'artifact',
+      artifactId,
+    });
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `update app.run_checkpoints
+         set scheduler_state=$3::jsonb
+         where workspace_id=$1 and workflow_run_id=$2`,
+        [
+          workspaceA,
+          runId,
+          JSON.stringify(
+            checkpoint({
+              runStatus: 'running',
+              nextEventSequence: 3,
+              invocations: [
+                {
+                  invocationKey,
+                  nodeId: 'retained-artifact',
+                  status: 'succeeded',
+                  attemptNumber: 1,
+                  output: { kind: 'artifact', artifactId },
+                },
+              ],
+            }),
+          ),
+        ],
+      ),
+    );
+    const observed = observedCoordinatorStore();
+    try {
+      await expect(
+        observed.store.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ kind: 'ready' });
+      expect(observedKinds(observed.observedQueries)).toContain(
+        'begin_repeatable_read_only',
+      );
+      expect(observedKinds(observed.observedQueries)).toContain(
+        'available_artifacts',
+      );
+    } finally {
+      await observed.close();
+    }
+  });
+
+  it.each(['deleting', 'deleted'] as const)(
+    'fails closed when a fresh completion references a %s artifact',
+    async (status) => {
+      const invocationKey = `version-a/${status}-artifact`;
+      const artifactId = await seedAvailableArtifact();
+      const runId = await insertRun({
+        schedulerState: checkpoint({
+          runStatus: 'running',
+          invocations: [
+            {
+              invocationKey,
+              nodeId: `${status}-artifact`,
+              status: 'running',
+              attemptNumber: 1,
+            },
+          ],
+        }),
+        status: 'running',
+      });
+      await seedSucceededFact(runId, invocationKey, {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId,
+      });
+      await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+        await client.query(
+          `update app.artifacts set status='deleting' where id=$1`,
+          [artifactId],
+        );
+        if (status === 'deleted')
+          await client.query(
+            `update app.artifacts
+             set status='deleted',deleted_at=clock_timestamp() where id=$1`,
+            [artifactId],
+          );
+      });
+
+      await expect(
+        ownedDeliveryStore.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+    },
+  );
+
+  it('fails closed for a retained foreign-workspace artifact locator', async () => {
+    const invocationKey = 'version-a/foreign-retained-artifact';
+    const artifactId = generatePersistedId();
+    await asRuntime(workerBaseUrl, workspaceB, (client) =>
+      client.query(
+        `insert into app.artifacts (
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at
+         ) values ($1,$2,'node-output',$3,'application/json',1,$4,
+           'available',now()+interval '1 day',now())`,
+        [
+          artifactId,
+          workspaceB,
+          `workspaces/${workspaceB}/artifacts/${artifactId}`,
+          'e'.repeat(64),
+        ],
+      ),
+    );
+    const nodeRunId = randomUUID();
+    const attemptId = randomUUID();
+    const runId = await insertRun({
+      schedulerState: checkpoint({ runStatus: 'running' }),
+      status: 'running',
+    });
+    const stored = JSON.stringify({
+      schemaVersion: 1,
+      kind: 'artifact',
+      artifactId,
+    });
+    await asOwner(workspaceA, async (client) => {
+      await client.query(
+        'alter table app.run_checkpoints disable trigger run_checkpoints_lock_artifact_references',
+      );
+      await client.query(
+        'alter table app.node_runs disable trigger node_runs_lock_artifact_references',
+      );
+      await client.query(
+        'alter table app.node_attempts disable trigger node_attempts_lock_artifact_references',
+      );
+    });
+    try {
+      await asOwner(workspaceA, async (client) => {
+        await client.query(
+          `insert into app.node_runs (
+           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+           status,side_effect_class,current_attempt_id,current_attempt_number,
+           output_ref
+         ) values ($1,$2,$3,'foreign-retained-artifact',$4,'{}','succeeded',
+           'safe',$5,1,$6::jsonb)`,
+          [nodeRunId, workspaceA, runId, invocationKey, attemptId, stored],
+        );
+        await client.query(
+          `insert into app.node_attempts (
+           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+           output_ref
+         ) values ($1,$2,$3,1,'succeeded','safe',$4::jsonb)`,
+          [attemptId, workspaceA, nodeRunId, stored],
+        );
+        await client.query(
+          `update app.run_checkpoints set scheduler_state=$3::jsonb
+         where workspace_id=$1 and workflow_run_id=$2`,
+          [
+            workspaceA,
+            runId,
+            JSON.stringify(
+              checkpoint({
+                runStatus: 'running',
+                invocations: [
+                  {
+                    invocationKey,
+                    nodeId: 'foreign-retained-artifact',
+                    status: 'succeeded',
+                    attemptNumber: 1,
+                    output: { kind: 'artifact', artifactId },
+                  },
+                ],
+              }),
+            ),
+          ],
+        );
+      });
+    } finally {
+      await asOwner(workspaceA, async (client) => {
+        await client.query(
+          'alter table app.node_attempts enable trigger node_attempts_lock_artifact_references',
+        );
+        await client.query(
+          'alter table app.node_runs enable trigger node_runs_lock_artifact_references',
+        );
+        await client.query(
+          'alter table app.run_checkpoints enable trigger run_checkpoints_lock_artifact_references',
+        );
+      });
+    }
+
+    await expect(
+      ownedDeliveryStore.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+  });
+
   it('preserves legacy invocation keys and admits only canonical engine identities', async () => {
     const retained = await asRuntime(workerBaseUrl, workspaceA, (client) =>
       client.query<{ invocation_key: string }>(
@@ -262,7 +614,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0086_operator_attempt_reclaim_state.sql',
+      migrationHead: '0089_oidc_capacity_lock_time.sql',
     });
     await readinessPool.end();
   });
@@ -270,7 +622,7 @@ describe('Coordinator observation integrity invariants', () => {
   it('loads a valid revision-zero checkpoint at cursor two and enforces workspace RLS', async () => {
     const runId = await insertRun({});
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -292,7 +644,7 @@ describe('Coordinator observation integrity invariants', () => {
       schedulerState: checkpoint({ workflowVersionId: versionB }),
     });
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: foreignRun,
         signal: new AbortController().signal,
@@ -483,7 +835,7 @@ describe('Coordinator observation integrity invariants', () => {
       status: 'running',
     });
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: missingRun,
         signal: new AbortController().signal,
@@ -516,7 +868,7 @@ describe('Coordinator observation integrity invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: contradictoryRun,
         signal: new AbortController().signal,
@@ -591,7 +943,7 @@ describe('Coordinator observation integrity invariants', () => {
           ],
         );
     });
-    const loaded = await store.loadAdvanceState({
+    const loaded = await ownedDeliveryStore.loadAdvanceState({
       workspaceId: workspaceA,
       runId,
       signal: new AbortController().signal,
@@ -669,7 +1021,7 @@ describe('Coordinator observation integrity invariants', () => {
       );
     });
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -764,7 +1116,7 @@ describe('Coordinator observation integrity invariants', () => {
       expect(attemptPlan).toContain('"Relation Name":"node_attempts"');
       expect(attemptPlan).toContain('"Node Type":"Index Scan"');
 
-      const loaded = await store.loadAdvanceState({
+      const loaded = await ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -801,7 +1153,7 @@ describe('Coordinator observation integrity invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: gapRun,
         signal: new AbortController().signal,
@@ -818,7 +1170,7 @@ describe('Coordinator observation integrity invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: unversionedRun,
         signal: new AbortController().signal,
@@ -846,7 +1198,7 @@ describe('Coordinator observation integrity invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: corruptRun,
         signal: new AbortController().signal,
@@ -866,14 +1218,16 @@ describe('Coordinator observation integrity invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId: oversizedRun,
-        signal: new AbortController().signal,
-      }),
+      measureObservationLoad('application_oversized', () =>
+        ownedDeliveryStore.loadAdvanceState({
+          workspaceId: workspaceA,
+          runId: oversizedRun,
+          signal: new AbortController().signal,
+        }),
+      ),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: oversizedRun,
         workflowVersionId: versionA,
@@ -900,29 +1254,43 @@ describe('Coordinator observation integrity invariants', () => {
         },
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+  });
 
+  it('rejects a large wire population at the canonical per-fact guard', async () => {
     const aggregateRun = await insertRun({});
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        `insert into app.run_events
+    const storageBytes = await asRuntime(
+      workerBaseUrl,
+      workspaceA,
+      async (client) => {
+        await client.query(
+          `insert into app.run_events
              (workspace_id,workflow_run_id,sequence,type,payload)
            select $1,$2,sequence,'run.cancel_requested',
                   jsonb_build_object(
                     'schemaVersion',1,'ignored',repeat('x',520000)
                   )
            from generate_series(2,131) sequence`,
-        [workspaceA, aggregateRun],
-      ),
+          [workspaceA, aggregateRun],
+        );
+        const size = await client.query<{ bytes: string }>(
+          `select sum(octet_length(payload::text))::bigint bytes
+           from app.run_events
+           where workspace_id=$1 and workflow_run_id=$2 and sequence >= 2`,
+          [workspaceA, aggregateRun],
+        );
+        return Number(size.rows[0]?.bytes);
+      },
     );
+    expect(storageBytes).toBeGreaterThan(64 * 1024 * 1024);
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: aggregateRun,
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: aggregateRun,
         workflowVersionId: versionA,
@@ -971,7 +1339,7 @@ describe('Coordinator observation integrity invariants', () => {
     );
 
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId: malformedRun,
         signal: new AbortController().signal,
@@ -1043,19 +1411,27 @@ describe('Coordinator observation integrity invariants', () => {
     );
     expect(storageBytes).toBeGreaterThan(64 * 1024 * 1024);
 
-    const loaded = await store.loadAdvanceState({
-      workspaceId: workspaceA,
-      runId,
-      signal: new AbortController().signal,
-    });
+    const observed = observedCoordinatorStore();
+    const loaded = await measureObservationLoad('numeric_expansion', () =>
+      observed.store.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).finally(() => observed.close());
     expect(loaded).toMatchObject({ kind: 'ready' });
     if (loaded.kind !== 'ready') throw new Error('expected ready state');
     expect(loaded.state.observations).toHaveLength(450);
     expect(loaded.state.observations.at(0)).toMatchObject({ sequence: 2 });
     expect(loaded.state.observations.at(-1)).toMatchObject({ sequence: 451 });
+    expect(
+      observedKinds(observed.observedQueries).filter(
+        (kind) => kind === 'fact_page',
+      ).length,
+    ).toBeGreaterThan(1);
 
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -1196,7 +1572,7 @@ describe('Coordinator observation integrity invariants', () => {
         );
       });
       await expect(
-        store.loadAdvanceState({
+        ownedDeliveryStore.loadAdvanceState({
           workspaceId: workspaceA,
           runId,
           signal: new AbortController().signal,
@@ -1250,7 +1626,7 @@ describe('Coordinator observation integrity invariants', () => {
     });
 
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -1276,7 +1652,8 @@ describe('Coordinator observation integrity invariants', () => {
     });
     const nodeRunId = randomUUID();
     const attemptId = randomUUID();
-    const artifactId = randomUUID();
+    const artifactId = generatePersistedId();
+    expect(artifactId[14]).toBe('7');
     await asRuntime(workerBaseUrl, workspaceB, async (client) => {
       await client.query(
         `insert into app.artifacts (
@@ -1318,12 +1695,12 @@ describe('Coordinator observation integrity invariants', () => {
 
   it('derives deadline and due observations from durable database truth', async () => {
     const invocationKey = 'version-a/waiting';
-    const deadlineAt = new Date(Date.now() + 100).toISOString();
+    const initialDeadlineAt = '2099-01-01T00:00:00.000Z';
     const dueAt = '2020-01-01T00:01:00.000Z';
     const nodeRunId = randomUUID();
     const attemptId = randomUUID();
     const runId = await insertRun({
-      deadlineAt,
+      deadlineAt: initialDeadlineAt,
       schedulerState: checkpoint({
         runStatus: 'waiting',
         invocations: [
@@ -1354,8 +1731,20 @@ describe('Coordinator observation integrity invariants', () => {
         [attemptId, workspaceA, nodeRunId],
       );
     });
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    const loaded = await store.loadAdvanceState({
+    const expired = await asOwner(workspaceA, (client) =>
+      client.query<{ deadline_at: Date }>(
+        `update app.workflow_runs
+         set created_at=clock_timestamp()-interval '2 seconds',
+             deadline_at=clock_timestamp()-interval '1 second'
+         where workspace_id=$1 and id=$2
+         returning deadline_at`,
+        [workspaceA, runId],
+      ),
+    );
+    const deadlineAt = expired.rows[0]?.deadline_at.toISOString();
+    if (deadlineAt === undefined)
+      throw new Error('Controlled database deadline missing');
+    const loaded = await ownedDeliveryStore.loadAdvanceState({
       workspaceId: workspaceA,
       runId,
       signal: new AbortController().signal,
@@ -1366,5 +1755,47 @@ describe('Coordinator observation integrity invariants', () => {
       { kind: 'deadline_expired', occurredAt: deadlineAt },
       { kind: 'due_at', invocationKey, occurredAt: dueAt },
     ]);
+  });
+
+  it('rejects nullable waiting and deadline marker shapes by exact constraint', async () => {
+    const runId = await insertRun({
+      schedulerState: checkpoint({ runStatus: 'running' }),
+      status: 'running',
+    });
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `insert into app.node_runs(
+            id,workspace_id,workflow_run_id,node_id,invocation_key,
+            branch_context,status,side_effect_class
+          ) values($1,$2,$3,'invalid-wait','invalid-wait','{}','waiting','safe')`,
+          [randomUUID(), workspaceA, runId],
+        ),
+      ),
+    ).rejects.toSatisfy(hasConstraint('node_runs_wait_state_valid'));
+
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `insert into app.node_runs(
+            id,workspace_id,workflow_run_id,node_id,invocation_key,
+            branch_context,status,side_effect_class,control_kind,due_wakeup_at
+          ) values($1,$2,$3,'invalid-due','invalid-due','{}','waiting','safe',
+            'for_each_barrier',clock_timestamp())`,
+          [randomUUID(), workspaceA, runId],
+        ),
+      ),
+    ).rejects.toSatisfy(hasConstraint('node_runs_due_wakeup_consistent'));
+
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          'update app.workflow_runs set deadline_wakeup_at=clock_timestamp() where id=$1',
+          [runId],
+        ),
+      ),
+    ).rejects.toSatisfy(
+      hasConstraint('workflow_runs_deadline_wakeup_consistent'),
+    );
   });
 });

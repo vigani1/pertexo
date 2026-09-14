@@ -173,41 +173,50 @@ const OPERATIONS: Readonly<Record<string, ObjectStoreOperation>> =
   });
 
 function operationFor(command: object): ObjectStoreOperation {
-  return OPERATIONS[command.constructor.name] ?? 'unknown';
+  try {
+    return OPERATIONS[command.constructor.name] ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 function errorClass(
   error: unknown,
   signal?: AbortSignal,
 ): ObjectStoreErrorClass {
-  if (signal?.aborted === true) {
-    const reason: unknown = signal.reason;
-    return reason instanceof Error && reason.name === 'TimeoutError'
-      ? 'timeout'
-      : 'aborted';
+  try {
+    if (signal?.aborted === true) {
+      const reason: unknown = signal.reason;
+      return reason instanceof Error && reason.name === 'TimeoutError'
+        ? 'timeout'
+        : 'aborted';
+    }
+    if (typeof error !== 'object' || error === null) return 'unknown';
+    const candidate = error as {
+      readonly $metadata?: { readonly httpStatusCode?: number };
+      readonly name?: string;
+    };
+    if (candidate.name === 'AbortError') return 'aborted';
+    if (candidate.name === 'TimeoutError') return 'timeout';
+    if (
+      candidate.name === 'NoSuchKey' ||
+      candidate.name === 'NotFound' ||
+      candidate.$metadata?.httpStatusCode === 404
+    ) {
+      return 'not_found';
+    }
+    if (
+      candidate.name === 'PreconditionFailed' ||
+      candidate.$metadata?.httpStatusCode === 412
+    ) {
+      return 'precondition_failed';
+    }
+    if (candidate.$metadata?.httpStatusCode !== undefined)
+      return 'service_error';
+    return 'unknown';
+  } catch {
+    return 'unknown';
   }
-  if (typeof error !== 'object' || error === null) return 'unknown';
-  const candidate = error as {
-    readonly $metadata?: { readonly httpStatusCode?: number };
-    readonly name?: string;
-  };
-  if (candidate.name === 'AbortError') return 'aborted';
-  if (candidate.name === 'TimeoutError') return 'timeout';
-  if (
-    candidate.name === 'NoSuchKey' ||
-    candidate.name === 'NotFound' ||
-    candidate.$metadata?.httpStatusCode === 404
-  ) {
-    return 'not_found';
-  }
-  if (
-    candidate.name === 'PreconditionFailed' ||
-    candidate.$metadata?.httpStatusCode === 412
-  ) {
-    return 'precondition_failed';
-  }
-  if (candidate.$metadata?.httpStatusCode !== undefined) return 'service_error';
-  return 'unknown';
 }
 
 export class ObservedS3Client {

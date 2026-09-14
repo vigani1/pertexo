@@ -38,13 +38,16 @@ function duplicateDatabase(): WorkspaceDatabase {
 
 function interruptibleDatabase() {
   const operationStarted = Promise.withResolvers<undefined>();
-  const never = Promise.withResolvers<never>();
+  const heldOperation = Promise.withResolvers<{ rows: never[] }>();
+  const operationSettled = Promise.withResolvers<undefined>();
   const completionUpdate = vi.fn();
   const state = { rolledBack: false };
   const drizzle = {
     execute: vi.fn(() => {
       operationStarted.resolve(undefined);
-      return never.promise;
+      return heldOperation.promise.finally(() => {
+        operationSettled.resolve(undefined);
+      });
     }),
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
@@ -64,21 +67,22 @@ function interruptibleDatabase() {
       const signal = options?.signal;
       if (signal === undefined)
         throw new Error('caller signal was not propagated');
+      signal.throwIfAborted();
+      let rejectAbort: ((reason: Error) => void) | undefined;
       const aborted = new Promise<never>((_resolve, reject) => {
-        signal.addEventListener(
-          'abort',
-          () => {
-            reject(
-              signal.reason instanceof Error
-                ? signal.reason
-                : new Error('Inbox transaction aborted', {
-                    cause: signal.reason,
-                  }),
-            );
-          },
-          { once: true },
-        );
+        rejectAbort = reject;
       });
+      const onAbort = (): void => {
+        const reason =
+          signal.reason instanceof Error
+            ? signal.reason
+            : new Error('Inbox transaction aborted', {
+                cause: signal.reason,
+              });
+        heldOperation.reject(reason);
+        rejectAbort?.(reason);
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
       try {
         return await Promise.race([
           operation({
@@ -90,6 +94,8 @@ function interruptibleDatabase() {
       } catch (error: unknown) {
         state.rolledBack = true;
         throw error;
+      } finally {
+        signal.removeEventListener('abort', onAbort);
       }
     },
   );
@@ -102,6 +108,7 @@ function interruptibleDatabase() {
       withWorkspace,
     } as unknown as WorkspaceDatabase,
     operationStarted,
+    operationSettled,
     state,
     withWorkspace,
   };
@@ -119,6 +126,7 @@ describe('inbox caller cancellation', () => {
   it('cancels unknown-outcome reconciliation during its inbox transaction', async () => {
     const fixture = interruptibleDatabase();
     const controller = new AbortController();
+    const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
     const reason = new Error('cancel reconciliation transaction');
     const reconciling = reconcileUnknownOutcomeEvidence(fixture.database, {
       attemptId: randomUUID(),
@@ -134,18 +142,21 @@ describe('inbox caller cancellation', () => {
     await fixture.operationStarted.promise;
     controller.abort(reason);
     await rejection;
+    await fixture.operationSettled.promise;
 
     expect(fixture.withWorkspace.mock.calls[0]?.[2]).toEqual({
       signal: controller.signal,
     });
     expect(fixture.completionUpdate).not.toHaveBeenCalled();
     expect(fixture.state.rolledBack).toBe(true);
+    expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 
   it('cancels operator replay during its inbox transaction', async () => {
     const fixture = interruptibleDatabase();
     databaseMocks.createWorkspaceDatabase.mockReturnValue(fixture.database);
     const controller = new AbortController();
+    const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
     const reason = new Error('cancel replay transaction');
     const store = createOperatorRunReplayStore(
       config,
@@ -172,12 +183,71 @@ describe('inbox caller cancellation', () => {
     await fixture.operationStarted.promise;
     controller.abort(reason);
     await rejection;
+    await fixture.operationSettled.promise;
 
     expect(fixture.withWorkspace.mock.calls[0]?.[2]).toEqual({
       signal: controller.signal,
     });
     expect(fixture.completionUpdate).not.toHaveBeenCalled();
     expect(fixture.state.rolledBack).toBe(true);
+    expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
     await store.close();
+  });
+
+  it('rejects pre-aborted reconciliation before acquiring a transaction', async () => {
+    const fixture = interruptibleDatabase();
+    const controller = new AbortController();
+    const reason = new Error('reconciliation already canceled');
+    controller.abort(reason);
+
+    await expect(
+      reconcileUnknownOutcomeEvidence(fixture.database, {
+        attemptId: randomUUID(),
+        delivery: {
+          outboxEventId: randomUUID(),
+          payloadChecksum: checksum,
+        },
+        evidenceCommandId: randomUUID(),
+        signal: controller.signal,
+        workspaceId: randomUUID(),
+      }),
+    ).rejects.toBe(reason);
+    expect(fixture.withWorkspace).not.toHaveBeenCalled();
+  });
+
+  it('rejects pre-aborted replay before acquiring a transaction and still closes', async () => {
+    const fixture = interruptibleDatabase();
+    databaseMocks.createWorkspaceDatabase.mockReturnValue(fixture.database);
+    const controller = new AbortController();
+    const reason = new Error('replay already canceled');
+    controller.abort(reason);
+    const store = createOperatorRunReplayStore(
+      config,
+      [
+        {
+          catalogJson:
+            '{"domain":"pertexo.node-compatibility-release","schemaVersion":1}',
+          epoch: 1,
+          fingerprint: `node-compat:v1:sha256:${'b'.repeat(64)}`,
+        },
+      ],
+      vi.fn(),
+    );
+    try {
+      await expect(
+        store.replay({
+          commandId: randomUUID(),
+          delivery: {
+            outboxEventId: randomUUID(),
+            payloadChecksum: checksum,
+          },
+          signal: controller.signal,
+          workspaceId: randomUUID(),
+        }),
+      ).rejects.toBe(reason);
+      expect(fixture.withWorkspace).not.toHaveBeenCalled();
+    } finally {
+      await store.close();
+    }
   });
 });

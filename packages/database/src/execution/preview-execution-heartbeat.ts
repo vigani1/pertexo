@@ -43,13 +43,30 @@ export async function heartbeatPreviewLease(
     pool,
     { workspaceId: scope.workspaceId },
     async (client) => {
-      const result = await client.query<{ attempt_lease_expires_at: Date }>(
+      const result = await client.query<{
+        attempt_lease_expires_at: Date;
+        execution_deadline_at: Date;
+      }>(
         `update app.preview_attempts
-         set lease_expires_at=clock_timestamp() + ($5::int * interval '1 second'),
+         set lease_expires_at=least(
+               clock_timestamp() + ($5::int * interval '1 second'),
+               run.execution_deadline_at
+             ),
              updated_at=clock_timestamp()
-         where workspace_id=$1 and id=$2 and preview_run_id=$3
-           and status='running' and lease_owner=$4 and fence_token=$6
-         returning lease_expires_at as attempt_lease_expires_at`,
+         from app.preview_runs run
+         where preview_attempts.workspace_id=$1
+           and preview_attempts.id=$2
+           and preview_attempts.preview_run_id=$3
+           and preview_attempts.status='running'
+           and preview_attempts.lease_owner=$4
+           and preview_attempts.fence_token=$6
+           and preview_attempts.lease_expires_at > clock_timestamp()
+           and run.workspace_id=preview_attempts.workspace_id
+           and run.id=preview_attempts.preview_run_id
+           and run.execution_deadline_at > clock_timestamp()
+         returning preview_attempts.lease_expires_at
+                     as attempt_lease_expires_at,
+                   run.execution_deadline_at`,
         [
           scope.workspaceId,
           scope.previewAttemptId,
@@ -62,17 +79,9 @@ export async function heartbeatPreviewLease(
       const row = result.rows[0];
       if (row === undefined)
         throw new PreviewAttemptStateError('heartbeat_lost');
-      const runs = await client.query<{ execution_deadline_at: Date }>(
-        `select execution_deadline_at from app.preview_runs
-         where workspace_id=$1 and id=$2`,
-        [scope.workspaceId, scope.previewRunId],
-      );
-      const runRow = runs.rows[0];
-      if (runRow === undefined)
-        throw new PreviewAttemptStateError('run_missing');
       return Object.freeze({
         attemptLeaseExpiresAt: row.attempt_lease_expires_at,
-        runExecutionDeadlineAt: runRow.execution_deadline_at,
+        runExecutionDeadlineAt: row.execution_deadline_at,
       });
     },
     optionsFor(input.signal),

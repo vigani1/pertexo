@@ -192,6 +192,8 @@ export async function claimNodeAttemptDelivery(
             : branchContextSchema.safeParse(row.branch_context);
         if (branchContext !== undefined && !branchContext.success)
           throw new NodeAttemptStateCorruptError();
+        const scope = branchContext?.success === true ? branchContext.data : {};
+        const { branchPath, iterationPath } = scope;
 
         const claimed = await client.query<{
           fence_token: string;
@@ -240,14 +242,12 @@ export async function claimNodeAttemptDelivery(
           admissionKind: row.admission_kind,
           invocationKey: row.invocation_key,
           nodeId: row.node_id,
-          ...(branchContext?.data.branchPath === undefined ||
-          branchContext.data.branchPath.length === 0
+          ...(branchPath === undefined || branchPath.length === 0
             ? {}
-            : { branchPath: branchContext.data.branchPath }),
-          ...(branchContext?.data.iterationPath === undefined ||
-          branchContext.data.iterationPath.length === 0
+            : { branchPath }),
+          ...(iterationPath === undefined || iterationPath.length === 0
             ? {}
-            : { iterationPath: branchContext.data.iterationPath }),
+            : { iterationPath }),
           sideEffectClass: row.side_effect_class,
           ...(row.provider_idempotency_key === null
             ? {}

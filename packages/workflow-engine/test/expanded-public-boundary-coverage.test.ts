@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { createRegistryRelease, type RegistryRelease } from '@pertexo/node-sdk';
 
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  createRegistryRelease,
   parseWorkflowExecutableV2,
-  type RegistryRelease,
-} from './executable-workflow.fixtures.js';
+} from '../src/index.js';
 import {
   advanceWorkflow,
   decideCancellation,
@@ -260,20 +259,42 @@ describe('expanded public workflow-engine boundaries', () => {
   });
 
   it('normalizes non-Error failures raised while reading hostile public input', () => {
-    const throwable: unknown = 'hostile input trap';
-    const hostile = new Proxy(
-      {},
-      {
-        ownKeys: () => {
-          throw throwable;
-        },
+    const throwingMessage = new Error('private hostile message');
+    Object.defineProperty(throwingMessage, 'message', {
+      get() {
+        throw new Error('secondary message failure');
       },
-    );
+    });
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
 
-    expect(() =>
-      buildWorkflowExecutableV2({ graph: graph(), release: hostile }),
-    ).toThrow('executable processing failed');
-    expect(() => parseSchedulerGraph(hostile)).toThrow('graph parsing failed');
+    for (const [name, throwable] of [
+      ['primitive rejection', 'hostile input trap'],
+      ['throwing message getter', throwingMessage],
+      ['revoked proxy rejection', revoked.proxy],
+    ] as const) {
+      const hostile = new Proxy(
+        {},
+        {
+          ownKeys: () => {
+            // The boundary must remain total for hostile thrown values.
+            // eslint-disable-next-line @typescript-eslint/only-throw-error
+            throw throwable;
+          },
+        },
+      );
+
+      expect(
+        () => buildWorkflowExecutableV2({ graph: graph(), release: hostile }),
+        name,
+      ).toThrow('executable processing failed');
+      expect(() => parseSchedulerGraph(hostile), name).toThrow(
+        expect.objectContaining({
+          code: 'graph_invalid',
+          message: 'graph input could not be inspected safely at $',
+        }),
+      );
+    }
   });
 
   it('uses the direct graph route and rejects ambiguous testing inputs', () => {

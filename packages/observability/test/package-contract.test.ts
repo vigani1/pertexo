@@ -42,4 +42,19 @@ describe('observability package contract', () => {
     });
     expect(packageJson.browser['./dist/transport-metrics.js']).toBe(false);
   });
+
+  it('publishes process classification only through its browser-disabled leaf export', async () => {
+    const packageUrl = new URL('../package.json', import.meta.url);
+    const packageJson = packageSchema.parse(
+      JSON.parse(await readFile(packageUrl, 'utf8')),
+    );
+    expect(packageJson.exports['./process-error-classification']).toEqual({
+      default: './dist/process-error-classification.js',
+      node: './dist/process-error-classification.js',
+      types: './dist/process-error-classification.d.ts',
+    });
+    expect(packageJson.browser['./dist/process-error-classification.js']).toBe(
+      false,
+    );
+  });
 });

@@ -5,6 +5,7 @@ import {
   withPlatformTransaction,
   withTenantScopedReadClient,
   withTenantScopedClient,
+  withWorkspaceReadTransaction,
   withWorkspaceTransaction,
 } from '../src/testing.js';
 
@@ -65,6 +66,37 @@ describe('shared workspace transaction engine', () => {
         () => Promise.resolve('snapshot'),
       ),
     ).resolves.toBe('snapshot');
+    expect(statements).toContain(
+      'begin isolation level repeatable read read only',
+    );
+  });
+
+  it('adapts a workspace read transaction onto the repeatable-read owner', async () => {
+    const statements: string[] = [];
+    let transactionActive = false;
+    const query = vi.fn((statement: string) => {
+      statements.push(statement);
+      if (statement.startsWith('begin')) transactionActive = true;
+      if (statement === 'commit') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'"))
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+            },
+          ]),
+        );
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withWorkspaceReadTransaction(
+        poolWith({ query, release: vi.fn() }),
+        workspaceId,
+        (transaction) => Promise.resolve(transaction.workspaceId),
+      ),
+    ).resolves.toBe(workspaceId);
     expect(statements).toContain(
       'begin isolation level repeatable read read only',
     );
@@ -440,6 +472,114 @@ describe('shared workspace transaction engine', () => {
         () => Promise.resolve(),
       ),
     ).rejects.toBe(releaseError);
+  });
+
+  it('preserves a commit failure after successfully rolling back', async () => {
+    const commitFailure = new Error('commit acknowledgement failed');
+    let transactionActive = false;
+    const release = vi.fn();
+    const query = vi.fn((statement: string) => {
+      if (statement === 'begin') transactionActive = true;
+      if (statement === 'commit') return Promise.reject(commitFailure);
+      if (statement === 'rollback') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'")) {
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+            },
+          ]),
+        );
+      }
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query, release }),
+        { workspaceId },
+        () => Promise.resolve('domain result'),
+      ),
+    ).rejects.toBe(commitFailure);
+    expect(query).toHaveBeenCalledWith('rollback');
+    expect(release).toHaveBeenCalledWith();
+  });
+
+  it('starts no callback or later SQL when cancellation follows context verification', async () => {
+    const controller = new AbortController();
+    let transactionActive = false;
+    let contextReads = 0;
+    const statements: string[] = [];
+    const operation = vi.fn(() => Promise.resolve());
+    const release = vi.fn();
+    const query = vi.fn((statement: string) => {
+      statements.push(statement);
+      if (statement === 'begin') transactionActive = true;
+      if (statement.includes("current_setting('app.workspace_id'")) {
+        contextReads += 1;
+        if (contextReads === 2) controller.abort();
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+            },
+          ]),
+        );
+      }
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query, release }),
+        { workspaceId },
+        operation,
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(operation).not.toHaveBeenCalled();
+    expect(statements).not.toContain('commit');
+    expect(statements).not.toContain('rollback');
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts no commit when cancellation follows callback settlement', async () => {
+    const controller = new AbortController();
+    let transactionActive = false;
+    const statements: string[] = [];
+    const release = vi.fn();
+    const query = vi.fn((statement: string) => {
+      statements.push(statement);
+      if (statement === 'begin') transactionActive = true;
+      if (statement.includes("current_setting('app.workspace_id'")) {
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+            },
+          ]),
+        );
+      }
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query, release }),
+        { workspaceId },
+        () => {
+          controller.abort();
+          return Promise.resolve('finished');
+        },
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(statements).not.toContain('commit');
+    expect(statements).not.toContain('rollback');
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
   it('returns the abort error when an active operation is cancelled', async () => {

@@ -314,10 +314,21 @@ function assertNotAborted(signal: AbortSignal): void {
 }
 
 function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof NodeExecutionAbortedError ||
-    (error instanceof Error && error.name === 'AbortError')
-  );
+  try {
+    if (error instanceof NodeExecutionAbortedError) return true;
+    if (!(error instanceof Error)) return false;
+    return error.name === 'AbortError';
+  } catch {
+    return false;
+  }
+}
+
+function isNodeExecutorFailure(error: unknown): error is NodeExecutorFailure {
+  try {
+    return error instanceof NodeExecutorFailure;
+  } catch {
+    return false;
+  }
 }
 
 async function resolveMappedNodeInput(
@@ -473,7 +484,7 @@ export async function executeNodeAttempt(
   } catch (error) {
     if (input.signal.aborted || isAbortError(error))
       operationError('attempt_aborted', 'node attempt was aborted');
-    if (error instanceof NodeExecutorFailure) throw error;
+    if (isNodeExecutorFailure(error)) throw error;
     operationError('attempt_invalid', 'node execution failed');
   }
   return {

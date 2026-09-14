@@ -1,18 +1,10 @@
-import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
-  platformExecutableRegistryHistory,
-  platformRegistryReleaseSupport,
   platformServingRegistryRelease,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-import {
-  buildWorkflowExecutableV2,
-  composeExecutableCompatibilityRelease,
-  createExecutableCompatibilityReleaseHistory,
-  createExecutableCompatibilityReleaseSupport,
-} from '@pertexo/workflow-engine';
 import {
   createWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
@@ -50,6 +42,12 @@ import {
   type WorkflowRunPersistence,
   type WorkflowRunsDependencies,
 } from '../../workflow-runs/index.js';
+import {
+  createCoreAuthoringOptions,
+  createCoreWorkflowCompatibility,
+} from './workflow-compatibility.js';
+
+export { createCoreWorkflowAuthoringDatabase } from './workflow-compatibility.js';
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
@@ -60,298 +58,170 @@ export type ApiWorkflowRuntime = Readonly<{
 }>;
 
 export type ApiWorkflowRuntimeOverrides = Readonly<{
-  database?: WorkflowAuthoringDatabase;
-  eventDatabase?: WorkspaceDatabase;
-  liveSource?: LiveRunEventSource;
-  notifications?: RunEventNotificationPublisher;
-  runPersistence?: WorkflowRunPersistence;
-  runStreamer?: WorkflowRunsDependencies['streamer'];
+  authoring?: Readonly<{
+    database?: WorkflowAuthoringDatabase;
+    databaseFactory?: typeof createWorkflowAuthoringDatabase;
+    telemetry?: WorkflowAuthoringDependencies['telemetry'];
+    telemetryFactory?: () => NonNullable<
+      WorkflowAuthoringDependencies['telemetry']
+    >;
+    expressionEvaluatorFactory?: () => JsonataEvaluator;
+  }>;
+  persistence?: Readonly<{
+    notifications?: RunEventNotificationPublisher;
+    notificationsFactory?: (redisUrl: string) => RunEventNotificationPublisher;
+    runs?: WorkflowRunPersistence;
+    runsFactory?: typeof createPostgresWorkflowRunPersistence;
+  }>;
   releaseCohort?: PlatformReleaseCohort;
-  telemetry?: WorkflowAuthoringDependencies['telemetry'];
+  streaming?: Readonly<{
+    database?: WorkspaceDatabase;
+    databaseFactory?: typeof createWorkspaceDatabase;
+    liveSource?: LiveRunEventSource;
+    liveSourceFactory?: (redisUrl: string) => LiveRunEventSource;
+    streamer?: WorkflowRunsDependencies['streamer'];
+    streamerFactory?: typeof createWorkflowRunEventStreamer;
+  }>;
 }>;
 
-type PlatformRegistryRelease = ReturnType<
-  typeof platformExecutableRegistryHistory
->[number];
-type PlatformDefinitionManifest =
-  PlatformRegistryRelease['definitions'][number];
-type ProjectedDefinition = ReturnType<typeof projectDefinition>;
-
-function registryIdentity(value: {
-  readonly key: string;
-  readonly version: number;
-}): string {
-  return `${value.key}\u0000${String(value.version)}`;
-}
-
-function projectDefinition(manifest: PlatformDefinitionManifest) {
-  return Object.freeze({
-    lifecycle: manifest.lifecycle,
-    definition: Object.freeze({
-      ...manifest.definition,
-      ...(manifest.integration === undefined
-        ? {}
-        : {
-            integration: Object.freeze({
-              ...manifest.integration,
-              connectionSlots: Object.freeze([
-                ...manifest.connectionRequirements,
-              ]),
-            }),
-          }),
-    }),
-  });
-}
-
-function isSupportedDefinition(definition: ProjectedDefinition): boolean {
-  return (
-    definition.lifecycle === 'active' || definition.lifecycle === 'deprecated'
-  );
-}
-
-function isPlaceableDefinition(definition: ProjectedDefinition): boolean {
-  return definition.lifecycle === 'active';
-}
-
-function projectExecutableDefinitions(
-  release: PlatformRegistryRelease,
-): readonly ProjectedDefinition[] {
-  const activeExecutors = new Set(
-    release.executors
-      .filter((executor) => executor.lifecycle === 'active')
-      .map((executor) => registryIdentity(executor.executor)),
-  );
-  return Object.freeze(
-    release.definitions.flatMap((manifest) =>
-      activeExecutors.has(registryIdentity(manifest.executor))
-        ? [projectDefinition(manifest)]
-        : [],
-    ),
-  );
-}
-
-function definitionCatalog(
-  releaseFingerprint: string,
-  definitions: readonly ProjectedDefinition[],
-  include: (definition: ProjectedDefinition) => boolean,
-) {
-  return Object.freeze({
-    schemaVersion: 1 as const,
-    releaseFingerprint,
-    definitions: Object.freeze(
-      definitions.filter(include).map(({ definition }) => definition),
-    ),
-  });
-}
-
-function projectDefinitionCatalogs(
-  release: PlatformRegistryRelease,
-  releaseFingerprint: string,
-) {
-  const definitions = projectExecutableDefinitions(release);
-  return Object.freeze({
-    definitionCatalog: definitionCatalog(
-      releaseFingerprint,
-      definitions,
-      isSupportedDefinition,
-    ),
-    placementDefinitionCatalog: definitionCatalog(
-      releaseFingerprint,
-      definitions,
-      isPlaceableDefinition,
-    ),
-  });
-}
-
-function coreWorkflowCompatibility(
-  releaseCohort: PlatformReleaseCohort = 'core',
-) {
-  const registryReleaseSupport =
-    platformExecutableRegistryHistory(releaseCohort);
-  const releaseSupport = createExecutableCompatibilityReleaseHistory(
-    registryReleaseSupport.map(composeExecutableCompatibilityRelease),
-  );
-  const readinessSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
-      composeExecutableCompatibilityRelease,
-    ),
-  );
-  const variants = registryReleaseSupport.map((nodeRelease) => {
-    const compatibilityRelease =
-      composeExecutableCompatibilityRelease(nodeRelease);
-    const compatibilityReleaseDescription = releaseSupport.descriptions.find(
-      ({ epoch, fingerprint }) =>
-        epoch === compatibilityRelease.epoch &&
-        fingerprint === compatibilityRelease.fingerprint,
-    );
-    if (compatibilityReleaseDescription === undefined)
-      throw new Error('Core compatibility release description is missing');
-    const { definitionCatalog, placementDefinitionCatalog } =
-      projectDefinitionCatalogs(nodeRelease, compatibilityRelease.fingerprint);
-    return Object.freeze({
-      compatibilityRelease,
-      compatibilityReleaseDescription,
-      definitionCatalog,
-      placementDefinitionCatalog,
-    });
-  });
-  if (variants.length === 0)
-    throw new Error('Core compatibility release support is empty');
-  return Object.freeze({
-    releaseSupport,
-    readinessSupport,
-    variants: Object.freeze(variants),
-  });
-}
-
-function coreAuthoringOptions(
-  variants: ReturnType<typeof coreWorkflowCompatibility>['variants'],
-  readinessReleases: ReturnType<
-    typeof coreWorkflowCompatibility
-  >['readinessSupport']['descriptions'],
-) {
-  return {
-    compatibilityReadinessReleases: readinessReleases,
-    compatibilityReleaseVariants: variants.map(
-      ({
-        compatibilityRelease,
-        compatibilityReleaseDescription,
-        definitionCatalog,
-        placementDefinitionCatalog,
-      }) => ({
-        compatibilityRelease: compatibilityReleaseDescription,
-        definitionCatalog,
-        placementDefinitionCatalog,
-        executableCompiler: (
-          graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
-        ) => {
-          const compiled = buildWorkflowExecutableV2({
-            graph,
-            release: compatibilityRelease,
-          });
-          return Object.freeze({
-            checksum: compiled.checksum,
-            executableSchemaVersion: 2 as const,
-            executableJson: compiled.envelope,
-            compatibilityReleaseEpoch:
-              compiled.envelope.compatibilityReleaseEpoch,
-            compatibilityReleaseFingerprint:
-              compiled.envelope.compatibilityReleaseFingerprint,
-          });
-        },
-      }),
-    ),
-  } as const;
-}
-
-export function createCoreWorkflowAuthoringDatabase(
-  databaseConfig: DatabaseConfig,
-  releaseCohort: PlatformReleaseCohort = 'core',
-  runtime?: DatabaseRuntime,
-): WorkflowAuthoringDatabase {
-  const compatibility = coreWorkflowCompatibility(releaseCohort);
-  return createWorkflowAuthoringDatabase(databaseConfig, {
-    ...coreAuthoringOptions(
-      compatibility.variants,
-      compatibility.readinessSupport.descriptions,
-    ),
-    ...(runtime === undefined ? {} : { runtime }),
-  });
-}
-
-export function createApiWorkflowRuntime(
+export async function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
-): ApiWorkflowRuntime {
+): Promise<ApiWorkflowRuntime> {
   const releaseCohort = overrides.releaseCohort ?? 'core';
+  const authoring = overrides.authoring ?? {};
+  const persistence = overrides.persistence ?? {};
+  const streaming = overrides.streaming ?? {};
   const { readinessSupport, variants } =
-    coreWorkflowCompatibility(releaseCohort);
-  const database =
-    overrides.database ??
-    createWorkflowAuthoringDatabase(databaseConfig, {
-      ...coreAuthoringOptions(variants, readinessSupport.descriptions),
-      ...(runtime === undefined ? {} : { runtime }),
-    });
-  const notifications =
-    overrides.notifications ??
-    (overrides.runPersistence === undefined
-      ? new RedisRunEventPublisher({ redisUrl })
-      : undefined);
-  const runAdapter =
-    overrides.runPersistence === undefined
-      ? createPostgresWorkflowRunPersistence(
-          databaseConfig,
-          undefined,
-          notifications,
-          overrides.releaseCohort,
-          runtime,
-        )
-      : undefined;
-  const eventDatabase =
-    overrides.runStreamer === undefined
-      ? (overrides.eventDatabase ??
-        createWorkspaceDatabase(databaseConfig, {
+    createCoreWorkflowCompatibility(releaseCohort);
+  let database: WorkflowAuthoringDatabase | undefined;
+  let notifications: RunEventNotificationPublisher | undefined;
+  let runAdapter:
+    ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined;
+  let eventDatabase: WorkspaceDatabase | undefined;
+  let expressionEvaluator: JsonataEvaluator | undefined;
+  try {
+    database =
+      authoring.database ??
+      (authoring.databaseFactory ?? createWorkflowAuthoringDatabase)(
+        databaseConfig,
+        {
+          ...createCoreAuthoringOptions(
+            variants,
+            readinessSupport.descriptions,
+          ),
+          ...(runtime === undefined ? {} : { runtime }),
+        },
+      );
+    if (persistence.runs === undefined) {
+      notifications =
+        persistence.notifications ??
+        (
+          persistence.notificationsFactory ??
+          ((url) => new RedisRunEventPublisher({ redisUrl: url }))
+        )(redisUrl);
+      runAdapter = (
+        persistence.runsFactory ?? createPostgresWorkflowRunPersistence
+      )(
+        databaseConfig,
+        undefined,
+        notifications,
+        overrides.releaseCohort,
+        runtime,
+      );
+    }
+    const runPersistence = persistence.runs ?? runAdapter?.persistence;
+
+    let liveSource: LiveRunEventSource | undefined;
+    if (streaming.streamer === undefined) {
+      eventDatabase =
+        streaming.database ??
+        (streaming.databaseFactory ?? createWorkspaceDatabase)(databaseConfig, {
           compatibilityReleases: readinessSupport.descriptions,
           ...(runtime === undefined ? {} : { runtime }),
-        }))
-      : undefined;
-  const liveSource =
-    overrides.runStreamer === undefined
-      ? (overrides.liveSource ?? new RedisRunEventSource({ redisUrl }))
-      : undefined;
-  const runPersistence = overrides.runPersistence ?? runAdapter?.persistence;
-  const runStreamer =
-    overrides.runStreamer ??
-    (eventDatabase === undefined || liveSource === undefined
-      ? undefined
-      : createWorkflowRunEventStreamer(
-          createPostgresRunEventReader(eventDatabase),
-          liveSource,
-        ));
-  if (runPersistence === undefined || runStreamer === undefined) {
-    throw new Error('Workflow run runtime composition is incomplete');
-  }
-  const telemetry = overrides.telemetry ?? productionTelemetry();
-  const expressionEvaluator = new JsonataEvaluator();
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    dependencies: Object.freeze({
-      persistence: database,
-      authorization: identityRuntime.dependencies.authorization,
-      telemetry,
-    }),
-    nodeTestingDependencies: Object.freeze({
-      persistence: database,
-      authorization: identityRuntime.dependencies.authorization,
-      release: platformServingRegistryRelease(releaseCohort),
-      expressionEvaluator,
-    }),
-    runDependencies: Object.freeze({
-      persistence: runPersistence,
-      authorization: identityRuntime.dependencies.authorization,
-      streamer: runStreamer,
-    }),
-    checkReadiness: (): Promise<void> => {
-      if (liveSource === undefined) return Promise.resolve();
-      const readiness = liveSource as LiveRunEventSource & {
-        checkReadiness?: () => Promise<void>;
-      };
-      return readiness.checkReadiness?.() ?? Promise.resolve();
-    },
-    close: (): Promise<void> => {
-      closePromise ??= closeWorkflowResources(
-        database,
-        runAdapter,
-        eventDatabase,
-        notifications,
+        });
+      liveSource =
+        streaming.liveSource ??
+        (
+          streaming.liveSourceFactory ??
+          ((url) => new RedisRunEventSource({ redisUrl: url }))
+        )(redisUrl);
+    }
+    const runStreamer =
+      streaming.streamer ??
+      (eventDatabase === undefined || liveSource === undefined
+        ? undefined
+        : (streaming.streamerFactory ?? createWorkflowRunEventStreamer)(
+            createPostgresRunEventReader(eventDatabase),
+            liveSource,
+          ));
+    if (runPersistence === undefined || runStreamer === undefined) {
+      throw new Error('Workflow run runtime composition is incomplete');
+    }
+    const telemetry =
+      authoring.telemetry ??
+      (authoring.telemetryFactory ?? productionTelemetry)();
+    expressionEvaluator =
+      authoring.expressionEvaluatorFactory?.() ?? new JsonataEvaluator();
+    const acquiredDatabase = database;
+    const acquiredRunAdapter = runAdapter;
+    const acquiredEventDatabase = eventDatabase;
+    const acquiredNotifications = notifications;
+    const acquiredExpressionEvaluator = expressionEvaluator;
+    let closePromise: Promise<void> | undefined;
+    return Object.freeze({
+      dependencies: Object.freeze({
+        persistence: database,
+        authorization: identityRuntime.dependencies.authorization,
+        telemetry,
+      }),
+      nodeTestingDependencies: Object.freeze({
+        persistence: database,
+        authorization: identityRuntime.dependencies.authorization,
+        release: platformServingRegistryRelease(releaseCohort),
         expressionEvaluator,
+      }),
+      runDependencies: Object.freeze({
+        persistence: runPersistence,
+        authorization: identityRuntime.dependencies.authorization,
+        streamer: runStreamer,
+      }),
+      checkReadiness: (): Promise<void> => {
+        if (liveSource === undefined) return Promise.resolve();
+        const readiness = liveSource as LiveRunEventSource & {
+          checkReadiness?: () => Promise<void>;
+        };
+        return readiness.checkReadiness?.() ?? Promise.resolve();
+      },
+      close: (): Promise<void> => {
+        closePromise ??= closeWorkflowResources(
+          acquiredDatabase,
+          acquiredRunAdapter,
+          acquiredEventDatabase,
+          acquiredNotifications,
+          acquiredExpressionEvaluator,
+        );
+        return closePromise;
+      },
+    });
+  } catch (error: unknown) {
+    const cleanupFailures = await collectWorkflowCloseFailures(
+      database,
+      runAdapter,
+      eventDatabase,
+      notifications,
+      expressionEvaluator,
+    );
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [error, ...cleanupFailures],
+        'Workflow runtime construction and cleanup failed',
       );
-      return closePromise;
-    },
-  });
+    throw error;
+  }
 }
 
 async function closeWorkflowResources(
@@ -361,18 +231,34 @@ async function closeWorkflowResources(
   notifications: RunEventNotificationPublisher | undefined,
   expressionEvaluator: JsonataEvaluator,
 ): Promise<void> {
-  const results = await Promise.allSettled([
-    authoring.close(),
-    runs?.close(),
-    events?.close(),
-    notifications?.close(),
-    expressionEvaluator.shutdown(),
-  ]);
-  const failures = results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
+  const failures = await collectWorkflowCloseFailures(
+    authoring,
+    runs,
+    events,
+    notifications,
+    expressionEvaluator,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
+}
+
+async function collectWorkflowCloseFailures(
+  authoring: WorkflowAuthoringDatabase | undefined,
+  runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
+  events: WorkspaceDatabase | undefined,
+  notifications: RunEventNotificationPublisher | undefined,
+  expressionEvaluator: JsonataEvaluator | undefined,
+): Promise<unknown[]> {
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => authoring?.close()),
+    Promise.resolve().then(() => runs?.close()),
+    Promise.resolve().then(() => events?.close()),
+    Promise.resolve().then(() => notifications?.close()),
+    Promise.resolve().then(() => expressionEvaluator?.shutdown()),
+  ]);
+  return results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
 }
 
 function productionTelemetry(): NonNullable<
@@ -424,14 +310,6 @@ function spanAdapter(
   };
 }
 
-class WorkflowRuntimeShutdown implements OnApplicationShutdown {
-  public constructor(private readonly runtime: ApiWorkflowRuntime) {}
-
-  public async onApplicationShutdown(): Promise<void> {
-    await this.runtime.close();
-  }
-}
-
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -454,12 +332,7 @@ export class WorkflowRuntimeModule {
             ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
       ],
-      providers: [
-        {
-          provide: WorkflowRuntimeShutdown,
-          useFactory: () => new WorkflowRuntimeShutdown(runtime),
-        },
-      ],
+      providers: [],
     };
   }
 }

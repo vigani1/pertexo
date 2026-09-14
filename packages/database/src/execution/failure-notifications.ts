@@ -15,6 +15,7 @@ import {
 import { FailureNotificationStateError } from './failure-notification-errors.js';
 import { createFailureNotificationDestinationStore } from './failure-notification-destination-store.js';
 import { createFailureNotificationCompletionStore } from './failure-notification-completion-store.js';
+import { parseFailureNotificationMaximumAttempts } from './failure-notification-input-validation.js';
 import type { FailureNotificationStore } from './failure-notification-contracts.js';
 export type {
   FailureNotificationClaimResult,
@@ -59,18 +60,14 @@ function createFailureNotificationRecovery(
     ) => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
         throw new FailureNotificationStateError('Invalid recovery limit');
-      if (
-        !Number.isSafeInteger(maxAttempts) ||
-        maxAttempts < 1 ||
-        maxAttempts > 10
-      )
-        throw new FailureNotificationStateError('Invalid maximum attempts');
+      const parsedMaxAttempts =
+        parseFailureNotificationMaximumAttempts(maxAttempts);
       return withPlatformTransaction(
         pool,
         async (client) => {
           const result = await client.query<{ recovered: number }>(
             'select app.recover_due_run_failure_notifications($1,$2) as recovered',
-            [limit, maxAttempts],
+            [limit, parsedMaxAttempts],
           );
           return result.rows[0]?.recovered ?? 0;
         },
@@ -96,12 +93,9 @@ export function createFailureNotificationStore(
         outboxEventId: identitySchema.parse(raw.delivery.outboxEventId),
         payloadChecksum: checksumSchema.parse(raw.delivery.payloadChecksum),
       };
-      if (
-        !Number.isSafeInteger(raw.maxAttempts) ||
-        raw.maxAttempts < 1 ||
-        raw.maxAttempts > 10
-      )
-        throw new FailureNotificationStateError('Invalid maximum attempts');
+      const maxAttempts = parseFailureNotificationMaximumAttempts(
+        raw.maxAttempts,
+      );
       if (
         !Number.isSafeInteger(raw.recoverySeconds) ||
         raw.recoverySeconds < 1 ||
@@ -180,7 +174,7 @@ export function createFailureNotificationStore(
           (row.next_delivery_at === null || !row.retry_due)
         )
           return Object.freeze({ kind: 'busy' as const });
-        if (row.delivery_attempts >= raw.maxAttempts) {
+        if (row.delivery_attempts >= maxAttempts) {
           const unresolved =
             row.side_effect_class === 'idempotent_with_key' &&
             row.possibly_dispatched === true;

@@ -54,13 +54,39 @@ export class RedisRateLimitRuntime {
     this.closed = true;
     if (this.closePromise === undefined) {
       if (this.redis.status === 'ready')
-        this.closePromise = this.redis.quit().then(() => undefined);
-      else {
-        this.redis.disconnect();
-        this.closePromise = Promise.resolve();
-      }
+        this.closePromise = Promise.resolve().then(() =>
+          this.closeReadyClient(),
+        );
+      else
+        this.closePromise = Promise.resolve().then(() => {
+          this.redis.disconnect();
+        });
     }
     return this.closePromise;
+  }
+
+  private async closeReadyClient(): Promise<void> {
+    let timeout: NodeJS.Timeout | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(() => {
+        reject(new Error('Redis rate-limit close timed out'));
+      }, this.operationTimeoutMs);
+      timeout.unref();
+    });
+    let failure: Error | undefined;
+    try {
+      await Promise.race([this.redis.quit(), deadline]);
+    } catch (error) {
+      failure = redisCloseError(error);
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
+    try {
+      this.redis.disconnect();
+    } catch (error) {
+      if (failure === undefined) throw redisCloseError(error);
+    }
+    if (failure !== undefined) throw failure;
   }
 
   private async connect(): Promise<void> {
@@ -100,6 +126,15 @@ export class RedisRateLimitRuntime {
       if (timeout !== undefined) clearTimeout(timeout);
     }
   }
+}
+
+function redisCloseError(error: unknown): Error {
+  try {
+    if (error instanceof Error) return error;
+  } catch {
+    // Ignore hostile rejection values and retain them only as an opaque cause.
+  }
+  return new Error('Redis rate-limit close failed', { cause: error });
 }
 
 function operationTimeout(value: number | undefined): number {

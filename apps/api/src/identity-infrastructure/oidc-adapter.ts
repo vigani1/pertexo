@@ -34,48 +34,37 @@ const SIGNING_ALGORITHMS = [
   'RS512',
 ] as const;
 
-const adapterConfigurationSchema = z
-  .object({
-    issuer: z.url().max(2_048),
-    authorizationEndpoint: z.url().max(2_048),
-    tokenEndpoint: z.url().max(2_048),
-    jwksUri: z.url().max(2_048),
-    redirectUri: z.url().max(2_048),
-    clientId: z.string().trim().min(1).max(256),
-    clientSecret: z.string().min(1).max(512).optional(),
-    allowedAlgorithms: z
-      .array(z.enum(SIGNING_ALGORITHMS))
-      .min(1)
-      .max(SIGNING_ALGORITHMS.length),
-    timeoutMillis: z.number().int().positive().max(30_000),
-    maxTokenResponseBytes: z
-      .number()
-      .int()
-      .positive()
-      .max(262_144)
-      .default(65_536),
-    maxTokenAgeSeconds: z.number().int().positive().max(3_600).default(600),
-    clockToleranceSeconds: z.number().int().min(0).max(300).default(30),
-    allowInsecureHttpForTests: z.boolean().default(false),
-  })
-  .superRefine((value, context) => {
-    if (value.allowInsecureHttpForTests) return;
-    for (const [name, endpoint] of Object.entries(value)) {
-      if (
-        name.endsWith('Endpoint') ||
-        name === 'issuer' ||
-        name === 'jwksUri'
-      ) {
-        if (typeof endpoint === 'string' && !endpoint.startsWith('https://')) {
-          context.addIssue({
-            code: 'custom',
-            path: [name],
-            message: 'OIDC endpoints must use HTTPS',
-          });
-        }
-      }
-    }
-  });
+const OIDC_ENDPOINT_FIELDS = [
+  'issuer',
+  'authorizationEndpoint',
+  'tokenEndpoint',
+  'jwksUri',
+  'redirectUri',
+] as const;
+
+const adapterConfigurationSchema = z.object({
+  issuer: z.url().max(2_048),
+  authorizationEndpoint: z.url().max(2_048),
+  tokenEndpoint: z.url().max(2_048),
+  jwksUri: z.url().max(2_048),
+  redirectUri: z.url().max(2_048),
+  clientId: z.string().trim().min(1).max(256),
+  clientSecret: z.string().min(1).max(512).optional(),
+  allowedAlgorithms: z
+    .array(z.enum(SIGNING_ALGORITHMS))
+    .min(1)
+    .max(SIGNING_ALGORITHMS.length),
+  timeoutMillis: z.number().int().positive().max(30_000),
+  maxTokenResponseBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(262_144)
+    .default(65_536),
+  maxTokenAgeSeconds: z.number().int().positive().max(3_600).default(600),
+  clockToleranceSeconds: z.number().int().min(0).max(300).default(30),
+  allowInsecureHttpForTests: z.boolean().default(false),
+});
 
 const tokenResponseSchema = z.object({
   id_token: z.string().min(1).max(65_536),
@@ -347,14 +336,8 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
 function validateEndpointProtocols(
   configuration: ParsedGenericOidcAdapterConfiguration,
 ): void {
-  const endpoints = [
-    configuration.issuer,
-    configuration.authorizationEndpoint,
-    configuration.tokenEndpoint,
-    configuration.jwksUri,
-    configuration.redirectUri,
-  ];
-  for (const endpoint of endpoints) {
+  for (const field of OIDC_ENDPOINT_FIELDS) {
+    const endpoint = configuration[field];
     const parsed = new URL(endpoint);
     const protocolIsAllowed = configuration.allowInsecureHttpForTests
       ? parsed.protocol === 'https:' || parsed.protocol === 'http:'
@@ -441,6 +424,12 @@ async function readBoundedResponse(
   } catch (error) {
     if (reader !== undefined) await cancelBounded(() => reader.cancel());
     throw error;
+  } finally {
+    try {
+      reader?.releaseLock();
+    } catch {
+      // A bounded noncooperative cancellation may still own the lock.
+    }
   }
   const output = new Uint8Array(total);
   let offset = 0;
@@ -462,6 +451,7 @@ async function readChunk(
   if (signal.aborted) throw new Error('response aborted');
   return new Promise((resolve, reject) => {
     const onAbort = (): void => {
+      signal.removeEventListener('abort', onAbort);
       void reader.cancel().catch(() => {
         /* already cancelled */
       });

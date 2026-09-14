@@ -5,7 +5,6 @@ import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
-
 import type { DatabaseConfig } from '../config.js';
 import {
   lockExpectedCompatibilityReleaseSet,
@@ -31,7 +30,6 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../tenant-access/workspace.js';
-
 const uuidSchema = z.uuid();
 const sealedSchema = z
   .object({
@@ -44,13 +42,11 @@ const sealedSchema = z
     authTag: z.string().min(1).max(64),
   })
   .strict();
-
 export type SealedWebhookTriggerSecret = Readonly<z.input<typeof sealedSchema>>;
 export type WebhookCheckpointFactory = (
   projection: PublishedWorkflowV2Projection,
   currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
-
 type Command = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -59,7 +55,6 @@ type Command = Readonly<{
   idempotencyKey: string;
   requestHash: string;
 }>;
-
 export type WebhookVerificationReference = Readonly<{
   endpointId: string;
   endpointKeyHash: string;
@@ -296,19 +291,77 @@ async function executableProjection(
   return classified.workflowVersion;
 }
 
+type WebhookReplayRecord = Readonly<{
+  request_fingerprint: string;
+  workflow_run_id: string | null;
+  active: boolean;
+}>;
+type WebhookReplayIdentity = Readonly<{
+  endpointId: string;
+  dedupeKind: 'fingerprint' | 'keyed';
+  dedupeKeyHash: string;
+}>;
+async function lockEndpointDedupeKey(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+): Promise<void> {
+  await transaction.db.execute(sql`
+    select pg_advisory_xact_lock(hashtextextended(
+      ${`${identity.endpointId}:${identity.dedupeKind}:${identity.dedupeKeyHash}`},0))
+  `);
+}
+async function readLockedReplay(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+): Promise<WebhookReplayRecord | undefined> {
+  const result = await transaction.db.execute<WebhookReplayRecord>(sql`
+    select request_fingerprint,workflow_run_id,
+           expires_at>clock_timestamp() active
+      from app.webhook_trigger_replay_records
+     where workspace_id=${transaction.workspaceId}
+       and endpoint_id=${identity.endpointId}
+       and dedupe_kind=${identity.dedupeKind}
+       and dedupe_key_hash=${identity.dedupeKeyHash}
+     for update
+  `);
+  return result.rows[0];
+}
+function resolveExactReplay(
+  replay: WebhookReplayRecord,
+  requestFingerprint: string,
+): Readonly<{ runId: string; replayed: true }> {
+  if (replay.request_fingerprint !== requestFingerprint)
+    throw new WebhookDeliveryReplayMismatchError();
+  if (replay.workflow_run_id === null)
+    throw new Error('Webhook replay record is incomplete');
+  return Object.freeze({ runId: replay.workflow_run_id, replayed: true });
+}
+async function deleteExpiredReplay(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+): Promise<void> {
+  await transaction.db.execute(sql`
+    delete from app.webhook_trigger_replay_records
+     where workspace_id=${transaction.workspaceId}
+       and endpoint_id=${identity.endpointId}
+       and dedupe_kind=${identity.dedupeKind}
+       and dedupe_key_hash=${identity.dedupeKeyHash}
+  `);
+}
+
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
   compatibilityReleaseInput:
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   runtime?: DatabaseRuntime,
 ): WebhookTriggerDatabase {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
         parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
       ]);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const command = <T>(
     input: Command,
     work: (client: PoolClient) => Promise<T>,
@@ -497,74 +550,21 @@ export function createWebhookTriggerDatabase(
       const dedupeKeyHash = digestSchema.parse(
         input.idempotencyKeyHash ?? requestFingerprint,
       );
+      const replayIdentity: WebhookReplayIdentity = {
+        endpointId: uuidSchema.parse(verification.endpointId),
+        dedupeKind,
+        dedupeKeyHash,
+      };
       return withWorkspaceTransaction(
         pool,
         uuidSchema.parse(verification.workspaceId),
         async (transaction) => {
-          const existing = await transaction.db.execute<{
-            request_fingerprint: string;
-            workflow_run_id: string | null;
-            active: boolean;
-          }>(sql`
-            select pg_advisory_xact_lock(hashtextextended(
-                     ${`${verification.endpointId}:${dedupeKind}:${dedupeKeyHash}`},0)),
-                   request_fingerprint,workflow_run_id,
-                   expires_at>clock_timestamp() active
-              from app.webhook_trigger_replay_records
-             where workspace_id=${transaction.workspaceId}
-               and endpoint_id=${verification.endpointId}
-               and dedupe_kind=${dedupeKind} and dedupe_key_hash=${dedupeKeyHash}
-             for update
-          `);
-          const replay = existing.rows[0];
-          if (replay?.active === true) {
-            if (replay.request_fingerprint !== requestFingerprint)
-              throw new WebhookDeliveryReplayMismatchError();
-            if (replay.workflow_run_id === null)
-              throw new Error('Webhook replay record is incomplete');
-            return Object.freeze({
-              runId: replay.workflow_run_id,
-              replayed: true,
-            });
-          }
-          if (replay !== undefined) {
-            await transaction.db.execute(sql`
-              delete from app.webhook_trigger_replay_records
-               where workspace_id=${transaction.workspaceId}
-                 and endpoint_id=${verification.endpointId}
-                 and dedupe_kind=${dedupeKind} and dedupe_key_hash=${dedupeKeyHash}
-            `);
-          }
-          if (replay === undefined) {
-            await transaction.db.execute(sql`
-              select pg_advisory_xact_lock(hashtextextended(
-                ${`${verification.endpointId}:${dedupeKind}:${dedupeKeyHash}`},0))
-            `);
-            const raced = await transaction.db.execute<{
-              request_fingerprint: string;
-              workflow_run_id: string | null;
-              active: boolean;
-            }>(sql`
-              select request_fingerprint,workflow_run_id,
-                     expires_at>clock_timestamp() active
-                from app.webhook_trigger_replay_records
-               where workspace_id=${transaction.workspaceId}
-                 and endpoint_id=${verification.endpointId}
-                 and dedupe_kind=${dedupeKind} and dedupe_key_hash=${dedupeKeyHash}
-               for update
-            `);
-            const concurrent = raced.rows[0];
-            if (concurrent?.active === true) {
-              if (concurrent.request_fingerprint !== requestFingerprint)
-                throw new WebhookDeliveryReplayMismatchError();
-              if (concurrent.workflow_run_id === null)
-                throw new Error('Webhook replay record is incomplete');
-              return Object.freeze({
-                runId: concurrent.workflow_run_id,
-                replayed: true,
-              });
-            }
-          }
+          await lockEndpointDedupeKey(transaction, replayIdentity);
+          const replay = await readLockedReplay(transaction, replayIdentity);
+          if (replay?.active === true)
+            return resolveExactReplay(replay, requestFingerprint);
+          if (replay !== undefined)
+            await deleteExpiredReplay(transaction, replayIdentity);
 
           const eligible = await transaction.db.execute<{
             workflow_version_id: string;

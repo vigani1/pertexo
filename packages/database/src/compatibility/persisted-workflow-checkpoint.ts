@@ -4,6 +4,7 @@ import { serializeStoredExecutionJsonValue } from '../execution/stored-execution
 import {
   refineBranchSelections,
   refineInvocationScopes,
+  refineJoinConsistency,
   refineJoinScopes,
   refineLoopsBudgetAndWaits,
 } from './persisted-workflow-checkpoint-refinements.js';
@@ -315,6 +316,10 @@ const persistedWorkflowCheckpointV2Schema = z
     );
     refineBranchSelections(checkpoint, invocations, context);
     refineInvocationScopes(checkpoint, context);
+    // The database codec owns self-consistency that is independent of a graph.
+    // Engine admission separately checks join identities/topology against the
+    // compiled executable; commit validation checks physical output ownership.
+    refineJoinConsistency(checkpoint, context);
     refineJoinScopes(checkpoint, invocations, context);
     refineLoopsBudgetAndWaits(checkpoint, invocations, context);
   })
@@ -335,6 +340,21 @@ const persistedWorkflowCheckpointV2Schema = z
           compareOrdinal(left.invocationKey, right.invocationKey) ||
           compareOrdinal(left.nodeId, right.nodeId),
       ),
+      joins: checkpoint.joins
+        .map((join) => ({
+          ...join,
+          ledger: [...join.ledger].sort((left, right) =>
+            compareOrdinal(left.branchId, right.branchId),
+          ),
+          ...(join.selectedBranchIds === undefined
+            ? {}
+            : {
+                selectedBranchIds: [...join.selectedBranchIds].sort(
+                  compareOrdinal,
+                ),
+              }),
+        }))
+        .sort((left, right) => compareOrdinal(left.joinId, right.joinId)),
     };
   });
 

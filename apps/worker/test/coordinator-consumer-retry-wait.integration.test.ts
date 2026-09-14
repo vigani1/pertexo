@@ -1,47 +1,61 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
 
 import {
-  Pool,
-  QUEUE_NAME,
-  Queue,
+  createDeadlineWakeupScanner,
+  createDueNodeWakeupScanner,
+  parseDatabaseConfig,
+} from '@pertexo/database/testing';
+import {
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import { invocationKey, parseCheckpoint } from '@pertexo/workflow-engine';
+import { Queue } from 'bullmq';
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import type { CoordinatorAdvanceEngine } from '../src/execution/coordinator-handler.js';
+import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { coordinatorFixture } from './coordinator-consumer.fixtures.js';
+import {
+  createCoordinatorDispatcher,
+  dispatchFairRounds,
+} from './support/coordinator-dispatch-fixtures.js';
+import {
+  acceptWaitRun,
+  cancelFixtureRun,
+  waitForAttemptOutbox,
+  waitForCoordinatorOutbox,
+} from './support/coordinator-run-fixtures.js';
+
+const {
+  activateRelease,
   adminUrl,
   apiQuery,
-  cleanupFixture,
-  createCoordinatorRuntime,
-  createDueNodeWakeupScanner,
   databaseUrl,
   enabled,
   engineVersion,
-  invocationKey,
-  parseCheckpoint,
-  parseDatabaseConfig,
-  randomUUID,
+  ownerQuery,
   redisConnection,
   redisUrl,
-  restoreServices,
-  setupFixture,
+  restoreServicesAndClose,
+  setup,
   waitFor,
-  workerPool,
+  waitWorkflowVersionId,
   workerQuery,
   workerUrl,
   workflowId,
   workflowVersionId,
   workspaceId,
-  type CoordinatorAdvanceEngine,
-} from './coordinator-consumer.fixtures.js';
-import {
-  createCoordinatorDispatcher,
-  dispatchFairRounds,
-} from './support/coordinator-dispatch-fixtures.js';
-
+} = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Retry and Wait outage recovery', () => {
-  beforeAll(setupFixture, 60_000);
-  afterAll(async () => {
-    await restoreServices();
-    await cleanupFixture();
-  });
+  beforeAll(setup, 60_000);
+  afterAll(restoreServicesAndClose);
 
   it('recovers due retry and Wait work through SQL, Redis outage, BullMQ, and fresh coordination', async () => {
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
@@ -75,7 +89,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
     );
     const nodeRunIds = nodeIds.map(() => randomUUID());
     const firstAttemptIds = nodeIds.map(() => randomUUID());
-    const dueAt = new Date(Date.now() + 500).toISOString();
+    let dueAt = new Date(Date.now() + 60_000).toISOString();
     const waitingCheckpoint = {
       schemaVersion: 1 as const,
       engineVersion,
@@ -135,7 +149,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         JSON.stringify(waitingCheckpoint),
       ],
     );
-    const seedClient = await workerPool.connect();
+    const seedClient = await coordinatorFixture.workerPool.connect();
     try {
       await seedClient.query('begin');
       await seedClient.query(
@@ -218,6 +232,31 @@ describeIntegration('Retry and Wait outage recovery', () => {
     } finally {
       seedClient.release();
     }
+
+    // Establish the real-clock observation window only after the comparatively
+    // expensive durable fixture setup. Creating this timestamp before those
+    // writes made the supposed pre-due assertion scheduler-speed dependent.
+    dueAt = new Date(Date.now() + 2_000).toISOString();
+    const dueCheckpoint = {
+      ...waitingCheckpoint,
+      invocations: waitingCheckpoint.invocations.map((invocation) => ({
+        ...invocation,
+        resumeAt: dueAt,
+      })),
+    };
+    await workerQuery(
+      `update app.run_checkpoints
+          set scheduler_state=$3::jsonb
+        where workspace_id=$1 and workflow_run_id=$2`,
+      [workspaceId, runId, JSON.stringify(dueCheckpoint)],
+    );
+    await workerQuery(
+      `update app.node_runs
+          set retry_due_at=case when node_id='manual' then $3::timestamptz else null end,
+              resume_at=case when node_id='set' then $3::timestamptz else null end
+        where workspace_id=$1 and workflow_run_id=$2`,
+      [workspaceId, runId, dueAt],
+    );
 
     const retryEngine: CoordinatorAdvanceEngine = {
       advance: (input) => {
@@ -329,99 +368,116 @@ describeIntegration('Retry and Wait outage recovery', () => {
     const afterClaim = await createCoordinatorRuntime(runtimeOptions, {
       engine: retryEngine,
     });
-    await afterClaim.consumer.waitUntilReady(5_000);
-    await waitFor(
-      () =>
-        workerQuery<{ attempts: string; wakeups: string }>(
-          `select
+    try {
+      await afterClaim.consumer.waitUntilReady(5_000);
+      await waitFor(
+        () =>
+          workerQuery<{ attempts: string; wakeups: string }>(
+            `select
                (select count(*)::text from app.node_attempts attempt
                  join app.node_runs node on node.workspace_id=attempt.workspace_id
                   and node.id=attempt.node_run_id
                  where node.workflow_run_id=$1) attempts,
                (select count(*)::text from app.outbox_events
                  where aggregate_id=$1 and job_name='advance-workflow-run') wakeups`,
-          [runId],
-        ),
-      (rows) => rows[0]?.attempts === '2' && rows[0].wakeups === '2',
-    );
+            [runId],
+          ),
+        (rows) => rows[0]?.attempts === '2' && rows[0].wakeups === '2',
+      );
 
-    const unavailableRedis = new URL(redisUrl);
-    unavailableRedis.port = '1';
-    const redisError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-    const unavailableDispatcher = createCoordinatorDispatcher(
-      afterClaim.consumer,
-      unavailableRedis.toString(),
-    );
-    try {
-      await expect(
-        dispatchFairRounds(unavailableDispatcher, 2),
-      ).resolves.toMatchObject({
-        claimed: 2,
-        failed: 2,
-        published: 0,
-      });
-    } finally {
-      await unavailableDispatcher.close().catch(() => undefined);
-      redisError.mockRestore();
-    }
-    await waitFor(
-      () =>
-        workerQuery<{ available: string }>(
-          `select count(*) filter (where available_at <= clock_timestamp())::text as available
+      const unavailableRedis = new URL(redisUrl);
+      unavailableRedis.port = '1';
+      const redisError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const unavailableDispatcher = await createCoordinatorDispatcher(
+        afterClaim.consumer,
+        unavailableRedis.toString(),
+      );
+      let unavailableCloseError: unknown;
+      try {
+        await expect(
+          dispatchFairRounds(unavailableDispatcher, 2),
+        ).resolves.toMatchObject({
+          claimed: 2,
+          failed: 2,
+          published: 0,
+        });
+      } finally {
+        await unavailableDispatcher.close().catch((error: unknown) => {
+          unavailableCloseError = error;
+        });
+        redisError.mockRestore();
+      }
+      expect(unavailableCloseError).toBeInstanceOf(AggregateError);
+      expect((unavailableCloseError as AggregateError).message).toBe(
+        'Outbox dispatcher shutdown failed',
+      );
+      const closeFailures = (unavailableCloseError as AggregateError)
+        .errors as unknown[];
+      expect(
+        closeFailures.some(
+          (error) =>
+            error instanceof Error &&
+            /Stream isn't writeable|offline queue/u.test(error.message),
+        ),
+      ).toBe(true);
+      await waitFor(
+        () =>
+          workerQuery<{ available: string }>(
+            `select count(*) filter (where available_at <= clock_timestamp())::text as available
              from app.outbox_events
              where aggregate_id=$1 and job_name='advance-workflow-run'
                and published_at is null and failed_at is null`,
-          [runId],
-        ),
-      (rows) => rows[0]?.available === '2',
-    );
+            [runId],
+          ),
+        (rows) => rows[0]?.available === '2',
+      );
 
-    const dispatcher = createCoordinatorDispatcher(afterClaim.consumer);
-    try {
-      await dispatcher.checkReadiness();
-      await expect(dispatchFairRounds(dispatcher, 2)).resolves.toMatchObject({
-        claimed: 2,
-        published: 2,
-      });
-      const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-        connection: redisConnection(),
-      });
+      const dispatcher = await createCoordinatorDispatcher(afterClaim.consumer);
       try {
-        const wakeupJobs = await waitFor(
-          () =>
-            coordinatorQueue.getJobs([
-              'active',
-              'completed',
-              'failed',
-              'waiting',
-            ]),
-          (jobs) => jobs.length === 2,
-        );
-        await waitFor(
-          () => Promise.all(wakeupJobs.map((job) => job.getState())),
-          (states) =>
-            states.every((state) => ['completed', 'failed'].includes(state)),
-        );
-        const failed = await coordinatorQueue.getJobs(['failed']);
-        if (failed.length > 0)
-          throw new Error(
-            `due wakeup coordinator failed: ${failed.map((job) => job.failedReason).join('; ')}`,
+        await dispatcher.checkReadiness();
+        await expect(dispatchFairRounds(dispatcher, 2)).resolves.toMatchObject({
+          claimed: 2,
+          published: 2,
+        });
+        const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+          connection: redisConnection(),
+        });
+        try {
+          const wakeupJobs = await waitFor(
+            () =>
+              coordinatorQueue.getJobs([
+                'active',
+                'completed',
+                'failed',
+                'waiting',
+              ]),
+            (jobs) => jobs.length === 2,
           );
-      } finally {
-        await coordinatorQueue.close();
-      }
-      const facts = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_count: string;
-            attempt_outboxes: string;
-            event_count: string;
-            provider_keys: (string | null)[];
-            retry_events: string;
-          }>(
-            `select
+          await waitFor(
+            () => Promise.all(wakeupJobs.map((job) => job.getState())),
+            (states) =>
+              states.every((state) => ['completed', 'failed'].includes(state)),
+          );
+          const failed = await coordinatorQueue.getJobs(['failed']);
+          if (failed.length > 0)
+            throw new Error(
+              `due wakeup coordinator failed: ${failed.map((job) => job.failedReason).join('; ')}`,
+            );
+        } finally {
+          await coordinatorQueue.close();
+        }
+        const facts = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_count: string;
+              attempt_outboxes: string;
+              event_count: string;
+              provider_keys: (string | null)[];
+              retry_events: string;
+            }>(
+              `select
                  (select count(*)::text from app.node_attempts attempt
                    join app.node_runs node on node.workspace_id=attempt.workspace_id
                     and node.id=attempt.node_run_id
@@ -437,41 +493,381 @@ describeIntegration('Retry and Wait outage recovery', () => {
                    where workflow_run_id=$1) event_count,
                  (select count(*)::text from app.run_events
                    where workflow_run_id=$1 and type='node.retry_scheduled') retry_events`,
-            [runId],
-          ),
-        (rows) => rows[0]?.attempt_count === '4',
-      );
-      const fact = facts[0];
-      if (fact === undefined) throw new Error('due wakeup facts missing');
-      expect(fact).toEqual({
-        attempt_count: '4',
-        attempt_outboxes: '2',
-        event_count: '3',
-        provider_keys: [providerKeys[0], providerKeys[0], null, null],
-        retry_events: '0',
-      });
-      const verificationScanner = createDueNodeWakeupScanner(
-        runtimeOptions.database,
-      );
-      try {
-        await expect(verificationScanner.claimDueWakeups(10)).resolves.toBe(0);
-      } finally {
-        await verificationScanner.close();
-      }
-      await expect(
-        workerQuery<{ attempts: string; wakeups: string }>(
-          `select
+              [runId],
+            ),
+          (rows) => rows[0]?.attempt_count === '4',
+        );
+        const fact = facts[0];
+        if (fact === undefined) throw new Error('due wakeup facts missing');
+        expect(fact).toEqual({
+          attempt_count: '4',
+          attempt_outboxes: '2',
+          event_count: '3',
+          provider_keys: [providerKeys[0], providerKeys[0], null, null],
+          retry_events: '0',
+        });
+        const verificationScanner = createDueNodeWakeupScanner(
+          runtimeOptions.database,
+        );
+        try {
+          await expect(verificationScanner.claimDueWakeups(10)).resolves.toBe(
+            0,
+          );
+        } finally {
+          await verificationScanner.close();
+        }
+        await expect(
+          workerQuery<{ attempts: string; wakeups: string }>(
+            `select
                (select count(*)::text from app.node_attempts attempt
                  join app.node_runs node on node.workspace_id=attempt.workspace_id
                   and node.id=attempt.node_run_id
                  where node.workflow_run_id=$1) attempts,
                (select count(*)::text from app.outbox_events
                  where aggregate_id=$1 and job_name='advance-workflow-run') wakeups`,
-          [runId],
-        ),
-      ).resolves.toEqual([{ attempts: '4', wakeups: '2' }]);
+            [runId],
+          ),
+        ).resolves.toEqual([{ attempts: '4', wakeups: '2' }]);
+      } finally {
+        await dispatcher.close();
+      }
     } finally {
-      await Promise.allSettled([dispatcher.close(), afterClaim.close()]);
+      await afterClaim.close();
     }
   });
+
+  it('commits simultaneous cancellation and deadline facts against a genuinely suspended Wait', async () => {
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_WAIT_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE);
+    const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+      connection: redisConnection(),
+    });
+    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+      connection: redisConnection(),
+    });
+    await Promise.all([
+      coordinatorQueue.obliterate({ force: true }),
+      attemptQueue.obliterate({ force: true }),
+    ]);
+    const accepted = await acceptWaitRun();
+    const database = parseDatabaseConfig({
+      connectionString: databaseUrl(workerUrl),
+      max: 6,
+    });
+    const producer = createQueueProducer({ redisUrl });
+    let coordinator = await createCoordinatorRuntime({
+      database,
+      maximumAdmissions: 1,
+      releaseCohort: 'wait_activation',
+      redisUrl,
+    });
+    const attempts = await createNodeAttemptRuntime(
+      {
+        database,
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 10,
+        releaseCohort: 'wait_activation',
+        redisUrl,
+        workerId: `wait-control-${randomUUID()}`,
+      },
+      {
+        registry: createPlatformNodeRegistryForRelease(
+          PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+        ),
+        runtimeCapabilities: {
+          connections: () => ({
+            resolve: () => Promise.reject(new Error('not used')),
+          }),
+          artifacts: () => ({
+            write: () => Promise.reject(new Error('not used')),
+          }),
+        },
+      },
+    );
+    const coordinatorOutboxes = [accepted.outboxEventId];
+    const attemptOutboxes: string[] = [];
+    const publishCoordinator = async (
+      outboxEventId: string,
+      expectedRevision: number,
+    ) => {
+      const published = await producer.publish({
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          schemaVersion: 1,
+          workspaceId,
+          runId: accepted.runId,
+          outboxEventId,
+        },
+      });
+      const result = await waitFor(
+        async () => {
+          const [rows, job] = await Promise.all([
+            workerQuery<{ revision: number }>(
+              `select revision from app.run_checkpoints
+                 where workspace_id=$1 and workflow_run_id=$2`,
+              [workspaceId, accepted.runId],
+            ),
+            coordinatorQueue.getJob(published.jobId),
+          ]);
+          return {
+            failedReason: job?.failedReason,
+            revision: rows[0]?.revision,
+            stacktrace: job?.stacktrace,
+            state: await job?.getState(),
+          };
+        },
+        ({ revision, state }) =>
+          state === 'failed' ||
+          (revision === expectedRevision && state === 'completed'),
+      );
+      if (result.state !== 'completed')
+        throw new Error(
+          `Wait coordinator failed: ${result.failedReason ?? 'unknown'} ${JSON.stringify(result.stacktrace)}`,
+        );
+    };
+    const execute = async (
+      expectedNodeId: 'manual' | 'wait',
+      expectedStatus: 'succeeded' | 'waiting',
+    ) => {
+      const attempt = await waitForAttemptOutbox(
+        accepted.runId,
+        attemptOutboxes,
+      );
+      attemptOutboxes.push(attempt.outboxEventId);
+      const published = await producer.publish({
+        name: JOB_NAME.executeNodeAttempt,
+        data: {
+          schemaVersion: 1,
+          workspaceId,
+          runId: accepted.runId,
+          nodeRunId: attempt.nodeRunId,
+          attemptId: attempt.attemptId,
+          outboxEventId: attempt.outboxEventId,
+        },
+      });
+      const result = await waitFor(
+        async () => {
+          const [rows, job] = await Promise.all([
+            workerQuery<{ node_id: string; status: string }>(
+              `select node_id,status from app.node_runs
+                 where workspace_id=$1 and id=$2`,
+              [workspaceId, attempt.nodeRunId],
+            ),
+            attemptQueue.getJob(published.jobId),
+          ]);
+          return {
+            failedReason: job?.failedReason,
+            nodeId: rows[0]?.node_id,
+            state: await job?.getState(),
+            status: rows[0]?.status,
+          };
+        },
+        ({ state, status }) =>
+          state === 'failed' ||
+          (status === expectedStatus && state === 'completed'),
+      );
+      if (
+        result.state !== 'completed' ||
+        result.nodeId !== expectedNodeId ||
+        result.status !== expectedStatus
+      )
+        throw new Error(
+          `Wait attempt failed: ${result.failedReason ?? 'unknown'}`,
+        );
+    };
+
+    try {
+      await Promise.all([
+        coordinator.consumer.waitUntilReady(5_000),
+        attempts.consumer.waitUntilReady(5_000),
+        producer.waitUntilReady(5_000),
+      ]);
+      await publishCoordinator(accepted.outboxEventId, 1);
+      await execute('manual', 'succeeded');
+      const manualContinuation = await waitForCoordinatorOutbox(
+        accepted.runId,
+        coordinatorOutboxes,
+      );
+      coordinatorOutboxes.push(manualContinuation);
+      await publishCoordinator(manualContinuation, 2);
+      await execute('wait', 'waiting');
+      const waitContinuation = await waitForCoordinatorOutbox(
+        accepted.runId,
+        coordinatorOutboxes,
+      );
+      coordinatorOutboxes.push(waitContinuation);
+      await publishCoordinator(waitContinuation, 3);
+      const waiting = await workerQuery<{
+        resume_at: Date | null;
+        scheduler_state: unknown;
+        status: string;
+        wait_kind: string | null;
+      }>(
+        `select node.status,node.resume_at,node.wait_kind,checkpoint.scheduler_state
+             from app.node_runs node
+             join app.run_checkpoints checkpoint
+               on checkpoint.workflow_run_id=node.workflow_run_id
+            where node.workspace_id=$1 and node.workflow_run_id=$2
+              and node.node_id='wait'`,
+        [workspaceId, accepted.runId],
+      );
+      expect(waiting).toHaveLength(1);
+      expect(waiting[0]?.resume_at).toBeInstanceOf(Date);
+      expect(waiting[0]).toMatchObject({
+        status: 'waiting',
+        wait_kind: 'node_wait',
+      });
+
+      await Promise.all([attempts.close(), coordinator.close()]);
+      await ownerQuery(
+        `update app.workflow_runs
+            set deadline_at=created_at+interval '1 millisecond',
+                deadline_wakeup_at=null,updated_at=clock_timestamp()
+          where workspace_id=$1 and id=$2`,
+        [workspaceId, accepted.runId],
+      );
+      const scanner = createDeadlineWakeupScanner(database);
+      try {
+        await expect(scanner.claimDueWakeups(10)).resolves.toBe(1);
+      } finally {
+        await scanner.close();
+      }
+      await cancelFixtureRun(
+        accepted.runId,
+        'cancel wins simultaneous Wait deadline',
+      );
+      const controlOutboxes = await waitFor(
+        () =>
+          workerQuery<{ id: string }>(
+            `select id from app.outbox_events
+               where workspace_id=$1 and aggregate_id=$2
+                 and job_name='advance-workflow-run'
+                 and not (id=any($3::uuid[]))
+               order by created_at,id`,
+            [workspaceId, accepted.runId, coordinatorOutboxes],
+          ),
+        (rows) => rows.length === 2,
+      );
+      const firstControlOutbox = controlOutboxes[0]?.id;
+      const secondControlOutbox = controlOutboxes[1]?.id;
+      if (firstControlOutbox === undefined || secondControlOutbox === undefined)
+        throw new Error('Wait control outboxes are incomplete');
+
+      coordinator = await createCoordinatorRuntime({
+        database,
+        maximumAdmissions: 1,
+        releaseCohort: 'wait_activation',
+        redisUrl,
+      });
+      await coordinator.consumer.waitUntilReady(5_000);
+      await publishCoordinator(firstControlOutbox, 4);
+      const terminal = await workerQuery<{
+        attempt_count: string;
+        attempt_outboxes: string;
+        cancel_events: string;
+        canceled_events: string;
+        scheduler_state: unknown;
+        status: string;
+        timed_out_events: string;
+        wait_kind: string | null;
+        resume_at: Date | null;
+      }>(
+        `select run.status,checkpoint.scheduler_state,
+                wait_node.wait_kind,wait_node.resume_at,
+                (select count(*)::text from app.node_attempts attempt
+                  join app.node_runs node on node.id=attempt.node_run_id
+                 where node.workspace_id=run.workspace_id
+                   and node.workflow_run_id=run.id) attempt_count,
+                (select count(*)::text from app.outbox_events outbox
+                 where outbox.payload->>'runId'=run.id::text
+                   and outbox.job_name='execute-node-attempt') attempt_outboxes,
+                (select count(*)::text from app.run_events event
+                 where event.workflow_run_id=run.id
+                   and event.type='run.cancel_requested') cancel_events,
+                (select count(*)::text from app.run_events event
+                 where event.workflow_run_id=run.id
+                   and event.type='node.canceled') canceled_events,
+                (select count(*)::text from app.run_events event
+                 where event.workflow_run_id=run.id
+                   and event.type='node.timed_out') timed_out_events
+           from app.workflow_runs run
+           join app.run_checkpoints checkpoint on checkpoint.workflow_run_id=run.id
+           join app.node_runs wait_node on wait_node.workflow_run_id=run.id
+             and wait_node.node_id='wait'
+          where run.workspace_id=$1 and run.id=$2`,
+        [workspaceId, accepted.runId],
+      );
+      expect(terminal).toHaveLength(1);
+      expect(terminal[0]).toMatchObject({
+        attempt_count: '2',
+        attempt_outboxes: '2',
+        cancel_events: '1',
+        canceled_events: '1',
+        resume_at: null,
+        status: 'canceled',
+        timed_out_events: '0',
+        wait_kind: null,
+      });
+      const terminalCheckpoint = parseCheckpoint(terminal[0]?.scheduler_state);
+      expect(terminalCheckpoint).toMatchObject({
+        cancelRequested: true,
+        deadlineExpired: true,
+        runStatus: 'canceled',
+      });
+      expect(
+        terminalCheckpoint.invocations.find(({ nodeId }) => nodeId === 'wait'),
+      ).toMatchObject({ nodeId: 'wait', status: 'canceled' });
+
+      await coordinator.close();
+      coordinator = await createCoordinatorRuntime({
+        database,
+        maximumAdmissions: 1,
+        releaseCohort: 'wait_activation',
+        redisUrl,
+      });
+      await coordinator.consumer.waitUntilReady(5_000);
+      await publishCoordinator(secondControlOutbox, 4);
+      await expect(
+        workerQuery<{
+          attempts: string;
+          events: string;
+          revision: number;
+        }>(
+          `select checkpoint.revision,
+                  (select count(*)::text from app.node_attempts attempt
+                    join app.node_runs node on node.id=attempt.node_run_id
+                   where node.workflow_run_id=$2) attempts,
+                  (select count(*)::text from app.run_events event
+                   where event.workflow_run_id=$2) events
+             from app.run_checkpoints checkpoint
+            where checkpoint.workspace_id=$1
+              and checkpoint.workflow_run_id=$2`,
+          [workspaceId, accepted.runId],
+        ),
+      ).resolves.toEqual([
+        {
+          attempts: '2',
+          events: '12',
+          revision: 4,
+        },
+      ]);
+      expect(
+        invocationKey({
+          workflowVersionId: waitWorkflowVersionId,
+          nodeId: 'wait',
+        }),
+      ).toBe(
+        terminalCheckpoint.invocations.find(({ nodeId }) => nodeId === 'wait')
+          ?.invocationKey,
+      );
+    } finally {
+      await Promise.allSettled([
+        attempts.close(),
+        coordinator.close(),
+        producer.close(),
+        attemptQueue.close(),
+        coordinatorQueue.close(),
+      ]);
+    }
+  }, 60_000);
 });

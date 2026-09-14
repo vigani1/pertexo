@@ -2,8 +2,15 @@
 
 The HTTP runner schedules a bounded open-loop request rate and writes one
 versioned JSON evidence file. It never writes session, CSRF, webhook signing,
-authorization, or request-body values to evidence. Output creation is exclusive
-so reruns cannot overwrite a prior result.
+authorization, request-path, query, or request-body values to evidence. Before
+the first request it exclusively reserves the exact output with mode `0600` and
+persists a `started` record. An existing output or unusable destination
+therefore fails before traffic. Completion atomically replaces only that owned
+reservation with `completed` or `interrupted` evidence; a process lost before
+finalization leaves the `started` record rather than erasing proof that traffic
+may have run. Do not delete a `started` or `interrupted` record: stop new input,
+reconcile its counts with correlated durable work, and complete the approval
+packet's cleanup.
 
 Executing these profiles against a deployed environment is E01-05 and requires a
 completed
@@ -51,8 +58,14 @@ Use a dedicated shell for the concurrent pair if the approved operator tooling
 does not preserve the background PID safely. One invocation schedules at most
 1,200 `api-steady`, 15,000 webhook, 600 fan-out, 600 long-wait, 15,000
 noisy-load and 3,000 control requests (35,400 total). Open-loop scheduling can
-record fewer attempts under its in-flight bound; the evidence reports the actual
-count.
+record fewer attempts under its in-flight bound. A scheduler delayed beyond one
+slot skips that slot instead of sending a catch-up burst. Fractional rate and
+duration values retain `scheduled = floor(rate * duration)`, while `maxInFlight`
+is a safe integer. Evidence separately reports attempted/completed, concurrency
+skips, delayed-schedule skips, one primary outcome per attempt, and optional
+bounded response-body diagnostics. Status totals always reconcile with completed
+attempts, so an HTTP error whose problem body cannot be read is not also counted
+as a transport failure.
 
 Every checked-in scenario expects `202 Accepted`. Any other response, including
 `401`, `403`, or `429`, fails the response-policy check even when throughput,

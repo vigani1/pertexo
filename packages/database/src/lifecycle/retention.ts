@@ -6,7 +6,7 @@ import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
 import {
   inRetentionTransaction,
-  lockWorkspaceRetentionControl,
+  withWorkspaceDestructiveAuthorization,
 } from './retention-transaction.js';
 import type {
   RetentionDatabase,
@@ -55,9 +55,9 @@ export function createRetentionDatabase(
   const { pool } = lease;
   return Object.freeze({
     ...createRetentionDryRunCapability(pool, options),
-    ...createRetentionHealthCapability(pool),
-    ...createRetentionOperatorRecoveryCapability(pool),
-    ...createRetentionSchedulingCapability(pool),
+    ...createRetentionHealthCapability(pool, options),
+    ...createRetentionOperatorRecoveryCapability(pool, options),
+    ...createRetentionSchedulingCapability(pool, options),
     close: () => lease.close(),
   });
 }
@@ -79,30 +79,73 @@ export function createRetentionEnforcementCoordinator(
   inputOptions: RetentionEnforcementCoordinatorOptions,
   runtime?: DatabaseRuntime,
 ): RetentionEnforcementCoordinator {
+  if (config.max < 2)
+    throw new RangeError(
+      'Retention enforcement coordination requires a database pool of at least 2 connections',
+    );
   const options = enforcementOptionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
 
   const claim = async (signal?: AbortSignal) => {
-    const result = await query(
-      pool,
-      'select * from app.claim_retention_destructive_batches($1,1,$2)',
-      [options.leaseOwner, options.leaseSeconds],
-      signal,
-    );
-    return result.rows.map(mapClaim)[0];
+    return inRetentionTransaction(pool, options, signal, async (client) => {
+      const result = await query(
+        client,
+        'select * from app.claim_retention_destructive_batches($1,1,$2)',
+        [options.leaseOwner, options.leaseSeconds],
+        signal,
+      );
+      return result.rows.map(mapClaim)[0];
+    });
   };
 
   const release = async (
     claimed: RetentionDryRunClaim,
     signal?: AbortSignal,
-  ): Promise<void> => {
-    await query(
-      pool,
-      'select app.release_retention_batch($1,$2,$3)',
-      [claimed.batchId, claimed.leaseToken, claimed.leaseFence],
-      signal,
-    );
+  ): Promise<boolean> =>
+    inRetentionTransaction(pool, options, signal, async (client) => {
+      const result = await query<{ released: boolean }>(
+        client,
+        'select app.release_retention_batch($1,$2,$3) released',
+        [claimed.batchId, claimed.leaseToken, claimed.leaseFence],
+        signal,
+      );
+      return z.boolean().parse(result.rows[0]?.released);
+    });
+
+  const releaseResult = (
+    claimed: RetentionDryRunClaim,
+    eligibleCount: number,
+    examinedCount: number,
+    pageCount: number,
+    released: boolean,
+  ) =>
+    Object.freeze({
+      batchId: claimed.batchId,
+      eligibleCount,
+      examinedCount,
+      pageCount,
+      retentionKind: claimed.retentionKind,
+      status: released ? ('released' as const) : ('stale' as const),
+      workspaceId: claimed.workspaceId,
+    });
+
+  const releaseAfterFailure = async (
+    claimed: RetentionDryRunClaim,
+    error: unknown,
+    operationSignal?: AbortSignal,
+  ): Promise<never> => {
+    const cleanupSignal = AbortSignal.timeout(options.statementTimeoutMs);
+    try {
+      await release(claimed, cleanupSignal);
+    } catch (releaseError: unknown) {
+      throw new AggregateError(
+        [error, releaseError],
+        'Retention page failure and lease cleanup both failed',
+      );
+    }
+    if (operationSignal?.aborted === true) operationSignal.throwIfAborted();
+    throw error;
   };
 
   return Object.freeze({
@@ -118,102 +161,96 @@ export function createRetentionEnforcementCoordinator(
         pageCount += 1
       ) {
         try {
-          const highWater = await lockWorkspaceRetentionControl(
+          const authorization = await withWorkspaceDestructiveAuthorization(
             pool,
             options,
             signal,
             claimed.workspaceId,
-            'Retention workspace control lock was not returned',
-          );
-          const timeoutSignal = AbortSignal.timeout(
+            ledger,
             options.externalOperationTimeoutMs,
+            async (highWater) =>
+              inRetentionTransaction(pool, options, signal, async (client) => {
+                const lock = await query<{
+                  retention_control_hash: string;
+                  retention_control_sequence: string | number;
+                }>(
+                  client,
+                  'select * from app.lock_workspace_control_ledger($1)',
+                  [claimed.workspaceId],
+                  signal,
+                );
+                const current = lock.rows[0];
+                if (
+                  current === undefined ||
+                  z.coerce
+                    .number()
+                    .parse(current.retention_control_sequence) !==
+                    highWater.sequence ||
+                  current.retention_control_hash !== highWater.hash
+                )
+                  throw new Error('Retention control fence changed');
+                const page = await query<{
+                  cursor_expires_at: Date | string | null;
+                  cursor_id: string | null;
+                  eligible_delta: string | number;
+                  examined_delta: string | number;
+                  outcome: string;
+                }>(
+                  client,
+                  claimed.retentionKind === 'workflow_run_input'
+                    ? `select * from app.execute_workflow_run_input_retention_page(
+                      $1,$2,$3,$4,$5,$6)`
+                    : `select * from app.execute_standard_retention_page(
+                      $1,$2,$3,$4,$5,$6)`,
+                  [
+                    claimed.batchId,
+                    claimed.leaseToken,
+                    claimed.leaseFence,
+                    options.pageSize,
+                    highWater.sequence,
+                    highWater.hash,
+                  ],
+                  signal,
+                );
+                const row = page.rows[0];
+                if (row === undefined)
+                  throw new Error(
+                    'Destructive retention page was not returned',
+                  );
+                const outcome = z
+                  .enum(['completed', 'paused', 'progressed', 'stale'])
+                  .parse(row.outcome);
+                const examinedDelta = z.coerce
+                  .number()
+                  .int()
+                  .nonnegative()
+                  .parse(row.examined_delta);
+                const eligibleDelta = z.coerce
+                  .number()
+                  .int()
+                  .nonnegative()
+                  .parse(row.eligible_delta);
+                if (eligibleDelta > examinedDelta)
+                  throw new Error(
+                    'Retention page eligible count exceeds examined count',
+                  );
+                return Object.freeze({
+                  eligibleDelta,
+                  examinedDelta,
+                  outcome,
+                });
+              }),
           );
-          const externalSignal =
-            signal === undefined
-              ? timeoutSignal
-              : AbortSignal.any([signal, timeoutSignal]);
-          const reconciliation = await ledger.reconcile({
-            maxRecords: 1,
-            projectedHash: highWater.hash,
-            projectedSequence: highWater.sequence,
-            signal: externalSignal,
-            workspaceId: claimed.workspaceId,
-          });
-          if (
-            !reconciliation.reachedHighWater ||
-            reconciliation.hasMore ||
-            reconciliation.records.length !== 0 ||
-            reconciliation.pageEndSequence !== highWater.sequence ||
-            reconciliation.pageEndHash !== highWater.hash
-          ) {
-            throw new Error(
-              'Retention control ledger is not exactly projected',
+          if (authorization.status === 'stale') {
+            return releaseResult(
+              claimed,
+              eligibleCount,
+              examinedCount,
+              pageCount,
+              await release(claimed, signal),
             );
           }
-          const row = await inRetentionTransaction(
-            pool,
-            options,
-            signal,
-            async (client) => {
-              const lock = await query<{
-                retention_control_hash: string;
-                retention_control_sequence: string | number;
-              }>(
-                client,
-                'select * from app.lock_workspace_control_ledger($1)',
-                [claimed.workspaceId],
-                signal,
-              );
-              const current = lock.rows[0];
-              if (
-                current === undefined ||
-                z.coerce.number().parse(current.retention_control_sequence) !==
-                  highWater.sequence ||
-                current.retention_control_hash !== highWater.hash
-              )
-                throw new Error('Retention control fence changed');
-              const page = await query<{
-                cursor_expires_at: Date | string | null;
-                cursor_id: string | null;
-                eligible_delta: string | number;
-                examined_delta: string | number;
-                outcome: string;
-              }>(
-                client,
-                claimed.retentionKind === 'workflow_run_input'
-                  ? `select * from app.execute_workflow_run_input_retention_page(
-                      $1,$2,$3,$4,$5,$6)`
-                  : `select * from app.execute_standard_retention_page(
-                      $1,$2,$3,$4,$5,$6)`,
-                [
-                  claimed.batchId,
-                  claimed.leaseToken,
-                  claimed.leaseFence,
-                  options.pageSize,
-                  highWater.sequence,
-                  highWater.hash,
-                ],
-                signal,
-              );
-              const row = page.rows[0];
-              if (row === undefined)
-                throw new Error('Destructive retention page was not returned');
-              return row;
-            },
-          );
-          const outcome = z
-            .enum(['completed', 'paused', 'progressed', 'stale'])
-            .parse(row.outcome);
-          const examinedDelta = z.coerce
-            .number()
-            .int()
-            .nonnegative()
-            .parse(row.examined_delta);
-          const eligibleDelta = z.coerce
-            .number()
-            .int()
-            .nonnegative()
-            .parse(row.eligible_delta);
+          const { eligibleDelta, examinedDelta, outcome } = authorization.value;
           examinedCount += examinedDelta;
           eligibleCount += eligibleDelta;
           if (outcome !== 'progressed') {
@@ -227,29 +264,17 @@ export function createRetentionEnforcementCoordinator(
               workspaceId: claimed.workspaceId,
             });
           }
-        } catch {
-          await release(claimed, signal).catch(() => undefined);
-          return Object.freeze({
-            batchId: claimed.batchId,
-            eligibleCount,
-            examinedCount,
-            pageCount,
-            retentionKind: claimed.retentionKind,
-            status: 'released' as const,
-            workspaceId: claimed.workspaceId,
-          });
+        } catch (error: unknown) {
+          return releaseAfterFailure(claimed, error, signal);
         }
       }
-      await release(claimed, signal);
-      return Object.freeze({
-        batchId: claimed.batchId,
+      return releaseResult(
+        claimed,
         eligibleCount,
         examinedCount,
-        pageCount: options.maxPagesPerBatch,
-        retentionKind: claimed.retentionKind,
-        status: 'released' as const,
-        workspaceId: claimed.workspaceId,
-      });
+        options.maxPagesPerBatch,
+        await release(claimed, signal),
+      );
     },
   });
 }

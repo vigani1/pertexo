@@ -10,6 +10,8 @@ import {
   parseWorkflowExecutableV2,
   verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,
+} from '../src/index.js';
+import {
   nodeRelease,
   conditionGraph,
   switchGraph,
@@ -592,33 +594,35 @@ describe('workflow executable V2 identity', () => {
       },
     );
 
-    for (const hostile of [
-      accessor,
-      cycle,
-      new Date('2026-08-20T00:00:00.000Z'),
-      hidden,
-      withSymbol,
-      sparse,
-      inheritedArray,
-      extraArray,
-      deep,
-      oversizedArray,
-      tooManyMembers,
-      proxy,
-      undefined,
-      1n,
-      () => undefined,
-      Number.NaN,
-      Number.POSITIVE_INFINITY,
-    ]) {
+    for (const [name, hostile] of [
+      ['accessor member', accessor],
+      ['cyclic object', cycle],
+      ['Date instance', new Date('2026-08-20T00:00:00.000Z')],
+      ['hidden member', hidden],
+      ['symbol member', withSymbol],
+      ['sparse array', sparse],
+      ['inherited array', inheritedArray],
+      ['array with extra member', extraArray],
+      ['over-depth object', deep],
+      ['oversized array', oversizedArray],
+      ['object with too many members', tooManyMembers],
+      ['proxy object', proxy],
+      ['undefined', undefined],
+      ['bigint', 1n],
+      ['function', () => undefined],
+      ['NaN', Number.NaN],
+      ['positive infinity', Number.POSITIVE_INFINITY],
+    ] as const) {
       const envelope = structuredClone(compiled.envelope);
       const set = envelope.graph.nodes.find(({ id }) => id === 'set');
       if (set === undefined) throw new Error('fixture set node missing');
       Object.assign(set.inputMappings, {
         literal: { kind: 'literal', value: hostile },
       });
-      expect(() =>
-        parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+      expect(
+        () =>
+          parseWorkflowExecutableV2({ envelope, admissionRelease: release }),
+        name,
       ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
     }
     expect(getterCalls).toBe(0);

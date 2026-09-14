@@ -96,6 +96,9 @@ describe('OIDC browser binding prior-head migration', () => {
         '0084_workspace_member_discovery_index.sql',
         '0085_artifact_media_type_http_safety.sql',
         '0086_operator_attempt_reclaim_state.sql',
+        '0087_workspace_maintenance_rerun_purge.sql',
+        '0088_sql_boundary_integrity.sql',
+        '0089_oidc_capacity_lock_time.sql',
       ]);
 
       const verifier = new Pool({
@@ -124,6 +127,18 @@ describe('OIDC browser binding prior-head migration', () => {
             ['2'.repeat(64)],
           ),
         ).rejects.toMatchObject({ code: '23502' });
+        await expect(
+          verifier.query(
+            `insert into app.oidc_login_transactions
+               (state_digest, code_verifier_ciphertext, code_verifier_nonce,
+                code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
+                nonce_nonce, nonce_tag, nonce_key_version, expires_at,
+                browser_binding_digest)
+             values ($1, 'v', 'n', 't', 'k', 'n', 'n', 't', 'k',
+                     clock_timestamp() + interval '5 minutes', $2)`,
+            ['3'.repeat(64), '4'.repeat(64)],
+          ),
+        ).resolves.toMatchObject({ rowCount: 1 });
       } finally {
         await verifier.end();
       }

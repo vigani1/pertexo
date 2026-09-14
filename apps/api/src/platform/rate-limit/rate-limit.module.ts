@@ -1,4 +1,4 @@
-import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
@@ -9,18 +9,10 @@ import {
   type RateLimitMetricRecorder,
 } from './interceptor.js';
 import { createRateLimitMetricRecorder } from './metrics.js';
+import { ApiShutdownCoordinator } from '../health/drain-state.js';
 
 export const RATE_LIMIT_CONSUMER = Symbol('RATE_LIMIT_CONSUMER');
 const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
-
-class ApiRedisRateLimitRuntime
-  extends RedisRateLimitRuntime
-  implements OnApplicationShutdown
-{
-  public onApplicationShutdown(): Promise<void> {
-    return this.close();
-  }
-}
 
 @Module({})
 // Nest requires a class as the dynamic module identity.
@@ -30,11 +22,20 @@ export class RateLimitModule {
     redisUrl: string,
     override?: RateLimitConsumer,
   ): DynamicModule {
-    const runtime = override ?? new ApiRedisRateLimitRuntime(redisUrl);
     return {
       module: RateLimitModule,
       providers: [
-        { provide: RATE_LIMIT_CONSUMER, useValue: runtime },
+        override === undefined
+          ? {
+              provide: RATE_LIMIT_CONSUMER,
+              inject: [ApiShutdownCoordinator],
+              useFactory: (shutdown: ApiShutdownCoordinator) => {
+                const runtime = new RedisRateLimitRuntime(redisUrl);
+                shutdown.register('rate-limit', () => runtime.close());
+                return runtime;
+              },
+            }
+          : { provide: RATE_LIMIT_CONSUMER, useValue: override },
         {
           provide: RATE_LIMIT_METRICS,
           useFactory: createRateLimitMetricRecorder,

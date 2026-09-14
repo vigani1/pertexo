@@ -95,38 +95,34 @@ const workerConfig = parseDatabaseConfig({
   connectionString: url(workerBaseUrl),
   max: 8,
 });
-const identity = createIdentityWorkspaceDatabase(apiConfig);
-const reconciliation =
-  createWorkflowTriggerReconciliationDatabase(workerConfig);
-const schedules = createScheduleTriggerDatabase(apiConfig);
-const webhook = createWebhookTriggerDatabase(
-  apiConfig,
-  BASELINE_COMPATIBILITY_EXPECTATION,
-);
-const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
-const readinessPool = new Pool({ connectionString: url(apiBaseUrl), max: 1 });
-const workerReadinessPool = new Pool({
-  connectionString: url(workerBaseUrl),
-  max: 1,
-});
-const workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let reconciliation: ReturnType<
+  typeof createWorkflowTriggerReconciliationDatabase
+>;
+let schedules: ReturnType<typeof createScheduleTriggerDatabase>;
+let webhook: ReturnType<typeof createWebhookTriggerDatabase>;
+let owner: Pool;
+let readinessPool: Pool;
+let workerReadinessPool: Pool;
+let workerPool: Pool;
 const triggerCatalog = Object.freeze({
   schemaVersion: 1 as const,
+  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
   definitions: Object.freeze([
     Object.freeze({ key: 'core.webhook', version: 1 }),
     Object.freeze({ key: 'core.schedule', version: 1 }),
   ]),
 });
-const authoring: WorkflowAuthoringDatabase = createWorkflowAuthoringDatabase(
-  apiConfig,
-  { definitionCatalog: triggerCatalog },
-);
+let authoring: WorkflowAuthoringDatabase;
 
 async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   statement: string,
   parameters: unknown[] = [],
 ) {
   const client = await owner.connect();
+  let releaseClient = (): void => {
+    client.release();
+  };
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
@@ -137,10 +133,23 @@ async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
     await client.query('commit');
     return result;
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    try {
+      await client.query('rollback');
+    } catch (rollbackError: unknown) {
+      releaseClient = () => undefined;
+      try {
+        client.release(
+          new Error('Webhook fixture owner rollback failed', {
+            cause: rollbackError,
+          }),
+        );
+      } catch {
+        // Preserve the scenario failure after attempting to discard the client.
+      }
+    }
     throw error;
   } finally {
-    client.release();
+    releaseClient();
   }
 }
 
@@ -149,6 +158,9 @@ async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
   parameters: unknown[] = [],
 ) {
   const client = await workerPool.connect();
+  let releaseClient = (): void => {
+    client.release();
+  };
   try {
     await client.query('begin');
     await client.query("select set_config('app.workspace_id',$1,true)", [
@@ -158,19 +170,69 @@ async function workerQuery<Row extends QueryResultRow = QueryResultRow>(
     await client.query('commit');
     return result;
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    try {
+      await client.query('rollback');
+    } catch (rollbackError: unknown) {
+      releaseClient = () => undefined;
+      try {
+        client.release(
+          new Error('Webhook fixture worker rollback failed', {
+            cause: rollbackError,
+          }),
+        );
+      } catch {
+        // Preserve the scenario failure after attempting to discard the client.
+      }
+    }
     throw error;
   } finally {
-    client.release();
+    releaseClient();
   }
 }
 
-const checkpointFactory = () => ({
+async function apiQuery<Row extends QueryResultRow = QueryResultRow>(
+  statement: string,
+  parameters: unknown[] = [],
+) {
+  const client = await readinessPool.connect();
+  let releaseClient = (): void => {
+    client.release();
+  };
+  try {
+    await client.query('begin');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await client.query<Row>(statement, parameters);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    try {
+      await client.query('rollback');
+    } catch (rollbackError: unknown) {
+      releaseClient = () => undefined;
+      try {
+        client.release(
+          new Error('Webhook fixture API rollback failed', {
+            cause: rollbackError,
+          }),
+        );
+      } catch {
+        // Preserve the scenario failure after attempting to discard the client.
+      }
+    }
+    throw error;
+  } finally {
+    releaseClient();
+  }
+}
+
+const checkpointFactory = (projection?: { id: string }) => ({
   engineVersion: 'webhook-test-engine',
   checkpoint: {
     schemaVersion: 1,
     engineVersion: 'webhook-test-engine',
-    workflowVersionId: versionId,
+    workflowVersionId: projection?.id ?? versionId,
     revision: 0,
     runStatus: 'queued',
     nextEventSequence: 2,
@@ -197,6 +259,41 @@ beforeAll(async () => {
     await admin.end();
   }
   await migrateDatabase(migrationConfig);
+  owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
+  readinessPool = new Pool({ connectionString: url(apiBaseUrl), max: 1 });
+  workerReadinessPool = new Pool({
+    connectionString: url(workerBaseUrl),
+    max: 1,
+  });
+  workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+  identity = createIdentityWorkspaceDatabase(apiConfig);
+  reconciliation = createWorkflowTriggerReconciliationDatabase(workerConfig);
+  schedules = createScheduleTriggerDatabase(apiConfig);
+  webhook = createWebhookTriggerDatabase(
+    apiConfig,
+    BASELINE_COMPATIBILITY_EXPECTATION,
+  );
+  authoring = createWorkflowAuthoringDatabase(apiConfig, {
+    compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
+    definitionCatalog: triggerCatalog,
+    placementDefinitionCatalog: triggerCatalog,
+    executableCompiler: (graph) => ({
+      checksum: `wf:v2:sha256:${createHash('sha256')
+        .update(JSON.stringify(graph))
+        .digest('hex')}`,
+      executableSchemaVersion: 2,
+      executableJson: {
+        schemaVersion: 2,
+        graph,
+        compatibilityReleaseEpoch: BASELINE_COMPATIBILITY_EXPECTATION.epoch,
+        compatibilityReleaseFingerprint:
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+      },
+      compatibilityReleaseEpoch: BASELINE_COMPATIBILITY_EXPECTATION.epoch,
+      compatibilityReleaseFingerprint:
+        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+    }),
+  });
   await identity.createUser({
     id: actorId,
     email: `webhook-${actorId}@example.test`,
@@ -303,21 +400,33 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await webhook.close();
-  await reconciliation.close();
-  await schedules.close();
-  await identity.close();
-  await authoring.close();
-  await owner.end();
-  await readinessPool.end();
-  await workerReadinessPool.end();
-  await workerPool.end();
+  const settle = <Resource>(
+    resource: Resource | undefined,
+    operation: (value: Resource) => Promise<unknown>,
+  ): Promise<unknown> | undefined =>
+    resource === undefined ? undefined : operation(resource);
+  const cleanup = await Promise.allSettled([
+    settle(webhook, (resource) => resource.close()),
+    settle(reconciliation, (resource) => resource.close()),
+    settle(schedules, (resource) => resource.close()),
+    settle(identity, (resource) => resource.close()),
+    settle(authoring, (resource) => resource.close()),
+    settle(owner, (resource) => resource.end()),
+    settle(readinessPool, (resource) => resource.end()),
+    settle(workerReadinessPool, (resource) => resource.end()),
+    settle(workerPool, (resource) => resource.end()),
+  ]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }
+  const failures: unknown[] = [];
+  for (const result of cleanup)
+    if (result.status === 'rejected') failures.push(result.reason);
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Webhook fixture cleanup failed');
 });
 
 describe('generic webhook database seam', () => {
@@ -364,13 +473,116 @@ describe('generic webhook database seam', () => {
     },
   );
 
-  function triggerGraph(intervalMinutes = 15) {
+  it('rejects each durable event and delivery identity mutation without receipt or trigger effects', async () => {
+    const baselinePayload = (eventId: string) => ({
+      schemaVersion: 1 as const,
+      workspaceId,
+      outboxEventId: eventId,
+      workflowId,
+      publishedVersionId: versionId,
+    });
+    const mutations: readonly Readonly<{
+      name: string;
+      event?: Readonly<{
+        aggregateId?: string;
+        aggregateType?: string;
+        jobName?: string;
+        schemaVersion?: number;
+      }>;
+      payload?: Readonly<{
+        outboxEventId?: string;
+        publishedVersionId?: string;
+        workflowId?: string;
+        workspaceId?: string;
+      }>;
+      storedChecksum?: string;
+      deliveryEventId?: string;
+      deliveryChecksum?: string;
+    }>[] = [
+      { name: 'aggregate id', event: { aggregateId: randomUUID() } },
+      { name: 'aggregate type', event: { aggregateType: 'workflow.run' } },
+      { name: 'job name', event: { jobName: 'dispatch-workflow-run' } },
+      { name: 'schema version', event: { schemaVersion: 2 } },
+      { name: 'payload workspace', payload: { workspaceId: randomUUID() } },
+      { name: 'payload workflow', payload: { workflowId: randomUUID() } },
+      {
+        name: 'payload version',
+        payload: { publishedVersionId: randomUUID() },
+      },
+      { name: 'payload event', payload: { outboxEventId: randomUUID() } },
+      { name: 'stored checksum', storedChecksum: 'f'.repeat(64) },
+      { name: 'delivery event', deliveryEventId: randomUUID() },
+      { name: 'delivery checksum', deliveryChecksum: 'e'.repeat(64) },
+    ];
+
+    for (const mutation of mutations) {
+      const eventId = randomUUID();
+      const payload = { ...baselinePayload(eventId), ...mutation.payload };
+      const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
+      await ownerQuery(
+        `insert into app.outbox_events(id,workspace_id,job_name,schema_version,
+           aggregate_type,aggregate_id,payload,payload_checksum)
+         values($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,
+        [
+          eventId,
+          workspaceId,
+          mutation.event?.jobName ?? 'reconcile-workflow-triggers',
+          mutation.event?.schemaVersion ?? 1,
+          mutation.event?.aggregateType ?? 'workflow',
+          mutation.event?.aggregateId ?? workflowId,
+          JSON.stringify(payload),
+          mutation.storedChecksum ?? payloadChecksum,
+        ],
+      );
+      const triggerStateBefore = await ownerQuery(
+        `select id,status,health_status,last_error_code,reconciled_at,updated_at
+           from app.workflow_triggers where workspace_id=$1 and workflow_id=$2
+           order by id`,
+        [workspaceId, workflowId],
+      );
+      await expect(
+        reconciliation.reconcile({
+          workspaceId,
+          workflowId,
+          publishedVersionId: versionId,
+          outboxEventId: eventId,
+          delivery: {
+            outboxEventId: mutation.deliveryEventId ?? eventId,
+            payloadChecksum:
+              mutation.deliveryChecksum ??
+              mutation.storedChecksum ??
+              payloadChecksum,
+          },
+        }),
+        mutation.name,
+      ).rejects.toBeInstanceOf(WorkflowTriggerReconciliationMismatchError);
+      await expect(
+        ownerQuery(
+          `select id,status,health_status,last_error_code,reconciled_at,updated_at
+             from app.workflow_triggers where workspace_id=$1 and workflow_id=$2
+             order by id`,
+          [workspaceId, workflowId],
+        ),
+      ).resolves.toMatchObject({ rows: triggerStateBefore.rows });
+      await expect(
+        ownerQuery<{ count: number }>(
+          `select count(*)::int count from app.inbox_receipts
+            where consumer_name='trigger-runtime.reconciliation.v1'
+              and message_id=$1`,
+          [eventId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+    }
+  });
+
+  function triggerGraph(intervalMinutes = 15, graphDisabled = false) {
     return {
       schemaVersion: 1,
       settings: {},
       nodes: [
         {
           id: 'webhook',
+          disabled: graphDisabled,
           definition: { key: 'core.webhook', version: 1 },
           position: { x: 0, y: 0 },
           configVersion: 1,
@@ -380,6 +592,7 @@ describe('generic webhook database seam', () => {
         },
         {
           id: 'schedule',
+          disabled: graphDisabled,
           definition: { key: 'core.schedule', version: 1 },
           position: { x: 0, y: 100 },
           configVersion: 1,
@@ -521,7 +734,7 @@ describe('generic webhook database seam', () => {
     });
   }
 
-  async function publishTriggerWorkflow() {
+  async function publishTriggerWorkflow(graphDisabled = false) {
     const created = await authoring.createWorkflow({
       actorId,
       workspaceId,
@@ -529,11 +742,17 @@ describe('generic webhook database seam', () => {
       emptyGraph: { schemaVersion: 1, settings: {}, nodes: [], edges: [] },
       idempotencyKey: randomUUID(),
     });
-    const graph = triggerGraph();
+    const graph = triggerGraph(15, graphDisabled);
     const draft = await authoring.saveDraft({
       actorId,
       workspaceId,
       workflowId: created.workflowId,
+      representationTag: workflowDraftRepresentationTag({
+        workflowId: created.workflowId,
+        revision: created.draft.revision,
+        graph: created.draft.graphJson,
+        compatibilityFingerprint: created.draft.compatibility.fingerprint,
+      }),
       expectedRevision: 1,
       graphJson: graph,
     });
@@ -588,6 +807,12 @@ describe('generic webhook database seam', () => {
       actorId,
       workspaceId,
       workflowId: workflowIdInput,
+      representationTag: workflowDraftRepresentationTag({
+        workflowId: workflowIdInput,
+        revision: currentDraft.revision,
+        graph: currentDraft.graphJson,
+        compatibilityFingerprint: currentDraft.compatibility.fingerprint,
+      }),
       expectedRevision: currentDraft.revision,
       graphJson: triggerGraph(30),
     });
@@ -645,6 +870,36 @@ describe('generic webhook database seam', () => {
       requestHash: hash(randomUUID()),
     });
     return Object.freeze({ endpointId, endpointKeyHash, health, ...ids });
+  }
+
+  async function createWebhookScenario() {
+    const published = await publishTriggerWorkflow();
+    await ownerQuery(
+      `insert into app.workflow_failure_notification_policies
+         (workspace_id,workflow_id,destination_id,updated_by)
+       values($1,$2,$3,$4)`,
+      [
+        workspaceId,
+        published.created.workflowId,
+        notificationDestinationId,
+        actorId,
+      ],
+    );
+    await deliverReconciliation(
+      published.created.workflowId,
+      published.published.version.id,
+      {
+        eventId: published.eventId,
+        payloadChecksum: published.eventChecksum,
+      },
+    );
+    const resources = await provisionWebhook(published.created.workflowId);
+    const verification = await webhook.resolveVerification(
+      resources.endpointKeyHash,
+    );
+    if (verification === null)
+      throw new Error('Expected scenario endpoint resolution');
+    return Object.freeze({ published, resources, verification });
   }
 
   async function triggerFacts(workflowIdInput: string) {
@@ -935,7 +1190,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0086_operator_attempt_reclaim_state.sql',
+      migrationHead: '0089_oidc_capacity_lock_time.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -1382,9 +1637,7 @@ describe('generic webhook database seam', () => {
   });
 
   it('resolves eligible sealed references and atomically deduplicates concurrent delivery', async () => {
-    const verification = await webhook.resolveVerification(endpointHash);
-    expect(verification).not.toBeNull();
-    if (verification === null) throw new Error('Expected endpoint resolution');
+    const { resources, verification } = await createWebhookScenario();
     const input = {
       verification,
       verifiedSecretVersionId: verification.currentSecret.id,
@@ -1436,7 +1689,7 @@ describe('generic webhook database seam', () => {
          from app.webhook_trigger_deliveries delivery
          join app.webhook_trigger_replay_records replay on replay.delivery_id=delivery.id
         where delivery.endpoint_id=$1`,
-      [endpointId],
+      [resources.endpointId],
     );
     expect(retention.rows[0]).toEqual({
       delivery_seconds: 90 * 24 * 60 * 60,
@@ -1444,10 +1697,137 @@ describe('generic webhook database seam', () => {
     });
   });
 
+  it('serializes expired keyed and fingerprint replay replacement with database time', async () => {
+    const { resources, verification } = await createWebhookScenario();
+    for (const dedupeKind of ['keyed', 'fingerprint'] as const) {
+      const requestFingerprint = hash(`expired-${dedupeKind}-payload`);
+      const dedupeKeyHash =
+        dedupeKind === 'keyed'
+          ? hash(`expired-${dedupeKind}-key`)
+          : requestFingerprint;
+      const input = {
+        verification,
+        verifiedSecretVersionId: verification.currentSecret.id,
+        requestFingerprint,
+        ...(dedupeKind === 'keyed'
+          ? { idempotencyKeyHash: dedupeKeyHash }
+          : {}),
+        payload: { dedupeKind },
+        checkpointFactory,
+      } as const;
+      const first = await webhook.acceptVerifiedDelivery(input);
+      const observation = await ownerQuery<{ observed_at: Date }>(
+        `update app.webhook_trigger_replay_records
+            set created_at=clock_timestamp()-case when dedupe_kind='keyed'
+                  then interval '24 hours 2 seconds'
+                  else interval '5 minutes 2 seconds' end,
+                expires_at=clock_timestamp()-interval '2 seconds'
+          where workspace_id=$1 and endpoint_id=$2 and dedupe_kind=$3
+            and dedupe_key_hash=$4
+          returning clock_timestamp() observed_at`,
+        [workspaceId, resources.endpointId, dedupeKind, dedupeKeyHash],
+      );
+      expect(observation.rows[0]?.observed_at).toBeInstanceOf(Date);
+
+      const raced = await Promise.all([
+        webhook.acceptVerifiedDelivery(input),
+        webhook.acceptVerifiedDelivery(input),
+      ]);
+      expect(new Set(raced.map(({ runId }) => runId)).size).toBe(1);
+      expect(raced[0].runId).not.toBe(first.runId);
+      expect(raced.map(({ replayed }) => replayed).sort()).toEqual([
+        false,
+        true,
+      ]);
+    }
+    await expect(
+      ownerQuery<{ count: number }>(
+        `select count(*)::int count from app.webhook_trigger_deliveries
+          where workspace_id=$1 and endpoint_id=$2`,
+        [workspaceId, resources.endpointId],
+      ),
+    ).resolves.toMatchObject({ rows: [{ count: 4 }] });
+  });
+
+  it('rolls back replay, run, delivery, and outbox after post-replay failure', async () => {
+    const { resources, verification } = await createWebhookScenario();
+    const durableCounts = () =>
+      ownerQuery<{
+        deliveries: number;
+        outbox_events: number;
+        replay_records: number;
+        runs: number;
+      }>(
+        `select
+          (select count(*)::int from app.webhook_trigger_deliveries
+            where workspace_id=$1 and endpoint_id=$2) deliveries,
+          (select count(*)::int from app.webhook_trigger_replay_records
+            where workspace_id=$1 and endpoint_id=$2) replay_records,
+          (select count(*)::int from app.workflow_runs
+            where workspace_id=$1 and workflow_id=$3) runs,
+          (select count(*)::int from app.outbox_events
+            where workspace_id=$1 and aggregate_type='workflow_run'
+              and aggregate_id in (select id from app.workflow_runs
+                where workspace_id=$1 and workflow_id=$3)) outbox_events`,
+        [workspaceId, resources.endpointId, verification.workflowId],
+      ).then((result) => result.rows[0]);
+    const before = await durableCounts();
+    const failure = new Error('checkpoint construction failed after replay');
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        verification,
+        verifiedSecretVersionId: verification.currentSecret.id,
+        requestFingerprint: hash('post-replay-rollback'),
+        payload: { event: 'post-replay-rollback' },
+        checkpointFactory: () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toBe(failure);
+    await expect(durableCounts()).resolves.toEqual(before);
+  });
+
+  it('keeps graph-disabled trigger nodes externally materialized for execution-time skipping', async () => {
+    const published = await publishTriggerWorkflow(true);
+    const health = await deliverReconciliation(
+      published.created.workflowId,
+      published.published.version.id,
+      {
+        eventId: published.eventId,
+        payloadChecksum: published.eventChecksum,
+      },
+    );
+    expect(health).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'schedule', status: 'active' }),
+        expect.objectContaining({
+          nodeId: 'webhook',
+          status: 'configuration_required',
+        }),
+      ]),
+    );
+    const resources = await provisionWebhook(published.created.workflowId);
+    const verification = await webhook.resolveVerification(
+      resources.endpointKeyHash,
+    );
+    if (verification === null)
+      throw new Error('Expected graph-disabled external endpoint');
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        verification,
+        verifiedSecretVersionId: verification.currentSecret.id,
+        requestFingerprint: hash('graph-disabled-ingress'),
+        payload: { event: 'graph-disabled-ingress' },
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ replayed: false });
+  });
+
   it('enforces the endpoint ingress boundary atomically under concurrency', async () => {
+    const { resources } = await createWebhookScenario();
     const attempts = await Promise.allSettled(
       Array.from({ length: 61 }, () =>
-        webhook.consumeIngressLimit(endpointHash),
+        webhook.consumeIngressLimit(resources.endpointKeyHash),
       ),
     );
     expect(
@@ -1461,23 +1841,45 @@ describe('generic webhook database seam', () => {
   });
 
   it('invalidates old endpoint references at rotation commit and bounds prior secrets', async () => {
-    await ownerQuery(
-      "update app.workspace_memberships set role='builder' where workspace_id=$1 and user_id=$2",
-      [workspaceId, actorId],
-    );
-    const oldVerification = await webhook.resolveVerification(endpointHash);
-    if (oldVerification === null) throw new Error('Expected old endpoint');
+    const {
+      published,
+      resources,
+      verification: oldVerification,
+    } = await createWebhookScenario();
+    const scenarioWorkflowId = published.created.workflowId;
     const nextEndpointHash = hash('endpoint-two');
+    const acceptedBeforeRotation = {
+      verification: oldVerification,
+      verifiedSecretVersionId: oldVerification.currentSecret.id,
+      requestFingerprint: hash('accepted-before-rotation'),
+      idempotencyKeyHash: hash('accepted-before-rotation-key'),
+      payload: { event: 'accepted-before-rotation' },
+      checkpointFactory,
+    } as const;
+    const accepted = await webhook.acceptVerifiedDelivery(
+      acceptedBeforeRotation,
+    );
     await webhook.rotateEndpoint({
       workspaceId,
-      workflowId,
+      workflowId: scenarioWorkflowId,
       actorId,
-      triggerId,
+      triggerId: resources.webhookId,
       endpointKeyHash: nextEndpointHash,
       idempotencyKey: 'rotate-endpoint',
       requestHash: hash('rotate-endpoint'),
     });
-    await expect(webhook.resolveVerification(endpointHash)).resolves.toBeNull();
+    await expect(
+      webhook.resolveVerification(resources.endpointKeyHash),
+    ).resolves.toBeNull();
+    await expect(
+      webhook.acceptVerifiedDelivery(acceptedBeforeRotation),
+    ).resolves.toEqual({ runId: accepted.runId, replayed: true });
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        ...acceptedBeforeRotation,
+        requestFingerprint: hash('changed-after-rotation'),
+      }),
+    ).rejects.toBeInstanceOf(WebhookDeliveryReplayMismatchError);
     await expect(
       webhook.acceptVerifiedDelivery({
         verification: oldVerification,
@@ -1498,14 +1900,14 @@ describe('generic webhook database seam', () => {
               (select count(*)::integer from app.webhook_trigger_secret_versions
                 where trigger_id=$1) secret_count
          from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
-      [triggerId],
+      [resources.webhookId],
     );
     await expect(
       webhook.rotateSecret({
         workspaceId,
-        workflowId,
+        workflowId: scenarioWorkflowId,
         actorId,
-        triggerId,
+        triggerId: resources.webhookId,
         endpointKeyHash: hash('wrong-endpoint'),
         secret: nextSecret,
         idempotencyKey: 'rotate-secret-wrong-key',
@@ -1517,14 +1919,14 @@ describe('generic webhook database seam', () => {
               (select count(*)::integer from app.webhook_trigger_secret_versions
                 where trigger_id=$1) secret_count
          from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
-      [triggerId],
+      [resources.webhookId],
     );
     expect(afterWrongKey.rows).toEqual(beforeWrongKey.rows);
     await webhook.rotateSecret({
       workspaceId,
-      workflowId,
+      workflowId: scenarioWorkflowId,
       actorId,
-      triggerId,
+      triggerId: resources.webhookId,
       endpointKeyHash: nextEndpointHash,
       secret: nextSecret,
       idempotencyKey: 'rotate-secret',
@@ -1535,16 +1937,58 @@ describe('generic webhook database seam', () => {
     expect(after?.previousSecret?.id).toBe(
       beforeSecretRotation.currentSecret.id,
     );
-    expect(
-      (after?.previousSecret?.validUntil.getTime() ?? 0) - Date.now(),
-    ).toBeGreaterThan(290_000);
+    const overlapMillis =
+      (after?.previousSecret?.validUntil.getTime() ?? 0) -
+      (after?.databaseTime.getTime() ?? 0);
+    expect(overlapMillis).toBeGreaterThanOrEqual(299_000);
+    expect(overlapMillis).toBeLessThanOrEqual(301_000);
+    if (after?.previousSecret === undefined)
+      throw new Error('Expected a previous secret overlap');
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        verification: after,
+        verifiedSecretVersionId: after.previousSecret.id,
+        requestFingerprint: hash('previous-secret-before-expiry'),
+        payload: { event: 'previous-secret-before-expiry' },
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ replayed: false });
+    const expiredSecret = await apiQuery<{
+      current_secret_version_id: string;
+      expired: boolean;
+      previous_secret_version_id: string;
+    }>(
+      `update app.webhook_trigger_endpoints
+          set previous_secret_valid_until=clock_timestamp()-interval '1 second'
+        where workspace_id=$1 and id=$2
+        returning current_secret_version_id,previous_secret_version_id,
+          previous_secret_valid_until<=clock_timestamp() expired`,
+      [workspaceId, after.endpointId],
+    );
+    expect(expiredSecret.rows).toEqual([
+      {
+        current_secret_version_id: nextSecret.id,
+        previous_secret_version_id: after.previousSecret.id,
+        expired: true,
+      },
+    ]);
+    const expiredReference =
+      await webhook.resolveVerification(nextEndpointHash);
+    if (expiredReference === null)
+      throw new Error('Expected endpoint after previous-secret expiry');
+    await expect(
+      webhook.acceptVerifiedDelivery({
+        verification: expiredReference,
+        verifiedSecretVersionId: after.previousSecret.id,
+        requestFingerprint: hash('previous-secret-after-expiry'),
+        payload: { event: 'previous-secret-after-expiry' },
+        checkpointFactory,
+      }),
+    ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
   });
 
   it('rolls back replay and delivery admission when workspace eligibility changes', async () => {
-    const verification = await webhook.resolveVerification(
-      hash('endpoint-two'),
-    );
-    if (verification === null) throw new Error('Expected endpoint');
+    const { verification } = await createWebhookScenario();
     await ownerQuery(
       "update app.workspaces set status='suspended' where id=$1",
       [workspaceId],

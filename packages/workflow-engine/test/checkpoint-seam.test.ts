@@ -620,6 +620,81 @@ describe('checkpoint seam', () => {
     expect(() => parseCheckpoint(waiting)).toThrow(
       expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
+
+    for (const resumeAt of [
+      '2026-02-29T00:00:00Z',
+      '2026-02-30T00:00:00Z',
+      '2026-09-12T24:00:00Z',
+      '2026-13-01T00:00:00Z',
+    ])
+      expect(() =>
+        parseCheckpoint({
+          ...waiting,
+          invocations: [{ ...waiting.invocations[0], resumeAt }],
+        }),
+      ).toThrow(
+        expect.objectContaining({
+          code: 'checkpoint_invalid',
+          message: 'resumeAt must be a canonical UTC timestamp',
+        }),
+      );
+    for (const resumeAt of [
+      '2024-02-29T00:00:00Z',
+      '2026-09-12T10:00:00Z',
+      '2026-09-12T10:00:00.000Z',
+    ])
+      expect(
+        parseCheckpoint({
+          ...waiting,
+          invocations: [{ ...waiting.invocations[0], resumeAt }],
+        }).invocations[0],
+      ).toMatchObject({ resumeAt });
+  });
+
+  it('distinguishes traversal exits from cyclic checkpoint values', () => {
+    const selfCycle: Record<string, unknown> = {};
+    selfCycle.self = selfCycle;
+    const first: Record<string, unknown> = {};
+    const second: Record<string, unknown> = { first };
+    first.second = second;
+    const cyclicArray: unknown[] = [];
+    cyclicArray.push(cyclicArray);
+
+    for (const cyclic of [selfCycle, first, cyclicArray])
+      expect(() =>
+        parseCheckpoint({ ...checkpoint(), unexpected: cyclic }),
+      ).toThrow(
+        expect.objectContaining({
+          code: 'checkpoint_invalid',
+          message: 'checkpoint must not contain cycles',
+        }),
+      );
+
+    const sharedOutput = {
+      kind: 'inline',
+      attemptId: '00000000-0000-4000-8000-000000000101',
+    } as const;
+    expect(
+      parseCheckpoint({
+        ...checkpoint(),
+        invocations: [
+          {
+            invocationKey: 'shared-a',
+            nodeId: 'shared-a',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: sharedOutput,
+          },
+          {
+            invocationKey: 'shared-b',
+            nodeId: 'shared-b',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: sharedOutput,
+          },
+        ],
+      }).invocations,
+    ).toHaveLength(2);
   });
 
   it('accounts for escaped and surrogate-pair bytes in bounded identifiers', () => {

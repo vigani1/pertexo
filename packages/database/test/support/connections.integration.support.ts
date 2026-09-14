@@ -4,13 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Pool } from 'pg';
-import type { DatabaseError } from 'pg';
+import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
 import {
   CONNECTION_AUTH_TYPE,
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
+  ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
@@ -29,6 +30,7 @@ import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../src/execution/outbox.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
+import { generatePersistedId } from '../../src/platform/persisted-id.js';
 
 export const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -64,12 +66,11 @@ export const historicalOutboxByIntent = new Map(
   ].map((intentId) => [intentId, randomUUID()]),
 );
 
-export let api: ConnectionDatabase;
-export let worker: ConnectionDatabase;
-export let destinations: FailureNotificationDestinationDatabase;
-export let closeResources = (): Promise<void> => Promise.resolve();
-export let upgradeApplied: readonly string[] = [];
-export let priorApplied: readonly string[] = [];
+export type CurrentConnectionsFixture = Readonly<{
+  api: ConnectionDatabase;
+  worker: ConnectionDatabase;
+  destinations: FailureNotificationDestinationDatabase;
+}>;
 
 export function databaseUrl(base: string, name = databaseName): string {
   const url = new URL(base);
@@ -91,7 +92,6 @@ export function pgCode(expected: string): (error: unknown) => boolean {
 export async function createDatabase(name: string): Promise<void> {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${name}" with (force)`);
     await admin.query(`create database "${name}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${name}" from public`);
     await admin.query(
@@ -149,8 +149,9 @@ export async function migrateBefore(
 
 export async function seedWorkspaces(): Promise<void> {
   const pool = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     for (const [workspaceId, ownerId, suffix] of [
@@ -180,10 +181,10 @@ export async function seedWorkspaces(): Promise<void> {
     }
     await client.query('commit');
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
@@ -192,8 +193,9 @@ export async function seedPriorNotificationRows(): Promise<void> {
   const pool = new Pool({
     connectionString: databaseUrl(migrationBaseUrl, priorDatabaseName),
   });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query(
@@ -292,10 +294,10 @@ export async function seedPriorNotificationRows(): Promise<void> {
     );
     await client.query('commit');
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
@@ -312,9 +314,9 @@ export const sealed = (marker: number) => ({
 export function createInput(
   overrides: Partial<CreateConnectionInput> = {},
 ): CreateConnectionInput {
-  const connectionId = overrides.connectionId ?? randomUUID();
+  const connectionId = overrides.connectionId ?? generatePersistedId();
   const secretVersionId = overrides.secretVersionId ?? randomUUID();
-  const name = overrides.name ?? `HTTP ${connectionId.slice(0, 8)}`;
+  const name = overrides.name ?? `HTTP ${connectionId}`;
   const requestHash = createHash('sha256')
     .update(JSON.stringify({ name, connectionId }))
     .digest('hex');
@@ -335,53 +337,77 @@ export function createInput(
   };
 }
 
-beforeAll(async () => {
-  await Promise.all([
-    createDatabase(databaseName),
-    createDatabase(upgradeDatabaseName),
-    createDatabase(priorDatabaseName),
-  ]);
-  await migrateDatabase(migrationConfig());
-  await migrateBefore(upgradeDatabaseName, '0021_');
-  upgradeApplied = await migrateDatabase(migrationConfig(upgradeDatabaseName));
-  await migrateBefore(priorDatabaseName, '0037_');
-  await seedPriorNotificationRows();
-  priorApplied = await migrateDatabase(migrationConfig(priorDatabaseName));
-  await seedWorkspaces();
-  api = createConnectionDatabase(
-    parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl), max: 4 }),
-  );
-  worker = createConnectionDatabase(
-    parseDatabaseConfig({
-      connectionString: databaseUrl(workerBaseUrl),
-      max: 4,
-    }),
-  );
-  destinations = createFailureNotificationDestinationDatabase(
-    parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl), max: 4 }),
-  );
-  closeResources = async (): Promise<void> => {
-    await Promise.allSettled([
-      api.close(),
-      worker.close(),
-      destinations.close(),
-    ]);
-  };
-});
+export function registerCurrentConnectionsFixture(): CurrentConnectionsFixture {
+  let api: ConnectionDatabase | undefined;
+  let worker: ConnectionDatabase | undefined;
+  let destinations: FailureNotificationDestinationDatabase | undefined;
+  const resources: { close(): Promise<void> }[] = [];
+  beforeAll(async () => {
+    await createDatabase(databaseName);
+    await migrateDatabase(migrationConfig());
+    await seedWorkspaces();
+    api = createConnectionDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(apiBaseUrl),
+        max: 4,
+      }),
+    );
+    resources.push(api);
+    worker = createConnectionDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 4,
+      }),
+    );
+    resources.push(worker);
+    destinations = createFailureNotificationDestinationDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(apiBaseUrl),
+        max: 4,
+      }),
+    );
+    resources.push(destinations);
+  });
 
-afterAll(async () => {
-  await closeResources();
-  await Promise.all([
-    dropDatabase(databaseName),
-    dropDatabase(upgradeDatabaseName),
-    dropDatabase(priorDatabaseName),
-  ]);
-});
+  afterAll(async () => {
+    const settled = await Promise.allSettled(
+      resources.map((resource) => resource.close()),
+    );
+    const failures = settled.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason as unknown] : [],
+    );
+    try {
+      await dropDatabase(databaseName);
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Connections fixture cleanup failed');
+  });
+
+  const unavailable = (resource: string): never => {
+    throw new Error(
+      `${resource} fixture is not available outside its lifetime`,
+    );
+  };
+  return Object.freeze({
+    get api() {
+      return api ?? unavailable('API connection');
+    },
+    get worker() {
+      return worker ?? unavailable('Worker connection');
+    },
+    get destinations() {
+      return destinations ?? unavailable('Notification destination');
+    },
+  });
+}
 
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
+  ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,

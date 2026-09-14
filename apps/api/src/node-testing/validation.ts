@@ -35,12 +35,22 @@ export type PreparedNodePreview = Readonly<{
 }>;
 
 const MAX_ISSUES = 100;
+const MAX_ISSUE_PATH_LENGTH = 1_024;
+const MAX_ISSUE_CODE_LENGTH = 128;
+const MAX_ISSUE_MESSAGE_LENGTH = 500;
 
 function issue(
   issues: NodeValidationIssue[],
   value: NodeValidationIssue,
 ): void {
-  if (issues.length < MAX_ISSUES) issues.push(Object.freeze(value));
+  if (issues.length < MAX_ISSUES)
+    issues.push(
+      Object.freeze({
+        path: value.path.slice(0, MAX_ISSUE_PATH_LENGTH),
+        code: value.code.slice(0, MAX_ISSUE_CODE_LENGTH),
+        message: value.message.slice(0, MAX_ISSUE_MESSAGE_LENGTH),
+      }),
+    );
 }
 
 function zodPath(prefix: string, path: readonly PropertyKey[]): string {
@@ -123,6 +133,13 @@ export async function prepareNodeValidation(
     });
     return Object.freeze({ issues: Object.freeze(issues) });
   }
+
+  if (node.configVersion !== definition.manifest.configVersion)
+    issue(issues, {
+      path: '$.configVersion',
+      code: 'node.config_version_incompatible',
+      message: 'Selected node configuration version is incompatible',
+    });
 
   const parsedConfig = definition.configSchema.safeParse(node.config);
   if (!parsedConfig.success)

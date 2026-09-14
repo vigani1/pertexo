@@ -1,4 +1,4 @@
-import type { Pool, PoolClient, QueryResult } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type {
@@ -36,8 +36,15 @@ export const retentionOptionsSchema = z
   .object({
     leaseOwner: retentionBoundedText(128),
     leaseSeconds: z.number().int().min(1).max(300).default(300),
+    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
     maxPagesPerBatch: z.number().int().min(1).max(10_000).default(1_000),
     pageSize: z.number().int().min(1).max(1_000).default(100),
+    statementTimeoutMs: z
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(30_000),
   })
   .strict();
 
@@ -46,13 +53,13 @@ export type ParsedRetentionDatabaseOptions = z.output<
 >;
 
 export function retentionQuery<Row extends Record<string, unknown>>(
-  pool: Pool | PoolClient,
+  client: PoolClient,
   text: string,
   values: readonly unknown[],
   signal?: AbortSignal,
 ): Promise<QueryResult<Row>> {
   signal?.throwIfAborted();
-  return pool.query<Row>({
+  return client.query<Row>({
     text,
     values: [...values],
     ...(signal === undefined ? {} : { signal }),

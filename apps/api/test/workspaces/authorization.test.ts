@@ -246,6 +246,98 @@ describe('workspace authorization policy', () => {
     expect(lookup).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects a suspended proof when reuse requests the default active-only policy', async () => {
+    const lookup = vi.fn(() =>
+      Promise.resolve(access({ workspaceStatus: 'suspended' })),
+    );
+    const authorized = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      allowedWorkspaceStatuses: ['suspended'],
+      access: lookup,
+    });
+
+    await expect(
+      authorizeWorkspaceOperation({
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        access: lookup,
+        authorizedWorkspace: authorized,
+      }),
+    ).rejects.toMatchObject({ code: 'auth.forbidden' });
+    expect(lookup).toHaveBeenCalledOnce();
+  });
+
+  it('reuses matching and broader lifecycle policies without another lookup', async () => {
+    const suspendedLookup = vi.fn(() =>
+      Promise.resolve(access({ workspaceStatus: 'suspended' })),
+    );
+    const suspended = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      allowedWorkspaceStatuses: ['suspended'],
+      access: suspendedLookup,
+    });
+    await expect(
+      authorizeWorkspaceOperation({
+        actor: suspended.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        allowedWorkspaceStatuses: ['suspended'],
+        access: suspendedLookup,
+        authorizedWorkspace: suspended,
+      }),
+    ).resolves.toBe(suspended);
+    expect(suspendedLookup).toHaveBeenCalledOnce();
+
+    const activeLookup = vi.fn(() => Promise.resolve(access()));
+    const active = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      access: activeLookup,
+    });
+    await expect(
+      authorizeWorkspaceOperation({
+        actor: active.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        allowedWorkspaceStatuses: ['active', 'suspended'],
+        access: activeLookup,
+        authorizedWorkspace: active,
+      }),
+    ).resolves.toBe(active);
+    expect(activeLookup).toHaveBeenCalledOnce();
+  });
+
+  it('preserves an existing abort reason before reusing a valid proof', async () => {
+    const lookup = vi.fn(() => Promise.resolve(access()));
+    const authorized = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      access: lookup,
+    });
+    const reason = new Error('request disconnected');
+    const controller = new AbortController();
+    controller.abort(reason);
+
+    await expect(
+      authorizeWorkspaceOperation({
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        access: lookup,
+        authorizedWorkspace: authorized,
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason);
+    expect(lookup).toHaveBeenCalledOnce();
+  });
+
   it('re-freezes a structurally valid actor supplied by an untrusted adapter', async () => {
     const mutableActor = { ...actor() };
     const authorized = await authorizeWorkspace({

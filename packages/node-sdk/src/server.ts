@@ -101,6 +101,11 @@ interface PinnedNodeExecutor {
   readonly registration: NodeExecutorRegistration;
 }
 
+interface PinnedRegistrations {
+  readonly definitionMap: ReadonlyMap<string, PinnedNodeDefinition>;
+  readonly executorMap: ReadonlyMap<string, PinnedNodeExecutor>;
+}
+
 export interface NodeDefinitionCatalog {
   readonly schemaVersion: 1;
   readonly definitions: readonly DefinitionIdentity[];
@@ -195,6 +200,15 @@ function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw new NodeExecutionAbortedError();
 }
 
+function safeRegistryReleaseFailureCause(error: unknown): string {
+  try {
+    if (!(error instanceof Error)) return 'unknown';
+    return typeof error.message === 'string' ? error.message : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 function validateDefinitionRegistration(
   registration: NodeDefinitionRegistration,
   release: RegistryRelease,
@@ -230,15 +244,10 @@ function validateDefinitionRegistration(
   };
 }
 
-export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
-  let release: RegistryRelease;
-  try {
-    release = parseRegistryRelease(options.release);
-  } catch (error) {
-    throw new NodeRegistryCompatibilityError('invalid registry release', {
-      cause: error instanceof Error ? error.message : 'unknown',
-    });
-  }
+function pinRegistrations(
+  release: RegistryRelease,
+  options: Pick<NodeRegistryOptions, 'definitions' | 'executors'>,
+): PinnedRegistrations {
   validateUnique(
     'definition',
     options.definitions.map(({ manifest }) => manifest.definition),
@@ -256,6 +265,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     release.executors.map(({ executor }) => executor),
   );
   validateUnique('release policy', release.policies);
+
   const pinnedDefinitions = options.definitions.map((definition) =>
     validateDefinitionRegistration(definition, release),
   );
@@ -321,6 +331,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       }),
     });
   }
+
   for (const manifest of release.definitions) {
     const definition = definitionMap.get(identityToken(manifest.definition));
     if (definition === undefined)
@@ -372,6 +383,20 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       );
     void definition;
   }
+
+  return { definitionMap, executorMap };
+}
+
+export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
+  let release: RegistryRelease;
+  try {
+    release = parseRegistryRelease(options.release);
+  } catch (error) {
+    throw new NodeRegistryCompatibilityError('invalid registry release', {
+      cause: safeRegistryReleaseFailureCause(error),
+    });
+  }
+  const { definitionMap, executorMap } = pinRegistrations(release, options);
   const catalog = (
     include: (manifest: NodeManifest, executor: ExecutorManifest) => boolean,
   ): NodeDefinitionCatalog => ({

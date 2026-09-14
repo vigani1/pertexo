@@ -1,13 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { count, sql } from 'drizzle-orm';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, expect } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { createOutboxDispatcherDatabase } from '../src/execution/dispatcher.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { generatePersistedId } from '../src/platform/persisted-id.js';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -15,19 +16,42 @@ import {
   runEvents,
   workflowRuns,
 } from '../src/schema.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-export const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-export const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
-const dispatcherUrl =
+const dispatcherBaseUrl =
   process.env.DATABASE_DISPATCHER_URL ??
   'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+const databaseName = `pertexo_test_accept_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_operator',
+    'pertexo_lifecycle_command',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+export const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+export const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
+const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
+const dispatcherUrl = disposableDatabase.databaseUrl(dispatcherBaseUrl);
 
 export const workspaceA = randomUUID();
 export const workspaceB = randomUUID();
@@ -44,15 +68,12 @@ export const otherRequestHash = createHash('sha256')
   .digest('hex');
 export const workspaceCreatorId = randomUUID();
 
-export const apiDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-);
-export const workerDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
-);
-export const dispatcherDatabase = createOutboxDispatcherDatabase(
-  parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
-);
+export let apiDatabase: ReturnType<typeof createWorkspaceDatabase>;
+export let workerDatabase: ReturnType<typeof createWorkspaceDatabase>;
+export let dispatcherDatabase: ReturnType<
+  typeof createOutboxDispatcherDatabase
+>;
+let resourcesCreated = false;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -70,9 +91,16 @@ export function hasPostgresCode(
 ): (error: unknown) => boolean {
   return (error: unknown): boolean => {
     let current = error;
-    while (current instanceof Error) {
-      if ('code' in current && current.code === expectedCode) return true;
-      current = current.cause;
+    const visited = new Set<object>();
+    for (let depth = 0; depth < 16; depth += 1) {
+      if (!(current instanceof Error) || visited.has(current)) return false;
+      visited.add(current);
+      try {
+        if (Reflect.get(current, 'code') === expectedCode) return true;
+        current = Reflect.get(current, 'cause');
+      } catch {
+        return false;
+      }
     }
     return false;
   };
@@ -164,8 +192,9 @@ export async function waitForDatabaseLock(
 
 async function resetExecutionFixture(): Promise<void> {
   const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query(`
@@ -229,10 +258,10 @@ async function resetExecutionFixture(): Promise<void> {
     );
     await client.query('commit');
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
@@ -251,11 +280,11 @@ export async function createNotificationFixture(
 > {
   const connectionKind = input.connectionKind ?? 'email';
   const destinationKind = input.destinationKind ?? 'email';
-  const connectionId = randomUUID();
+  const connectionId = generatePersistedId();
   const destinationId = randomUUID();
   const secretVersionId = randomUUID();
   const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   const protectedTables = [
     'workflows',
     'connections',
@@ -264,6 +293,7 @@ export async function createNotificationFixture(
     'failure_notification_destination_versions',
   ] as const;
   try {
+    client = await pool.connect();
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query("select set_config('app.workspace_id',$1,true)", [
@@ -331,10 +361,10 @@ export async function createNotificationFixture(
     await client.query('commit');
     return { connectionId, destinationId, secretVersionId };
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
@@ -375,8 +405,9 @@ export async function setFixtureStatus(
     connectionString: table === 'workspaces' ? migrationUrl : apiUrl,
     max: 1,
   });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('begin');
     if (table === 'workspaces')
       await client.query('set local role pertexo_owner');
@@ -390,10 +421,10 @@ export async function setFixtureStatus(
     if (updated.rowCount !== 1) throw new Error('Fixture status update failed');
     await client.query('commit');
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
@@ -402,8 +433,9 @@ export async function setNotificationPolicy(
   destinationId: string,
 ): Promise<void> {
   const pool = new Pool({ connectionString: apiUrl, max: 1 });
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('begin');
     await client.query("select set_config('app.workspace_id',$1,true)", [
       workspaceA,
@@ -416,24 +448,52 @@ export async function setNotificationPolicy(
     );
     await client.query('commit');
   } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
+    await client?.query('rollback').catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
 
 export function installExecutionAcceptanceFixture(): void {
   beforeAll(async () => {
-    await migrateDatabase(migrationConfig);
+    await disposableDatabase.create();
+    try {
+      await migrateDatabase(migrationConfig);
+      apiDatabase = createWorkspaceDatabase(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+      );
+      workerDatabase = createWorkspaceDatabase(
+        parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+      );
+      dispatcherDatabase = createOutboxDispatcherDatabase(
+        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+      );
+      resourcesCreated = true;
+    } catch (error: unknown) {
+      await disposableDatabase.drop().catch(() => undefined);
+      throw error;
+    }
   });
   beforeEach(resetExecutionFixture);
   afterAll(async () => {
-    await Promise.all([
-      apiDatabase.close(),
-      dispatcherDatabase.close(),
-      workerDatabase.close(),
-    ]);
+    const outcomes = resourcesCreated
+      ? await Promise.allSettled([
+          apiDatabase.close(),
+          dispatcherDatabase.close(),
+          workerDatabase.close(),
+        ])
+      : [];
+    const failures = outcomes.flatMap((outcome) =>
+      outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+    );
+    try {
+      await disposableDatabase.drop();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Acceptance fixture cleanup failed');
   });
 }

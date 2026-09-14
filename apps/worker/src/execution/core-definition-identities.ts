@@ -43,13 +43,14 @@ export function createWorkerInitialCheckpoint(
   workflowVersionId: string,
 ) {
   const engineVersion = 'phase3-engine-v1';
+  const checkpointFactory = executable.envelope.graph.nodes.some(
+    ({ definition }) => requiresStructuredCheckpoint(definition),
+  )
+    ? createCheckpointV2
+    : createCheckpoint;
   return Object.freeze({
     engineVersion,
-    checkpoint: (executable.envelope.graph.nodes.some(({ definition }) =>
-      requiresStructuredCheckpoint(definition),
-    )
-      ? createCheckpointV2
-      : createCheckpoint)({
+    checkpoint: checkpointFactory({
       engineVersion,
       workflowVersionId,
       iterationBudget: 1_000,

@@ -16,10 +16,14 @@ interface ConnectionState {
   suppressBackend: boolean;
 }
 
+const MAX_PROTOCOL_BUFFER_BYTES = 1024 * 1024;
+const DROP_MILESTONE_TIMEOUT_MS = 5_000;
+
 function messageLength(buffer: Buffer, offset: number): number | undefined {
   if (buffer.length < offset + 5) return undefined;
   const length = buffer.readUInt32BE(offset + 1);
-  if (length < 4) throw new Error('Invalid PostgreSQL protocol frame');
+  if (length < 4 || length + 1 > MAX_PROTOCOL_BUFFER_BYTES)
+    throw new Error('Invalid PostgreSQL protocol frame');
   return length + 1;
 }
 
@@ -32,6 +36,8 @@ export async function createPostgresCommitAckProxy(
   let droppedConnections = 0;
   let dropArmed = false;
   let resolveDropped: (() => void) | undefined;
+  let rejectDropped: ((error: Error) => void) | undefined;
+  let dropTimer: NodeJS.Timeout | undefined;
   let closePromise: Promise<void> | undefined;
 
   const server: Server = createServer((downstream) => {
@@ -52,60 +58,92 @@ export async function createPostgresCommitAckProxy(
     const forget = (socket: Socket): void => {
       sockets.delete(socket);
     };
+    const destroyPeer = (peer: Socket): void => {
+      if (!peer.destroyed) peer.destroy();
+    };
     downstream.once('close', () => {
       forget(downstream);
+      destroyPeer(target);
     });
     target.once('close', () => {
       forget(target);
+      destroyPeer(downstream);
     });
     downstream.once('error', () => target.destroy());
     target.once('error', () => downstream.destroy());
 
     downstream.on('data', (chunk: Buffer) => {
-      target.write(chunk);
-      state.frontend = Buffer.concat([state.frontend, chunk]);
-      if (state.startupRemaining === undefined) {
-        if (state.frontend.length < 4) return;
-        state.startupRemaining = state.frontend.readUInt32BE(0);
-      }
-      if (state.frontend.length < state.startupRemaining) return;
-      state.frontend = state.frontend.subarray(state.startupRemaining);
-      state.startupRemaining = 0;
-      while (state.frontend.length > 0) {
-        const length = messageLength(state.frontend, 0);
-        if (length === undefined || state.frontend.length < length) return;
-        const frame = state.frontend.subarray(0, length);
-        state.frontend = state.frontend.subarray(length);
-        if (
-          dropArmed &&
-          frame[0] === 'Q'.charCodeAt(0) &&
-          frame.subarray(5, -1).toString('utf8').trim().toLowerCase() ===
-            'commit'
-        ) {
-          dropArmed = false;
-          state.suppressBackend = true;
+      try {
+        target.write(chunk);
+        state.frontend = Buffer.concat([state.frontend, chunk]);
+        if (state.frontend.length > MAX_PROTOCOL_BUFFER_BYTES)
+          throw new Error('PostgreSQL frontend buffer limit exceeded');
+        if (state.startupRemaining === undefined) {
+          if (state.frontend.length < 4) return;
+          state.startupRemaining = state.frontend.readUInt32BE(0);
+          if (
+            state.startupRemaining < 8 ||
+            state.startupRemaining > MAX_PROTOCOL_BUFFER_BYTES
+          )
+            throw new Error('Invalid PostgreSQL startup frame');
         }
+        if (state.startupRemaining !== 0) {
+          if (state.frontend.length < state.startupRemaining) return;
+          const startup = state.frontend.subarray(0, state.startupRemaining);
+          if (startup.readUInt32BE(4) !== 196_608)
+            throw new Error('Unsupported PostgreSQL startup negotiation');
+          state.frontend = state.frontend.subarray(state.startupRemaining);
+          state.startupRemaining = 0;
+        }
+        while (state.frontend.length > 0) {
+          const length = messageLength(state.frontend, 0);
+          if (length === undefined || state.frontend.length < length) return;
+          const frame = state.frontend.subarray(0, length);
+          state.frontend = state.frontend.subarray(length);
+          if (
+            dropArmed &&
+            frame[0] === 'Q'.charCodeAt(0) &&
+            frame.subarray(5, -1).toString('utf8').trim().toLowerCase() ===
+              'commit'
+          ) {
+            dropArmed = false;
+            state.suppressBackend = true;
+          }
+        }
+      } catch {
+        downstream.destroy();
+        target.destroy();
       }
     });
 
     target.on('data', (chunk: Buffer) => {
-      if (!state.suppressBackend) {
-        downstream.write(chunk);
-        return;
-      }
-      state.backend = Buffer.concat([state.backend, chunk]);
-      while (state.backend.length > 0) {
-        const length = messageLength(state.backend, 0);
-        if (length === undefined || state.backend.length < length) return;
-        const type = state.backend[0];
-        state.backend = state.backend.subarray(length);
-        if (type !== 'Z'.charCodeAt(0)) continue;
-        droppedConnections += 1;
-        resolveDropped?.();
-        resolveDropped = undefined;
+      try {
+        if (!state.suppressBackend) {
+          downstream.write(chunk);
+          return;
+        }
+        state.backend = Buffer.concat([state.backend, chunk]);
+        if (state.backend.length > MAX_PROTOCOL_BUFFER_BYTES)
+          throw new Error('PostgreSQL backend buffer limit exceeded');
+        while (state.backend.length > 0) {
+          const length = messageLength(state.backend, 0);
+          if (length === undefined || state.backend.length < length) return;
+          const type = state.backend[0];
+          state.backend = state.backend.subarray(length);
+          if (type !== 'Z'.charCodeAt(0)) continue;
+          droppedConnections += 1;
+          if (dropTimer !== undefined) clearTimeout(dropTimer);
+          dropTimer = undefined;
+          resolveDropped?.();
+          resolveDropped = undefined;
+          rejectDropped = undefined;
+          downstream.destroy();
+          target.destroy();
+          return;
+        }
+      } catch {
         downstream.destroy();
         target.destroy();
-        return;
       }
     });
   });
@@ -138,25 +176,46 @@ export async function createPostgresCommitAckProxy(
       if (dropArmed || resolveDropped !== undefined)
         throw new Error('PostgreSQL acknowledgement drop is already armed');
       dropArmed = true;
-      return new Promise<void>((resolve) => {
+      return new Promise<void>((resolve, reject) => {
         resolveDropped = resolve;
+        rejectDropped = reject;
+        dropTimer = setTimeout(() => {
+          dropArmed = false;
+          resolveDropped = undefined;
+          rejectDropped = undefined;
+          dropTimer = undefined;
+          reject(
+            new Error(
+              'Timed out waiting for PostgreSQL COMMIT acknowledgement',
+            ),
+          );
+        }, DROP_MILESTONE_TIMEOUT_MS);
       });
     },
     close: async () => {
       if (closePromise !== undefined) return closePromise;
       closePromise = (async () => {
+        if (dropTimer !== undefined) clearTimeout(dropTimer);
+        dropTimer = undefined;
+        dropArmed = false;
+        rejectDropped?.(
+          new Error('PostgreSQL acknowledgement proxy closed before COMMIT'),
+        );
+        resolveDropped = undefined;
+        rejectDropped = undefined;
+        const serverClosure = new Promise<void>((resolve, reject) => {
+          server.close((error) => {
+            if (error === undefined) resolve();
+            else reject(error);
+          });
+        });
         const socketClosures = [...sockets].map(
           (socket) =>
             new Promise<void>((resolve) => socket.once('close', resolve)),
         );
         for (const socket of sockets) socket.destroy();
         await Promise.all(socketClosures);
-        await new Promise<void>((resolve, reject) => {
-          server.close((error) => {
-            if (error === undefined) resolve();
-            else reject(error);
-          });
-        });
+        await serverClosure;
       })();
       return closePromise;
     },

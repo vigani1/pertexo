@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NODE_JSON_LIMITS_V1 } from '@pertexo/node-sdk';
 
 import {
   CORE_FOR_EACH_CONFIG_SCHEMA,
@@ -6,6 +7,7 @@ import {
   CORE_FOR_EACH_EXECUTOR,
   CORE_FOR_EACH_INPUT_SCHEMA,
   CORE_FOR_EACH_MANIFEST,
+  CORE_FOR_EACH_OUTPUT_SCHEMA,
   CORE_MERGE_CONFIG_SCHEMA,
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
@@ -146,6 +148,96 @@ describe('core orchestration node contracts', () => {
       retryClass: 'safe',
       resourceClass: 'cpu',
     });
+  });
+
+  it('bounds For Each JSON before recursive schema traversal', () => {
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    let deep: unknown = null;
+    for (let index = 0; index < 500; index += 1) deep = { child: deep };
+    for (const candidate of [{ items: [cyclic] }, { items: [deep] }]) {
+      expect(() =>
+        CORE_FOR_EACH_INPUT_SCHEMA.safeParse(candidate),
+      ).not.toThrow();
+      expect(CORE_FOR_EACH_INPUT_SCHEMA.safeParse(candidate).success).toBe(
+        false,
+      );
+      expect(() =>
+        CORE_FOR_EACH_OUTPUT_SCHEMA.safeParse({
+          ...candidate,
+          iterationCount: 1,
+        }),
+      ).not.toThrow();
+      expect(
+        CORE_FOR_EACH_OUTPUT_SCHEMA.safeParse({
+          ...candidate,
+          iterationCount: 1,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('accepts exact For Each JSON limits and rejects one unit over', () => {
+    const nested = (levels: number): unknown => {
+      let value: unknown = null;
+      for (let index = 0; index < levels; index += 1) value = [value];
+      return value;
+    };
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({ items: [nested(62)] }).success,
+    ).toBe(true);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({ items: [nested(63)] }).success,
+    ).toBe(false);
+
+    const members = (count: number) =>
+      Object.fromEntries(
+        Array.from({ length: count }, (_, index) => [String(index), null]),
+      );
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({ items: [members(9_998)] }).success,
+    ).toBe(true);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({ items: [members(9_999)] }).success,
+    ).toBe(false);
+
+    const baseBytes = new TextEncoder().encode(
+      JSON.stringify({ items: [''] }),
+    ).byteLength;
+    const exactItem = 'x'.repeat(NODE_JSON_LIMITS_V1.bytes - baseBytes);
+    const exact = { items: [exactItem] };
+    expect(CORE_FOR_EACH_INPUT_SCHEMA.safeParse(exact).success).toBe(true);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
+        items: [`${exactItem}x`],
+      }).success,
+    ).toBe(false);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
+        items: Array.from({ length: 1_000 }, () => null),
+      }).success,
+    ).toBe(true);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
+        items: Array.from({ length: 1_001 }, () => null),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('returns an owned For Each snapshot and retains output cardinality', () => {
+    const input = { items: [{ value: 1 }] };
+    const parsed = CORE_FOR_EACH_INPUT_SCHEMA.parse(input);
+    const item = input.items[0];
+    if (item === undefined) throw new Error('missing test item');
+    item.value = 2;
+    expect(parsed).toEqual({ items: [{ value: 1 }] });
+    expect(input).toEqual({ items: [{ value: 2 }] });
+    expect(
+      CORE_FOR_EACH_OUTPUT_SCHEMA.safeParse({
+        items: [null],
+        iterationCount: 0,
+      }).success,
+    ).toBe(false);
   });
 
   it('defines the bounded suspension contract for Wait', () => {

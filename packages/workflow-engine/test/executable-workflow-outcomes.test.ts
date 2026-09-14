@@ -5,10 +5,9 @@ import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  providerIdempotencyKey,
-  nodeRelease,
-  graph,
-} from './executable-workflow.fixtures.js';
+} from '../src/index.js';
+import { providerIdempotencyKey } from '../src/testing.js';
+import { graph, nodeRelease } from './executable-workflow.fixtures.js';
 
 describe('attempt outcome production operations', () => {
   it('rejects a non-array completed-output boundary before derivation', async () => {
@@ -131,9 +130,22 @@ describe('attempt outcome production operations', () => {
       checkpoint: materialized.checkpoint,
       maximumAdmissions: 1,
     });
-    expect(materialized.nodeRunAdmissions[0]?.providerIdempotencyKey).toBe(
-      admitted.attempts[0]?.providerIdempotencyKey,
+    expect(materialized.nodeRunAdmissions).toHaveLength(1);
+    expect(admitted.attempts).toHaveLength(1);
+    const materializedKey =
+      materialized.nodeRunAdmissions[0]?.providerIdempotencyKey;
+    const admittedKey = admitted.attempts[0]?.providerIdempotencyKey;
+    expect(materializedKey).toBeTruthy();
+    expect(admittedKey).toBeTruthy();
+    expect(materializedKey).toBe(
+      providerIdempotencyKey({
+        invocationKey: '00000000-0000-4000-8000-000000000001|manual|b:|i:',
+        namespace: 'pertexo.node-attempt',
+        operationIdentity: 'core.manual@1',
+        runId: 'capacity-run',
+      }),
     );
+    expect(admittedKey).toBe(materializedKey);
   });
 
   it('resolves typed attempt failure into one coordinator retry transition', async () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
+import type { Pool as PgPool, PoolClient, QueryResult } from 'pg';
 
 import {
   FailureNotificationContextV1Schema,
@@ -19,13 +20,17 @@ import {
   parseDatabaseConfig,
   randomUUID,
   rawStore,
-  store,
+  ownedDeliveryStore,
   testDelivery,
   versionA,
+  versionB,
+  waitForApplicationLocks,
   workerBaseUrl,
+  workflowB,
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
+import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 
 const predecessorPrimaryFailureSchema = z
   .object({
@@ -41,30 +46,318 @@ const predecessorFailureNotificationContextV1Schema =
     primaryFailure: predecessorPrimaryFailureSchema,
   });
 
+async function commitPinnedFailureNotificationRun(): Promise<{
+  invocationKey: string;
+  runId: string;
+}> {
+  const invocationKey = `failure/primary/${randomUUID()}`;
+  const runId = await insertRun({
+    status: 'running',
+    schedulerState: checkpoint({
+      runStatus: 'running',
+      invocations: [
+        {
+          invocationKey,
+          nodeId: 'primary',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    }),
+    failureNotificationPolicy: {
+      destinationId: notificationDestinationId,
+      destinationConfigVersion: 1,
+      sideEffectClass: 'idempotent_with_key',
+      connectionSecretVersionId: notificationSecretVersionId,
+    },
+  });
+  const nodeRunId = randomUUID();
+  const attemptId = randomUUID();
+  await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+    await client.query(
+      `insert into app.node_runs (
+           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+           status,side_effect_class,current_attempt_id,current_attempt_number
+         ) values ($1,$2,$3,'primary',$4,'{}','running','safe',$5,1)`,
+      [nodeRunId, workspaceA, runId, invocationKey, attemptId],
+    );
+    await client.query(
+      `insert into app.node_attempts (
+           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+           safe_error_code,executor_failure_kind,executor_error_kind,
+           executor_possibly_dispatched,retry_decision
+         ) values ($1,$2,$3,1,'failed','safe','provider.unavailable',
+           'failed','provider',false,'pending')`,
+      [attemptId, workspaceA, nodeRunId],
+    );
+  });
+  const plan = {
+    expectedRevision: 0,
+    expectedNextEventSequence: 2,
+    consumedThroughEventSequence: 1,
+    checkpoint: checkpoint({
+      revision: 1,
+      runStatus: 'failed',
+      nextEventSequence: 4,
+      invocations: [
+        {
+          invocationKey,
+          nodeId: 'primary',
+          status: 'failed',
+          attemptNumber: 1,
+        },
+      ],
+    }),
+    events: [
+      {
+        schemaVersion: 1 as const,
+        sequence: 2,
+        name: 'node.failed' as const,
+        occurredAt: '2026-08-24T10:01:00.000Z',
+        invocationKey,
+        nodeId: 'primary',
+        attemptNumber: 1,
+        reasonCode: 'provider.unavailable',
+      },
+      {
+        schemaVersion: 1 as const,
+        sequence: 3,
+        name: 'run.failed' as const,
+        occurredAt: '2026-08-24T10:01:00.000Z',
+      },
+    ],
+    nodeRunAdmissions: [],
+    attempts: [],
+  };
+  const delivery = await testDelivery(workspaceA, runId, 0);
+  const input = {
+    workspaceId: workspaceA,
+    runId,
+    workflowVersionId: versionA,
+    signal: new AbortController().signal,
+    delivery,
+    plan,
+  };
+  await expect(rawStore.commitAdvancePlan(input)).resolves.toMatchObject({
+    kind: 'committed',
+  });
+  await expect(rawStore.commitAdvancePlan(input)).resolves.toMatchObject({
+    kind: 'already_committed',
+  });
+  return { invocationKey, runId };
+}
+
+async function failureNotificationIdentity(runId: string): Promise<{
+  intent_id: string;
+  outbox_id: string;
+  payload_checksum: string;
+}> {
+  const identity = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query<{
+      intent_id: string;
+      outbox_id: string;
+      payload_checksum: string;
+    }>(
+      `select intent.id intent_id,outbox.id outbox_id,outbox.payload_checksum
+         from app.run_failure_notification_intents intent
+         join app.outbox_events outbox on outbox.aggregate_id=intent.id
+         where intent.workflow_run_id=$1 order by outbox.created_at limit 1`,
+      [runId],
+    ),
+  );
+  const first = identity.rows[0];
+  if (first === undefined) throw new Error('notification fixture missing');
+  return first;
+}
+
+type FailureNotificationQueryFailure = Readonly<{
+  matches(sql: string): boolean;
+  message: string;
+}>;
+
+function createTestFailureNotificationStore(
+  failure?: FailureNotificationQueryFailure,
+): {
+  applicationName: string;
+  store: ReturnType<typeof createFailureNotificationStore>;
+} {
+  const applicationName = `notification-delivery-${randomUUID()}`;
+  const deliveryConnectionUrl = new URL(databaseUrl(workerBaseUrl));
+  deliveryConnectionUrl.searchParams.set('application_name', applicationName);
+  const config = parseDatabaseConfig({
+    connectionString: deliveryConnectionUrl.toString(),
+    max: 4,
+    ownerRole: 'pertexo_owner',
+    workerRuntimeRole: 'pertexo_worker',
+  });
+  if (failure === undefined)
+    return {
+      applicationName,
+      store: createFailureNotificationStore(config),
+    };
+
+  const wrappedClients = new WeakSet<PoolClient>();
+  let armed = true;
+  const originalConnect = Reflect.get(Pool.prototype, 'connect') as (
+    this: PgPool,
+    ...arguments_: unknown[]
+  ) => unknown;
+  Pool.prototype.connect = function (
+    this: PgPool,
+    ...arguments_: unknown[]
+  ): unknown {
+    const options = (
+      this as unknown as { options: { connectionString?: string } }
+    ).options;
+    const ownName =
+      options.connectionString === undefined
+        ? undefined
+        : new URL(options.connectionString).searchParams.get(
+            'application_name',
+          );
+    const connected = Reflect.apply(originalConnect, this, arguments_);
+    if (ownName !== applicationName || arguments_.length > 0) return connected;
+    return (connected as Promise<PoolClient>).then((client) => {
+      if (wrappedClients.has(client)) return client;
+      wrappedClients.add(client);
+      const originalQuery = client.query.bind(client) as unknown as (
+        ...queryArguments: unknown[]
+      ) => unknown;
+      client.query = ((...queryArguments: unknown[]): unknown => {
+        const request = queryArguments[0];
+        const text =
+          typeof request === 'string'
+            ? request
+            : typeof request === 'object' &&
+                request !== null &&
+                'text' in request &&
+                typeof request.text === 'string'
+              ? request.text
+              : '';
+        const query = originalQuery(...queryArguments);
+        if (armed && failure.matches(text)) {
+          armed = false;
+          return Promise.resolve(query).then(() => {
+            throw new Error(failure.message);
+          });
+        }
+        return query;
+      }) as typeof client.query;
+      return client;
+    });
+  } as typeof Pool.prototype.connect;
+
+  const { runtime, repository } = (() => {
+    try {
+      const createdRuntime = createDatabaseRuntime(config, {
+        monitorLockWaits: false,
+      });
+      return {
+        runtime: createdRuntime,
+        repository: createFailureNotificationStore(config, createdRuntime),
+      };
+    } finally {
+      Pool.prototype.connect = originalConnect as typeof Pool.prototype.connect;
+    }
+  })();
+  const ownedRuntime = runtime;
+  const ownedRepository = repository;
+  const store = Object.freeze({
+    ...ownedRepository,
+    close: async (): Promise<void> => {
+      const settled = await Promise.allSettled([
+        ownedRepository.close(),
+        ownedRuntime.close(),
+      ]);
+      const failures = settled.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      );
+      if (failures.length > 0)
+        throw new AggregateError(
+          failures,
+          'Injected notification store cleanup failed',
+        );
+    },
+  });
+  return {
+    applicationName,
+    store,
+  };
+}
+
+async function restoreNotificationConfiguration(): Promise<void> {
+  await asOwner(workspaceA, async (client) => {
+    await client.query(
+      `update app.failure_notification_destinations
+       set status='enabled',current_config_version=1
+       where workspace_id=$1 and id=$2`,
+      [workspaceA, notificationDestinationId],
+    );
+    await client.query(
+      `update app.connections
+       set status='active',provider_key='email',auth_type='resend_api_key',
+           current_secret_version_id=$3
+       where workspace_id=$1 and id=$2`,
+      [workspaceA, notificationConnectionId, notificationSecretVersionId],
+    );
+  });
+}
+
+async function closeFailureNotificationFixture(
+  store: ReturnType<typeof createFailureNotificationStore>,
+): Promise<void> {
+  const cleanup = await Promise.allSettled([
+    restoreNotificationConfiguration(),
+    store.close(),
+  ]);
+  const cleanupFailures: Error[] = [];
+  for (const result of cleanup)
+    if (result.status === 'rejected')
+      cleanupFailures.push(
+        result.reason instanceof Error
+          ? result.reason
+          : new Error('Failure-notification cleanup rejected', {
+              cause: result.reason,
+            }),
+      );
+  if (cleanupFailures.length > 0)
+    throw new AggregateError(
+      cleanupFailures,
+      'Failure-notification fixture cleanup failed',
+    );
+}
+
 describe('Coordinator scheduling and notification invariants', () => {
   it('defers queued coordination durably until an active entitlement slot is free', async () => {
-    await asOwner(workspaceA, async (client) => {
+    await asOwner(workspaceB, async (client) => {
       await client.query(
         `insert into app.workspace_execution_entitlement_versions (
              workspace_id,version,status,active_run_limit,queued_run_limit,effective_at
            ) values ($1,3,'active',5,100,'-infinity'::timestamptz)`,
-        [workspaceA],
+        [workspaceB],
       );
       await client.query(
         `update app.workspace_execution_entitlements set current_version=3
             where workspace_id=$1`,
-        [workspaceA],
+        [workspaceB],
       );
     });
+    const runScope = {
+      workspaceId: workspaceB,
+      workflowId: workflowB,
+      workflowVersionId: versionB,
+    } as const;
     const activeRunIds = await Promise.all(
-      Array.from({ length: 5 }, () => insertRun({ status: 'running' })),
+      Array.from({ length: 5 }, () =>
+        insertRun({ ...runScope, status: 'running' }),
+      ),
     );
-    const runId = await insertRun({});
-    await asOwner(workspaceA, (client) =>
+    const runId = await insertRun(runScope);
+    await asOwner(workspaceB, (client) =>
       client.query(
         `update app.workspace_execution_entitlements set current_version=2
             where workspace_id=$1`,
-        [workspaceA],
+        [workspaceB],
       ),
     );
     const plan = {
@@ -72,6 +365,7 @@ describe('Coordinator scheduling and notification invariants', () => {
       expectedNextEventSequence: 2,
       consumedThroughEventSequence: 1,
       checkpoint: checkpoint({
+        workflowVersionId: versionB,
         revision: 1,
         runStatus: 'running',
         nextEventSequence: 3,
@@ -87,43 +381,43 @@ describe('Coordinator scheduling and notification invariants', () => {
       nodeRunAdmissions: [],
       attempts: [],
     };
-    const delivery = await testDelivery(workspaceA, runId, 0);
+    const delivery = await testDelivery(workspaceB, runId, 0);
     await expect(
       rawStore.commitAdvancePlan({
-        workspaceId: workspaceA,
+        workspaceId: workspaceB,
         runId,
-        workflowVersionId: versionA,
+        workflowVersionId: versionB,
         delivery,
         plan,
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'deferred', revision: 0 });
 
-    const deferred = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    const deferred = await asRuntime(workerBaseUrl, workspaceB, (client) =>
       client.query<{ id: string; payload_checksum: string }>(
         `select id,payload_checksum from app.outbox_events
             where workspace_id=$1 and aggregate_id=$2 and job_name='advance-workflow-run'
               and id<>$3
             order by created_at desc limit 1`,
-        [workspaceA, runId, delivery.outboxEventId],
+        [workspaceB, runId, delivery.outboxEventId],
       ),
     );
     expect(deferred.rows).toHaveLength(1);
     const retry = deferred.rows[0];
     if (retry === undefined)
       throw new Error('Deferred coordinator row missing');
-    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    await asRuntime(workerBaseUrl, workspaceB, (client) =>
       client.query(
         `update app.workflow_runs set status='succeeded',completed_at=clock_timestamp()
             where workspace_id=$1 and id=$2`,
-        [workspaceA, activeRunIds[0]],
+        [workspaceB, activeRunIds[0]],
       ),
     );
     await expect(
       rawStore.commitAdvancePlan({
-        workspaceId: workspaceA,
+        workspaceId: workspaceB,
         runId,
-        workflowVersionId: versionA,
+        workflowVersionId: versionB,
         delivery: {
           outboxEventId: retry.id,
           payloadChecksum: retry.payload_checksum,
@@ -132,7 +426,7 @@ describe('Coordinator scheduling and notification invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
-    const proof = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    const proof = await asRuntime(workerBaseUrl, workspaceB, (client) =>
       client.query<{
         active_runs: number;
         actual_queued: number;
@@ -146,14 +440,14 @@ describe('Coordinator scheduling and notification invariants', () => {
              from app.workspace_execution_admission_counters counter
              join app.workflow_runs run on run.workspace_id=counter.workspace_id
             where counter.workspace_id=$1 and run.id=$2`,
-        [workspaceA, runId],
+        [workspaceB, runId],
       ),
     );
     expect(proof.rows).toEqual([
       {
         active_runs: 5,
-        actual_queued: 1,
-        queued_runs: 1,
+        actual_queued: 0,
+        queued_runs: 0,
         run_status: 'running',
       },
     ]);
@@ -203,6 +497,11 @@ describe('Coordinator scheduling and notification invariants', () => {
       attempts: [],
     };
     const delivery = await testDelivery(workspaceA, runId, 0);
+    const before = await asOwner(workspaceA, (client) =>
+      client.query<{ observed_at: Date }>(
+        'select clock_timestamp() observed_at',
+      ),
+    );
     const committed = await rawStore.commitAdvancePlan({
       workspaceId: workspaceA,
       runId,
@@ -211,11 +510,26 @@ describe('Coordinator scheduling and notification invariants', () => {
       plan,
       signal: new AbortController().signal,
     });
+    const after = await asOwner(workspaceA, (client) =>
+      client.query<{ observed_at: Date }>(
+        'select clock_timestamp() observed_at',
+      ),
+    );
     expect(committed).toMatchObject({ kind: 'committed', revision: 1 });
     if (committed.kind !== 'committed')
       throw new Error('Schedule start was not committed');
-    expect(committed.scheduleToStartSeconds).toBeGreaterThanOrEqual(4.25);
-    expect(committed.scheduleToStartSeconds).toBeLessThan(6);
+    const beforeSeconds =
+      ((before.rows[0]?.observed_at.getTime() ?? Number.NaN) -
+        Date.parse(scheduledAt)) /
+      1_000;
+    const afterSeconds =
+      ((after.rows[0]?.observed_at.getTime() ?? Number.NaN) -
+        Date.parse(scheduledAt)) /
+      1_000;
+    expect(committed.scheduleToStartSeconds).toBeGreaterThanOrEqual(
+      beforeSeconds,
+    );
+    expect(committed.scheduleToStartSeconds).toBeLessThanOrEqual(afterSeconds);
     await expect(
       rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
@@ -226,6 +540,206 @@ describe('Coordinator scheduling and notification invariants', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'already_committed', revision: 1 });
+  });
+
+  it('returns a committed schedule when post-commit observation is aborted', async () => {
+    const applicationName = `held-schedule-observation-${randomUUID()}`;
+    const connectionUrl = new URL(databaseUrl(workerBaseUrl));
+    connectionUrl.searchParams.set('application_name', applicationName);
+    const config = parseDatabaseConfig({
+      connectionString: connectionUrl.toString(),
+      max: 1,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
+    let resolveMetric!: (result: QueryResult<{ observed_at: Date }>) => void;
+    const metric = new Promise<QueryResult<{ observed_at: Date }>>(
+      (resolve) => {
+        resolveMetric = resolve;
+      },
+    );
+    let markMetricStarted!: () => void;
+    const metricStarted = new Promise<void>((resolve) => {
+      markMetricStarted = resolve;
+    });
+    const wrappedClients = new WeakSet<PoolClient>();
+    const originalConnect = Reflect.get(Pool.prototype, 'connect') as (
+      this: PgPool,
+      ...arguments_: unknown[]
+    ) => unknown;
+    Pool.prototype.connect = function (
+      this: PgPool,
+      ...arguments_: unknown[]
+    ): unknown {
+      const options = (
+        this as unknown as { options: { connectionString?: string } }
+      ).options;
+      const ownName =
+        options.connectionString === undefined
+          ? undefined
+          : new URL(options.connectionString).searchParams.get(
+              'application_name',
+            );
+      const connected = Reflect.apply(originalConnect, this, arguments_);
+      if (ownName !== applicationName || arguments_.length > 0)
+        return connected;
+      return (connected as Promise<PoolClient>).then((client) => {
+        if (wrappedClients.has(client)) return client;
+        wrappedClients.add(client);
+        const originalQuery = client.query.bind(client) as unknown as (
+          ...queryArguments: unknown[]
+        ) => unknown;
+        client.query = ((...queryArguments: unknown[]): unknown => {
+          const request = queryArguments[0];
+          const text =
+            typeof request === 'string'
+              ? request
+              : typeof request === 'object' &&
+                  request !== null &&
+                  'text' in request &&
+                  typeof request.text === 'string'
+                ? request.text
+                : '';
+          if (text.trim() === 'select clock_timestamp() observed_at') {
+            markMetricStarted();
+            return metric;
+          }
+          return originalQuery(...queryArguments);
+        }) as typeof client.query;
+        return client;
+      });
+    } as typeof Pool.prototype.connect;
+
+    let runtime: ReturnType<typeof createDatabaseRuntime> | undefined;
+    let scheduleStore: ReturnType<typeof createCoordinatorRunStore> | undefined;
+    try {
+      runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
+      scheduleStore = createCoordinatorRunStore(config, runtime);
+    } finally {
+      Pool.prototype.connect = originalConnect as typeof Pool.prototype.connect;
+    }
+
+    const scheduledAt = '2026-09-13T00:00:00.000Z';
+    const runId = await insertRun({
+      triggerType: 'schedule',
+      inputRef: {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: {
+          schemaVersion: 1,
+          triggerId: randomUUID(),
+          nodeId: 'held-observation',
+          scheduledAt,
+        },
+      },
+    });
+    const delivery = await testDelivery(workspaceA, runId, 0);
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'running',
+        nextEventSequence: 3,
+      }),
+      events: [
+        {
+          schemaVersion: 1 as const,
+          sequence: 2,
+          name: 'run.started' as const,
+          occurredAt: scheduledAt,
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    const controller = new AbortController();
+    let commitSettled = false;
+    const committing = scheduleStore
+      .commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId,
+        workflowVersionId: versionA,
+        delivery,
+        plan,
+        signal: controller.signal,
+      })
+      .finally(() => {
+        commitSettled = true;
+      });
+    try {
+      await metricStarted;
+      expect(commitSettled).toBe(false);
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `select checkpoint.revision,receipt.completed_at is not null completed
+             from app.run_checkpoints checkpoint
+             join app.inbox_receipts receipt on receipt.message_id=$3
+             where checkpoint.workspace_id=$1 and checkpoint.workflow_run_id=$2`,
+            [workspaceA, runId, delivery.outboxEventId],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ revision: 1, completed: true }],
+      });
+      controller.abort();
+      await expect(committing).resolves.toEqual({
+        kind: 'committed',
+        revision: 1,
+        admittedAttempts: [],
+      });
+      resolveMetric({
+        command: 'SELECT',
+        fields: [],
+        oid: 0,
+        rowCount: 1,
+        rows: [{ observed_at: new Date('2026-09-13T00:00:01.000Z') }],
+      });
+      await metric;
+      await expect(
+        rawStore.commitAdvancePlan({
+          workspaceId: workspaceA,
+          runId,
+          workflowVersionId: versionA,
+          delivery,
+          plan,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind: 'already_committed', revision: 1 });
+    } finally {
+      controller.abort();
+      resolveMetric({
+        command: 'SELECT',
+        fields: [],
+        oid: 0,
+        rowCount: 0,
+        rows: [],
+      });
+      const closed = await Promise.allSettled([
+        scheduleStore.close(),
+        runtime.close(),
+        committing,
+      ]);
+      const failures: Error[] = [];
+      for (const result of closed)
+        if (result.status === 'rejected')
+          failures.push(
+            result.reason instanceof Error
+              ? result.reason
+              : new Error('Held schedule cleanup rejected', {
+                  cause: result.reason,
+                }),
+          );
+      if (failures.length > 0) {
+        // eslint-disable-next-line no-unsafe-finally -- Every cleanup owner has settled and its failure must remain visible.
+        throw new AggregateError(
+          failures,
+          'Held schedule fixture cleanup failed',
+        );
+      }
+    }
   });
 
   it('preserves one queued-timeout intent through predecessor rejection and R1 rollback recovery', async () => {
@@ -267,10 +781,14 @@ describe('Coordinator scheduling and notification invariants', () => {
       plan,
     };
 
-    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+    await expect(
+      ownedDeliveryStore.commitAdvancePlan(input),
+    ).resolves.toMatchObject({
       kind: 'committed',
     });
-    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+    await expect(
+      ownedDeliveryStore.commitAdvancePlan(input),
+    ).resolves.toMatchObject({
       kind: 'already_committed',
     });
 
@@ -444,19 +962,35 @@ describe('Coordinator scheduling and notification invariants', () => {
         outbox_count: 2,
       });
       if (retry === undefined) throw new Error('recovery fixture missing');
-      await expect(
-        rollbackReaderStore.claimDelivery({
-          ...claimInput,
-          delivery: {
-            outboxEventId: retry.outbox_id,
-            payloadChecksum: retry.payload_checksum,
-          },
-        }),
-      ).resolves.toMatchObject({
+      const reclaimed = await rollbackReaderStore.claimDelivery({
+        ...claimInput,
+        delivery: {
+          outboxEventId: retry.outbox_id,
+          payloadChecksum: retry.payload_checksum,
+        },
+      });
+      expect(reclaimed).toMatchObject({
         kind: 'ready',
         attemptNumber: 2,
         context: first.context,
       });
+      if (reclaimed.kind !== 'ready')
+        throw new Error('Recovered notification was not claimable');
+      await expect(
+        rollbackReaderStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: reclaimed.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'definite_failure',
+            safeErrorCode: 'provider.rejected',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
     } finally {
       await rollbackReaderStore.close();
     }
@@ -534,99 +1068,8 @@ describe('Coordinator scheduling and notification invariants', () => {
     });
   });
 
-  it('atomically creates one safe failure notification intent and excludes cancellation', async () => {
-    const invocationKey = 'failure/primary';
-    const runId = await insertRun({
-      status: 'running',
-      schedulerState: checkpoint({
-        runStatus: 'running',
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'primary',
-            status: 'running',
-            attemptNumber: 1,
-          },
-        ],
-      }),
-      failureNotificationPolicy: {
-        destinationId: notificationDestinationId,
-        destinationConfigVersion: 1,
-        sideEffectClass: 'idempotent_with_key',
-        connectionSecretVersionId: notificationSecretVersionId,
-      },
-    });
-    const nodeRunId = randomUUID();
-    const attemptId = randomUUID();
-    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
-      await client.query(
-        `insert into app.node_runs (
-             id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number
-           ) values ($1,$2,$3,'primary',$4,'{}','running','safe',$5,1)`,
-        [nodeRunId, workspaceA, runId, invocationKey, attemptId],
-      );
-      await client.query(
-        `insert into app.node_attempts (
-             id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
-             safe_error_code,executor_failure_kind,executor_error_kind,
-             executor_possibly_dispatched,retry_decision
-           ) values ($1,$2,$3,1,'failed','safe','provider.unavailable',
-             'failed','provider',false,'pending')`,
-        [attemptId, workspaceA, nodeRunId],
-      );
-    });
-    const plan = {
-      expectedRevision: 0,
-      expectedNextEventSequence: 2,
-      consumedThroughEventSequence: 1,
-      checkpoint: checkpoint({
-        revision: 1,
-        runStatus: 'failed',
-        nextEventSequence: 4,
-        invocations: [
-          {
-            invocationKey,
-            nodeId: 'primary',
-            status: 'failed',
-            attemptNumber: 1,
-          },
-        ],
-      }),
-      events: [
-        {
-          schemaVersion: 1 as const,
-          sequence: 2,
-          name: 'node.failed' as const,
-          occurredAt: '2026-08-24T10:01:00.000Z',
-          invocationKey,
-          nodeId: 'primary',
-          attemptNumber: 1,
-          reasonCode: 'provider.unavailable',
-        },
-        {
-          schemaVersion: 1 as const,
-          sequence: 3,
-          name: 'run.failed' as const,
-          occurredAt: '2026-08-24T10:01:00.000Z',
-        },
-      ],
-      nodeRunAdmissions: [],
-      attempts: [],
-    };
-    const input = {
-      workspaceId: workspaceA,
-      runId,
-      workflowVersionId: versionA,
-      signal: new AbortController().signal,
-      plan,
-    };
-    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
-      kind: 'committed',
-    });
-    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
-      kind: 'already_committed',
-    });
+  it('atomically creates one policy-pinned safe failure notification intent', async () => {
+    const { invocationKey, runId } = await commitPinnedFailureNotificationRun();
     const proof = await asRuntime(workerBaseUrl, workspaceA, (client) =>
       client.query<{
         intent_count: number;
@@ -662,30 +1105,740 @@ describe('Coordinator scheduling and notification invariants', () => {
     );
     expect(hidden.rowCount).toBe(0);
 
-    const deliveryStore = createFailureNotificationStore(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 4,
-        ownerRole: 'pertexo_owner',
-        workerRuntimeRole: 'pertexo_worker',
-      }),
-    );
-    try {
-      const identity = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{
-          intent_id: string;
-          outbox_id: string;
-          payload_checksum: string;
-        }>(
-          `select intent.id intent_id,outbox.id outbox_id,outbox.payload_checksum
+    const identity = await failureNotificationIdentity(runId);
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ matches_pin: boolean }>(
+          `select intent.destination_config_version = 1
+                    and intent.connection_secret_version_id = $2 as matches_pin
              from app.run_failure_notification_intents intent
-             join app.outbox_events outbox on outbox.aggregate_id=intent.id
-             where intent.workflow_run_id=$1 order by outbox.created_at limit 1`,
-          [runId],
+             where intent.id=$1`,
+          [identity.intent_id, notificationSecretVersionId],
+        ),
+      ),
+    ).resolves.toMatchObject({ rows: [{ matches_pin: true }] });
+  });
+
+  it('rejects each forged queue identity and corrupt context before claiming', async () => {
+    const { runId } = await commitPinnedFailureNotificationRun();
+    const first = await failureNotificationIdentity(runId);
+    const { store: deliveryStore } = createTestFailureNotificationStore();
+    const claimInput = {
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      delivery: {
+        outboxEventId: first.outbox_id,
+        payloadChecksum: first.payload_checksum,
+      },
+      recoverySeconds: 30,
+      maxAttempts: 3,
+    } as const;
+    const originalOutbox = await asOwner(workspaceA, (client) =>
+      client.query<{
+        aggregate_id: string;
+        aggregate_type: string;
+        job_name: string;
+        payload: unknown;
+        payload_checksum: string;
+        schema_version: number;
+      }>(
+        `select aggregate_id,aggregate_type,job_name,payload,payload_checksum,schema_version
+           from app.outbox_events where workspace_id=$1 and id=$2`,
+        [workspaceA, first.outbox_id],
+      ),
+    );
+    const authoritative = originalOutbox.rows[0];
+    if (authoritative === undefined)
+      throw new Error('Notification outbox fixture missing');
+    const assertUnclaimed = async (): Promise<void> => {
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{ delivery_attempts: number; status: string }>(
+            `select status,delivery_attempts
+               from app.run_failure_notification_intents
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, first.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ delivery_attempts: 0, status: 'pending' }],
+      });
+    };
+    const restoreOutbox = () =>
+      asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.outbox_events
+              set aggregate_id=$3,aggregate_type=$4,job_name=$5,payload=$6::jsonb,
+                  payload_checksum=$7,schema_version=$8
+            where workspace_id=$1 and id=$2`,
+          [
+            workspaceA,
+            first.outbox_id,
+            authoritative.aggregate_id,
+            authoritative.aggregate_type,
+            authoritative.job_name,
+            JSON.stringify(authoritative.payload),
+            authoritative.payload_checksum,
+            authoritative.schema_version,
+          ],
         ),
       );
-      const first = identity.rows[0];
-      if (first === undefined) throw new Error('notification fixture missing');
+    const mutations = [
+      {
+        name: 'aggregate id',
+        sql: 'update app.outbox_events set aggregate_id=$3 where workspace_id=$1 and id=$2',
+        value: randomUUID(),
+        checksum: first.payload_checksum,
+      },
+      {
+        name: 'aggregate type',
+        sql: 'update app.outbox_events set aggregate_type=$3 where workspace_id=$1 and id=$2',
+        value: 'workflow-run',
+        checksum: first.payload_checksum,
+      },
+      {
+        name: 'job name',
+        sql: 'update app.outbox_events set job_name=$3 where workspace_id=$1 and id=$2',
+        value: 'advance-workflow-run',
+        checksum: first.payload_checksum,
+      },
+      {
+        name: 'schema version',
+        sql: 'update app.outbox_events set schema_version=$3 where workspace_id=$1 and id=$2',
+        value: 2,
+        checksum: first.payload_checksum,
+      },
+      {
+        name: 'stored checksum',
+        sql: 'update app.outbox_events set payload_checksum=$3 where workspace_id=$1 and id=$2',
+        value: 'f'.repeat(64),
+        checksum: 'f'.repeat(64),
+      },
+      {
+        name: 'stored payload',
+        sql: `update app.outbox_events
+                 set payload=jsonb_set(payload,'{tampered}','true'::jsonb)
+               where workspace_id=$1 and id=$2`,
+        checksum: first.payload_checksum,
+      },
+    ] as const;
+    try {
+      for (const mutation of mutations) {
+        try {
+          await asOwner(workspaceA, (client) =>
+            client.query(
+              mutation.sql,
+              'value' in mutation
+                ? [workspaceA, first.outbox_id, mutation.value]
+                : [workspaceA, first.outbox_id],
+            ),
+          );
+          await expect(
+            deliveryStore.claimDelivery({
+              ...claimInput,
+              delivery: {
+                ...claimInput.delivery,
+                payloadChecksum: mutation.checksum,
+              },
+            }),
+            mutation.name,
+          ).rejects.toThrow('Delivery identity mismatch');
+          await assertUnclaimed();
+        } finally {
+          await restoreOutbox();
+        }
+      }
+
+      await expect(
+        deliveryStore.claimDelivery({
+          ...claimInput,
+          delivery: {
+            ...claimInput.delivery,
+            payloadChecksum: 'e'.repeat(64),
+          },
+        }),
+      ).rejects.toThrow('Delivery identity mismatch');
+      await assertUnclaimed();
+
+      const originalContext = await asOwner(workspaceA, (client) =>
+        client.query<{ context: unknown; context_checksum: string }>(
+          `select context,context_checksum
+             from app.run_failure_notification_intents
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, first.intent_id],
+        ),
+      );
+      const persisted = originalContext.rows[0];
+      if (persisted === undefined)
+        throw new Error('Notification context fixture missing');
+      try {
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `update app.run_failure_notification_intents
+                set context='{}'::jsonb
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, first.intent_id],
+          ),
+        );
+        await expect(deliveryStore.claimDelivery(claimInput)).rejects.toThrow();
+        await assertUnclaimed();
+      } finally {
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `update app.run_failure_notification_intents
+                set context=$3::jsonb,context_checksum=$4
+              where workspace_id=$1 and id=$2`,
+            [
+              workspaceA,
+              first.intent_id,
+              JSON.stringify(persisted.context),
+              persisted.context_checksum,
+            ],
+          ),
+        );
+      }
+      try {
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `update app.run_failure_notification_intents
+                set context_checksum=$3
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, first.intent_id, 'd'.repeat(64)],
+          ),
+        );
+        await expect(deliveryStore.claimDelivery(claimInput)).rejects.toThrow(
+          'Intent checksum mismatch',
+        );
+        await assertUnclaimed();
+      } finally {
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `update app.run_failure_notification_intents
+                set context_checksum=$3
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, first.intent_id, persisted.context_checksum],
+          ),
+        );
+      }
+
+      const validClaim = await deliveryStore.claimDelivery(claimInput);
+      expect(validClaim).toMatchObject({ attemptNumber: 1, kind: 'ready' });
+      if (validClaim.kind !== 'ready')
+        throw new Error('Valid notification claim missing');
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: validClaim.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'definite_failure',
+            safeErrorCode: 'provider.rejected',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+    } finally {
+      await closeFailureNotificationFixture(deliveryStore);
+    }
+  });
+
+  it('distinguishes busy, due-boundary, terminal, and lowered attempt-ceiling claims', async () => {
+    const firstRun = await commitPinnedFailureNotificationRun();
+    const first = await failureNotificationIdentity(firstRun.runId);
+    const secondRun = await commitPinnedFailureNotificationRun();
+    const second = await failureNotificationIdentity(secondRun.runId);
+    const { store: deliveryStore } = createTestFailureNotificationStore();
+    const claim = (identity: typeof first, maxAttempts = 3) => ({
+      workspaceId: workspaceA,
+      intentId: identity.intent_id,
+      delivery: {
+        outboxEventId: identity.outbox_id,
+        payloadChecksum: identity.payload_checksum,
+      },
+      recoverySeconds: 30,
+      maxAttempts,
+    });
+    const latestDelivery = async (intentId: string) => {
+      const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ id: string; payload_checksum: string }>(
+          `select id,payload_checksum from app.outbox_events
+            where workspace_id=$1 and aggregate_id=$2
+            order by created_at desc,id desc limit 1`,
+          [workspaceA, intentId],
+        ),
+      );
+      const latest = outbox.rows[0];
+      if (latest === undefined) throw new Error('Retry outbox missing');
+      return {
+        workspaceId: workspaceA,
+        intentId,
+        delivery: {
+          outboxEventId: latest.id,
+          payloadChecksum: latest.payload_checksum,
+        },
+        recoverySeconds: 30,
+        maxAttempts: 3,
+      };
+    };
+    try {
+      const firstReady = await deliveryStore.claimDelivery(claim(first));
+      if (firstReady.kind !== 'ready') throw new Error('First claim missing');
+      await expect(deliveryStore.claimDelivery(claim(first))).resolves.toEqual({
+        kind: 'busy',
+      });
+      await expect(
+        deliveryStore.fenceDispatch({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: firstReady.attemptNumber,
+          deliveryBinding: `email:v1:sha256:${'c'.repeat(64)}`,
+        }),
+      ).resolves.toBeUndefined();
+      await expect(deliveryStore.claimDelivery(claim(first))).resolves.toEqual({
+        kind: 'busy',
+      });
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: firstReady.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'definite_failure',
+            safeErrorCode: 'provider.rejected',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+      await expect(deliveryStore.claimDelivery(claim(first))).resolves.toEqual({
+        kind: 'terminal',
+      });
+
+      const secondReady = await deliveryStore.claimDelivery(claim(second));
+      if (secondReady.kind !== 'ready') throw new Error('Second claim missing');
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: second.intent_id,
+          attemptNumber: secondReady.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 30,
+          result: {
+            schemaVersion: 1,
+            kind: 'retry',
+            safeErrorCode: 'provider.unavailable',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+      const attemptTwo = await latestDelivery(second.intent_id);
+      await expect(deliveryStore.claimDelivery(attemptTwo)).resolves.toEqual({
+        kind: 'busy',
+      });
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.run_failure_notification_intents
+              set next_delivery_at=clock_timestamp()
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, second.intent_id],
+        ),
+      );
+      const attemptTwoReady = await deliveryStore.claimDelivery(attemptTwo);
+      expect(attemptTwoReady).toMatchObject({
+        attemptNumber: 2,
+        kind: 'ready',
+      });
+      if (attemptTwoReady.kind !== 'ready')
+        throw new Error('Due-boundary claim missing');
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: second.intent_id,
+          attemptNumber: attemptTwoReady.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 30,
+          result: {
+            schemaVersion: 1,
+            kind: 'retry',
+            safeErrorCode: 'provider.unavailable',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+      const attemptThree = await latestDelivery(second.intent_id);
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.run_failure_notification_intents
+              set next_delivery_at=clock_timestamp()
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, second.intent_id],
+        ),
+      );
+      await expect(
+        deliveryStore.claimDelivery({ ...attemptThree, maxAttempts: 2 }),
+      ).resolves.toEqual({ kind: 'terminal' });
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{
+            delivery_attempts: number;
+            safe_error_code: string;
+            status: string;
+          }>(
+            `select status,delivery_attempts,safe_error_code
+               from app.run_failure_notification_intents
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, second.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            delivery_attempts: 2,
+            safe_error_code: 'delivery.attempts_exhausted',
+            status: 'dead_letter',
+          },
+        ],
+      });
+    } finally {
+      await closeFailureNotificationFixture(deliveryStore);
+    }
+  });
+
+  it.each([
+    {
+      boundary: 'intent update',
+      matches: (sql: string) =>
+        sql.includes('update app.run_failure_notification_intents') &&
+        sql.includes("set status='retry'"),
+    },
+    {
+      boundary: 'retry outbox insert',
+      matches: (sql: string) => sql.includes('insert into app.outbox_events'),
+    },
+    {
+      boundary: 'completion audit insert',
+      matches: (sql: string) =>
+        sql.includes('insert into app.run_failure_notification_audit_facts'),
+    },
+  ])(
+    'rolls back every completion write after an injected $boundary failure',
+    async ({ boundary, matches }) => {
+      const { runId } = await commitPinnedFailureNotificationRun();
+      const first = await failureNotificationIdentity(runId);
+      const message = `Injected failure after ${boundary}`;
+      const { store: deliveryStore } = createTestFailureNotificationStore({
+        matches,
+        message,
+      });
+      try {
+        const claimed = await deliveryStore.claimDelivery({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          delivery: {
+            outboxEventId: first.outbox_id,
+            payloadChecksum: first.payload_checksum,
+          },
+          recoverySeconds: 30,
+          maxAttempts: 3,
+        });
+        if (claimed.kind !== 'ready')
+          throw new Error('Failure-injection claim missing');
+        await expect(
+          deliveryStore.completeDelivery({
+            workspaceId: workspaceA,
+            intentId: first.intent_id,
+            attemptNumber: claimed.attemptNumber,
+            maxAttempts: 3,
+            retryDelaySeconds: 30,
+            result: {
+              schemaVersion: 1,
+              kind: 'retry',
+              safeErrorCode: 'provider.unavailable',
+              possiblyDispatched: false,
+            },
+          }),
+        ).rejects.toThrow(message);
+        await expect(
+          asRuntime(workerBaseUrl, workspaceA, (client) =>
+            client.query<{
+              completion_fact_count: number;
+              next_delivery_at: Date | null;
+              outbox_count: number;
+              status: string;
+            }>(
+              `select intent.status,intent.next_delivery_at,
+                      (select count(*)::int from app.outbox_events outbox
+                        where outbox.aggregate_id=intent.id) outbox_count,
+                      (select count(*)::int
+                         from app.run_failure_notification_audit_facts fact
+                        where fact.notification_intent_id=intent.id
+                          and fact.fact_type='retry_scheduled') completion_fact_count
+                 from app.run_failure_notification_intents intent
+                where intent.workspace_id=$1 and intent.id=$2`,
+              [workspaceA, first.intent_id],
+            ),
+          ),
+        ).resolves.toMatchObject({
+          rows: [
+            {
+              completion_fact_count: 0,
+              next_delivery_at: null,
+              outbox_count: 1,
+              status: 'claimed',
+            },
+          ],
+        });
+        await expect(
+          deliveryStore.completeDelivery({
+            workspaceId: workspaceA,
+            intentId: first.intent_id,
+            attemptNumber: claimed.attemptNumber,
+            maxAttempts: 3,
+            retryDelaySeconds: 0,
+            result: {
+              schemaVersion: 1,
+              kind: 'definite_failure',
+              safeErrorCode: 'provider.rejected',
+              possiblyDispatched: false,
+            },
+          }),
+        ).resolves.toBe('completed');
+      } finally {
+        await closeFailureNotificationFixture(deliveryStore);
+      }
+    },
+  );
+
+  it('cancels completion before checkout and while its intent lock is blocked', async () => {
+    const preabortRun = await commitPinnedFailureNotificationRun();
+    const preabortIdentity = await failureNotificationIdentity(
+      preabortRun.runId,
+    );
+    const { applicationName: preabortApplicationName, store: preabortStore } =
+      createTestFailureNotificationStore();
+    const preabortConnectionsBefore = await asOwner(workspaceA, (client) =>
+      client.query<{ connections: number }>(
+        `select count(*)::int connections from pg_stat_activity
+            where datname=current_database() and application_name=$1`,
+        [preabortApplicationName],
+      ),
+    );
+    const preabortController = new AbortController();
+    preabortController.abort();
+    try {
+      await expect(
+        preabortStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: preabortIdentity.intent_id,
+          attemptNumber: 1,
+          maxAttempts: 3,
+          retryDelaySeconds: 30,
+          result: {
+            schemaVersion: 1,
+            kind: 'retry',
+            safeErrorCode: 'provider.unavailable',
+            possiblyDispatched: false,
+          },
+          signal: preabortController.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      const preabortConnections = await asOwner(workspaceA, (client) =>
+        client.query<{ connections: number }>(
+          `select count(*)::int connections from pg_stat_activity
+            where datname=current_database() and application_name=$1`,
+          [preabortApplicationName],
+        ),
+      );
+      expect(preabortConnections.rows[0]?.connections).toBe(
+        preabortConnectionsBefore.rows[0]?.connections,
+      );
+    } finally {
+      await closeFailureNotificationFixture(preabortStore);
+    }
+
+    const blockedRun = await commitPinnedFailureNotificationRun();
+    const blockedIdentity = await failureNotificationIdentity(blockedRun.runId);
+    const { applicationName: blockedApplicationName, store: blockedStore } =
+      createTestFailureNotificationStore();
+    const claim = await blockedStore.claimDelivery({
+      workspaceId: workspaceA,
+      intentId: blockedIdentity.intent_id,
+      delivery: {
+        outboxEventId: blockedIdentity.outbox_id,
+        payloadChecksum: blockedIdentity.payload_checksum,
+      },
+      recoverySeconds: 30,
+      maxAttempts: 3,
+    });
+    if (claim.kind !== 'ready') throw new Error('Blocked claim missing');
+    const blockerPool = new Pool({
+      connectionString: databaseUrl(workerBaseUrl),
+      max: 1,
+    });
+    const blocker = await blockerPool.connect();
+    const controller = new AbortController();
+    let completion: Promise<'completed' | 'stale'> | undefined;
+    try {
+      await blocker.query('begin');
+      await blocker.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await blocker.query(
+        `select id from app.run_failure_notification_intents
+          where workspace_id=$1 and id=$2 for update`,
+        [workspaceA, blockedIdentity.intent_id],
+      );
+      completion = blockedStore.completeDelivery({
+        workspaceId: workspaceA,
+        intentId: blockedIdentity.intent_id,
+        attemptNumber: claim.attemptNumber,
+        maxAttempts: 3,
+        retryDelaySeconds: 30,
+        result: {
+          schemaVersion: 1,
+          kind: 'retry',
+          safeErrorCode: 'provider.unavailable',
+          possiblyDispatched: false,
+        },
+        signal: controller.signal,
+      });
+      await waitForApplicationLocks(blockedApplicationName, 1);
+      controller.abort();
+      await expect(completion).rejects.toMatchObject({ name: 'AbortError' });
+      await blocker.query('commit');
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{ outbox_count: number; status: string }>(
+            `select intent.status,
+                    (select count(*)::int from app.outbox_events outbox
+                      where outbox.aggregate_id=intent.id) outbox_count
+               from app.run_failure_notification_intents intent
+              where intent.workspace_id=$1 and intent.id=$2`,
+            [workspaceA, blockedIdentity.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ outbox_count: 1, status: 'claimed' }],
+      });
+      await expect(
+        blockedStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: blockedIdentity.intent_id,
+          attemptNumber: claim.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'definite_failure',
+            safeErrorCode: 'provider.rejected',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+    } finally {
+      controller.abort();
+      await blocker.query('rollback').catch(() => undefined);
+      blocker.release();
+      await blockerPool.end();
+      await Promise.allSettled([
+        completion,
+        closeFailureNotificationFixture(blockedStore),
+      ]);
+    }
+  });
+
+  it('surfaces commit-ack uncertainty while a repeated completion observes committed truth', async () => {
+    const { runId } = await commitPinnedFailureNotificationRun();
+    const first = await failureNotificationIdentity(runId);
+    const { store: ordinaryStore } = createTestFailureNotificationStore();
+    const claimed = await ordinaryStore.claimDelivery({
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      delivery: {
+        outboxEventId: first.outbox_id,
+        payloadChecksum: first.payload_checksum,
+      },
+      recoverySeconds: 30,
+      maxAttempts: 3,
+    });
+    if (claimed.kind !== 'ready')
+      throw new Error('Commit-uncertainty claim missing');
+    await ordinaryStore.fenceDispatch({
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      attemptNumber: claimed.attemptNumber,
+      deliveryBinding: `email:v1:sha256:${'9'.repeat(64)}`,
+    });
+    const { store: uncertainStore } = createTestFailureNotificationStore({
+      matches: (sql) => sql.trim().toLowerCase() === 'commit',
+      message: 'Injected notification commit acknowledgement loss',
+    });
+    const completion = {
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      attemptNumber: claimed.attemptNumber,
+      maxAttempts: 3,
+      retryDelaySeconds: 0,
+      result: {
+        schemaVersion: 1 as const,
+        kind: 'delivered' as const,
+        possiblyDispatched: true as const,
+        providerReference: 'provider-reference-committed',
+      },
+    };
+    try {
+      await expect(uncertainStore.completeDelivery(completion)).rejects.toThrow(
+        'Injected notification commit acknowledgement loss',
+      );
+      await expect(ordinaryStore.completeDelivery(completion)).resolves.toBe(
+        'stale',
+      );
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{
+            delivered_facts: number;
+            provider_reference: string;
+            status: string;
+          }>(
+            `select intent.status,intent.provider_reference,
+                    (select count(*)::int
+                       from app.run_failure_notification_audit_facts fact
+                      where fact.notification_intent_id=intent.id
+                        and fact.fact_type='delivered') delivered_facts
+               from app.run_failure_notification_intents intent
+              where intent.workspace_id=$1 and intent.id=$2`,
+            [workspaceA, first.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            delivered_facts: 1,
+            provider_reference: 'provider-reference-committed',
+            status: 'delivered',
+          },
+        ],
+      });
+    } finally {
+      await Promise.allSettled([
+        closeFailureNotificationFixture(ordinaryStore),
+        closeFailureNotificationFixture(uncertainStore),
+      ]);
+    }
+  });
+
+  it('enforces destination disable and dispatch fencing against the pinned configuration', async () => {
+    const { runId } = await commitPinnedFailureNotificationRun();
+    const first = await failureNotificationIdentity(runId);
+
+    const { applicationName: deliveryApplicationName, store: deliveryStore } =
+      createTestFailureNotificationStore();
+    try {
       const claimInput = {
         workspaceId: workspaceA,
         intentId: first.intent_id,
@@ -696,7 +1849,7 @@ describe('Coordinator scheduling and notification invariants', () => {
         recoverySeconds: 1,
         maxAttempts: 3,
       } as const;
-      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+      await asOwner(workspaceA, (client) =>
         client.query(
           `update app.failure_notification_destinations set status='disabled'
               where workspace_id=$1 and id=$2`,
@@ -739,7 +1892,7 @@ describe('Coordinator scheduling and notification invariants', () => {
           signal: new AbortController().signal,
         }),
       ).rejects.toThrow('Delivery destination is unavailable');
-      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+      await asOwner(workspaceA, (client) =>
         client.query(
           `update app.failure_notification_destinations set status='enabled'
               where workspace_id=$1 and id=$2`,
@@ -759,6 +1912,94 @@ describe('Coordinator scheduling and notification invariants', () => {
         secretVersionId: notificationSecretVersionId,
         toEmail: 'run-store@example.test',
       });
+      const credentialAudit = await asOwner(workspaceA, (client) =>
+        client.query<{
+          actor_id: string;
+          actor_kind: string;
+          connection_id: string;
+          metadata: Record<string, unknown>;
+        }>(
+          `select connection_id::text,actor_kind,actor_id,metadata
+               from app.connection_events
+              where workspace_id=$1 and connection_id=$2
+                and event_type='connection.credential_accessed'
+                and actor_kind='worker' and actor_id='notification-test-worker'
+              order by created_at,id`,
+          [workspaceA, notificationConnectionId],
+        ),
+      );
+      expect(credentialAudit.rows).toEqual([
+        {
+          actor_id: 'notification-test-worker',
+          actor_kind: 'worker',
+          connection_id: notificationConnectionId,
+          metadata: {
+            purpose: 'failure_notification.deliver',
+            secretVersionId: notificationSecretVersionId,
+          },
+        },
+      ]);
+      expect(JSON.stringify(credentialAudit.rows)).not.toMatch(
+        /run-store@example\.test|ciphertext|encryptedDataKey|kmsKeyReference|nonce|authTag|providerReference/u,
+      );
+
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.connections set status='revoked'
+              where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationConnectionId],
+        ),
+      );
+      await expect(
+        deliveryStore.loadDestination({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          workerId: 'notification-test-worker-revoked',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Delivery destination is unavailable');
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.connections
+              set status='active',provider_key='http'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationConnectionId],
+        ),
+      );
+      await expect(
+        deliveryStore.loadDestination({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          workerId: 'notification-test-worker-wrong-provider',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Delivery destination is unavailable');
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.connections
+              set provider_key='email',auth_type='http_headers'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationConnectionId],
+        ),
+      );
+      await expect(
+        deliveryStore.loadDestination({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          workerId: 'notification-test-worker-wrong-auth',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Delivery destination is unavailable');
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `update app.connections set auth_type='resend_api_key'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationConnectionId],
+        ),
+      );
 
       const disablePool = new Pool({
         connectionString: databaseUrl(apiBaseUrl),
@@ -776,7 +2017,6 @@ describe('Coordinator scheduling and notification invariants', () => {
               where workspace_id=$1 and id=$2`,
           [workspaceA, notificationDestinationId],
         );
-        let fenceSettled = false;
         const disabledFence = deliveryStore
           .fenceDispatch({
             workspaceId: workspaceA,
@@ -787,15 +2027,10 @@ describe('Coordinator scheduling and notification invariants', () => {
           .then(
             () => ({ kind: 'resolved' as const }),
             (error: unknown) => ({ kind: 'rejected' as const, error }),
-          )
-          .finally(() => {
-            fenceSettled = true;
-          });
-        await new Promise<void>((resolve) => setTimeout(resolve, 50));
-        expect(fenceSettled).toBe(false);
+          );
+        await waitForApplicationLocks(deliveryApplicationName, 1);
         await disableClient.query('commit');
         const fenceResult = await disabledFence;
-        expect(fenceSettled).toBe(true);
         expect(fenceResult.kind).toBe('rejected');
         if (fenceResult.kind !== 'rejected')
           throw new Error('disabled destination fence unexpectedly committed');
@@ -847,7 +2082,52 @@ describe('Coordinator scheduling and notification invariants', () => {
           [workspaceA, notificationDestinationId],
         ),
       );
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'definite_failure',
+            safeErrorCode: 'provider.rejected',
+            possiblyDispatched: false,
+          },
+        }),
+      ).resolves.toBe('completed');
+    } finally {
+      await closeFailureNotificationFixture(deliveryStore);
+    }
+  });
 
+  it('pins secret rotation while retry recovery preserves historical uncertainty', async () => {
+    const { runId } = await commitPinnedFailureNotificationRun();
+    const first = await failureNotificationIdentity(runId);
+    const { store: deliveryStore } = createTestFailureNotificationStore();
+    const claimInput = {
+      workspaceId: workspaceA,
+      intentId: first.intent_id,
+      delivery: {
+        outboxEventId: first.outbox_id,
+        payloadChecksum: first.payload_checksum,
+      },
+      recoverySeconds: 1,
+      maxAttempts: 3,
+    } as const;
+    try {
+      const firstClaim = await deliveryStore.claimDelivery(claimInput);
+      if (firstClaim.kind !== 'ready')
+        throw new Error('initial delivery was not claimable');
+      await expect(
+        deliveryStore.fenceDispatch({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: firstClaim.attemptNumber,
+          deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+        }),
+      ).resolves.toBeUndefined();
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
           `update app.run_failure_notification_intents
@@ -877,6 +2157,25 @@ describe('Coordinator scheduling and notification invariants', () => {
         if (claimed.kind !== 'ready')
           throw new Error('retry was not claimable');
         if (attempt === 2) {
+          expect(claimed.deliveryBinding).toBe(
+            `email:v1:sha256:${'a'.repeat(64)}`,
+          );
+          await expect(
+            deliveryStore.fenceDispatch({
+              workspaceId: workspaceA,
+              intentId: first.intent_id,
+              attemptNumber: claimed.attemptNumber,
+              deliveryBinding: `email:v1:sha256:${'b'.repeat(64)}`,
+            }),
+          ).rejects.toThrow('Delivery dispatch fence failed');
+          await expect(
+            deliveryStore.fenceDispatch({
+              workspaceId: workspaceA,
+              intentId: first.intent_id,
+              attemptNumber: claimed.attemptNumber,
+              deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+            }),
+          ).resolves.toBeUndefined();
           const rotatedSecretVersionId = randomUUID();
           await asRuntime(apiBaseUrl, workspaceA, async (client) => {
             await client.query(
@@ -1057,19 +2356,81 @@ describe('Coordinator scheduling and notification invariants', () => {
         'new failure notification intent must exactly match its run pin',
       );
     } finally {
-      await deliveryStore.close();
+      await closeFailureNotificationFixture(deliveryStore);
     }
+  });
 
+  it('excludes a policy-pinned canceled transition from notification intent creation', async () => {
     const canceledRun = await insertRun({
-      status: 'canceled',
-      schedulerState: checkpoint({ runStatus: 'canceled' }),
+      status: 'running',
+      schedulerState: checkpoint({ runStatus: 'running' }),
+      failureNotificationPolicy: {
+        destinationId: notificationDestinationId,
+        destinationConfigVersion: 1,
+        sideEffectClass: 'idempotent_with_key',
+        connectionSecretVersionId: notificationSecretVersionId,
+      },
     });
+    await asRuntime(apiBaseUrl, workspaceA, async (client) => {
+      await client.query(
+        `update app.workflow_runs
+         set cancel_requested_at=clock_timestamp(),cancel_requested_by='q12-test'
+         where workspace_id=$1 and id=$2`,
+        [workspaceA, canceledRun],
+      );
+      await client.query(
+        `insert into app.run_events (
+           workspace_id,workflow_run_id,sequence,type,payload
+         ) values ($1,$2,2,'run.cancel_requested','{"schemaVersion":1}')`,
+        [workspaceA, canceledRun],
+      );
+    });
+    const delivery = await testDelivery(workspaceA, canceledRun, 0);
+    await expect(
+      rawStore.commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId: canceledRun,
+        workflowVersionId: versionA,
+        signal: new AbortController().signal,
+        delivery,
+        plan: {
+          expectedRevision: 0,
+          expectedNextEventSequence: 2,
+          consumedThroughEventSequence: 2,
+          checkpoint: checkpoint({
+            revision: 1,
+            runStatus: 'canceled',
+            nextEventSequence: 4,
+            cancelRequested: true,
+          }),
+          events: [
+            {
+              schemaVersion: 1,
+              sequence: 3,
+              name: 'run.canceled',
+              occurredAt: '2026-09-13T00:00:00.000Z',
+            },
+          ],
+          nodeRunAdmissions: [],
+          attempts: [],
+        },
+      }),
+    ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
     const excluded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-      client.query(
-        'select id from app.run_failure_notification_intents where workflow_run_id=$1',
-        [canceledRun],
+      client.query<{ intent_count: number; notification_outbox_count: number }>(
+        `select count(distinct intent.id)::int intent_count,
+                count(distinct outbox.id)::int notification_outbox_count
+         from app.workflow_runs run
+         left join app.run_failure_notification_intents intent
+           on intent.workspace_id=run.workspace_id
+          and intent.workflow_run_id=run.id
+         left join app.outbox_events outbox on outbox.aggregate_id=intent.id
+         where run.workspace_id=$1 and run.id=$2`,
+        [workspaceA, canceledRun],
       ),
     );
-    expect(excluded.rowCount).toBe(0);
+    expect(excluded.rows).toEqual([
+      { intent_count: 0, notification_outbox_count: 0 },
+    ]);
   });
 });

@@ -28,6 +28,7 @@ export class ObservabilityModule {
       telemetryToken: TELEMETRY_LIFECYCLE,
       logger,
       telemetry,
+      registerShutdown: false,
     });
   }
 }

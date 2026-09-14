@@ -26,10 +26,14 @@ Completing the commands below does not approve that packet.
 - `pnpm release:check` runs the dependency audit, the full root quality gate,
   deployment validation, and exercise-contract validation in that order.
 
-CI runs dependency, deployment, and exercise-contract gates on every pull request
-and push to `main`. `.github/workflows/release-gate.yml` runs the complete local
-gate plus a production-image build, non-root/read-only smoke, and high/critical
-Grype scan every Monday and on manual dispatch. The scan action is commit-pinned.
+CI runs dependency, deployment, exercise-contract, architecture, built-export,
+local-runner, and local-performance contract gates on every pull request and
+push to `main`. The local-runner CI check is contract-only and does not launch
+the full service-backed `quality:local` qualification. Mutation sensitivity is
+owned by the service-backed integration job. `.github/workflows/release-gate.yml`
+runs the complete local gate plus a production-image build, non-root/read-only
+smoke, and high/critical Grype scan every Monday and on manual dispatch. The
+scan action is commit-pinned.
 `.github/workflows/codeql.yml` runs commit-pinned JavaScript/TypeScript CodeQL on
 `main`, weekly, and on manual dispatch. A failed or unavailable advisory/scanner
 query blocks the gate and must be retried; it must not be treated as clean.

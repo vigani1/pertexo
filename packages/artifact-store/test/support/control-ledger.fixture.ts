@@ -1,9 +1,9 @@
-import type { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   GetBucketLifecycleConfigurationCommand,
   GetBucketLocationCommand,
   GetBucketPolicyCommand,
   GetBucketVersioningCommand,
+  GetObjectCommand,
   GetObjectLockConfigurationCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
@@ -60,6 +60,7 @@ export class MemoryS3 implements ControlLedgerS3Client {
   public readonly commands: unknown[] = [];
   public destroyCalls = 0;
   public hangGets = false;
+  public hangGetCall: number | undefined;
   public objectLockEnabled = true;
   public retentionDays: number | undefined = 30;
   public retentionMode = 'COMPLIANCE';
@@ -184,13 +185,17 @@ export class MemoryS3 implements ControlLedgerS3Client {
           this.putChecksumOverride ?? command.input.ChecksumSHA256,
       };
     }
+    if (!(command instanceof GetObjectCommand)) {
+      throw new Error('Unsupported control-ledger S3 command');
+    }
     this.getSignals.push(options?.abortSignal);
     if (this.getFailure !== undefined) {
       // Deliberately model an untrusted provider throwing a foreign value.
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw this.getFailure;
     }
-    if (this.hangGets) await this.waitForAbort(options?.abortSignal);
+    if (this.hangGets || this.getSignals.length === this.hangGetCall)
+      await this.waitForAbort(options?.abortSignal);
     this.activeGets += 1;
     this.maxConcurrentGets = Math.max(this.maxConcurrentGets, this.activeGets);
     if (this.getDelayMs > 0) {

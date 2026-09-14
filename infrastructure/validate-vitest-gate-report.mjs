@@ -1,5 +1,3 @@
-/* global process */
-
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 

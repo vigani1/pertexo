@@ -20,13 +20,34 @@ import {
   createArtifactUploadDatabase,
 } from '../src/execution/artifact-upload.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+const databaseName = `pertexo_test_artifact_upload_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+    'pertexo_maintenance',
+    'pertexo_lifecycle_command',
+    'pertexo_operator',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
+const apiUrl = fixture.databaseUrl(apiBaseUrl);
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -39,11 +60,13 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-const database = createArtifactUploadDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-);
-const apiProbePool = new Pool({ connectionString: apiUrl, max: 1 });
-const ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
+let database!: ReturnType<typeof createArtifactUploadDatabase>;
+let apiProbePool!: Pool;
+let ownerPool!: Pool;
+let databaseCreated = false;
+let databaseAcquired = false;
+let apiProbePoolAcquired = false;
+let ownerPoolAcquired = false;
 
 let workspaceId = randomUUID();
 let actorId = randomUUID();
@@ -173,7 +196,30 @@ async function cleanupFixture(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await migrateDatabase(migrationConfig);
+  try {
+    await fixture.create();
+    databaseCreated = true;
+    await migrateDatabase(migrationConfig);
+    database = createArtifactUploadDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    databaseAcquired = true;
+    apiProbePool = new Pool({ connectionString: apiUrl, max: 1 });
+    apiProbePoolAcquired = true;
+    ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
+    ownerPoolAcquired = true;
+  } catch (error: unknown) {
+    const cleanup = await Promise.allSettled([
+      ...(databaseAcquired ? [database.close()] : []),
+      ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
+      ...(ownerPoolAcquired ? [ownerPool.end()] : []),
+      ...(databaseCreated ? [fixture.drop()] : []),
+    ]);
+    const failures: unknown[] = [error];
+    for (const result of cleanup)
+      if (result.status === 'rejected') failures.push(result.reason);
+    throw new AggregateError(failures, 'Artifact upload fixture setup failed');
+  }
 });
 
 beforeEach(async () => {
@@ -205,9 +251,27 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await database.close();
-  await apiProbePool.end();
-  await ownerPool.end();
+  const failures: unknown[] = [];
+  const closed = await Promise.allSettled([
+    ...(databaseAcquired ? [database.close()] : []),
+    ...(apiProbePoolAcquired ? [apiProbePool.end()] : []),
+    ...(ownerPoolAcquired ? [ownerPool.end()] : []),
+  ]);
+  for (const result of closed)
+    if (result.status === 'rejected') failures.push(result.reason);
+  if (databaseCreated) {
+    try {
+      await fixture.drop();
+      databaseCreated = false;
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Artifact upload fixture cleanup failed',
+    );
 });
 
 describe('artifact upload database authority', () => {
@@ -272,7 +336,17 @@ describe('artifact upload database authority', () => {
   });
 
   it('sets the pending deadline from the database clock at fifteen minutes', async () => {
-    const before = Date.now();
+    const databaseTime = () =>
+      ownerTransaction(async (client) => {
+        const result = await client.query<{ observed_at: Date }>(
+          'select clock_timestamp() observed_at',
+        );
+        const observed = result.rows[0]?.observed_at;
+        if (observed === undefined)
+          throw new Error('Database clock did not return a timestamp');
+        return observed;
+      });
+    const before = await databaseTime();
     const created = await database.beginUpload({
       actor: actor(),
       byteLength: 19,
@@ -281,10 +355,10 @@ describe('artifact upload database authority', () => {
       sha256: 'e'.repeat(64),
       workspaceId,
     });
-    const after = Date.now();
+    const after = await databaseTime();
     const deadline = created.artifact.expiresAt.getTime();
-    const expectedLowerBound = before + 15 * 60 * 1_000 - 5_000;
-    const expectedUpperBound = after + 15 * 60 * 1_000 + 5_000;
+    const expectedLowerBound = before.getTime() + 15 * 60 * 1_000;
+    const expectedUpperBound = after.getTime() + 15 * 60 * 1_000;
 
     expect(deadline).toBeGreaterThanOrEqual(expectedLowerBound);
     expect(deadline).toBeLessThanOrEqual(expectedUpperBound);
@@ -612,6 +686,123 @@ describe('artifact upload database authority', () => {
     expect(finalized.finalizedAt).toBeInstanceOf(Date);
     expect(replay).toEqual(finalized);
     await expect(database.getMetadata(identity)).resolves.toEqual(finalized);
+  });
+
+  it('keeps verified bytes pending when cancellation is observed before finalization', async () => {
+    const created = await database.beginUpload({
+      actor: actor(),
+      byteLength: 31,
+      idempotencyKey: 'finalize-upload-post-verification-abort',
+      mediaType: 'application/octet-stream',
+      sha256: '7'.repeat(64),
+      workspaceId,
+    });
+    const controller = new AbortController();
+    const reason = new Error('request canceled after object verification');
+    const identity = {
+      actor: actor(),
+      identity: { artifactId: created.artifact.id, workspaceId },
+    } as const;
+
+    await expect(
+      database.finalizeUpload({
+        ...identity,
+        expectedMetadata: {
+          byteLength: 31,
+          mediaType: 'application/octet-stream',
+          sha256: '7'.repeat(64),
+        },
+        signal: controller.signal,
+        verifyUpload: () => {
+          controller.abort(reason);
+          return Promise.resolve();
+        },
+      }),
+    ).rejects.toBe(reason);
+    await expect(database.getForUpload(identity)).resolves.toMatchObject({
+      id: created.artifact.id,
+      status: 'pending',
+    });
+    await expect(readCapacity()).resolves.toEqual({
+      chargedBytes: 31,
+      chargedCount: 1,
+    });
+  });
+
+  it('rechecks actor authority and lifecycle after object verification', async () => {
+    const revoked = await database.beginUpload({
+      actor: actor(),
+      byteLength: 33,
+      idempotencyKey: 'finalize-upload-authority-recheck',
+      mediaType: 'application/octet-stream',
+      sha256: '8'.repeat(64),
+      workspaceId,
+    });
+    await expect(
+      database.finalizeUpload({
+        actor: actor(),
+        expectedMetadata: {
+          byteLength: 33,
+          mediaType: 'application/octet-stream',
+          sha256: '8'.repeat(64),
+        },
+        identity: { artifactId: revoked.artifact.id, workspaceId },
+        verifyUpload: async () => {
+          await ownerTransaction(async (client) => {
+            await client.query(
+              `update app.workspace_memberships set status='suspended'
+                where workspace_id=$1 and user_id=$2`,
+              [workspaceId, actorId],
+            );
+          });
+        },
+      }),
+    ).rejects.toBeInstanceOf(ArtifactUploadNotFoundError);
+    await ownerTransaction(async (client) => {
+      await client.query(
+        `update app.workspace_memberships set status='active'
+          where workspace_id=$1 and user_id=$2`,
+        [workspaceId, actorId],
+      );
+    });
+    await expect(
+      database.getForUpload({
+        actor: actor(),
+        identity: { artifactId: revoked.artifact.id, workspaceId },
+      }),
+    ).resolves.toMatchObject({ status: 'pending' });
+
+    const deleting = await database.beginUpload({
+      actor: actor(),
+      byteLength: 35,
+      idempotencyKey: 'finalize-upload-lifecycle-recheck',
+      mediaType: 'application/octet-stream',
+      sha256: '9'.repeat(64),
+      workspaceId,
+    });
+    await expect(
+      database.finalizeUpload({
+        actor: actor(),
+        expectedMetadata: {
+          byteLength: 35,
+          mediaType: 'application/octet-stream',
+          sha256: '9'.repeat(64),
+        },
+        identity: { artifactId: deleting.artifact.id, workspaceId },
+        verifyUpload: async () => {
+          await ownerTransaction(async (client) => {
+            await client.query(
+              `update app.artifacts set status='deleting',updated_at=clock_timestamp()
+                where workspace_id=$1 and id=$2`,
+              [workspaceId, deleting.artifact.id],
+            );
+          });
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'Artifact upload is not pending',
+      name: 'ArtifactUploadConflictError',
+    });
   });
 
   it('rejects finalization after expiry and during deletion', async () => {

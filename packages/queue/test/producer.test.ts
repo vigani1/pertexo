@@ -21,23 +21,28 @@ const mocks = vi.hoisted(() => {
   }
 
   const queueInstances: QueueInstance[] = [];
-  const redisListeners = new Map<string, (() => void)[]>();
-  const redisClient: RedisClient = {
-    status: 'ready',
-    on: vi.fn((event: string, listener: () => void) => {
-      const listeners = redisListeners.get(event) ?? [];
-      listeners.push(listener);
-      redisListeners.set(event, listeners);
-      return redisClient;
-    }),
-    emit: vi.fn((event: string) => {
-      for (const listener of redisListeners.get(event) ?? []) {
-        listener();
-      }
-      return true;
-    }),
-    quit: vi.fn(() => Promise.resolve('OK')),
-    disconnect: vi.fn(),
+  const redisClients: RedisClient[] = [];
+  const redisFactoryState = { nextStatus: 'ready' };
+
+  const createRedisClient = (): RedisClient => {
+    const listeners = new Map<string, (() => void)[]>();
+    const client: RedisClient = {
+      status: redisFactoryState.nextStatus,
+      on: vi.fn((event: string, listener: () => void) => {
+        const eventListeners = listeners.get(event) ?? [];
+        eventListeners.push(listener);
+        listeners.set(event, eventListeners);
+        return client;
+      }),
+      emit: vi.fn((event: string) => {
+        for (const listener of listeners.get(event) ?? []) listener();
+        return true;
+      }),
+      quit: vi.fn(() => Promise.resolve('OK')),
+      disconnect: vi.fn((): unknown => undefined),
+    };
+    redisClients.push(client);
+    return client;
   };
 
   const Queue = vi.fn(function QueueMock(name: string, options: unknown) {
@@ -55,10 +60,10 @@ const mocks = vi.hoisted(() => {
     return queue;
   });
   const Redis = vi.fn(function RedisMock() {
-    return redisClient;
+    return createRedisClient();
   });
 
-  return { Queue, Redis, queueInstances, redisClient };
+  return { Queue, Redis, queueInstances, redisClients, redisFactoryState };
 });
 
 vi.mock('bullmq', () => ({ Queue: mocks.Queue }));
@@ -78,11 +83,18 @@ const IDS = {
   outboxEventId: '88888888-8888-4888-8888-888888888888',
 } as const;
 
+function redisClient(index = mocks.redisClients.length - 1) {
+  const client = mocks.redisClients[index];
+  if (client === undefined) throw new Error('Expected Redis test client');
+  return client;
+}
+
 describe('BullMQ queue producer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.queueInstances.length = 0;
-    mocks.redisClient.status = 'ready';
+    mocks.redisClients.length = 0;
+    mocks.redisFactoryState.nextStatus = 'ready';
   });
 
   it('derives a stable nonnumeric, colon-free job ID from the outbox event', () => {
@@ -170,7 +182,7 @@ describe('BullMQ queue producer', () => {
       redisUrl: 'redis://localhost:6379/0',
     });
 
-    mocks.redisClient.emit('ready');
+    redisClient().emit('ready');
     await expect(
       producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
@@ -202,7 +214,7 @@ describe('BullMQ queue producer', () => {
   });
 
   it('fails fast while Redis is not ready and supports readiness recovery', async () => {
-    mocks.redisClient.status = 'connecting';
+    mocks.redisFactoryState.nextStatus = 'connecting';
     const producer = new BullMqQueueProducer({
       redisUrl: 'redis://localhost:6379/0',
     });
@@ -220,15 +232,30 @@ describe('BullMQ queue producer', () => {
       }),
     ).rejects.toThrow(/not ready/i);
 
-    mocks.redisClient.status = 'ready';
-    mocks.redisClient.emit('ready');
+    redisClient().status = 'ready';
+    redisClient().emit('ready');
     expect(producer.isReady()).toBe(true);
+  });
+
+  it('keeps Redis listener state isolated between producer clients', async () => {
+    const first = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    const second = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+
+    redisClient(0).emit('error');
+    expect(first.isReady()).toBe(false);
+    expect(second.isReady()).toBe(true);
+
+    await Promise.all([first.close(), second.close()]);
   });
 
   it('bounds readiness, rejects observation while unavailable, and lets close win', async () => {
     vi.useFakeTimers();
     try {
-      mocks.redisClient.status = 'connecting';
+      mocks.redisFactoryState.nextStatus = 'connecting';
       const producer = createQueueProducer({
         redisUrl: 'redis://localhost:6379/0',
       });
@@ -249,6 +276,49 @@ describe('BullMQ queue producer', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it.each(['close', 'error'] as const)(
+    'rejects queue readiness when Redis emits %s during BullMQ readiness',
+    async (event) => {
+      const producer = createQueueProducer({
+        redisUrl: 'redis://localhost:6379/0',
+      });
+      let releaseReady: (() => void) | undefined;
+      mocks.queueInstances[0]?.waitUntilReady.mockReturnValue(
+        new Promise<void>((resolve) => {
+          releaseReady = resolve;
+        }),
+      );
+      const waiting = producer.waitUntilReady();
+      const rejection = expect(waiting).rejects.toThrow(/not ready/i);
+
+      redisClient().emit(event);
+      releaseReady?.();
+
+      await rejection;
+      expect(producer.isReady()).toBe(false);
+    },
+  );
+
+  it('rejects deferred queue readiness after close fully wins', async () => {
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    let releaseReady: (() => void) | undefined;
+    mocks.queueInstances[0]?.waitUntilReady.mockReturnValue(
+      new Promise<void>((resolve) => {
+        releaseReady = resolve;
+      }),
+    );
+    const waiting = producer.waitUntilReady();
+    const rejection = expect(waiting).rejects.toThrow(/not ready/i);
+
+    await producer.close();
+    releaseReady?.();
+
+    await rejection;
+    expect(producer.isReady()).toBe(false);
   });
 
   it('observes bounded queue depth and oldest-job age without reading payloads', async () => {
@@ -288,35 +358,42 @@ describe('BullMQ queue producer', () => {
   });
 
   it('reports an explicit unknown outcome and retains late settlement truth', async () => {
-    const producer = createQueueProducer({
-      publishTimeoutMs: 1,
-      redisUrl: 'redis://localhost:6379/0',
-    });
-    const coordinator = mocks.queueInstances.find(
-      (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
-    );
-    let settle: ((value: unknown) => void) | undefined;
-    coordinator?.add.mockReturnValue(
-      new Promise<unknown>((resolve) => {
-        settle = resolve;
-      }),
-    );
+    vi.useFakeTimers();
+    try {
+      const producer = createQueueProducer({
+        publishTimeoutMs: 25,
+        redisUrl: 'redis://localhost:6379/0',
+      });
+      const coordinator = mocks.queueInstances.find(
+        (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
+      );
+      let settle: ((value: unknown) => void) | undefined;
+      coordinator?.add.mockReturnValue(
+        new Promise<unknown>((resolve) => {
+          settle = resolve;
+        }),
+      );
 
-    const result = await producer.publish({
-      name: JOB_NAME.advanceWorkflowRun,
-      data: {
-        schemaVersion: 1,
-        workspaceId: IDS.workspaceId,
-        runId: IDS.runId,
-        outboxEventId: IDS.outboxEventId,
-      },
-    });
+      const publishing = producer.publish({
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          runId: IDS.runId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      });
+      await vi.advanceTimersByTimeAsync(25);
+      const result = await publishing;
 
-    expect(result).toMatchObject({ outcome: 'outcome_unknown' });
-    if (result.outcome !== 'outcome_unknown')
-      throw new Error('Expected an unknown publication outcome');
-    settle?.({ id: result.jobId });
-    await expect(result.settlement).resolves.toBe('published');
+      expect(result).toMatchObject({ outcome: 'outcome_unknown' });
+      if (result.outcome !== 'outcome_unknown')
+        throw new Error('Expected an unknown publication outcome');
+      settle?.({ id: result.jobId });
+      await expect(result.settlement).resolves.toBe('published');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('surfaces an immediate Redis command failure to the outbox caller', async () => {
@@ -353,7 +430,7 @@ describe('BullMQ queue producer', () => {
     for (const queue of mocks.queueInstances) {
       expect(queue.close).toHaveBeenCalledTimes(1);
     }
-    expect(mocks.redisClient.quit).toHaveBeenCalledTimes(1);
+    expect(redisClient().quit).toHaveBeenCalledTimes(1);
     expect(producer.isReady()).toBe(false);
   });
 
@@ -380,8 +457,8 @@ describe('BullMQ queue producer', () => {
         expect(queue.close).toHaveBeenCalledOnce();
         expect(queue.disconnect).toHaveBeenCalledOnce();
       }
-      expect(mocks.redisClient.quit).toHaveBeenCalledOnce();
-      expect(mocks.redisClient.disconnect).toHaveBeenCalledOnce();
+      expect(redisClient().quit).toHaveBeenCalledOnce();
+      expect(redisClient().disconnect).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
@@ -403,8 +480,39 @@ describe('BullMQ queue producer', () => {
       expect(queue.close).toHaveBeenCalledOnce();
       expect(queue.disconnect).toHaveBeenCalledOnce();
     }
-    expect(mocks.redisClient.quit).toHaveBeenCalledOnce();
-    expect(mocks.redisClient.disconnect).toHaveBeenCalledOnce();
+    expect(redisClient().quit).toHaveBeenCalledOnce();
+    expect(redisClient().disconnect).toHaveBeenCalledOnce();
+    expect(producer.isReady()).toBe(false);
+  });
+
+  it('observes rejecting, throwing, and stalled fallback disconnects while preserving close failure', async () => {
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    const failure = new Error('authoritative close failure');
+    mocks.queueInstances[0]?.close.mockRejectedValue(failure);
+    mocks.queueInstances[0]?.disconnect.mockRejectedValue(
+      new Error('disconnect rejected'),
+    );
+    mocks.queueInstances[1]?.disconnect.mockImplementation(() => {
+      throw new Error('disconnect threw');
+    });
+    mocks.queueInstances[2]?.disconnect.mockReturnValue(
+      new Promise<void>(() => undefined),
+    );
+    const rejectingDisconnect = (): unknown =>
+      Promise.reject(new Error('redis disconnect rejected'));
+    redisClient().disconnect.mockImplementation(rejectingDisconnect);
+
+    const first = producer.close();
+    const second = producer.close();
+    await expect(first).rejects.toBe(failure);
+    await expect(second).rejects.toBe(failure);
+    await Promise.resolve();
+
+    for (const queue of mocks.queueInstances)
+      expect(queue.disconnect).toHaveBeenCalledOnce();
+    expect(redisClient().disconnect).toHaveBeenCalledOnce();
     expect(producer.isReady()).toBe(false);
   });
 });

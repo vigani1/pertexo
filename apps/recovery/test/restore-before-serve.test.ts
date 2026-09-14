@@ -117,9 +117,10 @@ function resources(events: string[]) {
     reconcile: vi.fn(),
   } as DualRegionControlLedger;
   const logInfo = vi.fn();
+  const logError = vi.fn();
   const logger = {
     debug: vi.fn(),
-    error: vi.fn(),
+    error: logError,
     fatal: vi.fn(),
     info: logInfo,
     trace: vi.fn(),
@@ -163,6 +164,7 @@ function resources(events: string[]) {
       closeLedger,
       closeArtifacts,
       listCommittedArtifacts,
+      logError,
       logInfo,
       reconcileAllWorkspaces,
       recordControlLedgerReconciliation,
@@ -223,6 +225,58 @@ describe('restoreBeforeServe', () => {
       'artifact-close',
       'telemetry-close',
     ]);
+  });
+
+  it('retains operation, diagnostic, and every cleanup failure in owner order', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    const operationError = new Error('ledger unavailable');
+    operationError.name = 'SecretRecoverySubclass';
+    const metricError = new Error('failure metric failed');
+    const logError = new Error('failure logger failed');
+    const coordinatorError = new Error('coordinator close failed');
+    const ledgerError = new Error('ledger close failed');
+    const artifactError = new Error('artifact close failed');
+    const telemetryError = new Error('telemetry close failed');
+    input.spies.checkLedgerReadiness.mockRejectedValueOnce(operationError);
+    input.spies.recordControlLedgerReconciliation.mockImplementationOnce(() => {
+      throw metricError;
+    });
+    input.spies.logError.mockImplementationOnce(() => {
+      throw logError;
+    });
+    input.spies.closeCoordinator.mockRejectedValueOnce(coordinatorError);
+    input.spies.closeLedger.mockImplementationOnce(() => {
+      throw ledgerError;
+    });
+    input.spies.closeArtifacts.mockImplementationOnce(() => {
+      throw artifactError;
+    });
+    input.spies.shutdownTelemetry.mockRejectedValueOnce(telemetryError);
+
+    const failure = await restoreBeforeServe(input).catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([
+      operationError,
+      metricError,
+      logError,
+      coordinatorError,
+      ledgerError,
+      artifactError,
+      telemetryError,
+    ]);
+    expect(input.spies.logError).toHaveBeenCalledWith(
+      'restore_before_serve.failed',
+      { errorType: 'Error' },
+      operationError,
+    );
+    expect(input.spies.closeCoordinator).toHaveBeenCalledOnce();
+    expect(input.spies.closeLedger).toHaveBeenCalledOnce();
+    expect(input.spies.closeArtifacts).toHaveBeenCalledOnce();
+    expect(input.spies.shutdownTelemetry).toHaveBeenCalledOnce();
   });
 
   it('preserves an undefined readiness rejection and still closes every resource', async () => {
@@ -290,6 +344,136 @@ describe('restoreBeforeServe', () => {
     expect(input.spies.verifyReplicas).toHaveBeenCalledOnce();
   });
 
+  it('forwards exact cursors and digests every artifact tuple across pages', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.artifactPageSize = 2;
+    const artifacts = [
+      {
+        ...artifact,
+        artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
+        byteLength: 3,
+        mediaType: 'text/plain',
+        sha256: '1'.repeat(64),
+        workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
+      },
+      {
+        ...artifact,
+        artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02',
+        byteLength: 8,
+        mediaType: 'application/json',
+        sha256: '2'.repeat(64),
+        workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
+      },
+      {
+        ...artifact,
+        artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c03',
+        byteLength: 13,
+        mediaType: 'application/octet-stream',
+        sha256: '3'.repeat(64),
+        workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02',
+      },
+    ];
+    input.spies.listCommittedArtifacts
+      .mockResolvedValueOnce({
+        artifacts: artifacts.slice(0, 2),
+        hasMore: true,
+      })
+      .mockResolvedValueOnce({ artifacts: artifacts.slice(2), hasMore: false });
+
+    const result = await restoreBeforeServe(input);
+    const expectedDigest = createHash('sha256')
+      .update(
+        artifacts
+          .map(
+            (item) =>
+              `${item.workspaceId}\0${item.artifactId}\0${String(item.byteLength)}\0${item.mediaType}\0${item.sha256}\n`,
+          )
+          .join(''),
+      )
+      .digest('hex');
+
+    expect(result.artifacts).toMatchObject({
+      artifactCount: 3,
+      inventoryDigest: expectedDigest,
+      pageCount: 2,
+    });
+    expect(input.spies.listCommittedArtifacts).toHaveBeenNthCalledWith(1, {
+      limit: 2,
+      signal: input.signal,
+    });
+    expect(input.spies.listCommittedArtifacts).toHaveBeenNthCalledWith(2, {
+      afterArtifactId: artifacts[1]?.artifactId,
+      afterWorkspaceId: artifacts[1]?.workspaceId,
+      limit: 2,
+      signal: input.signal,
+    });
+    const verificationCalls = input.spies.verifyReplicas.mock
+      .calls as unknown as readonly (readonly [unknown])[];
+    expect(verificationCalls.map(([item]) => item)).toEqual(
+      artifacts.map((item) => ({ ...item, signal: input.signal })),
+    );
+  });
+
+  it('records the known empty SHA-256 for a complete empty inventory', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.spies.listCommittedArtifacts.mockResolvedValueOnce({
+      artifacts: [],
+      hasMore: false,
+    });
+
+    const result = await restoreBeforeServe(input);
+
+    expect(result.artifacts).toMatchObject({
+      artifactCount: 0,
+      inventoryDigest:
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      pageCount: 1,
+    });
+    expect(input.spies.verifyReplicas).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-progressing page and does not log completion', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.spies.listCommittedArtifacts.mockResolvedValueOnce({
+      artifacts: [],
+      hasMore: true,
+    });
+
+    await expect(restoreBeforeServe(input)).rejects.toThrow(
+      'Restore-before-serve recovery did not complete cleanly',
+    );
+    expect(input.spies.logInfo).not.toHaveBeenCalled();
+    expect(input.spies.verifyReplicas).not.toHaveBeenCalled();
+  });
+
+  it('stops between pages when the inventory signal is aborted', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    const controller = new AbortController();
+    const stop = new Error('stop between artifact pages');
+    input.signal = controller.signal;
+    input.spies.listCommittedArtifacts.mockResolvedValueOnce({
+      artifacts: [artifact],
+      hasMore: true,
+    });
+    input.spies.verifyReplicas.mockImplementationOnce(() => {
+      controller.abort(stop);
+      return Promise.resolve(artifact);
+    });
+
+    const failure = await restoreBeforeServe(input).catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors[0]).toBe(stop);
+    expect(input.spies.listCommittedArtifacts).toHaveBeenCalledOnce();
+    expect(input.spies.logInfo).not.toHaveBeenCalled();
+  });
+
   it('honors cancellation before any readiness probe', async () => {
     const events: string[] = [];
     const input = resources(events);
@@ -322,3 +506,4 @@ describe('restoreBeforeServe', () => {
     ]);
   });
 });
+import { createHash } from 'node:crypto';

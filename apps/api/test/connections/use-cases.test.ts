@@ -1,4 +1,3 @@
-import type { ConnectionRecord } from '@pertexo/database/testing';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
@@ -8,168 +7,31 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
-  ConnectionCommandPersistence,
   ConnectionHttpClient,
   ConnectionEmailClient,
   ConnectionSlackClient,
   ConnectionTestPersistence,
 } from '../../src/connections/ports.js';
 import {
-  CreateConnectionUseCase,
-  RevokeConnectionUseCase,
-  RotateConnectionSecretUseCase,
   TestConnectionUseCase,
   type TestConnectionCommand,
 } from '../../src/connections/use-cases.js';
+import { authorizeWorkspace } from '../../src/workspaces/index.js';
 import {
-  authorizeWorkspace,
-  createActorContext,
-} from '../../src/workspaces/index.js';
-
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const secretVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const nextSecretVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const credential = {
-  schemaVersion: 1,
-  type: 'http_headers',
-  headers: { Authorization: 'Bearer deeply-secret-value' },
-} as const;
-const actor = createActorContext({
+  actor,
   actorId,
+  authorization,
+  connectionId,
+  connectionTestPersistence,
+  credential,
+  record,
+  sealed,
+  secretVersionId,
   workspaceId,
-  sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-  requestId: 'request-42',
-});
+} from './support/use-case-fixture.js';
 
-function record(overrides: Partial<ConnectionRecord> = {}): ConnectionRecord {
-  return {
-    id: connectionId,
-    workspaceId,
-    providerKey: 'http',
-    name: 'Operations API',
-    authType: 'http_headers',
-    status: 'active',
-    currentSecretVersionId: secretVersionId,
-    lastTestedAt: null,
-    lastHealthyAt: null,
-    lastErrorCode: null,
-    createdBy: actorId,
-    createdAt: new Date('2026-08-22T12:00:00.000Z'),
-    updatedAt: new Date('2026-08-22T12:00:00.000Z'),
-    ...overrides,
-  };
-}
-
-function authorization() {
-  return {
-    findAccess: vi.fn().mockResolvedValue({
-      actorId,
-      workspaceId,
-      role: 'owner' as const,
-      membershipStatus: 'active' as const,
-      workspaceStatus: 'active' as const,
-    }),
-  };
-}
-
-function persistence(overrides: Partial<ConnectionCommandPersistence> = {}) {
-  return {
-    createConnection: vi.fn<ConnectionCommandPersistence['createConnection']>(
-      () => Promise.resolve(record()),
-    ),
-    findConnectionCreateReplay: vi.fn<
-      ConnectionCommandPersistence['findConnectionCreateReplay']
-    >(() => Promise.resolve(null)),
-    findConnectionRotateReplay: vi.fn<
-      ConnectionCommandPersistence['findConnectionRotateReplay']
-    >(() => Promise.resolve(null)),
-    rotateConnectionSecret: vi.fn<
-      ConnectionCommandPersistence['rotateConnectionSecret']
-    >(() =>
-      Promise.resolve(record({ currentSecretVersionId: nextSecretVersionId })),
-    ),
-    revokeConnection: vi.fn<ConnectionCommandPersistence['revokeConnection']>(
-      () => Promise.resolve(record({ status: 'revoked' })),
-    ),
-    ...overrides,
-  } satisfies ConnectionCommandPersistence;
-}
-
-function testPersistence(overrides: Partial<ConnectionTestPersistence> = {}) {
-  return {
-    startConnectionTest: vi.fn<
-      ConnectionTestPersistence['startConnectionTest']
-    >(() =>
-      Promise.resolve({
-        kind: 'dispatch',
-        dispatchToken: '11111111-1111-4111-8111-111111111111',
-      }),
-    ),
-    resolveConnectionTestSecret: vi.fn<
-      ConnectionTestPersistence['resolveConnectionTestSecret']
-    >(() =>
-      Promise.resolve({
-        connection: record(),
-        secretVersionId,
-        sealed,
-      }),
-    ),
-    markConnectionTestDispatched: vi.fn<
-      ConnectionTestPersistence['markConnectionTestDispatched']
-    >(() => Promise.resolve()),
-    completeConnectionTest: vi.fn<
-      ConnectionTestPersistence['completeConnectionTest']
-    >((input) =>
-      Promise.resolve({
-        connection: record({
-          lastTestedAt: new Date('2026-08-22T12:01:00.000Z'),
-          ...(input.outcome.ok
-            ? { lastHealthyAt: new Date('2026-08-22T12:01:00.000Z') }
-            : { lastErrorCode: input.outcome.errorCode }),
-        }),
-        outcome: input.outcome,
-      }),
-    ),
-    abandonConnectionTest: vi.fn<
-      ConnectionTestPersistence['abandonConnectionTest']
-    >(() => Promise.resolve()),
-    ...overrides,
-  } satisfies ConnectionTestPersistence;
-}
-
-const sealed = Object.freeze({
-  schemaVersion: 1 as const,
-  kmsKeyReference: 'alias/pertexo-connections',
-  encryptedDataKey: 'encrypted-key',
-  ciphertext: 'ciphertext',
-  nonce: 'nonce',
-  tag: 'tag',
-});
-
-describe('connection application use cases', () => {
-  it('rejects invalid unknown command bodies at the use-case boundary', async () => {
-    const store = persistence();
-    const encryption = { seal: vi.fn() };
-    await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-        idempotencyKey: 'create-invalid',
-        request: {
-          providerKey: 'http',
-          name: 'Operations API',
-          credential: {
-            schemaVersion: 1,
-            type: 'http_headers',
-            headers: { Host: 'metadata.internal' },
-          },
-        },
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(encryption.seal).not.toHaveBeenCalled();
-
+describe('connection testing use case', () => {
+  it('rejects an invalid connection-test body before claiming work', async () => {
     const testCommand: TestConnectionCommand = {
       actor,
       routeWorkspaceId: workspaceId,
@@ -177,233 +39,25 @@ describe('connection application use cases', () => {
       idempotencyKey: 'test-invalid',
       request: { url: 'http://provider.example.test/health' },
     };
+    const store = connectionTestPersistence();
+    const open = vi.fn();
+    const execute = vi.fn();
+
     await expect(
       new TestConnectionUseCase(
-        testPersistence(),
+        store,
         authorization(),
-        { open: vi.fn(), seal: vi.fn() },
-        { execute: vi.fn() },
+        { open, seal: vi.fn() },
+        { execute },
       ).execute(testCommand),
     ).rejects.toMatchObject({ name: 'ZodError' });
+
+    expect(store.startConnectionTest).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
   });
-
-  it('reuses guard authorization without repeating a command access lookup', async () => {
-    const access = authorization();
-    const authorizedWorkspace = await authorizeWorkspace({
-      actor,
-      routeWorkspaceId: workspaceId,
-      capability: 'connection:manage',
-      access,
-      disclosure: 'not_found',
-    });
-
-    await new RevokeConnectionUseCase(persistence(), access).execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      authorizedWorkspace,
-      connectionId,
-    });
-
-    expect(access.findAccess).toHaveBeenCalledTimes(1);
-  });
-
-  it('authorizes, seals, persists, zeroes plaintext, and returns no credential material', async () => {
-    const createConnection = vi.fn<
-      ConnectionCommandPersistence['createConnection']
-    >(() => Promise.resolve(record()));
-    const store = persistence({ createConnection });
-    let plaintext: Uint8Array | undefined;
-    const encryption = {
-      seal: vi.fn().mockImplementation((value: Uint8Array) => {
-        plaintext = value;
-        expect(new TextDecoder().decode(value)).toContain(
-          'deeply-secret-value',
-        );
-        return Promise.resolve(sealed);
-      }),
-    };
-    const signal = new AbortController().signal;
-    const result = await new CreateConnectionUseCase(
-      store,
-      authorization(),
-      encryption,
-    ).execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      idempotencyKey: 'create-42',
-      requestId: 'request-42',
-      request: { providerKey: 'http', name: 'Operations API', credential },
-      signal,
-    });
-
-    expect(encryption.seal).toHaveBeenCalledWith(
-      expect.any(Uint8Array),
-      expect.objectContaining({ workspaceId }),
-      signal,
-    );
-    expect(createConnection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId,
-        actorId,
-        authType: 'http_headers',
-        idempotencyKey: 'create-42',
-        sealed,
-      }),
-    );
-    expect(createConnection.mock.calls[0]?.[0].requestHash).toMatch(
-      /^[0-9a-f]{64}$/u,
-    );
-    expect(plaintext).toBeDefined();
-    expect(plaintext?.every((byte) => byte === 0)).toBe(true);
-    expect(JSON.stringify(result)).not.toContain('deeply-secret-value');
-    expect(result).not.toHaveProperty('credential');
-  });
-
-  it('does not persist a connection when cancellation races KMS completion', async () => {
-    const controller = new AbortController();
-    let plaintext: Uint8Array | undefined;
-    const store = persistence();
-    const encryption = {
-      seal: vi.fn((value: Uint8Array) => {
-        plaintext = value;
-        controller.abort();
-        return Promise.resolve(sealed);
-      }),
-    };
-
-    await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-        idempotencyKey: 'create-canceled',
-        request: { providerKey: 'http', name: 'Operations API', credential },
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(store.createConnection).not.toHaveBeenCalled();
-    expect(plaintext?.every((byte) => byte === 0)).toBe(true);
-  });
-
-  it('returns an exact create replay without generating IDs or contacting KMS', async () => {
-    const store = persistence({
-      findConnectionCreateReplay: vi.fn().mockResolvedValue(record()),
-    });
-    const encryption = {
-      seal: vi.fn().mockRejectedValue(new Error('KMS down')),
-    };
-
-    const result = await new CreateConnectionUseCase(
-      store,
-      authorization(),
-      encryption,
-    ).execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      idempotencyKey: 'create-replay',
-      request: { providerKey: 'http', name: 'Operations API', credential },
-    });
-
-    expect(result.id).toBe(connectionId);
-    expect(encryption.seal).not.toHaveBeenCalled();
-    expect(store.createConnection).not.toHaveBeenCalled();
-  });
-
-  it('returns an exact rotation replay without contacting KMS', async () => {
-    const store = persistence({
-      findConnectionRotateReplay: vi
-        .fn()
-        .mockResolvedValue(
-          record({ currentSecretVersionId: nextSecretVersionId }),
-        ),
-    });
-    const encryption = {
-      seal: vi.fn().mockRejectedValue(new Error('KMS down')),
-    };
-
-    const result = await new RotateConnectionSecretUseCase(
-      store,
-      authorization(),
-      encryption,
-    ).execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      connectionId,
-      idempotencyKey: 'rotate-replay',
-      request: { expectedSecretVersionId: secretVersionId, credential },
-    });
-
-    expect(result.secretVersionId).toBe(nextSecretVersionId);
-    expect(encryption.seal).not.toHaveBeenCalled();
-    expect(store.rotateConnectionSecret).not.toHaveBeenCalled();
-  });
-
-  it('rotates through CAS/idempotency inputs and revokes through the same authorization seam', async () => {
-    const rotateConnectionSecret = vi.fn<
-      ConnectionCommandPersistence['rotateConnectionSecret']
-    >(() =>
-      Promise.resolve(record({ currentSecretVersionId: nextSecretVersionId })),
-    );
-    const revokeConnection = vi.fn<
-      ConnectionCommandPersistence['revokeConnection']
-    >(() => Promise.resolve(record({ status: 'revoked' })));
-    const store = persistence({ rotateConnectionSecret, revokeConnection });
-    let plaintext: Uint8Array | undefined;
-    const encryption = {
-      seal: vi.fn((value: Uint8Array) => {
-        plaintext = value;
-        return Promise.resolve(sealed);
-      }),
-    };
-
-    const rotated = await new RotateConnectionSecretUseCase(
-      store,
-      authorization(),
-      encryption,
-    ).execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      connectionId,
-      idempotencyKey: 'rotate-42',
-      request: { expectedSecretVersionId: secretVersionId, credential },
-    });
-    expect(rotated.secretVersionId).toBe(nextSecretVersionId);
-    expect(rotateConnectionSecret).toHaveBeenCalledWith(
-      expect.objectContaining({
-        connectionId,
-        expectedCurrentSecretVersionId: secretVersionId,
-        idempotencyKey: 'rotate-42',
-      }),
-    );
-    expect(plaintext?.every((byte) => byte === 0)).toBe(true);
-
-    const revoked = await new RevokeConnectionUseCase(
-      store,
-      authorization(),
-    ).execute({ actor, routeWorkspaceId: workspaceId, connectionId });
-    expect(revoked.status).toBe('revoked');
-    expect(revokeConnection).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceId, actorId, connectionId }),
-    );
-  });
-
-  it('hides a route-workspace mismatch before persistence or encryption', async () => {
-    const store = persistence();
-    const encryption = { seal: vi.fn() };
-
-    await expect(
-      new CreateConnectionUseCase(store, authorization(), encryption).execute({
-        actor,
-        routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
-        idempotencyKey: 'create-42',
-        request: { providerKey: 'http', name: 'Operations API', credential },
-      }),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
-    expect(store.findConnectionCreateReplay).not.toHaveBeenCalled();
-    expect(encryption.seal).not.toHaveBeenCalled();
-  });
-
   it('decrypts just in time, commits dispatch evidence, and stores only a safe test result', async () => {
-    const store = testPersistence();
+    const store = connectionTestPersistence();
     const access = authorization();
     const authorizedWorkspace = await authorizeWorkspace({
       actor,
@@ -482,7 +136,7 @@ describe('connection application use cases', () => {
       }),
       outcome: { ok: true as const, httpStatus: 200 },
     };
-    const store = testPersistence({
+    const store = connectionTestPersistence({
       startConnectionTest: vi.fn().mockResolvedValue({
         kind: 'replay',
         result: replay,
@@ -525,7 +179,7 @@ describe('connection application use cases', () => {
       authType: 'slack_bot_token',
       name: 'Operations Slack',
     });
-    const store = testPersistence({
+    const store = connectionTestPersistence({
       resolveConnectionTestSecret: vi.fn(() =>
         Promise.resolve({ connection: slackRecord, secretVersionId, sealed }),
       ),
@@ -579,7 +233,7 @@ describe('connection application use cases', () => {
       authType: 'resend_api_key',
       name: 'Transactional email',
     });
-    const store = testPersistence({
+    const store = connectionTestPersistence({
       resolveConnectionTestSecret: vi.fn(() =>
         Promise.resolve({ connection: emailRecord, secretVersionId, sealed }),
       ),
@@ -651,7 +305,7 @@ describe('connection application use cases', () => {
 
   it('does not contact a provider when cancellation races decryption completion', async () => {
     const controller = new AbortController();
-    const store = testPersistence();
+    const store = connectionTestPersistence();
     const plaintext = new TextEncoder().encode(JSON.stringify(credential));
     const execute = vi.fn();
     const encryption = {
@@ -688,7 +342,7 @@ describe('connection application use cases', () => {
   ])(
     'rejects email test disclosure %j before claim, secret open, or dispatch',
     async (request) => {
-      const store = testPersistence();
+      const store = connectionTestPersistence();
       const open = vi.fn();
       const sendNotification = vi.fn();
       await expect(
@@ -715,7 +369,7 @@ describe('connection application use cases', () => {
   );
 
   it('denies a viewer before claiming or decrypting a connection test', async () => {
-    const store = testPersistence();
+    const store = connectionTestPersistence();
     const deniedAuthorization = {
       findAccess: vi.fn().mockResolvedValue({
         actorId,
@@ -753,7 +407,7 @@ describe('connection application use cases', () => {
         Promise.resolve(new TextEncoder().encode(JSON.stringify(credential))),
       ),
     };
-    const securityStore = testPersistence();
+    const securityStore = connectionTestPersistence();
     const securityClient = {
       execute: vi
         .fn()
@@ -784,7 +438,7 @@ describe('connection application use cases', () => {
     });
     expect(securityStore.completeConnectionTest).toHaveBeenCalledOnce();
 
-    const markerStore = testPersistence();
+    const markerStore = connectionTestPersistence();
     const markerClient = {
       execute: vi
         .fn()
@@ -825,7 +479,7 @@ describe('connection application use cases', () => {
   ] as const)(
     'classifies an HTTP connection test status %i as %s',
     async (status, errorCode) => {
-      const store = testPersistence();
+      const store = connectionTestPersistence();
       const body = new Uint8Array();
       const result = await new TestConnectionUseCase(
         store,
@@ -887,7 +541,7 @@ describe('connection application use cases', () => {
   ] as const)(
     'classifies Slack outcome %#',
     async (providerResult, errorCode) => {
-      const store = testPersistence();
+      const store = connectionTestPersistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
           schemaVersion: 1,
@@ -926,7 +580,7 @@ describe('connection application use cases', () => {
   ] as const)(
     'classifies email outcome %#',
     async (providerResult, errorCode) => {
-      const store = testPersistence();
+      const store = connectionTestPersistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify({
           schemaVersion: 1,
@@ -957,7 +611,7 @@ describe('connection application use cases', () => {
   );
 
   it('rejects a decrypted credential with a non-object JSON shape', async () => {
-    const store = testPersistence();
+    const store = connectionTestPersistence();
     const plaintext = new TextEncoder().encode('null');
     const execute = vi.fn();
 
@@ -984,7 +638,7 @@ describe('connection application use cases', () => {
   it.each(['email', 'slack', 'http'] as const)(
     'rejects a decrypted credential that does not match the %s test route',
     async (provider) => {
-      const store = testPersistence();
+      const store = connectionTestPersistence();
       const plaintext = new TextEncoder().encode(
         JSON.stringify(
           provider === 'http'

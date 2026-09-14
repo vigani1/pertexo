@@ -39,6 +39,7 @@ import {
   createTriggerRuntime,
   type TriggerRuntime,
 } from '../../src/triggers/trigger-runtime.js';
+import { createRedisTestNamespace } from './redis-test-namespace.js';
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const apiRole = process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api';
@@ -84,7 +85,7 @@ const baselineCompatibilityExpectation = Object.freeze({
   catalogJson: JSON.stringify(JSON.parse(baselineCatalogMatch[1]) as unknown),
 });
 
-/** This file owns Redis database 15; neighboring trigger tests use 13 and 14. */
+/** The fixture acquires an exclusive lease for Redis database 15 before use. */
 export const workflowLifecycleIntegrationRedisUrl = (() => {
   const parsed = new URL(configuredRedisUrl);
   parsed.pathname = '/15';
@@ -157,6 +158,12 @@ export type LifecycleOutboxEvent = Readonly<{
 }>;
 
 type Closeable = Readonly<{ close(): Promise<unknown> }>;
+
+type OwnedResource = Readonly<{
+  close(): Promise<void>;
+  label: string;
+  resource: object;
+}>;
 
 export type WorkflowLifecycleWorkerEnvironment = Readonly<{
   apiConfig: DatabaseConfig;
@@ -528,30 +535,90 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       succeeded: randomUUID(),
     },
   } as const;
-  const owner = new Pool({ connectionString: migrationUrl, max: 2 });
-  const apiPool = new Pool({
-    connectionString: apiConfig.connectionString,
-    max: 2,
-  });
-  const worker = new Pool({
-    connectionString: workerConfig.connectionString,
-    max: 2,
-  });
-  const identity: IdentityWorkspaceDatabase =
-    createIdentityWorkspaceDatabase(apiConfig);
-  const authoring = createWorkflowAuthoringDatabase(apiConfig);
-  const queue = new Queue(QUEUE_NAME.triggerLifecycle, {
-    connection: bullConnection(workflowLifecycleIntegrationRedisUrl),
-  });
-  const resources: Closeable[] = [authoring, identity];
+  const redisNamespace = createRedisTestNamespace(
+    configuredRedisUrl,
+    15,
+    'workflow-lifecycle',
+  );
+  const resources: OwnedResource[] = [];
+  let owner: Pool | undefined;
+  let apiPool: Pool | undefined;
+  let worker: Pool | undefined;
+  let identity: IdentityWorkspaceDatabase | undefined;
+  let authoring: WorkflowAuthoringDatabase | undefined;
+  let queue: Queue | undefined;
+  let databaseCreated = false;
   let initialized = false;
+  let initializingPromise: Promise<void> | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const registerResource = <Resource extends object>(
+    label: string,
+    resource: Resource,
+    close: (resource: Resource) => unknown,
+  ): Resource => {
+    let resourceClosePromise: Promise<void> | undefined;
+    resources.push({
+      label,
+      resource,
+      close: () => {
+        resourceClosePromise ??= Promise.resolve()
+          .then(() => close(resource))
+          .then(() => undefined);
+        return resourceClosePromise;
+      },
+    });
+    return resource;
+  };
+
+  const registerCloseable = <Resource extends Closeable>(
+    label: string,
+    resource: Resource,
+  ): Resource => registerResource(label, resource, (owned) => owned.close());
+
+  const transferResource = (resource: object): void => {
+    const index = resources.findIndex((owner) => owner.resource === resource);
+    if (index === -1)
+      throw new Error('Workflow lifecycle fixture resource owner is missing');
+    resources.splice(index, 1);
+  };
+
+  const requireOwner = (): Pool => {
+    if (owner === undefined)
+      throw new Error('Workflow lifecycle fixture is not initialized');
+    return owner;
+  };
+
+  const requireApiPool = (): Pool => {
+    if (apiPool === undefined)
+      throw new Error('Workflow lifecycle fixture is not initialized');
+    return apiPool;
+  };
+
+  const requireWorker = (): Pool => {
+    if (worker === undefined)
+      throw new Error('Workflow lifecycle fixture is not initialized');
+    return worker;
+  };
+
+  const requireAuthoring = (): WorkflowAuthoringDatabase => {
+    if (authoring === undefined)
+      throw new Error('Workflow lifecycle fixture is not initialized');
+    return authoring;
+  };
+
+  const requireQueue = (): Queue => {
+    if (queue === undefined)
+      throw new Error('Workflow lifecycle fixture is not initialized');
+    return queue;
+  };
 
   const ownerQuery = async <Row extends QueryResultRow = QueryResultRow>(
     statement: string,
     parameters: readonly unknown[] = [],
   ): Promise<QueryResult<Row>> =>
     withTransaction<QueryResult<Row>>(
-      owner,
+      requireOwner(),
       workspaceId,
       async (client) => {
         return client.query<Row>(statement, [...parameters]);
@@ -563,74 +630,156 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     statement: string,
     parameters: readonly unknown[] = [],
   ): Promise<QueryResult<Row>> =>
-    withTransaction<QueryResult<Row>>(worker, workspaceId, (client) =>
+    withTransaction<QueryResult<Row>>(requireWorker(), workspaceId, (client) =>
       client.query<Row>(statement, [...parameters]),
     );
 
-  const initialize = async (): Promise<void> => {
-    if (initialized) return;
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await admin.query(
-        `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(ownerRole)}`,
+  const initialize = (): Promise<void> => {
+    if (initialized) return Promise.resolve();
+    initializingPromise ??= (async () => {
+      await redisNamespace.acquire();
+      registerCloseable('Redis namespace', redisNamespace);
+
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      let setupError: unknown;
+      try {
+        await admin.query(
+          `create database ${quoteIdentifier(databaseName)} owner ${quoteIdentifier(ownerRole)}`,
+        );
+        databaseCreated = true;
+        await admin.query(
+          `revoke all on database ${quoteIdentifier(databaseName)} from public`,
+        );
+        await admin.query(
+          `grant connect on database ${quoteIdentifier(databaseName)} to ${[
+            migrationRole,
+            apiRole,
+            workerRole,
+            dispatcherRole,
+          ]
+            .map(quoteIdentifier)
+            .join(',')}`,
+        );
+      } catch (error: unknown) {
+        setupError = error;
+      }
+      try {
+        await admin.end();
+      } catch (error: unknown) {
+        setupError =
+          setupError === undefined
+            ? error
+            : new AggregateError(
+                [setupError, error],
+                'Workflow lifecycle database setup failed',
+              );
+      }
+      if (setupError !== undefined)
+        throw setupError instanceof Error
+          ? setupError
+          : new Error('Workflow lifecycle database setup failed', {
+              cause: setupError,
+            });
+
+      await migrateDatabase({
+        connectionString: migrationUrl,
+        ownerRole,
+        apiRuntimeRole: apiRole,
+        workerRuntimeRole: workerRole,
+        dispatcherRole,
+        maintenanceRole:
+          process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
+        lifecycleCommandRole:
+          process.env.POSTGRES_LIFECYCLE_COMMAND_USER ??
+          'pertexo_lifecycle_command',
+        operatorRole: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
+      });
+
+      owner = registerResource(
+        'owner pool',
+        new Pool({ connectionString: migrationUrl, max: 2 }),
+        (pool) => pool.end(),
       );
-      await admin.query(
-        `revoke all on database ${quoteIdentifier(databaseName)} from public`,
+      apiPool = registerResource(
+        'API pool',
+        new Pool({
+          connectionString: apiConfig.connectionString,
+          max: 2,
+        }),
+        (pool) => pool.end(),
       );
-      await admin.query(
-        `grant connect on database ${quoteIdentifier(databaseName)} to ${[
-          migrationRole,
-          apiRole,
-          workerRole,
-          dispatcherRole,
-        ]
-          .map(quoteIdentifier)
-          .join(',')}`,
+      worker = registerResource(
+        'worker pool',
+        new Pool({
+          connectionString: workerConfig.connectionString,
+          max: 2,
+        }),
+        (pool) => pool.end(),
       );
-    } finally {
-      await admin.end();
-    }
-    await migrateDatabase({
-      connectionString: migrationUrl,
-      ownerRole,
-      apiRuntimeRole: apiRole,
-      workerRuntimeRole: workerRole,
-      dispatcherRole,
-      maintenanceRole:
-        process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
-      lifecycleCommandRole:
-        process.env.POSTGRES_LIFECYCLE_COMMAND_USER ??
-        'pertexo_lifecycle_command',
-      operatorRole: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
+      identity = registerCloseable(
+        'identity database',
+        createIdentityWorkspaceDatabase(apiConfig),
+      );
+      authoring = registerCloseable(
+        'authoring database',
+        createWorkflowAuthoringDatabase(apiConfig),
+      );
+      queue = new Queue(QUEUE_NAME.triggerLifecycle, {
+        connection: bullConnection(redisNamespace.redisUrl),
+      });
+      registerResource('trigger lifecycle queue', queue, async (ownedQueue) => {
+        const errors: unknown[] = [];
+        await ownedQueue
+          .obliterate({ force: true })
+          .catch((error: unknown) => errors.push(error));
+        await ownedQueue.close().catch((error: unknown) => errors.push(error));
+        if (errors.length > 0)
+          throw new AggregateError(
+            errors,
+            'Trigger lifecycle queue cleanup failed',
+          );
+      });
+
+      await identity.createUser({
+        id: actorId,
+        email: `worker-lifecycle-${actorId}@example.test`,
+        displayName: 'Worker lifecycle owner',
+      });
+      await identity.createWorkspaceWithOwner({
+        id: workspaceId,
+        name: 'Worker lifecycle workspace',
+        slug: `worker-lifecycle-${actorId}`,
+        ownerUserId: actorId,
+        idempotencyKey: `worker-lifecycle-${actorId}`,
+      });
+      await withTransaction(
+        requireOwner(),
+        workspaceId,
+        (client) => seedWorkflowRows(client, workspaceId, actorId, ids),
+        ownerRole,
+      );
+      await withTransaction(requireApiPool(), workspaceId, (client) =>
+        seedApiOwnedRows(client, workspaceId, actorId, ids),
+      );
+      await requireQueue().obliterate({ force: true });
+      initialized = true;
+    })().catch(async (initializationError: unknown) => {
+      let cleanupError: unknown;
+      await close().catch((error: unknown) => {
+        cleanupError = error;
+      });
+      if (cleanupError === undefined) throw initializationError;
+      throw new AggregateError(
+        [initializationError, cleanupError],
+        'Workflow lifecycle fixture initialization failed',
+      );
     });
-    await identity.createUser({
-      id: actorId,
-      email: `worker-lifecycle-${actorId}@example.test`,
-      displayName: 'Worker lifecycle owner',
-    });
-    await identity.createWorkspaceWithOwner({
-      id: workspaceId,
-      name: 'Worker lifecycle workspace',
-      slug: `worker-lifecycle-${actorId}`,
-      ownerUserId: actorId,
-      idempotencyKey: `worker-lifecycle-${actorId}`,
-    });
-    await withTransaction(
-      owner,
-      workspaceId,
-      (client) => seedWorkflowRows(client, workspaceId, actorId, ids),
-      ownerRole,
-    );
-    await withTransaction(apiPool, workspaceId, (client) =>
-      seedApiOwnedRows(client, workspaceId, actorId, ids),
-    );
-    initialized = true;
-    await queue.obliterate({ force: true });
+    return initializingPromise;
   };
 
   const readProjection = async (): Promise<LifecycleProjection> =>
     withTransaction(
-      owner,
+      requireOwner(),
       workspaceId,
       async (client) => {
         const workflow = await client.query<{
@@ -707,7 +856,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     );
 
   const readRunSnapshot = async (): Promise<RunSnapshot> =>
-    withTransaction(worker, workspaceId, async (client) => {
+    withTransaction(requireWorker(), workspaceId, async (client) => {
       const runIds = lifecycleRunKeys.map((key) => ids.runs[key]);
       const runs = await client.query<{ id: string; value: string }>(
         `select id,row_to_json(run)::text as value
@@ -797,7 +946,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
 
   const readOutboxEvent = async (id: string): Promise<LifecycleOutboxEvent> =>
     withTransaction(
-      owner,
+      requireOwner(),
       workspaceId,
       async (client) => {
         const result = await client.query<{
@@ -815,25 +964,33 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     );
 
   const createRuntime = async (leaseOwner: string): Promise<TriggerRuntime> => {
-    const reader = createPublishedWorkflowReader(
-      workerConfig,
-      baselineCompatibilityExpectation,
+    const reader = registerCloseable(
+      'published workflow reader',
+      createPublishedWorkflowReader(
+        workerConfig,
+        baselineCompatibilityExpectation,
+      ),
     );
-    const reconciliation =
-      createWorkflowTriggerReconciliationDatabase(workerConfig);
-    const runtime = await createTriggerRuntime(
+    const reconciliation = registerCloseable(
+      'trigger reconciliation database',
+      createWorkflowTriggerReconciliationDatabase(workerConfig),
+    );
+    const runtimePromise = createTriggerRuntime(
       {
         batchSize: 10,
         database: workerConfig,
         leaseDurationSeconds: 5,
         leaseOwner,
         pollIntervalMillis: 25,
-        redisUrl: workflowLifecycleIntegrationRedisUrl,
+        redisUrl: redisNamespace.redisUrl,
         releaseCohort: 'core',
       },
       { reader, reconciliation, scanner: noOpScanner() },
     );
-    resources.push(runtime);
+    transferResource(reader);
+    transferResource(reconciliation);
+    const runtime = await runtimePromise;
+    registerCloseable('trigger runtime', runtime);
     await runtime.consumer.waitUntilReady(5_000);
     return runtime;
   };
@@ -853,9 +1010,17 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     leaseOwner: string,
     capabilities: DispatchConsumerCapabilityRegistry,
   ): OutboxDispatcher => {
-    const dispatcher = new OutboxDispatcher(
+    const dispatcherDatabase = registerCloseable(
+      'outbox dispatcher database',
       createOutboxDispatcherDatabase(dispatcherConfig),
-      createQueueProducer({ redisUrl: workflowLifecycleIntegrationRedisUrl }),
+    );
+    const producer = registerCloseable(
+      'outbox queue producer',
+      createQueueProducer({ redisUrl: redisNamespace.redisUrl }),
+    );
+    const dispatcher = new OutboxDispatcher(
+      dispatcherDatabase,
+      producer,
       new WorkerDrainState(),
       {
         batchSize: 10,
@@ -869,26 +1034,52 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       undefined,
       capabilities,
     );
-    resources.push(dispatcher);
+    transferResource(dispatcherDatabase);
+    transferResource(producer);
+    registerCloseable('outbox dispatcher', dispatcher);
     return dispatcher;
   };
 
-  const close = async (): Promise<void> => {
-    await Promise.allSettled(
-      resources
-        .splice(0)
-        .reverse()
-        .map((resource) => resource.close()),
-    );
-    await queue.obliterate({ force: true }).catch(() => undefined);
-    await queue.close();
-    await Promise.allSettled([apiPool.end(), worker.end(), owner.end()]);
-    const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    try {
-      await dropDisconnectedDatabase(admin, databaseName);
-    } finally {
-      await admin.end();
-    }
+  const close = (): Promise<void> => {
+    closePromise ??= (async () => {
+      const errors: unknown[] = [];
+      for (const resource of resources.splice(0).reverse())
+        await resource.close().catch((cause: unknown) => {
+          errors.push(
+            new Error(
+              `Workflow lifecycle fixture cleanup failed: ${resource.label}`,
+              { cause },
+            ),
+          );
+        });
+      if (databaseCreated) {
+        const admin = new Pool({ connectionString: adminUrl, max: 1 });
+        await dropDisconnectedDatabase(admin, databaseName).catch(
+          (cause: unknown) => {
+            errors.push(
+              new Error(
+                'Workflow lifecycle fixture cleanup failed: drop database',
+                { cause },
+              ),
+            );
+          },
+        );
+        await admin.end().catch((cause: unknown) => {
+          errors.push(
+            new Error('Workflow lifecycle fixture cleanup failed: admin pool', {
+              cause,
+            }),
+          );
+        });
+        databaseCreated = false;
+      }
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Workflow lifecycle fixture cleanup failed',
+        );
+    })();
+    return closePromise;
   };
 
   return Object.freeze({
@@ -898,8 +1089,12 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     actorId,
     workspaceId,
     ids,
-    authoring,
-    queue,
+    get authoring() {
+      return requireAuthoring();
+    },
+    get queue() {
+      return requireQueue();
+    },
     initialize,
     ownerQuery,
     workerQuery,
@@ -908,7 +1103,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       expectedLifecycleRevision: number,
       idempotencyKey: string,
     ) =>
-      authoring.transitionWorkflowLifecycle({
+      requireAuthoring().transitionWorkflowLifecycle({
         actorId,
         command,
         expectedLifecycleRevision,

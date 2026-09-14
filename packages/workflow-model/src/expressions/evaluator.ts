@@ -26,6 +26,15 @@ interface Pending {
   queuedAbort: (() => void) | undefined;
 }
 
+function workerCleanupError(error: unknown): Error {
+  try {
+    if (error instanceof Error) return error;
+  } catch {
+    // Retain hostile termination failures only as opaque causes.
+  }
+  return new Error('Evaluator worker termination failed', { cause: error });
+}
+
 export class JsonataEvaluator implements ExpressionEvaluator {
   readonly #maxActive: number;
   readonly #maxQueued: number;
@@ -35,8 +44,11 @@ export class JsonataEvaluator implements ExpressionEvaluator {
   #workerCreations = 0;
   #peakWorkers = 0;
   #closed = false;
+  #shutdownPromise: Promise<void> | undefined;
   readonly #queue: Pending[] = [];
   readonly #workers = new Set<Worker>();
+  readonly #terminations = new WeakMap<Worker, Promise<void>>();
+  readonly #shutdownFinishes = new Map<Worker, () => void>();
   constructor(
     options: {
       readonly maxActive?: number;
@@ -148,21 +160,54 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       this.#drain();
     });
   }
-  async shutdown(): Promise<void> {
+  shutdown(): Promise<void> {
     this.#closed = true;
-    for (const pending of this.#queue.splice(0)) {
-      if (pending.queuedAbort)
-        pending.request.signal?.removeEventListener(
-          'abort',
-          pending.queuedAbort,
+    if (this.#shutdownPromise === undefined) {
+      for (const pending of this.#queue.splice(0)) {
+        if (pending.queuedAbort)
+          pending.request.signal?.removeEventListener(
+            'abort',
+            pending.queuedAbort,
+          );
+        pending.resolve(expressionError('canceled', 'evaluator shut down'));
+      }
+      this.#shutdownPromise = Promise.resolve().then(async () => {
+        for (const finish of this.#shutdownFinishes.values()) finish();
+        const outcomes = await Promise.allSettled(
+          [...this.#workers].map((worker) => this.#terminateWorker(worker)),
         );
-      pending.resolve(expressionError('canceled', 'evaluator shut down'));
+        const failures = outcomes.flatMap((outcome) =>
+          outcome.status === 'rejected'
+            ? [workerCleanupError(outcome.reason)]
+            : [],
+        );
+        const firstFailure = failures[0];
+        if (failures.length === 1 && firstFailure !== undefined)
+          throw firstFailure;
+        if (failures.length > 1)
+          throw new AggregateError(failures, 'Evaluator shutdown failed');
+      });
     }
-    await Promise.all(
-      [...this.#workers].map(async (worker) => {
-        await worker.terminate();
-      }),
+    return this.#shutdownPromise;
+  }
+  #terminateWorker(worker: Worker): Promise<void> {
+    const existing = this.#terminations.get(worker);
+    if (existing !== undefined) return existing;
+    const termination = Promise.resolve()
+      .then(() => worker.terminate())
+      .then(() => undefined);
+    this.#terminations.set(worker, termination);
+    void termination.then(
+      () => {
+        this.#workers.delete(worker);
+        this.#shutdownFinishes.delete(worker);
+      },
+      () => {
+        this.#workers.delete(worker);
+        this.#shutdownFinishes.delete(worker);
+      },
     );
+    return termination;
   }
   #drain(): void {
     while (
@@ -215,6 +260,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     this.#peakWorkers = Math.max(this.#peakWorkers, this.#workers.size);
     let settled = false;
     let handedOff = false;
+    let started = false;
     let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
       void finish(
         expressionError('evaluation_failed', 'evaluator startup timed out'),
@@ -225,17 +271,16 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       settled = true;
       if (timer) clearTimeout(timer);
       pending.request.signal?.removeEventListener('abort', onAbort);
-      this.#workers.delete(worker);
-      try {
-        await worker.terminate();
-      } finally {
-        complete();
-        pending.resolve(result);
-      }
+      await this.#terminateWorker(worker).catch(() => undefined);
+      complete();
+      pending.resolve(result);
     };
     const onAbort = (): void => {
       void finish(expressionError('canceled', 'evaluation canceled'));
     };
+    this.#shutdownFinishes.set(worker, () => {
+      void finish(expressionError('canceled', 'evaluator shut down'));
+    });
     pending.request.signal?.addEventListener('abort', onAbort, { once: true });
     worker.once('error', (cause: unknown) => {
       void finish(
@@ -307,6 +352,13 @@ export class JsonataEvaluator implements ExpressionEvaluator {
           );
           return;
         }
+        if (started) {
+          void finish(
+            expressionError('evaluation_failed', 'duplicate evaluator start'),
+          );
+          return;
+        }
+        started = true;
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           void finish(
@@ -316,6 +368,12 @@ export class JsonataEvaluator implements ExpressionEvaluator {
             ),
           );
         }, EXPRESSION_POLICY_V1.timeoutMs);
+        return;
+      }
+      if (!started) {
+        void finish(
+          expressionError('evaluation_failed', 'evaluator result before start'),
+        );
         return;
       }
       if (!response.ok) {

@@ -1,5 +1,3 @@
-/* global URL, process */
-
 import { readFile } from 'node:fs/promises';
 
 import { parseProfile } from './run-http-exercise.mjs';

@@ -1,11 +1,12 @@
+import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
   ConnectionConflictError,
+  ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionUnavailableError,
   Pool,
-  api,
   apiBaseUrl,
   checkDatabaseReadiness,
   createHash,
@@ -16,23 +17,151 @@ import {
   ownerB,
   pgCode,
   randomUUID,
+  registerCurrentConnectionsFixture,
   sealed,
   workerBaseUrl,
   workspaceA,
   workspaceB,
 } from './support/connections.integration.support.js';
 
+const connections = registerCurrentConnectionsFixture();
+
 describe('connection concurrency and security', () => {
+  it('uses capability roles and rejects inactive authority states', async () => {
+    const roleActors = new Map([
+      ['owner', ownerA],
+      ...(['admin', 'builder', 'operator', 'viewer'] as const).map(
+        (role) => [role, randomUUID()] as const,
+      ),
+    ] as const);
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    let client: PoolClient | undefined;
+    try {
+      client = await owner.connect();
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      for (const [role, actorId] of roleActors) {
+        if (role === 'owner') continue;
+        await client.query(
+          `insert into app.users (id,email,display_name,status)
+           values ($1,$2,$3,'active')`,
+          [actorId, `${actorId}@example.test`, `Connection ${role}`],
+        );
+        await client.query(
+          `insert into app.workspace_memberships
+             (workspace_id,user_id,role,status)
+           values ($1,$2,$3,'active')`,
+          [workspaceA, actorId, role],
+        );
+      }
+      await client.query('commit');
+    } finally {
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
+      await owner.end();
+    }
+
+    for (const [role, actorId] of roleActors) {
+      const command = createInput({ actorId });
+      const creation = connections.api.createConnection(command);
+      if (role === 'owner' || role === 'admin')
+        await expect(creation).resolves.toMatchObject({ createdBy: actorId });
+      else
+        await expect(creation).rejects.toBeInstanceOf(ConnectionNotFoundError);
+    }
+
+    const shared = createInput();
+    await connections.api.createConnection(shared);
+    for (const [role, actorId] of roleActors) {
+      const start = connections.api.startConnectionTest({
+        workspaceId: workspaceA,
+        actorId,
+        connectionId: shared.connectionId,
+        expectedProviderKey: 'http',
+        idempotencyKey: `role-${role}-${shared.connectionId}`,
+        requestHash: createHash('sha256').update(role).digest('hex'),
+        dispatchToken: randomUUID(),
+      });
+      if (role === 'viewer')
+        await expect(start).rejects.toBeInstanceOf(ConnectionNotFoundError);
+      else await expect(start).resolves.toMatchObject({ kind: 'dispatch' });
+    }
+
+    const builderId = roleActors.get('builder');
+    if (builderId === undefined) throw new Error('Builder fixture is missing');
+    const authorityPool = new Pool({
+      connectionString: databaseUrl(migrationBaseUrl),
+    });
+    try {
+      await authorityPool.query('set role pertexo_owner');
+      await authorityPool.query(
+        "select set_config('app.workspace_id',$1,false)",
+        [workspaceA],
+      );
+      const assertDenied = async (suffix: string): Promise<void> => {
+        await expect(
+          connections.api.startConnectionTest({
+            workspaceId: workspaceA,
+            actorId: builderId,
+            connectionId: shared.connectionId,
+            expectedProviderKey: 'http',
+            idempotencyKey: `inactive-${suffix}-${shared.connectionId}`,
+            requestHash: createHash('sha256').update(suffix).digest('hex'),
+            dispatchToken: randomUUID(),
+          }),
+        ).rejects.toBeInstanceOf(ConnectionNotFoundError);
+      };
+      await authorityPool.query(
+        `update app.workspace_memberships set status='suspended'
+         where workspace_id=$1 and user_id=$2`,
+        [workspaceA, builderId],
+      );
+      await assertDenied('membership');
+      await authorityPool.query(
+        `update app.workspace_memberships set status='active'
+         where workspace_id=$1 and user_id=$2`,
+        [workspaceA, builderId],
+      );
+      await authorityPool.query(
+        `update app.users set status='suspended' where id=$1`,
+        [builderId],
+      );
+      await assertDenied('user');
+      await authorityPool.query(
+        `update app.users set status='active' where id=$1`,
+        [builderId],
+      );
+      await authorityPool.query(
+        `update app.workspaces set status='suspended' where id=$1`,
+        [workspaceA],
+      );
+      await assertDenied('workspace');
+    } finally {
+      await authorityPool
+        .query(`update app.users set status='active' where id=$1`, [builderId])
+        .catch(() => undefined);
+      await authorityPool
+        .query(`update app.workspaces set status='active' where id=$1`, [
+          workspaceA,
+        ])
+        .catch(() => undefined);
+      await authorityPool.end();
+    }
+  });
+
   it('serializes concurrent same-name creations so exactly one wins atomically', async () => {
     const sharedName = `HTTP concurrent ${randomUUID().slice(0, 8)}`;
     const first = createInput({ name: sharedName });
     const second = createInput({ name: sharedName });
     const [firstOutcome, secondOutcome] = await Promise.all([
-      api.createConnection(first).then(
+      connections.api.createConnection(first).then(
         (value) => ({ kind: 'created' as const, value }),
         (error: unknown) => ({ kind: 'failed' as const, error }),
       ),
-      api.createConnection(second).then(
+      connections.api.createConnection(second).then(
         (value) => ({ kind: 'created' as const, value }),
         (error: unknown) => ({ kind: 'failed' as const, error }),
       ),
@@ -51,8 +180,9 @@ describe('connection concurrency and security', () => {
     });
 
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const client = await owner.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await owner.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -67,26 +197,26 @@ describe('connection concurrency and security', () => {
       expect(result.rows[0]?.rows).toBe('1');
       await client.query('commit');
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await owner.end();
     }
   });
 
   it('admits exactly one concurrent rotation per expected current pointer', async () => {
     const input = createInput();
-    await api.createConnection(input);
-    const winnerSecretVersionId = randomUUID();
-    const loserSecretVersionId = randomUUID();
+    await connections.api.createConnection(input);
+    const candidateASecretVersionId = randomUUID();
+    const candidateBSecretVersionId = randomUUID();
     const attempt = (secretVersionId: string) =>
-      api
+      connections.api
         .rotateConnectionSecret({
           workspaceId: workspaceA,
           actorId: ownerA,
           connectionId: input.connectionId,
           expectedCurrentSecretVersionId: input.secretVersionId,
           secretVersionId,
-          sealed: sealed(secretVersionId === winnerSecretVersionId ? 6 : 9),
+          sealed: sealed(secretVersionId === candidateASecretVersionId ? 6 : 9),
           idempotencyKey: `rotate-race-${secretVersionId}`,
           requestHash: createHash('sha256')
             .update(secretVersionId)
@@ -97,8 +227,8 @@ describe('connection concurrency and security', () => {
           (error: unknown) => ({ kind: 'failed' as const, error }),
         );
     const [firstOutcome, secondOutcome] = await Promise.all([
-      attempt(winnerSecretVersionId),
-      attempt(loserSecretVersionId),
+      attempt(candidateASecretVersionId),
+      attempt(candidateBSecretVersionId),
     ]);
     const outcomes = [firstOutcome, secondOutcome];
     const rotated = outcomes.filter((outcome) => outcome.kind === 'rotated');
@@ -112,15 +242,17 @@ describe('connection concurrency and security', () => {
       rotated[0]?.kind === 'rotated'
         ? rotated[0].value.currentSecretVersionId
         : undefined;
-    const losingVersionId = [winnerSecretVersionId, loserSecretVersionId].find(
-      (candidate) => candidate !== winningVersionId,
-    );
+    const losingVersionId = [
+      candidateASecretVersionId,
+      candidateBSecretVersionId,
+    ].find((candidate) => candidate !== winningVersionId);
     expect(winningVersionId).toBeDefined();
     expect(losingVersionId).toBeDefined();
 
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const client = await owner.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await owner.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -143,20 +275,20 @@ describe('connection concurrency and security', () => {
       expect(result.rows[0]?.loser_rows).toBe('0');
       await client.query('commit');
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await owner.end();
     }
   });
 
   it('forces RLS, hides other workspaces, and withholds history mutation', async () => {
     const input = createInput();
-    await api.createConnection(input);
+    await connections.api.createConnection(input);
     await expect(
-      api.getConnection(workspaceB, input.connectionId),
+      connections.api.getConnection(workspaceB, input.connectionId),
     ).resolves.toBeNull();
     await expect(
-      api.startConnectionTest({
+      connections.api.startConnectionTest({
         workspaceId: workspaceB,
         actorId: ownerB,
         connectionId: input.connectionId,
@@ -182,7 +314,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -190,7 +322,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);
@@ -200,8 +332,9 @@ describe('connection concurrency and security', () => {
       connectionString: databaseUrl(migrationBaseUrl),
       max: 1,
     });
-    const client = await migration.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await migration.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -245,8 +378,8 @@ describe('connection concurrency and security', () => {
         ),
       ).rejects.toSatisfy(pgCode('55000'));
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await migration.end();
     }
   });

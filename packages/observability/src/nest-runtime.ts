@@ -38,6 +38,7 @@ export class NestLoggerAdapter {
   }
 
   private normalize(message: unknown, optional: readonly unknown[]) {
+    const classification = classifyNestMessage(message);
     const strings = optional.filter(
       (value): value is string => typeof value === 'string',
     );
@@ -53,11 +54,11 @@ export class NestLoggerAdapter {
       typeof message === 'string' ? boundedNestText(message) : undefined;
     return {
       fields: {
-        messageType: message instanceof Error ? 'error' : typeof message,
+        messageType: classification.messageType,
         ...(summary === undefined ? {} : { summary }),
         ...(context === undefined ? {} : { context: boundedNestText(context) }),
       },
-      error: nestLogError(message, summary, stack),
+      error: nestLogError(message, classification, summary, stack),
     };
   }
 }
@@ -84,20 +85,47 @@ function classifyNestOptionalStrings(
 
 function nestLogError(
   message: unknown,
+  classification: NestMessageClassification,
   summary: string | undefined,
   stack: string | undefined,
 ): Error | undefined {
-  if (message instanceof Error) return message;
+  if (classification.inspectionFailed)
+    return new Error('[Unserializable error]');
+  if (classification.isError) return message as Error;
   if (summary === undefined || stack === undefined) return undefined;
   return nestError(summary, stack);
 }
 
 function boundedNestText(value: string): string {
+  const redacted = redactLogText(value);
   const bounded =
-    value.length <= MAX_NEST_TEXT_LENGTH
-      ? value
-      : `${value.slice(0, MAX_NEST_TEXT_LENGTH)}[Truncated]`;
-  return redactLogText(bounded);
+    redacted.length <= MAX_NEST_TEXT_LENGTH
+      ? redacted
+      : `${redacted.slice(0, MAX_NEST_TEXT_LENGTH)}[Truncated]`;
+  return bounded;
+}
+
+type NestMessageClassification = Readonly<{
+  inspectionFailed: boolean;
+  isError: boolean;
+  messageType: string;
+}>;
+
+function classifyNestMessage(message: unknown): NestMessageClassification {
+  try {
+    const isError = message instanceof Error;
+    return {
+      inspectionFailed: false,
+      isError,
+      messageType: isError ? 'error' : typeof message,
+    };
+  } catch {
+    return {
+      inspectionFailed: true,
+      isError: false,
+      messageType: 'uninspectable',
+    };
+  }
 }
 
 function nestError(summary: string, stack: string): Error {
@@ -164,16 +192,21 @@ export function createNestObservabilityRegistration<ModuleToken>(input: {
   telemetryToken: symbol;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
+  registerShutdown?: boolean;
 }) {
   return {
     module: input.module,
     providers: [
       { provide: input.loggerToken, useValue: input.logger },
       { provide: input.telemetryToken, useValue: input.telemetry },
-      {
-        provide: TelemetryShutdown,
-        useFactory: () => new TelemetryShutdown(input.telemetry),
-      },
+      ...(input.registerShutdown === false
+        ? []
+        : [
+            {
+              provide: TelemetryShutdown,
+              useFactory: () => new TelemetryShutdown(input.telemetry),
+            },
+          ]),
     ],
     exports: [input.loggerToken, input.telemetryToken],
   };

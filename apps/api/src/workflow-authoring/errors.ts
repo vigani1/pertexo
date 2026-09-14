@@ -15,13 +15,17 @@ import {
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
 import { WorkflowHeaderError } from './preconditions.js';
-import { InvalidWorkflowCursorError } from './use-cases.js';
+import { InvalidWorkflowCursorError } from './cursor.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
 } from './graph.js';
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
+  if (error instanceof AuthorizationError)
+    return applicationError(error.code, {
+      safeDetail: error.message,
+    });
   if (isApplicationError(error)) return error;
   if (
     error instanceof WorkflowHeaderError &&
@@ -37,10 +41,6 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (error instanceof InvalidWorkflowCursorError)
     return applicationError('request.invalid', {
       safeDetail: 'The workflow cursor is invalid.',
-    });
-  if (error instanceof AuthorizationError)
-    return applicationError(error.code, {
-      safeDetail: error.message,
     });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');

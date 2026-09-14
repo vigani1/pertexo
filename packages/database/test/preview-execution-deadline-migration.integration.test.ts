@@ -22,7 +22,7 @@ const migrationBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const databaseName = `pertexo_test_0070_preview_deadline_${randomUUID().replaceAll('-', '')}`;
+const databaseName = `pertexo_test_0070_deadline_${randomUUID().replaceAll('-', '')}`;
 
 const database = createDisposableDatabaseFixture({
   adminUrl,
@@ -71,15 +71,104 @@ describe('preview execution deadline prior-head migration', () => {
       await migrateDatabase(migrationConfig, priorDirectory);
 
       const owner = new Pool({
-        connectionString: databaseUrl(adminUrl),
+        connectionString: migrationConfig.connectionString,
         max: 1,
       });
+      const actorUserId = randomUUID();
+      const workspaceId = randomUUID();
+      const workflowId = randomUUID();
+      const shortPreviewRunId = randomUUID();
+      const terminalPreviewRunId = randomUUID();
+      const createdAt = new Date(Date.now() - 60_000);
+      const shortExpiry = new Date(Date.now() + 60_000);
+      const longExpiry = new Date(Date.now() + 60 * 60_000);
       try {
-        await expect(
-          owner.query(
-            `select execution_deadline_at from app.preview_runs limit 1`,
-          ),
-        ).rejects.toMatchObject({ code: '42703' });
+        const client = await owner.connect();
+        try {
+          await client.query('begin');
+          await client.query('set local role pertexo_owner');
+          await client.query('savepoint missing_deadline_probe');
+          await expect(
+            client.query(
+              `select execution_deadline_at from app.preview_runs limit 1`,
+            ),
+          ).rejects.toMatchObject({ code: '42703' });
+          await client.query('rollback to savepoint missing_deadline_probe');
+          await client.query(
+            `insert into app.users (id,email,display_name,status)
+             values ($1,$2,'Deadline upgrade','active')`,
+            [actorUserId, `deadline-${actorUserId}@example.test`],
+          );
+          await client.query(
+            `insert into app.workspaces (id,name,slug,status,created_by)
+             values ($1,'Deadline upgrade',$2,'active',$3)`,
+            [workspaceId, `deadline-${workspaceId}`, actorUserId],
+          );
+          await client.query("select set_config('app.workspace_id',$1,true)", [
+            workspaceId,
+          ]);
+          await client.query(
+            `insert into app.workflows
+               (id,workspace_id,name,lifecycle_status,activation_status,created_by)
+             values ($1,$2,'Deadline target','active','inactive',$3)`,
+            [workflowId, workspaceId, actorUserId],
+          );
+          const release = await client.query<{
+            epoch: number;
+            fingerprint: string;
+          }>(
+            `select epoch,fingerprint
+             from app.node_compatibility_current where singleton=true`,
+          );
+          const current = release.rows[0];
+          if (current === undefined)
+            throw new Error('deadline fixture release missing');
+          await client.query(
+            `insert into app.preview_runs (
+               id,workspace_id,workflow_id,draft_revision,draft_fingerprint,
+               node_id,definition_key,definition_version,executor_key,
+               executor_version,compatibility_release_epoch,
+               compatibility_release_fingerprint,actor_user_id,
+               idempotency_key_hash,request_hash,executable_node_json,input_ref,
+               side_effect_class,may_contact_provider,
+               may_cause_external_side_effect,dry_run,status,output_ref,
+               safe_error_code,created_at,started_at,completed_at,expires_at
+             ) values
+               ($1,$2,$3,1,$4,'queued-node','core.set',1,'core.set',1,$5,$6,$7,
+                $8,$9,'{"id":"queued-node"}'::jsonb,
+                '{"schemaVersion":1,"kind":"inline","value":null}'::jsonb,
+                'safe',false,false,'not_supported','queued',null,null,$10,null,null,$11),
+               ($12,$2,$3,1,$13,'terminal-node','core.set',1,'core.set',1,$5,$6,$7,
+                $14,$15,'{"id":"terminal-node"}'::jsonb,
+                '{"schemaVersion":1,"kind":"inline","value":null}'::jsonb,
+                'safe',false,false,'not_supported','failed',null,
+                'preview.fixture_failed',$10,$10,$10,$16)`,
+            [
+              shortPreviewRunId,
+              workspaceId,
+              workflowId,
+              'a'.repeat(64),
+              current.epoch,
+              current.fingerprint,
+              actorUserId,
+              'b'.repeat(64),
+              'c'.repeat(64),
+              createdAt,
+              shortExpiry,
+              terminalPreviewRunId,
+              'd'.repeat(64),
+              'e'.repeat(64),
+              'f'.repeat(64),
+              longExpiry,
+            ],
+          );
+          await client.query('commit');
+        } catch (error: unknown) {
+          await client.query('rollback').catch(() => undefined);
+          throw error;
+        } finally {
+          client.release();
+        }
       } finally {
         await owner.end();
       }
@@ -123,6 +212,60 @@ describe('preview execution deadline prior-head migration', () => {
             },
           ],
         });
+        const retained = await ownerAfter.query<{
+          execution_deadline_at: Date;
+          expires_at: Date;
+          id: string;
+          status: string;
+        }>(
+          `select id,status,execution_deadline_at,expires_at
+           from app.preview_runs where id=any($1::uuid[]) order by id`,
+          [[shortPreviewRunId, terminalPreviewRunId]],
+        );
+        expect(retained.rows).toHaveLength(2);
+        expect(
+          retained.rows
+            .find(({ id }) => id === shortPreviewRunId)
+            ?.execution_deadline_at.getTime(),
+        ).toBe(shortExpiry.getTime());
+        expect(
+          retained.rows
+            .find(({ id }) => id === terminalPreviewRunId)
+            ?.execution_deadline_at.getTime(),
+        ).toBe(createdAt.getTime() + 5 * 60_000);
+        expect(
+          retained.rows.find(({ id }) => id === terminalPreviewRunId)?.status,
+        ).toBe('failed');
+        await expect(
+          ownerAfter.query(
+            `update app.preview_runs set execution_deadline_at=expires_at
+             where id=$1`,
+            [terminalPreviewRunId],
+          ),
+        ).rejects.toMatchObject({ code: '55000' });
+
+        const apiClient = await api.connect();
+        try {
+          await apiClient.query('begin');
+          await apiClient.query(
+            "select set_config('app.workspace_id',$1,true)",
+            [randomUUID()],
+          );
+          await expect(
+            apiClient.query<{ count: string }>(
+              `select count(*)::text count from app.preview_runs
+               where id=any($1::uuid[])`,
+              [[shortPreviewRunId, terminalPreviewRunId]],
+            ),
+          ).resolves.toMatchObject({ rows: [{ count: '0' }] });
+          await apiClient.query('commit');
+        } catch (error: unknown) {
+          await apiClient.query('rollback').catch(() => undefined);
+          throw error;
+        } finally {
+          apiClient.release();
+        }
+        await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
       } finally {
         await Promise.all([api.end(), ownerAfter.end()]);
       }

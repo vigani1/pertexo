@@ -19,7 +19,7 @@ const adminUrl =
 const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const databaseName = `pertexo_test_0085_artifact_media_${randomUUID().replaceAll('-', '')}`;
+const databaseName = `pertexo_test_0085_media_${randomUUID().replaceAll('-', '')}`;
 const database = createDisposableDatabaseFixture({
   adminUrl,
   connectRoles: [
@@ -38,6 +38,24 @@ const { databaseUrl } = database;
 const migrationConfig = createArtifactMigrationConfig(
   databaseUrl(migrationBaseUrl),
 );
+
+async function closeFixtureResources(
+  owner: Pool,
+  priorDirectory: string,
+): Promise<void> {
+  const cleanup = await Promise.allSettled([
+    owner.end(),
+    rm(priorDirectory, { recursive: true, force: true }),
+  ]);
+  const failures: unknown[] = [];
+  for (const result of cleanup)
+    if (result.status === 'rejected') failures.push(result.reason);
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Artifact media migration fixture cleanup failed',
+    );
+}
 
 beforeAll(database.create, 30_000);
 afterAll(database.drop);
@@ -101,6 +119,9 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
       await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
         '0085_artifact_media_type_http_safety.sql',
         '0086_operator_attempt_reclaim_state.sql',
+        '0087_workspace_maintenance_rerun_purge.sql',
+        '0088_sql_boundary_integrity.sql',
+        '0089_oidc_capacity_lock_time.sql',
       ]);
 
       await owner.query('begin');
@@ -119,8 +140,7 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
       await owner.query('rollback');
     } finally {
       await owner.query('rollback').catch(() => undefined);
-      await owner.end();
-      await rm(priorDirectory, { recursive: true, force: true });
+      await closeFixtureResources(owner, priorDirectory);
     }
   }, 60_000);
 });

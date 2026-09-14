@@ -71,7 +71,11 @@ export function resolveJsonPath(
   for (const segment of segments) {
     if (value === null || typeof value !== 'object') return { kind: 'missing' };
     if (typeof segment === 'number') {
-      if (!Array.isArray(value) || segment >= value.length)
+      if (
+        !Array.isArray(value) ||
+        segment >= value.length ||
+        !Object.hasOwn(value, segment)
+      )
         return { kind: 'missing' };
       const next: JsonValue | undefined = (value as readonly JsonValue[])[
         segment

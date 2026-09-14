@@ -86,6 +86,7 @@ export async function markPreviewDispatched(
         `select provider_dispatch_binding from app.preview_attempts
          where workspace_id=$1 and id=$2 and preview_run_id=$3
            and status='running' and lease_owner=$4 and fence_token=$5
+           and lease_expires_at > clock_timestamp()
          for update`,
         [
           scope.workspaceId,
@@ -111,7 +112,8 @@ export async function markPreviewDispatched(
              updated_at=clock_timestamp()
          where workspace_id=$1 and id=$2 and preview_run_id=$3
            and status='running'
-           and lease_owner=$4 and fence_token=$5`,
+           and lease_owner=$4 and fence_token=$5
+           and lease_expires_at > clock_timestamp()`,
         [
           scope.workspaceId,
           scope.previewAttemptId,

@@ -205,17 +205,31 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  if (roles !== undefined)
-    await Promise.all(Object.values(roles).map((pool) => pool.end()));
-  await owner?.end();
-  if (priorDirectory !== '')
-    await rm(priorDirectory, { recursive: true, force: true });
+  const failures: unknown[] = [];
+  const preliminary = await Promise.allSettled([
+    ...(roles === undefined
+      ? []
+      : Object.values(roles).map((pool) => pool.end())),
+    owner?.end(),
+    priorDirectory === ''
+      ? Promise.resolve()
+      : rm(priorDirectory, { recursive: true, force: true }),
+  ]);
+  for (const outcome of preliminary)
+    if (outcome.status === 'rejected') failures.push(outcome.reason);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(admin, databaseName);
+  } catch (error: unknown) {
+    failures.push(error);
   } finally {
-    await admin.end();
+    await admin.end().catch((error: unknown) => failures.push(error));
   }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Retention-control migration fixture cleanup failed',
+    );
 });
 
 describe('retention control foundation exact prior-head upgrade', () => {
@@ -243,6 +257,7 @@ describe('retention control foundation exact prior-head upgrade', () => {
            cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) privilege`,
         [tables],
       );
+      expect(privileges.rows).toHaveLength(tables.length * 7);
       expect(privileges.rows.every(({ allowed }) => !allowed)).toBe(true);
     }
 
@@ -308,6 +323,12 @@ describe('retention control foundation exact prior-head upgrade', () => {
     const firstClient = await maintenance.connect();
     const secondClient = await maintenance.connect();
     try {
+      const secondBackend = await secondClient.query<{ pid: number }>(
+        'select pg_backend_pid() pid',
+      );
+      const secondPid = secondBackend.rows[0]?.pid;
+      if (secondPid === undefined)
+        throw new Error('Second backend PID unavailable');
       await firstClient.query('begin');
       await project(
         firstClient,
@@ -330,7 +351,18 @@ describe('retention control foundation exact prior-head upgrade', () => {
       ).finally(() => {
         secondSettled = true;
       });
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await expect
+        .poll(async () => {
+          const activity = await maintenance.query<{ blocked: boolean }>(
+            `select exists(
+               select 1 from pg_stat_activity
+                where pid=$1 and wait_event_type='Lock'
+             ) blocked`,
+            [secondPid],
+          );
+          return activity.rows[0]?.blocked;
+        })
+        .toBe(true);
       expect(secondSettled).toBe(false);
       await firstClient.query('commit');
       await expect(secondProjection).resolves.toMatchObject({

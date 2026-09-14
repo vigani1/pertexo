@@ -1,13 +1,44 @@
 import { readFile } from 'node:fs/promises';
 
 import { getTableColumns } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { Pool, type PoolClient } from 'pg';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   CoordinatorPlanInvalidError,
   createCoordinatorRunStore,
 } from '../src/execution/coordinator-run-store.js';
+import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import { runCheckpoints, workflowRuns } from '../src/schema.js';
+
+const noNetworkConfig = {
+  connectionString: 'postgresql://invalid.invalid/pertexo',
+  connectionTimeoutMillis: 1_000,
+  idleTimeoutMillis: 1_000,
+  max: 1,
+  ownerRole: 'pertexo_owner' as const,
+  workerRuntimeRole: 'pertexo_worker' as const,
+};
+
+async function withNoNetworkStore<T>(
+  operation: (
+    store: ReturnType<typeof createCoordinatorRunStore>,
+  ) => Promise<T>,
+): Promise<T> {
+  const connect = vi.spyOn(Pool.prototype, 'connect').mockImplementation(() => {
+    throw new Error('Unexpected PostgreSQL checkout');
+  });
+  const runtime = createDatabaseRuntime(noNetworkConfig, {
+    monitorLockWaits: false,
+  });
+  const store = createCoordinatorRunStore(noNetworkConfig, runtime);
+  try {
+    return await operation(store);
+  } finally {
+    connect.mockRestore();
+    await Promise.all([store.close(), runtime.close()]);
+  }
+}
 
 const migrationUrl = new URL(
   '../migrations/0015_coordinator_run_store.sql',
@@ -55,65 +86,99 @@ describe('coordinator run store contract', () => {
   });
 
   it('rejects a plan that omits the engine event cursor before opening PostgreSQL', async () => {
-    const store = createCoordinatorRunStore({
-      connectionString: 'postgresql://invalid.invalid/pertexo',
-      connectionTimeoutMillis: 1_000,
-      idleTimeoutMillis: 1_000,
-      max: 1,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
+    await withNoNetworkStore(async (store) => {
+      const workflowVersionId = '00000000-0000-4000-8000-000000000003';
+      await expect(
+        store.commitAdvancePlan({
+          workspaceId: '00000000-0000-4000-8000-000000000001',
+          runId: '00000000-0000-4000-8000-000000000002',
+          workflowVersionId,
+          signal: new AbortController().signal,
+          delivery: {
+            outboxEventId: '00000000-0000-4000-8000-000000000004',
+            payloadChecksum: 'a'.repeat(64),
+          },
+          plan: {
+            expectedRevision: 0,
+            consumedThroughEventSequence: 1,
+            checkpoint: {
+              schemaVersion: 1,
+              engineVersion: 'engine-v1',
+              workflowVersionId,
+              revision: 1,
+              runStatus: 'running',
+              nextEventSequence: 3,
+              readySet: [],
+              admittedInvocationKeys: [],
+              invocations: [],
+              joins: [],
+              loops: [],
+              remainingIterationBudget: 0,
+              cancelRequested: false,
+              deadlineExpired: false,
+            },
+            events: [
+              {
+                schemaVersion: 1,
+                sequence: 2,
+                name: 'run.started',
+                occurredAt: '2026-09-13T00:00:00.000Z',
+              },
+            ],
+            nodeRunAdmissions: [],
+            attempts: [],
+          },
+        }),
+      ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
     });
-
-    await expect(
-      store.commitAdvancePlan({
-        workspaceId: '00000000-0000-4000-8000-000000000001',
-        runId: '00000000-0000-4000-8000-000000000002',
-      } as never),
-    ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
-    await store.close();
   });
 
   it('honors an already-aborted load without opening PostgreSQL', async () => {
-    const store = createCoordinatorRunStore({
-      connectionString: 'postgresql://invalid.invalid/pertexo',
-      connectionTimeoutMillis: 1_000,
-      idleTimeoutMillis: 1_000,
-      max: 1,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    });
     const controller = new AbortController();
     controller.abort();
+    await withNoNetworkStore(async (store) => {
+      await expect(
+        store.loadAdvanceState({
+          workspaceId: '00000000-0000-4000-8000-000000000001',
+          runId: '00000000-0000-4000-8000-000000000002',
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    });
+  });
 
-    await expect(
-      store.loadAdvanceState({
+  it('disposes a controlled late checkout after acquisition is aborted', async () => {
+    let resolveCheckout!: (client: PoolClient) => void;
+    const checkout = new Promise<PoolClient>((resolve) => {
+      resolveCheckout = resolve;
+    });
+    const connect = vi
+      .spyOn(Pool.prototype, 'connect')
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- This exercises the promise overload of pg Pool.connect.
+      .mockImplementation((() => checkout) as typeof Pool.prototype.connect);
+    const runtime = createDatabaseRuntime(noNetworkConfig, {
+      monitorLockWaits: false,
+    });
+    const store = createCoordinatorRunStore(noNetworkConfig, runtime);
+    const controller = new AbortController();
+    const release = vi.fn();
+    try {
+      const pending = store.loadAdvanceState({
         workspaceId: '00000000-0000-4000-8000-000000000001',
         runId: '00000000-0000-4000-8000-000000000002',
         signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    await store.close();
-  });
-
-  it('handles a pool connection failure after acquisition is aborted', async () => {
-    const store = createCoordinatorRunStore({
-      connectionString: 'postgresql://127.0.0.1:1/pertexo',
-      connectionTimeoutMillis: 25,
-      idleTimeoutMillis: 25,
-      max: 1,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    });
-    const controller = new AbortController();
-    const pending = store.loadAdvanceState({
-      workspaceId: '00000000-0000-4000-8000-000000000001',
-      runId: '00000000-0000-4000-8000-000000000002',
-      signal: controller.signal,
-    });
-    controller.abort();
-
-    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    await store.close();
+      });
+      controller.abort();
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+      resolveCheckout({ release } as unknown as PoolClient);
+      await vi.waitFor(() => {
+        expect(
+          release.mock.calls.some(([reason]) => reason instanceof Error),
+        ).toBe(true);
+      });
+    } finally {
+      connect.mockRestore();
+      await Promise.all([store.close(), runtime.close()]);
+    }
   });
 });

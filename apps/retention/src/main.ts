@@ -1,8 +1,11 @@
+import { fileURLToPath } from 'node:url';
+
 import type {
   ArtifactStore,
   DualRegionControlLedger,
   WorkspaceObjectPurgeStore,
 } from '@pertexo/artifact-store';
+import type * as ArtifactStoreModule from '@pertexo/artifact-store';
 import type {
   RetentionDatabase,
   RetentionEnforcementCoordinator,
@@ -11,21 +14,103 @@ import type {
   WorkspacePurgeCoordinator,
   DatabaseRuntime,
 } from '@pertexo/database/maintenance';
+import type * as MaintenanceDatabaseModule from '@pertexo/database/maintenance';
 import type { StructuredLogger } from '@pertexo/observability/logging';
+import type * as LoggingModule from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { classifyProcessError } from '@pertexo/observability/process-error-classification';
 
-import { parseRetentionWorkerConfig } from './config.js';
+import type * as RetentionRunModule from './run.js';
+import {
+  parseRetentionWorkerConfig,
+  type RetentionWorkerConfig,
+} from './config.js';
 import { createRetentionMetrics } from './metrics.js';
 
-async function bootstrap(): Promise<void> {
-  const config = parseRetentionWorkerConfig();
-  const telemetry = createTelemetryLifecycle(config.observability);
+type ShutdownSignal = 'SIGINT' | 'SIGTERM';
+
+interface RetentionProcess {
+  once(signal: ShutdownSignal, listener: () => void): unknown;
+  removeListener(signal: ShutdownSignal, listener: () => void): unknown;
+}
+
+export interface RetentionBootstrapModules {
+  readonly artifactStore: Pick<
+    typeof ArtifactStoreModule,
+    'createDualRegionArtifactStore' | 'createDualRegionControlLedger'
+  >;
+  readonly database: Pick<
+    typeof MaintenanceDatabaseModule,
+    | 'createDatabaseRuntime'
+    | 'createPreviewRetentionCoordinator'
+    | 'createRetentionDatabase'
+    | 'createRetentionEnforcementCoordinator'
+    | 'createRunArtifactRetentionCoordinator'
+    | 'createWorkspacePurgeCoordinator'
+  >;
+  readonly logging: Pick<typeof LoggingModule, 'createStructuredLogger'>;
+  readonly worker: Pick<typeof RetentionRunModule, 'runRetentionWorker'>;
+}
+
+export interface RetentionBootstrapDependencies {
+  readonly config?: RetentionWorkerConfig;
+  readonly createMetrics?: typeof createRetentionMetrics;
+  readonly createTelemetryLifecycle?: typeof createTelemetryLifecycle;
+  readonly loadModules?: () => Promise<RetentionBootstrapModules>;
+  readonly process?: RetentionProcess;
+}
+
+async function loadModules(): Promise<RetentionBootstrapModules> {
+  const [artifactStore, database, logging, worker] = await Promise.all([
+    import('@pertexo/artifact-store'),
+    import('@pertexo/database/maintenance'),
+    import('@pertexo/observability/logging'),
+    import('./run.js'),
+  ]);
+  return { artifactStore, database, logging, worker };
+}
+
+function reportDiagnostic(report: (() => void) | undefined): void {
+  try {
+    report?.();
+  } catch {
+    // Process stderr remains the last-resort diagnostic owner.
+  }
+}
+
+async function attemptBootstrapCleanup(
+  label: string,
+  close: (() => Promise<void> | void) | undefined,
+  logger: StructuredLogger | undefined,
+): Promise<void> {
+  if (close === undefined) return;
+  try {
+    await close();
+  } catch (error: unknown) {
+    reportDiagnostic(() =>
+      logger?.error(
+        'retention.cleanup_failed',
+        { errorType: classifyProcessError(error), resource: label },
+        error,
+      ),
+    );
+  }
+}
+
+export async function bootstrapRetention(
+  dependencies: RetentionBootstrapDependencies = {},
+): Promise<void> {
+  const config = dependencies.config ?? parseRetentionWorkerConfig();
+  const telemetry = (
+    dependencies.createTelemetryLifecycle ?? createTelemetryLifecycle
+  )(config.observability);
   const shutdown = new AbortController();
   const stop = (): void => {
     shutdown.abort(new Error('Retention worker interrupted'));
   };
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
+  const processRuntime = dependencies.process ?? process;
+  processRuntime.once('SIGINT', stop);
+  processRuntime.once('SIGTERM', stop);
   let database: RetentionDatabase | undefined;
   let databaseRuntime: DatabaseRuntime | undefined;
   let enforcement: RetentionEnforcementCoordinator | undefined;
@@ -38,38 +123,38 @@ async function bootstrap(): Promise<void> {
   let workerInvoked = false;
   try {
     telemetry.start();
-    const [artifactStore, databasePackage, logging, worker] = await Promise.all(
-      [
-        import('@pertexo/artifact-store'),
-        import('@pertexo/database/maintenance'),
-        import('@pertexo/observability/logging'),
-        import('./run.js'),
-      ],
-    );
-    logger = logging.createStructuredLogger(config.observability);
-    ledger = artifactStore.createDualRegionControlLedger(
+    const modules = await (dependencies.loadModules ?? loadModules)();
+    logger = modules.logging.createStructuredLogger(config.observability);
+    ledger = modules.artifactStore.createDualRegionControlLedger(
       config.ledger.primary,
       config.ledger.recovery,
     );
-    artifacts = artifactStore.createDualRegionArtifactStore(
+    artifacts = modules.artifactStore.createDualRegionArtifactStore(
       config.artifactStore.primary,
       config.artifactStore.recovery,
     );
-    databaseRuntime = databasePackage.createDatabaseRuntime(config.database, {
+    databaseRuntime = modules.database.createDatabaseRuntime(config.database, {
       role: 'maintenance',
     });
-    database = databasePackage.createRetentionDatabase(
+    database = modules.database.createRetentionDatabase(
       config.database,
-      config.options,
+      {
+        leaseOwner: config.options.leaseOwner,
+        leaseSeconds: config.options.leaseSeconds,
+        lockTimeoutMs: config.options.lockTimeoutMs,
+        maxPagesPerBatch: config.options.maxPagesPerBatch,
+        pageSize: config.options.pageSize,
+        statementTimeoutMs: config.options.statementTimeoutMs,
+      },
       databaseRuntime,
     );
-    enforcement = databasePackage.createRetentionEnforcementCoordinator(
+    enforcement = modules.database.createRetentionEnforcementCoordinator(
       config.database,
       ledger,
       config.options,
       databaseRuntime,
     );
-    preview = databasePackage.createPreviewRetentionCoordinator(
+    preview = modules.database.createPreviewRetentionCoordinator(
       config.database,
       ledger,
       artifacts,
@@ -89,7 +174,7 @@ async function bootstrap(): Promise<void> {
       },
       databaseRuntime,
     );
-    runArtifacts = databasePackage.createRunArtifactRetentionCoordinator(
+    runArtifacts = modules.database.createRunArtifactRetentionCoordinator(
       config.database,
       ledger,
       artifacts,
@@ -100,15 +185,14 @@ async function bootstrap(): Promise<void> {
       },
       databaseRuntime,
     );
-    workspacePurge = databasePackage.createWorkspacePurgeCoordinator(
+    workspacePurge = modules.database.createWorkspacePurgeCoordinator(
       config.database,
       ledger,
       artifacts,
       config.options,
       databaseRuntime,
     );
-    workerInvoked = true;
-    await worker.runRetentionWorker({
+    const workerResources = {
       artifacts,
       database,
       databaseRuntime,
@@ -116,7 +200,7 @@ async function bootstrap(): Promise<void> {
       expectedMaintenanceRole: config.expectedMaintenanceRole,
       logger,
       ledger,
-      metrics: createRetentionMetrics(),
+      metrics: (dependencies.createMetrics ?? createRetentionMetrics)(),
       pollIntervalMs: config.pollIntervalMs,
       replicaMonitor: config.replicaMonitor,
       preview,
@@ -124,38 +208,83 @@ async function bootstrap(): Promise<void> {
       workspacePurge,
       signal: shutdown.signal,
       telemetry,
-    });
+    };
+    workerInvoked = true;
+    await modules.worker.runRetentionWorker(workerResources);
   } catch (error: unknown) {
-    logger?.fatal(
-      'retention.bootstrap_failed',
-      { errorType: error instanceof Error ? error.name : typeof error },
-      error,
+    reportDiagnostic(() =>
+      logger?.fatal(
+        'retention.bootstrap_failed',
+        { errorType: classifyProcessError(error) },
+        error,
+      ),
     );
     if (!workerInvoked) {
-      await enforcement?.close().catch(() => undefined);
-      await preview?.close().catch(() => undefined);
-      await runArtifacts?.close().catch(() => undefined);
-      await workspacePurge?.close().catch(() => undefined);
-      await database?.close().catch(() => undefined);
-      await databaseRuntime?.close().catch(() => undefined);
-      artifacts?.close();
-      ledger?.close();
-      await telemetry.shutdown().catch(() => undefined);
+      await attemptBootstrapCleanup(
+        'retention_enforcement',
+        () => enforcement?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'preview_retention',
+        () => preview?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'run_artifact_retention',
+        () => runArtifacts?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'workspace_purge',
+        () => workspacePurge?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'database',
+        () => database?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'database_runtime',
+        () => databaseRuntime?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup(
+        'artifacts',
+        () => artifacts?.close(),
+        logger,
+      );
+      await attemptBootstrapCleanup('ledger', () => ledger?.close(), logger);
+      await attemptBootstrapCleanup(
+        'telemetry',
+        () => telemetry.shutdown(),
+        logger,
+      );
     }
     throw error;
   } finally {
-    process.removeListener('SIGINT', stop);
-    process.removeListener('SIGTERM', stop);
+    processRuntime.removeListener('SIGINT', stop);
+    processRuntime.removeListener('SIGTERM', stop);
   }
 }
 
-void bootstrap().catch((error: unknown) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      errorType: error instanceof Error ? error.name : typeof error,
-      event: 'retention.process_failed',
-      level: 'fatal',
-    })}\n`,
+function isMainModule(): boolean {
+  return (
+    process.argv[1] !== undefined &&
+    fileURLToPath(import.meta.url) === process.argv[1]
   );
-  process.exitCode = 1;
-});
+}
+
+if (isMainModule()) {
+  void bootstrapRetention().catch((error: unknown) => {
+    process.stderr.write(
+      `${JSON.stringify({
+        errorType: classifyProcessError(error),
+        event: 'retention.process_failed',
+        level: 'fatal',
+      })}\n`,
+    );
+    process.exitCode = 1;
+  });
+}

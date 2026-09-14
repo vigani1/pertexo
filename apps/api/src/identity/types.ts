@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { oidcCallbackRequestSchema } from '@pertexo/contracts/identity-workspace';
 
 export const oidcConfigurationSchema = z.object({
   issuer: z.url(),
@@ -24,10 +25,7 @@ export type OidcConfiguration = Readonly<
   }
 >;
 
-export const oidcCallbackInputSchema = z.object({
-  code: z.string().min(1).max(4_096),
-  state: z.string().min(16).max(512),
-});
+export const oidcCallbackInputSchema = oidcCallbackRequestSchema;
 
 export type OidcCallbackInput = Readonly<
   z.infer<typeof oidcCallbackInputSchema>

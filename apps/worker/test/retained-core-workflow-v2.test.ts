@@ -20,22 +20,30 @@ const retainedFixtureSchema = z
     graph: z.unknown(),
     executable: z.unknown(),
     checksum: z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
-    executions: z.array(
-      z
-        .object({
-          nodeId: z.string().min(1),
-          definition: identitySchema,
-          executor: identitySchema,
-          input: z.json(),
-          expected: z
-            .object({
-              kind: z.enum(['succeeded', 'terminal_success']),
-              output: z.json(),
-            })
-            .strict(),
-        })
-        .strict(),
-    ),
+    executions: z
+      .array(
+        z
+          .object({
+            nodeId: z.string().min(1),
+            definition: identitySchema,
+            executor: identitySchema,
+            input: z.json(),
+            expected: z
+              .object({
+                kind: z.enum(['succeeded', 'terminal_success']),
+                output: z.json(),
+              })
+              .strict(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .refine(
+        (executions) =>
+          new Set(executions.map(({ nodeId }) => nodeId)).size ===
+          executions.length,
+        'retained execution node IDs must be unique',
+      ),
   })
   .strict();
 
@@ -68,6 +76,13 @@ describe('retained core workflow V2 compatibility', () => {
       admissionRelease: release,
     });
     const registry = createCoreNodeRegistry();
+    const intendedNodeIds = ['manual', 'set', 'terminate'];
+    expect(fixture.executions.map(({ nodeId }) => nodeId).sort()).toEqual(
+      [...intendedNodeIds].sort(),
+    );
+    expect(verified.envelope.graph.nodes.map(({ id }) => id).sort()).toEqual(
+      [...intendedNodeIds].sort(),
+    );
     for (const execution of fixture.executions) {
       const pinned = verified.envelope.graph.nodes.find(
         ({ id }) => id === execution.nodeId,

@@ -20,6 +20,8 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   operatorRerunDuration: 'pertexo.maintenance.operator_rerun.duration',
   pageCount: 'pertexo.retention.page.count',
   regionalReplicaAdmissionBlocked: 'pertexo.regional_replica.admission.blocked',
+  regionalReplicaObservationTime:
+    'pertexo.regional_replica.observation.timestamp',
   regionalReplicaReplayLag: 'pertexo.regional_replica.replay_lag',
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
@@ -108,6 +110,7 @@ function createTransientDataReapRecorder(
 
 function createRegionalReplicaRecorder(
   meter: Meter,
+  now: () => number,
 ): RetentionMetrics['recordRegionalReplicaLag'] {
   const admissionBlocked = meter.createGauge(
     RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
@@ -124,19 +127,24 @@ function createRegionalReplicaRecorder(
       unit: 's',
     },
   );
+  const observationTime = meter.createGauge(
+    RETENTION_METRIC_NAME.regionalReplicaObservationTime,
+    {
+      description: 'Unix time of the originating regional replica observation',
+      unit: 's',
+    },
+  );
   return (result) => {
-    const attributes = {
-      replication_state: result.replicationState,
-      status: result.status,
-    };
-    admissionBlocked.record(result.status === 'open' ? 0 : 1, attributes);
+    admissionBlocked.record(result.status === 'open' ? 0 : 1);
+    observationTime.record(now() / 1_000);
     if (result.replayLagMillis !== null)
-      replayLag.record(result.replayLagMillis / 1_000, attributes);
+      replayLag.record(result.replayLagMillis / 1_000);
   };
 }
 
 export function createRetentionMetrics(
   meter: Meter = metrics.getMeter('@pertexo/retention', '0.0.0'),
+  now: () => number = Date.now,
 ): RetentionMetrics {
   const batches = meter.createCounter(RETENTION_METRIC_NAME.batchCount, {
     description: 'Retention batches processed by bounded kind and outcome',
@@ -207,7 +215,7 @@ export function createRetentionMetrics(
     },
   );
   const retentionMetrics: RetentionMetrics = {
-    recordRegionalReplicaLag: createRegionalReplicaRecorder(meter),
+    recordRegionalReplicaLag: createRegionalReplicaRecorder(meter, now),
     recordSchedule: (result, durationSeconds) => {
       const attributes = {
         mode: 'schedule',

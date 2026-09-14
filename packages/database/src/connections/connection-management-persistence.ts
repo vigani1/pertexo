@@ -15,14 +15,13 @@ import {
   keyDigest,
   mapConnection,
   withConnectionTransaction,
-  requireConnectionManager,
   parseRequestMetadata,
   selectConnection,
   databaseConstraint,
-  durableCreateResult,
-  durableConnectionSnapshot,
+  decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
 } from './connection-persistence.js';
+import { requireConnectionManager } from './connection-authority.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
@@ -61,13 +60,14 @@ export function createConnectionManagementPersistence(
           actorId,
           async (client, workspaceId) => {
             await requireConnectionManager(client, workspaceId, actorId);
-            await client.query(
+            const insertedClaim = await client.query(
               `insert into app.idempotency_records
                  (id, workspace_id, operation, scope, key_hash, request_hash,
                   status, resource_id, result_ref)
                values ($1, $2, 'connection.create', $3, $4, $5,
                        'in_progress', $6, '{}'::jsonb)
-               on conflict (workspace_id, operation, scope, key_hash) do nothing`,
+               on conflict (workspace_id, operation, scope, key_hash) do nothing
+               returning id`,
               [
                 generatePersistedId(),
                 workspaceId,
@@ -96,13 +96,12 @@ export function createConnectionManagementPersistence(
                 'Idempotency key request mismatch',
               );
             if (claimed.status === 'completed') {
-              const snapshot = durableConnectionSnapshot(claimed.result_ref);
-              if (snapshot !== null) {
-                if (snapshot.workspaceId !== workspaceId)
+              const replay = decodeDurableConnectionReplay(claimed.result_ref);
+              if (replay.kind === 'snapshot') {
+                if (replay.connection.workspaceId !== workspaceId)
                   throw new Error('Connection idempotency result is corrupt');
-                return snapshot;
+                return replay.connection;
               }
-              const replay = durableCreateResult(claimed.result_ref);
               const existing = await selectConnection(
                 client,
                 workspaceId,
@@ -112,7 +111,8 @@ export function createConnectionManagementPersistence(
                 throw new Error('Connection idempotency result is corrupt');
               return existing;
             }
-
+            if (insertedClaim.rowCount !== 1)
+              throw new Error('Connection idempotency record is not resumable');
             const inserted = await client.query<Record<string, unknown>>(
               `insert into app.connections
                  (id, workspace_id, provider_key, name, auth_type, status,
@@ -245,13 +245,12 @@ export function createConnectionManagementPersistence(
               'Idempotency key request mismatch',
             );
           if (record.status !== 'completed') return null;
-          const snapshot = durableConnectionSnapshot(record.result_ref);
-          if (snapshot !== null) {
-            if (snapshot.workspaceId !== workspaceId)
+          const replay = decodeDurableConnectionReplay(record.result_ref);
+          if (replay.kind === 'snapshot') {
+            if (replay.connection.workspaceId !== workspaceId)
               throw new Error('Connection idempotency result is corrupt');
-            return snapshot;
+            return replay.connection;
           }
-          const replay = durableCreateResult(record.result_ref);
           const connection = await selectConnection(
             client,
             workspaceId,

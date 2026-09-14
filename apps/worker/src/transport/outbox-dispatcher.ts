@@ -70,7 +70,10 @@ export type OutboxDispatcherOptions = Readonly<
 >;
 
 export type OutboxDispatcherRuntimeHooks = Readonly<{
-  observeWorkspaceCapacity(workspaceId: string): Promise<void>;
+  observeWorkspaceCapacity(
+    workspaceId: string,
+    signal: AbortSignal,
+  ): Promise<void>;
 }>;
 
 export type OutboxDispatchResult = InternalOutboxDispatchResult;
@@ -108,15 +111,15 @@ function transportJobName(jobName: string): TransportJob | undefined {
 
 function transportErrorClass(error: unknown): TransportErrorClass {
   if (
-    error instanceof OutboxPayloadChecksumError ||
-    error instanceof OutboxContractError
+    isErrorInstance(error, OutboxPayloadChecksumError) ||
+    isErrorInstance(error, OutboxContractError)
   ) {
     return 'contract';
   }
-  if (error instanceof TransportOperationTimeoutError) {
+  if (isErrorInstance(error, TransportOperationTimeoutError)) {
     return 'timeout';
   }
-  if (error instanceof QueueNotReadyError) {
+  if (isErrorInstance(error, QueueNotReadyError)) {
     return 'unavailable';
   }
   return 'redis';
@@ -153,13 +156,24 @@ function toQueueJob(event: LeasedOutboxEvent): QueueJob {
 }
 
 function errorCode(error: unknown): string {
-  if (error instanceof OutboxPayloadChecksumError) {
+  if (isErrorInstance(error, OutboxPayloadChecksumError)) {
     return 'outbox.checksum_mismatch';
   }
-  if (error instanceof OutboxContractError) {
+  if (isErrorInstance(error, OutboxContractError)) {
     return 'outbox.invalid_contract';
   }
   return 'queue.publish_failed';
+}
+
+function isErrorInstance<T extends Error>(
+  value: unknown,
+  constructor: abstract new (...arguments_: never[]) => T,
+): value is T {
+  try {
+    return value instanceof constructor;
+  } catch {
+    return false;
+  }
 }
 
 const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
@@ -182,7 +196,9 @@ export class OutboxDispatcher {
   private capacitySamplerPromise: Promise<void> | undefined;
   private readonly publicationSettlements: OutboxPublicationSettlements;
   private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
+  private readonly activeDispatches = new Set<Promise<void>>();
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
+  private closePromise: Promise<void> | undefined;
   private loopPromise: Promise<void> | undefined;
   private wakeLoop: (() => void) | undefined;
 
@@ -218,6 +234,7 @@ export class OutboxDispatcher {
     if (this.lifecycle === 'running') return;
     this.lifecycle = 'running';
     this.loopPromise = this.runLoop();
+    void this.loopPromise.catch(() => undefined);
   }
 
   public configureRuntimeHooks(hooks: OutboxDispatcherRuntimeHooks): void {
@@ -228,7 +245,21 @@ export class OutboxDispatcher {
     this.runtimeHooks = Object.freeze(hooks);
   }
 
-  public async dispatchOnce(): Promise<OutboxDispatchResult> {
+  public dispatchOnce(): Promise<OutboxDispatchResult> {
+    const operation = this.runDispatchOnce();
+    const ownership = operation
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .finally(() => {
+        this.activeDispatches.delete(ownership);
+      });
+    this.activeDispatches.add(ownership);
+    return operation;
+  }
+
+  private async runDispatchOnce(): Promise<OutboxDispatchResult> {
     this.assertOpen();
     if (!this.drainState.canAcceptWork()) return EMPTY_RESULT;
     if (this.options.enabledJobNames.length === 0) return EMPTY_RESULT;
@@ -263,34 +294,78 @@ export class OutboxDispatcher {
       this.producer.waitUntilReady(),
       this.consumerCapabilities.assertReady(this.options.enabledJobNames),
     ]);
+    this.assertOpen();
+    if (!this.drainState.canAcceptWork()) {
+      throw new Error('Outbox dispatcher is draining');
+    }
   }
 
-  public async close(): Promise<void> {
-    if (this.lifecycle === 'closed') return;
+  public close(): Promise<void> {
+    this.closePromise ??= this.closeOwned();
+    return this.closePromise;
+  }
+
+  private async closeOwned(): Promise<void> {
     this.lifecycle = 'closed';
     this.pendingCapacityWorkspaces.clear();
     this.wakeLoop?.();
-    const loopResults = await Promise.allSettled([
-      this.loopPromise === undefined
-        ? Promise.resolve()
-        : bounded(this.loopPromise, this.options.operationTimeoutMillis),
+    const drain = this.drainOwnedWork();
+    let drainFailures: readonly unknown[];
+    try {
+      drainFailures = await bounded(drain, this.options.operationTimeoutMillis);
+    } catch (error: unknown) {
+      void drain
+        .then((failures) => this.closeDependencies(failures))
+        .catch(() => undefined);
+      throw error;
+    }
+    await this.closeDependencies(drainFailures);
+  }
+
+  private async drainOwnedWork(): Promise<readonly unknown[]> {
+    const operations = [
+      ...(this.loopPromise === undefined ? [] : [this.loopPromise]),
+      ...this.activeDispatches,
+    ];
+    const operationResults = await Promise.allSettled(operations);
+    const capacityResults = await Promise.allSettled(
       this.capacitySamplerPromise === undefined
-        ? Promise.resolve()
-        : bounded(
-            this.capacitySamplerPromise,
-            this.options.operationTimeoutMillis,
-          ),
-      ...this.publicationSettlements.boundedPending(),
-    ]);
-    const closeResults = await Promise.allSettled([
-      bounded(this.database.close(), this.options.operationTimeoutMillis),
-      bounded(this.producer.close(), this.options.operationTimeoutMillis),
-    ]);
-    const results = [...loopResults, ...closeResults];
-    const rejection = results.find(
-      (result): result is PromiseRejectedResult => result.status === 'rejected',
+        ? []
+        : [this.capacitySamplerPromise],
     );
-    if (rejection !== undefined) throw rejection.reason;
+    const settlementResults = await Promise.allSettled(
+      this.publicationSettlements.pendingSettlements(),
+    );
+    return [
+      ...operationResults,
+      ...capacityResults,
+      ...settlementResults,
+    ].flatMap((result) =>
+      result.status === 'rejected' ? [result.reason as unknown] : [],
+    );
+  }
+
+  private async closeDependencies(
+    earlierFailures: readonly unknown[],
+  ): Promise<void> {
+    const results = await Promise.allSettled([
+      bounded(
+        Promise.resolve().then(() => this.database.close()),
+        this.options.operationTimeoutMillis,
+      ),
+      bounded(
+        Promise.resolve().then(() => this.producer.close()),
+        this.options.operationTimeoutMillis,
+      ),
+    ]);
+    const failures = [
+      ...earlierFailures,
+      ...results.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      ),
+    ];
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Outbox dispatcher shutdown failed');
   }
 
   private async publishAndSettle(
@@ -395,19 +470,29 @@ export class OutboxDispatcher {
   }
 
   private async runLoop(): Promise<void> {
-    while (this.lifecycle === 'running' && this.drainState.canAcceptWork()) {
+    while (this.isRunning() && this.drainState.canAcceptWork()) {
       try {
         await this.dispatchOnce();
       } catch {
         // Readiness surfaces boundary health. The loop stays alive so a
         // transient PostgreSQL/Redis failure cannot permanently stop dispatch.
       }
+      if (!this.isRunning() || !this.drainState.canAcceptWork()) break;
       await new Promise<void>((resolve) => {
+        if (!this.isRunning()) {
+          resolve();
+          return;
+        }
+        let settled = false;
         const timer = setTimeout(resolve, this.options.pollIntervalMillis);
-        this.wakeLoop = () => {
+        const wake = () => {
+          if (settled) return;
+          settled = true;
           clearTimeout(timer);
           resolve();
         };
+        this.wakeLoop = wake;
+        if (!this.isRunning()) wake();
       });
       this.wakeLoop = undefined;
     }
@@ -415,6 +500,10 @@ export class OutboxDispatcher {
 
   private assertOpen(): void {
     if (this.lifecycle === 'closed') throw new OutboxDispatcherClosedError();
+  }
+
+  private isRunning(): boolean {
+    return this.lifecycle === 'running';
   }
 
   private assertConsumerCapabilitiesReady(): readonly JobName[] {
@@ -437,18 +526,27 @@ export class OutboxDispatcher {
 
   private async observeWorkspaceCapacity(workspaceId: string): Promise<void> {
     if (this.runtimeHooks === undefined) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(
+        new TransportOperationTimeoutError(this.options.operationTimeoutMillis),
+      );
+    }, this.options.operationTimeoutMillis);
+    timer.unref();
     try {
-      await bounded(
-        this.runtimeHooks.observeWorkspaceCapacity(workspaceId),
-        this.options.operationTimeoutMillis,
+      await this.runtimeHooks.observeWorkspaceCapacity(
+        workspaceId,
+        controller.signal,
       );
     } catch {
       // Capacity telemetry cannot alter durable publication acknowledgement.
+    } finally {
+      clearTimeout(timer);
     }
   }
 
   private scheduleWorkspaceCapacityObservation(workspaceId: string): void {
-    if (this.runtimeHooks === undefined) return;
+    if (this.runtimeHooks === undefined || this.lifecycle === 'closed') return;
     const now = Date.now();
     const sampledAt = this.capacitySampledAtByWorkspace.get(workspaceId);
     if (

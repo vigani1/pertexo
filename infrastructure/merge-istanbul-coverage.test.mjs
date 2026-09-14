@@ -30,3 +30,53 @@ test('rejects incompatible instrumentation maps', () => {
     /instrumentation changed/u,
   );
 });
+
+test('rejects malformed counters and key correspondence in the first report', () => {
+  for (const mutate of [
+    (entry) => {
+      delete entry.s[0];
+    },
+    (entry) => {
+      entry.s[1] = 1;
+    },
+    (entry) => {
+      entry.f[0] = -1;
+    },
+    (entry) => {
+      entry.s[0] = 1.5;
+    },
+    (entry) => {
+      entry.b[0][0] = Number.NaN;
+    },
+    (entry) => {
+      entry.b[0].push(0);
+    },
+    (entry) => {
+      entry.path = '/workspace/other.ts';
+    },
+    (entry) => {
+      entry.statementMap[0] = null;
+    },
+  ]) {
+    const changed = coverage(1);
+    mutate(changed['/workspace/file.ts']);
+    assert.throws(() => mergeIstanbulCoverage([changed]), /coverage/iu);
+  }
+  assert.throws(() => mergeIstanbulCoverage([]), /nonempty array/u);
+  assert.throws(() => mergeIstanbulCoverage([null]), /report 1 is malformed/u);
+});
+
+test('rejects missing and malformed counters in later reports', () => {
+  const missing = coverage(1);
+  delete missing['/workspace/file.ts'].b[0];
+  assert.throws(
+    () => mergeIstanbulCoverage([coverage(1), missing]),
+    /branchMap\/b keys differ/u,
+  );
+
+  const overflow = coverage(Number.MAX_SAFE_INTEGER);
+  assert.throws(
+    () => mergeIstanbulCoverage([overflow, coverage(1)]),
+    /hit count is invalid.*sum/iu,
+  );
+});

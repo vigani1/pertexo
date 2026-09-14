@@ -24,6 +24,19 @@ import {
   workspaceId,
 } from './support/preview-worker-fixture.js';
 
+async function waitForDatabaseTime(deadline: Date): Promise<void> {
+  const stopAt = Date.now() + 5_000;
+  while (Date.now() < stopAt) {
+    const reached = await scopedQuery<{ reached: boolean }>(
+      `select clock_timestamp() >= $1::timestamptz as reached`,
+      [deadline],
+    );
+    if (reached.rows[0]?.reached === true) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error('database clock did not reach preview execution deadline');
+}
+
 describe('preview worker lease reconciliation', () => {
   it('reconciles expired attempts by dispatch evidence and side-effect class', async () => {
     const beforeDispatch = await claimFixture(
@@ -288,11 +301,12 @@ describe('preview worker lease reconciliation', () => {
       }),
     ).rejects.toMatchObject({ code: 'completion_lost' });
 
+    const replacementDelivery = {
+      outboxEventId: redelivered.executionOutboxEventId,
+      payloadChecksum: replacementRow.payload_checksum,
+    };
     const replacementClaim = await claimPreviewDelivery(workerPool, {
-      delivery: {
-        outboxEventId: redelivered.executionOutboxEventId,
-        payloadChecksum: replacementRow.payload_checksum,
-      },
+      delivery: replacementDelivery,
       leaseDurationSeconds: 30,
       previewAttemptId: claimed.fixture.previewAttemptId,
       previewRunId: claimed.fixture.previewRunId,
@@ -304,6 +318,44 @@ describe('preview worker lease reconciliation', () => {
       expect(replacementClaim.lease.attemptFenceToken).toBe(
         claimed.lease.attemptFenceToken + 2,
       );
+      const replacementOutput = {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: 'replacement-confirmed',
+      } as const;
+      await expect(
+        completePreviewAttempt(workerPool, {
+          delivery: replacementDelivery,
+          lease: replacementClaim.lease,
+          outcome: {
+            output: replacementOutput,
+            status: PREVIEW_STATUS.succeeded,
+          },
+          workerId: 'worker-preview-reconcile-safe-2',
+        }),
+      ).resolves.toEqual({ kind: 'committed' });
+      await expect(
+        completePreviewAttempt(workerPool, {
+          delivery: replacementDelivery,
+          lease: replacementClaim.lease,
+          outcome: {
+            output: replacementOutput,
+            status: PREVIEW_STATUS.succeeded,
+          },
+          workerId: 'worker-preview-reconcile-safe-2',
+        }),
+      ).resolves.toEqual({ kind: 'duplicate' });
+      await expect(
+        completePreviewAttempt(workerPool, {
+          delivery: claimed.fixture.delivery,
+          lease: claimed.lease,
+          outcome: {
+            output: replacementOutput,
+            status: PREVIEW_STATUS.succeeded,
+          },
+          workerId: claimed.workerId,
+        }),
+      ).rejects.toMatchObject({ code: 'completion_lost' });
     }
   });
 
@@ -362,9 +414,11 @@ describe('preview worker lease reconciliation', () => {
   });
 
   it('times out expired undispatched work instead of redelivering past its deadline', async () => {
+    const executionDeadlineAt = new Date(Date.now() + 1_500);
     const claimed = await claimFixture(
       await acceptFixture({
-        expiresAt: new Date(Date.now() + 250),
+        executionDeadlineAt,
+        expiresAt: new Date(Date.now() + 60_000),
         mayCauseExternalSideEffect: false,
         sideEffectClass: 'safe',
       }),
@@ -372,8 +426,7 @@ describe('preview worker lease reconciliation', () => {
       5,
     );
     const reconciliation = await reconciliationFixture(claimed);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    await expireLease(claimed.fixture.previewAttemptId);
+    await waitForDatabaseTime(executionDeadlineAt);
 
     await expect(
       reconcilePreviewDelivery(workerPool, {

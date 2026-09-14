@@ -3,6 +3,7 @@ import { compareOrdinal } from './ordering.js';
 import { sameIterationPath } from './scope.js';
 import { completeLoopIteration } from './scheduling.js';
 import { assertNodeTransition } from './transitions.js';
+import type { InvocationState } from './types.js';
 import {
   isSyntheticLegacyLoop,
   isTerminalNodeStatus,
@@ -10,6 +11,74 @@ import {
   transitionEvent as event,
   type MutableWorkflowTransition,
 } from './workflow-transition-state.js';
+
+type StopStatus = 'canceled' | 'timed_out';
+type StoppableInvocation = InvocationState & {
+  readonly status: 'pending' | 'ready' | 'waiting';
+};
+
+function requestedStopStatus(
+  state: Pick<MutableWorkflowTransition, 'cancelRequested' | 'deadlineExpired'>,
+  invocationStatus: 'pending' | 'ready' | 'waiting',
+): StopStatus | undefined {
+  if (state.cancelRequested) return 'canceled';
+  if (!state.deadlineExpired) return undefined;
+  return invocationStatus === 'waiting' ? 'timed_out' : 'canceled';
+}
+
+function stopInvocation(
+  state: MutableWorkflowTransition,
+  invocation: StoppableInvocation,
+  occurredAt: string,
+): void {
+  const status = requestedStopStatus(state, invocation.status);
+  if (status === undefined) return;
+  assertNodeTransition(invocation.status, status);
+  const { resumeAt: _resumeAt, waitKind: _waitKind, ...active } = invocation;
+  void _resumeAt;
+  void _waitKind;
+  const stopped = { ...active, status };
+  state.invocations.set(invocation.invocationKey, stopped);
+  state.eventDrafts.push(
+    event(
+      status === 'timed_out' ? 'node.timed_out' : 'node.canceled',
+      status === 'timed_out'
+        ? (state.deadlineOccurredAt ?? occurredAt)
+        : occurredAt,
+      stopped,
+    ),
+  );
+}
+
+function isStoppableInvocation(
+  invocation: InvocationState,
+): invocation is StoppableInvocation {
+  return (
+    invocation.status === 'pending' ||
+    invocation.status === 'ready' ||
+    invocation.status === 'waiting'
+  );
+}
+
+function activeNestedLoopControls(
+  state: MutableWorkflowTransition,
+): ReadonlySet<string> {
+  return new Set(
+    [...state.loops.values()]
+      .filter(({ activeOrdinals }) => activeOrdinals.length > 0)
+      .map(({ controlInvocationKey }) => controlInvocationKey),
+  );
+}
+
+function iterationContainsActiveNestedLoop(
+  state: MutableWorkflowTransition,
+  invocationKeys: ReadonlySet<string>,
+): boolean {
+  return [...state.loops.values()].some(
+    ({ activeOrdinals, controlInvocationKey }) =>
+      activeOrdinals.length > 0 && invocationKeys.has(controlInvocationKey),
+  );
+}
 
 export function applyWorkflowStops(
   state: MutableWorkflowTransition,
@@ -33,8 +102,10 @@ export function applyWorkflowStops(
       controlStopStatus === 'timed_out'
         ? (deadlineOccurredAt ?? occurredAt)
         : occurredAt;
-    for (const initialLoop of [...loops.values()].sort((left, right) =>
-      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
+    for (const initialLoop of [...loops.values()].sort(
+      (left, right) =>
+        right.iterationPath.length - left.iterationPath.length ||
+        compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
     )) {
       if (isSyntheticLegacyLoop(initialLoop)) continue;
       let loop = initialLoop;
@@ -43,43 +114,41 @@ export function applyWorkflowStops(
           ...initialLoop.iterationPath,
           { loopNodeId: initialLoop.loopId, ordinal },
         ];
-        let iterationFound = false;
-        for (const invocation of invocations.values()) {
-          if (!sameIterationPath(invocation.iterationPath, iterationPath))
-            continue;
-          iterationFound = true;
-          if (isTerminalNodeStatus(invocation.status)) continue;
-          const {
-            resumeAt: _resumeAt,
-            waitKind: _waitKind,
-            ...active
-          } = invocation;
-          void _resumeAt;
-          void _waitKind;
-          const stopped = { ...active, status: controlStopStatus };
-          invocations.set(invocation.invocationKey, stopped);
-          eventDrafts.push(
-            event(
-              controlStopStatus === 'timed_out'
-                ? 'node.timed_out'
-                : 'node.canceled',
-              stoppedAt,
-              stopped,
-            ),
-          );
-        }
-        if (!iterationFound)
+        const iterationInvocations = [...invocations.values()].filter(
+          (invocation) =>
+            sameIterationPath(invocation.iterationPath, iterationPath),
+        );
+        if (iterationInvocations.length === 0)
           throw new WorkflowEngineError(
             'loop_state_invalid',
             `active For Each ordinal ${String(ordinal)} has no body invocation`,
           );
-        loop = completeLoopIteration(loop, ordinal);
-      }
-      if (loop.activeOrdinals.length > 0)
-        throw new WorkflowEngineError(
-          'loop_state_invalid',
-          'active For Each ordinals could not be reconciled',
+        const protectedControls = activeNestedLoopControls(state);
+        for (const invocation of iterationInvocations) {
+          if (
+            isStoppableInvocation(invocation) &&
+            !protectedControls.has(invocation.invocationKey)
+          )
+            stopInvocation(state, invocation, occurredAt);
+        }
+        const iterationKeys = new Set(
+          iterationInvocations.map(({ invocationKey }) => invocationKey),
         );
+        if (
+          !iterationContainsActiveNestedLoop(state, iterationKeys) &&
+          iterationInvocations.every(({ invocationKey }) => {
+            const current = invocations.get(invocationKey);
+            return (
+              current !== undefined && isTerminalNodeStatus(current.status)
+            );
+          })
+        )
+          loop = completeLoopIteration(loop, ordinal);
+      }
+      if (loop.activeOrdinals.length > 0) {
+        loops.set(loop.controlInvocationKey, loop);
+        continue;
+      }
       loop = {
         ...loop,
         terminalStatus: loop.terminalStatus ?? controlStopStatus,
@@ -108,58 +177,11 @@ export function applyWorkflowStops(
     }
   }
 
-  if (deadlineExpired) {
-    const timeoutOccurredAt = deadlineOccurredAt ?? occurredAt;
-    for (const invocation of invocations.values()) {
-      if (
-        invocation.status !== 'pending' &&
-        invocation.status !== 'ready' &&
-        invocation.status !== 'waiting'
-      )
-        continue;
-      const stoppedStatus =
-        invocation.status === 'waiting'
-          ? ('timed_out' as const)
-          : ('canceled' as const);
-      assertNodeTransition(invocation.status, stoppedStatus);
-      const {
-        resumeAt: _resumeAt,
-        waitKind: _waitKind,
-        ...active
-      } = invocation;
-      void _resumeAt;
-      void _waitKind;
-      const stopped = { ...active, status: stoppedStatus };
-      invocations.set(invocation.invocationKey, stopped);
-      eventDrafts.push(
-        event(
-          stoppedStatus === 'timed_out' ? 'node.timed_out' : 'node.canceled',
-          timeoutOccurredAt,
-          stopped,
-        ),
-      );
-    }
-  }
-
-  if (cancelRequested) {
-    for (const invocation of invocations.values()) {
-      if (
-        invocation.status !== 'pending' &&
-        invocation.status !== 'ready' &&
-        invocation.status !== 'waiting'
-      )
-        continue;
-      assertNodeTransition(invocation.status, 'canceled');
-      const {
-        resumeAt: _resumeAt,
-        waitKind: _waitKind,
-        ...active
-      } = invocation;
-      void _resumeAt;
-      void _waitKind;
-      const canceled = { ...active, status: 'canceled' as const };
-      invocations.set(invocation.invocationKey, canceled);
-      eventDrafts.push(event('node.canceled', occurredAt, canceled));
-    }
-  }
+  const protectedControls = activeNestedLoopControls(state);
+  for (const invocation of invocations.values())
+    if (
+      isStoppableInvocation(invocation) &&
+      !protectedControls.has(invocation.invocationKey)
+    )
+      stopInvocation(state, invocation, occurredAt);
 }

@@ -8,8 +8,6 @@ import {
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
-import type { z } from 'zod';
-
 import {
   classifySecureHttpError,
   classifySecureHttpResponse,
@@ -18,9 +16,10 @@ import {
 } from '../http/outcome-policy.js';
 import {
   SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
   type SecureHttpClient,
 } from '../http/secure-http.js';
+import { inspectSecureHttpError } from '../http/secure-http-error.js';
+import { errorNameIs, safeInstanceOf } from '../http/unknown-error.js';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION,
@@ -29,14 +28,19 @@ import {
   HTTP_REQUEST_VALUE_POLICY,
 } from './definition.js';
 import {
-  HTTP_REQUEST_LIMITS,
   httpRequestConfigSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
-  resolvedHttpHeadersCredentialSchema,
+  type HttpRequestConfig,
+  type HttpRequestInput,
   type HttpRequestOutput,
 } from './validation.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
+import {
+  decodeCredential,
+  mergeHeaders,
+  requestBody,
+} from './request-material.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
@@ -79,65 +83,6 @@ function failedConfiguration(): HttpRequestExecutorError {
   );
 }
 
-function requestBody(
-  input: z.output<typeof httpRequestInputSchema>,
-  method: z.output<typeof httpRequestConfigSchema>['method'],
-): Uint8Array | undefined {
-  if (input.body === undefined) return undefined;
-  if (method === 'GET' || method === 'HEAD') throw failedConfiguration();
-  if (input.body.encoding === 'utf8') {
-    const bytes = new TextEncoder().encode(input.body.value);
-    if (bytes.byteLength > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
-      throw failedConfiguration();
-    return bytes;
-  }
-  if (
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(
-      input.body.value,
-    )
-  )
-    throw failedConfiguration();
-  const bytes = Buffer.from(input.body.value, 'base64');
-  if (
-    bytes.byteLength > HTTP_REQUEST_LIMITS.maxRequestBodyBytes ||
-    bytes.toString('base64') !== input.body.value
-  )
-    throw failedConfiguration();
-  return new Uint8Array(bytes);
-}
-
-function decodeCredential(secret: Uint8Array) {
-  try {
-    return resolvedHttpHeadersCredentialSchema.parse(
-      JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(secret)),
-    );
-  } catch {
-    throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-      false,
-    );
-  }
-}
-
-function mergeHeaders(
-  configured: Readonly<Record<string, string>>,
-  credential: Readonly<Record<string, string>>,
-): Readonly<Record<string, string>> {
-  const normalizedConfigured = Object.fromEntries(
-    Object.entries(configured).map(([name, value]) => [
-      name.toLowerCase(),
-      value,
-    ]),
-  );
-  if (
-    Object.keys(credential).some((name) =>
-      Object.hasOwn(normalizedConfigured, name),
-    )
-  )
-    throw failedConfiguration();
-  return Object.freeze({ ...normalizedConfigured, ...credential });
-}
-
 function inlineBody(bytes: Uint8Array, preferred: 'base64' | 'utf8') {
   if (preferred === 'utf8') {
     try {
@@ -163,8 +108,8 @@ async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<HttpRequestOutput> {
-  let config: z.output<typeof httpRequestConfigSchema>;
-  let input: z.output<typeof httpRequestInputSchema>;
+  let config: HttpRequestConfig;
+  let input: HttpRequestInput;
   try {
     // Executors are also callable as isolated adapter boundaries, so they
     // retain fail-closed parsing even though createNodeRegistry parses first.
@@ -188,7 +133,7 @@ async function executeHttpRequest(
   if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
-  const body = requestBody(input, config.method);
+  const body = requestBody(input, config.method, failedConfiguration);
 
   let resolved;
   try {
@@ -206,7 +151,7 @@ async function executeHttpRequest(
         Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
         true,
       );
-    if (error instanceof ProviderExecutionRateLimitError)
+    if (safeInstanceOf(error, ProviderExecutionRateLimitError))
       throw new HttpRequestExecutorError(
         Object.freeze({
           kind: 'retry',
@@ -215,15 +160,12 @@ async function executeHttpRequest(
         }),
         false,
       );
-    if (error instanceof ProviderCredentialInvalidError)
+    if (safeInstanceOf(error, ProviderCredentialInvalidError))
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
         false,
       );
-    if (
-      invocation.signal.aborted ||
-      (error instanceof Error && error.name === 'AbortError')
-    )
+    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
       throw new HttpRequestExecutorError(
         Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
         false,
@@ -244,14 +186,25 @@ async function executeHttpRequest(
       resolved.authType !== 'http_headers'
     )
       throw failedConfiguration();
-    const credential = decodeCredential(resolved.secret);
+    const credential = decodeCredential(
+      resolved.secret,
+      () =>
+        new HttpRequestExecutorError(
+          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+          false,
+        ),
+    );
     let response;
     try {
       response = await dependencies.httpClient.executeStreaming(
         {
           url: config.url,
           method: config.method,
-          headers: mergeHeaders(config.headers, credential.headers),
+          headers: mergeHeaders(
+            config.headers,
+            credential.headers,
+            failedConfiguration,
+          ),
           ...(body === undefined ? {} : { body }),
           timeoutMillis: config.timeoutMillis,
           maxRedirects: config.maxRedirects,
@@ -277,8 +230,9 @@ async function executeHttpRequest(
           ),
       );
     } catch (error: unknown) {
-      if (error instanceof HttpRequestExecutorError) throw error;
-      if (!(error instanceof SecureHttpError))
+      if (safeInstanceOf(error, HttpRequestExecutorError)) throw error;
+      const secureError = inspectSecureHttpError(error);
+      if (secureError === undefined)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
           true,
@@ -288,16 +242,20 @@ async function executeHttpRequest(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
           true,
         );
-      if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+      if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
           false,
         );
-      if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+      if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
         throw failedConfiguration();
       throw new HttpRequestExecutorError(
-        classifySecureHttpError(error, HTTP_SIDE_EFFECT_CLASS.unsafe, false),
-        error.possiblyDispatched,
+        classifySecureHttpError(
+          secureError.error,
+          HTTP_SIDE_EFFECT_CLASS.unsafe,
+          false,
+        ),
+        secureError.possiblyDispatched,
       );
     }
     const decision = classifySecureHttpResponse(
@@ -381,7 +339,7 @@ async function preserveBodyFailureDuringCleanup(
         [primary.error, cleanupError],
         'HTTP response body failed and its iterator cleanup was incomplete',
       );
-    throw cleanupError instanceof Error
+    throw safeInstanceOf(cleanupError, Error)
       ? cleanupError
       : new Error('HTTP response body cleanup failed', {
           cause: cleanupError,

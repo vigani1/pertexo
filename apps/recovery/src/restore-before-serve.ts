@@ -13,6 +13,7 @@ import type {
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { classifyProcessError } from '@pertexo/observability/process-error-classification';
 
 export interface RestoreBeforeServeResources {
   readonly artifactPageSize: number;
@@ -115,6 +116,7 @@ export async function restoreBeforeServe(
   let result: RestoreBeforeServeResult | undefined;
   let operationFailed = false;
   let operationError: unknown;
+  const diagnosticErrors: unknown[] = [];
   const startedAt = performance.now();
   try {
     resources.telemetry.start();
@@ -149,24 +151,36 @@ export async function restoreBeforeServe(
       workspaceCount: inventory.workspaceCount,
     });
   } catch (error: unknown) {
-    resources.metrics.recordControlLedgerReconciliation(
-      'failed',
-      (performance.now() - startedAt) / 1_000,
-    );
     operationFailed = true;
     operationError = error;
-    resources.logger.error(
-      'restore_before_serve.failed',
-      { errorType: error instanceof Error ? error.name : typeof error },
-      error,
-    );
+    try {
+      resources.metrics.recordControlLedgerReconciliation(
+        'failed',
+        (performance.now() - startedAt) / 1_000,
+      );
+    } catch (diagnosticError: unknown) {
+      diagnosticErrors.push(diagnosticError);
+    }
+    try {
+      resources.logger.error(
+        'restore_before_serve.failed',
+        { errorType: classifyProcessError(error) },
+        error,
+      );
+    } catch (diagnosticError: unknown) {
+      diagnosticErrors.push(diagnosticError);
+    }
   }
 
   const cleanupErrors = await cleanupRestoreResources(resources);
 
   if (operationFailed || cleanupErrors.length > 0) {
     throw new AggregateError(
-      [...(operationFailed ? [operationError] : []), ...cleanupErrors],
+      [
+        ...(operationFailed ? [operationError] : []),
+        ...diagnosticErrors,
+        ...cleanupErrors,
+      ],
       'Restore-before-serve recovery did not complete cleanly',
     );
   }

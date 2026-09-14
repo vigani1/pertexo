@@ -6,6 +6,8 @@ import {
   composeExecutableCompatibilityRelease,
   createCheckpointV2,
   invocationKey,
+} from '../src/index.js';
+import {
   nodeRelease,
   pairedParallelGraph,
 } from './executable-workflow.fixtures.js';

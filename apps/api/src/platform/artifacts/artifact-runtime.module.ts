@@ -1,4 +1,4 @@
-import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { createDualRegionArtifactStore } from '@pertexo/artifact-store';
 import {
@@ -96,14 +96,6 @@ function closeStore(store: ArtifactStore, original: unknown): void {
   }
 }
 
-class ArtifactRuntimeShutdown implements OnApplicationShutdown {
-  public constructor(private readonly runtime: ApiArtifactRuntime) {}
-
-  public async onApplicationShutdown(): Promise<void> {
-    await this.runtime.close();
-  }
-}
-
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -120,12 +112,7 @@ export class ArtifactRuntimeModule {
           maxObjectBytes: options.maxObjectBytes,
         }),
       ],
-      providers: [
-        {
-          provide: ArtifactRuntimeShutdown,
-          useFactory: () => new ArtifactRuntimeShutdown(runtime),
-        },
-      ],
+      providers: [],
     };
   }
 }

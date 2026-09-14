@@ -1,7 +1,3 @@
-import type {
-  BeforeApplicationShutdown,
-  OnApplicationShutdown,
-} from '@nestjs/common';
 import { Inject, Injectable } from '@nestjs/common';
 
 import type { CoordinatorRuntime } from '../execution/coordinator-runtime.js';
@@ -19,9 +15,9 @@ import {
 } from './transport-tokens.js';
 
 @Injectable()
-export class OutboxDispatcherLifecycle
-  implements BeforeApplicationShutdown, OnApplicationShutdown
-{
+export class OutboxDispatcherLifecycle {
+  private shutdownPromise: Promise<void> | undefined;
+
   public constructor(
     @Inject(OUTBOX_DISPATCHER)
     private readonly dispatcher: OutboxDispatcher,
@@ -37,27 +33,43 @@ export class OutboxDispatcherLifecycle
     private readonly drainState: WorkerDrainState,
   ) {}
 
-  public beforeApplicationShutdown(): void {
+  public beginDrain(): void {
     this.drainState.beginDrain();
   }
 
-  public async onApplicationShutdown(): Promise<void> {
-    const results = await Promise.allSettled([
-      this.dispatcher.close(),
+  public close(): Promise<void> {
+    this.beginDrain();
+    this.shutdownPromise ??= this.closeOwnedResources();
+    return this.shutdownPromise;
+  }
+
+  private async closeOwnedResources(): Promise<void> {
+    const dispatcherResult = await Promise.allSettled([
+      Promise.resolve().then(() => this.dispatcher.close()),
+    ]);
+    const runtimeResults = await Promise.allSettled([
       ...(this.coordinatorRuntime === undefined
         ? []
-        : [this.coordinatorRuntime.close()]),
+        : [Promise.resolve().then(() => this.coordinatorRuntime?.close())]),
       ...(this.nodeAttemptRuntime === undefined
         ? []
-        : [this.nodeAttemptRuntime.close()]),
+        : [Promise.resolve().then(() => this.nodeAttemptRuntime?.close())]),
       ...(this.previewMaintenanceRuntime === undefined
         ? []
-        : [this.previewMaintenanceRuntime.close()]),
+        : [
+            Promise.resolve().then(() =>
+              this.previewMaintenanceRuntime?.close(),
+            ),
+          ]),
       ...(this.triggerRuntime === undefined
         ? []
-        : [this.triggerRuntime.close()]),
+        : [Promise.resolve().then(() => this.triggerRuntime?.close())]),
     ]);
-    const failure = results.find((result) => result.status === 'rejected');
-    if (failure?.status === 'rejected') throw failure.reason;
+    const failures = [...dispatcherResult, ...runtimeResults].flatMap(
+      (result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+    );
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Worker transport shutdown failed');
   }
 }

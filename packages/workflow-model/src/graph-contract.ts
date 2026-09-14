@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { hasBoundedGraphAggregateUnsafe } from './graph/aggregate.js';
+import { inspectWorkflowGraphAdmission } from './graph/admission.js';
 
 export type JsonValue =
   | null
@@ -202,94 +203,29 @@ export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
       .strict(),
 );
 
-function utf8Bytes(value: string): number {
-  let bytes = 0;
-  for (const character of value) {
-    const codePoint = character.codePointAt(0) ?? 0;
-    bytes +=
-      codePoint <= 0x7f
-        ? 1
-        : codePoint <= 0x7ff
-          ? 2
-          : codePoint <= 0xffff
-            ? 3
-            : 4;
-  }
-  return bytes;
-}
-
-function preflightWorkflowGraphUnsafe(input: unknown): boolean {
-  const stack: readonly [unknown, number][] = [[input, 1]];
-  const pending = [...stack];
-  const ancestors = new Set<object>();
-  const exits = new Set<object>();
-  let bytes = 0;
-  while (pending.length > 0) {
-    const entry = pending.pop();
-    if (entry === undefined) continue;
-    const [value, depth] = entry;
-    if (depth > WORKFLOW_GRAPH_CONTRACT_LIMITS.inputDepth) return false;
-    if (value === null || typeof value !== 'object') {
-      if (
-        value === undefined ||
-        typeof value === 'bigint' ||
-        typeof value === 'function' ||
-        typeof value === 'symbol'
-      )
-        return false;
-      const encoded = JSON.stringify(value);
-      bytes += utf8Bytes(encoded);
-      if (bytes > WORKFLOW_GRAPH_CONTRACT_LIMITS.graphBytes) return false;
-      continue;
-    }
-    if (exits.has(value)) {
-      exits.delete(value);
-      ancestors.delete(value);
-      continue;
-    }
-    if (ancestors.has(value)) return false;
-    if (Object.getOwnPropertySymbols(value).length > 0) return false;
-    const prototype = Object.getPrototypeOf(value) as object | null;
-    if (
-      !Array.isArray(value) &&
-      prototype !== Object.prototype &&
-      prototype !== null
+const workflowGraphPreflightSchema = z.unknown().transform((input, context) => {
+  const admitted = inspectWorkflowGraphAdmission(
+    input,
+    {
+      ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
+      jsonValueDepth: 64,
+    },
+    { allowNonFiniteNumbers: true },
+  );
+  if (
+    !admitted.ok ||
+    !hasBoundedGraphAggregateUnsafe(
+      admitted.snapshot,
+      WORKFLOW_GRAPH_CONTRACT_LIMITS,
     )
-      return false;
-    ancestors.add(value);
-    exits.add(value);
-    pending.push([value, depth]);
-    const keys = Array.isArray(value)
-      ? Array.from({ length: value.length }, (_, index) => String(index))
-      : Object.keys(value);
-    bytes += 2 + Math.max(0, keys.length - 1);
-    for (let index = keys.length - 1; index >= 0; index -= 1) {
-      const key = keys[index];
-      if (key === undefined) continue;
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (descriptor === undefined || !('value' in descriptor)) return false;
-      if (Array.isArray(value) && !(Number(key) in value)) return false;
-      if (!Array.isArray(value)) bytes += utf8Bytes(JSON.stringify(key)) + 1;
-      pending.push([descriptor.value, depth + 1]);
-    }
-    if (bytes > WORKFLOW_GRAPH_CONTRACT_LIMITS.graphBytes) return false;
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'workflow graph exceeds the bounded JSON contract',
+    });
+    return z.NEVER;
   }
-  return true;
-}
-
-function preflightWorkflowGraph(input: unknown): boolean {
-  try {
-    return (
-      preflightWorkflowGraphUnsafe(input) &&
-      hasBoundedGraphAggregateUnsafe(input, WORKFLOW_GRAPH_CONTRACT_LIMITS)
-    );
-  } catch {
-    return false;
-  }
-}
-
-const workflowGraphPreflightSchema = z.custom<unknown>(preflightWorkflowGraph, {
-  message: 'workflow graph exceeds the bounded JSON contract',
+  return admitted.snapshot;
 });
 
 export const workflowGraphSchema: z.ZodType<WorkflowGraph> =

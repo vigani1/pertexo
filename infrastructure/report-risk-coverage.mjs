@@ -2,7 +2,7 @@
 
 import console from 'node:console';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
@@ -27,14 +27,176 @@ export const RISK_COVERAGE_COHORTS = [
   'api-priority',
   'api-orchestration',
   'lifecycle-command',
+  'api-entrypoints',
+  'worker-entrypoints',
+  'operator-command-entrypoints',
+  'recovery-entrypoints',
+  'retention-entrypoints',
 ];
 
-const LIFECYCLE_COMMAND_RISK_FILES = [
-  'apps/lifecycle-command/src/config.ts',
-  'apps/lifecycle-command/src/main.ts',
-  'apps/lifecycle-command/src/readiness-marker.ts',
-  'apps/lifecycle-command/src/run.ts',
-];
+const EXHAUSTIVE_RISK_COHORT_DIRECTORIES = Object.freeze({
+  'artifact-store': 'packages/artifact-store/src',
+  contracts: 'packages/contracts/src',
+  integrations: 'packages/integrations/src',
+});
+
+const EXACT_RISK_COHORT_FILES = Object.freeze({
+  api: [
+    'apps/api/src/identity/crypto.ts',
+    'apps/api/src/identity/csrf.ts',
+    'apps/api/src/identity/session.ts',
+    'apps/api/src/platform/http/application-error.ts',
+    'apps/api/src/platform/http/problem-details.filter.ts',
+    'apps/api/src/platform/http/request-headers.ts',
+    'apps/api/src/platform/rate-limit/interceptor.ts',
+    'apps/api/src/platform/rate-limit/metadata.ts',
+    'apps/api/src/platform/rate-limit/metrics.ts',
+    'apps/api/src/platform/rate-limit/rate-limit.module.ts',
+    'apps/api/src/workspaces/authorize-workspace.ts',
+    'apps/api/src/workspaces/policy.ts',
+  ],
+  'api-entrypoints': ['apps/api/src/main.ts'],
+  'api-orchestration': [
+    'apps/api/src/application-error-mappers.ts',
+    'apps/api/src/connections/connection-testing.ts',
+    'apps/api/src/workflow-runs/sse-authorization-lifetime.ts',
+    'apps/api/src/workflow-runs/use-cases.ts',
+  ],
+  'api-priority': [
+    'apps/api/src/app.ts',
+    'apps/api/src/identity/oidc.ts',
+    'apps/api/src/identity-infrastructure/oidc-adapter.ts',
+    'apps/api/src/identity-infrastructure/oidc-request-validation.ts',
+    'apps/api/src/identity-infrastructure/oidc-response-cleanup.ts',
+    'apps/api/src/identity-infrastructure/oidc-secret-encryption.ts',
+    'apps/api/src/identity-workspace/module.ts',
+    'apps/api/src/identity-workspace/use-cases.ts',
+    'apps/api/src/platform/identity/identity-runtime.module.ts',
+    'apps/api/src/webhooks/ingress.ts',
+    'apps/api/src/workflow-authoring/lifecycle-use-case.ts',
+    'apps/api/src/workflow-authoring/module.ts',
+    'apps/api/src/workflow-authoring/preconditions.ts',
+    'apps/api/src/workflow-authoring/restore-version-use-case.ts',
+    'apps/api/src/workflow-authoring/use-cases.ts',
+  ],
+  database: [
+    'packages/database/src/tenant-access/workspace-policy.ts',
+    'packages/database/src/tenant-access/workspace.ts',
+  ],
+  'lifecycle-command': [
+    'apps/lifecycle-command/src/config.ts',
+    'apps/lifecycle-command/src/main.ts',
+    'apps/lifecycle-command/src/readiness-marker.ts',
+    'apps/lifecycle-command/src/run.ts',
+  ],
+  'operator-command-entrypoints': ['apps/operator-command/src/main.ts'],
+  'recovery-entrypoints': ['apps/recovery/src/main.ts'],
+  'retention-entrypoints': ['apps/retention/src/main.ts'],
+  worker: [
+    'apps/worker/src/execution/failure-notification-delivery.ts',
+    'apps/worker/src/execution/node-artifact-policy.ts',
+    'apps/worker/src/execution/node-attempt-execution-environment.ts',
+    'apps/worker/src/execution/node-attempt-handler-state-error.ts',
+    'apps/worker/src/execution/node-attempt-handler.ts',
+    'apps/worker/src/execution/node-execution-runtime-fields.ts',
+    'apps/worker/src/execution/node-runtime-capabilities.ts',
+    'apps/worker/src/execution/preview-attempt-runtime.ts',
+    'apps/worker/src/execution/provider-connection-runtime.ts',
+    'apps/worker/src/runtime/worker-process-shutdown.ts',
+    'apps/worker/src/runtime/worker-readiness-monitor.ts',
+    'apps/worker/src/runtime/worker-readiness.ts',
+    'apps/worker/src/transport/node-attempt-runtime-provider.ts',
+  ],
+  'worker-entrypoints': ['apps/worker/src/main.ts'],
+  'workflow-engine': [
+    'packages/workflow-engine/src/advance-workflow.ts',
+    'packages/workflow-engine/src/checkpoint-executable-validation.ts',
+    'packages/workflow-engine/src/checkpoint-identity.ts',
+    'packages/workflow-engine/src/checkpoint-shared.ts',
+    'packages/workflow-engine/src/checkpoint-v1-join.ts',
+    'packages/workflow-engine/src/checkpoint-v1-loop.ts',
+    'packages/workflow-engine/src/checkpoint-v1.ts',
+    'packages/workflow-engine/src/checkpoint-v2.ts',
+    'packages/workflow-engine/src/checkpoint.ts',
+    'packages/workflow-engine/src/coordinator-failures.ts',
+    'packages/workflow-engine/src/coordinator-observations.ts',
+    'packages/workflow-engine/src/coordinator-output.ts',
+    'packages/workflow-engine/src/core-definition-identities.ts',
+    'packages/workflow-engine/src/errors.ts',
+    'packages/workflow-engine/src/executable-boundary.ts',
+    'packages/workflow-engine/src/executable-compatibility.ts',
+    'packages/workflow-engine/src/executable-compilation.ts',
+    'packages/workflow-engine/src/executable-foundation.ts',
+    'packages/workflow-engine/src/executable-graph-boundary.ts',
+    'packages/workflow-engine/src/executable-graph-rules.ts',
+    'packages/workflow-engine/src/executable-graph-validation-index.ts',
+    'packages/workflow-engine/src/executable-graph.ts',
+    'packages/workflow-engine/src/executable-identity.ts',
+    'packages/workflow-engine/src/executable-validation.ts',
+    'packages/workflow-engine/src/graph-scheduler-indexes.ts',
+    'packages/workflow-engine/src/graph-scheduler.ts',
+    'packages/workflow-engine/src/node-attempt-input.ts',
+    'packages/workflow-engine/src/operation-values.ts',
+    'packages/workflow-engine/src/operations.ts',
+    'packages/workflow-engine/src/ordering.ts',
+    'packages/workflow-engine/src/output-reference.ts',
+    'packages/workflow-engine/src/persisted-observation-parser.ts',
+    'packages/workflow-engine/src/persisted-observations.ts',
+    'packages/workflow-engine/src/retries.ts',
+    'packages/workflow-engine/src/runtime.ts',
+    'packages/workflow-engine/src/scheduling.ts',
+    'packages/workflow-engine/src/scope.ts',
+    'packages/workflow-engine/src/server-only.ts',
+    'packages/workflow-engine/src/testing-graph.ts',
+    'packages/workflow-engine/src/testing.ts',
+    'packages/workflow-engine/src/transition-decisions.ts',
+    'packages/workflow-engine/src/transitions.ts',
+    'packages/workflow-engine/src/types.ts',
+    'packages/workflow-engine/src/workflow-transition-derived.ts',
+    'packages/workflow-engine/src/workflow-transition-observations.ts',
+    'packages/workflow-engine/src/workflow-transition-plan.ts',
+    'packages/workflow-engine/src/workflow-transition-state.ts',
+    'packages/workflow-engine/src/workflow-transition-stops.ts',
+  ],
+});
+
+async function typescriptFilesBelow(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const item = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await typescriptFilesBelow(item)));
+    else if (entry.isFile() && item.endsWith('.ts') && !item.endsWith('.d.ts'))
+      files.push(item);
+  }
+  return files;
+}
+
+export async function riskCoverageCohortFileInventories(rootDirectory) {
+  const inventories = new Map(
+    Object.entries(EXACT_RISK_COHORT_FILES).map(([cohort, files]) => [
+      cohort,
+      [...files].sort(),
+    ]),
+  );
+  await Promise.all(
+    Object.entries(EXHAUSTIVE_RISK_COHORT_DIRECTORIES).map(
+      async ([cohort, directory]) => {
+        const files = await typescriptFilesBelow(
+          path.join(rootDirectory, directory),
+        );
+        inventories.set(
+          cohort,
+          files.map((file) => path.relative(rootDirectory, file)).sort(),
+        );
+      },
+    ),
+  );
+  const defined = [...inventories.keys()].sort();
+  const required = [...RISK_COVERAGE_COHORTS].sort();
+  if (JSON.stringify(defined) !== JSON.stringify(required))
+    throw new Error('Risk-coverage cohort file inventories are incomplete');
+  return inventories;
+}
 
 export const RISK_COVERAGE_POLICIES = Object.freeze({
   'artifact-store': { mode: 'strict' },
@@ -47,6 +209,11 @@ export const RISK_COVERAGE_POLICIES = Object.freeze({
   'api-priority': { mode: 'strict' },
   'api-orchestration': { mode: 'strict' },
   'lifecycle-command': { mode: 'strict' },
+  'api-entrypoints': { mode: 'strict' },
+  'worker-entrypoints': { mode: 'strict' },
+  'operator-command-entrypoints': { mode: 'strict' },
+  'recovery-entrypoints': { mode: 'strict' },
+  'retention-entrypoints': { mode: 'strict' },
 });
 
 function coverageInstrumentation(coverage) {
@@ -103,27 +270,40 @@ function branchKey(branch) {
   ].join(':');
 }
 
-function normalizedSourceSpan(source, location) {
+export function normalizedSourceSpan(source, location) {
   const startLine = location?.start?.line;
   const endLine = location?.end?.line;
+  const startColumn = location?.start?.column;
+  const endColumn = location?.end?.column;
   if (
     !Number.isInteger(startLine) ||
     startLine < 1 ||
     !Number.isInteger(endLine) ||
-    endLine < startLine
+    endLine < startLine ||
+    !Number.isInteger(startColumn) ||
+    startColumn < 0 ||
+    !Number.isInteger(endColumn) ||
+    endColumn < 0
   )
     return source;
   const lines = source.split('\n');
-  const selected = lines.slice(startLine - 1, endLine);
-  if (selected.length === 0) return source;
-  const startColumn = location.start.column;
-  const endColumn = location.end.column;
-  if (Number.isInteger(startColumn) && startColumn > 0)
-    selected[0] = selected[0]?.slice(startColumn) ?? '';
-  if (Number.isInteger(endColumn) && endColumn >= 0)
-    selected[selected.length - 1] =
-      selected[selected.length - 1]?.slice(0, endColumn) ?? '';
-  return selected.join('\n').replace(/\s+/gu, ' ').trim();
+  const startText = lines[startLine - 1];
+  const endText = lines[endLine - 1];
+  if (
+    startText === undefined ||
+    endText === undefined ||
+    startColumn > startText.length ||
+    endColumn > endText.length ||
+    (startLine === endLine && endColumn < startColumn)
+  )
+    return source;
+  const lineOffset = (line) =>
+    lines
+      .slice(0, line - 1)
+      .reduce((offset, text) => offset + text.length + 1, 0);
+  const startOffset = lineOffset(startLine) + startColumn;
+  const endOffset = lineOffset(endLine) + endColumn;
+  return source.slice(startOffset, endOffset);
 }
 
 function sourceFingerprint(source, metadata, locationIndex) {
@@ -431,6 +611,38 @@ function ratio(covered, total) {
   };
 }
 
+function coverageEntries(coverage, counterName, metadataName, file) {
+  const counters = coverage?.[counterName];
+  const metadata = coverage?.[metadataName];
+  if (
+    counters === undefined ||
+    metadata === undefined ||
+    counters === null ||
+    typeof counters !== 'object' ||
+    Array.isArray(counters) ||
+    metadata === null ||
+    typeof metadata !== 'object' ||
+    Array.isArray(metadata)
+  )
+    throw new Error(`Malformed Istanbul ${counterName} coverage for ${file}`);
+  const counterKeys = Object.keys(counters).sort();
+  const metadataKeys = Object.keys(metadata).sort();
+  if (JSON.stringify(counterKeys) !== JSON.stringify(metadataKeys))
+    throw new Error(
+      `Mismatched Istanbul ${counterName} coverage metadata for ${file}`,
+    );
+  const entries = Object.entries(counters);
+  const hits =
+    counterName === 'b'
+      ? entries.flatMap(([, values]) =>
+          Array.isArray(values) ? values : [Number.NaN],
+        )
+      : entries.map(([, value]) => value);
+  if (hits.some((hit) => !Number.isSafeInteger(hit) || hit < 0))
+    throw new Error(`Malformed Istanbul ${counterName} hits for ${file}`);
+  return entries;
+}
+
 export function coverageMetrics(report) {
   let coveredStatements = 0;
   let totalStatements = 0;
@@ -440,14 +652,18 @@ export function coverageMetrics(report) {
   let totalFunctions = 0;
   let coveredLines = 0;
   let totalLines = 0;
-  for (const coverage of Object.values(report)) {
-    const statements = Object.entries(coverage.s ?? {});
+  for (const [file, coverage] of Object.entries(report)) {
+    const statements = coverageEntries(coverage, 's', 'statementMap', file);
     coveredStatements += statements.filter(([, hits]) => hits > 0).length;
     totalStatements += statements.length;
-    const branches = Object.values(coverage.b ?? {}).flat();
+    const branches = coverageEntries(coverage, 'b', 'branchMap', file).flatMap(
+      ([, hits]) => hits,
+    );
     coveredBranches += branches.filter((hits) => hits > 0).length;
     totalBranches += branches.length;
-    const functions = Object.values(coverage.f ?? {});
+    const functions = coverageEntries(coverage, 'f', 'fnMap', file).map(
+      ([, hits]) => hits,
+    );
     coveredFunctions += functions.filter((hits) => hits > 0).length;
     totalFunctions += functions.length;
     const lines = new Map();
@@ -468,6 +684,7 @@ export function coverageMetrics(report) {
 }
 
 export function summarizeVitestResult(result) {
+  validateVitestGateReport(result, 'Risk coverage test result', 1, 0);
   const endTime = Math.max(
     result.startTime,
     ...result.testResults.map((testResult) => testResult.endTime),
@@ -479,9 +696,7 @@ export function summarizeVitestResult(result) {
     failedTests: result.numFailedTests,
     skippedTests: result.numPendingTests,
     todoTests: result.numTodoTests,
-    retryPolicy: 'disabled',
-    retryAttempts: 0,
-    flakyTests: 0,
+    retryPolicy: 'disabled-by-configuration',
   };
 }
 
@@ -493,9 +708,18 @@ export function uncoveredBranches(
 ) {
   const uncovered = [];
   for (const [file, coverage] of Object.entries(report)) {
-    for (const [branchId, hits] of Object.entries(coverage.b ?? {})) {
+    for (const [branchId, hits] of coverageEntries(
+      coverage,
+      'b',
+      'branchMap',
+      file,
+    )) {
       const metadata = coverage.branchMap?.[branchId];
-      if (metadata === undefined) continue;
+      if (
+        !Array.isArray(metadata?.locations) ||
+        metadata.locations.length !== hits.length
+      )
+        throw new Error(`Malformed Istanbul branch locations for ${file}`);
       for (const [index, hitCount] of hits.entries()) {
         if (hitCount !== 0) continue;
         const location = metadata.locations?.[index] ?? metadata.loc;
@@ -773,11 +997,12 @@ async function main(environment = process.env) {
     sourceRevision,
     execution,
   );
-  assertRiskCoverageCohort(
-    output,
-    'lifecycle-command',
-    LIFECYCLE_COMMAND_RISK_FILES,
+  const expectedInventories = await riskCoverageCohortFileInventories(
+    process.cwd(),
   );
+  for (const [cohort, files] of expectedInventories) {
+    assertRiskCoverageCohort(output, cohort, files);
+  }
   assertRiskCoveragePolicies(output);
   await writeFile(
     'coverage/risk-uncovered-branches.json',

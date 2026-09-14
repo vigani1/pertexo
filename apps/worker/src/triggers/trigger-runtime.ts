@@ -36,8 +36,12 @@ import {
   createTriggerRuntimeTelemetry,
   type TriggerRuntimeTelemetry,
 } from './trigger-telemetry.js';
-import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import { createWorkerInitialCheckpoint } from '../execution/core-definition-identities.js';
+import {
+  closeTriggerDependencies,
+  createTriggerRuntimeLifecycle,
+  recordTriggerTelemetry,
+} from './trigger-runtime-lifecycle.js';
 
 export interface TriggerRuntime {
   readonly consumer: QueueConsumer;
@@ -47,6 +51,7 @@ export interface TriggerRuntime {
 
 export type TriggerRuntimeOptions = Readonly<{
   batchSize: number;
+  backgroundTaskShutdownTimeoutMillis?: number;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   leaseDurationSeconds: number;
@@ -56,6 +61,24 @@ export type TriggerRuntimeOptions = Readonly<{
   redisUrl: string;
   releaseCohort: PlatformReleaseCohort;
 }>;
+
+export type TriggerCompositionFactories = Readonly<{
+  consumer: typeof createQueueConsumer;
+  reader: typeof createPublishedWorkflowReader;
+  reconciliation: typeof createWorkflowTriggerReconciliationDatabase;
+  scanner: typeof createScheduleTriggerScanner;
+  telemetry: typeof createTriggerRuntimeTelemetry;
+  traceRunner: typeof createQueueTraceRunner;
+}>;
+
+const productionFactories: TriggerCompositionFactories = {
+  consumer: createQueueConsumer,
+  reader: createPublishedWorkflowReader,
+  reconciliation: createWorkflowTriggerReconciliationDatabase,
+  scanner: createScheduleTriggerScanner,
+  telemetry: createTriggerRuntimeTelemetry,
+  traceRunner: createQueueTraceRunner,
+};
 
 export type TriggerRuntimeDependencies = Readonly<{
   checkpointFactory?: ScheduleCheckpointFactory;
@@ -78,6 +101,10 @@ function validateOptions(options: TriggerRuntimeOptions): void {
     !Number.isSafeInteger(options.pollIntervalMillis) ||
     options.pollIntervalMillis < 10 ||
     options.pollIntervalMillis > 60_000 ||
+    (options.backgroundTaskShutdownTimeoutMillis !== undefined &&
+      (!Number.isSafeInteger(options.backgroundTaskShutdownTimeoutMillis) ||
+        options.backgroundTaskShutdownTimeoutMillis < 1 ||
+        options.backgroundTaskShutdownTimeoutMillis > 120_000)) ||
     options.leaseOwner.length < 1 ||
     options.leaseOwner.length > 128
   )
@@ -87,8 +114,11 @@ function validateOptions(options: TriggerRuntimeOptions): void {
 export async function createTriggerRuntime(
   options: TriggerRuntimeOptions,
   dependencies: TriggerRuntimeDependencies = {},
+  factories: TriggerCompositionFactories = productionFactories,
 ): Promise<TriggerRuntime> {
   validateOptions(options);
+  const backgroundTaskShutdownTimeoutMillis =
+    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const releaseHistory = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(options.releaseCohort).map(
       composeExecutableCompatibilityRelease,
@@ -121,39 +151,43 @@ export async function createTriggerRuntime(
       });
       return createWorkerInitialCheckpoint(executable, projection.id);
     });
-  const reconciliation =
-    dependencies.reconciliation ??
-    createWorkflowTriggerReconciliationDatabase(
-      options.database,
-      options.databaseRuntime,
-    );
-  const reader =
-    dependencies.reader ??
-    createPublishedWorkflowReader(
-      options.database,
-      releaseSupport.descriptions,
-      options.databaseRuntime,
-    );
-  const scanner =
-    dependencies.scanner ??
-    createScheduleTriggerScanner(
-      options.database,
-      releaseSupport.descriptions,
-      options.database,
-      options.databaseRuntime === undefined
-        ? {}
-        : {
-            acceptance: options.databaseRuntime,
-            claim: options.databaseRuntime,
-          },
-    );
-  const handler = createTriggerReconciliationHandler({
-    reader,
-    reconciliation,
-  });
-  let consumer: QueueConsumer;
+  // Telemetry owns no closeable resources. Construct it before acquiring the
+  // database and queue owners so constructor failure cannot strand them.
+  const telemetry = dependencies.telemetry ?? factories.telemetry();
+  const traceRunner = factories.traceRunner();
+  let reconciliation: WorkflowTriggerReconciliationDatabase | undefined;
+  let reader: PublishedWorkflowReader | undefined;
+  let scanner: ScheduleTriggerScanner | undefined;
+  let consumer: QueueConsumer | undefined;
   try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
+    reconciliation =
+      dependencies.reconciliation ??
+      factories.reconciliation(options.database, options.databaseRuntime);
+    reader =
+      dependencies.reader ??
+      factories.reader(
+        options.database,
+        releaseSupport.descriptions,
+        options.databaseRuntime,
+      );
+    scanner =
+      dependencies.scanner ??
+      factories.scanner(
+        options.database,
+        releaseSupport.descriptions,
+        options.database,
+        options.databaseRuntime === undefined
+          ? {}
+          : {
+              acceptance: options.databaseRuntime,
+              claim: options.databaseRuntime,
+            },
+      );
+    const handler = createTriggerReconciliationHandler({
+      reader,
+      reconciliation,
+    });
+    consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.triggerLifecycle,
       redisUrl: options.redisUrl,
       handler: async (delivery, context) => {
@@ -163,102 +197,49 @@ export async function createTriggerRuntime(
           );
         try {
           await handler.handle(delivery, context);
-          recordTelemetry(() => {
+          recordTriggerTelemetry(() => {
             telemetry.reconciliationCompleted('succeeded');
           });
         } catch (error: unknown) {
-          recordTelemetry(() => {
+          recordTriggerTelemetry(() => {
             telemetry.reconciliationCompleted('failed');
           });
           throw error;
         }
       },
       ...(options.observer === undefined ? {} : { observer: options.observer }),
-      traceRunner: createQueueTraceRunner(),
+      traceRunner,
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      scanner.close(),
-      reader.close(),
-      reconciliation.close(),
-    ]);
+    const cleanup = await closeTriggerDependencies(
+      {
+        scanner,
+        reader,
+        reconciliation,
+      },
+      backgroundTaskShutdownTimeoutMillis,
+    );
+    if (cleanup.length > 0)
+      throw new AggregateError(
+        [error, ...cleanup],
+        'Trigger runtime construction and cleanup failed',
+      );
     throw error;
   }
 
-  const scannerAbort = new AbortController();
-  const telemetry = dependencies.telemetry ?? createTriggerRuntimeTelemetry();
-  let latestScanFailed = false;
-  const scannerLoop = (async () => {
-    while (!scannerAbort.signal.aborted) {
-      const started = performance.now();
-      try {
-        const result = await scanner.scanDue({
-          leaseOwner: options.leaseOwner,
-          limit: options.batchSize,
-          leaseSeconds: options.leaseDurationSeconds,
-          checkpointFactory,
-          signal: scannerAbort.signal,
-        });
-        recordTelemetry(() => {
-          telemetry.scanCompleted(
-            result,
-            Math.max(0, performance.now() - started) / 1_000,
-          );
-        });
-        latestScanFailed = false;
-      } catch (error: unknown) {
-        recordTelemetry(() => {
-          telemetry.scanFailed(
-            Math.max(0, performance.now() - started) / 1_000,
-          );
-        });
-        latestScanFailed = true;
-        dependencies.logger?.error(
-          'trigger.schedule_scan_failed',
-          { safeErrorCode: 'trigger.schedule_scan_failed' },
-          error,
-        );
-      }
-      await waitForSupervisorDelay(
-        options.pollIntervalMillis,
-        scannerAbort.signal,
-      );
-    }
-  })();
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    consumer,
-    checkReadiness: () => {
-      if (latestScanFailed)
-        return Promise.reject(new Error('Schedule scanner latest scan failed'));
-      return Promise.resolve();
+  return createTriggerRuntimeLifecycle(
+    { consumer, reader, reconciliation, scanner },
+    {
+      batchSize: options.batchSize,
+      checkpointFactory,
+      leaseDurationSeconds: options.leaseDurationSeconds,
+      leaseOwner: options.leaseOwner,
+      ...(dependencies.logger === undefined
+        ? {}
+        : { logger: dependencies.logger }),
+      pollIntervalMillis: options.pollIntervalMillis,
+      shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
+      telemetry,
     },
-    close: () => {
-      closePromise ??= (async () => {
-        scannerAbort.abort();
-        const consumerResult = await Promise.allSettled([consumer.close()]);
-        const loopResult = await Promise.allSettled([scannerLoop]);
-        const adaptersResult = await Promise.allSettled([
-          scanner.close(),
-          reader.close(),
-          reconciliation.close(),
-        ]);
-        const failure = [
-          ...consumerResult,
-          ...loopResult,
-          ...adaptersResult,
-        ].find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
-    },
-  });
-}
-
-function recordTelemetry(operation: () => void): void {
-  try {
-    operation();
-  } catch {
-    // Diagnostics cannot change schedule occurrence truth.
-  }
+  );
 }

@@ -6,12 +6,25 @@ import {
   AwsKmsEnvelopeKeyProviderCore,
   EnvelopeCipher,
   encodedEnvelopeSchemaFields,
+  isValidEnvelopeKeyReference,
   type EnvelopeKeyMaterial,
   type EnvelopeKeyProviderCore,
   type KmsSendLike,
 } from '../crypto/envelope-cipher.js';
 
 const WEBHOOK_SECRET_BYTES = 32;
+
+const kmsConfigSchema = z
+  .object({
+    keyReference: z
+      .string()
+      .min(1)
+      .max(2_048)
+      .refine(isValidEnvelopeKeyReference),
+    region: z.string().min(1).max(128),
+    endpoint: z.url().optional(),
+  })
+  .strict();
 
 const contextSchema = z
   .object({
@@ -132,10 +145,11 @@ export function createAwsWebhookTriggerEnvelopeEncryption(
     endpoint?: string;
   }>,
 ) {
-  const client = createBoundedKmsClient(config);
+  const parsed = kmsConfigSchema.parse(config);
+  const client = createBoundedKmsClient(parsed);
   return Object.freeze({
     encryption: new WebhookTriggerEnvelopeEncryption(
-      new AwsKmsWebhookEnvelopeKeyProvider(client, config.keyReference),
+      new AwsKmsWebhookEnvelopeKeyProvider(client, parsed.keyReference),
     ),
     close: () => {
       client.destroy();

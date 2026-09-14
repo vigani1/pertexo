@@ -129,6 +129,7 @@ function parseCompletedOutputs(
 ): Readonly<Record<string, JsonValue>> {
   if (Array.isArray(completed)) {
     const outputs = Object.create(null) as Record<string, JsonValue>;
+    const canonicalByNodeId = new Map<string, string>();
     for (const candidate of completed as readonly JsonValue[]) {
       const [nodeId, value] = parseCompletedDescriptor(
         candidate,
@@ -137,7 +138,14 @@ function parseCompletedOutputs(
         graph,
         directUpstream,
       );
-      outputs[nodeId] = value;
+      const canonicalValue = canonicalJson(value);
+      const existing = canonicalByNodeId.get(nodeId);
+      if (existing !== undefined && existing !== canonicalValue)
+        operationError('attempt_invalid', 'completed outputs conflict');
+      if (existing === undefined) {
+        canonicalByNodeId.set(nodeId, canonicalValue);
+        outputs[nodeId] = value;
+      }
     }
     return outputs;
   }
@@ -162,8 +170,10 @@ function parseCompletedOutputs(
 function parseStructuredInputs(
   input: ExecuteNodeAttemptInput,
 ): Readonly<Record<string, JsonValue>> | undefined {
-  if (input.iterationPath === undefined) return undefined;
-  const nearest = input.iterationPath.at(-1);
+  const iterationPath = input.iterationPath;
+  if (iterationPath === undefined || iterationPath.length === 0)
+    return undefined;
+  const nearest = iterationPath.at(-1);
   const proof = input.structuredCollection;
   if (proof === undefined || nearest === undefined) {
     operationError('attempt_invalid', 'structured collection proof is missing');

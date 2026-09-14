@@ -1,5 +1,6 @@
 export * from './controllers.js';
 export * from './errors.js';
+export * from './failure-notification-destinations.controller.js';
 export * from './failure-notification-destinations.js';
 export * from './guards.js';
 export * from './module.js';

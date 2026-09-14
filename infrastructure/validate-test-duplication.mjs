@@ -5,10 +5,13 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath, URL } from 'node:url';
 
 import { preserveTemporaryDirectoryFailure } from './temporary-directory-cleanup.mjs';
+import {
+  describeBoundedChildFailure,
+  runBoundedChildProcess,
+} from './bounded-child-process.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const baselinePath = new URL(
@@ -36,10 +39,53 @@ function actualClones(report) {
   }));
 }
 
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function validCount(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
 export function validateCloneReport(scopeName, scope, report) {
   const failures = [];
+  if (!isRecord(report)) return [`${scopeName}: jscpd report is malformed`];
+  if (!Array.isArray(report.duplicates))
+    return [`${scopeName}: jscpd duplicates are missing`];
   const totals = report.statistics?.total;
-  if (totals === undefined) return [`${scopeName}: jscpd totals are missing`];
+  if (!isRecord(totals)) return [`${scopeName}: jscpd totals are missing`];
+
+  for (const field of Object.keys(scope.maximums)) {
+    if (!validCount(totals[field]))
+      failures.push(`${scopeName}: jscpd total ${field} is invalid`);
+  }
+  if (
+    typeof totals.percentage !== 'number' ||
+    !Number.isFinite(totals.percentage) ||
+    totals.percentage < 0 ||
+    totals.percentage > 100
+  )
+    failures.push(`${scopeName}: jscpd total percentage is invalid`);
+  if (validCount(totals.clones) && totals.clones !== report.duplicates.length)
+    failures.push(`${scopeName}: jscpd clone total does not match evidence`);
+
+  for (const [index, clone] of report.duplicates.entries()) {
+    if (
+      !isRecord(clone) ||
+      typeof clone.fragment !== 'string' ||
+      clone.fragment.length === 0 ||
+      !validCount(clone.lines) ||
+      clone.lines === 0 ||
+      typeof clone.firstFile?.name !== 'string' ||
+      clone.firstFile.name.length === 0 ||
+      typeof clone.secondFile?.name !== 'string' ||
+      clone.secondFile.name.length === 0
+    )
+      failures.push(
+        `${scopeName}: jscpd duplicate ${String(index + 1)} is malformed`,
+      );
+  }
+  if (failures.length > 0) return failures;
 
   for (const [field, maximum] of Object.entries(scope.maximums)) {
     if (totals[field] > maximum) {
@@ -50,8 +96,15 @@ export function validateCloneReport(scopeName, scope, report) {
   }
 
   const clones = actualClones(report);
+  const observedClones = new Set();
   const observedReviews = new Set();
   for (const clone of clones) {
+    const cloneIdentity = `${clone.pair}\u0000${clone.hash}`;
+    if (observedClones.has(cloneIdentity)) {
+      failures.push(`${scopeName}: duplicate clone evidence ${clone.hash}`);
+      continue;
+    }
+    observedClones.add(cloneIdentity);
     const familyIndex = scope.families.findIndex(
       (family) =>
         pairKey(...family.files) === clone.pair &&
@@ -100,9 +153,10 @@ export function validateCloneReport(scopeName, scope, report) {
   return failures;
 }
 
-function runJscpd(scope, outputDirectory) {
+async function runJscpd(scope, outputDirectory) {
   const paths = globSync(scope.paths, { cwd: repositoryRoot }).sort();
-  const result = spawnSync(
+  const timeoutMs = 120_000;
+  const result = await runBoundedChildProcess(
     'pnpm',
     [
       'exec',
@@ -121,11 +175,15 @@ function runJscpd(scope, outputDirectory) {
       '--ignore',
       scope.ignore,
     ],
-    { cwd: repositoryRoot, encoding: 'utf8' },
+    { cwd: repositoryRoot, timeoutMs },
   );
-  if (result.status !== 0) {
+  if (
+    result.status !== 0 ||
+    result.timedOut ||
+    result.spawnError !== undefined
+  ) {
     throw new Error(
-      `jscpd failed (${String(result.status)}):\n${result.stdout}${result.stderr}`,
+      `${describeBoundedChildFailure('jscpd', result, timeoutMs)}:\n${result.stdout}${result.stderr}`,
     );
   }
 }
@@ -147,7 +205,7 @@ export async function main() {
     const failures = [];
     for (const [scopeName, scope] of Object.entries(baseline.scopes)) {
       const outputDirectory = join(temporaryDirectory, scopeName);
-      runJscpd(scope, outputDirectory);
+      await runJscpd(scope, outputDirectory);
       const report = JSON.parse(
         await readFile(join(outputDirectory, 'jscpd-report.json'), 'utf8'),
       );

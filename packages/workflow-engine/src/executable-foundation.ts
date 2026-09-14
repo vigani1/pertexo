@@ -134,8 +134,21 @@ export function fail(message: string): never {
 }
 
 export function normalizeError(error: unknown): never {
-  if (error instanceof WorkflowEngineError) throw error;
-  fail(error instanceof Error ? error.message : 'executable processing failed');
+  let isEngineError = false;
+  try {
+    isEngineError = error instanceof WorkflowEngineError;
+  } catch {
+    // Hostile rejection values are normalized below.
+  }
+  if (isEngineError) throw error;
+  let message: string | undefined;
+  try {
+    if (error instanceof Error && typeof error.message === 'string')
+      message = error.message;
+  } catch {
+    // Hostile rejection values are normalized below.
+  }
+  fail(message ?? 'executable processing failed');
 }
 
 export function freezeExecutable<T extends object>(value: T): T {

@@ -17,6 +17,15 @@ import {
   RedisRunEventSource,
   streamRunEventFrames,
 } from '../../src/executions/index.js';
+import {
+  FixtureResourceOwner,
+  rethrowFixtureSetupFailure,
+} from '../support/fixture-resource-owner.js';
+import {
+  NO_STREAM_FAILURE,
+  preserveFailureDuringStreamCleanup,
+  type StreamFailure,
+} from '../../src/workflow-runs/stream-cleanup.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
 const workerUrl = process.env.DATABASE_WORKER_URL;
@@ -68,6 +77,7 @@ function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
 
 describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
   const workspaceId = randomUUID();
+  let resources: FixtureResourceOwner | undefined;
   let apiDatabase: WorkspaceDatabase;
   let workerDatabase: WorkspaceDatabase;
   let liveSource: RedisRunEventSource;
@@ -76,11 +86,14 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
   let runId: string;
 
   beforeAll(async () => {
-    const identityDatabase = createIdentityWorkspaceDatabase(
-      databaseConfig(apiUrl ?? ''),
-    );
+    const owner = new FixtureResourceOwner();
     try {
-      const owner = await identityDatabase.createUser({
+      const identityDatabase = owner.acquire(
+        'identity database',
+        createIdentityWorkspaceDatabase(databaseConfig(apiUrl ?? '')),
+        (database) => database.close(),
+      );
+      const workspaceOwner = await identityDatabase.createUser({
         email: `sse-${workspaceId}@example.test`,
         displayName: 'SSE fixture owner',
       });
@@ -88,49 +101,65 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
         id: workspaceId,
         name: 'SSE fixture workspace',
         slug: `sse-${workspaceId}`,
-        ownerUserId: owner.id,
+        ownerUserId: workspaceOwner.id,
       });
-    } finally {
       await identityDatabase.close();
-    }
-    apiDatabase = createWorkspaceDatabase(databaseConfig(apiUrl ?? ''));
-    workerDatabase = createWorkspaceDatabase(databaseConfig(workerUrl ?? ''));
-    liveSource = new RedisRunEventSource({ redisUrl: redisUrl ?? '' });
-    publisher = new RedisRunEventPublisher({ redisUrl: redisUrl ?? '' });
-    redis = new Redis(redisUrl ?? '', {
-      enableOfflineQueue: false,
-      maxRetriesPerRequest: 1,
-    });
-    const engineVersion = 'phase0e-fixture-v1';
-    const workflowVersionId = randomUUID();
-    const accepted = await apiDatabase.withWorkspace(
-      workspaceId,
-      async (transaction) =>
-        acceptWorkflowRun(transaction, {
-          engineVersion,
-          initialCheckpoint: initialCheckpoint(
-            engineVersion,
-            workflowVersionId,
-          ),
-          keyHash: digest(`key:${workspaceId}`),
-          operation: 'workflow.run.accept',
-          requestHash: digest(`request:${workspaceId}`),
-          scope: `sse-fixture:${workspaceId}`,
-          triggerType: 'api',
-          workflowId: randomUUID(),
-          workflowVersionId,
+      owner.transfer(identityDatabase);
+      apiDatabase = owner.acquire(
+        'API database',
+        createWorkspaceDatabase(databaseConfig(apiUrl ?? '')),
+        (database) => database.close(),
+      );
+      workerDatabase = owner.acquire(
+        'worker database',
+        createWorkspaceDatabase(databaseConfig(workerUrl ?? '')),
+        (database) => database.close(),
+      );
+      liveSource = new RedisRunEventSource({ redisUrl: redisUrl ?? '' });
+      publisher = owner.acquire(
+        'event publisher',
+        new RedisRunEventPublisher({ redisUrl: redisUrl ?? '' }),
+        (selected) => selected.close(),
+      );
+      redis = owner.acquire(
+        'Redis verification client',
+        new Redis(redisUrl ?? '', {
+          enableOfflineQueue: false,
+          maxRetriesPerRequest: 1,
         }),
-    );
-    runId = accepted.runId;
+        (client) => {
+          client.disconnect(false);
+        },
+      );
+      const engineVersion = 'phase0e-fixture-v1';
+      const workflowVersionId = randomUUID();
+      const accepted = await apiDatabase.withWorkspace(
+        workspaceId,
+        async (transaction) =>
+          acceptWorkflowRun(transaction, {
+            engineVersion,
+            initialCheckpoint: initialCheckpoint(
+              engineVersion,
+              workflowVersionId,
+            ),
+            keyHash: digest(`key:${workspaceId}`),
+            operation: 'workflow.run.accept',
+            requestHash: digest(`request:${workspaceId}`),
+            scope: `sse-fixture:${workspaceId}`,
+            triggerType: 'api',
+            workflowId: randomUUID(),
+            workflowVersionId,
+          }),
+      );
+      runId = accepted.runId;
+      resources = owner;
+    } catch (error: unknown) {
+      await rethrowFixtureSetupFailure(owner, error);
+    }
   });
 
   afterAll(async () => {
-    redis.disconnect(false);
-    await Promise.all([
-      publisher.close(),
-      apiDatabase.close(),
-      workerDatabase.close(),
-    ]);
+    await resources?.close();
   });
 
   it('backfills lost Redis hints from PostgreSQL then follows live events exactly once', async () => {
@@ -180,36 +209,43 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
       { pageSize: 1 },
     )[Symbol.asyncIterator]();
 
-    await expect(iterator.next()).resolves.toMatchObject({
-      value: { id: 2, event: 'run.started' },
-    });
-    await expect(iterator.next()).resolves.toMatchObject({
-      value: { id: 3, event: 'node.ready' },
-    });
+    let primary: StreamFailure = NO_STREAM_FAILURE;
+    try {
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { id: 2, event: 'run.started' },
+      });
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { id: 3, event: 'node.ready' },
+      });
 
-    const operationStartedAt = performance.now();
-    const fourthSequence = await workerDatabase.withWorkspace(
-      workspaceId,
-      async (transaction) =>
-        appendRunEvent(transaction, {
-          runId,
-          event: { type: 'node.started', payload: { nodeId: 'first' } },
-        }),
-    );
-    await publisher.publish({
-      runId,
-      sequence: fourthSequence,
-      workspaceId,
-    });
-    await expect(iterator.next()).resolves.toMatchObject({
-      value: { id: 4, event: 'node.started' },
-    });
-    recordBenchmarkOperation(operationStartedAt);
-
-    abort.abort();
-    await expect(iterator.next()).resolves.toEqual({
-      done: true,
-      value: undefined,
-    });
+      const operationStartedAt = performance.now();
+      const fourthSequence = await workerDatabase.withWorkspace(
+        workspaceId,
+        async (transaction) =>
+          appendRunEvent(transaction, {
+            runId,
+            event: { type: 'node.started', payload: { nodeId: 'first' } },
+          }),
+      );
+      await publisher.publish({
+        runId,
+        sequence: fourthSequence,
+        workspaceId,
+      });
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { id: 4, event: 'node.started' },
+      });
+      recordBenchmarkOperation(operationStartedAt);
+    } catch (error: unknown) {
+      primary = { error, failed: true };
+      throw error;
+    } finally {
+      await preserveFailureDuringStreamCleanup(primary, [
+        () => {
+          abort.abort();
+        },
+        async () => iterator.return(undefined),
+      ]);
+    }
   });
 });

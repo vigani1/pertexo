@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +8,6 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionUnavailableError,
   Pool,
-  api,
   apiBaseUrl,
   createHash,
   createInput,
@@ -16,16 +16,96 @@ import {
   ownerA,
   pgCode,
   randomUUID,
+  registerCurrentConnectionsFixture,
   sealed,
-  worker,
   workspaceA,
 } from './support/connections.integration.support.js';
 
+const connections = registerCurrentConnectionsFixture();
+
 describe('connection lifecycle persistence', () => {
+  it('fails closed on impossible retained create and rotation claim states', async () => {
+    const create = createInput();
+    const existing = createInput();
+    await connections.api.createConnection(existing);
+    const rotateKey = `impossible-rotate-${existing.connectionId}`;
+    const rotateHash = '6'.repeat(64);
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await owner.query(
+        `insert into app.idempotency_records
+           (id,workspace_id,operation,scope,key_hash,request_hash,status,
+            resource_id,result_ref)
+         values
+           ($1,$2,'connection.create',$3,$4,$5,'in_progress',$6,'{}'::jsonb),
+           ($7,$2,'connection.secret.rotate',$8,$9,$10,'failed',$11,'{}'::jsonb)`,
+        [
+          randomUUID(),
+          workspaceA,
+          ownerA,
+          createHash('sha256').update(create.idempotencyKey).digest('hex'),
+          create.requestHash,
+          create.connectionId,
+          randomUUID(),
+          `${ownerA}:${existing.connectionId}`,
+          createHash('sha256').update(rotateKey).digest('hex'),
+          rotateHash,
+          existing.connectionId,
+        ],
+      );
+      await owner.query('commit');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await owner.end();
+    }
+
+    await expect(connections.api.createConnection(create)).rejects.toThrow(
+      'Connection idempotency record is not resumable',
+    );
+    await expect(
+      connections.api.rotateConnectionSecret({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: existing.connectionId,
+        expectedCurrentSecretVersionId: existing.secretVersionId,
+        secretVersionId: randomUUID(),
+        sealed: sealed(6),
+        idempotencyKey: rotateKey,
+        requestHash: rotateHash,
+      }),
+    ).rejects.toThrow(
+      'Connection rotation idempotency record is not resumable',
+    );
+
+    const verifier = new Pool({
+      connectionString: databaseUrl(migrationBaseUrl),
+    });
+    try {
+      await verifier.query('begin');
+      await verifier.query('set local role pertexo_owner');
+      await verifier.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      const rows = await verifier.query<{ count: string }>(
+        `select count(*)::text as count from app.connections where id=$1`,
+        [create.connectionId],
+      );
+      expect(rows.rows[0]?.count).toBe('0');
+    } finally {
+      await verifier.query('rollback').catch(() => undefined);
+      await verifier.end();
+    }
+  });
+
   it('atomically creates one current immutable secret and replays an exact request', async () => {
     const input = createInput();
-    const created = await api.createConnection(input);
-    const replayed = await api.createConnection({
+    const created = await connections.api.createConnection(input);
+    const replayed = await connections.api.createConnection({
       ...input,
       connectionId: randomUUID(),
       secretVersionId: randomUUID(),
@@ -44,8 +124,9 @@ describe('connection lifecycle persistence', () => {
     expect(JSON.stringify(created)).not.toContain('encrypted');
 
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const client = await owner.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await owner.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -75,8 +156,8 @@ describe('connection lifecycle persistence', () => {
       });
       await client.query('commit');
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await owner.end();
     }
   });
@@ -87,14 +168,14 @@ describe('connection lifecycle persistence', () => {
       authType: CONNECTION_AUTH_TYPE.slackBotToken,
       name: `Slack ${randomUUID().slice(0, 8)}`,
     });
-    const created = await api.createConnection(input);
+    const created = await connections.api.createConnection(input);
     expect(created).toMatchObject({
       providerKey: 'slack',
       authType: 'slack_bot_token',
       status: 'active',
     });
 
-    const resolved = await worker.resolveConnectionSecret({
+    const resolved = await connections.worker.resolveConnectionSecret({
       workspaceId: workspaceA,
       connectionId: created.id,
       expectedProviderKey: 'slack',
@@ -102,7 +183,7 @@ describe('connection lifecycle persistence', () => {
       purpose: 'slack.send_message.execute',
     });
     expect(resolved).toMatchObject({ secretVersionId: input.secretVersionId });
-    await worker.assertConnectionSecretCurrent({
+    await connections.worker.assertConnectionSecretCurrent({
       workspaceId: workspaceA,
       connectionId: created.id,
       expectedProviderKey: 'slack',
@@ -111,7 +192,7 @@ describe('connection lifecycle persistence', () => {
     });
 
     const nextVersion = randomUUID();
-    const rotated = await api.rotateConnectionSecret({
+    const rotated = await connections.api.rotateConnectionSecret({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: created.id,
@@ -126,7 +207,7 @@ describe('connection lifecycle persistence', () => {
     });
     expect(rotated.currentSecretVersionId).toBe(nextVersion);
     await expect(
-      worker.assertConnectionSecretCurrent({
+      connections.worker.assertConnectionSecretCurrent({
         workspaceId: workspaceA,
         connectionId: created.id,
         expectedProviderKey: 'slack',
@@ -135,13 +216,13 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
 
-    await api.revokeConnection({
+    await connections.api.revokeConnection({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: created.id,
     });
     await expect(
-      worker.resolveConnectionSecret({
+      connections.worker.resolveConnectionSecret({
         workspaceId: workspaceA,
         connectionId: created.id,
         expectedProviderKey: 'slack',
@@ -151,21 +232,28 @@ describe('connection lifecycle persistence', () => {
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
 
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const ownerClient = await owner.connect();
-    await ownerClient.query('begin');
-    await ownerClient.query('set local role pertexo_owner');
-    await ownerClient.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceA,
-    ]);
-    const audit = await ownerClient.query<{ event_type: string }>(
-      `select event_type from app.connection_events
-       where workspace_id=$1 and connection_id=$2 order by created_at,id`,
-      [workspaceA, created.id],
-    );
-    await ownerClient.query('rollback');
-    ownerClient.release();
-    await owner.end();
-    expect(audit.rows.map(({ event_type }) => event_type)).toEqual([
+    let ownerClient: PoolClient | undefined;
+    let auditRows: { event_type: string }[] = [];
+    try {
+      ownerClient = await owner.connect();
+      await ownerClient.query('begin');
+      await ownerClient.query('set local role pertexo_owner');
+      await ownerClient.query(
+        "select set_config('app.workspace_id', $1, true)",
+        [workspaceA],
+      );
+      const audit = await ownerClient.query<{ event_type: string }>(
+        `select event_type from app.connection_events
+         where workspace_id=$1 and connection_id=$2 order by created_at,id`,
+        [workspaceA, created.id],
+      );
+      auditRows = audit.rows;
+    } finally {
+      await ownerClient?.query('rollback').catch(() => undefined);
+      ownerClient?.release();
+      await owner.end();
+    }
+    expect(auditRows.map(({ event_type }) => event_type)).toEqual([
       'connection.created',
       'connection.credential_accessed',
       'connection.secret_rotated',
@@ -179,20 +267,20 @@ describe('connection lifecycle persistence', () => {
       authType: CONNECTION_AUTH_TYPE.resendApiKey,
       name: `Email ${randomUUID().slice(0, 8)}`,
     });
-    const created = await api.createConnection(input);
+    const created = await connections.api.createConnection(input);
     expect(created).toMatchObject({
       providerKey: 'email',
       authType: 'resend_api_key',
       status: 'active',
     });
-    await worker.resolveConnectionSecret({
+    await connections.worker.resolveConnectionSecret({
       workspaceId: workspaceA,
       connectionId: created.id,
       expectedProviderKey: 'email',
       workerId: 'email-worker',
       purpose: 'email.send_notification.execute',
     });
-    await worker.assertConnectionSecretCurrent({
+    await connections.worker.assertConnectionSecretCurrent({
       workspaceId: workspaceA,
       connectionId: created.id,
       expectedProviderKey: 'email',
@@ -200,7 +288,7 @@ describe('connection lifecycle persistence', () => {
       secretVersionId: input.secretVersionId,
     });
     const nextVersion = randomUUID();
-    await api.rotateConnectionSecret({
+    await connections.api.rotateConnectionSecret({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: created.id,
@@ -214,7 +302,7 @@ describe('connection lifecycle persistence', () => {
         .digest('hex'),
     });
     await expect(
-      worker.assertConnectionSecretCurrent({
+      connections.worker.assertConnectionSecretCurrent({
         workspaceId: workspaceA,
         connectionId: created.id,
         expectedProviderKey: 'email',
@@ -222,13 +310,13 @@ describe('connection lifecycle persistence', () => {
         secretVersionId: input.secretVersionId,
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
-    await api.revokeConnection({
+    await connections.api.revokeConnection({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: created.id,
     });
     await expect(
-      worker.resolveConnectionSecret({
+      connections.worker.resolveConnectionSecret({
         workspaceId: workspaceA,
         connectionId: created.id,
         expectedProviderKey: 'email',
@@ -240,21 +328,22 @@ describe('connection lifecycle persistence', () => {
 
   it('rejects conflicting idempotency and active provider/name reuse without partial rows', async () => {
     const input = createInput();
-    await api.createConnection(input);
+    await connections.api.createConnection(input);
     await expect(
-      api.createConnection({
+      connections.api.createConnection({
         ...input,
         requestHash: 'f'.repeat(64),
       }),
     ).rejects.toBeInstanceOf(ConnectionIdempotencyConflictError);
 
     const duplicate = createInput({ name: input.name });
-    await expect(api.createConnection(duplicate)).rejects.toBeInstanceOf(
-      ConnectionConflictError,
-    );
+    await expect(
+      connections.api.createConnection(duplicate),
+    ).rejects.toBeInstanceOf(ConnectionConflictError);
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const client = await owner.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await owner.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -268,8 +357,8 @@ describe('connection lifecycle persistence', () => {
       expect(result.rows[0]?.count).toBe('0');
       await client.query('commit');
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await owner.end();
     }
   });
@@ -277,10 +366,10 @@ describe('connection lifecycle persistence', () => {
   it('uses a compare-and-swap rotation and rejects cross-connection pointers', async () => {
     const first = createInput();
     const second = createInput();
-    const createdFirst = await api.createConnection(first);
-    await api.createConnection(second);
+    const createdFirst = await connections.api.createConnection(first);
+    await connections.api.createConnection(second);
     const nextSecretVersionId = randomUUID();
-    const rotated = await api.rotateConnectionSecret({
+    const rotated = await connections.api.rotateConnectionSecret({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: first.connectionId,
@@ -292,7 +381,7 @@ describe('connection lifecycle persistence', () => {
     });
     expect(rotated.currentSecretVersionId).toBe(nextSecretVersionId);
     await expect(
-      api.findConnectionCreateReplay({
+      connections.api.findConnectionCreateReplay({
         workspaceId: workspaceA,
         actorId: ownerA,
         idempotencyKey: first.idempotencyKey,
@@ -300,7 +389,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).resolves.toEqual(createdFirst);
     await expect(
-      api.findConnectionRotateReplay({
+      connections.api.findConnectionRotateReplay({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -309,7 +398,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).resolves.toEqual(rotated);
     await expect(
-      api.findConnectionRotateReplay({
+      connections.api.findConnectionRotateReplay({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -318,7 +407,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionIdempotencyConflictError);
     await expect(
-      api.rotateConnectionSecret({
+      connections.api.rotateConnectionSecret({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -330,7 +419,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).resolves.toEqual(rotated);
     await expect(
-      api.rotateConnectionSecret({
+      connections.api.rotateConnectionSecret({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -342,7 +431,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionIdempotencyConflictError);
     await expect(
-      api.rotateConnectionSecret({
+      connections.api.rotateConnectionSecret({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -353,7 +442,7 @@ describe('connection lifecycle persistence', () => {
         requestHash: '4'.repeat(64),
       }),
     ).rejects.toBeInstanceOf(ConnectionSecretVersionConflictError);
-    await api.rotateConnectionSecret({
+    await connections.api.rotateConnectionSecret({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: first.connectionId,
@@ -364,7 +453,7 @@ describe('connection lifecycle persistence', () => {
       requestHash: '5'.repeat(64),
     });
     await expect(
-      api.findConnectionRotateReplay({
+      connections.api.findConnectionRotateReplay({
         workspaceId: workspaceA,
         actorId: ownerA,
         connectionId: first.connectionId,
@@ -374,8 +463,9 @@ describe('connection lifecycle persistence', () => {
     ).resolves.toEqual(rotated);
 
     const pool = new Pool({ connectionString: databaseUrl(apiBaseUrl) });
-    const client = await pool.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await pool.connect();
       await client.query('begin');
       await client.query("select set_config('app.workspace_id', $1, true)", [
         workspaceA,
@@ -387,16 +477,16 @@ describe('connection lifecycle persistence', () => {
       );
       await expect(client.query('commit')).rejects.toSatisfy(pgCode('23503'));
     } finally {
-      await client.query('rollback').catch(() => undefined);
-      client.release();
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
       await pool.end();
     }
   });
 
   it('resolves only the active exact-provider current secret and audits worker access', async () => {
     const input = createInput();
-    await api.createConnection(input);
-    const resolved = await worker.resolveConnectionSecret({
+    await connections.api.createConnection(input);
+    const resolved = await connections.worker.resolveConnectionSecret({
       workspaceId: workspaceA,
       connectionId: input.connectionId,
       expectedProviderKey: 'http',
@@ -410,7 +500,7 @@ describe('connection lifecycle persistence', () => {
       sealed: input.sealed,
     });
     await expect(
-      worker.assertConnectionSecretCurrent({
+      connections.worker.assertConnectionSecretCurrent({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
         expectedProviderKey: 'http',
@@ -419,7 +509,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).resolves.toBeUndefined();
     await expect(
-      worker.assertConnectionSecretCurrent({
+      connections.worker.assertConnectionSecretCurrent({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
         expectedProviderKey: 'http',
@@ -428,7 +518,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
     await expect(
-      worker.resolveConnectionSecret({
+      connections.worker.resolveConnectionSecret({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
         expectedProviderKey: 'slack',
@@ -437,13 +527,13 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
 
-    await api.revokeConnection({
+    await connections.api.revokeConnection({
       workspaceId: workspaceA,
       actorId: ownerA,
       connectionId: input.connectionId,
     });
     await expect(
-      worker.resolveConnectionSecret({
+      connections.worker.resolveConnectionSecret({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
         expectedProviderKey: 'http',
@@ -452,7 +542,7 @@ describe('connection lifecycle persistence', () => {
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
     await expect(
-      worker.assertConnectionSecretCurrent({
+      connections.worker.assertConnectionSecretCurrent({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
         expectedProviderKey: 'http',
@@ -464,8 +554,8 @@ describe('connection lifecycle persistence', () => {
 
   it('records bounded health truth and reauthorization state through worker grants', async () => {
     const input = createInput();
-    await api.createConnection(input);
-    const healthy = await worker.recordConnectionHealth({
+    await connections.api.createConnection(input);
+    const healthy = await connections.worker.recordConnectionHealth({
       workspaceId: workspaceA,
       connectionId: input.connectionId,
       actorKind: 'worker',
@@ -474,7 +564,7 @@ describe('connection lifecycle persistence', () => {
     });
     expect(healthy.lastHealthyAt).toBeInstanceOf(Date);
     expect(healthy.lastErrorCode).toBeNull();
-    const failed = await worker.recordConnectionHealth({
+    const failed = await connections.worker.recordConnectionHealth({
       workspaceId: workspaceA,
       connectionId: input.connectionId,
       actorKind: 'worker',

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
-import type { DatabaseError } from 'pg';
+import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -14,21 +14,36 @@ import {
   IdentityNotFoundError,
   WorkspaceAccessDeniedError,
   OidcTransactionCapacityError,
+  OidcTransactionSealingError,
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_identity_${randomUUID().replaceAll('-', '')}`;
+const fixture = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
+const apiUrl = fixture.databaseUrl(apiBaseUrl);
+const workerUrl = fixture.databaseUrl(workerBaseUrl);
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -41,35 +56,10 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-const identityDatabase = createIdentityWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
-);
-const tenantDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
-);
-const oidcStore = createOidcLoginTransactionStore(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  {
-    seal: (plaintext, associatedData) => ({
-      ciphertext: Buffer.from(
-        `${associatedData}:${plaintext}`,
-        'utf8',
-      ).toString('base64url'),
-      nonce: 'test-nonce',
-      tag: 'test-tag',
-      keyVersion: 'test-v1',
-    }),
-    open: (sealed, associatedData) => {
-      const decoded = Buffer.from(sealed.ciphertext, 'base64url').toString(
-        'utf8',
-      );
-      const prefix = `${associatedData}:`;
-      if (!decoded.startsWith(prefix))
-        throw new Error('associated data mismatch');
-      return decoded.slice(prefix.length);
-    },
-  },
-);
+let identityDatabase: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let tenantDatabase: ReturnType<typeof createWorkspaceDatabase>;
+let oidcStore: ReturnType<typeof createOidcLoginTransactionStore>;
+const identityResources: { close(): Promise<void> }[] = [];
 let ownerUserId: string;
 let workspaceId: string;
 let ownerSessionId: string;
@@ -90,63 +80,66 @@ async function replaceOidcTransactions(input: {
   stale?: number;
 }): Promise<void> {
   const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
   try {
-    await client.query('begin');
-    await client.query('set local role pertexo_owner');
-    await client.query(
-      'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
-    );
-    await client.query('delete from app.oidc_login_transactions');
-    const variants = [
-      {
-        count: input.active ?? 0,
-        prefix: `active-${randomUUID()}`,
-        createdAt: "clock_timestamp() - interval '1 minute'",
-        expiresAt: "clock_timestamp() + interval '1 hour'",
-        consumedAt: 'null',
-      },
-      {
-        count: input.consumed ?? 0,
-        prefix: `consumed-${randomUUID()}`,
-        createdAt: "clock_timestamp() - interval '2 minutes'",
-        expiresAt: "clock_timestamp() + interval '1 hour'",
-        consumedAt: "clock_timestamp() - interval '1 minute'",
-      },
-      {
-        count: input.stale ?? 0,
-        prefix: `stale-${randomUUID()}`,
-        createdAt: "clock_timestamp() - interval '2 hours'",
-        expiresAt: "clock_timestamp() - interval '1 hour'",
-        consumedAt: 'null',
-      },
-    ];
-    for (const variant of variants) {
-      if (variant.count === 0) continue;
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
       await client.query(
-        `insert into app.oidc_login_transactions
-           (state_digest, code_verifier_ciphertext, code_verifier_nonce,
-            code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
-            nonce_nonce, nonce_tag, nonce_key_version, expires_at, consumed_at,
-            created_at, browser_binding_digest)
-         select md5($1 || series::text) || md5(series::text || $1),
-                'sealed-verifier', 'nonce', 'tag', 'test-v1',
-                'sealed-nonce', 'nonce', 'tag', 'test-v1',
-                ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt},
-                repeat('0', 64)
-         from generate_series(1, $2::integer) as series`,
-        [variant.prefix, variant.count],
+        'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
       );
+      await client.query('delete from app.oidc_login_transactions');
+      const variants = [
+        {
+          count: input.active ?? 0,
+          prefix: `active-${randomUUID()}`,
+          createdAt: "clock_timestamp() - interval '1 minute'",
+          expiresAt: "clock_timestamp() + interval '1 hour'",
+          consumedAt: 'null',
+        },
+        {
+          count: input.consumed ?? 0,
+          prefix: `consumed-${randomUUID()}`,
+          createdAt: "clock_timestamp() - interval '2 minutes'",
+          expiresAt: "clock_timestamp() + interval '1 hour'",
+          consumedAt: "clock_timestamp() - interval '1 minute'",
+        },
+        {
+          count: input.stale ?? 0,
+          prefix: `stale-${randomUUID()}`,
+          createdAt: "clock_timestamp() - interval '2 hours'",
+          expiresAt: "clock_timestamp() - interval '1 hour'",
+          consumedAt: 'null',
+        },
+      ];
+      for (const variant of variants) {
+        if (variant.count === 0) continue;
+        await client.query(
+          `insert into app.oidc_login_transactions
+             (state_digest, code_verifier_ciphertext, code_verifier_nonce,
+              code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
+              nonce_nonce, nonce_tag, nonce_key_version, expires_at, consumed_at,
+              created_at, browser_binding_digest)
+           select md5($1 || series::text) || md5(series::text || $1),
+                  'sealed-verifier', 'nonce', 'tag', 'test-v1',
+                  'sealed-nonce', 'nonce', 'tag', 'test-v1',
+                  ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt},
+                  repeat('0', 64)
+           from generate_series(1, $2::integer) as series`,
+          [variant.prefix, variant.count],
+        );
+      }
+      await client.query(
+        'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
+      );
+      await client.query('commit');
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
-    await client.query(
-      'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
-    );
-    await client.query('commit');
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
   } finally {
-    client.release();
     await pool.end();
   }
 }
@@ -168,7 +161,40 @@ function oidcTransaction() {
 }
 
 beforeAll(async () => {
+  await fixture.create();
   await migrateDatabase(migrationConfig);
+  identityDatabase = createIdentityWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+  );
+  identityResources.push(identityDatabase);
+  tenantDatabase = createWorkspaceDatabase(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+  );
+  identityResources.push(tenantDatabase);
+  oidcStore = createOidcLoginTransactionStore(
+    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+    {
+      seal: (plaintext, associatedData) => ({
+        ciphertext: Buffer.from(
+          `${associatedData}:${plaintext}`,
+          'utf8',
+        ).toString('base64url'),
+        nonce: 'test-nonce',
+        tag: 'test-tag',
+        keyVersion: 'test-v1',
+      }),
+      open: (sealed, associatedData) => {
+        const decoded = Buffer.from(sealed.ciphertext, 'base64url').toString(
+          'utf8',
+        );
+        const prefix = `${associatedData}:`;
+        if (!decoded.startsWith(prefix))
+          throw new Error('associated data mismatch');
+        return decoded.slice(prefix.length);
+      },
+    },
+  );
+  identityResources.push(oidcStore);
   const user = await identityDatabase.createUser({
     email: `${randomUUID()}@example.test`,
     displayName: 'Phase One Owner',
@@ -195,9 +221,19 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await identityDatabase.close();
-  await tenantDatabase.close();
-  await oidcStore.close();
+  const closeResults = await Promise.allSettled(
+    identityResources.map((resource) => resource.close()),
+  );
+  const failures = closeResults.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
+  try {
+    await fixture.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Identity fixture cleanup failed');
 });
 
 describe('identity/workspace persistence', () => {
@@ -299,6 +335,57 @@ describe('identity/workspace persistence', () => {
     ).rejects.toThrow();
   });
 
+  it('cancels a session lookup blocked inside PostgreSQL and replaces its client', async () => {
+    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const observerPool = new Pool({
+      connectionString: fixture.databaseUrl(adminUrl),
+      max: 1,
+    });
+    let blocker: PoolClient | undefined;
+    const controller = new AbortController();
+    const digest = createHash('sha256').update(randomUUID()).digest('hex');
+    let lookup: Promise<unknown> | undefined;
+    try {
+      blocker = await blockerPool.connect();
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query('lock table app.sessions in access exclusive mode');
+      lookup = identityDatabase.findActiveSessionByDigest(digest, {
+        signal: controller.signal,
+      });
+      void lookup.catch(() => undefined);
+      await expect
+        .poll(
+          async () => {
+            const result = await observerPool.query<{ blocked: boolean }>(
+              `select exists(
+                 select 1 from pg_stat_activity
+                 where datname = current_database()
+                   and usename = $1
+                   and wait_event_type = 'Lock'
+                   and query like '%from app.sessions s%'
+               ) as blocked`,
+              [new URL(apiUrl).username],
+            );
+            return result.rows[0]?.blocked;
+          },
+          { timeout: 5_000 },
+        )
+        .toBe(true);
+
+      controller.abort();
+      await expect(lookup).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      controller.abort();
+      await blocker?.query('rollback').catch(() => undefined);
+      blocker?.release();
+      await Promise.all([blockerPool.end(), observerPool.end()]);
+    }
+    await expect(
+      identityDatabase.findActiveSessionByDigest(digest),
+    ).resolves.toBeNull();
+  }, 15_000);
+
   it('creates owner membership and audit atomically under workspace RLS', async () => {
     const rows = await tenantDatabase.withWorkspace(
       workspaceId,
@@ -336,41 +423,111 @@ describe('identity/workspace persistence', () => {
   });
 
   it('lists active workspace members with bounded tuple pagination and rechecks member-read authorization', async () => {
-    const memberA = await identityDatabase.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'List Member A',
+    const isolatedWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Member pagination',
+      slug: `members-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
     });
-    const memberB = await identityDatabase.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'List Member B',
-    });
-    await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
+    const members = await Promise.all(
+      ['Active A', 'Suspended membership', 'Removed', 'Inactive user'].map(
+        (displayName) =>
+          identityDatabase.createUser({
+            email: `${randomUUID()}@example.test`,
+            displayName,
+          }),
+      ),
+    );
+    const [active, suspended, removed, inactive] = members;
+    if (
+      active === undefined ||
+      suspended === undefined ||
+      removed === undefined ||
+      inactive === undefined
+    )
+      throw new Error('Member fixtures were not created');
+    await tenantDatabase.withWorkspace(isolatedWorkspace.id, async ({ db }) => {
       await db.insert(workspaceMemberships).values([
-        { workspaceId, userId: memberA.id, role: 'viewer', status: 'active' },
-        { workspaceId, userId: memberB.id, role: 'viewer', status: 'active' },
+        {
+          workspaceId: isolatedWorkspace.id,
+          userId: active.id,
+          role: 'viewer',
+          status: 'active',
+        },
+        {
+          workspaceId: isolatedWorkspace.id,
+          userId: suspended.id,
+          role: 'viewer',
+          status: 'suspended',
+        },
+        {
+          workspaceId: isolatedWorkspace.id,
+          userId: removed.id,
+          role: 'viewer',
+          status: 'removed',
+        },
+        {
+          workspaceId: isolatedWorkspace.id,
+          userId: inactive.id,
+          role: 'viewer',
+          status: 'active',
+        },
       ]);
     });
-    const first = await identityDatabase.listWorkspaceMembers(
-      workspaceId,
-      ownerUserId,
-      { limit: 1 },
-    );
-    expect(first.items).toHaveLength(1);
-    expect(first.nextCursor?.createdAt).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u,
-    );
-    const second = await identityDatabase.listWorkspaceMembers(
-      workspaceId,
-      ownerUserId,
-      {
-        limit: 1,
-        ...(first.nextCursor === undefined ? {} : { after: first.nextCursor }),
-      },
-    );
-    expect(second.items).toHaveLength(1);
-    expect(second.items[0]?.userId).not.toBe(first.items[0]?.userId);
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(
+        `update app.workspace_memberships
+         set created_at = case
+           when user_id = $2 then '2026-09-13 12:00:00.123455+00'::timestamptz
+           when user_id in ($3, $4) then '2026-09-13 12:00:00.123456+00'::timestamptz
+           else '2026-09-13 12:00:00.123457+00'::timestamptz
+         end
+         where workspace_id = $1`,
+        [isolatedWorkspace.id, ownerUserId, active.id, suspended.id],
+      );
+      await owner.query(
+        `update app.users set status = 'suspended' where id = $1`,
+        [inactive.id],
+      );
+    } finally {
+      await owner.end();
+    }
 
-    await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
+    const traversed: { userId: string; membershipStatus: string }[] = [];
+    let cursor: Readonly<{ createdAt: string; userId: string }> | undefined;
+    do {
+      const page = await identityDatabase.listWorkspaceMembers(
+        isolatedWorkspace.id,
+        ownerUserId,
+        { limit: 1, ...(cursor === undefined ? {} : { after: cursor }) },
+      );
+      traversed.push(...page.items);
+      if (page.nextCursor !== undefined)
+        expect(page.nextCursor.createdAt).toMatch(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u,
+        );
+      cursor = page.nextCursor;
+    } while (cursor !== undefined);
+    const tied = [active.id, suspended.id].sort();
+    expect(traversed).toEqual([
+      expect.objectContaining({
+        userId: ownerUserId,
+        membershipStatus: 'active',
+      }),
+      expect.objectContaining({
+        userId: tied[0],
+        membershipStatus: tied[0] === active.id ? 'active' : 'suspended',
+      }),
+      expect.objectContaining({
+        userId: tied[1],
+        membershipStatus: tied[1] === active.id ? 'active' : 'suspended',
+      }),
+    ]);
+    expect(traversed.map((member) => member.userId)).not.toContain(removed.id);
+    expect(traversed.map((member) => member.userId)).not.toContain(inactive.id);
+
+    await tenantDatabase.withWorkspace(isolatedWorkspace.id, async ({ db }) => {
       await db
         .update(workspaceMemberships)
         .set({ role: 'viewer' })
@@ -378,15 +535,21 @@ describe('identity/workspace persistence', () => {
     });
     try {
       await expect(
-        identityDatabase.listWorkspaceMembers(workspaceId, ownerUserId),
+        identityDatabase.listWorkspaceMembers(
+          isolatedWorkspace.id,
+          ownerUserId,
+        ),
       ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
     } finally {
-      await tenantDatabase.withWorkspace(workspaceId, async ({ db }) => {
-        await db
-          .update(workspaceMemberships)
-          .set({ role: 'owner' })
-          .where(eq(workspaceMemberships.userId, ownerUserId));
-      });
+      await tenantDatabase.withWorkspace(
+        isolatedWorkspace.id,
+        async ({ db }) => {
+          await db
+            .update(workspaceMemberships)
+            .set({ role: 'owner' })
+            .where(eq(workspaceMemberships.userId, ownerUserId));
+        },
+      );
     }
   });
 
@@ -748,15 +911,30 @@ describe('identity/workspace persistence', () => {
         email: sameEmail,
         displayName: 'Profile B',
       }),
-    ).rejects.toBeInstanceOf(Error);
+    ).rejects.toBeInstanceOf(IdentityConflictError);
     const emailPool = new Pool({ connectionString: apiUrl, max: 1 });
     try {
-      const users = await emailPool.query<{ count: string }>(
-        'select count(*)::text as count from app.users where lower(email) = lower($1)',
+      const persisted = await emailPool.query<{
+        identities: string;
+        sessions: string;
+        users: string;
+      }>(
+        `select
+           count(distinct u.id)::text as users,
+           count(distinct i.id)::text as identities,
+           count(distinct s.id)::text as sessions
+         from app.users u
+         left join app.auth_identities i on i.user_id = u.id
+         left join app.sessions s on s.user_id = u.id
+         where lower(u.email) = lower($1)`,
         [sameEmail],
       );
       expect(separateA.user.id).toBeTruthy();
-      expect(users.rows[0]?.count).toBe('1');
+      expect(persisted.rows[0]).toEqual({
+        users: '1',
+        identities: '1',
+        sessions: '0',
+      });
     } finally {
       await emailPool.end();
     }
@@ -820,8 +998,10 @@ describe('identity/workspace persistence', () => {
     ]);
     expect([first.status, second.status].sort()).toEqual(['ok', 'replayed']);
     const successful = first.status === 'ok' ? first : second;
-    expect(successful.transaction?.codeVerifier).toBe(codeVerifier);
-    expect(successful.transaction?.nonce).toBe(nonce);
+    if (successful.status !== 'ok')
+      throw new Error('Expected one successful OIDC transaction consume');
+    expect(successful.transaction.codeVerifier).toBe(codeVerifier);
+    expect(successful.transaction.nonce).toBe(nonce);
     expect(
       (await oidcStore.consume(stateDigest, browserBindingDigest, new Date()))
         .status,
@@ -846,6 +1026,105 @@ describe('identity/workspace persistence', () => {
         )
       ).status,
     ).toBe('expired');
+    await expect(
+      oidcStore.consume(
+        createHash('sha256').update(randomUUID()).digest('hex'),
+        browserBindingDigest,
+        new Date(),
+      ),
+    ).resolves.toEqual({ status: 'missing' });
+  });
+
+  it.each([1, 2])(
+    'commits OIDC consumption when sealed field open %s fails',
+    async (failedOpen) => {
+      let openCount = 0;
+      const failingStore = createOidcLoginTransactionStore(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+        {
+          seal: (plaintext, associatedData) => ({
+            ciphertext: Buffer.from(
+              `${associatedData}:${plaintext}`,
+              'utf8',
+            ).toString('base64url'),
+            nonce: 'test-nonce',
+            tag: 'test-tag',
+            keyVersion: 'test-v1',
+          }),
+          open: (sealed, associatedData) => {
+            openCount += 1;
+            if (openCount === failedOpen) throw new Error('open failed');
+            const decoded = Buffer.from(
+              sealed.ciphertext,
+              'base64url',
+            ).toString('utf8');
+            return decoded.slice(`${associatedData}:`.length);
+          },
+        },
+      );
+      const transaction = oidcTransaction();
+      try {
+        await failingStore.create(transaction);
+        await expect(
+          failingStore.consume(
+            transaction.stateDigest,
+            transaction.browserBindingDigest,
+            new Date(),
+          ),
+        ).rejects.toBeInstanceOf(OidcTransactionSealingError);
+        const verifier = new Pool({ connectionString: apiUrl, max: 1 });
+        try {
+          const persisted = await verifier.query<{ consumed: boolean }>(
+            `select consumed_at is not null as consumed
+             from app.oidc_login_transactions where state_digest = $1`,
+            [transaction.stateDigest],
+          );
+          expect(persisted.rows[0]?.consumed).toBe(true);
+        } finally {
+          await verifier.end();
+        }
+        await expect(
+          failingStore.consume(
+            transaction.stateDigest,
+            transaction.browserBindingDigest,
+            new Date(),
+          ),
+        ).resolves.toEqual({ status: 'replayed' });
+      } finally {
+        await failingStore.close();
+      }
+    },
+  );
+
+  it('fails closed on a corrupt stored OIDC seal and leaves it consumed', async () => {
+    const transaction = oidcTransaction();
+    await oidcStore.create(transaction);
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(
+        `update app.oidc_login_transactions
+         set code_verifier_ciphertext = 'corrupt' where state_digest = $1`,
+        [transaction.stateDigest],
+      );
+    } finally {
+      await owner.end();
+    }
+
+    await expect(
+      oidcStore.consume(
+        transaction.stateDigest,
+        transaction.browserBindingDigest,
+        new Date(),
+      ),
+    ).rejects.toBeInstanceOf(OidcTransactionSealingError);
+    await expect(
+      oidcStore.consume(
+        transaction.stateDigest,
+        transaction.browserBindingDigest,
+        new Date(),
+      ),
+    ).resolves.toEqual({ status: 'replayed' });
   });
 
   it('guards OIDC admission with a locked owner function and no runtime cleanup privilege', async () => {

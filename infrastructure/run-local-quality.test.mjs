@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { EventEmitter, once } from 'node:events';
 import {
   chmod,
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -19,6 +20,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import {
   acquireRunLock,
+  AWS_ONLY_EXCLUSIONS,
   assertCiLocalQualityContract,
   assertQualificationEnvironment,
   createRunId,
@@ -26,16 +28,30 @@ import {
   LOCAL_QUALITY_COHORTS,
   parseArguments,
   reserveAvailablePorts,
+  sourceIdentity,
   validateQualificationManifest,
 } from './run-local-quality.mjs';
 import {
   OwnedProcessSupervisor,
+  processGroupExists,
   runManagedCommand,
   terminateProcessTree,
 } from './owned-process-tree.mjs';
 import { processExists, waitForFile } from './test-process-observation.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+
+test('an EPERM zero-signal probe means the process group still exists', () => {
+  const permissionError = Object.assign(new Error('not permitted'), {
+    code: 'EPERM',
+  });
+  assert.equal(
+    processGroupExists(12_345, () => {
+      throw permissionError;
+    }),
+    true,
+  );
+});
 
 test('current CI supplies the shared local service and specialized-suite contract', async () => {
   const source = await readFile(
@@ -110,6 +126,36 @@ test('current CI supplies the shared local service and specialized-suite contrac
       ),
     /service lifecycle diverged/u,
   );
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace(
+          "  CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true'\n",
+          '',
+        ),
+      ),
+    /missing CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE=true/u,
+  );
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace(
+          "          API_SSE_RESILIENCE_DISPOSABLE_TARGET: 'true'\n",
+          '',
+        ),
+      ),
+    /missing API_SSE_RESILIENCE_DISPOSABLE_TARGET=true/u,
+  );
+  assert.throws(
+    () =>
+      assertCiLocalQualityContract(
+        source.replace(
+          '          API_SSE_RESILIENCE_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}\n',
+          '',
+        ),
+      ),
+    /must bind API_SSE_RESILIENCE_COMPOSE_PROJECT/u,
+  );
 });
 
 test('qualification rejects missing service flags that could skip tests', () => {
@@ -119,28 +165,49 @@ test('qualification rejects missing service flags that could skip tests', () => 
   );
 });
 
+test('full qualification reseals provenance after every coverage writer', () => {
+  const cleanup = LOCAL_QUALITY_COHORTS.find(({ id }) => id === 'cleanup');
+  assert.deepEqual(cleanup?.qualificationBefore, [
+    [process.execPath, 'infrastructure/record-coverage-provenance.mjs'],
+  ]);
+});
+
 test('qualification rejects failed, skipped, and incomplete required reports', () => {
   const completeCohorts = LOCAL_QUALITY_COHORTS.map(({ id, report }) => ({
     id,
     required: true,
     reportExpected: report !== undefined,
-    ...(report === undefined ? {} : { reportValidated: true }),
+    ...(report === undefined
+      ? {}
+      : {
+          report: `coverage/${id}/test-results.json`,
+          reportValidated: true,
+          result: { passed: 1, total: 1 },
+        }),
     status: 'passed',
   }));
   const complete = {
     mode: 'qualification',
-    source: { stable: true },
+    outcome: 'passed',
+    source: {
+      stable: true,
+      started: {
+        head: 'a'.repeat(40),
+        fingerprint: 'b'.repeat(64),
+        status: [],
+      },
+      completed: {
+        head: 'a'.repeat(40),
+        fingerprint: 'b'.repeat(64),
+        status: [],
+      },
+    },
     cohorts: completeCohorts,
     externalExclusions: [
-      { id: 'aws-control-ledger-dual-service', status: 'skipped' },
-      {
-        id: 'aws-control-ledger-primary-conditional-create',
+      ...AWS_ONLY_EXCLUSIONS.map((exclusion) => ({
+        ...exclusion,
         status: 'skipped',
-      },
-      {
-        id: 'aws-control-ledger-recovery-conditional-create',
-        status: 'skipped',
-      },
+      })),
     ],
   };
   assert.equal(validateQualificationManifest(complete), complete);
@@ -198,6 +265,92 @@ test('qualification rejects failed, skipped, and incomplete required reports', (
       }),
     /source evidence is stale/u,
   );
+  for (const property of ['required', 'reportExpected'])
+    assert.throws(
+      () =>
+        validateQualificationManifest({
+          ...complete,
+          cohorts: complete.cohorts.map((cohort) =>
+            cohort.id === 'integration-api'
+              ? { ...cohort, [property]: false }
+              : cohort,
+          ),
+        }),
+      property === 'required'
+        ? /not marked required/u
+        : /inconsistent report expectation/u,
+    );
+  assert.throws(
+    () => validateQualificationManifest({ ...complete, outcome: 'failed' }),
+    /outcome must be passed/u,
+  );
+  assert.throws(
+    () =>
+      validateQualificationManifest({
+        ...complete,
+        cohorts: [...complete.cohorts, { id: 'unknown', status: 'passed' }],
+      }),
+    /unknown cohort/u,
+  );
+  assert.throws(
+    () =>
+      validateQualificationManifest({
+        ...complete,
+        externalExclusions: [
+          ...complete.externalExclusions,
+          { id: 'unknown', status: 'skipped' },
+        ],
+      }),
+    /unknown exclusion/u,
+  );
+});
+
+async function initializeTestRepository(directory, fileName, contents) {
+  execFileSync('git', ['init', '--quiet'], { cwd: directory });
+  execFileSync('git', ['config', 'user.name', 'Fixture Owner'], {
+    cwd: directory,
+  });
+  execFileSync('git', ['config', 'user.email', 'fixture@invalid.test'], {
+    cwd: directory,
+  });
+  await writeFile(path.join(directory, fileName), contents);
+  execFileSync('git', ['add', '-A'], { cwd: directory });
+  execFileSync('git', ['commit', '--quiet', '-m', 'test: fixture'], {
+    cwd: directory,
+  });
+}
+
+test('source identity targets the requested checkout despite inherited Git overrides', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-source-id-'));
+  const expected = path.join(directory, 'expected');
+  const control = path.join(directory, 'control');
+  await mkdir(expected);
+  await mkdir(control);
+  try {
+    await initializeTestRepository(expected, 'expected.txt', 'expected\n');
+    await initializeTestRepository(control, 'control.txt', 'control\n');
+    const expectedHead = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: expected,
+      encoding: 'utf8',
+    }).trim();
+    const identity = await sourceIdentity(
+      {
+        ...process.env,
+        GIT_DIR: path.join(control, '.git'),
+        GIT_WORK_TREE: control,
+        GIT_INDEX_FILE: path.join(control, 'separate-index'),
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'user.name',
+        GIT_CONFIG_VALUE_0: 'Injected Owner',
+      },
+      expected,
+    );
+    assert.equal(identity.head, expectedHead);
+    assert.equal(identity.dirty, false);
+    assert.deepEqual(identity.status, []);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('coverage lock explicitly refuses a concurrent writer and releases by owner', async () => {
@@ -213,6 +366,71 @@ test('coverage lock explicitly refuses a concurrent writer and releases by owner
   await releaseAgain();
 });
 
+test('coverage lock cleans up immediately when writing or closing setup fails', async () => {
+  for (const failingOperation of ['write', 'close']) {
+    const calls = [];
+    let closeCalls = 0;
+    const expected = new Error(`${failingOperation} failed`);
+    await assert.rejects(
+      acquireRunLock(
+        '/fixture/quality.lock',
+        { token: 'owner' },
+        {
+          mkdir: async () => calls.push('mkdir'),
+          open: async () => ({
+            writeFile: async () => {
+              calls.push('write');
+              if (failingOperation === 'write') throw expected;
+            },
+            close: async () => {
+              closeCalls += 1;
+              calls.push(`close-${String(closeCalls)}`);
+              if (failingOperation === 'close' && closeCalls === 1)
+                throw expected;
+            },
+          }),
+          rm: async () => calls.push('rm'),
+        },
+      ),
+      (error) =>
+        error === expected ||
+        (error instanceof AggregateError && error.errors[0] === expected),
+    );
+    assert.equal(calls.at(-1), 'rm');
+    assert.ok(closeCalls >= 1);
+  }
+});
+
+test('coverage lock release is retryable and never removes another owner', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-lock-retry-'));
+  const lock = path.join(directory, 'quality.lock');
+  let removeCalls = 0;
+  try {
+    const release = await acquireRunLock(
+      lock,
+      { token: 'owner' },
+      {
+        rm: async (file) => {
+          removeCalls += 1;
+          if (removeCalls === 1) throw new Error('transient remove failure');
+          await rm(file);
+        },
+      },
+    );
+    await assert.rejects(release(), /transient remove failure/u);
+    assert.equal(JSON.parse(await readFile(lock, 'utf8')).token, 'owner');
+    await release();
+    await assert.rejects(readFile(lock), { code: 'ENOENT' });
+
+    const guardedRelease = await acquireRunLock(lock, { token: 'original' });
+    await writeFile(lock, '{"token":"replacement"}\n');
+    await assert.rejects(guardedRelease(), /ownership changed/u);
+    assert.equal(JSON.parse(await readFile(lock, 'utf8')).token, 'replacement');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('service ports are dynamically allocated, unique, and releasable', async () => {
   const reservations = await reserveAvailablePorts(5);
   assert.equal(new Set(reservations.map(({ port }) => port)).size, 5);
@@ -221,7 +439,7 @@ test('service ports are dynamically allocated, unique, and releasable', async ()
 });
 
 test('run identity is valid as an isolated Compose project name', () => {
-  assert.match(createRunId(), /^[a-z0-9][a-z0-9_-]*$/u);
+  assert.match(createRunId(), /^pertexo-local-quality-[a-z0-9-]+$/u);
 });
 
 test('owned process cleanup retains ownership after a failed termination attempt', async () => {
@@ -251,6 +469,38 @@ test('owned process cleanup retains ownership after a failed termination attempt
   } finally {
     if (child.pid && processExists(child.pid))
       await terminateProcessTree(child.pid, 'SIGKILL', 500);
+  }
+});
+
+test('synchronous last-resort cleanup attempts every owned process group', async () => {
+  const attempted = [];
+  const supervisor = new OwnedProcessSupervisor(undefined, (pid) => {
+    attempted.push(pid);
+    if (attempted.length === 1) throw new Error('first group failed');
+  });
+  const children = [
+    supervisor.spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+    }),
+    supervisor.spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+    }),
+  ];
+  try {
+    await Promise.all(children.map((child) => once(child, 'spawn')));
+    assert.throws(() => supervisor.killAllSync(), /first group failed/u);
+    assert.deepEqual(
+      attempted,
+      children.map(({ pid }) => pid),
+    );
+  } finally {
+    await Promise.all(
+      children.map((child) =>
+        child.pid && processExists(child.pid)
+          ? terminateProcessTree(child.pid, 'SIGKILL', 500)
+          : Promise.resolve(),
+      ),
+    );
   }
 });
 
@@ -302,6 +552,34 @@ test('managed command does not mistake an undefined cleanup rejection for succes
     assert.equal(error, undefined);
   }
   assert.equal(rejected, true);
+});
+
+test('managed command deadline enters owned cleanup and cannot report success', async () => {
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  let released = 0;
+  await assert.rejects(
+    runManagedCommand({
+      args: [],
+      command: 'synthetic-command',
+      failure: () => new Error('unexpected exit failure'),
+      onStderr: () => undefined,
+      onStdout: () => undefined,
+      releaseOwned: async () => {
+        released += 1;
+        child.stdout.end();
+        child.stderr.end();
+        child.emit('exit', 0, null);
+        child.emit('close', 0, null);
+      },
+      spawnOptions: {},
+      spawnOwned: () => child,
+      timeoutMillis: 5,
+    }),
+    /timed out after 5 ms/u,
+  );
+  assert.equal(released, 1);
 });
 
 test('exploratory partial runs remain explicit and reject unknown cohorts', () => {
@@ -585,6 +863,69 @@ test('a log failure during final drain fails the command evidence', async () => 
       ),
       /late log failure/u,
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('command output pauses owned streams until every required sink drains', async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-quality-backpressure-'),
+  );
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  let pauses = 0;
+  let resumes = 0;
+  const pause = child.stdout.pause.bind(child.stdout);
+  const resume = child.stdout.resume.bind(child.stdout);
+  child.stdout.pause = () => {
+    pauses += 1;
+    return pause();
+  };
+  child.stdout.resume = () => {
+    resumes += 1;
+    return resume();
+  };
+  const logChunks = [];
+  const stdoutChunks = [];
+  const slowWritable = (chunks) =>
+    new Writable({
+      highWaterMark: 1,
+      write(chunk, _encoding, callback) {
+        chunks.push(String(chunk));
+        setTimeout(callback, 15);
+      },
+    });
+  try {
+    const execution = execute(
+      'synthetic-command',
+      [],
+      process.env,
+      path.join(directory, 'unused.log'),
+      {
+        createLogStream: () => slowWritable(logChunks),
+        stdout: slowWritable(stdoutChunks),
+        stderr: slowWritable([]),
+        spawnOwned: () => {
+          setImmediate(() => {
+            child.stdout.write('first');
+            child.stdout.end('second');
+            child.stderr.end();
+            child.emit('exit', 0, null);
+            child.emit('close', 0, null);
+          });
+          return child;
+        },
+        releaseOwned: () => Promise.resolve(),
+        requestTermination: () => undefined,
+      },
+    );
+    await execution;
+    assert.equal(logChunks.join(''), 'firstsecond');
+    assert.equal(stdoutChunks.join(''), 'firstsecond');
+    assert.ok(pauses >= 1);
+    assert.ok(resumes >= 1);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

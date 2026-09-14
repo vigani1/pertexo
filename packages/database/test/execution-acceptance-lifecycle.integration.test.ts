@@ -39,6 +39,7 @@ describe('workflow run lifecycle serialization', () => {
       .then(({ rows }) => rows[0]?.process_id);
     if (deletionProcessId === undefined)
       throw new Error('Expected workspace-deletion database process');
+    let admission: ReturnType<typeof acceptWorkflowRun> | undefined;
     try {
       await deletion.query('begin');
       await deletion.query('set local role pertexo_owner');
@@ -53,13 +54,17 @@ describe('workflow run lifecycle serialization', () => {
         [workspaceA, workspaceCreatorId],
       );
 
-      const admission = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      admission = apiDatabase.withWorkspace(workspaceA, (transaction) =>
         acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      const observedAdmission = admission.then(
+        () => undefined,
+        (error: unknown) => error,
       );
       await waitForDatabaseLock(deletionProcessId);
 
       await deletion.query('commit');
-      await expect(admission).rejects.toBeInstanceOf(
+      expect(await observedAdmission).toBeInstanceOf(
         WorkspaceRunAdmissionDeniedError,
       );
       await expectAcceptanceRecordCounts(0);
@@ -67,6 +72,8 @@ describe('workflow run lifecycle serialization', () => {
       await deletion.query('rollback').catch(() => undefined);
       throw error;
     } finally {
+      await deletion.query('rollback').catch(() => undefined);
+      if (admission !== undefined) await Promise.allSettled([admission]);
       deletion.release();
       await owner.end();
     }
@@ -94,7 +101,15 @@ describe('workflow run lifecycle serialization', () => {
         return accepted;
       },
     );
-    await admissionLocked;
+    const observedAdmission = admission.then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    const beforeBarrier = await Promise.race([
+      admissionLocked.then(() => undefined),
+      observedAdmission,
+    ]);
+    if (beforeBarrier instanceof Error) throw beforeBarrier;
 
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     const deletionClient = await owner.connect();

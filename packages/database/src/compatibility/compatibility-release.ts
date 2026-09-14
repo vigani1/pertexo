@@ -29,10 +29,22 @@ export type CompatibilityReleaseExpectationSet =
 
 export class CompatibilityReleaseMismatchError extends Error {
   public override readonly name = 'CompatibilityReleaseMismatchError';
+  public readonly diagnosticCategory: 'mismatch' | 'query_failure';
 
-  public constructor() {
-    super('Node compatibility release does not match this artifact');
+  public constructor(
+    diagnosticCategory: 'mismatch' | 'query_failure' = 'mismatch',
+    options?: ErrorOptions,
+  ) {
+    super('Node compatibility release does not match this artifact', options);
+    this.diagnosticCategory = diagnosticCategory;
   }
+}
+
+function compatibilityQueryFailure(error: unknown): never {
+  if (error instanceof CompatibilityReleaseMismatchError) throw error;
+  throw new CompatibilityReleaseMismatchError('query_failure', {
+    cause: error,
+  });
 }
 
 export function parseCompatibilityReleaseExpectation(
@@ -65,7 +77,9 @@ export function parseCompatibilityReleaseExpectation(
     record.schemaVersion !== 1 ||
     JSON.stringify(catalog) !== parsed.catalogJson
   ) {
-    throw new TypeError('Compatibility release catalog is not canonical V1');
+    throw new TypeError(
+      'Compatibility release catalog is not a compact V1 authority expectation',
+    );
   }
   return Object.freeze({ ...parsed });
 }
@@ -123,8 +137,7 @@ export async function lockExpectedCompatibilityRelease(
     `);
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
   } catch (error: unknown) {
-    if (error instanceof CompatibilityReleaseMismatchError) throw error;
-    throw new CompatibilityReleaseMismatchError();
+    compatibilityQueryFailure(error);
   }
 }
 
@@ -178,8 +191,7 @@ export async function lockExpectedCompatibilityReleaseSet(
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
     return matchedExpectation(expected, result.rows[0]);
   } catch (error: unknown) {
-    if (error instanceof CompatibilityReleaseMismatchError) throw error;
-    throw new CompatibilityReleaseMismatchError();
+    compatibilityQueryFailure(error);
   }
 }
 
@@ -197,8 +209,7 @@ export async function lockExpectedCompatibilityReleaseSetWithClient(
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
     return matchedExpectation(expected, result.rows[0]);
   } catch (error: unknown) {
-    if (error instanceof CompatibilityReleaseMismatchError) throw error;
-    throw new CompatibilityReleaseMismatchError();
+    compatibilityQueryFailure(error);
   }
 }
 
@@ -230,8 +241,7 @@ export async function checkCompatibilityReleasePreactivationTarget(
     );
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
   } catch (error: unknown) {
-    if (error instanceof CompatibilityReleaseMismatchError) throw error;
-    throw new CompatibilityReleaseMismatchError();
+    compatibilityQueryFailure(error);
   }
 }
 
@@ -248,7 +258,6 @@ export async function lockExpectedCompatibilityReleaseWithClient(
     );
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
   } catch (error: unknown) {
-    if (error instanceof CompatibilityReleaseMismatchError) throw error;
-    throw new CompatibilityReleaseMismatchError();
+    compatibilityQueryFailure(error);
   }
 }

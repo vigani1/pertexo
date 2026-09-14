@@ -14,7 +14,6 @@ import {
   mapConnection,
   mapSealed,
   withConnectionTransaction,
-  requireConnectionUser,
   parseRequestMetadata,
   selectConnection,
   connectionTestOutcomeSchema,
@@ -24,9 +23,12 @@ import {
   connectionTestClaim,
   connectionTestClaimSchema,
 } from './connection-persistence.js';
+import { requireConnectionUser } from './connection-authority.js';
+import { markConnectionTestDispatched } from './connection-test-dispatch.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
+  ConnectionRecord,
   ResolvedConnectionSecretRecord,
   StartConnectionTestResult,
   ConnectionTestResult,
@@ -42,6 +44,43 @@ export type ConnectionTestPersistence = Pick<
   | 'completeConnectionTest'
   | 'abandonConnectionTest'
 >;
+
+export function classifyConnectionTestCompletion(
+  currentStatus: ConnectionRecord['status'],
+  outcome: ConnectionTestResult['outcome'],
+  secretVersionId: string,
+  currentSecretWasTested: boolean,
+) {
+  const sharedMetadata = { secretVersionId, currentSecretWasTested };
+  if (outcome.ok)
+    return Object.freeze({
+      eventType: CONNECTION_EVENT_TYPE.testSucceeded,
+      healthUpdateAllowed:
+        currentStatus !== CONNECTION_STATUS.revoked && currentSecretWasTested,
+      nextStatus: CONNECTION_STATUS.active,
+      lastErrorCode: null,
+      eventMetadata: Object.freeze({
+        ...sharedMetadata,
+        httpStatus: outcome.httpStatus,
+      }),
+    });
+  return Object.freeze({
+    eventType: outcome.reauthorizationRequired
+      ? CONNECTION_EVENT_TYPE.reauthorizationRequired
+      : CONNECTION_EVENT_TYPE.testFailed,
+    nextStatus: outcome.reauthorizationRequired
+      ? CONNECTION_STATUS.reauthorizationRequired
+      : currentStatus,
+    lastErrorCode: outcome.errorCode,
+    healthUpdateAllowed:
+      currentStatus !== CONNECTION_STATUS.revoked && currentSecretWasTested,
+    eventMetadata: Object.freeze({
+      ...sharedMetadata,
+      errorCode: outcome.errorCode,
+      httpStatus: outcome.httpStatus,
+    }),
+  });
+}
 
 export function createConnectionTestPersistence(
   pool: Pool,
@@ -102,11 +141,15 @@ export function createConnectionTestPersistence(
             throw new ConnectionIdempotencyConflictError(
               'Idempotency key request mismatch',
             );
-          if (current.status === 'completed')
-            return Object.freeze({
-              kind: 'replay' as const,
-              result: parseConnectionTestResult(current.result_ref),
-            });
+          if (current.status === 'completed') {
+            const result = parseConnectionTestResult(current.result_ref);
+            if (
+              result.connection.workspaceId !== workspaceId ||
+              result.connection.id !== connectionId
+            )
+              throw new Error('Connection test idempotency result is corrupt');
+            return Object.freeze({ kind: 'replay' as const, result });
+          }
           const ownsClaim = inserted.rowCount === 1;
           if (!ownsClaim) {
             if (
@@ -244,72 +287,8 @@ export function createConnectionTestPersistence(
       );
     },
 
-    markConnectionTestDispatched: async (input): Promise<void> => {
-      const actorId = uuidSchema.parse(input.actorId);
-      const connectionId = uuidSchema.parse(input.connectionId);
-      const secretVersionId = uuidSchema.parse(input.secretVersionId);
-      const requestHash = digestSchema.parse(input.requestHash);
-      const dispatchToken = uuidSchema.parse(input.dispatchToken);
-      const digest = keyDigest(input.idempotencyKey);
-      const scope = connectionTestScope(actorId, connectionId);
-      const metadata = parseRequestMetadata(input);
-      await withConnectionTransaction(
-        pool,
-        input.workspaceId,
-        actorId,
-        async (client, workspaceId) => {
-          await requireConnectionUser(client, workspaceId, actorId);
-          const connection = await selectConnection(
-            client,
-            workspaceId,
-            connectionId,
-          );
-          if (
-            connection?.status !== CONNECTION_STATUS.active ||
-            connection.currentSecretVersionId !== secretVersionId
-          )
-            throw new ConnectionUnavailableError(
-              'Connection changed before test dispatch',
-            );
-          const marked = await client.query(
-            `update app.idempotency_records
-             set result_ref = $1::jsonb, updated_at = transaction_timestamp()
-             where workspace_id = $2 and operation = 'connection.test'
-               and scope = $3 and key_hash = $4 and request_hash = $5
-               and status = 'in_progress'
-               and result_ref->>'dispatchToken' = $6`,
-            [
-              JSON.stringify(connectionTestClaim(dispatchToken, 'dispatched')),
-              workspaceId,
-              scope,
-              digest,
-              requestHash,
-              dispatchToken,
-            ],
-          );
-          if (marked.rowCount !== 1)
-            throw new ConnectionTestInProgressError(
-              'Connection test dispatch ownership was lost',
-            );
-          await client.query(
-            `insert into app.audit_events
-               (id, workspace_id, actor_user_id, action, target_type,
-                target_id, request_id, trace_id, metadata)
-             values ($1, $2, $3, 'connection.test_dispatched', 'connection',
-                     $4, $5, $6, $7::jsonb)`,
-            [
-              generatePersistedId(),
-              workspaceId,
-              actorId,
-              connectionId,
-              metadata.requestId,
-              metadata.traceId,
-              JSON.stringify({ secretVersionId }),
-            ],
-          );
-        },
-      );
-    },
+    markConnectionTestDispatched: (input): Promise<void> =>
+      markConnectionTestDispatched(pool, input),
 
     completeConnectionTest: async (input): Promise<ConnectionTestResult> => {
       const actorId = uuidSchema.parse(input.actorId);
@@ -342,6 +321,14 @@ export function createConnectionTestPersistence(
             claim.rows[0].result_ref,
           );
           if (
+            claimState.state === 'dispatched' &&
+            claimState.secretVersionId !== undefined &&
+            claimState.secretVersionId !== secretVersionId
+          )
+            throw new ConnectionTestInProgressError(
+              'Connection test secret version does not match dispatch evidence',
+            );
+          if (
             (outcome.ok || outcome.httpStatus !== null) &&
             claimState.state !== 'dispatched'
           )
@@ -360,15 +347,13 @@ export function createConnectionTestPersistence(
           let connection = current;
           const currentSecretWasTested =
             current.currentSecretVersionId === secretVersionId;
-          if (
-            current.status !== CONNECTION_STATUS.revoked &&
-            currentSecretWasTested
-          ) {
-            const status = outcome.ok
-              ? CONNECTION_STATUS.active
-              : outcome.reauthorizationRequired
-                ? CONNECTION_STATUS.reauthorizationRequired
-                : current.status;
+          const classification = classifyConnectionTestCompletion(
+            current.status,
+            outcome,
+            secretVersionId,
+            currentSecretWasTested,
+          );
+          if (classification.healthUpdateAllowed) {
             const updated = await client.query<Record<string, unknown>>(
               `update app.connections
                set status = $1,
@@ -379,9 +364,9 @@ export function createConnectionTestPersistence(
                    updated_at = transaction_timestamp()
                where workspace_id = $4 and id = $5 returning *`,
               [
-                status,
+                classification.nextStatus,
                 outcome.ok,
-                outcome.ok ? null : outcome.errorCode,
+                classification.lastErrorCode,
                 workspaceId,
                 connectionId,
               ],
@@ -391,11 +376,6 @@ export function createConnectionTestPersistence(
               throw new Error('Connection test health update returned no row');
             connection = mapConnection(row);
           }
-          const eventType = outcome.ok
-            ? CONNECTION_EVENT_TYPE.testSucceeded
-            : outcome.reauthorizationRequired
-              ? CONNECTION_EVENT_TYPE.reauthorizationRequired
-              : CONNECTION_EVENT_TYPE.testFailed;
           await client.query(
             `insert into app.connection_events
                (id, workspace_id, connection_id, event_type, actor_kind,
@@ -405,24 +385,11 @@ export function createConnectionTestPersistence(
               generatePersistedId(),
               workspaceId,
               connectionId,
-              eventType,
+              classification.eventType,
               actorId,
               metadata.requestId,
               metadata.traceId,
-              JSON.stringify(
-                outcome.ok
-                  ? {
-                      httpStatus: outcome.httpStatus,
-                      secretVersionId,
-                      currentSecretWasTested,
-                    }
-                  : {
-                      errorCode: outcome.errorCode,
-                      httpStatus: outcome.httpStatus,
-                      secretVersionId,
-                      currentSecretWasTested,
-                    },
-              ),
+              JSON.stringify(classification.eventMetadata),
             ],
           );
           const result = Object.freeze({ connection, outcome });

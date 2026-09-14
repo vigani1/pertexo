@@ -17,6 +17,7 @@ import {
 } from '@pertexo/contracts/artifacts';
 
 import {
+  AuthorizationError,
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
 } from '../workspaces/index.js';
@@ -276,6 +277,7 @@ function publicMetadata(artifact: ArtifactRecord): ArtifactMetadataResponse {
 
 function mapDatabaseError(error: unknown): Error {
   if (
+    error instanceof AuthorizationError ||
     error instanceof ArtifactApiNotFoundError ||
     error instanceof ArtifactApiConflictError ||
     error instanceof ArtifactApiIdempotencyConflictError ||

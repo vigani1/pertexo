@@ -2,6 +2,11 @@
 
 Updated: 2026-09-02
 
+This is the repository policy authority. Its collaborator count and protection
+observations were recorded on the date above and were not reverified by the
+2026-09-13 repository-local documentation review; current hosted settings still
+require the external evidence described by the operations runbook.
+
 ## Main-branch policy
 
 `main` uses strict required checks, administrator enforcement, linear history,

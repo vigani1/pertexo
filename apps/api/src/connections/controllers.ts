@@ -16,11 +16,7 @@ import {
   SessionAuthenticationGuard,
   readHeader,
 } from '../identity-workspace/index.js';
-import {
-  authenticatedRequestIdentifiers,
-  optionalAuthorizedWorkspace,
-  projectAuthenticatedWorkspaceContext,
-} from '../identity-workspace/authenticated-command-context.js';
+import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
@@ -60,14 +56,13 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceParams(params);
+    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
     return withRequestOperationSignal(request, (signal) =>
       this.createConnection.execute({
-        actor: actorFrom(request, workspaceId),
+        ...context,
         routeWorkspaceId: workspaceId,
-        ...guardAuthorization(request),
         request: body,
         idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
         signal,
       }),
     );
@@ -86,15 +81,17 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return withRequestOperationSignal(request, (signal) =>
       this.rotateSecret.execute({
-        actor: actorFrom(request, route.workspaceId),
+        ...context,
         routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
         connectionId: route.connectionId,
         request: body,
         idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
         signal,
       }),
     );
@@ -112,12 +109,14 @@ export class ConnectionsController {
     @Param() params: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return this.revokeConnection.execute({
-      actor: actorFrom(request, route.workspaceId),
+      ...context,
       routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
       connectionId: route.connectionId,
-      ...requestMetadata(request),
     });
   }
 
@@ -135,42 +134,27 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return withRequestOperationSignal(request, (signal) =>
       this.testConnection.execute({
-        actor: actorFrom(request, route.workspaceId),
+        ...context,
         routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
         connectionId: route.connectionId,
         request: body,
         idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
         signal,
       }),
     );
   }
 }
 
-function guardAuthorization(
-  request: ConnectionRequest,
-): Pick<ConnectionRequest, 'authorizedWorkspace'> {
-  return optionalAuthorizedWorkspace(request);
-}
-
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
   return connectionWorkspaceParamSchema.parse(value);
 }
 
-function actorFrom(request: ConnectionRequest, workspaceId: string) {
-  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-}
-
 function idempotencyKey(request: ConnectionRequest): string {
   return idempotencyKeySchema.parse(readHeader(request, 'idempotency-key'));
-}
-
-function requestMetadata(request: ConnectionRequest): Readonly<{
-  requestId: string;
-  traceId?: string;
-}> {
-  return authenticatedRequestIdentifiers(request);
 }

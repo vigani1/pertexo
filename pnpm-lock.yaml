@@ -125,6 +125,9 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@nestjs/testing':
+        specifier: 11.2.1
+        version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2))
       '@opentelemetry/sdk-node':
         specifier: 0.221.0
         version: 0.221.0(@opentelemetry/api@1.9.0)(supports-color@7.2.0)
@@ -292,6 +295,9 @@ importers:
       '@redocly/cli':
         specifier: 2.51.2
         version: 2.51.2
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
 
   packages/database:
     dependencies:
@@ -944,6 +950,19 @@ packages:
       '@fastify/static':
         optional: true
       '@fastify/view':
+        optional: true
+
+  '@nestjs/testing@11.2.1':
+    resolution: {integrity: sha512-3mdABjqFafW+ix6fGJMPHvnj/9Or6kAPiszN8zt9bHGPuHYdkkp+9zsBDDUVuP59BcbzBqNBa5fXHBaeMzVvog==}
+    peerDependencies:
+      '@nestjs/common': ^11.0.0
+      '@nestjs/core': ^11.0.0
+      '@nestjs/microservices': ^11.0.0
+      '@nestjs/platform-express': ^11.0.0
+    peerDependenciesMeta:
+      '@nestjs/microservices':
+        optional: true
+      '@nestjs/platform-express':
         optional: true
 
   '@nodelib/fs.scandir@2.1.5':
@@ -3624,6 +3643,12 @@ snapshots:
       light-my-request: 6.6.0
       path-to-regexp: 8.4.2
       reusify: 1.1.0
+      tslib: 2.8.1
+
+  '@nestjs/testing@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2))':
+    dependencies:
+      '@nestjs/common': 11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@nestjs/core': 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)
       tslib: 2.8.1
 
   '@nodelib/fs.scandir@2.1.5':

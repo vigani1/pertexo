@@ -1,25 +1,25 @@
 import { randomUUID } from 'node:crypto';
-
+import type { parseDatabaseConfig } from '@pertexo/database/testing';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import {
-  JOB_NAME,
-  QUEUE_NAME,
-  Queue,
-  createCoordinatorRuntime,
-  createNodeAttemptRuntime,
-  createPlatformNodeRegistryForRelease,
   createQueueProducer,
-  redisConnection,
-  redisUrl,
-  waitFor,
-  workerQuery,
-  workspaceId,
-} from '../coordinator-consumer.fixtures.js';
+  JOB_NAME,
+  jobIdForOutboxEvent,
+  QUEUE_NAME,
+} from '@pertexo/queue';
+import { Queue } from 'bullmq';
+
+import { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';
+import { createNodeAttemptRuntime } from '../../src/execution/node-attempt-runtime.js';
+import { coordinatorFixture } from '../coordinator-consumer.fixtures.js';
+
+const { redisConnection, redisUrl, waitFor, workerQuery, workspaceId } =
+  coordinatorFixture;
 import {
   waitForCoordinatorOutbox,
   type waitForAttemptOutbox,
   type AcceptedRun,
 } from './coordinator-run-fixtures.js';
-import type { parseDatabaseConfig } from '../coordinator-consumer.fixtures.js';
 
 type RecoveryAttempt = Awaited<ReturnType<typeof waitForAttemptOutbox>>;
 type RecoveryRuntimeCapabilities = NonNullable<
@@ -36,7 +36,9 @@ export interface CoordinatorRecoveryHarness {
   nextCoordinatorOutbox(): Promise<string>;
   continueAfter(expectedRevision: number): Promise<string>;
   executeNext(nodeId: string, ordinal?: number): Promise<RecoveryAttempt>;
-  redeliverAttempt(attempt: RecoveryAttempt): Promise<void>;
+  redeliverAttempt(
+    attempt: RecoveryAttempt,
+  ): Promise<Readonly<{ entriesAfter: number; entriesBefore: number }>>;
   restart(options?: Readonly<{ obliterateQueues?: boolean }>): Promise<void>;
   close(): Promise<void>;
 }
@@ -50,10 +52,16 @@ async function closeStartedWorkers(
   workers: RecoveryWorkers | undefined,
 ): Promise<void> {
   if (workers === undefined) return;
-  await Promise.allSettled([
-    workers.attempts.close(),
-    workers.coordinator.close(),
-  ]);
+  const errors: unknown[] = [];
+  await workers.attempts.close().catch((error: unknown) => errors.push(error));
+  await workers.coordinator
+    .close()
+    .catch((error: unknown) => errors.push(error));
+  if (errors.length > 0)
+    throw new AggregateError(
+      errors,
+      'Coordinator recovery workers failed to close',
+    );
 }
 
 export async function createCoordinatorRecoveryHarness(input: {
@@ -63,13 +71,11 @@ export async function createCoordinatorRecoveryHarness(input: {
   readonly runtimeCapabilities: RecoveryRuntimeCapabilities;
   readonly workerIdPrefix: string;
 }): Promise<CoordinatorRecoveryHarness> {
-  const producer = createQueueProducer({ redisUrl });
-  const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-    connection: redisConnection(),
-  });
-  const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-    connection: redisConnection(),
-  });
+  let producer: ReturnType<typeof createQueueProducer> | undefined;
+  let coordinatorQueue: Queue | undefined;
+  let attemptQueue: Queue | undefined;
+  let workers: RecoveryWorkers | undefined;
+  let attemptHandlerEntries = 0;
 
   const startWorkers = async (): Promise<RecoveryWorkers> => {
     let coordinator: RecoveryWorkers['coordinator'] | undefined;
@@ -89,6 +95,13 @@ export async function createCoordinatorRecoveryHarness(input: {
           releaseCohort: 'for_each_activation',
           redisUrl,
           workerId: `${input.workerIdPrefix}-${randomUUID()}`,
+          observer: {
+            handlerFinished: () => undefined,
+            handlerStarted: ({ jobName }) => {
+              if (jobName === JOB_NAME.executeNodeAttempt)
+                attemptHandlerEntries += 1;
+            },
+          },
         },
         {
           registry: createPlatformNodeRegistryForRelease(input.registryRelease),
@@ -100,28 +113,47 @@ export async function createCoordinatorRecoveryHarness(input: {
         attempts.consumer.waitUntilReady(5_000),
       ]);
       return { attempts, coordinator };
-    } catch (error) {
-      await Promise.allSettled([
-        ...(attempts === undefined ? [] : [attempts.close()]),
-        ...(coordinator === undefined ? [] : [coordinator.close()]),
-      ]);
-      throw error;
+    } catch (startupError: unknown) {
+      const errors: unknown[] = [startupError];
+      await attempts?.close().catch((error: unknown) => errors.push(error));
+      await coordinator?.close().catch((error: unknown) => errors.push(error));
+      if (errors.length === 1) throw startupError;
+      throw new AggregateError(
+        errors,
+        'Coordinator recovery worker startup failed',
+      );
     }
   };
 
-  let workers: RecoveryWorkers | undefined;
   try {
+    producer = createQueueProducer({ redisUrl });
+    coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+      connection: redisConnection(),
+    });
+    attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+      connection: redisConnection(),
+    });
     workers = await startWorkers();
     await producer.waitUntilReady(5_000);
-  } catch (error) {
-    await closeStartedWorkers(workers);
-    await Promise.allSettled([
-      producer.close(),
-      coordinatorQueue.close(),
-      attemptQueue.close(),
-    ]);
-    throw error;
+  } catch (startupError: unknown) {
+    const errors: unknown[] = [startupError];
+    await closeStartedWorkers(workers).catch((error: unknown) =>
+      errors.push(error),
+    );
+    await producer?.close().catch((error: unknown) => errors.push(error));
+    await coordinatorQueue
+      ?.close()
+      .catch((error: unknown) => errors.push(error));
+    await attemptQueue?.close().catch((error: unknown) => errors.push(error));
+    if (errors.length === 1) throw startupError;
+    throw new AggregateError(
+      errors,
+      'Coordinator recovery harness startup failed',
+    );
   }
+  const ownedProducer = producer;
+  const ownedCoordinatorQueue = coordinatorQueue;
+  const ownedAttemptQueue = attemptQueue;
 
   const attemptOutboxes: string[] = [];
   const coordinatorOutboxes = [input.accepted.outboxEventId];
@@ -130,7 +162,7 @@ export async function createCoordinatorRecoveryHarness(input: {
     outboxEventId: string,
     expectedRevision: number,
   ) => {
-    const published = await producer.publish({
+    const published = await ownedProducer.publish({
       name: JOB_NAME.advanceWorkflowRun,
       data: {
         schemaVersion: 1,
@@ -147,7 +179,7 @@ export async function createCoordinatorRecoveryHarness(input: {
                where workspace_id=$1 and workflow_run_id=$2`,
             [workspaceId, input.accepted.runId],
           ),
-          coordinatorQueue.getJob(published.jobId),
+          ownedCoordinatorQueue.getJob(published.jobId),
         ]);
         return {
           failedReason: job?.failedReason,
@@ -212,7 +244,7 @@ export async function createCoordinatorRecoveryHarness(input: {
     const attempt = rows[0];
     if (attempt === undefined) throw new Error(`${nodeId} attempt missing`);
     attemptOutboxes.push(attempt.outbox_id);
-    const published = await producer.publish({
+    const published = await ownedProducer.publish({
       name: JOB_NAME.executeNodeAttempt,
       data: {
         schemaVersion: 1,
@@ -230,7 +262,7 @@ export async function createCoordinatorRecoveryHarness(input: {
             `select status from app.node_runs where workspace_id=$1 and id=$2`,
             [workspaceId, attempt.node_run_id],
           ),
-          attemptQueue.getJob(published.jobId),
+          ownedAttemptQueue.getJob(published.jobId),
         ]);
         return {
           failedReason: job?.failedReason,
@@ -255,7 +287,17 @@ export async function createCoordinatorRecoveryHarness(input: {
   };
 
   const redeliverAttempt = async (attempt: RecoveryAttempt) => {
-    await producer.publish({
+    const originalJob = await ownedAttemptQueue.getJob(
+      jobIdForOutboxEvent(attempt.outboxEventId),
+    );
+    if (
+      originalJob === undefined ||
+      (await originalJob.getState()) !== 'completed'
+    )
+      throw new Error('Original attempt job is not completed');
+    const entriesBefore = attemptHandlerEntries;
+    await originalJob.remove();
+    const published = await ownedProducer.publish({
       name: JOB_NAME.executeNodeAttempt,
       data: {
         schemaVersion: 1,
@@ -266,32 +308,75 @@ export async function createCoordinatorRecoveryHarness(input: {
         outboxEventId: attempt.outboxEventId,
       },
     });
+    const result = await waitFor(
+      async () => {
+        const job = await ownedAttemptQueue.getJob(published.jobId);
+        return {
+          entries: attemptHandlerEntries,
+          failedReason: job?.failedReason,
+          state: await job?.getState(),
+        };
+      },
+      ({ entries, state }) =>
+        state === 'failed' ||
+        (entries > entriesBefore && state === 'completed'),
+    );
+    if (result.state === 'failed')
+      throw new Error(
+        `Redelivered attempt failed: ${result.failedReason ?? 'unknown'}`,
+      );
+    return Object.freeze({
+      entriesAfter: result.entries,
+      entriesBefore,
+    });
   };
 
   const restart = async (
     options: Readonly<{ obliterateQueues?: boolean }> = {},
   ) => {
     if (workers === undefined) throw new Error('workers are closed');
-    await Promise.all([workers.attempts.close(), workers.coordinator.close()]);
-    if (options.obliterateQueues === true)
-      await Promise.all([
-        coordinatorQueue.obliterate({ force: true }),
-        attemptQueue.obliterate({ force: true }),
-      ]);
+    await closeStartedWorkers(workers);
+    workers = undefined;
+    if (options.obliterateQueues === true) {
+      const errors: unknown[] = [];
+      await ownedCoordinatorQueue
+        .obliterate({ force: true })
+        .catch((error: unknown) => errors.push(error));
+      await ownedAttemptQueue
+        .obliterate({ force: true })
+        .catch((error: unknown) => errors.push(error));
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Coordinator recovery queue reset failed',
+        );
+    }
     workers = await startWorkers();
   };
 
-  const close = async () => {
-    const current = workers;
-    workers = undefined;
-    await Promise.allSettled([
-      ...(current === undefined
-        ? []
-        : [current.attempts.close(), current.coordinator.close()]),
-      producer.close(),
-      coordinatorQueue.close(),
-      attemptQueue.close(),
-    ]);
+  let closePromise: Promise<void> | undefined;
+  const close = (): Promise<void> => {
+    closePromise ??= (async () => {
+      const errors: unknown[] = [];
+      const current = workers;
+      await closeStartedWorkers(current).catch((error: unknown) =>
+        errors.push(error),
+      );
+      workers = undefined;
+      await ownedProducer.close().catch((error: unknown) => errors.push(error));
+      await ownedCoordinatorQueue
+        .close()
+        .catch((error: unknown) => errors.push(error));
+      await ownedAttemptQueue
+        .close()
+        .catch((error: unknown) => errors.push(error));
+      if (errors.length > 0)
+        throw new AggregateError(
+          errors,
+          'Coordinator recovery harness cleanup failed',
+        );
+    })();
+    return closePromise;
   };
 
   return {

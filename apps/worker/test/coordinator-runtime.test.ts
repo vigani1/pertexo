@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createCoordinatorRuntime,
+  type CoordinatorCompositionFactories,
   type CoordinatorRuntimeOptions,
 } from '../src/execution/coordinator-runtime.js';
 
@@ -73,6 +74,243 @@ function runtimeDependencies(
 }
 
 describe('coordinator runtime', () => {
+  it.each([
+    ['telemetry', []],
+    ['traceRunner', []],
+    ['runStore', []],
+    ['reader', ['runStore']],
+    ['notifications', ['runStore', 'reader']],
+    ['dueScanner', ['runStore', 'reader', 'notifications']],
+    ['deadlineScanner', ['runStore', 'reader', 'notifications', 'dueScanner']],
+    [
+      'consumer',
+      ['runStore', 'reader', 'notifications', 'dueScanner', 'deadlineScanner'],
+    ],
+  ] as const)(
+    'rolls back every owner acquired before %s construction fails',
+    async (failedStage, expectedClosed) => {
+      const constructionFailure = new Error(`${failedStage} failed`);
+      const closed: string[] = [];
+      const owned = {
+        runStore: {
+          acknowledgeAdvanceDelivery: vi.fn(),
+          close: vi.fn(() => {
+            closed.push('runStore');
+            return Promise.resolve();
+          }),
+          commitAdvancePlan: vi.fn(),
+          loadAdvanceState: vi.fn(),
+        },
+        reader: {
+          close: vi.fn(() => {
+            closed.push('reader');
+            return Promise.resolve();
+          }),
+          readForExecution: vi.fn(),
+        },
+        notifications: {
+          close: vi.fn(() => {
+            closed.push('notifications');
+            return Promise.resolve();
+          }),
+          publish: vi.fn(),
+          resync: vi.fn(),
+        },
+        dueScanner: {
+          claimDueWakeups: vi.fn(),
+          close: vi.fn(() => {
+            closed.push('dueScanner');
+            return Promise.resolve();
+          }),
+        },
+        deadlineScanner: {
+          claimDueWakeups: vi.fn(),
+          close: vi.fn(() => {
+            closed.push('deadlineScanner');
+            return Promise.resolve();
+          }),
+        },
+      };
+      const acquire = <T>(stage: string, value: T): T => {
+        if (stage === failedStage) throw constructionFailure;
+        return value;
+      };
+      const factories = {
+        consumer: vi.fn(() =>
+          acquire('consumer', {
+            close: vi.fn(),
+            isReady: vi.fn(),
+            waitUntilReady: vi.fn(),
+          }),
+        ),
+        deadlineScanner: vi.fn(() =>
+          acquire('deadlineScanner', owned.deadlineScanner),
+        ),
+        dueScanner: vi.fn(() => acquire('dueScanner', owned.dueScanner)),
+        notifications: vi.fn(() =>
+          acquire('notifications', owned.notifications),
+        ),
+        reader: vi.fn(() => acquire('reader', owned.reader)),
+        runStore: vi.fn(() => acquire('runStore', owned.runStore)),
+        telemetry: vi.fn(() => acquire('telemetry', {})),
+        traceRunner: vi.fn(() => acquire('traceRunner', {})),
+      } as unknown as CoordinatorCompositionFactories;
+
+      await expect(
+        createCoordinatorRuntime(
+          runtimeOptions(),
+          { engine: { advance: vi.fn() } },
+          factories,
+        ),
+      ).rejects.toBe(constructionFailure);
+      expect(new Set(closed)).toEqual(new Set(expectedClosed));
+      expect(closed).toHaveLength(expectedClosed.length);
+    },
+  );
+
+  it('waits for the first complete scan and remains terminal after close', async () => {
+    const dueScan = Promise.withResolvers<number>();
+    const due = {
+      claimDueWakeups: vi.fn(() => dueScan.promise),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const deadline = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const runtime = await createCoordinatorRuntime(
+      runtimeOptions(),
+      runtimeDependencies(consumer, due, deadline),
+    );
+    let readySettled = false;
+    const readiness = runtime.checkReadiness().finally(() => {
+      readySettled = true;
+    });
+    await Promise.resolve();
+    expect(readySettled).toBe(false);
+
+    dueScan.resolve(0);
+    await expect(readiness).resolves.toBeUndefined();
+    expect(deadline.claimDueWakeups).toHaveBeenCalledOnce();
+    await runtime.close();
+    await expect(runtime.checkReadiness()).rejects.toThrow(/closed/u);
+  });
+
+  it('recovers scanner health even when failure diagnostics throw', async () => {
+    const scanFailure = new Error('postgres unavailable');
+    const due = {
+      claimDueWakeups: vi
+        .fn()
+        .mockRejectedValueOnce(scanFailure)
+        .mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const deadline = {
+      claimDueWakeups: vi.fn().mockResolvedValue(0),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const logger = {
+      debug: vi.fn(),
+      error: vi.fn(() => {
+        throw new Error('logger unavailable');
+      }),
+      fatal: vi.fn(),
+      info: vi.fn(),
+      trace: vi.fn(),
+      warn: vi.fn(),
+    };
+    const runtime = await createCoordinatorRuntime(
+      runtimeOptions({ dueWakeupPollIntervalMillis: 10 }),
+      { ...runtimeDependencies(consumer, due, deadline), logger },
+    );
+
+    await expect(runtime.checkReadiness()).rejects.toThrow(/latest scan/u);
+    await vi.waitFor(() => {
+      expect(due.claimDueWakeups.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(
+      'coordinator.wakeup_scan_failed',
+      { safeErrorCode: 'coordinator.wakeup_scan_failed' },
+      scanFailure,
+    );
+    await runtime.close();
+  });
+
+  it('attempts every synchronous or rejected closer and preserves all failures', async () => {
+    const failures = {
+      consumer: new Error('consumer close failed'),
+      due: new Error('due close failed'),
+      deadline: new Error('deadline close failed'),
+      notifications: new Error('notifications close failed'),
+      reader: new Error('reader close failed'),
+      runStore: new Error('run store close failed'),
+    };
+    const runtime = await createCoordinatorRuntime(runtimeOptions(), {
+      consumerFactory: () => ({
+        close: vi.fn(() => {
+          throw failures.consumer;
+        }),
+        isReady: vi.fn().mockReturnValue(true),
+        waitUntilReady: vi.fn().mockResolvedValue(undefined),
+      }),
+      engine: { advance: vi.fn() },
+      dueWakeupScanner: {
+        claimDueWakeups: vi.fn().mockResolvedValue(0),
+        close: vi.fn(() => {
+          throw failures.due;
+        }),
+      },
+      deadlineWakeupScanner: {
+        claimDueWakeups: vi.fn().mockResolvedValue(0),
+        close: vi.fn().mockRejectedValue(failures.deadline),
+      },
+      notifications: {
+        close: vi.fn(() => {
+          throw failures.notifications;
+        }),
+        publish: vi.fn(),
+        resync: vi.fn(),
+      },
+      reader: {
+        close: vi.fn().mockRejectedValue(failures.reader),
+        readForExecution: vi.fn(),
+      },
+      runStore: {
+        acknowledgeAdvanceDelivery: vi.fn(),
+        close: vi.fn(() => {
+          throw failures.runStore;
+        }),
+        commitAdvancePlan: vi.fn(),
+        loadAdvanceState: vi.fn(),
+      },
+    });
+    await runtime.checkReadiness();
+    const first = runtime.close();
+    expect(runtime.close()).toBe(first);
+    const error = await first.catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).errors).toEqual([
+      failures.consumer,
+      failures.due,
+      failures.deadline,
+      failures.notifications,
+      failures.reader,
+      failures.runStore,
+    ]);
+  });
+
   it('polls due PostgreSQL wakeups without overlap and drains the scanner on close', async () => {
     let releaseScan: (() => void) | undefined;
     const scanStarted = new Promise<void>((resolve) => {
@@ -124,6 +362,10 @@ describe('coordinator runtime', () => {
           commitAdvancePlan: vi.fn(),
         },
         dueWakeupScanner: scanner,
+        deadlineWakeupScanner: {
+          claimDueWakeups: vi.fn().mockResolvedValue(0),
+          close: vi.fn().mockResolvedValue(undefined),
+        },
       },
     );
 
@@ -192,9 +434,10 @@ describe('coordinator runtime', () => {
     },
   );
 
-  it('reports a bounded shutdown failure while still closing every scanner', async () => {
+  it('reports a bounded shutdown failure and defers adapters until raw scanning settles', async () => {
+    const scan = Promise.withResolvers<number>();
     const blockingScanner = {
-      claimDueWakeups: vi.fn(() => new Promise<number>(() => undefined)),
+      claimDueWakeups: vi.fn(() => scan.promise),
       close: vi.fn().mockResolvedValue(undefined),
     };
     const idleScanner = {
@@ -217,8 +460,14 @@ describe('coordinator runtime', () => {
     await expect(runtime.close()).rejects.toMatchObject({
       name: 'BackgroundTaskShutdownTimeoutError',
     });
-    expect(blockingScanner.close).toHaveBeenCalledOnce();
-    expect(idleScanner.close).toHaveBeenCalledOnce();
+    expect(blockingScanner.close).not.toHaveBeenCalled();
+    expect(idleScanner.close).not.toHaveBeenCalled();
+
+    scan.resolve(0);
+    await vi.waitFor(() => {
+      expect(blockingScanner.close).toHaveBeenCalledOnce();
+      expect(idleScanner.close).toHaveBeenCalledOnce();
+    });
   });
 
   it('composes one traced coordinator consumer and closes every owned adapter', async () => {
@@ -278,10 +527,9 @@ describe('coordinator runtime', () => {
           workerRuntimeRole: 'pertexo_worker',
         },
         maximumAdmissions: 32,
-        redisUrl: 'redis://localhost:6379/0',
+        redisUrl: 'redis://unreachable.invalid:6379/0',
       },
       {
-        clock: { now: () => '2026-08-21T00:00:00.000Z' },
         consumerFactory: (options): QueueConsumer => {
           consumerOptions = options;
           return consumer;
@@ -296,6 +544,10 @@ describe('coordinator runtime', () => {
           claimDueWakeups: vi.fn().mockResolvedValue(0),
           close: vi.fn().mockResolvedValue(undefined),
         },
+        deadlineWakeupScanner: {
+          claimDueWakeups: vi.fn().mockResolvedValue(0),
+          close: vi.fn().mockResolvedValue(undefined),
+        },
         reader,
         runStore,
       },
@@ -303,9 +555,14 @@ describe('coordinator runtime', () => {
 
     expect(consumerOptions).toMatchObject({
       queueName: QUEUE_NAME.workflowCoordinator,
-      redisUrl: 'redis://localhost:6379/0',
+      redisUrl: 'redis://unreachable.invalid:6379/0',
     });
     expect(consumerOptions?.traceRunner).toBeDefined();
+    await expect(
+      consumerOptions?.handler({ name: 'unsupported-delivery' } as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ name: 'InvalidQueueDeliveryError' });
     await expect(
       consumerOptions?.handler(
         {

@@ -1,18 +1,14 @@
-import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { promisify } from 'node:util';
 
 import {
-  canonicalOutboxPayloadChecksum,
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
-  createDueNodeWakeupScanner,
-  createFailureNotificationStore,
-  createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
+  migrateDatabase as migrateSchema,
   parseDatabaseConfig,
-  requestWorkflowRunCancellation,
+  parseMigrationConfig,
 } from '@pertexo/database/testing';
 import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
@@ -28,33 +24,16 @@ import {
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
 } from '@pertexo/node-catalog';
-import {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-} from '@pertexo/integrations/server';
-import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
-import {
-  composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
-  invocationKey,
-  parseCheckpoint,
-} from '@pertexo/workflow-engine';
-import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import type { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import { QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';
 
-import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
-import type { CoordinatorAdvanceEngine } from '../src/execution/coordinator-handler.js';
-import { createProviderFailureNotificationDelivery } from '../src/execution/failure-notification-delivery.js';
-import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
-import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
-import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
-import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { seedCoordinatorWorkflowFixtures } from './support/coordinator-workflow-fixtures.js';
 import { activateCompatibilityReleaseFixture } from './support/compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createRedisTestNamespace } from './support/redis-test-namespace.js';
 import { queryAsWorkspaceRole } from './support/workspace-query.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
@@ -77,7 +56,8 @@ const dispatcherUrl =
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 const databaseName = `pertexo_test_retained_core_${randomUUID().replaceAll('-', '')}`;
-const repositoryRoot = new URL('../../../', import.meta.url).pathname;
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const servicesNeedingRestore = new Set<'postgres' | 'redis'>();
 
 async function compose(...arguments_: readonly string[]): Promise<string> {
   const result = await execFileAsync('docker', ['compose', ...arguments_], {
@@ -89,17 +69,22 @@ async function compose(...arguments_: readonly string[]): Promise<string> {
 }
 
 async function stopService(service: 'postgres' | 'redis'): Promise<void> {
+  servicesNeedingRestore.add(service);
   await compose('stop', '--timeout', '10', service);
 }
 
 async function startService(service: 'postgres' | 'redis'): Promise<number> {
   const startedAt = performance.now();
   await compose('up', '-d', '--wait', service);
+  servicesNeedingRestore.delete(service);
   return performance.now() - startedAt;
 }
 
 async function restoreServices(): Promise<void> {
-  await compose('up', '-d', '--wait', 'postgres', 'redis');
+  const services = [...servicesNeedingRestore];
+  if (services.length === 0) return;
+  await compose('up', '-d', '--wait', ...services);
+  servicesNeedingRestore.clear();
 }
 
 function databaseUrl(base: string): string {
@@ -108,11 +93,12 @@ function databaseUrl(base: string): string {
   return url.toString();
 }
 
-const redisUrl = (() => {
-  const parsed = new URL(configuredRedisUrl);
-  parsed.pathname = '/12';
-  return parsed.toString();
-})();
+const redisNamespace = createRedisTestNamespace(
+  configuredRedisUrl,
+  12,
+  'coordinator-consumer',
+);
+const redisUrl = redisNamespace.redisUrl;
 
 const actorId = randomUUID();
 const workspaceId = randomUUID();
@@ -128,66 +114,65 @@ const forEachWorkflowId = randomUUID();
 const forEachWorkflowVersionId = randomUUID();
 const nestedParallelWorkflowId = randomUUID();
 const nestedParallelWorkflowVersionId = randomUUID();
+const waitWorkflowId = randomUUID();
+const waitWorkflowVersionId = randomUUID();
 const engineVersion = 'phase3-engine-v1';
-const ownerPool = new Pool({
-  connectionString: databaseUrl(migrationUrl),
-  max: 1,
-});
-ownerPool.on('error', () => undefined);
-const workerPool = new Pool({
-  connectionString: databaseUrl(workerUrl),
-  max: 2,
-});
-workerPool.on('error', () => undefined);
-const apiDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
-);
+let ownerPool!: Pool;
+let workerPool!: Pool;
+let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+let ownerPoolCreated = false;
+let workerPoolCreated = false;
+let apiDatabaseCreated = false;
+let databaseCreated = false;
+let redisNamespaceAcquired = false;
+let cleanupPromise: Promise<void> | undefined;
 
 async function createDatabase(): Promise<void> {
   const pool = new Pool({ connectionString: adminUrl, max: 1 });
+  let operationError: unknown;
   try {
     await pool.query(`create database "${databaseName}" owner pertexo_owner`);
+    databaseCreated = true;
     await pool.query(`revoke all on database "${databaseName}" from public`);
     await pool.query(
       `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
     );
-  } finally {
-    await pool.end();
+  } catch (error: unknown) {
+    operationError = error;
   }
+  await pool.end().catch((error: unknown) => {
+    operationError =
+      operationError === undefined
+        ? error
+        : new AggregateError(
+            [operationError, error],
+            'Coordinator database creation failed',
+          );
+  });
+  if (operationError !== undefined)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error('Coordinator database creation failed', {
+          cause: operationError,
+        });
 }
 
 async function migrateDatabase(): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      [
-        '--filter',
-        '@pertexo/database',
-        '--fail-if-no-match',
-        'exec',
-        'tsx',
-        'src/migrate.ts',
-      ],
-      {
-        cwd: new URL('../../../', import.meta.url).pathname,
-        env: {
-          ...process.env,
-          DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
-        },
-        stdio: 'inherit',
-      },
-    );
-    child.once('exit', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`retained core migration failed: ${String(code)}`));
-    });
-  });
+  await migrateSchema(
+    parseMigrationConfig({
+      ...process.env,
+      DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
+      NODE_ENV: 'test',
+    }),
+  );
 }
 
 async function dropDatabase(): Promise<void> {
+  if (!databaseCreated) return;
   const pool = new Pool({ connectionString: adminUrl, max: 1 });
   try {
     await dropDisconnectedDatabase(pool, databaseName);
+    databaseCreated = false;
   } finally {
     await pool.end();
   }
@@ -253,16 +238,12 @@ async function apiQuery<T extends Record<string, unknown>>(
     max: 1,
   });
   try {
-    await pool.query('begin');
-    await pool.query("select set_config('app.workspace_id', $1, true)", [
+    return await queryAsWorkspaceRole<T>(
+      pool,
       workspaceId,
-    ]);
-    const result = await pool.query<T>(statement, [...parameters]);
-    await pool.query('commit');
-    return result.rows;
-  } catch (error: unknown) {
-    await pool.query('rollback').catch(() => undefined);
-    throw error;
+      statement,
+      parameters,
+    );
   } finally {
     await pool.end();
   }
@@ -319,181 +300,255 @@ async function activateRelease(
 }
 
 async function setupFixture(): Promise<void> {
-  await createDatabase();
-  await migrateDatabase();
-  await activateRelease(CORE_REGISTRY_RELEASE_SUCCESSOR);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE);
-  await seedCoordinatorWorkflowFixtures(ownerQuery, {
-    actorId,
-    workspaceId,
-    retained: { workflowId, workflowVersionId },
-    condition: {
-      workflowId: conditionWorkflowId,
-      workflowVersionId: conditionWorkflowVersionId,
-    },
-    forEach: {
-      workflowId: forEachWorkflowId,
-      workflowVersionId: forEachWorkflowVersionId,
-    },
-    nestedParallel: {
-      workflowId: nestedParallelWorkflowId,
-      workflowVersionId: nestedParallelWorkflowVersionId,
-    },
-    parallel: {
-      workflowId: parallelWorkflowId,
-      workflowVersionId: parallelWorkflowVersionId,
-    },
-    switch: {
-      workflowId: switchWorkflowId,
-      workflowVersionId: switchWorkflowVersionId,
-    },
-  });
-  const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-    connection: redisConnection(),
-  });
   try {
-    await queue.obliterate({ force: true });
-  } finally {
-    await queue.close();
-  }
-  const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-    connection: redisConnection(),
-  });
-  try {
-    await attemptQueue.obliterate({ force: true });
-  } finally {
-    await attemptQueue.close();
-  }
-}
-
-async function cleanupFixture(): Promise<void> {
-  const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-    connection: redisConnection(),
-  });
-  try {
-    await queue.obliterate({ force: true });
-  } finally {
-    await queue.close();
-    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-      connection: redisConnection(),
+    await redisNamespace.acquire();
+    redisNamespaceAcquired = true;
+    await createDatabase();
+    await migrateDatabase();
+    ownerPool = new Pool({
+      connectionString: databaseUrl(migrationUrl),
+      max: 1,
     });
-    try {
-      await attemptQueue.obliterate({ force: true });
-    } finally {
-      await attemptQueue.close();
-    }
-    await apiDatabase.close();
-    await ownerPool.end();
-    await workerPool.end();
-    await dropDatabase();
+    ownerPoolCreated = true;
+    ownerPool.on('error', () => undefined);
+    workerPool = new Pool({
+      connectionString: databaseUrl(workerUrl),
+      max: 2,
+    });
+    workerPoolCreated = true;
+    workerPool.on('error', () => undefined);
+    apiDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
+    );
+    apiDatabaseCreated = true;
+
+    await activateRelease(CORE_REGISTRY_RELEASE_SUCCESSOR);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED);
+    await activateRelease(PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE);
+    await seedCoordinatorWorkflowFixtures(ownerQuery, {
+      actorId,
+      workspaceId,
+      retained: { workflowId, workflowVersionId },
+      condition: {
+        workflowId: conditionWorkflowId,
+        workflowVersionId: conditionWorkflowVersionId,
+      },
+      forEach: {
+        workflowId: forEachWorkflowId,
+        workflowVersionId: forEachWorkflowVersionId,
+      },
+      nestedParallel: {
+        workflowId: nestedParallelWorkflowId,
+        workflowVersionId: nestedParallelWorkflowVersionId,
+      },
+      parallel: {
+        workflowId: parallelWorkflowId,
+        workflowVersionId: parallelWorkflowVersionId,
+      },
+      switch: {
+        workflowId: switchWorkflowId,
+        workflowVersionId: switchWorkflowVersionId,
+      },
+      wait: {
+        workflowId: waitWorkflowId,
+        workflowVersionId: waitWorkflowVersionId,
+      },
+    });
+    await clearOwnedQueue(QUEUE_NAME.workflowCoordinator);
+    await clearOwnedQueue(QUEUE_NAME.nodeAttempts);
+  } catch (setupError: unknown) {
+    let cleanupError: unknown;
+    await cleanupFixture().catch((error: unknown) => {
+      cleanupError = error;
+    });
+    if (cleanupError === undefined) throw setupError;
+    throw new AggregateError(
+      [setupError, cleanupError],
+      'Coordinator fixture setup failed',
+    );
   }
 }
 
-export {
-  CORE_REGISTRY_RELEASE_SUCCESSOR,
-  JOB_NAME,
-  OutboxDispatcher,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
-  Pool,
-  QUEUE_NAME,
-  Queue,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  WorkerDrainState,
-  activateRelease,
+async function clearOwnedQueue(queueName: string): Promise<void> {
+  const queue = new Queue(queueName, { connection: redisConnection() });
+  let operationError: unknown;
+  await queue.obliterate({ force: true }).catch((error: unknown) => {
+    operationError = error;
+  });
+  await queue.close().catch((error: unknown) => {
+    operationError =
+      operationError === undefined
+        ? error
+        : new AggregateError(
+            [operationError, error],
+            `Coordinator ${queueName} cleanup failed`,
+          );
+  });
+  if (operationError !== undefined)
+    throw operationError instanceof Error
+      ? operationError
+      : new Error(`Coordinator ${queueName} cleanup failed`, {
+          cause: operationError,
+        });
+}
+
+function cleanupFixture(): Promise<void> {
+  cleanupPromise ??= (async () => {
+    const errors: unknown[] = [];
+    const attempt = async (
+      label: string,
+      operation: () => void | Promise<void>,
+    ): Promise<void> => {
+      await Promise.resolve()
+        .then(operation)
+        .catch((cause: unknown) => {
+          errors.push(
+            new Error(`Coordinator fixture cleanup failed: ${label}`, {
+              cause,
+            }),
+          );
+        });
+    };
+    if (redisNamespaceAcquired) {
+      await attempt('workflow coordinator queue', () =>
+        clearOwnedQueue(QUEUE_NAME.workflowCoordinator),
+      );
+      await attempt('node attempts queue', () =>
+        clearOwnedQueue(QUEUE_NAME.nodeAttempts),
+      );
+    }
+    if (apiDatabaseCreated) {
+      await attempt('API database', () => apiDatabase.close());
+      apiDatabaseCreated = false;
+    }
+    if (workerPoolCreated) {
+      await attempt('worker pool', () => workerPool.end());
+      workerPoolCreated = false;
+    }
+    if (ownerPoolCreated) {
+      await attempt('owner pool', () => ownerPool.end());
+      ownerPoolCreated = false;
+    }
+    if (redisNamespaceAcquired) {
+      await attempt('Redis namespace', () => redisNamespace.close());
+      redisNamespaceAcquired = false;
+    }
+    await attempt('disposable database', dropDatabase);
+    if (errors.length > 0)
+      throw new AggregateError(errors, 'Coordinator fixture cleanup failed');
+  })();
+  return cleanupPromise;
+}
+
+async function restoreServicesAndCleanupFixture(): Promise<void> {
+  const errors: unknown[] = [];
+  await restoreServices().catch((error: unknown) => errors.push(error));
+  await cleanupFixture().catch((error: unknown) => errors.push(error));
+  if (errors.length > 0)
+    throw new AggregateError(
+      errors,
+      'Coordinator service restoration or fixture cleanup failed',
+    );
+}
+
+export interface CoordinatorIntegrationFixture {
+  readonly actorId: string;
+  readonly adminUrl: string;
+  readonly activateRelease: typeof activateRelease;
+  readonly apiDatabase: ReturnType<typeof createWorkspaceDatabase>;
+  readonly apiQuery: typeof apiQuery;
+  readonly apiUrl: string;
+  readonly conditionWorkflowId: string;
+  readonly conditionWorkflowVersionId: string;
+  readonly databaseUrl: typeof databaseUrl;
+  readonly dispatcherUrl: string;
+  readonly enabled: boolean;
+  readonly engineVersion: string;
+  readonly forEachWorkflowId: string;
+  readonly forEachWorkflowVersionId: string;
+  readonly nestedParallelWorkflowId: string;
+  readonly nestedParallelWorkflowVersionId: string;
+  readonly ownerPool: Pool;
+  readonly ownerQuery: typeof ownerQuery;
+  readonly parallelWorkflowId: string;
+  readonly parallelWorkflowVersionId: string;
+  readonly redisConnection: typeof redisConnection;
+  readonly redisUrl: string;
+  readonly restoreServicesAndClose: typeof restoreServicesAndCleanupFixture;
+  readonly setup: typeof setupFixture;
+  readonly startService: typeof startService;
+  readonly stopService: typeof stopService;
+  readonly switchWorkflowId: string;
+  readonly switchWorkflowVersionId: string;
+  readonly waitFor: typeof waitFor;
+  readonly waitWorkflowId: string;
+  readonly waitWorkflowVersionId: string;
+  readonly workerPool: Pool;
+  readonly workerQuery: typeof workerQuery;
+  readonly workerUrl: string;
+  readonly workflowId: string;
+  readonly workflowVersionId: string;
+  readonly workspaceId: string;
+}
+
+export const coordinatorFixture: CoordinatorIntegrationFixture = Object.freeze({
   actorId,
   adminUrl,
-  apiDatabase,
+  activateRelease,
+  get apiDatabase() {
+    if (!apiDatabaseCreated)
+      throw new Error('Coordinator API database is not initialized');
+    return apiDatabase;
+  },
   apiQuery,
   apiUrl,
-  canonicalOutboxPayloadChecksum,
-  cleanupFixture,
-  compose,
-  composeExecutableCompatibilityRelease,
   conditionWorkflowId,
   conditionWorkflowVersionId,
-  configuredRedisUrl,
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
-  createCoordinatorRuntime,
-  createDatabase,
-  createDispatchConsumerCapabilityRegistry,
-  createDueNodeWakeupScanner,
-  createFailureNotificationStore,
-  createHash,
-  createNodeAttemptRuntime,
-  createOutboxDispatcherDatabase,
-  createPlatformNodeRegistryForRelease,
-  createPreviewMaintenanceRuntime,
-  createProviderFailureNotificationDelivery,
-  createQueueProducer,
-  createWorkspaceDatabase,
-  databaseName,
   databaseUrl,
-  describeExecutableCompatibilityRelease,
   dispatcherUrl,
-  dropDatabase,
-  dropDisconnectedDatabase,
   enabled,
   engineVersion,
-  execFile,
-  execFileAsync,
   forEachWorkflowId,
   forEachWorkflowVersionId,
   nestedParallelWorkflowId,
   nestedParallelWorkflowVersionId,
-  invocationKey,
-  migrateDatabase,
-  migrationUrl,
-  ownerPool,
+  get ownerPool() {
+    if (!ownerPoolCreated)
+      throw new Error('Coordinator owner pool is not initialized');
+    return ownerPool;
+  },
   ownerQuery,
   parallelWorkflowId,
   parallelWorkflowVersionId,
-  parseCheckpoint,
-  parseDatabaseConfig,
-  performance,
-  promisify,
-  randomUUID,
   redisConnection,
   redisUrl,
-  repositoryRoot,
-  requestWorkflowRunCancellation,
-  restoreServices,
-  setupFixture,
-  spawn,
+  restoreServicesAndClose: restoreServicesAndCleanupFixture,
+  setup: setupFixture,
   startService,
   stopService,
   switchWorkflowId,
   switchWorkflowVersionId,
   waitFor,
-  workerPool,
+  waitWorkflowId,
+  waitWorkflowVersionId,
+  get workerPool() {
+    if (!workerPoolCreated)
+      throw new Error('Coordinator worker pool is not initialized');
+    return workerPool;
+  },
   workerQuery,
   workerUrl,
   workflowId,
   workflowVersionId,
   workspaceId,
-};
-
-export type { ChildProcess, CoordinatorAdvanceEngine };
+});

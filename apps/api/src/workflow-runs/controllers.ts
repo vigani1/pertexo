@@ -14,7 +14,6 @@ import {
 import {
   lastRunEventIdHeaderSchema,
   workflowRunCancelRequestSchema,
-  workflowRunEventSchema,
   workflowRunParamsSchema,
   workflowRunReplayRequestSchema,
   workflowRunStartParamsSchema,
@@ -55,12 +54,8 @@ import {
   WorkflowRunReadGuard,
   WorkflowRunStartGuard,
 } from './guards.js';
-import type { WorkflowRunEventFrame } from './ports.js';
-import {
-  NO_STREAM_FAILURE,
-  preserveFailureDuringStreamCleanup,
-  type StreamFailure,
-} from './stream-cleanup.js';
+import { streamCleanupCompletion } from './stream-cleanup.js';
+import { writeSseFrames } from './sse-transport.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
@@ -193,6 +188,7 @@ export class WorkflowRunsController {
     };
     request.raw?.once('close', onClose);
     const releaseDrainRegistration = this.drainState.registerStream(controller);
+    let releaseAfterCleanup: Promise<void> | undefined;
     try {
       const route = workflowRunParamsSchema.parse(params);
       const requestedLastEventId = lastEventId(request);
@@ -219,6 +215,7 @@ export class WorkflowRunsController {
       );
     } catch (error: unknown) {
       controller.abort();
+      releaseAfterCleanup = streamCleanupCompletion(error);
       if (reply.raw.headersSent) {
         reply.raw.destroy();
         return;
@@ -226,7 +223,8 @@ export class WorkflowRunsController {
       throw error;
     } finally {
       request.raw?.off('close', onClose);
-      releaseDrainRegistration();
+      if (releaseAfterCleanup === undefined) releaseDrainRegistration();
+      else void releaseAfterCleanup.then(releaseDrainRegistration);
     }
   }
 
@@ -263,69 +261,6 @@ function guardAuthorization(
   return optionalAuthorizedWorkspace(request);
 }
 
-interface SseDestination {
-  readonly destroyed: boolean;
-  write(chunk: string): boolean;
-  end(): void;
-  destroy(error?: Error): void;
-  once(
-    event: 'close' | 'drain' | 'error',
-    listener: (...args: unknown[]) => void,
-  ): unknown;
-  off(
-    event: 'close' | 'drain' | 'error',
-    listener: (...args: unknown[]) => void,
-  ): unknown;
-}
-
-export async function writeSseFrames(
-  frames: AsyncIterable<WorkflowRunEventFrame>,
-  destination: SseDestination,
-  controller: AbortController,
-  visibilityMetrics: SseVisibilityMetrics,
-  fallbackPath: SseVisibilityPath,
-): Promise<void> {
-  const iterator = frames[Symbol.asyncIterator]();
-  let lastRecordedSequence: number | undefined;
-  let primary: StreamFailure = NO_STREAM_FAILURE;
-  try {
-    while (!controller.signal.aborted && !destination.destroyed) {
-      const next = await iterator.next();
-      if (next.done === true) break;
-      const event = workflowRunEventSchema.parse(JSON.parse(next.value.data));
-      const accepted = destination.write(
-        encodeSseFrame(String(next.value.id), next.value.event, event),
-      );
-      if (!accepted) {
-        const drained = await waitForDrain(destination, controller.signal);
-        if (!drained) break;
-      }
-      if (lastRecordedSequence !== event.sequence) {
-        lastRecordedSequence = event.sequence;
-        visibilityMetrics.recordFirstEligibleFrame({
-          createdAt: new Date(event.createdAt),
-          path: next.value.visibilityPath ?? fallbackPath,
-        });
-      }
-    }
-  } catch (error) {
-    primary = { error, failed: true };
-    throw error;
-  } finally {
-    await preserveFailureDuringStreamCleanup(primary, [
-      () => {
-        controller.abort();
-      },
-      async () => {
-        await iterator.return?.();
-      },
-      () => {
-        if (!destination.destroyed) destination.end();
-      },
-    ]);
-  }
-}
-
 function prepareSseResponse(reply: FastifyReply): void {
   reply.raw.statusCode = 200;
   reply.raw.setHeader('Content-Type', 'text/event-stream');
@@ -337,49 +272,6 @@ function prepareSseResponse(reply: FastifyReply): void {
   reply.raw.setHeader('X-Accel-Buffering', 'no');
   reply.hijack();
   reply.raw.flushHeaders();
-}
-
-function encodeSseFrame(id: string, event: string, data: unknown): string {
-  return `id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-function waitForDrain(
-  destination: SseDestination,
-  signal: AbortSignal,
-): Promise<boolean> {
-  if (signal.aborted || destination.destroyed) return Promise.resolve(false);
-  return new Promise<boolean>((resolve, reject) => {
-    const cleanup = (): void => {
-      destination.off('drain', onDrain);
-      destination.off('close', onClose);
-      destination.off('error', onError);
-      signal.removeEventListener('abort', onAbort);
-    };
-    const finish = (value: boolean): void => {
-      cleanup();
-      resolve(value);
-    };
-    const onDrain = (): void => {
-      finish(true);
-    };
-    const onClose = (): void => {
-      finish(false);
-    };
-    const onAbort = (): void => {
-      finish(false);
-    };
-    const onError = (...args: unknown[]): void => {
-      cleanup();
-      const error = args[0];
-      reject(
-        error instanceof Error ? error : new Error('SSE transport failed'),
-      );
-    };
-    destination.once('drain', onDrain);
-    destination.once('close', onClose);
-    destination.once('error', onError);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 function routeLastEventPath(lastEventId: number): SseVisibilityPath {

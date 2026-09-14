@@ -38,6 +38,7 @@ import {
   previewAttempts,
 } from './schema/execution.js';
 import {
+  artifactLinks,
   idempotencyRecords,
   workspaceCreationIdempotencyRecords,
 } from './schema/execution-support.js';
@@ -116,6 +117,7 @@ export {
 } from './schema/compatibility.js';
 
 export const databaseSchema = {
+  artifactLinks,
   artifacts,
   workspaceArtifactCapacity,
   auditEvents,

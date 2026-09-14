@@ -16,7 +16,7 @@ import {
 } from '@pertexo/nodes-core';
 import { JOB_NAME, QUEUE_NAME, createQueueProducer } from '@pertexo/queue';
 import { Queue } from 'bullmq';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
@@ -71,7 +71,13 @@ async function createValidateRuntime() {
   const registry = createPlatformNodeRegistryForRelease(
     platformServingRegistryRelease(releaseCohort),
   );
-  return createNodeAttemptRuntime(
+  const resolveConnection = vi.fn(() =>
+    Promise.reject(new Error('Validate preview must not resolve a connection')),
+  );
+  const writeArtifact = vi.fn(() =>
+    Promise.reject(new Error('Validate preview must not write an artifact')),
+  );
+  const runtime = await createNodeAttemptRuntime(
     {
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
@@ -92,20 +98,15 @@ async function createValidateRuntime() {
     {
       runtimeCapabilities: {
         connections: () => ({
-          resolve: () =>
-            Promise.reject(
-              new Error('Validate preview must not resolve a connection'),
-            ),
+          resolve: resolveConnection,
         }),
         artifacts: () => ({
-          write: () =>
-            Promise.reject(
-              new Error('Validate preview must not write an artifact'),
-            ),
+          write: writeArtifact,
         }),
       },
     },
   );
+  return Object.freeze({ resolveConnection, runtime, writeArtifact });
 }
 
 describeIntegration('core.validate persisted preview execution', () => {
@@ -150,7 +151,8 @@ describeIntegration('core.validate persisted preview execution', () => {
       scope: 'validate-preview',
     });
     expect(resolvedInput.secret).toBe(runInput.secret);
-    const runtime = await createValidateRuntime();
+    const validateRuntime = await createValidateRuntime();
+    const { runtime } = validateRuntime;
     try {
       const mismatchState = await withPublishedPreviewDelivery(
         runtime,
@@ -163,10 +165,25 @@ describeIntegration('core.validate persisted preview execution', () => {
             schemaVersion: 1,
             value: expected,
           });
+          if (persisted.kind !== 'inline')
+            throw new Error('Validate mismatch output is not inline');
+          expect(persisted.value).toMatchObject({
+            issues: [
+              {
+                code: 'min_length',
+                path: '$.profile.email',
+                ruleId: 'email',
+              },
+              { code: 'enum', path: '$.profile.role', ruleId: 'role' },
+            ],
+            valid: false,
+          });
           expect(JSON.stringify(persisted)).not.toContain(runInput.secret);
           await expect(providerEffectCount('validate-preview')).resolves.toBe(
             0,
           );
+          expect(validateRuntime.resolveConnection).not.toHaveBeenCalled();
+          expect(validateRuntime.writeArtifact).not.toHaveBeenCalled();
           const completedJob = await waitFor(
             () => queue.getJob(job.jobId),
             (value) => value !== undefined,
@@ -186,7 +203,8 @@ describeIntegration('core.validate persisted preview execution', () => {
       // The next process instance receives the exact same transport envelope;
       // durable claim state must classify it as a duplicate without changing
       // the result or calling a capability factory.
-      const restartedRuntime = await createValidateRuntime();
+      const restarted = await createValidateRuntime();
+      const restartedRuntime = restarted.runtime;
       try {
         await withPublishedPreviewDelivery(
           restartedRuntime,
@@ -238,13 +256,18 @@ describeIntegration('core.validate persisted preview execution', () => {
               schemaVersion: 1,
               value: matchingExpected,
             });
+            if (persisted.kind !== 'inline')
+              throw new Error('Validate matching output is not inline');
             expect(matchingExpected.valid).toBe(true);
+            expect(persisted.value).toMatchObject({ issues: [], valid: true });
             expect(JSON.stringify(persisted)).not.toContain(
               matchingInput.secret,
             );
             return Promise.resolve();
           },
         );
+        expect(restarted.resolveConnection).not.toHaveBeenCalled();
+        expect(restarted.writeArtifact).not.toHaveBeenCalled();
       } finally {
         await restartedRuntime.close();
       }

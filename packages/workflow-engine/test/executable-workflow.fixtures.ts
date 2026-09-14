@@ -6,176 +6,137 @@ import {
   type PolicyReference,
   type RegistryRelease,
 } from '@pertexo/node-sdk';
-import { NodeExecutionAbortedError } from '@pertexo/node-sdk/server';
-import * as productionEngine from '../src/index.js';
-import * as testingEngine from '../src/testing.js';
-import {
-  advanceWorkflow,
-  buildWorkflowExecutableV2,
-  composeExecutableCompatibilityRelease,
-  computeWorkflowExecutableChecksumV2,
-  createExecutableCompatibilityReleaseSupport,
-  createExecutableCompatibilityReleaseHistory,
-  createCheckpoint,
-  createCheckpointV2,
-  describeExecutableCompatibilityRelease,
-  executeNodeAttempt,
-  invocationKey,
-  parseWorkflowExecutableV2,
-  resolveSingleNodePreviewInput,
-  verifyWorkflowExecutableV2,
-  WORKFLOW_EXECUTABLE_LIMITS_V2,
-} from '../src/index.js';
-import { providerIdempotencyKey } from '../src/testing.js';
-import { createHash } from 'node:crypto';
-
-export {
-  createRegistryRelease,
-  NodeExecutionAbortedError,
-  productionEngine,
-  testingEngine,
-  advanceWorkflow,
-  buildWorkflowExecutableV2,
-  composeExecutableCompatibilityRelease,
-  computeWorkflowExecutableChecksumV2,
-  createExecutableCompatibilityReleaseSupport,
-  createExecutableCompatibilityReleaseHistory,
-  createCheckpoint,
-  createCheckpointV2,
-  describeExecutableCompatibilityRelease,
-  executeNodeAttempt,
-  invocationKey,
-  parseWorkflowExecutableV2,
-  providerIdempotencyKey,
-  resolveSingleNodePreviewInput,
-  verifyWorkflowExecutableV2,
-  WORKFLOW_EXECUTABLE_LIMITS_V2,
-  createHash,
-};
-export type {
-  ExecutorLifecycle,
-  NodeManifest,
-  NodeManifestV2,
-  PolicyReference,
-  RegistryRelease,
-};
 
 export const boundedPolicy = { key: 'node.json.bounded', version: 1 } as const;
 export const jsonataPolicy = { key: 'jsonata.restricted', version: 1 } as const;
 export const schema = { type: 'object', additionalProperties: true } as const;
 
+type FixtureDefinitionKey =
+  | 'core.condition'
+  | 'core.foreach'
+  | 'core.manual'
+  | 'core.merge'
+  | 'core.parallel'
+  | 'core.schedule'
+  | 'core.set'
+  | 'core.switch'
+  | 'core.terminate'
+  | 'core.webhook'
+  | 'test.unrelated';
+
+const branchPorts = Array.from(
+  { length: 16 },
+  (_, index) => `branch-${String(index + 1).padStart(2, '0')}`,
+);
+const switchPorts = [
+  ...Array.from(
+    { length: 16 },
+    (_, index) => `case-${String(index + 1).padStart(2, '0')}`,
+  ),
+  'default',
+];
+const fixtureDefinitions: Readonly<
+  Record<
+    FixtureDefinitionKey,
+    Readonly<{
+      capabilities: readonly string[];
+      family: NodeManifest['family'];
+      inputs: readonly string[];
+      outputs: readonly string[];
+    }>
+  >
+> = {
+  'core.condition': {
+    capabilities: [],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: ['true', 'false'],
+  },
+  'core.foreach': {
+    capabilities: [],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: ['out'],
+  },
+  'core.manual': {
+    capabilities: [],
+    family: 'trigger',
+    inputs: [],
+    outputs: ['out'],
+  },
+  'core.merge': {
+    capabilities: [],
+    family: 'logic',
+    inputs: branchPorts,
+    outputs: ['out'],
+  },
+  'core.parallel': {
+    capabilities: [],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: branchPorts,
+  },
+  'core.schedule': {
+    capabilities: [],
+    family: 'trigger',
+    inputs: [],
+    outputs: ['out'],
+  },
+  'core.set': {
+    capabilities: [],
+    family: 'transform',
+    inputs: ['in'],
+    outputs: ['out'],
+  },
+  'core.switch': {
+    capabilities: [],
+    family: 'logic',
+    inputs: ['in'],
+    outputs: switchPorts,
+  },
+  'core.terminate': {
+    capabilities: ['terminates_run'],
+    family: 'output',
+    inputs: ['in'],
+    outputs: [],
+  },
+  'core.webhook': {
+    capabilities: [],
+    family: 'trigger',
+    inputs: [],
+    outputs: ['out'],
+  },
+  'test.unrelated': {
+    capabilities: [],
+    family: 'transform',
+    inputs: ['in'],
+    outputs: ['out'],
+  },
+};
+
 export function manifest(
-  key:
-    | 'core.condition'
-    | 'core.foreach'
-    | 'core.manual'
-    | 'core.merge'
-    | 'core.parallel'
-    | 'core.schedule'
-    | 'core.set'
-    | 'core.switch'
-    | 'core.terminate'
-    | 'core.webhook'
-    | 'test.unrelated',
+  key: FixtureDefinitionKey,
   policies: readonly PolicyReference[] = [boundedPolicy],
   version: 1 | 2 | 3 = 1,
 ): NodeManifest | NodeManifestV2 {
+  const fixture = fixtureDefinitions[key];
   return {
     schemaVersion: version === 1 ? 1 : 2,
     definition: { key, version },
-    family:
-      key === 'core.manual' || key === 'core.schedule' || key === 'core.webhook'
-        ? 'trigger'
-        : key === 'core.terminate'
-          ? 'output'
-          : key === 'core.condition' ||
-              key === 'core.switch' ||
-              key === 'core.foreach' ||
-              key === 'core.parallel' ||
-              key === 'core.merge'
-            ? 'logic'
-            : 'transform',
+    family: fixture.family,
     configVersion: version,
     configSchema: schema,
     inputSchema: schema,
     outputSchema: schema,
     ports: {
-      inputs:
-        key === 'core.manual' ||
-        key === 'core.schedule' ||
-        key === 'core.webhook'
-          ? []
-          : key === 'core.merge'
-            ? [
-                'branch-01',
-                'branch-02',
-                'branch-03',
-                'branch-04',
-                'branch-05',
-                'branch-06',
-                'branch-07',
-                'branch-08',
-                'branch-09',
-                'branch-10',
-                'branch-11',
-                'branch-12',
-                'branch-13',
-                'branch-14',
-                'branch-15',
-                'branch-16',
-              ]
-            : ['in'],
-      outputs:
-        key === 'core.terminate'
-          ? []
-          : key === 'core.condition'
-            ? ['true', 'false']
-            : key === 'core.switch'
-              ? [
-                  'case-01',
-                  'case-02',
-                  'case-03',
-                  'case-04',
-                  'case-05',
-                  'case-06',
-                  'case-07',
-                  'case-08',
-                  'case-09',
-                  'case-10',
-                  'case-11',
-                  'case-12',
-                  'case-13',
-                  'case-14',
-                  'case-15',
-                  'case-16',
-                  'default',
-                ]
-              : key === 'core.parallel'
-                ? [
-                    'branch-01',
-                    'branch-02',
-                    'branch-03',
-                    'branch-04',
-                    'branch-05',
-                    'branch-06',
-                    'branch-07',
-                    'branch-08',
-                    'branch-09',
-                    'branch-10',
-                    'branch-11',
-                    'branch-12',
-                    'branch-13',
-                    'branch-14',
-                    'branch-15',
-                    'branch-16',
-                  ]
-                : ['out'],
+      inputs: fixture.inputs,
+      outputs: fixture.outputs,
     },
     credentialRequirements: [],
     connectionRequirements: [],
     retryClass: 'safe',
     resourceClass: 'cpu',
-    capabilities: key === 'core.terminate' ? ['terminates_run'] : [],
+    capabilities: fixture.capabilities,
     lifecycle: 'active',
     executor: { key, version },
     executorAbi: 1,

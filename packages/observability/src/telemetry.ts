@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import type { Tracer, TracerProvider } from '@opentelemetry/api';
@@ -25,6 +27,9 @@ import {
   sanitizeOutgoingHttpRequest,
   sanitizeUndiciRequest,
 } from './telemetry-sanitization.js';
+
+export const METRIC_EXPORT_INTERVAL_MILLISECONDS = 60_000;
+export const METRIC_EXPORT_TIMEOUT_MILLISECONDS = 30_000;
 
 function errorSanitizingTracerProvider(
   provider: TracerProvider,
@@ -59,11 +64,13 @@ class ErrorSanitizingPgInstrumentation extends PgInstrumentation {
 export interface TelemetryLifecycle {
   readonly enabled: boolean;
   readonly started: boolean;
+  flush?(): Promise<void>;
   shutdown(): Promise<void>;
   start(): void;
 }
 
 export interface TelemetrySdk {
+  forceFlush?(): Promise<void>;
   shutdown(): Promise<void>;
   start(): void;
 }
@@ -99,36 +106,50 @@ function signalEndpoint(baseEndpoint: string, signalPath: string): string {
   return base.toString();
 }
 
-export function createOpenTelemetrySdk(
-  config: ObservabilityConfig & { readonly otlpHttpEndpoint: string },
-): TelemetrySdk {
-  const headers = { ...config.otlpHeaders };
-  const resource = defaultResource().merge(
+export function createTelemetryResource(
+  config: ObservabilityConfig,
+  serviceInstanceId: string,
+) {
+  return defaultResource().merge(
     resourceFromAttributes({
       'deployment.environment.name': config.environment,
+      'service.instance.id': serviceInstanceId,
       'service.name': config.serviceName,
       'service.version': config.serviceVersion,
     }),
   );
+}
 
-  return new NodeSDK({
+export function createOpenTelemetrySdk(
+  config: ObservabilityConfig & { readonly otlpHttpEndpoint: string },
+): TelemetrySdk {
+  const headers = { ...config.otlpHeaders };
+  const resource = createTelemetryResource(config, randomUUID());
+  const metricReader = new PeriodicExportingMetricReader({
+    exporter: new OTLPMetricExporter({
+      headers,
+      url: signalEndpoint(config.otlpHttpEndpoint, 'v1/metrics'),
+    }),
+    exportIntervalMillis: METRIC_EXPORT_INTERVAL_MILLISECONDS,
+    exportTimeoutMillis: METRIC_EXPORT_TIMEOUT_MILLISECONDS,
+  });
+  const sdk = new NodeSDK({
     instrumentations: createNodeInstrumentations(),
-    metricReaders: [
-      new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({
-          headers,
-          url: signalEndpoint(config.otlpHttpEndpoint, 'v1/metrics'),
-        }),
-        exportIntervalMillis: 60_000,
-        exportTimeoutMillis: 30_000,
-      }),
-    ],
+    metricReaders: [metricReader],
     resource,
     traceExporter: new OTLPTraceExporter({
       headers,
       url: signalEndpoint(config.otlpHttpEndpoint, 'v1/traces'),
     }),
   });
+
+  return {
+    forceFlush: () => metricReader.forceFlush(),
+    shutdown: () => sdk.shutdown(),
+    start: () => {
+      sdk.start();
+    },
+  };
 }
 
 class DisabledTelemetryLifecycle implements TelemetryLifecycle {
@@ -146,13 +167,21 @@ class DisabledTelemetryLifecycle implements TelemetryLifecycle {
 
 class EnabledTelemetryLifecycle implements TelemetryLifecycle {
   public readonly enabled = true;
-  private state: 'created' | 'started' | 'stopped' = 'created';
+  private state: 'created' | 'start_failed' | 'started' | 'stopped' = 'created';
+  private startFailure: unknown;
   private shutdownResult: Promise<void> | undefined;
 
   public constructor(private readonly sdk: TelemetrySdk) {}
 
   public get started(): boolean {
     return this.state === 'started';
+  }
+
+  public flush(): Promise<void> {
+    if (this.state !== 'started') {
+      throw new Error('Telemetry can only flush while started');
+    }
+    return this.sdk.forceFlush?.() ?? Promise.resolve();
   }
 
   public start(): void {
@@ -164,8 +193,18 @@ class EnabledTelemetryLifecycle implements TelemetryLifecycle {
       throw new Error('Telemetry cannot be restarted after shutdown');
     }
 
-    this.sdk.start();
-    this.state = 'started';
+    if (this.state === 'start_failed') {
+      throw this.startFailure;
+    }
+
+    try {
+      this.sdk.start();
+      this.state = 'started';
+    } catch (error: unknown) {
+      this.startFailure = error;
+      this.state = 'start_failed';
+      throw error;
+    }
   }
 
   public shutdown(): Promise<void> {
@@ -173,14 +212,25 @@ class EnabledTelemetryLifecycle implements TelemetryLifecycle {
       return this.shutdownResult;
     }
 
-    if (this.state === 'created') {
+    const state = this.state;
+    if (state === 'created') {
       this.state = 'stopped';
       this.shutdownResult = Promise.resolve();
       return this.shutdownResult;
     }
 
     this.state = 'stopped';
-    this.shutdownResult = this.sdk.shutdown();
+    let resolveShutdown!: () => void;
+    let rejectShutdown!: (reason: unknown) => void;
+    this.shutdownResult = new Promise<void>((resolve, reject) => {
+      resolveShutdown = resolve;
+      rejectShutdown = reject;
+    });
+    try {
+      this.sdk.shutdown().then(resolveShutdown, rejectShutdown);
+    } catch (error: unknown) {
+      rejectShutdown(error);
+    }
     return this.shutdownResult;
   }
 }

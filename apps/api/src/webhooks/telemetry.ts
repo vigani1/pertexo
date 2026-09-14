@@ -1,4 +1,10 @@
-import { context, metrics, SpanStatusCode, trace } from '@opentelemetry/api';
+import {
+  context,
+  metrics,
+  SpanStatusCode,
+  trace,
+  type Span,
+} from '@opentelemetry/api';
 
 const TRACEPARENT = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u;
 
@@ -20,6 +26,14 @@ export interface WebhookIngressTelemetry {
 }
 
 export function createWebhookIngressTelemetry(): WebhookIngressTelemetry {
+  try {
+    return createConfiguredWebhookIngressTelemetry();
+  } catch {
+    return NOOP_WEBHOOK_INGRESS_TELEMETRY;
+  }
+}
+
+function createConfiguredWebhookIngressTelemetry(): WebhookIngressTelemetry {
   const meter = metrics.getMeter('@pertexo/api.webhooks', '0.0.0');
   const delivery = meter.createCounter('pertexo.webhook.delivery.count', {
     description: 'Webhook deliveries by bounded outcome',
@@ -49,31 +63,75 @@ export function createWebhookIngressTelemetry(): WebhookIngressTelemetry {
     },
     trace: <T>(traceparent: string | undefined, work: () => Promise<T>) => {
       const match = traceparent?.match(TRACEPARENT);
-      const parent =
+      const candidate =
         match === undefined || match === null
-          ? context.active()
-          : trace.setSpanContext(context.active(), {
+          ? undefined
+          : {
               traceId: match[1] ?? '',
               spanId: match[2] ?? '',
               traceFlags: Number.parseInt(match[3] ?? '00', 16),
               isRemote: true,
+            };
+      const parent =
+        candidate === undefined || !trace.isSpanContextValid(candidate)
+          ? context.active()
+          : trace.setSpanContext(context.active(), candidate);
+      let workPromise: Promise<T> | undefined;
+      let owningSpan: Span | undefined;
+      const runOnce = (span?: Span): Promise<T> => {
+        if (workPromise === undefined) {
+          owningSpan = span;
+          workPromise = Promise.resolve()
+            .then(work)
+            .catch((error: unknown) => {
+              safeSpanOperation(() => {
+                span?.setStatus({ code: SpanStatusCode.ERROR });
+              });
+              throw error;
+            })
+            .finally(() => {
+              safeSpanOperation(() => {
+                span?.end();
+              });
             });
-      return tracer.startActiveSpan(
-        'webhook.ingress',
-        {},
-        parent,
-        async (span) => {
-          try {
-            return await work();
-          } catch (error: unknown) {
-            span.setStatus({ code: SpanStatusCode.ERROR });
-            throw error;
-          } finally {
+        } else if (span !== undefined && span !== owningSpan) {
+          safeSpanOperation(() => {
             span.end();
-          }
-        },
-      );
+          });
+        }
+        return workPromise;
+      };
+      let tracePromise: Promise<T> | undefined;
+      try {
+        tracePromise = tracer.startActiveSpan(
+          'webhook.ingress',
+          {},
+          parent,
+          (span) => runOnce(span),
+        );
+      } catch {
+        return runOnce();
+      }
+      void Promise.resolve(tracePromise).catch(() => undefined);
+      return workPromise ?? runOnce();
     },
   };
   return Object.freeze(telemetry);
+}
+
+const NOOP_WEBHOOK_INGRESS_TELEMETRY: WebhookIngressTelemetry = Object.freeze({
+  delivery: () => undefined,
+  deduplication: () => undefined,
+  health: () => undefined,
+  traceparent: () => undefined,
+  trace: <T>(_traceparent: string | undefined, work: () => Promise<T>) =>
+    work(),
+});
+
+function safeSpanOperation(operation: () => void): void {
+  try {
+    operation();
+  } catch {
+    // Diagnostics cannot change webhook acceptance truth.
+  }
 }

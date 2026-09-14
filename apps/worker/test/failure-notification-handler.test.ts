@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { FailureNotificationStore } from '@pertexo/database/testing';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 
 import { createFailureNotificationHandler } from '../src/execution/failure-notification-handler.js';
 
@@ -88,12 +89,30 @@ describe('failure notification handler', () => {
     const queueContext = { signal: new AbortController().signal };
     await handler.handle(delivery, queueContext);
 
-    expect(deliver).toHaveBeenCalledWith(
-      expect.objectContaining({ context, destinationConfigVersion: 2 }),
-    );
-    expect(repository.claimDelivery).toHaveBeenCalledWith(
-      expect.objectContaining({ signal: queueContext.signal }),
-    );
+    expect(deliver).toHaveBeenCalledWith({
+      context,
+      workspaceId: delivery.data.workspaceId,
+      intentId: delivery.data.notificationIntentId,
+      attemptNumber: 1,
+      destinationId: readyClaim().destinationId,
+      destinationConfigVersion: 2,
+      idempotencyKey: readyClaim().idempotencyKey,
+      sideEffectClass: 'idempotent_with_key',
+      connectionSecretVersionId: readyClaim().connectionSecretVersionId,
+      deliveryUnresolved: false,
+      signal: expect.any(AbortSignal),
+    });
+    expect(repository.claimDelivery).toHaveBeenCalledWith({
+      workspaceId: delivery.data.workspaceId,
+      intentId: delivery.data.notificationIntentId,
+      delivery: {
+        outboxEventId: delivery.data.outboxEventId,
+        payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+      },
+      recoverySeconds: 2,
+      maxAttempts: 3,
+      signal: queueContext.signal,
+    });
     expect(repository.completeDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         result: expect.objectContaining({ kind: 'delivered' }),
@@ -101,6 +120,28 @@ describe('failure notification handler', () => {
       }),
     );
   });
+
+  it.each(['busy', 'terminal'] as const)(
+    'makes a %s claim inert',
+    async (kind) => {
+      const repository = store();
+      vi.mocked(repository.claimDelivery).mockResolvedValue({ kind });
+      const deliver = vi.fn();
+      const handler = createFailureNotificationHandler({
+        store: repository,
+        delivery: { deliver },
+        timeoutMillis: 100,
+        maxAttempts: 3,
+        retryDelaySeconds: 1,
+      });
+
+      await handler.handle(delivery, {
+        signal: new AbortController().signal,
+      });
+      expect(deliver).not.toHaveBeenCalled();
+      expect(repository.completeDelivery).not.toHaveBeenCalled();
+    },
+  );
 
   it('makes duplicate terminal delivery inert', async () => {
     const repository = store('terminal');
@@ -149,11 +190,146 @@ describe('failure notification handler', () => {
     expect(
       vi.mocked(repository.claimDelivery).mock.calls[0]?.[0].signal?.aborted,
     ).toBe(true);
-    releaseClaim?.();
     await pending;
 
     expect(deliver).not.toHaveBeenCalled();
     expect(repository.completeDelivery).not.toHaveBeenCalled();
+    expect(handler.pendingOperations()).toHaveLength(1);
+    releaseClaim?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(handler.pendingOperations()).toHaveLength(0);
+    expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it('does not claim an already-aborted queue delivery', async () => {
+    const repository = store();
+    const controller = new AbortController();
+    controller.abort(new Error('already stopping'));
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: { deliver: vi.fn() },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await expect(
+      handler.handle(delivery, { signal: controller.signal }),
+    ).resolves.toBeUndefined();
+    expect(repository.claimDelivery).not.toHaveBeenCalled();
+  });
+
+  it('preserves a claim persistence rejection', async () => {
+    const repository = store();
+    const rejection = { code: 'claim-unavailable' };
+    vi.mocked(repository.claimDelivery).mockRejectedValue(rejection);
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: { deliver: vi.fn() },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await expect(
+      handler.handle(delivery, { signal: new AbortController().signal }),
+    ).rejects.toBe(rejection);
+    expect(repository.completeDelivery).not.toHaveBeenCalled();
+  });
+
+  it('maps a synchronous provider failure to a conservative retry', async () => {
+    const repository = store();
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: {
+        deliver: vi.fn(() => {
+          throw new Error('synchronous provider failure');
+        }),
+      },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await handler.handle(delivery, {
+      signal: new AbortController().signal,
+    });
+
+    expect(repository.completeDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: {
+          schemaVersion: 1,
+          kind: 'retry',
+          safeErrorCode: 'delivery.provider_failure',
+          possiblyDispatched: true,
+        },
+      }),
+    );
+  });
+
+  it('does not write completion when queue cancellation follows provider settlement', async () => {
+    const repository = store();
+    const controller = new AbortController();
+    const providerThenable = {
+      then: (
+        resolve: (value: ReturnType<typeof readyDeliveryResult>) => void,
+      ) => {
+        resolve(readyDeliveryResult());
+        controller.abort(
+          new Error('worker stopping after provider settlement'),
+        );
+      },
+    };
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: {
+        deliver: vi.fn(
+          () =>
+            providerThenable as unknown as Promise<
+              ReturnType<typeof readyDeliveryResult>
+            >,
+        ),
+      },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await expect(
+      handler.handle(delivery, { signal: controller.signal }),
+    ).resolves.toBeUndefined();
+    expect(repository.completeDelivery).not.toHaveBeenCalled();
+  });
+
+  it('bounds provider work when cancellation precedes settlement registration', async () => {
+    const repository = store();
+    const controller = new AbortController();
+    const provider =
+      Promise.withResolvers<ReturnType<typeof readyDeliveryResult>>();
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: {
+        deliver: vi.fn(() => {
+          controller.abort(new Error('worker stopping before provider wait'));
+          return provider.promise;
+        }),
+      },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await expect(
+      handler.handle(delivery, { signal: controller.signal }),
+    ).resolves.toBeUndefined();
+    expect(repository.completeDelivery).not.toHaveBeenCalled();
+    expect(handler.pendingOperations()).toHaveLength(1);
+
+    provider.resolve(readyDeliveryResult());
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(handler.pendingOperations()).toHaveLength(0);
   });
 
   it('records provider timeout as retry with unresolved dispatch evidence', async () => {
@@ -189,6 +365,94 @@ describe('failure notification handler', () => {
         signal: queueContext.signal,
       }),
     );
+  });
+
+  it.each(['resolve', 'reject'] as const)(
+    'settles an ignored timeout and observes a late provider %s without a terminal write',
+    async (outcome) => {
+      const repository = store();
+      const provider =
+        Promise.withResolvers<ReturnType<typeof readyDeliveryResult>>();
+      let observedSignal: AbortSignal | undefined;
+      const handler = createFailureNotificationHandler({
+        store: repository,
+        delivery: {
+          deliver: vi.fn(({ signal }) => {
+            observedSignal = signal;
+            return provider.promise;
+          }),
+        },
+        timeoutMillis: 5,
+        maxAttempts: 3,
+        retryDelaySeconds: 1,
+      });
+
+      await expect(
+        handler.handle(delivery, {
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toBeUndefined();
+      expect(observedSignal?.aborted).toBe(true);
+      expect(repository.completeDelivery).not.toHaveBeenCalled();
+      expect(handler.pendingOperations()).toHaveLength(1);
+
+      if (outcome === 'resolve') provider.resolve(readyDeliveryResult());
+      else provider.reject(new Error('late provider rejection'));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(handler.pendingOperations()).toHaveLength(0);
+      expect(repository.completeDelivery).not.toHaveBeenCalled();
+    },
+  );
+
+  it('maps malformed delivery results conservatively and removes its queue abort listener', async () => {
+    const repository = store();
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+    const handler = createFailureNotificationHandler({
+      store: repository,
+      delivery: { deliver: vi.fn().mockResolvedValue({ kind: 'delivered' }) },
+      timeoutMillis: 100,
+      maxAttempts: 3,
+      retryDelaySeconds: 1,
+    });
+
+    await handler.handle(delivery, { signal: controller.signal });
+    expect(repository.completeDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: {
+          schemaVersion: 1,
+          kind: 'retry',
+          safeErrorCode: 'delivery.provider_failure',
+          possiblyDispatched: true,
+        },
+      }),
+    );
+    expect(add).toHaveBeenCalledWith('abort', expect.any(Function), {
+      once: true,
+    });
+    expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+  });
+
+  it.each([
+    { timeoutMillis: 0 },
+    { timeoutMillis: 120_001 },
+    { maxAttempts: 0 },
+    { maxAttempts: 101 },
+    { retryDelaySeconds: 0 },
+    { retryDelaySeconds: 86_401 },
+  ])('rejects invalid delivery bounds %#', (override) => {
+    expect(() =>
+      createFailureNotificationHandler({
+        store: store(),
+        delivery: { deliver: vi.fn() },
+        timeoutMillis: 100,
+        maxAttempts: 3,
+        retryDelaySeconds: 1,
+        ...override,
+      }),
+    ).toThrow(/bounds/u);
   });
 
   it('cancels a deferred terminal write with the transport signal', async () => {
@@ -232,4 +496,46 @@ describe('failure notification handler', () => {
       vi.mocked(repository.completeDelivery).mock.calls[0]?.[0].signal,
     ).toBe(controller.signal);
   });
+
+  it.each(['resolve', 'reject'] as const)(
+    'settles queue cancellation during an ignored completion and observes its late %s',
+    async (outcome) => {
+      const repository = store();
+      const completion = Promise.withResolvers<'completed'>();
+      vi.mocked(repository.completeDelivery).mockReturnValue(
+        completion.promise,
+      );
+      const handler = createFailureNotificationHandler({
+        store: repository,
+        delivery: { deliver: vi.fn().mockResolvedValue(readyDeliveryResult()) },
+        timeoutMillis: 100,
+        maxAttempts: 3,
+        retryDelaySeconds: 1,
+      });
+      const controller = new AbortController();
+      const pending = handler.handle(delivery, { signal: controller.signal });
+      await vi.waitFor(() => {
+        expect(repository.completeDelivery).toHaveBeenCalledOnce();
+      });
+      controller.abort(new Error('worker stopping'));
+      await expect(pending).resolves.toBeUndefined();
+      expect(handler.pendingOperations()).toHaveLength(1);
+
+      if (outcome === 'resolve') completion.resolve('completed');
+      else completion.reject(new Error('late completion rejection'));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(handler.pendingOperations()).toHaveLength(0);
+      expect(repository.completeDelivery).toHaveBeenCalledOnce();
+    },
+  );
 });
+
+function readyDeliveryResult() {
+  return {
+    schemaVersion: 1 as const,
+    kind: 'delivered' as const,
+    possiblyDispatched: true as const,
+    providerReference: 'late-provider-reference',
+  };
+}

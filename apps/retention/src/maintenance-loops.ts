@@ -30,6 +30,10 @@ interface OperationState {
   consecutiveFailures: number;
 }
 
+function isSignalReason(error: unknown, signal: AbortSignal): boolean {
+  return signal.aborted && error === signal.reason;
+}
+
 type ReadinessGate = () => Promise<void>;
 
 function createReadinessGate(check: () => Promise<unknown>): ReadinessGate {
@@ -119,15 +123,20 @@ async function runOperationLoop(
       if (shouldPoll)
         await waitForAbortableDelay(resources.pollIntervalMs, signal);
     } catch (error: unknown) {
-      if (error === signal.reason) return;
-      await recordFailure(
-        resources,
-        operation,
-        state,
-        startedAt,
-        error,
-        signal,
-      );
+      if (isSignalReason(error, signal)) return;
+      try {
+        await recordFailure(
+          resources,
+          operation,
+          state,
+          startedAt,
+          error,
+          signal,
+        );
+      } catch (failureError: unknown) {
+        if (isSignalReason(failureError, signal)) return;
+        throw failureError;
+      }
     }
   }
 }
@@ -352,20 +361,34 @@ export async function runMaintenanceLoops(
   resources: RetentionMaintenanceResources,
   signal: AbortSignal,
 ): Promise<void> {
+  const groupShutdown = new AbortController();
+  const groupSignal = AbortSignal.any([signal, groupShutdown.signal]);
   const artifactsReady = createReadinessGate(() =>
     resources.artifacts.checkReadiness(),
   );
   const ledgerReady = createReadinessGate(() =>
-    resources.ledger.checkReadiness(signal),
+    resources.ledger.checkReadiness(groupSignal),
   );
-  await Promise.all([
-    runOperatorRerunLoop(resources, signal),
-    runScheduleLoop(resources, signal),
-    runTransientDataReapLoop(resources, signal),
-    runDryRunLoop(resources, signal),
-    runEnforcementLoop(resources, ledgerReady, signal),
-    runPreviewLoop(resources, artifactsReady, ledgerReady, signal),
-    runArtifactLoop(resources, artifactsReady, ledgerReady, signal),
-    runWorkspacePurgeLoop(resources, artifactsReady, ledgerReady, signal),
-  ]);
+  const children = [
+    runOperatorRerunLoop(resources, groupSignal),
+    runScheduleLoop(resources, groupSignal),
+    runTransientDataReapLoop(resources, groupSignal),
+    runDryRunLoop(resources, groupSignal),
+    runEnforcementLoop(resources, ledgerReady, groupSignal),
+    runPreviewLoop(resources, artifactsReady, ledgerReady, groupSignal),
+    runArtifactLoop(resources, artifactsReady, ledgerReady, groupSignal),
+    runWorkspacePurgeLoop(resources, artifactsReady, ledgerReady, groupSignal),
+  ];
+  const childFailures: unknown[] = [];
+  await Promise.all(
+    children.map((child) =>
+      child.catch((error: unknown) => {
+        if (childFailures.length === 0) {
+          childFailures.push(error);
+          groupShutdown.abort(new Error('Retention maintenance stopping'));
+        }
+      }),
+    ),
+  );
+  if (childFailures.length > 0) throw childFailures[0];
 }

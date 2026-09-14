@@ -70,4 +70,34 @@ describe('connections Nest module', () => {
       ]),
     );
   });
+
+  it('omits only destination routes and providers when destination persistence is absent', () => {
+    const dynamic = ConnectionsModule.register(
+      {
+        persistence: dependencies.persistence,
+        authorization: dependencies.authorization,
+        encryption: dependencies.encryption,
+        httpClient: dependencies.httpClient,
+      },
+      { module: FakeIdentityModule },
+    );
+
+    expect(dynamic.controllers).toContain(ConnectionsController);
+    expect(dynamic.controllers).not.toContain(
+      FailureNotificationDestinationsController,
+    );
+    expect(dynamic.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provide: CreateConnectionUseCase }),
+        expect.objectContaining({ provide: CONNECTION_AUTHORIZATION }),
+      ]),
+    );
+    expect(dynamic.providers).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provide: FailureNotificationDestinationUseCases,
+        }),
+      ]),
+    );
+  });
 });

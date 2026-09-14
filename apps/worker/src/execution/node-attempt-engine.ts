@@ -38,30 +38,29 @@ function ordinal(left: string, right: string): number {
 type ExecutableGraph = Readonly<{
   nodes: readonly WorkflowExecutableNodeV2[];
   edges: readonly Readonly<{
-    source: Readonly<{ nodeId: string }>;
-    target: Readonly<{ nodeId: string }>;
+    source: Readonly<{ nodeId: string; port: string }>;
+    target: Readonly<{ nodeId: string; port: string }>;
   }>[];
+}>;
+
+type ExecutableScope = Readonly<{
+  graph: ExecutableGraph;
+  targetNodeId: string;
+}>;
+
+type LocatedExecutableNode = Readonly<{
+  graph: ExecutableGraph;
+  node: WorkflowExecutableNodeV2;
+  iterationAncestors: readonly string[];
+  scopes: readonly ExecutableScope[];
 }>;
 
 function locateNode(
   graph: ExecutableGraph,
   nodeId: string,
   iterationAncestors: readonly string[] = [],
-  scopes: readonly Readonly<{
-    graph: ExecutableGraph;
-    targetNodeId: string;
-  }>[] = [],
-):
-  | Readonly<{
-      graph: ExecutableGraph;
-      node: WorkflowExecutableNodeV2;
-      iterationAncestors: readonly string[];
-      scopes: readonly Readonly<{
-        graph: ExecutableGraph;
-        targetNodeId: string;
-      }>[];
-    }>
-  | undefined {
+  scopes: readonly ExecutableScope[] = [],
+): LocatedExecutableNode | undefined {
   const node = graph.nodes.find(({ id }) => id === nodeId);
   if (node !== undefined)
     return {
@@ -122,8 +121,7 @@ function branchReachesTarget(
   const pending = graph.edges
     .filter(
       ({ source }) =>
-        source.nodeId === branchNodeId &&
-        Reflect.get(source, 'port') === outputPort,
+        source.nodeId === branchNodeId && source.port === outputPort,
     )
     .map(({ target }) => target.nodeId);
   const reached = new Set<string>();
@@ -143,20 +141,21 @@ function branchReachesTarget(
   return false;
 }
 
-function prepareNode(
+function assertProjectionIdentity(
   projection: PublishedWorkflowV2Projection,
   lease: NodeAttemptLease,
-  options: NodeAttemptExecutionEngineOptions,
-): PreparedNodeAttempt {
+): void {
   if (projection.id !== lease.workflowVersionId)
     throw new TypeError(
       'Node attempt workflow version identity does not match',
     );
-  const executable = verifyPersistedWorkflowProjection(projection, options);
-  const located = locateNode(executable.envelope.graph, lease.nodeId);
-  if (located === undefined)
-    throw new TypeError('Node attempt is not in workflow');
-  const { graph, node, iterationAncestors, scopes } = located;
+}
+
+function validateExecutableScope(
+  located: LocatedExecutableNode,
+  lease: NodeAttemptLease,
+): void {
+  const { iterationAncestors, scopes } = located;
   if (
     iterationAncestors.length !== (lease.iterationPath?.length ?? 0) ||
     iterationAncestors.some(
@@ -167,29 +166,53 @@ function prepareNode(
     throw new TypeError(
       'Node attempt structured scope does not match its executable ancestry',
     );
-  for (const part of lease.branchPath ?? []) {
-    const matchingScopes = scopes.filter(
-      ({ graph: scopeGraph, targetNodeId }) => {
-        const branchNode = scopeGraph.nodes.find(
-          ({ id }) => id === part.nodeId,
-        );
-        return (
-          branchNode !== undefined &&
-          scopedOutputPorts(branchNode)?.includes(part.outputPort) === true &&
-          branchReachesTarget(
-            scopeGraph,
-            part.nodeId,
-            part.outputPort,
-            targetNodeId,
-          )
-        );
-      },
-    );
-    if (matchingScopes.length !== 1)
-      throw new TypeError(
-        'Node attempt branch scope does not match its executable ancestry',
+  const expectedBranchPath = scopes.flatMap(({ graph, targetNodeId }) => {
+    const target = graph.nodes.find(({ id }) => id === targetNodeId);
+    if (isWorkerCoreMergeDefinition(target?.definition)) return [];
+    const branches = graph.nodes.flatMap((branchNode) => {
+      const reachingPorts = (scopedOutputPorts(branchNode) ?? []).filter(
+        (outputPort) =>
+          branchReachesTarget(graph, branchNode.id, outputPort, targetNodeId),
       );
-  }
+      if (reachingPorts.length === 0) return [];
+      const [reachingPort] = reachingPorts;
+      if (reachingPorts.length !== 1 || reachingPort === undefined)
+        throw new TypeError(
+          'Node attempt branch ancestry is ambiguous in its executable graph',
+        );
+      return [{ nodeId: branchNode.id, outputPort: reachingPort }];
+    });
+    return branches.sort((left, right) => {
+      if (
+        branchReachesTarget(graph, left.nodeId, left.outputPort, right.nodeId)
+      )
+        return -1;
+      if (
+        branchReachesTarget(graph, right.nodeId, right.outputPort, left.nodeId)
+      )
+        return 1;
+      return ordinal(left.nodeId, right.nodeId);
+    });
+  });
+  const branchPath = lease.branchPath ?? [];
+  if (
+    branchPath.length !== expectedBranchPath.length ||
+    !expectedBranchPath.every((part, index) => {
+      const actual = branchPath.at(index);
+      return (
+        part.nodeId === actual?.nodeId && part.outputPort === actual.outputPort
+      );
+    })
+  )
+    throw new TypeError(
+      'Node attempt branch scope does not match its executable ancestry',
+    );
+}
+
+function assertLeasePins(
+  node: WorkflowExecutableNodeV2,
+  lease: NodeAttemptLease,
+): void {
   const expectedInvocationKey = invocationKey({
     workflowVersionId: lease.workflowVersionId,
     nodeId: lease.nodeId,
@@ -206,43 +229,67 @@ function prepareNode(
     throw new TypeError(
       'Node attempt side-effect class does not match its pin',
     );
-  const upstreamNodeOutputs = Object.freeze(
-    isWorkerCoreMergeDefinition(node.definition)
-      ? []
-      : [
-          ...new Map(
-            graph.edges
-              .filter(({ target }) => target.nodeId === node.id)
-              .map((edge) => [edge.source.nodeId, edge]),
-          ).values(),
-        ]
-          .sort((left, right) =>
-            ordinal(left.source.nodeId, right.source.nodeId),
-          )
-          .map((edge) => {
-            const branchPath = lease.branchPath ?? [];
-            const nearestBranch = branchPath.at(-1);
-            const sourceBranchPath =
-              nearestBranch?.nodeId === edge.source.nodeId &&
-              nearestBranch.outputPort === Reflect.get(edge.source, 'port')
-                ? branchPath.slice(0, -1)
-                : branchPath;
-            return Object.freeze({
-              nodeId: edge.source.nodeId,
-              invocationKey: invocationKey({
-                workflowVersionId: lease.workflowVersionId,
-                nodeId: edge.source.nodeId,
-                branchPath: sourceBranchPath.map(
-                  ({ nodeId: branchNodeId, outputPort }) =>
-                    `${branchNodeId}:${outputPort}`,
-                ),
-                ...(lease.iterationPath === undefined
-                  ? {}
-                  : { iterationPath: lease.iterationPath }),
-              }),
-            });
+}
+
+function deriveUpstreamNodeOutputs(
+  graph: ExecutableGraph,
+  node: WorkflowExecutableNodeV2,
+  lease: NodeAttemptLease,
+): PreparedNodeAttempt['upstreamNodeOutputs'] {
+  if (isWorkerCoreMergeDefinition(node.definition)) return Object.freeze([]);
+  return Object.freeze(
+    [
+      ...new Map(
+        graph.edges
+          .filter(({ target }) => target.nodeId === node.id)
+          .map((edge) => [edge.source.nodeId, edge]),
+      ).values(),
+    ]
+      .sort((left, right) => ordinal(left.source.nodeId, right.source.nodeId))
+      .map((edge) => {
+        const branchPath = lease.branchPath ?? [];
+        const nearestBranch = branchPath.at(-1);
+        const sourceBranchPath =
+          nearestBranch?.nodeId === edge.source.nodeId &&
+          nearestBranch.outputPort === edge.source.port
+            ? branchPath.slice(0, -1)
+            : branchPath;
+        return Object.freeze({
+          nodeId: edge.source.nodeId,
+          invocationKey: invocationKey({
+            workflowVersionId: lease.workflowVersionId,
+            nodeId: edge.source.nodeId,
+            branchPath: sourceBranchPath.map(
+              ({ nodeId: branchNodeId, outputPort }) =>
+                `${branchNodeId}:${outputPort}`,
+            ),
+            ...(lease.iterationPath === undefined
+              ? {}
+              : { iterationPath: lease.iterationPath }),
           }),
+        });
+      }),
   );
+}
+
+function prepareNode(
+  projection: PublishedWorkflowV2Projection,
+  lease: NodeAttemptLease,
+  options: NodeAttemptExecutionEngineOptions,
+): PreparedNodeAttempt {
+  assertProjectionIdentity(projection, lease);
+  const executable = verifyPersistedWorkflowProjection(projection, options);
+  const located = locateNode(executable.envelope.graph, lease.nodeId);
+  if (located === undefined)
+    throw new TypeError('Node attempt is not in workflow');
+  validateExecutableScope(located, lease);
+  assertLeasePins(located.node, lease);
+  const upstreamNodeOutputs = deriveUpstreamNodeOutputs(
+    located.graph,
+    located.node,
+    lease,
+  );
+  const { node } = located;
   return Object.freeze({
     ...(node.definition.key === 'core.wait' && node.definition.version === 1
       ? {

@@ -17,6 +17,16 @@ type CurrentReleaseRow = Readonly<{
   fingerprint: string;
 }>;
 
+export type CompatibilityReleaseFixtureFactories = Readonly<{
+  maintenance: typeof createCompatibilityReleaseMaintenance;
+  readinessProbe: typeof createCompatibilityReleaseReadinessProbe;
+}>;
+
+const productionFactories: CompatibilityReleaseFixtureFactories = {
+  maintenance: createCompatibilityReleaseMaintenance,
+  readinessProbe: createCompatibilityReleaseReadinessProbe,
+};
+
 export async function activateCompatibilityReleaseFixture(options: {
   actorId: string;
   apiUrl: string;
@@ -26,6 +36,7 @@ export async function activateCompatibilityReleaseFixture(options: {
   readCurrent: () => Promise<CurrentReleaseRow | undefined>;
   targetRelease: ReleaseInput;
   workerUrl: string;
+  factories?: CompatibilityReleaseFixtureFactories;
 }): Promise<void> {
   const target = describeExecutableCompatibilityRelease(
     composeExecutableCompatibilityRelease(options.targetRelease),
@@ -41,25 +52,34 @@ export async function activateCompatibilityReleaseFixture(options: {
     fingerprint: current.fingerprint,
   };
   const supported = [predecessor, target];
-  const maintenance = createCompatibilityReleaseMaintenance(
-    parseDatabaseConfig({
-      connectionString: options.migrationUrl,
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    }),
-  );
-  const apiProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: options.apiUrl, max: 1 }),
-    supported,
-  );
-  const workerProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: options.workerUrl, max: 1 }),
-    supported,
-  );
+  const factories = options.factories ?? productionFactories;
   const epoch = String(target.epoch);
   const deploymentId = `${options.artifactPrefix}-${epoch}-${randomUUID()}`;
   const approvalId = randomUUID();
+  let maintenance:
+    ReturnType<typeof createCompatibilityReleaseMaintenance> | undefined;
+  let apiProbe:
+    ReturnType<typeof createCompatibilityReleaseReadinessProbe> | undefined;
+  let workerProbe:
+    ReturnType<typeof createCompatibilityReleaseReadinessProbe> | undefined;
+  let primaryFailure: unknown;
+  let failed = false;
   try {
+    maintenance = factories.maintenance(
+      parseDatabaseConfig({
+        connectionString: options.migrationUrl,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    apiProbe = factories.readinessProbe(
+      parseDatabaseConfig({ connectionString: options.apiUrl, max: 1 }),
+      supported,
+    );
+    workerProbe = factories.readinessProbe(
+      parseDatabaseConfig({ connectionString: options.workerUrl, max: 1 }),
+      supported,
+    );
     await maintenance.prepare({
       actorId: options.actorId,
       actorKind: 'deployment',
@@ -96,11 +116,30 @@ export async function activateCompatibilityReleaseFixture(options: {
       expectedPredecessor: predecessor,
       reason: options.reasons.activate,
     });
-  } finally {
-    await Promise.allSettled([
-      maintenance.close(),
-      apiProbe.close(),
-      workerProbe.close(),
-    ]);
+  } catch (error: unknown) {
+    failed = true;
+    primaryFailure = error;
   }
+  const cleanupResults = await Promise.allSettled([
+    Promise.resolve().then(() => maintenance?.close()),
+    Promise.resolve().then(() => apiProbe?.close()),
+    Promise.resolve().then(() => workerProbe?.close()),
+  ]);
+  const cleanupFailures = cleanupResults.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
+  if (failed && cleanupFailures.length > 0)
+    throw new AggregateError(
+      [primaryFailure, ...cleanupFailures],
+      'Compatibility release fixture and cleanup failed',
+    );
+  if (failed) {
+    // Preserve legacy non-Error rejection values from test infrastructure.
+    throw primaryFailure;
+  }
+  if (cleanupFailures.length > 0)
+    throw new AggregateError(
+      cleanupFailures,
+      'Compatibility release fixture cleanup failed',
+    );
 }

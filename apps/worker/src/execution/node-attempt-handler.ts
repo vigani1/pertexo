@@ -19,6 +19,7 @@ import type {
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import { classifyProcessError } from '@pertexo/observability/process-error-classification';
 import { waitForAbortableDelay } from '../runtime/abortable-delay.js';
 import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
@@ -206,57 +207,24 @@ async function executePreparedNodeAttempt(
     delivery.data.traceparent === undefined
       ? {}
       : { traceparent: delivery.data.traceparent };
+  let outcome: NodeAttemptOutcome;
   try {
-    const outcome = await prepared.execute({
+    outcome = await prepared.execute({
       ...inputs,
       registry: environment.registry,
       runtime: environment.runtime,
       signal: heartbeat.executionSignal,
     });
-    try {
-      const completed = await dependencies.runStore.complete({
-        lease,
-        outcome:
-          prepared.suspensionDurationSeconds === undefined
-            ? { status: 'succeeded', output: outcome.output }
-            : {
-                status: 'suspended',
-                output: outcome.output,
-                durationSeconds: prepared.suspensionDurationSeconds,
-              },
-        ...traceContext,
-        signal: contextSignal,
-      });
-      return await completionResult(dependencies, lease, completed.kind);
-    } catch (error: unknown) {
-      if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
-      const completed = await dependencies.runStore.complete({
-        lease,
-        outcome: {
-          status: 'failed',
-          safeErrorCode: 'execution.output_invalid',
-        },
-        ...traceContext,
-        signal: contextSignal,
-      });
-      return await completionResult(dependencies, lease, completed.kind);
-    }
   } catch (error: unknown) {
-    const durableAbortReason = heartbeat.durableAbortReason();
-    if (durableAbortReason !== undefined)
-      return await completeControlOutcome(
-        dependencies,
-        lease,
-        durableAbortReason,
-        delivery,
-        contextSignal,
-        hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
-      );
-    const heartbeatFailure = heartbeat.failure();
-    if (heartbeatFailure.failed)
-      throw heartbeatFailure.error instanceof Error
-        ? heartbeatFailure.error
-        : new Error('Node attempt heartbeat failed');
+    const interruption = await resolveHeartbeatInterruption(
+      dependencies,
+      lease,
+      delivery,
+      contextSignal,
+      heartbeat,
+      environment,
+    );
+    if (interruption !== undefined) return interruption;
     if (error instanceof NodeExecutorFailure) {
       const completed = await dependencies.runStore.complete({
         lease,
@@ -288,6 +256,88 @@ async function executePreparedNodeAttempt(
       return await completionResult(dependencies, lease, completed.kind);
     }
     throw error;
+  }
+  const interruption = await resolveHeartbeatInterruption(
+    dependencies,
+    lease,
+    delivery,
+    contextSignal,
+    heartbeat,
+    environment,
+  );
+  if (interruption !== undefined) return interruption;
+  return persistPreparedOutcome(
+    dependencies,
+    lease,
+    prepared,
+    outcome,
+    traceContext,
+    contextSignal,
+  );
+}
+
+async function resolveHeartbeatInterruption(
+  dependencies: NodeAttemptHandlerDependencies,
+  lease: NodeAttemptLease,
+  delivery: AttemptDelivery,
+  contextSignal: AbortSignal,
+  heartbeat: NodeAttemptHeartbeat,
+  environment: NodeExecutionEnvironment,
+): Promise<NodeAttemptHandlerResult | undefined> {
+  const durableAbortReason = heartbeat.durableAbortReason();
+  if (durableAbortReason !== undefined)
+    return completeControlOutcome(
+      dependencies,
+      lease,
+      durableAbortReason,
+      delivery,
+      contextSignal,
+      hasProviderDispatchUncertainty(lease, environment.wasDispatched()),
+    );
+  const heartbeatFailure = heartbeat.failure();
+  if (!heartbeatFailure.failed) return undefined;
+  throw classifyProcessError(heartbeatFailure.error) === 'Error'
+    ? (heartbeatFailure.error as Error)
+    : new Error('Node attempt heartbeat failed', {
+        cause: heartbeatFailure.error,
+      });
+}
+
+async function persistPreparedOutcome(
+  dependencies: NodeAttemptHandlerDependencies,
+  lease: NodeAttemptLease,
+  prepared: PreparedNodeAttempt,
+  outcome: NodeAttemptOutcome,
+  traceContext: Readonly<{ traceparent?: string }>,
+  contextSignal: AbortSignal,
+): Promise<NodeAttemptHandlerResult> {
+  try {
+    const completed = await dependencies.runStore.complete({
+      lease,
+      outcome:
+        prepared.suspensionDurationSeconds === undefined
+          ? { status: 'succeeded', output: outcome.output }
+          : {
+              status: 'suspended',
+              output: outcome.output,
+              durationSeconds: prepared.suspensionDurationSeconds,
+            },
+      ...traceContext,
+      signal: contextSignal,
+    });
+    return await completionResult(dependencies, lease, completed.kind);
+  } catch (error: unknown) {
+    if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
+    const completed = await dependencies.runStore.complete({
+      lease,
+      outcome: {
+        status: 'failed',
+        safeErrorCode: 'execution.output_invalid',
+      },
+      ...traceContext,
+      signal: contextSignal,
+    });
+    return completionResult(dependencies, lease, completed.kind);
   }
 }
 
@@ -378,16 +428,16 @@ export function createNodeAttemptHandler(
         claimed.lease,
         context.signal,
       );
-      const environment = createNodeExecutionEnvironment({
-        executionSignal: heartbeat.executionSignal,
-        lease: claimed.lease,
-        registry: dependencies.registry,
-        runStore: dependencies.runStore,
-        ...(dependencies.runtimeCapabilities === undefined
-          ? {}
-          : { runtimeCapabilities: dependencies.runtimeCapabilities }),
-      });
       try {
+        const environment = createNodeExecutionEnvironment({
+          executionSignal: heartbeat.executionSignal,
+          lease: claimed.lease,
+          registry: dependencies.registry,
+          runStore: dependencies.runStore,
+          ...(dependencies.runtimeCapabilities === undefined
+            ? {}
+            : { runtimeCapabilities: dependencies.runtimeCapabilities }),
+        });
         return await executePreparedNodeAttempt(
           dependencies,
           claimed.lease,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   WorkerReadinessMonitor,
@@ -31,6 +31,14 @@ function marker(): WorkerReadinessMarker & {
 }
 
 describe('worker readiness lifecycle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it.each(['success', 'failure'] as const)(
     'does not recreate readiness after shutdown during deferred %s',
     async (outcome) => {
@@ -98,7 +106,7 @@ describe('worker readiness lifecycle', () => {
     releaseWrite.resolve(undefined);
     await Promise.all([checking, stopping]);
 
-    expect(setReady.mock.calls).toEqual([[true], [false]]);
+    expect(setReady.mock.calls).toEqual([[true], [false], [false]]);
     expect(ready).toBe(false);
     expect(monitor.status().state).toBe('stopped');
   });
@@ -167,6 +175,138 @@ describe('worker readiness lifecycle', () => {
     expect(failClosed).toHaveBeenCalledWith('check', markerFailure);
   });
 
+  it('revokes readiness and preserves the dependency failure when warning diagnostics throw', async () => {
+    const dependencyFailure = new Error('postgres unavailable');
+    const readinessMarker = marker();
+    readinessMarker.ready = true;
+    const monitor = new WorkerReadinessMonitor(
+      { checkReadiness: vi.fn().mockRejectedValue(dependencyFailure) },
+      {
+        ...logger,
+        warn: vi.fn(() => {
+          throw new Error('warning sink unavailable');
+        }),
+      },
+      readinessMarker,
+    );
+
+    await expect(monitor.check()).rejects.toBe(dependencyFailure);
+    expect(readinessMarker.ready).toBe(false);
+    expect(readinessMarker.setReady.mock.calls).toContainEqual([false]);
+  });
+
+  it('fails closed without replacing check and marker failures when error diagnostics throw', async () => {
+    const dependencyFailure = new Error('postgres unavailable');
+    const markerFailure = new Error('marker unavailable');
+    const failClosed = vi.fn();
+    const monitor = new WorkerReadinessMonitor(
+      { checkReadiness: vi.fn().mockRejectedValue(dependencyFailure) },
+      {
+        ...logger,
+        error: vi.fn(() => {
+          throw new Error('error sink unavailable');
+        }),
+      },
+      { setReady: vi.fn().mockRejectedValue(markerFailure) },
+      failClosed,
+    );
+
+    await expect(monitor.check()).rejects.toMatchObject({
+      errors: [dependencyFailure, markerFailure],
+    });
+    expect(failClosed).toHaveBeenCalledWith('check', markerFailure);
+  });
+
+  it('revokes immediately and bounds shutdown while a dependency probe ignores cancellation', async () => {
+    vi.useFakeTimers();
+    const probe = Promise.withResolvers<undefined>();
+    const readinessMarker = marker();
+    readinessMarker.ready = true;
+    const monitor = new WorkerReadinessMonitor(
+      { checkReadiness: vi.fn(() => probe.promise) },
+      logger,
+      readinessMarker,
+      vi.fn(),
+      10,
+    );
+    const checking = monitor.check();
+    const observedCheck = checking.catch((error: unknown) => error);
+    const stopping = monitor.beforeApplicationShutdown();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(readinessMarker.ready).toBe(false);
+    await vi.advanceTimersByTimeAsync(10);
+    await expect(stopping).resolves.toBeUndefined();
+    expect(monitor.status().state).toBe('stopped');
+
+    probe.resolve(undefined);
+    await expect(observedCheck).resolves.toBeInstanceOf(Error);
+    expect(readinessMarker.ready).toBe(false);
+  });
+
+  it('corrects a ready write that completes after bounded shutdown', async () => {
+    vi.useFakeTimers();
+    const readyWriteStarted = Promise.withResolvers<undefined>();
+    const releaseReadyWrite = Promise.withResolvers<undefined>();
+    let ready = false;
+    const setReady = vi.fn(async (value: boolean) => {
+      if (value) {
+        readyWriteStarted.resolve(undefined);
+        await releaseReadyWrite.promise;
+      }
+      ready = value;
+    });
+    const monitor = new WorkerReadinessMonitor(
+      { checkReadiness: vi.fn().mockResolvedValue(undefined) },
+      logger,
+      { setReady },
+      vi.fn(),
+      10,
+    );
+    const checking = monitor.check();
+    const observedCheck = checking.catch((error: unknown) => error);
+    await readyWriteStarted.promise;
+
+    const stopping = monitor.beforeApplicationShutdown();
+    await vi.advanceTimersByTimeAsync(10);
+    await stopping;
+    expect(ready).toBe(false);
+
+    releaseReadyWrite.resolve(undefined);
+    await observedCheck;
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+    expect(ready).toBe(false);
+    expect(setReady.mock.calls.at(-1)?.[0]).toBe(false);
+  });
+
+  it('bounds a hung shutdown revocation and reports fail-closed state', async () => {
+    vi.useFakeTimers();
+    const revocation = Promise.withResolvers<undefined>();
+    const failClosed = vi.fn();
+    const monitor = new WorkerReadinessMonitor(
+      { checkReadiness: vi.fn().mockResolvedValue(undefined) },
+      logger,
+      {
+        setReady: vi.fn((ready: boolean) =>
+          ready ? Promise.resolve() : revocation.promise,
+        ),
+      },
+      failClosed,
+      10,
+    );
+
+    const stopping = monitor.beforeApplicationShutdown();
+    await vi.advanceTimersByTimeAsync(10);
+    await expect(stopping).resolves.toBeUndefined();
+    expect(monitor.status().state).toBe('stopped');
+    expect(failClosed).toHaveBeenCalledWith(
+      'shutdown',
+      expect.objectContaining({ name: 'BackgroundTaskShutdownTimeoutError' }),
+    );
+    revocation.resolve(undefined);
+  });
+
   it('finishes shutdown and permits sibling cleanup when marker removal fails', async () => {
     const markerFailure = new Error('readiness marker removal failed');
     const siblingClose = vi.fn().mockResolvedValue(undefined);
@@ -209,6 +349,8 @@ describe('worker readiness lifecycle', () => {
       drain,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
     const checking = readiness.checkReadiness();
 
@@ -216,5 +358,23 @@ describe('worker readiness lifecycle', () => {
     deferred.resolve(undefined);
 
     await expect(checking).rejects.toThrow('worker is draining');
+  });
+
+  it('includes coordinator, trigger, node, and maintenance health', async () => {
+    const checks = Array.from({ length: 6 }, () =>
+      vi.fn().mockResolvedValue(undefined),
+    );
+    const readiness = new WorkerReadiness(
+      { checkReadiness: checks[0] } as never,
+      { checkReadiness: checks[1] } as never,
+      new WorkerDrainState(),
+      { checkReadiness: checks[2] } as never,
+      { checkReadiness: checks[3] } as never,
+      { checkReadiness: checks[4] } as never,
+      { checkReadiness: checks[5] } as never,
+    );
+
+    await expect(readiness.checkReadiness()).resolves.toBeUndefined();
+    for (const check of checks) expect(check).toHaveBeenCalledOnce();
   });
 });

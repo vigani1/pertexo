@@ -1,4 +1,4 @@
-import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
@@ -35,63 +35,116 @@ export type ApiConnectionRuntime = Readonly<{
 }>;
 
 export type ApiConnectionRuntimeOverrides = Readonly<{
-  database?: ApiConnectionDatabase;
-  encryption?: ConnectionSecretEncryptionPort;
-  telemetry?: ConnectionTelemetry;
-  httpClient?: ConnectionHttpClient;
-  slackClient?: ConnectionSlackClient;
-  emailClient?: ConnectionEmailClient;
+  clients?: Readonly<{
+    http?: ConnectionHttpClient;
+    httpFactory?: () => ConnectionHttpClient;
+    slack?: ConnectionSlackClient;
+    slackFactory?: (httpClient: ConnectionHttpClient) => ConnectionSlackClient;
+    email?: ConnectionEmailClient;
+    emailFactory?: (httpClient: ConnectionHttpClient) => ConnectionEmailClient;
+  }>;
+  encryption?: Readonly<{
+    value?: ConnectionSecretEncryptionPort;
+    factory?: typeof createAwsConnectionEnvelopeEncryption;
+  }>;
+  persistence?: Readonly<{
+    database?: ApiConnectionDatabase;
+    databaseFactory?: typeof createApiConnectionDatabase;
+    destinationDatabaseFactory?: typeof createFailureNotificationDestinationDatabase;
+  }>;
+  telemetry?: Readonly<{
+    value?: ConnectionTelemetry;
+    factory?: () => ConnectionTelemetry;
+  }>;
 }>;
 
-export function createApiConnectionRuntime(
+export async function createApiConnectionRuntime(
   config: NonNullable<ApiConfig['connections']>,
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
   overrides: ApiConnectionRuntimeOverrides = {},
   runtime?: DatabaseRuntime,
-): ApiConnectionRuntime {
-  const database =
-    overrides.database ?? createApiConnectionDatabase(databaseConfig, runtime);
-  const destinationDatabase = createFailureNotificationDestinationDatabase(
-    databaseConfig,
-    runtime,
-  );
-  const encryptionRuntime =
-    overrides.encryption === undefined
-      ? createAwsConnectionEnvelopeEncryption({
-          keyReference: config.kmsKeyReference,
-          region: config.region,
-          ...(config.endpoint === undefined
-            ? {}
-            : { endpoint: config.endpoint }),
-        })
-      : undefined;
-  const encryption = overrides.encryption ?? encryptionRuntime?.encryption;
-  if (encryption === undefined)
-    throw new Error('Connection encryption composition is incomplete');
-  const telemetry = overrides.telemetry ?? productionTelemetry();
-  let closePromise: Promise<void> | undefined;
-  const httpClient = overrides.httpClient ?? createNodeSecureHttpClient();
-  return Object.freeze({
-    dependencies: Object.freeze({
-      persistence: database,
-      destinationPersistence: destinationDatabase,
-      authorization: identityRuntime.dependencies.authorization,
-      encryption,
-      httpClient,
-      slackClient: overrides.slackClient ?? createSlackClient(httpClient),
-      emailClient: overrides.emailClient ?? createResendClient(httpClient),
-      telemetry,
-    }),
-    close: (): Promise<void> => {
-      closePromise ??= closeResources(
-        database,
-        destinationDatabase,
-        encryptionRuntime,
+): Promise<ApiConnectionRuntime> {
+  const persistenceOverrides = overrides.persistence ?? {};
+  const encryptionOverrides = overrides.encryption ?? {};
+  const clientOverrides = overrides.clients ?? {};
+  const telemetryOverrides = overrides.telemetry ?? {};
+  let database: ApiConnectionDatabase | undefined;
+  let destinationDatabase:
+    ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined;
+  let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
+  try {
+    database =
+      persistenceOverrides.database ??
+      (persistenceOverrides.databaseFactory ?? createApiConnectionDatabase)(
+        databaseConfig,
+        runtime,
       );
-      return closePromise;
-    },
-  });
+    destinationDatabase = (
+      persistenceOverrides.destinationDatabaseFactory ??
+      createFailureNotificationDestinationDatabase
+    )(databaseConfig, runtime);
+    if (encryptionOverrides.value === undefined)
+      encryptionRuntime = (
+        encryptionOverrides.factory ?? createAwsConnectionEnvelopeEncryption
+      )({
+        keyReference: config.kmsKeyReference,
+        region: config.region,
+        ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
+      });
+    const encryption =
+      encryptionOverrides.value ?? encryptionRuntime?.encryption;
+    if (encryption === undefined)
+      throw new Error('Connection encryption composition is incomplete');
+    const telemetry =
+      telemetryOverrides.value ??
+      (telemetryOverrides.factory ?? productionTelemetry)();
+    const httpClient =
+      clientOverrides.http ??
+      (clientOverrides.httpFactory ?? createNodeSecureHttpClient)();
+    const slackClient =
+      clientOverrides.slack ??
+      (clientOverrides.slackFactory ?? createSlackClient)(httpClient);
+    const emailClient =
+      clientOverrides.email ??
+      (clientOverrides.emailFactory ?? createResendClient)(httpClient);
+    const acquiredDatabase = database;
+    const acquiredDestinationDatabase = destinationDatabase;
+    const acquiredEncryptionRuntime = encryptionRuntime;
+    let closePromise: Promise<void> | undefined;
+    return Object.freeze({
+      dependencies: Object.freeze({
+        persistence: database,
+        destinationPersistence: destinationDatabase,
+        authorization: identityRuntime.dependencies.authorization,
+        encryption,
+        httpClient,
+        slackClient,
+        emailClient,
+        telemetry,
+      }),
+      close: (): Promise<void> => {
+        closePromise ??= closeResources(
+          acquiredDatabase,
+          acquiredDestinationDatabase,
+          acquiredEncryptionRuntime,
+        );
+        return closePromise;
+      },
+    });
+  } catch (error: unknown) {
+    const cleanupFailures = await collectCloseFailures(
+      database,
+      destinationDatabase,
+      encryptionRuntime,
+    );
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [error, ...cleanupFailures],
+        'Connection runtime construction and cleanup failed',
+      );
+    throw error;
+  }
 }
 
 async function closeResources(
@@ -101,16 +154,29 @@ async function closeResources(
   >,
   encryption: AwsConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
-  const results = await Promise.allSettled([
-    database.close(),
-    destinationDatabase.close(),
-    Promise.resolve(encryption?.close()),
-  ]);
-  const failures = results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
+  const failures = await collectCloseFailures(
+    database,
+    destinationDatabase,
+    encryption,
   );
   if (failures.length > 0)
     throw new AggregateError(failures, 'Connection resource shutdown failed');
+}
+
+async function collectCloseFailures(
+  database: ApiConnectionDatabase | undefined,
+  destinationDatabase:
+    ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined,
+  encryption: AwsConnectionEnvelopeEncryptionRuntime | undefined,
+): Promise<unknown[]> {
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => database?.close()),
+    Promise.resolve().then(() => destinationDatabase?.close()),
+    Promise.resolve().then(() => encryption?.close()),
+  ]);
+  return results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
 }
 
 function productionTelemetry(): ConnectionTelemetry {
@@ -146,14 +212,6 @@ function productionTelemetry(): ConnectionTelemetry {
   });
 }
 
-class ConnectionRuntimeShutdown implements OnApplicationShutdown {
-  public constructor(private readonly runtime: ApiConnectionRuntime) {}
-
-  public async onApplicationShutdown(): Promise<void> {
-    await this.runtime.close();
-  }
-}
-
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -167,12 +225,7 @@ export class ConnectionRuntimeModule {
       imports: [
         ConnectionsModule.register(runtime.dependencies, identityModule),
       ],
-      providers: [
-        {
-          provide: ConnectionRuntimeShutdown,
-          useFactory: () => new ConnectionRuntimeShutdown(runtime),
-        },
-      ],
+      providers: [],
     };
   }
 }

@@ -2,9 +2,10 @@ import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 
 import {
   SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
+  type SecureHttpError,
   failure,
   abortFailure,
+  inspectSecureHttpError,
   isTimeoutError,
 } from './secure-http-error.js';
 
@@ -177,7 +178,8 @@ export async function* boundedRedactedBody(
     const output = emit(redacted.emitted);
     if (output !== undefined) yield output;
   } catch (error: unknown) {
-    if (error instanceof SecureHttpError) throw error;
+    const secureError = inspectSecureHttpError(error);
+    if (secureError !== undefined) throw secureError.error;
     throw mapResponseStreamError(error, signal);
   } finally {
     pending.fill(0);

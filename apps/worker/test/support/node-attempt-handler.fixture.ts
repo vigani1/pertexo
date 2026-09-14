@@ -111,7 +111,10 @@ export function executionStore(
     complete: vi
       .fn<NodeAttemptRunStore['complete']>()
       .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID }),
-    heartbeat: vi.fn(),
+    heartbeat: vi.fn().mockResolvedValue({
+      abortRequested: false,
+      leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
+    }),
     loadInputs: vi.fn().mockResolvedValue({
       abortRequested: false,
       completedNodeOutputs: {},

@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { WorkflowLifecycleResponse } from '@pertexo/contracts/workflow-authoring';
 
 import {
   closeWorkflowLifecycleApiFixture,
@@ -14,39 +15,20 @@ const describeIntegration = workflowLifecycleIntegrationEnabled
   ? describe
   : describe.skip;
 
-type LifecycleResponse = Readonly<{
-  workflow: Readonly<{
-    id: string;
-    workspaceId: string;
-    name: string;
-    lifecycleStatus: 'active' | 'archived';
-    lifecycleRevision: number;
-    activationStatus:
-      | 'inactive'
-      | 'activating'
-      | 'active'
-      | 'deactivating'
-      | 'degraded'
-      | 'error';
-    publishedVersionId: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-  replayed: boolean;
-}>;
+type LifecycleResponse = WorkflowLifecycleResponse;
 
 describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
   let fixture: WorkflowLifecycleApiFixture;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     fixture = await createWorkflowLifecycleApiFixture();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await closeWorkflowLifecycleApiFixture(fixture);
   });
 
-  it('requires authentication, CSRF, one idempotency key, strict input, and publication authority', async () => {
+  it('requires authentication and CSRF for each lifecycle command', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');
     const body = { expectedLifecycleRevision: 1 };
@@ -71,6 +53,16 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
         payload: body,
       });
       expectProblem(missingCsrf, 403, 'auth.forbidden');
+    }
+  });
+
+  it('requires one idempotency key and a strict lifecycle body', async () => {
+    const { application, ids, workspaceId } = fixture;
+    const owner = await fixture.login('owner');
+    const body = { expectedLifecycleRevision: 1 };
+
+    for (const command of ['archive', 'restore'] as const) {
+      const path = lifecyclePath(workspaceId, ids.unpublished, command);
 
       const missingKey = await application.inject({
         method: 'POST',
@@ -121,6 +113,12 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       });
       expectProblem(invalidRevision, 400, 'request.invalid');
     }
+  });
+
+  it('hides lifecycle commands from roles without publication authority and other tenants', async () => {
+    const { application, ids, workspaceId } = fixture;
+    const owner = await fixture.login('owner');
+    const body = { expectedLifecycleRevision: 1 };
 
     for (const role of ['operator', 'viewer'] as const) {
       const cookies = await fixture.login(role);
@@ -146,38 +144,28 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: body,
     });
     expectProblem(wrongTenant, 404, 'resource.not_found');
-
-    await fixture.setWorkspaceStatus('suspended');
-    try {
-      for (const command of ['archive', 'restore'] as const) {
-        const denied = await application.inject({
-          method: 'POST',
-          url: lifecyclePath(workspaceId, ids.unpublished, command),
-          headers: mutationHeaders(owner),
-          payload: body,
-        });
-        expectProblem(denied, 404, 'resource.not_found');
-      }
-    } finally {
-      await fixture.setWorkspaceStatus('active');
-    }
-
-    await fixture.setWorkspaceStatus('pending_deletion');
-    try {
-      const pendingOwner = await fixture.login('owner');
-      for (const command of ['archive', 'restore'] as const) {
-        const denied = await application.inject({
-          method: 'POST',
-          url: lifecyclePath(workspaceId, ids.unpublished, command),
-          headers: mutationHeaders(pendingOwner),
-          payload: body,
-        });
-        expectProblem(denied, 404, 'resource.not_found');
-      }
-    } finally {
-      await fixture.setWorkspaceStatus('active');
-    }
   });
+
+  for (const status of ['suspended', 'pending_deletion'] as const) {
+    it(`hides lifecycle commands while the workspace is ${status}`, async () => {
+      const { application, ids, workspaceId } = fixture;
+      await fixture.setWorkspaceStatus(status);
+      try {
+        const owner = await fixture.login('owner');
+        for (const command of ['archive', 'restore'] as const) {
+          const denied = await application.inject({
+            method: 'POST',
+            url: lifecyclePath(workspaceId, ids.unpublished, command),
+            headers: mutationHeaders(owner),
+            payload: { expectedLifecycleRevision: 1 },
+          });
+          expectProblem(denied, 404, 'resource.not_found');
+        }
+      } finally {
+        await fixture.setWorkspaceStatus('active');
+      }
+    });
+  }
 
   it('archives and restores an unpublished workflow with exact concurrent idempotency and CAS', async () => {
     const { application, ids, workspaceId } = fixture;
@@ -221,7 +209,16 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       publishedVersionId: null,
     });
     expect(archiveBodies[0]?.workflow).toEqual(archiveBodies[1]?.workflow);
-    expectExactLifecycleResponse(archiveRequests[0], ids.unpublished);
+    expectLifecycleResponse(archiveRequests[0], {
+      workspaceId,
+      name: 'Unpublished lifecycle target',
+      id: ids.unpublished,
+      lifecycleStatus: 'archived',
+      lifecycleRevision: 2,
+      activationStatus: 'inactive',
+      publishedVersionId: null,
+      replayed: archiveBodies[0]?.replayed ?? false,
+    });
 
     const replay = await application.inject({
       method: 'POST',
@@ -252,6 +249,8 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: { expectedLifecycleRevision: 2 },
     });
     expectLifecycleResponse(restored, {
+      workspaceId,
+      name: 'Unpublished lifecycle target',
       id: ids.unpublished,
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
@@ -289,6 +288,8 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: { expectedLifecycleRevision: 3 },
     });
     expectLifecycleResponse(noop, {
+      workspaceId,
+      name: 'Unpublished lifecycle target',
       id: ids.unpublished,
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
@@ -335,6 +336,8 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: { expectedLifecycleRevision: 1 },
     });
     expectLifecycleResponse(archive, {
+      workspaceId,
+      name: 'Published lifecycle target',
       id: ids.published,
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
@@ -359,6 +362,8 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: { expectedLifecycleRevision: 1 },
     });
     expectLifecycleResponse(archiveRetry, {
+      workspaceId,
+      name: 'Published lifecycle target',
       id: ids.published,
       lifecycleStatus: 'archived',
       lifecycleRevision: 2,
@@ -379,6 +384,8 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       payload: { expectedLifecycleRevision: 2 },
     });
     expectLifecycleResponse(restore, {
+      workspaceId,
+      name: 'Published lifecycle target',
       id: ids.published,
       lifecycleStatus: 'active',
       lifecycleRevision: 3,
@@ -437,6 +444,8 @@ function expectLifecycleResponse(
     json(): unknown;
   }>,
   expected: Readonly<{
+    workspaceId: string;
+    name: string;
     id: string;
     lifecycleStatus: 'active' | 'archived';
     lifecycleRevision: number;
@@ -459,28 +468,26 @@ function expectLifecycleResponse(
     'updatedAt',
     'workspaceId',
   ]);
-  expect(body).toMatchObject({
+  expect(body.workflow.createdAt).toMatch(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
+  );
+  expect(body.workflow.updatedAt).toMatch(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/,
+  );
+  expect(body).toEqual({
     replayed: expected.replayed,
     workflow: {
-      id: expected.id,
-      lifecycleStatus: expected.lifecycleStatus,
-      lifecycleRevision: expected.lifecycleRevision,
       activationStatus: expected.activationStatus,
+      createdAt: body.workflow.createdAt,
+      id: expected.id,
+      lifecycleRevision: expected.lifecycleRevision,
+      lifecycleStatus: expected.lifecycleStatus,
+      name: expected.name,
       publishedVersionId: expected.publishedVersionId,
+      updatedAt: body.workflow.updatedAt,
+      workspaceId: expected.workspaceId,
     },
   });
-}
-
-function expectExactLifecycleResponse(
-  response: Readonly<{
-    json(): unknown;
-  }>,
-  workflowId: string,
-): void {
-  const body = response.json() as LifecycleResponse;
-  expect(body.workflow.id).toBe(workflowId);
-  expect(body.workflow.createdAt).toEqual(expect.any(String));
-  expect(body.workflow.updatedAt).toEqual(expect.any(String));
 }
 
 async function expectHistoryUnchanged(

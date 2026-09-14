@@ -7,217 +7,186 @@ import {
   registerApiMetrics,
 } from '../../../src/platform/observability/api-metrics.js';
 
-describe('API metrics', () => {
-  it('records only bounded route and problem classifications', () => {
-    type Hook = (...args: unknown[]) => unknown;
-    const hooks = new Map<string, Hook>();
-    const requestCount = vi.fn();
-    const eligibleCount = vi.fn();
-    const record = vi.fn();
-    const createCounter = vi.fn((name: string) => ({
-      add:
-        name === API_METRIC_NAME.availabilityRequests
-          ? eligibleCount
-          : requestCount,
-    }));
-    const createHistogram = vi.fn(() => ({ record }));
-    const meter = {
-      createCounter,
-      createHistogram,
-    } as unknown as Meter;
-    const server = {
-      addHook: vi.fn((name: string, hook: Hook) => {
-        hooks.set(name, hook);
-      }),
+type Hook = (...arguments_: unknown[]) => unknown;
+
+function metricsFixture() {
+  const hooks = new Map<string, Hook>();
+  const requestCount = vi.fn();
+  const eligibleCount = vi.fn();
+  const duration = vi.fn();
+  const createCounter = vi.fn((name: string) => ({
+    add:
+      name === API_METRIC_NAME.availabilityRequests
+        ? eligibleCount
+        : requestCount,
+  }));
+  const meter = {
+    createCounter,
+    createHistogram: vi.fn(() => ({ record: duration })),
+  } as unknown as Meter;
+  const server = {
+    addHook: vi.fn((name: string, hook: Hook) => hooks.set(name, hook)),
+  };
+  const times = [1_000_000_000n, 3_500_000_000n];
+  registerApiMetrics(server as never, meter, {
+    now: () => times.shift() ?? 3_500_000_000n,
+  });
+  expect([...hooks.keys()]).toEqual(['onRequest', 'onSend', 'onResponse']);
+
+  function invoke(input: {
+    method?: string;
+    payload?: unknown;
+    route?: string;
+    status: number;
+  }) {
+    const request = {
+      method: input.method ?? 'GET',
+      routeOptions: input.route === undefined ? {} : { url: input.route },
     };
+    const reply = { statusCode: input.status };
+    const onRequestDone = vi.fn();
+    const onSendDone = vi.fn();
+    const onResponseDone = vi.fn();
+    const payload = input.payload ?? '';
+    requireHook(hooks, 'onRequest')(request, reply, onRequestDone);
+    requireHook(hooks, 'onSend')(request, reply, payload, onSendDone);
+    requireHook(hooks, 'onResponse')(request, reply, onResponseDone);
+    expect(onRequestDone).toHaveBeenCalledOnce();
+    expect(onSendDone).toHaveBeenCalledOnce();
+    expect(onSendDone).toHaveBeenCalledWith(null, payload);
+    expect(onResponseDone).toHaveBeenCalledOnce();
+    return { reply, request };
+  }
 
-    registerApiMetrics(server as never, meter);
+  return { createCounter, duration, eligibleCount, invoke, requestCount };
+}
 
-    expect(createCounter).toHaveBeenCalledWith(
+function requireHook(hooks: Map<string, Hook>, name: string): Hook {
+  const hook = hooks.get(name);
+  if (hook === undefined) throw new Error(`${name} hook was not registered`);
+  return hook;
+}
+
+describe('API metrics', () => {
+  it('registers bounded counters and records exact controlled duration', () => {
+    const fixture = metricsFixture();
+    fixture.invoke({
+      route: '/v1/workspaces/:workspaceId/runs/:runId',
+      status: 503,
+      payload: JSON.stringify({ code: 'provider.unavailable' }),
+    });
+
+    expect(fixture.createCounter).toHaveBeenCalledWith(
       API_METRIC_NAME.requests,
       expect.any(Object),
     );
-    expect(createCounter).toHaveBeenCalledWith(
-      API_METRIC_NAME.availabilityRequests,
-      expect.any(Object),
-    );
-    expect(createHistogram).toHaveBeenCalledWith(
-      API_METRIC_NAME.requestDuration,
-      expect.any(Object),
-    );
-    expect([...hooks.keys()]).toEqual(['onRequest', 'onSend', 'onResponse']);
-
-    const request = {
-      method: 'GET',
-      routeOptions: { url: '/v1/workspaces/:workspaceId/runs/:runId' },
-      id: 'unbounded-request-id',
-    };
-    const reply = { statusCode: 503 };
-    hooks.get('onRequest')?.(request, reply, vi.fn());
-    hooks.get('onSend')?.(
-      request,
-      reply,
-      JSON.stringify({ code: 'provider.unavailable' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(request, reply, vi.fn());
-
-    expect(requestCount).toHaveBeenCalledWith(1, {
+    expect(fixture.requestCount).toHaveBeenCalledWith(1, {
       method: 'GET',
       problem_code: 'provider.unavailable',
       route: '/v1/workspaces/:workspaceId/runs/:runId',
       status_class: '5xx',
     });
-    expect(eligibleCount).toHaveBeenCalledWith(1, {
-      outcome: 'eligible_failure',
+    expect(fixture.duration).toHaveBeenCalledWith(2.5, {
+      method: 'GET',
+      problem_code: 'provider.unavailable',
       route: '/v1/workspaces/:workspaceId/runs/:runId',
+      status_class: '5xx',
     });
-    expect(record).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(requestCount.mock.calls)).not.toContain(
-      'unbounded-request-id',
-    );
+  });
 
-    const shedRequest = {
+  it.each([
+    ['success', 200, 'none', 'eligible_success'],
+    [
+      'business conflict',
+      412,
+      'workflow.revision_conflict',
+      'eligible_success',
+    ],
+    [
+      'authentication exclusion',
+      401,
+      'auth.unauthenticated',
+      'excluded_client',
+    ],
+    ['input exclusion', 400, 'request.invalid', 'excluded_client'],
+    ['tenant quota', 429, 'workspace.quota_exceeded', 'excluded_tenant_quota'],
+    ['generic backpressure', 429, 'provider.rate_limited', 'eligible_failure'],
+    [
+      'correctness failure',
+      409,
+      'workflow.activation_failed',
+      'eligible_failure',
+    ],
+    ['server failure', 503, 'provider.unavailable', 'eligible_failure'],
+  ] as const)('classifies %s as %s', (_name, status, code, expectedOutcome) => {
+    const fixture = metricsFixture();
+    fixture.invoke({
       method: 'POST',
-      routeOptions: {
-        url: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
-      },
-    };
-    const shedReply = { statusCode: 429 };
-    hooks.get('onRequest')?.(shedRequest, shedReply, vi.fn());
-    hooks.get('onSend')?.(
-      shedRequest,
-      shedReply,
-      JSON.stringify({ code: 'workspace.quota_exceeded' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(shedRequest, shedReply, vi.fn());
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'excluded_tenant_quota',
+      route: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
+      status,
+      payload: code === 'none' ? '{}' : JSON.stringify({ code }),
+    });
+
+    expect(fixture.eligibleCount).toHaveBeenCalledOnce();
+    expect(fixture.eligibleCount).toHaveBeenCalledWith(1, {
+      outcome: expectedOutcome,
       route: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
     });
+  });
 
-    const invalidRequest = {
-      method: 'POST',
-      routeOptions: { url: '/v1/workspaces' },
-    };
-    const invalidReply = { statusCode: 400 };
-    hooks.get('onSend')?.(
-      invalidRequest,
-      invalidReply,
-      JSON.stringify({ code: 'request.invalid' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(invalidRequest, invalidReply, vi.fn());
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'excluded_client',
-      route: '/v1/workspaces',
-    });
+  it.each(['/health/live', '/health/ready'])(
+    'excludes the %s route from availability',
+    (route) => {
+      const fixture = metricsFixture();
+      fixture.invoke({ route, status: 200 });
 
-    const conflictRequest = {
-      method: 'PUT',
-      routeOptions: {
-        url: '/v1/workspaces/:workspaceId/workflows/:workflowId',
-      },
-    };
-    const conflictReply = { statusCode: 412 };
-    hooks.get('onSend')?.(
-      conflictRequest,
-      conflictReply,
-      JSON.stringify({ code: 'workflow.revision_conflict' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(conflictRequest, conflictReply, vi.fn());
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'eligible_success',
-      route: '/v1/workspaces/:workspaceId/workflows/:workflowId',
-    });
+      expect(fixture.requestCount).toHaveBeenCalledOnce();
+      expect(fixture.eligibleCount).not.toHaveBeenCalled();
+    },
+  );
 
-    const artifactOutageRequest = {
-      method: 'GET',
-      routeOptions: {
-        url: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
-      },
-    };
-    const artifactOutageReply = { statusCode: 503 };
-    hooks.get('onSend')?.(
-      artifactOutageRequest,
-      artifactOutageReply,
-      JSON.stringify({ code: 'artifact.unavailable' }),
-      vi.fn(),
+  it('bounds unmatched routes and excludes them from availability', () => {
+    const fixture = metricsFixture();
+    fixture.invoke({ status: 404, payload: '{}' });
+
+    expect(fixture.requestCount).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ route: 'unmatched' }),
     );
-    hooks.get('onResponse')?.(
-      artifactOutageRequest,
-      artifactOutageReply,
-      vi.fn(),
-    );
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'eligible_failure',
-      route: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
-    });
+    expect(fixture.eligibleCount).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['non-string', { code: 'provider.unavailable' }, 'none'],
+    ['malformed', '{', 'none'],
+    ['oversized', 'x'.repeat(16_385), 'none'],
+    ['unknown code', JSON.stringify({ code: 'private.code' }), 'invalid'],
+  ])(
+    'uses a bounded label for a %s problem payload',
+    (_name, payload, expected) => {
+      const fixture = metricsFixture();
+      fixture.invoke({ route: '/v1/node-tests', status: 503, payload });
+
+      expect(fixture.requestCount).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ problem_code: expected }),
+      );
+    },
+  );
+
+  it('classifies every manifest 5xx response as an eligible failure', () => {
     for (const [code, manifest] of Object.entries(API_PROBLEM_MANIFEST)) {
       if (manifest.status < 500) continue;
-      hooks.get('onSend')?.(
-        artifactOutageRequest,
-        { statusCode: manifest.status },
-        JSON.stringify({ code }),
-        vi.fn(),
-      );
-      hooks.get('onResponse')?.(
-        artifactOutageRequest,
-        { statusCode: manifest.status },
-        vi.fn(),
-      );
-      expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      const fixture = metricsFixture();
+      fixture.invoke({
+        route: '/v1/node-tests',
+        status: manifest.status,
+        payload: JSON.stringify({ code }),
+      });
+      expect(fixture.eligibleCount).toHaveBeenCalledWith(1, {
         outcome: 'eligible_failure',
-        route: '/v1/workspaces/:workspaceId/artifacts/:artifactId/download',
+        route: '/v1/node-tests',
       });
     }
-
-    const correctnessFailureRequest = {
-      method: 'POST',
-      routeOptions: {
-        url: '/v1/workspaces/:workspaceId/workflows/:workflowId',
-      },
-    };
-    const correctnessFailureReply = { statusCode: 409 };
-    hooks.get('onSend')?.(
-      correctnessFailureRequest,
-      correctnessFailureReply,
-      JSON.stringify({ code: 'workflow.activation_failed' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(
-      correctnessFailureRequest,
-      correctnessFailureReply,
-      vi.fn(),
-    );
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'eligible_failure',
-      route: '/v1/workspaces/:workspaceId/workflows/:workflowId',
-    });
-
-    const backpressureRequest = {
-      method: 'POST',
-      routeOptions: { url: '/v1/node-tests' },
-    };
-    const backpressureReply = { statusCode: 429 };
-    hooks.get('onSend')?.(
-      backpressureRequest,
-      backpressureReply,
-      JSON.stringify({ code: 'provider.rate_limited' }),
-      vi.fn(),
-    );
-    hooks.get('onResponse')?.(backpressureRequest, backpressureReply, vi.fn());
-    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'eligible_failure',
-      route: '/v1/node-tests',
-    });
-
-    const unmatchedRequest = { method: 'GET', routeOptions: {} };
-    const unmatchedReply = { statusCode: 404 };
-    const eligibilityCalls = eligibleCount.mock.calls.length;
-    hooks.get('onResponse')?.(unmatchedRequest, unmatchedReply, vi.fn());
-    expect(eligibleCount).toHaveBeenCalledTimes(eligibilityCalls);
   });
 });

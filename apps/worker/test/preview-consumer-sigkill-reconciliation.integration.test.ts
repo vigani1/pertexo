@@ -24,6 +24,7 @@ import {
   workerUrl,
   workspaceId,
 } from './support/preview-consumer.integration.support.js';
+import { runWithCleanup } from './support/test-operation.js';
 
 const describeIntegration = workerTransportIntegrationEnabled
   ? describe
@@ -83,7 +84,7 @@ describeIntegration('preview SIGKILL reconciliation', () => {
         },
       },
     ] as const;
-    const fixtures = await Promise.all(
+    const fixtureResults = await Promise.allSettled(
       cases.map(async (selected, index) => {
         const traceparent = validTraceparent;
         const accepted = await withTenantAccept(
@@ -108,16 +109,59 @@ describeIntegration('preview SIGKILL reconciliation', () => {
           markDispatched: selected.markDispatched,
           previewAttemptId: accepted.previewAttemptId,
           previewRunId: accepted.previewRunId,
+          redisUrl,
           workerId,
           workerUrl: databaseUrl(workerUrl),
           workspaceId,
         });
-        const evidence = await child.evidence;
-        return { accepted, child, evidence, selected };
+        try {
+          const evidence = await child.evidence;
+          return { accepted, child, evidence, selected };
+        } catch (evidenceError: unknown) {
+          let cleanupError: unknown;
+          await child.kill().catch((error: unknown) => {
+            cleanupError = error;
+          });
+          if (cleanupError === undefined) throw evidenceError;
+          throw new AggregateError(
+            [evidenceError, cleanupError],
+            'Preview SIGKILL child evidence failed',
+          );
+        }
       }),
     );
-    const signals = await Promise.all(
+    const setupFailures = fixtureResults.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    if (setupFailures.length > 0) {
+      const errors: unknown[] = setupFailures.map(
+        ({ reason }): unknown => reason as unknown,
+      );
+      for (const result of fixtureResults)
+        if (result.status === 'fulfilled')
+          await result.value.child
+            .kill()
+            .catch((error: unknown) => errors.push(error));
+      throw new AggregateError(errors, 'Preview SIGKILL fixture setup failed');
+    }
+    const fixtures = fixtureResults.map((result) => {
+      if (result.status !== 'fulfilled')
+        throw new Error('Preview SIGKILL fixture result is unavailable');
+      return result.value;
+    });
+    const signalResults = await Promise.allSettled(
       fixtures.map(async ({ child }) => child.kill()),
+    );
+    const signalFailures = signalResults.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    if (signalFailures.length > 0)
+      throw new AggregateError(
+        signalFailures.map(({ reason }): unknown => reason as unknown),
+        'Preview SIGKILL child termination failed',
+      );
+    const signals = signalResults.map((result) =>
+      result.status === 'fulfilled' ? result.value : undefined,
     );
     expect(signals).toEqual(cases.map(() => 'SIGKILL'));
     expect(fixtures.map(({ evidence }) => evidence.injectionPoint)).toEqual([
@@ -128,109 +172,133 @@ describeIntegration('preview SIGKILL reconciliation', () => {
       'preview.outcome_committed_before_process_exit',
     ]);
 
-    const reconciliationRuntime = await createPreviewMaintenanceRuntime({
-      database: parseDatabaseConfig({
-        connectionString: databaseUrl(workerUrl),
-      }),
-      redisUrl,
-    });
-    const dispatcher = createOutboxDispatcherDatabase(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(dispatcherUrl),
-        ownerRole: 'pertexo_owner',
-      }),
-    );
-    const producer = createQueueProducer({ redisUrl });
-    try {
-      await Promise.all([
-        reconciliationRuntime.consumer.waitUntilReady(5_000),
-        dispatcher.checkReadiness(),
-        producer.waitUntilReady(5_000),
-      ]);
-      const targetRunIds = new Set(
-        fixtures.map(({ accepted }) => accepted.previewRunId),
-      );
-      const claimedEvents = new Map<
-        string,
-        Awaited<ReturnType<typeof dispatcher.claimBatch>>['events'][number]
-      >();
-      const events = await waitFor(
-        async () => {
-          const batch = await dispatcher.claimBatch({
-            enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
-            leaseDurationMillis: 5_000,
-            leaseOwner: 'preview-sigkill-integration',
-            leaseToken: randomUUID(),
-            limit: 20,
-            maxAttempts: 3,
-          });
-          for (const event of batch.events) {
-            if (targetRunIds.has(event.aggregateId))
-              claimedEvents.set(event.id, event);
-          }
-          return [...claimedEvents.values()];
-        },
-        (value) => value.length === cases.length,
-      );
-      await Promise.all(
-        events.map(async (event) => {
-          await producer.publish(
-            parseQueueJob({ name: event.jobName, data: event.payload }),
-          );
-          await dispatcher.markPublished(event.id, event.leaseToken);
-        }),
-      );
-      const states = await waitFor(
-        () =>
-          Promise.all(
-            fixtures.map(({ accepted }) => previewState(accepted.previewRunId)),
-          ),
-        (values) =>
-          values.every(
-            (value, index) =>
-              value?.run_status === cases[index]?.expectedStatus,
-          ),
-      );
-      expect(states.map((state) => state?.run_status)).toEqual(
-        cases.map(({ expectedStatus }) => expectedStatus),
-      );
-      expect(states.map((state) => Number(state?.attempt_fence))).toEqual([
-        2, 2, 2, 2, 1,
-      ]);
-      const keyed = fixtures[2];
-      expect(keyed?.evidence.providerIdempotencyKey).toBe(
-        cases[2].overrides.providerIdempotencyKey,
-      );
-      const pinnedKey = await withTenantScopedWorker((client) =>
-        client.query<{ provider_idempotency_key: string | null }>(
-          `select provider_idempotency_key from app.preview_attempts
+    let reconciliationRuntime:
+      Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>> | undefined;
+    let dispatcher:
+      ReturnType<typeof createOutboxDispatcherDatabase> | undefined;
+    let producer: ReturnType<typeof createQueueProducer> | undefined;
+    await runWithCleanup(
+      async () => {
+        reconciliationRuntime = await createPreviewMaintenanceRuntime({
+          database: parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+          }),
+          redisUrl,
+        });
+        dispatcher = createOutboxDispatcherDatabase(
+          parseDatabaseConfig({
+            connectionString: databaseUrl(dispatcherUrl),
+            ownerRole: 'pertexo_owner',
+          }),
+        );
+        producer = createQueueProducer({ redisUrl });
+        const ownedRuntime = reconciliationRuntime;
+        const ownedDispatcher = dispatcher;
+        const ownedProducer = producer;
+        await Promise.all([
+          ownedRuntime.consumer.waitUntilReady(5_000),
+          ownedDispatcher.checkReadiness(),
+          ownedProducer.waitUntilReady(5_000),
+        ]);
+        const targetRunIds = new Set(
+          fixtures.map(({ accepted }) => accepted.previewRunId),
+        );
+        const publishedEventIds = new Set<string>();
+        await waitFor(
+          async () => {
+            const batch = await ownedDispatcher.claimBatch({
+              enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
+              leaseDurationMillis: 5_000,
+              leaseOwner: 'preview-sigkill-integration',
+              leaseToken: randomUUID(),
+              limit: 20,
+              maxAttempts: 3,
+            });
+            for (const event of batch.events) {
+              if (
+                targetRunIds.has(event.aggregateId) &&
+                !publishedEventIds.has(event.id)
+              ) {
+                await ownedProducer.publish(
+                  parseQueueJob({ name: event.jobName, data: event.payload }),
+                );
+                const marked = await ownedDispatcher.markPublished(
+                  event.id,
+                  event.leaseToken,
+                );
+                if (!marked)
+                  throw new Error(
+                    `Preview reconciliation event ${event.id} lost its lease`,
+                  );
+                publishedEventIds.add(event.id);
+              }
+            }
+            return publishedEventIds.size;
+          },
+          (value) => value === cases.length,
+        );
+        const states = await waitFor(
+          () =>
+            Promise.all(
+              fixtures.map(({ accepted }) =>
+                previewState(accepted.previewRunId),
+              ),
+            ),
+          (values) =>
+            values.every(
+              (value, index) =>
+                value?.run_status === cases[index]?.expectedStatus,
+            ),
+        );
+        expect(states.map((state) => state?.run_status)).toEqual(
+          cases.map(({ expectedStatus }) => expectedStatus),
+        );
+        expect(states.map((state) => Number(state?.attempt_fence))).toEqual([
+          2, 2, 2, 2, 1,
+        ]);
+        const keyed = fixtures[2];
+        expect(keyed?.evidence.providerIdempotencyKey).toBe(
+          cases[2].overrides.providerIdempotencyKey,
+        );
+        const pinnedKey = await withTenantScopedWorker((client) =>
+          client.query<{ provider_idempotency_key: string | null }>(
+            `select provider_idempotency_key from app.preview_attempts
            where workspace_id=$1 and id=$2`,
-          [workspaceId, keyed?.accepted.previewAttemptId],
-        ),
-      );
-      expect(pinnedKey.rows[0]?.provider_idempotency_key).toBe(
-        cases[2].overrides.providerIdempotencyKey,
-      );
-      const receipts = await withTenantScopedWorker((client) =>
-        client.query<{ completed: string; count: string }>(
-          `select count(*)::text as count,
+            [workspaceId, keyed?.accepted.previewAttemptId],
+          ),
+        );
+        expect(pinnedKey.rows[0]?.provider_idempotency_key).toBe(
+          cases[2].overrides.providerIdempotencyKey,
+        );
+        const receipts = await withTenantScopedWorker((client) =>
+          client.query<{ completed: string; count: string }>(
+            `select count(*)::text as count,
                   count(completed_at)::text as completed
            from app.inbox_receipts
            where consumer_name='preview-attempt-reconciler'
              and message_id=any($1::uuid[])`,
-          [events.map((event) => event.id)],
-        ),
-      );
-      expect(receipts.rows[0]).toEqual({
-        completed: String(cases.length),
-        count: String(cases.length),
-      });
-    } finally {
-      await Promise.allSettled([
-        reconciliationRuntime.close(),
-        dispatcher.close(),
-        producer.close(),
-      ]);
-    }
+            [[...publishedEventIds]],
+          ),
+        );
+        expect(receipts.rows[0]).toEqual({
+          completed: String(cases.length),
+          count: String(cases.length),
+        });
+      },
+      async () => {
+        const errors: unknown[] = [];
+        await reconciliationRuntime
+          ?.close()
+          .catch((error: unknown) => errors.push(error));
+        await producer?.close().catch((error: unknown) => errors.push(error));
+        await dispatcher?.close().catch((error: unknown) => errors.push(error));
+        if (errors.length > 0)
+          throw new AggregateError(
+            errors,
+            'Preview SIGKILL reconciliation cleanup failed',
+          );
+      },
+      'Preview SIGKILL reconciliation',
+    );
   });
 });

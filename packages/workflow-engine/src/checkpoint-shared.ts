@@ -125,16 +125,24 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     }
     return bytes;
   };
-  const pending: { readonly value: unknown; readonly depth: number }[] = [
-    { value, depth: 1 },
-  ];
+  type Frame =
+    | {
+        readonly kind: 'value';
+        readonly value: unknown;
+        readonly depth: number;
+      }
+    | { readonly kind: 'exit'; readonly value: object };
+  const pending: Frame[] = [{ kind: 'value', value, depth: 1 }];
   const ancestors = new Set<object>();
-  const exits = new Set<object>();
   let members = 0;
   let bytes = 0;
   while (pending.length > 0) {
     const current = pending.pop();
     if (current === undefined) continue;
+    if (current.kind === 'exit') {
+      ancestors.delete(current.value);
+      continue;
+    }
     const item = current.value;
     if (item === null) {
       bytes = addBytes(bytes, 4);
@@ -157,11 +165,6 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       !nodeTypes.isProxy(item),
       'checkpoint must not contain proxy objects',
     );
-    if (exits.has(item)) {
-      exits.delete(item);
-      ancestors.delete(item);
-      continue;
-    }
     assertCheckpoint(
       current.depth <= WORKFLOW_CHECKPOINT_LIMITS_V1.depth,
       'checkpoint exceeds maximum depth',
@@ -185,8 +188,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       bytes = addBytes(bytes, 2 + Math.max(0, item.length - 1));
     } else bytes = addBytes(bytes, 2);
     ancestors.add(item);
-    exits.add(item);
-    pending.push({ value: item, depth: current.depth });
+    pending.push({ kind: 'exit', value: item });
     let enumerableCount = 0;
     for (const key in item) {
       assertCheckpoint(
@@ -215,7 +217,11 @@ export function assertBoundedCheckpointJson(value: unknown): void {
         bytes = addBytes(bytes, stringBytes(key) + 1);
       }
       enumerableCount += 1;
-      pending.push({ value: descriptor.value, depth: current.depth + 1 });
+      pending.push({
+        kind: 'value',
+        value: descriptor.value,
+        depth: current.depth + 1,
+      });
     }
     // JavaScript has no incremental own-name/symbol reflection. Perform it
     // only after length/member-bounded enumerable traversal, then discard the

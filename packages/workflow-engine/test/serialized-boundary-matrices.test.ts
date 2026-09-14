@@ -7,11 +7,13 @@ import {
   createCheckpoint,
   createCheckpointV2,
   invocationKey,
+  parseCheckpoint,
+} from '../src/index.js';
+import {
   nodeRelease,
   pairedParallelGraph,
   forEachGraph,
 } from './executable-workflow.fixtures.js';
-import { parseCheckpoint } from '../src/index.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000901';
 const occurredAt = '2026-09-12T00:00:00.000Z';

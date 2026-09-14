@@ -521,7 +521,7 @@ describe('node-attempt runtime', () => {
     });
     const storeClose = vi.fn(() => {
       order.push('store');
-      return Promise.reject(storeFailure);
+      throw storeFailure;
     });
     const runtime = await createNodeAttemptRuntime(
       {
@@ -562,6 +562,7 @@ describe('node-attempt runtime', () => {
     const first = runtime.close();
     const second = runtime.close();
     expect(second).toBe(first);
+    await Promise.resolve();
     expect(order).toEqual(['consumer']);
     expect(storeClose).not.toHaveBeenCalled();
     rejectConsumer?.(consumerFailure);
@@ -577,6 +578,64 @@ describe('node-attempt runtime', () => {
     ]);
     expect(consumerClose).toHaveBeenCalledOnce();
     expect(storeClose).toHaveBeenCalledOnce();
+    await expect(runtime.checkReadiness?.()).rejects.toThrow(
+      'Node-attempt runtime is closed',
+    );
+  });
+
+  it('rechecks the terminal fence after an in-flight capability readiness probe', async () => {
+    const readiness = Promise.withResolvers<undefined>();
+    const capabilityClose = vi.fn().mockResolvedValue(undefined);
+    const runtime = await createNodeAttemptRuntime(
+      {
+        artifactStore: {} as never,
+        database,
+        heartbeatIntervalMillis: 10,
+        leaseDurationSeconds: 30,
+        redisUrl: 'redis://localhost:6379/0',
+        workerId: 'worker-1',
+      },
+      {
+        capabilityFactory: vi.fn().mockResolvedValue({
+          checkReadiness: vi.fn().mockReturnValue(readiness.promise),
+          close: capabilityClose,
+          factories: {},
+        }),
+        consumerFactory: () => ({
+          close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+          isReady: vi.fn().mockReturnValue(true),
+          waitUntilReady: vi.fn().mockResolvedValue(undefined),
+        }),
+        engine: { prepare: vi.fn() },
+        notifications: {
+          close: vi.fn().mockResolvedValue(undefined),
+          publish: vi.fn(),
+          resync: vi.fn(),
+        },
+        reader: {
+          close: vi.fn().mockResolvedValue(undefined),
+          readForExecution: vi.fn(),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi.fn(),
+          close: vi.fn().mockResolvedValue(undefined),
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn(),
+          markDispatched: vi.fn(),
+        },
+      },
+    );
+
+    const pendingReadiness = runtime.checkReadiness?.();
+    const closing = runtime.close();
+    readiness.resolve(undefined);
+    await expect(pendingReadiness).rejects.toThrow(
+      'Node-attempt runtime is closed',
+    );
+    await closing;
+    expect(capabilityClose).toHaveBeenCalledOnce();
   });
 
   it('fails closed when a heartbeat abort omits its durable reason', async () => {
@@ -750,6 +809,11 @@ describe('node-attempt runtime', () => {
       close: vi.fn().mockResolvedValue(undefined),
       readForExecution: vi.fn(),
     };
+    const notifications: RunEventNotificationPublisher = {
+      close: vi.fn().mockResolvedValue(undefined),
+      publish: vi.fn(),
+      resync: vi.fn(),
+    };
     const runtime = await createNodeAttemptRuntime(
       {
         database: {
@@ -772,6 +836,7 @@ describe('node-attempt runtime', () => {
           return consumer;
         },
         engine: { prepare: vi.fn() },
+        notifications,
         reader,
         registry: { execute: vi.fn() },
         runStore,
@@ -806,6 +871,7 @@ describe('node-attempt runtime', () => {
     expect(consumer.close).toHaveBeenCalledOnce();
     expect(reader.close).toHaveBeenCalledOnce();
     expect(runStore.close).toHaveBeenCalledOnce();
+    expect(notifications.close).toHaveBeenCalledOnce();
   });
 
   it('closes the preview store when consumer construction fails', async () => {

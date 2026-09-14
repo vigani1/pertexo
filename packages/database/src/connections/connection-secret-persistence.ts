@@ -15,13 +15,12 @@ import {
   keyDigest,
   mapConnection,
   withConnectionTransaction,
-  requireConnectionManager,
   parseRequestMetadata,
   selectConnection,
-  durableCreateResult,
-  durableConnectionSnapshot,
+  decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
 } from './connection-persistence.js';
+import { requireConnectionManager } from './connection-authority.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
@@ -36,6 +35,10 @@ export type ConnectionSecretPersistence = Pick<
   | 'rotateConnectionSecret'
   | 'assertConnectionSecretCurrent'
 >;
+
+function parseConnectionAuthType(input: unknown) {
+  return z.enum(CONNECTION_AUTH_TYPE).parse(input);
+}
 
 export function createConnectionSecretPersistence(
   pool: Pool,
@@ -74,18 +77,17 @@ export function createConnectionSecretPersistence(
               'Idempotency key request mismatch',
             );
           if (record.status !== 'completed') return null;
-          const snapshot = durableConnectionSnapshot(record.result_ref);
-          if (snapshot !== null) {
+          const replay = decodeDurableConnectionReplay(record.result_ref);
+          if (replay.kind === 'snapshot') {
             if (
-              snapshot.id !== connectionId ||
-              snapshot.workspaceId !== workspaceId
+              replay.connection.id !== connectionId ||
+              replay.connection.workspaceId !== workspaceId
             )
               throw new Error(
                 'Connection rotation idempotency result is corrupt',
               );
-            return snapshot;
+            return replay.connection;
           }
-          const replay = durableCreateResult(record.result_ref);
           const connection = await selectConnection(
             client,
             workspaceId,
@@ -99,7 +101,6 @@ export function createConnectionSecretPersistence(
         },
       );
     },
-
     rotateConnectionSecret: async (input): Promise<ConnectionRecord> => {
       const actorId = uuidSchema.parse(input.actorId);
       const connectionId = uuidSchema.parse(input.connectionId);
@@ -116,13 +117,14 @@ export function createConnectionSecretPersistence(
         async (client, workspaceId) => {
           await requireConnectionManager(client, workspaceId, actorId);
           const scope = `${actorId}:${connectionId}`;
-          await client.query(
+          const insertedClaim = await client.query(
             `insert into app.idempotency_records
                (id, workspace_id, operation, scope, key_hash, request_hash,
                 status, resource_id, result_ref)
              values ($1, $2, 'connection.secret.rotate', $3, $4, $5,
                      'in_progress', $6, '{}'::jsonb)
-             on conflict (workspace_id, operation, scope, key_hash) do nothing`,
+             on conflict (workspace_id, operation, scope, key_hash) do nothing
+             returning id`,
             [
               generatePersistedId(),
               workspaceId,
@@ -154,18 +156,17 @@ export function createConnectionSecretPersistence(
               'Idempotency key request mismatch',
             );
           if (claimed.status === 'completed') {
-            const snapshot = durableConnectionSnapshot(claimed.result_ref);
-            if (snapshot !== null) {
+            const replay = decodeDurableConnectionReplay(claimed.result_ref);
+            if (replay.kind === 'snapshot') {
               if (
-                snapshot.id !== connectionId ||
-                snapshot.workspaceId !== workspaceId
+                replay.connection.id !== connectionId ||
+                replay.connection.workspaceId !== workspaceId
               )
                 throw new Error(
                   'Connection rotation idempotency result is corrupt',
                 );
-              return snapshot;
+              return replay.connection;
             }
-            const replay = durableCreateResult(claimed.result_ref);
             const existing = await selectConnection(
               client,
               workspaceId,
@@ -177,6 +178,10 @@ export function createConnectionSecretPersistence(
               );
             return existing;
           }
+          if (insertedClaim.rowCount !== 1)
+            throw new Error(
+              'Connection rotation idempotency record is not resumable',
+            );
           const connection = await selectConnection(
             client,
             workspaceId,
@@ -266,15 +271,12 @@ export function createConnectionSecretPersistence(
         },
       );
     },
-
     assertConnectionSecretCurrent: async (input): Promise<void> => {
       const connectionId = uuidSchema.parse(input.connectionId);
       const expectedProviderKey = providerKeySchema.parse(
         input.expectedProviderKey,
       );
-      const expectedAuthType = z
-        .enum(CONNECTION_AUTH_TYPE)
-        .parse(input.expectedAuthType);
+      const expectedAuthType = parseConnectionAuthType(input.expectedAuthType);
       const secretVersionId = uuidSchema.parse(input.secretVersionId);
       await withConnectionTransaction(
         pool,
@@ -302,6 +304,7 @@ export function createConnectionSecretPersistence(
               'Connection is not current for credential use',
             );
         },
+        input.signal === undefined ? {} : { signal: input.signal },
       );
     },
   });

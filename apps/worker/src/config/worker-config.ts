@@ -209,6 +209,7 @@ const workerConfigSchema = z
       .number()
       .int()
       .min(100)
+      .max(2_147_483_647)
       .default(5_000),
     WORKER_RESOURCE_UNHEALTHY_SAMPLES: z.coerce
       .number()
@@ -470,6 +471,7 @@ export function parseWorkerConfig(
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
       coordinator: Object.freeze(result.data.coordinator),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
+      resourceSafety: Object.freeze(result.data.resourceSafety),
       triggerRuntime: Object.freeze(result.data.triggerRuntime),
       outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
     });

@@ -8,7 +8,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDualRegionControlLedgerConfig } from '../src/control-ledger-config.js';
 import {
@@ -24,6 +24,7 @@ import {
   ControlLedgerPartialReplicationError,
   createDualRegionControlLedger,
 } from '../src/dual-region-control-ledger.js';
+import { assertDedicatedControlLedgerIntegrationFixture } from './support/control-ledger-integration-gate.js';
 
 const integrationDescribe =
   process.env.CONTROL_LEDGER_INTEGRATION === 'true' ? describe : describe.skip;
@@ -180,21 +181,31 @@ integrationDescribe('dual-region control ledger MinIO integration', () => {
   let recovery!: S3Client;
   let primaryAdmin!: S3Client;
   let recoveryAdmin!: S3Client;
+  const suiteClients: S3Client[] = [];
+
+  afterAll(() => {
+    for (const suiteClient of suiteClients) suiteClient.destroy();
+  });
 
   beforeAll(async () => {
+    assertDedicatedControlLedgerIntegrationFixture(process.env);
     config = parseDualRegionControlLedgerConfig(process.env);
     primary = client(config.primary);
+    suiteClients.push(primary);
     recovery = client(config.recovery);
+    suiteClients.push(recovery);
     primaryAdmin = adminClient(
       config.primary,
       process.env.CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID,
       process.env.CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY,
     );
+    suiteClients.push(primaryAdmin);
     recoveryAdmin = adminClient(
       config.recovery,
       process.env.CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID,
       process.env.CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY,
     );
+    suiteClients.push(recoveryAdmin);
     await Promise.all([
       prepareBucket(
         primaryAdmin,
@@ -207,6 +218,12 @@ integrationDescribe('dual-region control ledger MinIO integration', () => {
         config.recovery.minRetentionDays,
       ),
     ]);
+  });
+
+  it('uses an explicitly selected dedicated provider fixture', () => {
+    expect(assertDedicatedControlLedgerIntegrationFixture(process.env)).toBe(
+      provider,
+    );
   });
 
   exactPolicyIt(

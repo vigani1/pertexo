@@ -97,43 +97,50 @@ export function createWorkflowAuthoringTelemetry(
       operation: WorkflowAuthoringOperation,
       work: () => Promise<T>,
     ): Promise<T> => {
+      let operationPromise: Promise<T> | undefined;
+      let owningSpan: WorkflowAuthoringSpan | undefined;
+      const measured = async (
+        span: WorkflowAuthoringSpan | undefined,
+      ): Promise<T> => {
+        const startedAt = safeNow(monotonicNow);
+        if (span !== undefined) safeAttribute(span, 'operation', operation);
+        try {
+          const result = await work();
+          record(
+            'succeeded',
+            operation,
+            startedAt,
+            safeNow(monotonicNow),
+            span,
+          );
+          return result;
+        } catch (error: unknown) {
+          record('failed', operation, startedAt, safeNow(monotonicNow), span);
+          throw error;
+        } finally {
+          safeEndSpan(span);
+        }
+      };
+      const runOperationOnce = (span?: WorkflowAuthoringSpan): Promise<T> => {
+        if (operationPromise === undefined) {
+          owningSpan = span;
+          operationPromise = measured(span);
+        } else if (span !== undefined && span !== owningSpan) {
+          safeEndSpan(span);
+        }
+        return operationPromise;
+      };
+      let tracePromise: Promise<T> | undefined;
       try {
-        return options.tracer.startActiveSpan(
+        tracePromise = options.tracer.startActiveSpan(
           `pertexo.workflow_authoring.${operation}`,
-          async (span): Promise<T> => {
-            const startedAt = safeNow(monotonicNow);
-            safeAttribute(span, 'operation', operation);
-            try {
-              const result = await work();
-              record(
-                'succeeded',
-                operation,
-                startedAt,
-                safeNow(monotonicNow),
-                span,
-              );
-              return result;
-            } catch (error: unknown) {
-              record(
-                'failed',
-                operation,
-                startedAt,
-                safeNow(monotonicNow),
-                span,
-              );
-              throw error;
-            } finally {
-              try {
-                span.end();
-              } catch {
-                // Diagnostics cannot change application truth.
-              }
-            }
-          },
+          (span): Promise<T> => runOperationOnce(span),
         );
       } catch {
-        return work();
+        return runOperationOnce();
       }
+      void Promise.resolve(tracePromise).catch(() => undefined);
+      return operationPromise ?? runOperationOnce();
     },
   });
 
@@ -142,16 +149,24 @@ export function createWorkflowAuthoringTelemetry(
     operation: WorkflowAuthoringOperation,
     startedAt: number,
     finishedAt: number,
-    span: WorkflowAuthoringSpan,
+    span: WorkflowAuthoringSpan | undefined,
   ): void {
     try {
       const attributes = { operation, outcome } as const;
-      safeAttribute(span, 'outcome', outcome);
+      if (span !== undefined) safeAttribute(span, 'outcome', outcome);
       operations.add(1, attributes);
       duration.record(Math.max(0, finishedAt - startedAt) / 1_000, attributes);
     } catch {
       // Diagnostics cannot change application truth.
     }
+  }
+}
+
+function safeEndSpan(span: WorkflowAuthoringSpan | undefined): void {
+  try {
+    span?.end();
+  } catch {
+    // Diagnostics cannot change application truth.
   }
 }
 

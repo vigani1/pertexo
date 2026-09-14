@@ -4,6 +4,9 @@ import { parseObservabilityConfig } from '../src/config.js';
 import {
   createNodeInstrumentations,
   createTelemetryLifecycle,
+  createTelemetryResource,
+  METRIC_EXPORT_INTERVAL_MILLISECONDS,
+  METRIC_EXPORT_TIMEOUT_MILLISECONDS,
   type TelemetrySdk,
   type TelemetrySdkFactory,
 } from '../src/telemetry.js';
@@ -28,15 +31,17 @@ function enabledConfig() {
 
 function sdkHarness(): {
   factory: TelemetrySdkFactory;
+  forceFlush: ReturnType<typeof vi.fn<() => Promise<void>>>;
   sdk: TelemetrySdk;
   shutdown: ReturnType<typeof vi.fn<() => Promise<void>>>;
   start: ReturnType<typeof vi.fn<() => void>>;
 } {
   const start = vi.fn<() => void>();
+  const forceFlush = vi.fn<() => Promise<void>>(() => Promise.resolve());
   const shutdown = vi.fn<() => Promise<void>>(() => Promise.resolve());
-  const sdk = { shutdown, start };
+  const sdk = { forceFlush, shutdown, start };
   const factory = vi.fn<TelemetrySdkFactory>(() => sdk);
-  return { factory, sdk, shutdown, start };
+  return { factory, forceFlush, sdk, shutdown, start };
 }
 
 describe('createNodeInstrumentations', () => {
@@ -54,6 +59,31 @@ describe('createNodeInstrumentations', () => {
       '@opentelemetry/instrumentation-host-metrics',
       '@opentelemetry/instrumentation-runtime-node',
     ]);
+  });
+});
+
+describe('createTelemetryResource', () => {
+  it('uses an opaque per-writer identity without process or host attributes', () => {
+    const resource = createTelemetryResource(
+      enabledConfig(),
+      '00000000-0000-4000-8000-000000000001',
+    );
+
+    expect(resource.attributes).toMatchObject({
+      'deployment.environment.name': 'test',
+      'service.instance.id': '00000000-0000-4000-8000-000000000001',
+      'service.name': 'worker',
+      'service.version': '1.0.0',
+    });
+    expect(resource.attributes).not.toHaveProperty('process.pid');
+    expect(resource.attributes).not.toHaveProperty('host.name');
+  });
+});
+
+describe('metric export timing', () => {
+  it('keeps the qualified cadence and request timeout explicit', () => {
+    expect(METRIC_EXPORT_INTERVAL_MILLISECONDS).toBe(60_000);
+    expect(METRIC_EXPORT_TIMEOUT_MILLISECONDS).toBe(30_000);
   });
 });
 
@@ -107,6 +137,8 @@ describe('createTelemetryLifecycle', () => {
     telemetry.start();
     expect(telemetry.started).toBe(true);
     expect(harness.start).toHaveBeenCalledOnce();
+    await telemetry.flush?.();
+    expect(harness.forceFlush).toHaveBeenCalledOnce();
 
     const firstShutdown = telemetry.shutdown();
     const secondShutdown = telemetry.shutdown();
@@ -117,5 +149,73 @@ describe('createTelemetryLifecycle', () => {
     expect(() => {
       telemetry.start();
     }).toThrow('Telemetry cannot be restarted after shutdown');
+  });
+
+  it('cleans up an SDK whose start was attempted and preserves the start failure', async () => {
+    const harness = sdkHarness();
+    const startFailure = new Error('partial SDK start');
+    harness.start.mockImplementationOnce(() => {
+      throw startFailure;
+    });
+    const telemetry = createTelemetryLifecycle(
+      enabledConfig(),
+      harness.factory,
+    );
+
+    expect(() => {
+      telemetry.start();
+    }).toThrow(startFailure);
+    expect(telemetry.started).toBe(false);
+    expect(() => {
+      telemetry.start();
+    }).toThrow(startFailure);
+    expect(harness.start).toHaveBeenCalledOnce();
+
+    const firstShutdown = telemetry.shutdown();
+    const secondShutdown = telemetry.shutdown();
+    expect(firstShutdown).toBe(secondShutdown);
+    await firstShutdown;
+    expect(harness.shutdown).toHaveBeenCalledOnce();
+    expect(() => {
+      telemetry.start();
+    }).toThrow('Telemetry cannot be restarted after shutdown');
+  });
+
+  it('caches a synchronously throwing SDK shutdown before invoking it', async () => {
+    const harness = sdkHarness();
+    const shutdownFailure = new Error('synchronous shutdown failed');
+    harness.shutdown.mockImplementationOnce(() => {
+      throw shutdownFailure;
+    });
+    const telemetry = createTelemetryLifecycle(
+      enabledConfig(),
+      harness.factory,
+    );
+    telemetry.start();
+
+    const firstShutdown = telemetry.shutdown();
+    const secondShutdown = telemetry.shutdown();
+
+    expect(firstShutdown).toBe(secondShutdown);
+    await expect(firstShutdown).rejects.toBe(shutdownFailure);
+    expect(harness.shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('caches an asynchronously rejected SDK shutdown', async () => {
+    const harness = sdkHarness();
+    const shutdownFailure = new Error('asynchronous shutdown failed');
+    harness.shutdown.mockRejectedValueOnce(shutdownFailure);
+    const telemetry = createTelemetryLifecycle(
+      enabledConfig(),
+      harness.factory,
+    );
+    telemetry.start();
+
+    const firstShutdown = telemetry.shutdown();
+    const secondShutdown = telemetry.shutdown();
+
+    expect(firstShutdown).toBe(secondShutdown);
+    await expect(firstShutdown).rejects.toBe(shutdownFailure);
+    expect(harness.shutdown).toHaveBeenCalledOnce();
   });
 });

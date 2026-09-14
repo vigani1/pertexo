@@ -16,7 +16,10 @@ import {
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-import { createQueueTraceRunner } from '@pertexo/observability';
+import {
+  createQueueTraceRunner,
+  type StructuredLogger,
+} from '@pertexo/observability';
 import {
   createQueueConsumer,
   InvalidQueueDeliveryError,
@@ -46,11 +49,14 @@ import {
   type CoordinatorHandler,
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
-import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
-import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
+import {
+  closeCoordinatorDependencies,
+  createCoordinatorRuntimeLifecycle,
+} from './coordinator-runtime-lifecycle.js';
 
 export interface CoordinatorRuntime {
   readonly consumer: QueueConsumer;
+  checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -77,7 +83,31 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   reader?: PublishedWorkflowReader;
   runStore?: CoordinatorRunStore;
   telemetry?: CoordinatorTelemetry;
+  logger?: StructuredLogger;
 }>;
+
+export type CoordinatorCompositionFactories = Readonly<{
+  consumer: typeof createQueueConsumer;
+  deadlineScanner: typeof createDeadlineWakeupScanner;
+  dueScanner: typeof createDueNodeWakeupScanner;
+  notifications(redisUrl: string): RunEventNotificationPublisher;
+  reader: typeof createPublishedWorkflowReader;
+  runStore: typeof createCoordinatorRunStore;
+  telemetry: typeof createCoordinatorTelemetry;
+  traceRunner: typeof createQueueTraceRunner;
+}>;
+
+const productionFactories: CoordinatorCompositionFactories = {
+  consumer: createQueueConsumer,
+  deadlineScanner: createDeadlineWakeupScanner,
+  dueScanner: createDueNodeWakeupScanner,
+  notifications: (redisUrl) =>
+    new RedisRunEventNotificationPublisher({ redisUrl }),
+  reader: createPublishedWorkflowReader,
+  runStore: createCoordinatorRunStore,
+  telemetry: createCoordinatorTelemetry,
+  traceRunner: createQueueTraceRunner,
+};
 
 function systemClock(): Readonly<{ now(): string }> {
   return Object.freeze({ now: (): string => new Date().toISOString() });
@@ -111,6 +141,7 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
 export async function createCoordinatorRuntime(
   options: CoordinatorRuntimeOptions,
   dependencies: CoordinatorRuntimeDependencies = {},
+  factories: CoordinatorCompositionFactories = productionFactories,
 ): Promise<CoordinatorRuntime> {
   if (
     !Number.isSafeInteger(options.maximumAdmissions) ||
@@ -163,116 +194,92 @@ export async function createCoordinatorRuntime(
       admissionRelease: firstRelease,
       releaseSupport,
     });
-  const runStore =
-    dependencies.runStore ??
-    createCoordinatorRunStore(options.database, options.databaseRuntime, {
-      runTimeoutFailureContextEnabled:
-        options.runTimeoutFailureContextEnabled ?? false,
-    });
-  const reader =
-    dependencies.reader ??
-    createPublishedWorkflowReader(
-      options.database,
-      createExecutableCompatibilityReleaseSupport(
-        platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
-          composeExecutableCompatibilityRelease,
-        ),
-      ).descriptions,
-      options.databaseRuntime,
-    );
-  const notifications =
-    dependencies.notifications ??
-    new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
-  const dueWakeupScanner =
-    dependencies.dueWakeupScanner ??
-    createDueNodeWakeupScanner(options.database, options.databaseRuntime);
-  const deadlineWakeupScanner =
-    dependencies.deadlineWakeupScanner ??
-    createDeadlineWakeupScanner(options.database, options.databaseRuntime);
-  const handler = createCoordinatorHandler({
-    clock: dependencies.clock ?? systemClock(),
-    engine,
-    maximumAdmissions: options.maximumAdmissions,
-    notifications,
-    reader,
-    runStore,
-    telemetry: dependencies.telemetry ?? createCoordinatorTelemetry(),
-  });
-  let consumer: QueueConsumer;
+  const currentReleaseDescriptions =
+    createExecutableCompatibilityReleaseSupport(
+      platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
+        composeExecutableCompatibilityRelease,
+      ),
+    ).descriptions;
+  const telemetry = dependencies.telemetry ?? factories.telemetry();
+  const traceRunner = factories.traceRunner();
+  let runStore: CoordinatorRunStore | undefined;
+  let reader: PublishedWorkflowReader | undefined;
+  let notifications: RunEventNotificationPublisher | undefined;
+  let dueWakeupScanner: DueNodeWakeupScanner | undefined;
+  let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
+  let consumer: QueueConsumer | undefined;
   try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
+    runStore =
+      dependencies.runStore ??
+      factories.runStore(options.database, options.databaseRuntime, {
+        runTimeoutFailureContextEnabled:
+          options.runTimeoutFailureContextEnabled ?? false,
+      });
+    reader =
+      dependencies.reader ??
+      factories.reader(
+        options.database,
+        currentReleaseDescriptions,
+        options.databaseRuntime,
+      );
+    notifications =
+      dependencies.notifications ?? factories.notifications(options.redisUrl);
+    dueWakeupScanner =
+      dependencies.dueWakeupScanner ??
+      factories.dueScanner(options.database, options.databaseRuntime);
+    deadlineWakeupScanner =
+      dependencies.deadlineWakeupScanner ??
+      factories.deadlineScanner(options.database, options.databaseRuntime);
+    const handler = createCoordinatorHandler({
+      clock: dependencies.clock ?? systemClock(),
+      engine,
+      maximumAdmissions: options.maximumAdmissions,
+      notifications,
+      reader,
+      runStore,
+      telemetry,
+    });
+    consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,
       handler: queueHandler(handler),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
-      traceRunner: createQueueTraceRunner(),
+      traceRunner,
     });
   } catch (error: unknown) {
-    await Promise.allSettled([
-      notifications.close(),
-      dueWakeupScanner.close(),
-      deadlineWakeupScanner.close(),
-      reader.close(),
-      runStore.close(),
-    ]);
+    const cleanup = await closeCoordinatorDependencies(
+      {
+        deadlineWakeupScanner,
+        dueWakeupScanner,
+        notifications,
+        reader,
+        runStore,
+      },
+      backgroundTaskShutdownTimeoutMillis,
+    );
+    if (cleanup.length > 0)
+      throw new AggregateError(
+        [error, ...cleanup],
+        'Coordinator runtime construction and cleanup failed',
+      );
     throw error;
   }
-  const scannerAbort = new AbortController();
-  const scannerLoop = (async (): Promise<void> => {
-    while (!scannerAbort.signal.aborted) {
-      try {
-        await dueWakeupScanner.claimDueWakeups(
-          dueWakeupBatchSize,
-          scannerAbort.signal,
-        );
-        // The signal can change while the scanner promise is awaiting I/O.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (scannerAbort.signal.aborted) break;
-        await deadlineWakeupScanner.claimDueWakeups(
-          dueWakeupBatchSize,
-          scannerAbort.signal,
-        );
-      } catch {
-        // A transient database outage must not terminate the coordinator process.
-      }
-      await waitForSupervisorDelay(
-        dueWakeupPollIntervalMillis,
-        scannerAbort.signal,
-      );
-    }
-  })();
-  let closePromise: Promise<void> | undefined;
-
-  return Object.freeze({
-    consumer,
-    close: (): Promise<void> => {
-      closePromise ??= (async (): Promise<void> => {
-        scannerAbort.abort();
-        const consumerResult = await Promise.allSettled([consumer.close()]);
-        const scannerDrainResult = await Promise.allSettled([
-          boundedBackgroundTask(
-            scannerLoop,
-            backgroundTaskShutdownTimeoutMillis,
-          ),
-        ]);
-        const scannerCloseResult = await Promise.allSettled([
-          dueWakeupScanner.close(),
-          deadlineWakeupScanner.close(),
-        ]);
-        const adapterResults = await Promise.allSettled([
-          notifications.close(),
-          reader.close(),
-          runStore.close(),
-        ]);
-        const failure = [
-          ...consumerResult,
-          ...scannerDrainResult,
-          ...scannerCloseResult,
-          ...adapterResults,
-        ].find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
+  return createCoordinatorRuntimeLifecycle(
+    {
+      consumer,
+      deadlineWakeupScanner,
+      dueWakeupScanner,
+      notifications,
+      reader,
+      runStore,
     },
-  });
+    {
+      batchSize: dueWakeupBatchSize,
+      ...(dependencies.logger === undefined
+        ? {}
+        : { logger: dependencies.logger }),
+      pollIntervalMillis: dueWakeupPollIntervalMillis,
+      shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
+    },
+  );
 }

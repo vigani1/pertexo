@@ -11,16 +11,30 @@ import { createPublishedWorkflowReader } from '../src/execution/published-workfl
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
-const migrationUrl =
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiUrl =
+const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const workerUrl =
+const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_reader_${randomUUID().replaceAll('-', '')}`;
+const disposableDatabase = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_api', 'pertexo_worker'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const migrationUrl = disposableDatabase.databaseUrl(migrationBaseUrl);
+const apiUrl = disposableDatabase.databaseUrl(apiBaseUrl);
+const workerUrl = disposableDatabase.databaseUrl(workerBaseUrl);
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
@@ -130,7 +144,13 @@ async function withReadinessDriftLock(
 }
 
 beforeAll(async () => {
-  await migrateDatabase(migrationConfig);
+  await disposableDatabase.create();
+  try {
+    await migrateDatabase(migrationConfig);
+  } catch (error: unknown) {
+    await disposableDatabase.drop().catch(() => undefined);
+    throw error;
+  }
   await identity.createUser({
     id: actorId,
     email: `published-reader-${actorId}@example.test`,
@@ -180,13 +200,28 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await workerReader.close();
-  await apiReader.close();
-  await authoring.close();
-  await identity.close();
-  await workerPool.end();
-  await apiPool.end();
-  await ownerPool.end();
+  const outcomes = await Promise.allSettled([
+    workerReader.close(),
+    apiReader.close(),
+    authoring.close(),
+    identity.close(),
+    workerPool.end(),
+    apiPool.end(),
+    ownerPool.end(),
+  ]);
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+  );
+  try {
+    await disposableDatabase.drop();
+  } catch (error: unknown) {
+    failures.push(error);
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      'Published-reader fixture cleanup failed',
+    );
 });
 
 describe('PublishedWorkflowReader', () => {

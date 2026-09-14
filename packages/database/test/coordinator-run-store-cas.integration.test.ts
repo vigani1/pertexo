@@ -1,3 +1,4 @@
+import { Pool, type Pool as PgPool, type PoolClient } from 'pg';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -7,13 +8,21 @@ import {
   asOwner,
   asRuntime,
   checkpoint,
+  coordinatorStoreApplicationName,
+  createCoordinatorRunStore,
+  databaseUrl,
   insertRun,
   nodeAttemptStore,
-  store,
+  ownedDeliveryStore,
+  parseDatabaseConfig,
+  rawStore,
+  testDelivery,
   versionA,
+  waitForApplicationLocks,
   workerBaseUrl,
   workspaceA,
 } from './coordinator-run-store.fixtures.js';
+import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 
 describe('Coordinator CAS and transition invariants', () => {
   it('has one concurrent CAS winner and classifies the exact replay', async () => {
@@ -23,10 +32,12 @@ describe('Coordinator CAS and transition invariants', () => {
       runStatus: 'running',
       nextEventSequence: 3,
     });
+    const delivery = await testDelivery(workspaceA, runId, 0);
     const input = {
       workspaceId: workspaceA,
       runId,
       workflowVersionId: versionA,
+      delivery,
       signal: new AbortController().signal,
       plan: {
         expectedRevision: 0,
@@ -45,15 +56,44 @@ describe('Coordinator CAS and transition invariants', () => {
         attempts: [],
       },
     } as const;
-    const raced = await Promise.all([
-      store.commitAdvancePlan(input),
-      store.commitAdvancePlan(input),
-    ]);
+    const blockerPool = new Pool({
+      connectionString: databaseUrl(workerBaseUrl),
+      max: 1,
+    });
+    const blocker = await blockerPool.connect();
+    let commits: readonly Promise<
+      Awaited<ReturnType<typeof rawStore.commitAdvancePlan>>
+    >[] = [];
+    let raced: readonly Awaited<
+      ReturnType<typeof rawStore.commitAdvancePlan>
+    >[];
+    try {
+      await blocker.query('begin');
+      await blocker.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await blocker.query(
+        'select id from app.workflow_runs where workspace_id=$1 and id=$2 for update',
+        [workspaceA, runId],
+      );
+      commits = [
+        rawStore.commitAdvancePlan(input),
+        rawStore.commitAdvancePlan(input),
+      ];
+      await waitForApplicationLocks(coordinatorStoreApplicationName, 2);
+      await blocker.query('commit');
+      raced = await Promise.all(commits);
+    } finally {
+      await blocker.query('rollback').catch(() => undefined);
+      blocker.release();
+      await blockerPool.end();
+      await Promise.allSettled(commits);
+    }
     expect(raced.map(({ kind }) => kind).sort()).toEqual([
       'already_committed',
       'committed',
     ]);
-    await expect(store.commitAdvancePlan(input)).resolves.toEqual({
+    await expect(rawStore.commitAdvancePlan(input)).resolves.toEqual({
       kind: 'already_committed',
       revision: 1,
     });
@@ -69,8 +109,163 @@ describe('Coordinator CAS and transition invariants', () => {
     expect(receipts.rows[0]?.completed).toBe(1);
   });
 
+  it('replays safely when the commit acknowledgement is lost', async () => {
+    const applicationName = `commit-ack-loss-${String(process.pid)}`;
+    const connectionUrl = new URL(databaseUrl(workerBaseUrl));
+    connectionUrl.searchParams.set('application_name', applicationName);
+    const config = parseDatabaseConfig({
+      connectionString: connectionUrl.toString(),
+      max: 1,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
+    const wrappedClients = new WeakSet<PoolClient>();
+    let loseCommitAcknowledgement = true;
+    const originalConnect = Reflect.get(Pool.prototype, 'connect') as (
+      this: PgPool,
+      ...arguments_: unknown[]
+    ) => unknown;
+    Pool.prototype.connect = function (
+      this: PgPool,
+      ...arguments_: unknown[]
+    ): unknown {
+      const options = (
+        this as unknown as { options: { connectionString?: string } }
+      ).options;
+      const ownName =
+        options.connectionString === undefined
+          ? undefined
+          : new URL(options.connectionString).searchParams.get(
+              'application_name',
+            );
+      const connected = Reflect.apply(originalConnect, this, arguments_);
+      if (ownName !== applicationName || arguments_.length > 0)
+        return connected;
+      return (connected as Promise<PoolClient>).then((client) => {
+        if (wrappedClients.has(client)) return client;
+        wrappedClients.add(client);
+        const originalQuery = client.query.bind(client) as unknown as (
+          ...queryArguments: unknown[]
+        ) => unknown;
+        client.query = ((...queryArguments: unknown[]): unknown => {
+          const request = queryArguments[0];
+          const text =
+            typeof request === 'string'
+              ? request
+              : typeof request === 'object' &&
+                  request !== null &&
+                  'text' in request &&
+                  typeof request.text === 'string'
+                ? request.text
+                : '';
+          const result = originalQuery(...queryArguments);
+          if (
+            loseCommitAcknowledgement &&
+            text.trim().toLowerCase() === 'commit'
+          ) {
+            loseCommitAcknowledgement = false;
+            return Promise.resolve(result).then(() => {
+              throw new Error('Injected commit acknowledgement loss');
+            });
+          }
+          return result;
+        }) as typeof client.query;
+        return client;
+      });
+    } as typeof Pool.prototype.connect;
+
+    let runtime: ReturnType<typeof createDatabaseRuntime> | undefined;
+    let lossStore: ReturnType<typeof createCoordinatorRunStore> | undefined;
+    try {
+      runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
+      lossStore = createCoordinatorRunStore(config, runtime);
+    } finally {
+      Pool.prototype.connect = originalConnect as typeof Pool.prototype.connect;
+    }
+
+    const runId = await insertRun({});
+    const delivery = await testDelivery(workspaceA, runId, 0);
+    const input = {
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      delivery,
+      signal: new AbortController().signal,
+      plan: {
+        expectedRevision: 0,
+        expectedNextEventSequence: 2,
+        consumedThroughEventSequence: 1,
+        checkpoint: checkpoint({
+          revision: 1,
+          runStatus: 'running',
+          nextEventSequence: 3,
+        }),
+        events: [
+          {
+            schemaVersion: 1 as const,
+            sequence: 2,
+            name: 'run.started' as const,
+            occurredAt: '2026-09-13T00:00:00.000Z',
+          },
+        ],
+        nodeRunAdmissions: [],
+        attempts: [],
+      },
+    };
+    try {
+      await expect(lossStore.commitAdvancePlan(input)).rejects.toThrow(
+        'Injected commit acknowledgement loss',
+      );
+      await expect(rawStore.commitAdvancePlan(input)).resolves.toEqual({
+        kind: 'already_committed',
+        revision: 1,
+      });
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `select checkpoint.revision,
+                    count(event.sequence)::int event_count,
+                    bool_and(receipt.completed_at is not null) receipt_completed
+             from app.run_checkpoints checkpoint
+             join app.run_events event
+               on event.workflow_run_id=checkpoint.workflow_run_id
+             join app.inbox_receipts receipt on receipt.message_id=$3
+             where checkpoint.workspace_id=$1 and checkpoint.workflow_run_id=$2
+             group by checkpoint.revision`,
+            [workspaceA, runId, delivery.outboxEventId],
+          ),
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ revision: 1, event_count: 2, receipt_completed: true }],
+      });
+    } finally {
+      const closed = await Promise.allSettled([
+        lossStore.close(),
+        runtime.close(),
+      ]);
+      const failures: Error[] = [];
+      for (const result of closed)
+        if (result.status === 'rejected')
+          failures.push(
+            result.reason instanceof Error
+              ? result.reason
+              : new Error('Commit-loss cleanup rejected', {
+                  cause: result.reason,
+                }),
+          );
+      if (failures.length > 0) {
+        // eslint-disable-next-line no-unsafe-finally -- Every cleanup owner has settled and its failure must remain visible.
+        throw new AggregateError(
+          failures,
+          'Commit-loss fixture cleanup failed',
+        );
+      }
+    }
+  });
+
   it('uses the exact transition fingerprint for event and admission replays', async () => {
     const firstRun = await insertRun({});
+    const firstDelivery = await testDelivery(workspaceA, firstRun, 0);
     const basePlan = {
       expectedRevision: 0,
       expectedNextEventSequence: 2,
@@ -92,19 +287,21 @@ describe('Coordinator CAS and transition invariants', () => {
       attempts: [],
     } as const;
     await expect(
-      store.commitAdvancePlan({
+      rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: firstRun,
         workflowVersionId: versionA,
+        delivery: firstDelivery,
         signal: new AbortController().signal,
         plan: basePlan,
       }),
     ).resolves.toMatchObject({ kind: 'committed' });
     await expect(
-      store.commitAdvancePlan({
+      rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: firstRun,
         workflowVersionId: versionA,
+        delivery: firstDelivery,
         signal: new AbortController().signal,
         plan: {
           ...basePlan,
@@ -116,6 +313,7 @@ describe('Coordinator CAS and transition invariants', () => {
     ).resolves.toEqual({ kind: 'stale', revision: 1 });
 
     const secondRun = await insertRun({});
+    const secondDelivery = await testDelivery(workspaceA, secondRun, 0);
     const invocationA = 'fingerprint/a';
     const invocationB = 'fingerprint/b';
     const admissions = [
@@ -176,19 +374,21 @@ describe('Coordinator CAS and transition invariants', () => {
       attempts: [],
     } as const;
     await expect(
-      store.commitAdvancePlan({
+      rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: secondRun,
         workflowVersionId: versionA,
+        delivery: secondDelivery,
         signal: new AbortController().signal,
         plan: admissionPlan,
       }),
     ).resolves.toMatchObject({ kind: 'committed' });
     await expect(
-      store.commitAdvancePlan({
+      rawStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: secondRun,
         workflowVersionId: versionA,
+        delivery: secondDelivery,
         signal: new AbortController().signal,
         plan: {
           ...admissionPlan,
@@ -202,7 +402,7 @@ describe('Coordinator CAS and transition invariants', () => {
     const runId = await insertRun({});
     for (const sticky of ['cancelRequested', 'deadlineExpired'] as const) {
       await expect(
-        store.commitAdvancePlan({
+        ownedDeliveryStore.commitAdvancePlan({
           workspaceId: workspaceA,
           runId,
           workflowVersionId: versionA,
@@ -224,7 +424,7 @@ describe('Coordinator CAS and transition invariants', () => {
       ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
     }
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -250,7 +450,7 @@ describe('Coordinator CAS and transition invariants', () => {
     for (const sticky of ['cancelRequested', 'deadlineExpired'] as const) {
       const invocationKey = `sticky/${sticky}`;
       await expect(
-        store.commitAdvancePlan({
+        ownedDeliveryStore.commitAdvancePlan({
           workspaceId: workspaceA,
           runId,
           workflowVersionId: versionA,
@@ -321,7 +521,7 @@ describe('Coordinator CAS and transition invariants', () => {
     const newInvocation = 'delta/new';
     const missingNodeRun = await insertRun({});
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: missingNodeRun,
         workflowVersionId: versionA,
@@ -382,7 +582,7 @@ describe('Coordinator CAS and transition invariants', () => {
       }),
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: missingAttempt,
         workflowVersionId: versionA,
@@ -419,7 +619,7 @@ describe('Coordinator CAS and transition invariants', () => {
       }),
     ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: missingAttempt,
         workflowVersionId: versionA,
@@ -471,7 +671,7 @@ describe('Coordinator CAS and transition invariants', () => {
     for (const kind of ['cancel', 'deadline'] as const) {
       const runId = await insertRun({
         ...(kind === 'deadline'
-          ? { deadlineAt: new Date(Date.now() + 100).toISOString() }
+          ? { deadlineAt: '2099-01-01T00:00:00.000Z' }
           : {}),
       });
       const next = checkpoint({
@@ -480,7 +680,7 @@ describe('Coordinator CAS and transition invariants', () => {
         nextEventSequence: 3,
       });
       await expect(
-        store.loadAdvanceState({
+        ownedDeliveryStore.loadAdvanceState({
           workspaceId: workspaceA,
           runId,
           signal: new AbortController().signal,
@@ -499,10 +699,17 @@ describe('Coordinator CAS and transition invariants', () => {
           );
         });
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `update app.workflow_runs
+             set deadline_at=clock_timestamp()-interval '1 millisecond'
+             where workspace_id=$1 and id=$2`,
+            [workspaceA, runId],
+          ),
+        );
       }
       await expect(
-        store.commitAdvancePlan({
+        ownedDeliveryStore.commitAdvancePlan({
           workspaceId: workspaceA,
           runId,
           workflowVersionId: versionA,
@@ -545,7 +752,7 @@ describe('Coordinator CAS and transition invariants', () => {
       }),
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -658,7 +865,7 @@ describe('Coordinator CAS and transition invariants', () => {
     const runId = await insertRun({ schedulerState: initial });
 
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -831,7 +1038,7 @@ describe('Coordinator CAS and transition invariants', () => {
       },
     });
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -845,7 +1052,7 @@ describe('Coordinator CAS and transition invariants', () => {
       ),
     );
     await expect(
-      store.loadAdvanceState({
+      ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,

@@ -83,7 +83,7 @@ async function observeOperation<T>(
   } catch (error: unknown) {
     let errorClass: RedisOperationErrorClass = 'connection';
     if (error instanceof RedisRunEventSubscribeError) {
-      errorClass = error.message.includes('aborted') ? 'aborted' : 'timeout';
+      errorClass = error.reason;
     }
     try {
       observer?.operationFinished({
@@ -106,6 +106,13 @@ export class RedisRunEventSourceConfigurationError extends Error {
 
 class RedisRunEventSubscribeError extends Error {
   public override readonly name = 'RedisRunEventSubscribeError';
+  public constructor(public readonly reason: 'aborted' | 'timeout') {
+    super(
+      reason === 'aborted'
+        ? 'Run event subscription was aborted'
+        : 'Redis run event operation timed out',
+    );
+  }
 }
 
 function parseRedisUrl(value: string): string {
@@ -187,7 +194,7 @@ async function subscribeWithBounds(
   signal: AbortSignal,
 ): Promise<void> {
   if (signal.aborted) {
-    throw new RedisRunEventSubscribeError('Run event subscription was aborted');
+    throw new RedisRunEventSubscribeError('aborted');
   }
   let timer: NodeJS.Timeout | undefined;
   let onAbort: (() => void) | undefined;
@@ -196,16 +203,10 @@ async function subscribeWithBounds(
       redis.subscribe(channel).then(() => undefined),
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => {
-          reject(
-            new RedisRunEventSubscribeError('Redis subscription timed out'),
-          );
+          reject(new RedisRunEventSubscribeError('timeout'));
         }, timeoutMs);
         onAbort = () => {
-          reject(
-            new RedisRunEventSubscribeError(
-              'Run event subscription was aborted',
-            ),
-          );
+          reject(new RedisRunEventSubscribeError('aborted'));
         };
         signal.addEventListener('abort', onAbort, { once: true });
       }),
@@ -263,7 +264,7 @@ export class RedisRunEventSource implements LiveRunEventSource {
           redis.ping().then(() => undefined),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => {
-              reject(new RedisRunEventSubscribeError('Redis ping timed out'));
+              reject(new RedisRunEventSubscribeError('timeout'));
             }, this.subscribeTimeoutMs);
           }),
         ]),

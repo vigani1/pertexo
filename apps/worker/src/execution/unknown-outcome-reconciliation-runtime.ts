@@ -78,13 +78,24 @@ export function createUnknownOutcomeReconciliationHandler(
 
 export function mapUnknownOutcomeReconciliationError(error: unknown): unknown {
   if (
-    error instanceof UnknownOutcomeReconciliationMismatchError ||
-    error instanceof UnknownOutcomeReconciliationStateError ||
-    error instanceof InboxChecksumMismatchError ||
-    error instanceof InboxReceiptUnavailableError
+    isErrorInstance(error, UnknownOutcomeReconciliationMismatchError) ||
+    isErrorInstance(error, UnknownOutcomeReconciliationStateError) ||
+    isErrorInstance(error, InboxChecksumMismatchError) ||
+    isErrorInstance(error, InboxReceiptUnavailableError)
   )
     return unrecoverableQueueError(
       'Unknown-outcome reconciliation failed durable state verification',
     );
   return error;
+}
+
+function isErrorInstance<T extends Error>(
+  value: unknown,
+  constructor: abstract new (...arguments_: never[]) => T,
+): value is T {
+  try {
+    return value instanceof constructor;
+  } catch {
+    return false;
+  }
 }

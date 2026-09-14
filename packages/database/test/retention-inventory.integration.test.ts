@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type ControlLedger,
   Pool,
+  apiUrl,
   createRetentionEnforcementCoordinator,
   cutoffAt,
   maintenanceUrl,
@@ -109,10 +110,7 @@ describe('retention inventory and input enforcement', () => {
       }),
     ).resolves.toMatchObject({ stale: true, examinedDelta: 0 });
 
-    const apiUrl = new URL(maintenanceUrl);
-    apiUrl.username = 'pertexo_api';
-    apiUrl.password = 'pertexo-local-api';
-    const api = new Pool({ connectionString: apiUrl.toString(), max: 1 });
+    const api = new Pool({ connectionString: apiUrl, max: 1 });
     try {
       await expect(
         api.query(

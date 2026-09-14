@@ -134,15 +134,17 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     warn: vi.fn(),
   } satisfies StructuredLogger;
   const metrics = {
-    record: vi.fn(),
-    recordFailure: vi.fn(),
-    recordOperatorRerun: vi.fn(),
-    recordPreview: vi.fn(),
-    recordRegionalReplicaLag: vi.fn(),
-    recordRunArtifact: vi.fn(),
-    recordSchedule: vi.fn(),
-    recordTransientDataReap: vi.fn(),
-    recordWorkspacePurge: vi.fn(),
+    record: vi.fn<RetentionMetrics['record']>(),
+    recordFailure: vi.fn<RetentionMetrics['recordFailure']>(),
+    recordOperatorRerun: vi.fn<RetentionMetrics['recordOperatorRerun']>(),
+    recordPreview: vi.fn<RetentionMetrics['recordPreview']>(),
+    recordRegionalReplicaLag:
+      vi.fn<RetentionMetrics['recordRegionalReplicaLag']>(),
+    recordRunArtifact: vi.fn<RetentionMetrics['recordRunArtifact']>(),
+    recordSchedule: vi.fn<RetentionMetrics['recordSchedule']>(),
+    recordTransientDataReap:
+      vi.fn<RetentionMetrics['recordTransientDataReap']>(),
+    recordWorkspacePurge: vi.fn<RetentionMetrics['recordWorkspacePurge']>(),
   } satisfies RetentionMetrics;
   const telemetry = {
     enabled: false,
@@ -418,9 +420,128 @@ function installMaintenanceResult(
   return execute;
 }
 
-async function flushMaintenancePromises(): Promise<void> {
-  for (let index = 0; index < 20; index += 1) await Promise.resolve();
+function installDeferredMaintenanceResult(
+  input: TestResources,
+  operation: MaintenanceOperation,
+  result: Promise<unknown>,
+): ReturnType<typeof vi.fn> {
+  const execute = vi.fn(() => result);
+  switch (operation) {
+    case 'operator_rerun':
+      input.database.processOperatorRerun =
+        execute as typeof input.database.processOperatorRerun;
+      break;
+    case 'scheduling':
+      input.database.scheduleEnforcement =
+        execute as typeof input.database.scheduleEnforcement;
+      break;
+    case 'transient_data_reap':
+      input.database.reapTransientData =
+        execute as typeof input.database.reapTransientData;
+      break;
+    case 'dry_run':
+      input.database.processNext = execute as typeof input.database.processNext;
+      break;
+    case 'enforcement':
+      input.enforcement.processNext =
+        execute as typeof input.enforcement.processNext;
+      break;
+    case 'preview':
+      input.preview.processNext = execute as typeof input.preview.processNext;
+      break;
+    case 'run_artifact':
+      input.runArtifacts.processNext =
+        execute as typeof input.runArtifacts.processNext;
+      break;
+    case 'workspace_purge':
+      input.workspacePurge.processNext =
+        execute as typeof input.workspacePurge.processNext;
+  }
+  return execute;
 }
+
+function deferred<Value>() {
+  let resolve!: (value: Value | PromiseLike<Value>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+}
+
+async function waitForCondition(
+  description: string,
+  condition: () => boolean,
+): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (condition()) return;
+    await Promise.resolve();
+  }
+  throw new Error(`Timed out waiting for ${description}`);
+}
+
+const durationCases = [
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordOperatorRerun.mock.calls[0]?.[1],
+    operation: 'operator_rerun',
+    result: null,
+  },
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordSchedule.mock.calls[0]?.[1],
+    operation: 'scheduling',
+    result: {
+      capacityLimited: false,
+      cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+      scannedCount: 0,
+      scheduledCount: 0,
+    },
+  },
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordTransientDataReap.mock.calls[0]?.[1],
+    operation: 'transient_data_reap',
+    result: {
+      idempotencyRecordsDeleted: 0,
+      sessionsDeleted: 0,
+      workspaceCreationRecordsDeleted: 0,
+    },
+  },
+  {
+    duration: (input: TestResources) => input.metrics.record.mock.calls[0]?.[1],
+    operation: 'dry_run',
+    result: { status: 'idle' },
+  },
+  {
+    duration: (input: TestResources) => input.metrics.record.mock.calls[0]?.[1],
+    operation: 'enforcement',
+    result: { status: 'idle' },
+  },
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordPreview.mock.calls[0]?.[1],
+    operation: 'preview',
+    result: { status: 'idle' },
+  },
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordRunArtifact.mock.calls[0]?.[1],
+    operation: 'run_artifact',
+    result: { status: 'idle' },
+  },
+  {
+    duration: (input: TestResources) =>
+      input.metrics.recordWorkspacePurge.mock.calls[0]?.[1],
+    operation: 'workspace_purge',
+    result: { status: 'idle' },
+  },
+] as const satisfies readonly {
+  duration(input: TestResources): unknown;
+  operation: MaintenanceOperation;
+  result: unknown;
+}[];
 
 describe('retention worker', () => {
   it('proves authority, drains completed work, records metrics, and closes', async () => {
@@ -450,80 +571,41 @@ describe('retention worker', () => {
     expect(input.metrics.recordWorkspacePurge).toHaveBeenCalled();
   });
 
-  it('measures every independently supervised poll operation', async () => {
-    const input = resources(['idle']);
-    let now = 0;
-    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
-    const advance = <Result>(result: Result): Promise<Result> => {
-      now += 100;
-      return Promise.resolve(result);
-    };
-    input.database.processOperatorRerun = vi.fn(() => advance(null));
-    input.database.scheduleEnforcement = vi.fn(() =>
-      advance({
-        capacityLimited: false,
-        cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
-        scannedCount: 0,
-        scheduledCount: 0,
-      }),
-    );
-    input.database.processNext = vi.fn(() =>
-      advance({ status: 'idle' as const }),
-    );
-    input.enforcement.processNext = vi.fn(() =>
-      advance({ status: 'idle' as const }),
-    );
-    input.preview.processNext = vi.fn(() =>
-      advance({ status: 'idle' as const }),
-    );
-    input.runArtifacts.processNext = vi.fn(() =>
-      advance({ status: 'idle' as const }),
-    );
-    input.workspacePurge.processNext = vi.fn(async () => {
-      const result = await advance({ status: 'idle' as const });
-      input.controller.abort(new Error('measurement complete'));
-      return result;
-    });
-
-    try {
-      await runRetentionWorker(input);
-    } finally {
-      clock.mockRestore();
-    }
-
-    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledWith(
-      null,
-      expect.any(Number),
-    );
-    expect(input.metrics.recordSchedule).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Number),
-    );
-    expect(input.metrics.record).toHaveBeenNthCalledWith(
-      1,
-      expect.any(Object),
-      expect.any(Number),
-      'dry_run',
-    );
-    expect(input.metrics.record).toHaveBeenNthCalledWith(
-      2,
-      expect.any(Object),
-      expect.any(Number),
-      'enforce',
-    );
-    expect(input.metrics.recordPreview).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Number),
-    );
-    expect(input.metrics.recordRunArtifact).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Number),
-    );
-    expect(input.metrics.recordWorkspacePurge).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Number),
-    );
-  });
+  it.each(durationCases)(
+    'measures only the active $operation poll duration',
+    async ({ duration, operation, result }) => {
+      const input = resources([]);
+      isolateMaintenanceOperations(input);
+      const completed = deferred<unknown>();
+      const execute = installDeferredMaintenanceResult(
+        input,
+        operation,
+        completed.promise,
+      );
+      let now = 10_000;
+      const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+      try {
+        const running = runRetentionWorker(input);
+        await waitForCondition(
+          `${operation} to enter`,
+          () => execute.mock.calls.length > 0,
+        );
+        now += 125;
+        completed.resolve(result);
+        await waitForCondition(
+          `${operation} metric to be recorded`,
+          () => duration(input) !== undefined,
+        );
+        expect(duration(input)).toBe(0.125);
+        input.controller.abort(new Error(`${operation} duration observed`));
+        await running;
+      } finally {
+        clock.mockRestore();
+        input.controller.abort(new Error(`${operation} test cleanup`));
+        completed.resolve(result);
+      }
+    },
+  );
 
   it.each(maintenanceLoopCases)(
     'preserves the public loop decision: $name',
@@ -535,12 +617,18 @@ describe('retention worker', () => {
       const execute = installMaintenanceResult(input, operation, result);
       try {
         const running = runRetentionWorker(input);
-        await flushMaintenancePromises();
+        await waitForCondition(
+          `${operation} to enter its expected iteration`,
+          () => execute.mock.calls.length >= (shouldPoll ? 1 : 2),
+        );
 
         expect(execute).toHaveBeenCalledTimes(shouldPoll ? 1 : 2);
         if (shouldPoll) {
           await vi.advanceTimersByTimeAsync(input.pollIntervalMs);
-          await flushMaintenancePromises();
+          await waitForCondition(
+            `${operation} to poll again`,
+            () => execute.mock.calls.length >= 2,
+          );
           expect(execute).toHaveBeenCalledTimes(2);
         }
         await running;
@@ -560,7 +648,10 @@ describe('retention worker', () => {
     });
     try {
       const running = runRetentionWorker(input);
-      await flushMaintenancePromises();
+      await waitForCondition(
+        'the dry-run polling delay',
+        () => execute.mock.calls.length >= 1,
+      );
       expect(execute).toHaveBeenCalledOnce();
 
       input.controller.abort(new Error('cancel polling delay'));
@@ -581,7 +672,10 @@ describe('retention worker', () => {
     input.database.processOperatorRerun = execute;
     try {
       const running = runRetentionWorker(input);
-      await flushMaintenancePromises();
+      await waitForCondition(
+        'the operator-rerun failure backoff',
+        () => input.metrics.recordFailure.mock.calls.length >= 1,
+      );
       expect(execute).toHaveBeenCalledOnce();
       expect(input.metrics.recordFailure).toHaveBeenCalledWith(
         'operator_rerun',
@@ -679,6 +773,179 @@ describe('retention worker', () => {
     );
   });
 
+  it('drains an active maintenance child before closing resources after a fatal sibling', async () => {
+    const input = resources([]);
+    isolateMaintenanceOperations(input);
+    const heldDryRun = deferred<{ status: 'idle' }>();
+    let heldAbortObserved = false;
+    input.database.processNext = vi.fn((signal?: AbortSignal) => {
+      signal?.addEventListener(
+        'abort',
+        () => {
+          heldAbortObserved = true;
+        },
+        { once: true },
+      );
+      return heldDryRun.promise;
+    });
+    const operationFailure = new Error('operator adapter failed');
+    const diagnosticFailure = new Error('operation diagnostic failed');
+    input.database.processOperatorRerun = vi.fn(() =>
+      Promise.reject(operationFailure),
+    );
+    input.logger.error.mockImplementationOnce(() => {
+      throw diagnosticFailure;
+    });
+    let settled = false;
+    const observed = runRetentionWorker(input)
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      .finally(() => {
+        settled = true;
+      });
+
+    await waitForCondition(
+      'the held maintenance child to observe sibling cancellation',
+      () => heldAbortObserved,
+    );
+    expect(settled).toBe(false);
+    expect(input.events.filter((event) => event.endsWith('-close'))).toEqual(
+      [],
+    );
+
+    heldDryRun.resolve({ status: 'idle' });
+    const error = await observed;
+
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).errors[0]).toBe(diagnosticFailure);
+    expect(input.preview.close).toHaveBeenCalledOnce();
+    expect(input.runArtifacts.close).toHaveBeenCalledOnce();
+    expect(input.workspacePurge.close).toHaveBeenCalledOnce();
+    expect(input.artifacts.close).toHaveBeenCalledOnce();
+    expect(input.enforcement.close).toHaveBeenCalledOnce();
+    expect(input.database.close).toHaveBeenCalledOnce();
+    expect(input.ledger.close).toHaveBeenCalledOnce();
+    expect(input.telemetry.shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('drains delayed readiness and an active purge before cleanup', async () => {
+    const input = resources([]);
+    isolateMaintenanceOperations(input);
+    const readinessValue = await input.ledger.checkReadiness();
+    input.events.length = 0;
+    const artifactsReady = deferred<object>();
+    const ledgerReady = deferred<typeof readinessValue>();
+    input.artifacts.checkReadiness = vi.fn(() => artifactsReady.promise);
+    input.ledger.checkReadiness = vi.fn(() => ledgerReady.promise);
+    const heldPurge = deferred<{ status: 'idle' }>();
+    let purgeAbortObserved = false;
+    input.workspacePurge.processNext = vi.fn((signal?: AbortSignal) => {
+      signal?.addEventListener(
+        'abort',
+        () => {
+          purgeAbortObserved = true;
+        },
+        { once: true },
+      );
+      return heldPurge.promise;
+    });
+    const operatorFailure = deferred<never>();
+    input.database.processOperatorRerun = vi.fn(() => operatorFailure.promise);
+    const diagnosticFailure = new Error('delayed readiness diagnostic failed');
+    input.logger.error.mockImplementationOnce(() => {
+      throw diagnosticFailure;
+    });
+    let settled = false;
+    const observed = runRetentionWorker(input)
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      .finally(() => {
+        settled = true;
+      });
+
+    await waitForCondition(
+      'both readiness gates to be entered',
+      () =>
+        input.artifacts.checkReadiness.mock.calls.length > 0 &&
+        input.ledger.checkReadiness.mock.calls.length > 0,
+    );
+    artifactsReady.resolve({});
+    ledgerReady.resolve(readinessValue);
+    await waitForCondition(
+      'workspace purge to become active',
+      () => input.workspacePurge.processNext.mock.calls.length > 0,
+    );
+    operatorFailure.reject(new Error('operator failed after readiness'));
+    await waitForCondition(
+      'active purge cancellation',
+      () => purgeAbortObserved,
+    );
+
+    expect(settled).toBe(false);
+    expect(input.events.filter((event) => event.endsWith('-close'))).toEqual(
+      [],
+    );
+    heldPurge.resolve({ status: 'idle' });
+    const error = await observed;
+    expect((error as AggregateError).errors[0]).toBe(diagnosticFailure);
+    expect(input.preview.close).toHaveBeenCalledOnce();
+    expect(input.telemetry.shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('drains active maintenance before cleanup after a fatal replica monitor', async () => {
+    const input = resources([]);
+    isolateMaintenanceOperations(input);
+    const heldDryRun = deferred<{ status: 'idle' }>();
+    let maintenanceAbortObserved = false;
+    input.database.processNext = vi.fn((signal?: AbortSignal) => {
+      signal?.addEventListener(
+        'abort',
+        () => {
+          maintenanceAbortObserved = true;
+        },
+        { once: true },
+      );
+      return heldDryRun.promise;
+    });
+    const replicaFailure = new Error('replica adapter failed');
+    const diagnosticFailure = new Error('replica diagnostic failed');
+    input.database.recordRegionalReplicaLag = vi.fn(() =>
+      Promise.reject(replicaFailure),
+    );
+    input.logger.error.mockImplementation((event) => {
+      if (event === 'retention.regional_replica_lag_failed')
+        throw diagnosticFailure;
+    });
+    let settled = false;
+    const observed = runRetentionWorker(input)
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      .finally(() => {
+        settled = true;
+      });
+
+    await waitForCondition(
+      'maintenance to observe fatal replica-monitor cancellation',
+      () => maintenanceAbortObserved,
+    );
+    expect(settled).toBe(false);
+    expect(input.events.filter((event) => event.endsWith('-close'))).toEqual(
+      [],
+    );
+
+    heldDryRun.resolve({ status: 'idle' });
+    const error = await observed;
+    expect((error as AggregateError).errors[0]).toBe(diagnosticFailure);
+    expect(input.database.close).toHaveBeenCalledOnce();
+    expect(input.telemetry.shutdown).toHaveBeenCalledOnce();
+  });
+
   it('isolates external readiness failure from database-only work', async () => {
     const input = resources([]);
     input.database.processNext = vi.fn(async () => {
@@ -712,6 +979,109 @@ describe('retention worker', () => {
       'retention.regional_replica_lag_failed',
       { applicationName: 'pertexo-eu-west-1' },
       expect.any(Error),
+    );
+  });
+
+  it('records and retries undefined maintenance and replica rejections', async () => {
+    const input = resources([]);
+    isolateMaintenanceOperations(input);
+    input.database.processOperatorRerun = vi
+      .fn()
+      // Deliberately exercise a hostile non-Error adapter rejection.
+      .mockRejectedValueOnce(undefined)
+      .mockImplementationOnce(() => {
+        input.controller.abort(new Error('undefined rejection retried'));
+        return Promise.resolve(null);
+      });
+    input.database.recordRegionalReplicaLag = vi
+      .fn()
+      // Deliberately exercise a hostile non-Error adapter rejection.
+      .mockRejectedValueOnce(undefined)
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          replayLagMillis: 0,
+          replicationState: 'streaming',
+          status: 'open' as const,
+        }),
+      );
+    input.replicaMonitor.sampleIntervalMs = 1;
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.database.processOperatorRerun).toHaveBeenCalledTimes(2);
+    expect(input.database.recordRegionalReplicaLag).toHaveBeenCalledTimes(2);
+    expect(input.metrics.recordFailure).toHaveBeenCalledWith(
+      'operator_rerun',
+      expect.any(Number),
+    );
+    expect(input.logger.error).toHaveBeenCalledWith(
+      'retention.operation_failed',
+      expect.objectContaining({ operation: 'operator_rerun' }),
+      undefined,
+    );
+    expect(input.logger.error).toHaveBeenCalledWith(
+      'retention.regional_replica_lag_failed',
+      { applicationName: 'pertexo-eu-west-1' },
+      undefined,
+    );
+  });
+
+  it('records a distinct maintenance error that races with cancellation', async () => {
+    const input = resources(['idle']);
+    const concurrentFailure = new Error('concurrent operation failure');
+    input.database.processOperatorRerun = vi.fn(
+      (signal?: AbortSignal) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener(
+            'abort',
+            () => {
+              reject(concurrentFailure);
+            },
+            { once: true },
+          );
+        }),
+    );
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.metrics.recordFailure).toHaveBeenCalledWith(
+      'operator_rerun',
+      expect.any(Number),
+    );
+    expect(input.logger.error).toHaveBeenCalledWith(
+      'retention.operation_failed',
+      expect.objectContaining({ operation: 'operator_rerun' }),
+      concurrentFailure,
+    );
+  });
+
+  it('records a distinct replica error that races with cancellation', async () => {
+    const input = resources(['idle']);
+    const concurrentFailure = new Error('concurrent replica failure');
+    input.database.recordRegionalReplicaLag = vi.fn(
+      (...args: unknown[]) =>
+        new Promise<{
+          replayLagMillis: number;
+          replicationState: string;
+          status: 'open';
+        }>((_resolve, reject) => {
+          const signal = args[1] as AbortSignal | undefined;
+          signal?.addEventListener(
+            'abort',
+            () => {
+              reject(concurrentFailure);
+            },
+            { once: true },
+          );
+        }),
+    );
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.logger.error).toHaveBeenCalledWith(
+      'retention.regional_replica_lag_failed',
+      { applicationName: 'pertexo-eu-west-1' },
+      concurrentFailure,
     );
   });
 

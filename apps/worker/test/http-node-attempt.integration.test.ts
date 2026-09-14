@@ -16,7 +16,7 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import type { Queue } from 'bullmq';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 import { createHttpNodeAttemptProofRuntime } from './support/http-node-attempt.runtime.js';
@@ -43,6 +43,7 @@ import {
   plaintextSecret,
   operatorUrl,
   reclaimProviderScenarioAttempt,
+  resetProviderScenarioIsolation,
   resendApiKey,
   responseBytes,
   rotatedEmailSecretVersionId,
@@ -57,6 +58,7 @@ import {
   workerUrl,
   workspaceId,
 } from './support/http-node-attempt.fixture.js';
+import { runWithCleanup } from './support/test-operation.js';
 
 installHttpNodeAttemptFixture();
 
@@ -70,6 +72,151 @@ type PersistedQueueJob = NonNullable<Awaited<ReturnType<Queue['getJob']>>>;
 type ProofRuntime = Awaited<
   ReturnType<typeof createHttpNodeAttemptProofRuntime>
 >;
+
+function createOwnedBarrier(label: string, timeoutMillis = 5_000) {
+  let settled = false;
+  let resolvePromise!: () => void;
+  let rejectPromise!: (error: Error) => void;
+  const timer = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    rejectPromise(new Error(`${label} timed out`));
+  }, timeoutMillis);
+  const promise = new Promise<void>((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
+  void promise.catch(() => undefined);
+  const settle = (operation: () => void): void => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    operation();
+  };
+  return Object.freeze({
+    promise,
+    resolve: () => {
+      settle(resolvePromise);
+    },
+    dispose: () => {
+      settle(() => {
+        rejectPromise(new Error(`${label} was disposed`));
+      });
+    },
+  });
+}
+
+async function readAttemptRedeliverySnapshot(input: {
+  artifactId: string;
+  attemptId: string;
+  messageId: string;
+  runId: string;
+}) {
+  return workerQuery<{
+    artifact_count: string;
+    attempt_dispatch_marked_at: Date | null;
+    attempt_fence_token: string;
+    attempt_output_ref: unknown;
+    attempt_provider_idempotency_key: string | null;
+    attempt_side_effect_class: string;
+    attempt_status: string;
+    event_count: string;
+    node_output_ref: unknown;
+    node_provider_idempotency_key: string | null;
+    node_side_effect_class: string;
+    node_status: string;
+    receipt_count: string;
+    usage_count: string;
+  }>(
+    `select attempt.status attempt_status,
+            attempt.fence_token::text attempt_fence_token,
+            attempt.dispatch_marked_at attempt_dispatch_marked_at,
+            attempt.output_ref attempt_output_ref,
+            attempt.side_effect_class attempt_side_effect_class,
+            attempt.provider_idempotency_key attempt_provider_idempotency_key,
+            node.status node_status,
+            node.output_ref node_output_ref,
+            node.side_effect_class node_side_effect_class,
+            node.provider_idempotency_key node_provider_idempotency_key,
+            (select count(*)::text from app.run_events event
+              where event.workspace_id=attempt.workspace_id
+                and event.workflow_run_id=$2) event_count,
+            (select count(*)::text from app.inbox_receipts receipt
+              where receipt.workspace_id=attempt.workspace_id
+                and receipt.message_id=$3) receipt_count,
+            (select count(*)::text from app.usage_events usage
+              where usage.workspace_id=attempt.workspace_id
+                and usage.resource_id=$2) usage_count,
+            (select count(*)::text from app.artifacts artifact
+              where artifact.workspace_id=attempt.workspace_id
+                and artifact.id=$5) artifact_count
+       from app.node_attempts attempt
+       join app.node_runs node
+         on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+      where attempt.workspace_id=$1 and attempt.id=$4`,
+    [
+      workspaceId,
+      input.runId,
+      input.messageId,
+      input.attemptId,
+      input.artifactId,
+    ],
+  );
+}
+
+async function readArtifactIds(): Promise<Set<string>> {
+  const rows = await workerQuery<{ id: string }>(
+    `select id from app.artifacts where workspace_id=$1 order by id`,
+    [workspaceId],
+  );
+  return new Set(rows.map(({ id }) => id));
+}
+
+async function readSourceRunHistory(runId: string) {
+  const [run, nodes, attempts, checkpoint, events] = await Promise.all([
+    workerQuery(
+      `select id,status,workflow_id,workflow_version_id,trigger_type,
+              completed_at,cancel_requested_at,deadline_at
+         from app.workflow_runs
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, runId],
+    ),
+    workerQuery(
+      `select id,node_id,status,current_attempt_id,current_attempt_number,
+              side_effect_class,provider_idempotency_key,output_ref
+         from app.node_runs
+        where workspace_id=$1 and workflow_run_id=$2
+        order by node_id,id`,
+      [workspaceId, runId],
+    ),
+    workerQuery(
+      `select attempt.id,attempt.node_run_id,attempt.attempt_number,
+              attempt.status,attempt.fence_token::text fence_token,
+              attempt.side_effect_class,attempt.provider_idempotency_key,
+              attempt.output_ref,attempt.retry_decision,attempt.safe_error_code
+         from app.node_attempts attempt
+         join app.node_runs node
+           on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+        where attempt.workspace_id=$1 and node.workflow_run_id=$2
+        order by node.node_id,attempt.attempt_number,attempt.id`,
+      [workspaceId, runId],
+    ),
+    workerQuery(
+      `select revision,engine_version,scheduler_state
+         from app.run_checkpoints
+        where workspace_id=$1 and workflow_run_id=$2`,
+      [workspaceId, runId],
+    ),
+    workerQuery(
+      `select sequence,type,payload
+         from app.run_events
+        where workspace_id=$1 and workflow_run_id=$2
+        order by sequence`,
+      [workspaceId, runId],
+    ),
+  ]);
+  return { attempts, checkpoint, events, nodes, run };
+}
 
 async function publishAndWaitForCompletion(
   producer: QueueProducer,
@@ -239,19 +386,39 @@ async function prepareAmbiguousEmailRetry(runtime: ProofRuntime) {
 }
 
 async function closeProofRuntime(runtime: ProofRuntime): Promise<void> {
-  await Promise.allSettled([
-    runtime.attempts.close(),
-    runtime.coordinator.close(),
-    runtime.producer.close(),
-    runtime.attemptQueue.close(),
-    runtime.coordinatorQueue.close(),
-    runtime.capabilities.close(),
-  ]);
-  runtime.artifactVerifier.close();
+  const errors: unknown[] = [];
+  const attempt = async (operation: () => unknown): Promise<void> => {
+    await Promise.resolve()
+      .then(operation)
+      .catch((error: unknown) => {
+        errors.push(error);
+      });
+  };
+  await attempt(() => runtime.attempts.close());
+  await attempt(() => runtime.coordinator.close());
+  await attempt(() => runtime.producer.close());
+  await attempt(() => runtime.attemptQueue.close());
+  await attempt(() => runtime.coordinatorQueue.close());
+  await attempt(async () => {
+    await runtime.capabilities.close();
+  });
+  await attempt(() => {
+    runtime.artifactVerifier.close();
+  });
+  if (errors.length > 0)
+    throw new AggregateError(
+      errors,
+      'HTTP attempt proof runtime cleanup failed',
+    );
 }
 
 beforeAll(async () => {
   fixtureEncryption = await seedFixture();
+});
+
+beforeEach(async () => {
+  if (!httpNodeAttemptIntegrationEnabled) return;
+  await resetProviderScenarioIsolation();
 });
 
 describeIntegration('active HTTP node attempt', () => {
@@ -272,106 +439,132 @@ describeIntegration('active HTTP node attempt', () => {
       slackRequests,
       telemetry,
       transportRequests,
-    } = await createHttpNodeAttemptProofRuntime(encryption);
+    } = await createHttpNodeAttemptProofRuntime(encryption, {
+      emailResponseScript: [
+        { kind: 'rate_limited', retryAfterMillis: 1_000 },
+        {
+          kind: 'succeeded',
+          emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+        },
+        { kind: 'invalid_response' },
+      ],
+    });
     const coordinatorOutboxes = [accepted.outboxEventId];
     let persistedArtifactId: string | undefined;
-    try {
-      await Promise.all([
-        coordinator.consumer.waitUntilReady(5_000),
-        attempts.consumer.waitUntilReady(5_000),
-        producer.waitUntilReady(5_000),
-      ]);
-      const initialCoordinatorJob = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: accepted.outboxEventId,
-        },
-      });
-      const persistedInitialJob = await waitFor(
-        () => coordinatorQueue.getJob(initialCoordinatorJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (persistedInitialJob === undefined)
-        throw new Error('Initial coordinator job missing');
-      await waitFor(
-        () => persistedInitialJob.getState(),
-        (state) => state === 'completed' || state === 'failed',
-      );
-      if ((await persistedInitialJob.getState()) === 'failed')
-        throw new Error(
-          `Initial coordinator job failed: ${persistedInitialJob.failedReason}`,
+    let artifactBaseline: Set<string> | undefined;
+    let credentialAuditBaseline = 0;
+    await runWithCleanup(
+      async () => {
+        artifactBaseline = await readArtifactIds();
+        credentialAuditBaseline = Number(
+          (
+            await withOwner((client) =>
+              client.query<{ count: string }>(
+                `select count(*)::text count from app.connection_events
+                where workspace_id=$1 and connection_id=$2
+                  and event_type='connection.credential_accessed'
+                  and actor_kind='worker'`,
+                [workspaceId, connectionId],
+              ),
+            )
+          ).rows[0]?.count ?? '0',
         );
-
-      const manual = await attemptDelivery(accepted.runId, 'manual');
-      await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: manual.node_run_id,
-          attemptId: manual.attempt_id,
-          outboxEventId: manual.outbox_id,
-        },
-      });
-      const firstContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(firstContinuation);
-      const httpAdmission = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: firstContinuation,
-        },
-      });
-      const admissionJob = await waitFor(
-        () => coordinatorQueue.getJob(httpAdmission.jobId),
-        (job) => job !== undefined,
-      );
-      if (admissionJob === undefined)
-        throw new Error('HTTP admission job missing');
-      await waitFor(
-        () => admissionJob.getState(),
-        (state) => state === 'completed' || state === 'failed',
-      );
-      if ((await admissionJob.getState()) === 'failed')
-        throw new Error(
-          `HTTP admission failed: ${JSON.stringify(await coordinatorQueue.getJob(httpAdmission.jobId))}`,
+        await Promise.all([
+          coordinator.consumer.waitUntilReady(5_000),
+          attempts.consumer.waitUntilReady(5_000),
+          producer.waitUntilReady(5_000),
+        ]);
+        const initialCoordinatorJob = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: accepted.outboxEventId,
+          },
+        });
+        const persistedInitialJob = await waitFor(
+          () => coordinatorQueue.getJob(initialCoordinatorJob.jobId),
+          (job) => job !== undefined,
         );
+        if (persistedInitialJob === undefined)
+          throw new Error('Initial coordinator job missing');
+        await waitFor(
+          () => persistedInitialJob.getState(),
+          (state) => state === 'completed' || state === 'failed',
+        );
+        if ((await persistedInitialJob.getState()) === 'failed')
+          throw new Error(
+            `Initial coordinator job failed: ${persistedInitialJob.failedReason}`,
+          );
 
-      const http = await attemptDelivery(accepted.runId, 'http');
-      const delivery = {
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1 as const,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: http.node_run_id,
-          attemptId: http.attempt_id,
-          outboxEventId: http.outbox_id,
-        },
-      };
-      const published = await producer.publish(delivery);
-      const terminal = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_status: string;
-            dispatch_marked_at: Date | null;
-            node_status: string;
-            output_ref: unknown;
-            attempt_provider_key: string | null;
-            attempt_side_effect_class: string;
-            node_provider_key: string | null;
-            node_side_effect_class: string;
-          }>(
-            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+        const manual = await attemptDelivery(accepted.runId, 'manual');
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: manual.node_run_id,
+            attemptId: manual.attempt_id,
+            outboxEventId: manual.outbox_id,
+          },
+        });
+        const firstContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(firstContinuation);
+        const httpAdmission = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: firstContinuation,
+          },
+        });
+        const admissionJob = await waitFor(
+          () => coordinatorQueue.getJob(httpAdmission.jobId),
+          (job) => job !== undefined,
+        );
+        if (admissionJob === undefined)
+          throw new Error('HTTP admission job missing');
+        await waitFor(
+          () => admissionJob.getState(),
+          (state) => state === 'completed' || state === 'failed',
+        );
+        if ((await admissionJob.getState()) === 'failed')
+          throw new Error(
+            `HTTP admission failed: ${JSON.stringify(await coordinatorQueue.getJob(httpAdmission.jobId))}`,
+          );
+
+        const http = await attemptDelivery(accepted.runId, 'http');
+        const delivery = {
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1 as const,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: http.node_run_id,
+            attemptId: http.attempt_id,
+            outboxEventId: http.outbox_id,
+          },
+        };
+        const published = await producer.publish(delivery);
+        const terminal = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_status: string;
+              dispatch_marked_at: Date | null;
+              node_status: string;
+              output_ref: unknown;
+              attempt_provider_key: string | null;
+              attempt_side_effect_class: string;
+              node_provider_key: string | null;
+              node_side_effect_class: string;
+            }>(
+              `select attempt.status attempt_status,attempt.dispatch_marked_at,
                     node.status node_status,attempt.output_ref,
                     attempt.side_effect_class attempt_side_effect_class,
                     attempt.provider_idempotency_key attempt_provider_key,
@@ -381,58 +574,60 @@ describeIntegration('active HTTP node attempt', () => {
              join app.node_runs node
                on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
              where attempt.workspace_id=$1 and attempt.id=$2`,
-            [workspaceId, http.attempt_id],
-          ),
-        (rows) => rows[0]?.attempt_status === 'succeeded',
-      );
-      expect(terminal[0]).toMatchObject({
-        attempt_status: 'succeeded',
-        attempt_provider_key: null,
-        attempt_side_effect_class: 'unsafe',
-        node_status: 'succeeded',
-        node_provider_key: null,
-        node_side_effect_class: 'unsafe',
-      });
-      expect(terminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
-      expect(terminal[0]?.output_ref).toMatchObject({
-        kind: 'inline',
-        value: {
-          status: 200,
-          body: { kind: 'artifact', byteLength: responseBytes },
-        },
-      });
-      const artifactId = (
-        terminal[0]?.output_ref as {
-          value: { body: { artifactId: string } };
+              [workspaceId, http.attempt_id],
+            ),
+          (rows) => rows[0]?.attempt_status === 'succeeded',
+        );
+        expect(terminal[0]).toMatchObject({
+          attempt_status: 'succeeded',
+          attempt_provider_key: null,
+          attempt_side_effect_class: 'unsafe',
+          node_status: 'succeeded',
+          node_provider_key: null,
+          node_side_effect_class: 'unsafe',
+        });
+        expect(terminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(terminal[0]?.output_ref).toMatchObject({
+          kind: 'inline',
+          value: {
+            status: 200,
+            body: { kind: 'artifact', byteLength: responseBytes },
+          },
+        });
+        const artifactId = (
+          terminal[0]?.output_ref as {
+            value: { body: { artifactId: string } };
+          }
+        ).value.body.artifactId;
+        persistedArtifactId = artifactId;
+        const expectedArtifact = Buffer.concat([
+          Buffer.alloc(35_000, 7),
+          Buffer.alloc(35_000, 9),
+        ]);
+        const artifactStream = await artifactVerifier.getStream({
+          artifactId,
+          workspaceId,
+        });
+        const artifactChunks: Buffer[] = [];
+        for await (const chunk of artifactStream.body) {
+          if (!(chunk instanceof Uint8Array))
+            throw new TypeError('HTTP artifact chunk is not bytes');
+          artifactChunks.push(Buffer.from(chunk));
         }
-      ).value.body.artifactId;
-      persistedArtifactId = artifactId;
-      const expectedArtifact = Buffer.concat([
-        Buffer.alloc(35_000, 7),
-        Buffer.alloc(35_000, 9),
-      ]);
-      const artifactStream = await artifactVerifier.getStream({
-        artifactId,
-        workspaceId,
-      });
-      const artifactChunks: Buffer[] = [];
-      for await (const chunk of artifactStream.body) {
-        if (!(chunk instanceof Uint8Array))
-          throw new TypeError('HTTP artifact chunk is not bytes');
-        artifactChunks.push(Buffer.from(chunk));
-      }
-      expect(Buffer.concat(artifactChunks)).toEqual(expectedArtifact);
-      expect(transportRequests).toHaveLength(1);
-      expect(transportRequests[0]?.headers.authorization).toBe(plaintextSecret);
+        expect(Buffer.concat(artifactChunks)).toEqual(expectedArtifact);
+        expect(transportRequests).toHaveLength(1);
+        expect(transportRequests[0]?.headers.authorization).toBe(
+          plaintextSecret,
+        );
 
-      const durable = await workerQuery<{
-        artifact_count: string;
-        event_types: string[];
-        inbox_completed: string;
-        inbox_count: string;
-        usage_count: string;
-      }>(
-        `select
+        const durable = await workerQuery<{
+          artifact_count: string;
+          event_types: string[];
+          inbox_completed: string;
+          inbox_count: string;
+          usage_count: string;
+        }>(
+          `select
           (select count(*)::text from app.artifacts artifact
             where artifact.workspace_id=$1 and artifact.id=$3
               and artifact.status='available' and artifact.byte_length=$4
@@ -447,193 +642,146 @@ describeIntegration('active HTTP node attempt', () => {
             where usage.workspace_id=$1 and usage.resource_id=$2) usage_count,
           (select array_agg(type order by sequence) from app.run_events event
             where event.workspace_id=$1 and event.workflow_run_id=$2) event_types`,
-        [
-          workspaceId,
-          accepted.runId,
-          artifactId,
-          responseBytes,
-          http.outbox_id,
-          createHash('sha256').update(expectedArtifact).digest('hex'),
-        ],
-      );
-      const audit = await withOwner((client) =>
-        client.query<{ count: string }>(
-          `select count(*)::text count from app.connection_events
-           where workspace_id=$1 and connection_id=$2
-             and event_type='connection.credential_accessed'
-             and actor_kind='worker'`,
-          [workspaceId, connectionId],
-        ),
-      );
-      expect(audit.rows[0]?.count).toBe('1');
-      expect(durable[0]).toEqual({
-        artifact_count: '1',
-        event_types: [
-          'run.queued',
-          'run.started',
-          'node.ready',
-          'node.started',
-          'node.succeeded',
-          'node.ready',
-          'node.started',
-          'node.succeeded',
-        ],
-        inbox_completed: '1',
-        inbox_count: '1',
-        usage_count: '0',
-      });
-
-      expect(telemetry).toHaveLength(3);
-      expect(telemetry.map(({ kind, name }) => ({ kind, name }))).toEqual([
-        { kind: 'count', name: 'pertexo.provider.request.count' },
-        { kind: 'duration', name: 'pertexo.provider.request.duration' },
-        { kind: 'span', name: 'pertexo.provider.http.request' },
-      ]);
-      for (const record of telemetry)
-        expect(record.attributes).toEqual({
-          provider_key: 'http',
-          operation_key: 'request',
-          outcome: 'succeeded',
-          possibly_dispatched: true,
-          response_storage: 'artifact',
-          status_class: '2xx',
-        });
-
-      const completedJob = await waitFor(
-        () => attemptQueue.getJob(published.jobId),
-        (job) => job !== undefined,
-      );
-      if (completedJob === undefined) throw new Error('HTTP job missing');
-      await waitFor(
-        () => completedJob.getState(),
-        (state) => state === 'completed',
-      );
-      const beforeRedelivery = await workerQuery<{ fact: string }>(
-        `select concat_ws('|',attempt.status,attempt.fence_token,
-                           attempt.dispatch_marked_at,attempt.output_ref::text,
-                           attempt.side_effect_class,attempt.provider_idempotency_key,
-                           node.status,node.output_ref::text,
-                           node.side_effect_class,node.provider_idempotency_key,
-                           (select count(*) from app.run_events event
-                            where event.workspace_id=attempt.workspace_id
-                              and event.workflow_run_id=$2),
-                           (select count(*) from app.inbox_receipts receipt
-                             where receipt.workspace_id=attempt.workspace_id
-                               and receipt.message_id=$3),
-                           (select count(*) from app.usage_events usage
-                             where usage.workspace_id=attempt.workspace_id
-                               and usage.resource_id=$2),
-                           (select count(*) from app.artifacts artifact
-                             where artifact.workspace_id=attempt.workspace_id
-                               and artifact.id=$5)) fact
-         from app.node_attempts attempt
-         join app.node_runs node
-           on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-         where attempt.workspace_id=$1 and attempt.id=$4`,
-        [
-          workspaceId,
-          accepted.runId,
-          http.outbox_id,
-          http.attempt_id,
-          artifactId,
-        ],
-      );
-      await completedJob.remove();
-      await producer.publish(delivery);
-      const replay = await waitFor(
-        () => attemptQueue.getJob(published.jobId),
-        (job) => job !== undefined,
-      );
-      if (replay === undefined) throw new Error('redelivered HTTP job missing');
-      await waitFor(
-        () => replay.getState(),
-        (state) => state === 'completed',
-      );
-      await expect(
-        workerQuery<{ fact: string }>(
-          `select concat_ws('|',attempt.status,attempt.fence_token,
-                             attempt.dispatch_marked_at,attempt.output_ref::text,
-                             attempt.side_effect_class,attempt.provider_idempotency_key,
-                             node.status,node.output_ref::text,
-                             node.side_effect_class,node.provider_idempotency_key,
-                            (select count(*) from app.run_events event
-                              where event.workspace_id=attempt.workspace_id
-                                and event.workflow_run_id=$2),
-                             (select count(*) from app.inbox_receipts receipt
-                               where receipt.workspace_id=attempt.workspace_id
-                                 and receipt.message_id=$3),
-                             (select count(*) from app.usage_events usage
-                               where usage.workspace_id=attempt.workspace_id
-                                 and usage.resource_id=$2),
-                             (select count(*) from app.artifacts artifact
-                               where artifact.workspace_id=attempt.workspace_id
-                                 and artifact.id=$5)) fact
-           from app.node_attempts attempt
-           join app.node_runs node
-             on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
-           where attempt.workspace_id=$1 and attempt.id=$4`,
           [
             workspaceId,
             accepted.runId,
-            http.outbox_id,
-            http.attempt_id,
             artifactId,
+            responseBytes,
+            http.outbox_id,
+            createHash('sha256').update(expectedArtifact).digest('hex'),
           ],
-        ),
-      ).resolves.toEqual(beforeRedelivery);
-      expect(transportRequests).toHaveLength(1);
-      expect(telemetry).toHaveLength(3);
-      const auditAfterRedelivery = await withOwner((client) =>
-        client.query<{ count: string }>(
-          `select count(*)::text count from app.connection_events
+        );
+        const audit = await withOwner((client) =>
+          client.query<{ count: string }>(
+            `select count(*)::text count from app.connection_events
            where workspace_id=$1 and connection_id=$2
              and event_type='connection.credential_accessed'
              and actor_kind='worker'`,
-          [workspaceId, connectionId],
-        ),
-      );
-      expect(auditAfterRedelivery.rows).toEqual(audit.rows);
+            [workspaceId, connectionId],
+          ),
+        );
+        expect(audit.rows[0]?.count).toBe(String(credentialAuditBaseline + 1));
+        expect(durable[0]).toEqual({
+          artifact_count: '1',
+          event_types: [
+            'run.queued',
+            'run.started',
+            'node.ready',
+            'node.started',
+            'node.succeeded',
+            'node.ready',
+            'node.started',
+            'node.succeeded',
+          ],
+          inbox_completed: '1',
+          inbox_count: '1',
+          usage_count: '0',
+        });
 
-      const slackContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(slackContinuation);
-      await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
+        expect(telemetry).toHaveLength(3);
+        expect(telemetry.map(({ kind, name }) => ({ kind, name }))).toEqual([
+          { kind: 'count', name: 'pertexo.provider.request.count' },
+          { kind: 'duration', name: 'pertexo.provider.request.duration' },
+          { kind: 'span', name: 'pertexo.provider.http.request' },
+        ]);
+        for (const record of telemetry)
+          expect(record.attributes).toEqual({
+            provider_key: 'http',
+            operation_key: 'request',
+            outcome: 'succeeded',
+            possibly_dispatched: true,
+            response_storage: 'artifact',
+            status_class: '2xx',
+          });
+
+        const completedJob = await waitFor(
+          () => attemptQueue.getJob(published.jobId),
+          (job) => job !== undefined,
+        );
+        if (completedJob === undefined) throw new Error('HTTP job missing');
+        await waitFor(
+          () => completedJob.getState(),
+          (state) => state === 'completed',
+        );
+        const beforeRedelivery = await readAttemptRedeliverySnapshot({
+          artifactId,
+          attemptId: http.attempt_id,
+          messageId: http.outbox_id,
           runId: accepted.runId,
-          outboxEventId: slackContinuation,
-        },
-      });
-      const slack = await attemptDelivery(accepted.runId, 'slack');
-      const slackDelivery = {
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1 as const,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: slack.node_run_id,
-          attemptId: slack.attempt_id,
-          outboxEventId: slack.outbox_id,
-        },
-      };
-      const slackJob = await producer.publish(slackDelivery);
-      const slackTerminal = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_status: string;
-            dispatch_marked_at: Date | null;
-            executor_error_kind: string | null;
-            executor_failure_kind: string | null;
-            error_summary: string | null;
-            node_status: string;
-            output_ref: unknown;
-            safe_error_code: string | null;
-          }>(
-            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+        });
+        await completedJob.remove();
+        await producer.publish(delivery);
+        const replay = await waitFor(
+          () => attemptQueue.getJob(published.jobId),
+          (job) => job !== undefined,
+        );
+        if (replay === undefined)
+          throw new Error('redelivered HTTP job missing');
+        await waitFor(
+          () => replay.getState(),
+          (state) => state === 'completed',
+        );
+        await expect(
+          readAttemptRedeliverySnapshot({
+            artifactId,
+            attemptId: http.attempt_id,
+            messageId: http.outbox_id,
+            runId: accepted.runId,
+          }),
+        ).resolves.toEqual(beforeRedelivery);
+        expect(transportRequests).toHaveLength(1);
+        expect(telemetry).toHaveLength(3);
+        const auditAfterRedelivery = await withOwner((client) =>
+          client.query<{ count: string }>(
+            `select count(*)::text count from app.connection_events
+           where workspace_id=$1 and connection_id=$2
+             and event_type='connection.credential_accessed'
+             and actor_kind='worker'`,
+            [workspaceId, connectionId],
+          ),
+        );
+        expect(auditAfterRedelivery.rows).toEqual(audit.rows);
+
+        const slackContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(slackContinuation);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: slackContinuation,
+          },
+        });
+        const slack = await attemptDelivery(accepted.runId, 'slack');
+        const slackDelivery = {
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1 as const,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: slack.node_run_id,
+            attemptId: slack.attempt_id,
+            outboxEventId: slack.outbox_id,
+          },
+        };
+        const slackJob = await producer.publish(slackDelivery);
+        const slackTerminal = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_status: string;
+              dispatch_marked_at: Date | null;
+              executor_error_kind: string | null;
+              executor_failure_kind: string | null;
+              error_summary: string | null;
+              node_status: string;
+              output_ref: unknown;
+              safe_error_code: string | null;
+            }>(
+              `select attempt.status attempt_status,attempt.dispatch_marked_at,
                     attempt.executor_error_kind,attempt.executor_failure_kind,
                     attempt.error_summary,
                     attempt.safe_error_code,node.status node_status,attempt.output_ref
@@ -641,103 +789,104 @@ describeIntegration('active HTTP node attempt', () => {
              join app.node_runs node
                on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
              where attempt.workspace_id=$1 and attempt.id=$2`,
-            [workspaceId, slack.attempt_id],
-          ),
-        (rows) => rows[0]?.attempt_status === 'succeeded',
-      );
-      expect(slackTerminal[0]).toMatchObject({
-        attempt_status: 'succeeded',
-        node_status: 'succeeded',
-        output_ref: {
-          kind: 'inline',
-          value: {
-            channelId: 'C123ABC',
-            messageTs: '1724412345.000100',
+              [workspaceId, slack.attempt_id],
+            ),
+          (rows) => rows[0]?.attempt_status === 'succeeded',
+        );
+        expect(slackTerminal[0]).toMatchObject({
+          attempt_status: 'succeeded',
+          node_status: 'succeeded',
+          output_ref: {
+            kind: 'inline',
+            value: {
+              channelId: 'C123ABC',
+              messageTs: '1724412345.000100',
+            },
           },
-        },
-      });
-      expect(slackTerminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
-      expect(slackRequests).toEqual([
-        {
-          botToken: slackBotToken,
-          channelId: 'C123ABC',
-          text: slackMessageText,
-        },
-      ]);
-      const slackAudit = await withOwner((client) =>
-        client.query<{ count: string }>(
-          `select count(*)::text count from app.connection_events
+        });
+        expect(slackTerminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(slackRequests).toEqual([
+          {
+            botToken: slackBotToken,
+            channelId: 'C123ABC',
+            text: slackMessageText,
+          },
+        ]);
+        const slackAudit = await withOwner((client) =>
+          client.query<{ count: string }>(
+            `select count(*)::text count from app.connection_events
            where workspace_id=$1 and connection_id=$2
              and event_type='connection.credential_accessed'
              and actor_kind='worker'`,
-          [workspaceId, slackConnectionId],
-        ),
-      );
-      expect(slackAudit.rows[0]?.count).toBe('1');
-      const completedSlackJob = await waitFor(
-        () => attemptQueue.getJob(slackJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (completedSlackJob === undefined) throw new Error('Slack job missing');
-      await waitFor(
-        () => completedSlackJob.getState(),
-        (state) => state === 'completed',
-      );
-      await completedSlackJob.remove();
-      await producer.publish(slackDelivery);
-      const replayedSlackJob = await waitFor(
-        () => attemptQueue.getJob(slackJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (replayedSlackJob === undefined)
-        throw new Error('redelivered Slack job missing');
-      await waitFor(
-        () => replayedSlackJob.getState(),
-        (state) => state === 'completed',
-      );
-      expect(slackRequests).toHaveLength(1);
+            [workspaceId, slackConnectionId],
+          ),
+        );
+        expect(slackAudit.rows[0]?.count).toBe('1');
+        const completedSlackJob = await waitFor(
+          () => attemptQueue.getJob(slackJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (completedSlackJob === undefined)
+          throw new Error('Slack job missing');
+        await waitFor(
+          () => completedSlackJob.getState(),
+          (state) => state === 'completed',
+        );
+        await completedSlackJob.remove();
+        await producer.publish(slackDelivery);
+        const replayedSlackJob = await waitFor(
+          () => attemptQueue.getJob(slackJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (replayedSlackJob === undefined)
+          throw new Error('redelivered Slack job missing');
+        await waitFor(
+          () => replayedSlackJob.getState(),
+          (state) => state === 'completed',
+        );
+        expect(slackRequests).toHaveLength(1);
 
-      const emailContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(emailContinuation);
-      await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: emailContinuation,
-        },
-      });
-      const email = await attemptDelivery(accepted.runId, 'email');
-      const emailDelivery = {
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1 as const,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: email.node_run_id,
-          attemptId: email.attempt_id,
-          outboxEventId: email.outbox_id,
-        },
-      };
-      const emailJob = await producer.publish(emailDelivery);
-      const firstEmailAttempt = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_status: string;
-            dispatch_marked_at: Date | null;
-            executor_failure_kind: string | null;
-            executor_possibly_dispatched: boolean | null;
-            node_status: string;
-            output_ref: unknown;
-            provider_dispatch_binding: string | null;
-            provider_idempotency_key: string | null;
-            retry_decision: string | null;
-          }>(
-            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+        const emailContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(emailContinuation);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: emailContinuation,
+          },
+        });
+        const email = await attemptDelivery(accepted.runId, 'email');
+        const emailDelivery = {
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1 as const,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: email.node_run_id,
+            attemptId: email.attempt_id,
+            outboxEventId: email.outbox_id,
+          },
+        };
+        const emailJob = await producer.publish(emailDelivery);
+        const firstEmailAttempt = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_status: string;
+              dispatch_marked_at: Date | null;
+              executor_failure_kind: string | null;
+              executor_possibly_dispatched: boolean | null;
+              node_status: string;
+              output_ref: unknown;
+              provider_dispatch_binding: string | null;
+              provider_idempotency_key: string | null;
+              retry_decision: string | null;
+            }>(
+              `select attempt.status attempt_status,attempt.dispatch_marked_at,
                      attempt.provider_idempotency_key,node.status node_status,
                      node.provider_dispatch_binding,
                      attempt.output_ref,attempt.executor_failure_kind,
@@ -747,95 +896,95 @@ describeIntegration('active HTTP node attempt', () => {
              join app.node_runs node
                on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
              where attempt.workspace_id=$1 and attempt.id=$2`,
-            [workspaceId, email.attempt_id],
-          ),
-        (rows) => rows[0]?.attempt_status === 'failed',
-      );
-      expect(firstEmailAttempt[0]?.dispatch_marked_at).toBeInstanceOf(Date);
-      expect(firstEmailAttempt[0]?.executor_failure_kind).toBe('retry');
-      expect(firstEmailAttempt[0]?.executor_possibly_dispatched).toBe(false);
-      expect(firstEmailAttempt[0]?.retry_decision).toBe('pending');
-      const retryContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(retryContinuation);
-      const retryCoordinatorJob = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: retryContinuation,
-        },
-      });
-      const persistedRetryCoordinatorJob = await waitFor(
-        () => coordinatorQueue.getJob(retryCoordinatorJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (persistedRetryCoordinatorJob === undefined)
-        throw new Error('Email retry coordinator job missing');
-      await waitFor(
-        () => persistedRetryCoordinatorJob.getState(),
-        (state) => state === 'completed',
-      );
-      await waitFor(
-        () =>
-          workerQuery<{ retry_decision: string | null }>(
-            `select retry_decision from app.node_attempts
+              [workspaceId, email.attempt_id],
+            ),
+          (rows) => rows[0]?.attempt_status === 'failed',
+        );
+        expect(firstEmailAttempt[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(firstEmailAttempt[0]?.executor_failure_kind).toBe('retry');
+        expect(firstEmailAttempt[0]?.executor_possibly_dispatched).toBe(false);
+        expect(firstEmailAttempt[0]?.retry_decision).toBe('pending');
+        const retryContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(retryContinuation);
+        const retryCoordinatorJob = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: retryContinuation,
+          },
+        });
+        const persistedRetryCoordinatorJob = await waitFor(
+          () => coordinatorQueue.getJob(retryCoordinatorJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (persistedRetryCoordinatorJob === undefined)
+          throw new Error('Email retry coordinator job missing');
+        await waitFor(
+          () => persistedRetryCoordinatorJob.getState(),
+          (state) => state === 'completed',
+        );
+        await waitFor(
+          () =>
+            workerQuery<{ retry_decision: string | null }>(
+              `select retry_decision from app.node_attempts
              where workspace_id=$1 and id=$2`,
-            [workspaceId, email.attempt_id],
-          ),
-        (rows) => rows[0]?.retry_decision === 'retry',
-      );
-      const dueContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(dueContinuation);
-      const dueCoordinatorJob = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: dueContinuation,
-        },
-      });
-      const persistedDueCoordinatorJob = await waitFor(
-        () => coordinatorQueue.getJob(dueCoordinatorJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (persistedDueCoordinatorJob === undefined)
-        throw new Error('Email due coordinator job missing');
-      await waitFor(
-        () => persistedDueCoordinatorJob.getState(),
-        (state) => state === 'completed',
-      );
-      const retriedEmail = await attemptDelivery(accepted.runId, 'email', 2);
-      const retriedEmailDelivery = {
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1 as const,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: retriedEmail.node_run_id,
-          attemptId: retriedEmail.attempt_id,
-          outboxEventId: retriedEmail.outbox_id,
-        },
-      };
-      const retriedEmailJob = await producer.publish(retriedEmailDelivery);
-      const emailTerminal = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_status: string;
-            dispatch_marked_at: Date | null;
-            node_status: string;
-            output_ref: unknown;
-            provider_dispatch_binding: string | null;
-            provider_idempotency_key: string | null;
-          }>(
-            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+              [workspaceId, email.attempt_id],
+            ),
+          (rows) => rows[0]?.retry_decision === 'retry',
+        );
+        const dueContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(dueContinuation);
+        const dueCoordinatorJob = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: dueContinuation,
+          },
+        });
+        const persistedDueCoordinatorJob = await waitFor(
+          () => coordinatorQueue.getJob(dueCoordinatorJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (persistedDueCoordinatorJob === undefined)
+          throw new Error('Email due coordinator job missing');
+        await waitFor(
+          () => persistedDueCoordinatorJob.getState(),
+          (state) => state === 'completed',
+        );
+        const retriedEmail = await attemptDelivery(accepted.runId, 'email', 2);
+        const retriedEmailDelivery = {
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1 as const,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: retriedEmail.node_run_id,
+            attemptId: retriedEmail.attempt_id,
+            outboxEventId: retriedEmail.outbox_id,
+          },
+        };
+        const retriedEmailJob = await producer.publish(retriedEmailDelivery);
+        const emailTerminal = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_status: string;
+              dispatch_marked_at: Date | null;
+              node_status: string;
+              output_ref: unknown;
+              provider_dispatch_binding: string | null;
+              provider_idempotency_key: string | null;
+            }>(
+              `select attempt.status attempt_status,attempt.dispatch_marked_at,
                     attempt.provider_idempotency_key,node.status node_status,
                     node.provider_dispatch_binding,
                     attempt.output_ref
@@ -843,200 +992,201 @@ describeIntegration('active HTTP node attempt', () => {
              join app.node_runs node
                on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
              where attempt.workspace_id=$1 and attempt.id=$2`,
-            [workspaceId, retriedEmail.attempt_id],
-          ),
-        (rows) => rows[0]?.attempt_status === 'succeeded',
-      );
-      expect(emailTerminal[0]).toMatchObject({
-        attempt_status: 'succeeded',
-        node_status: 'succeeded',
-        output_ref: {
-          kind: 'inline',
-          value: { emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' },
-        },
-      });
-      expect(emailTerminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
-      expect(emailTerminal[0]?.provider_idempotency_key).toMatch(
-        /^v1\.[0-9a-f]{64}$/u,
-      );
-      expect(emailTerminal[0]?.provider_dispatch_binding).toBe(
-        `email:v1:sha256:${createHash('sha256')
-          .update(`email\0${emailConnectionId}\0${emailSecretVersionId}`)
-          .digest('hex')}`,
-      );
-      expect(emailTerminal[0]?.provider_dispatch_binding).not.toContain(
-        'sender@example.test',
-      );
-      expect(emailRequests).toHaveLength(2);
-      expect(emailRequests[0]).toEqual({
-        apiKey: resendApiKey,
-        fromEmail: 'sender@example.test',
-        toEmail: emailRecipient,
-        subject: emailSubject,
-        text: emailText,
-        idempotencyKey: emailTerminal[0]?.provider_idempotency_key,
-      });
-      expect(emailRequests[1]).toEqual(emailRequests[0]);
-      const completedEmailJob = await waitFor(
-        () => attemptQueue.getJob(emailJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (completedEmailJob === undefined) throw new Error('Email job missing');
-      await waitFor(
-        () => completedEmailJob.getState(),
-        (state) => state === 'completed',
-      );
-      await waitFor(
-        () => attemptQueue.getJob(retriedEmailJob.jobId),
-        (job) => job !== undefined,
-      );
-      await completedEmailJob.remove();
-      await producer.publish(emailDelivery);
-      const replayedEmailJob = await waitFor(
-        () => attemptQueue.getJob(emailJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (replayedEmailJob === undefined)
-        throw new Error('redelivered email job missing');
-      await waitFor(
-        () => replayedEmailJob.getState(),
-        (state) => state === 'completed',
-      );
-      expect(emailRequests).toHaveLength(2);
-
-      const rotatedAdmission = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(rotatedAdmission);
-      await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: rotatedAdmission,
-        },
-      });
-      const rotatedFirst = await attemptDelivery(
-        accepted.runId,
-        'email-rotated',
-      );
-      await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: rotatedFirst.node_run_id,
-          attemptId: rotatedFirst.attempt_id,
-          outboxEventId: rotatedFirst.outbox_id,
-        },
-      });
-      await waitFor(
-        () =>
-          workerQuery<{ status: string }>(
-            `select status from app.node_attempts
-             where workspace_id=$1 and id=$2`,
-            [workspaceId, rotatedFirst.attempt_id],
-          ),
-        (rows) => rows[0]?.status === 'failed',
-      );
-      expect(emailRequests).toHaveLength(3);
-
-      const rotatedRetry = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(rotatedRetry);
-      const rotatedRetryJob = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: rotatedRetry,
-        },
-      });
-      const persistedRotatedRetryJob = await waitFor(
-        () => coordinatorQueue.getJob(rotatedRetryJob.jobId),
-        (job) => job !== undefined,
-      );
-      if (persistedRotatedRetryJob === undefined)
-        throw new Error('Rotated email retry coordinator job missing');
-      await waitFor(
-        () => persistedRotatedRetryJob.getState(),
-        (state) => state === 'completed',
-      );
-
-      const rotatedSecret = new TextEncoder().encode(
-        JSON.stringify({
-          schemaVersion: 1,
-          type: 'resend_api_key',
-          apiKey: rotatedResendApiKey,
+              [workspaceId, retriedEmail.attempt_id],
+            ),
+          (rows) => rows[0]?.attempt_status === 'succeeded',
+        );
+        expect(emailTerminal[0]).toMatchObject({
+          attempt_status: 'succeeded',
+          node_status: 'succeeded',
+          output_ref: {
+            kind: 'inline',
+            value: { emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' },
+          },
+        });
+        expect(emailTerminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+        expect(emailTerminal[0]?.provider_idempotency_key).toMatch(
+          /^v1\.[0-9a-f]{64}$/u,
+        );
+        expect(emailTerminal[0]?.provider_dispatch_binding).toBe(
+          `email:v1:sha256:${createHash('sha256')
+            .update(`email\0${emailConnectionId}\0${emailSecretVersionId}`)
+            .digest('hex')}`,
+        );
+        expect(emailTerminal[0]?.provider_dispatch_binding).not.toContain(
+          'sender@example.test',
+        );
+        expect(emailRequests).toHaveLength(2);
+        expect(emailRequests[0]).toEqual({
+          apiKey: resendApiKey,
           fromEmail: 'sender@example.test',
-        }),
-      );
-      const sealedRotatedSecret = await encryption.seal(rotatedSecret, {
-        workspaceId,
-        connectionId: emailConnectionId,
-        secretVersionId: rotatedEmailSecretVersionId,
-      });
-      rotatedSecret.fill(0);
-      if (connectionDatabase === undefined)
-        throw new Error('Connection database missing');
-      await connectionDatabase.rotateConnectionSecret({
-        workspaceId,
-        actorId,
-        connectionId: emailConnectionId,
-        secretVersionId: rotatedEmailSecretVersionId,
-        expectedCurrentSecretVersionId: emailSecretVersionId,
-        expectedAuthType: 'resend_api_key',
-        sealed: sealedRotatedSecret,
-        idempotencyKey: randomUUID(),
-        requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
-      });
+          toEmail: emailRecipient,
+          subject: emailSubject,
+          text: emailText,
+          idempotencyKey: emailTerminal[0]?.provider_idempotency_key,
+        });
+        expect(emailRequests[1]).toEqual(emailRequests[0]);
+        const completedEmailJob = await waitFor(
+          () => attemptQueue.getJob(emailJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (completedEmailJob === undefined)
+          throw new Error('Email job missing');
+        await waitFor(
+          () => completedEmailJob.getState(),
+          (state) => state === 'completed',
+        );
+        await waitFor(
+          () => attemptQueue.getJob(retriedEmailJob.jobId),
+          (job) => job !== undefined,
+        );
+        await completedEmailJob.remove();
+        await producer.publish(emailDelivery);
+        const replayedEmailJob = await waitFor(
+          () => attemptQueue.getJob(emailJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (replayedEmailJob === undefined)
+          throw new Error('redelivered email job missing');
+        await waitFor(
+          () => replayedEmailJob.getState(),
+          (state) => state === 'completed',
+        );
+        expect(emailRequests).toHaveLength(2);
 
-      const rotatedDue = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(rotatedDue);
-      await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
+        const rotatedAdmission = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(rotatedAdmission);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: rotatedAdmission,
+          },
+        });
+        const rotatedFirst = await attemptDelivery(
+          accepted.runId,
+          'email-rotated',
+        );
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: rotatedFirst.node_run_id,
+            attemptId: rotatedFirst.attempt_id,
+            outboxEventId: rotatedFirst.outbox_id,
+          },
+        });
+        await waitFor(
+          () =>
+            workerQuery<{ status: string }>(
+              `select status from app.node_attempts
+             where workspace_id=$1 and id=$2`,
+              [workspaceId, rotatedFirst.attempt_id],
+            ),
+          (rows) => rows[0]?.status === 'failed',
+        );
+        expect(emailRequests).toHaveLength(3);
+
+        const rotatedRetry = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(rotatedRetry);
+        const rotatedRetryJob = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: rotatedRetry,
+          },
+        });
+        const persistedRotatedRetryJob = await waitFor(
+          () => coordinatorQueue.getJob(rotatedRetryJob.jobId),
+          (job) => job !== undefined,
+        );
+        if (persistedRotatedRetryJob === undefined)
+          throw new Error('Rotated email retry coordinator job missing');
+        await waitFor(
+          () => persistedRotatedRetryJob.getState(),
+          (state) => state === 'completed',
+        );
+
+        const rotatedSecret = new TextEncoder().encode(
+          JSON.stringify({
+            schemaVersion: 1,
+            type: 'resend_api_key',
+            apiKey: rotatedResendApiKey,
+            fromEmail: 'sender@example.test',
+          }),
+        );
+        const sealedRotatedSecret = await encryption.seal(rotatedSecret, {
           workspaceId,
-          runId: accepted.runId,
-          outboxEventId: rotatedDue,
-        },
-      });
-      const rotatedSecond = await attemptDelivery(
-        accepted.runId,
-        'email-rotated',
-        2,
-      );
-      await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
+          connectionId: emailConnectionId,
+          secretVersionId: rotatedEmailSecretVersionId,
+        });
+        rotatedSecret.fill(0);
+        if (connectionDatabase === undefined)
+          throw new Error('Connection database missing');
+        await connectionDatabase.rotateConnectionSecret({
           workspaceId,
-          runId: accepted.runId,
-          nodeRunId: rotatedSecond.node_run_id,
-          attemptId: rotatedSecond.attempt_id,
-          outboxEventId: rotatedSecond.outbox_id,
-        },
-      });
-      const rotatedTerminal = await waitFor(
-        () =>
-          workerQuery<{
-            attempt_status: string;
-            dispatch_marked_at: Date | null;
-            executor_failure_kind: string | null;
-            executor_possibly_dispatched: boolean | null;
-            node_status: string;
-          }>(
-            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+          actorId,
+          connectionId: emailConnectionId,
+          secretVersionId: rotatedEmailSecretVersionId,
+          expectedCurrentSecretVersionId: emailSecretVersionId,
+          expectedAuthType: 'resend_api_key',
+          sealed: sealedRotatedSecret,
+          idempotencyKey: randomUUID(),
+          requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+        });
+
+        const rotatedDue = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(rotatedDue);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: rotatedDue,
+          },
+        });
+        const rotatedSecond = await attemptDelivery(
+          accepted.runId,
+          'email-rotated',
+          2,
+        );
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: rotatedSecond.node_run_id,
+            attemptId: rotatedSecond.attempt_id,
+            outboxEventId: rotatedSecond.outbox_id,
+          },
+        });
+        const rotatedTerminal = await waitFor(
+          () =>
+            workerQuery<{
+              attempt_status: string;
+              dispatch_marked_at: Date | null;
+              executor_failure_kind: string | null;
+              executor_possibly_dispatched: boolean | null;
+              node_status: string;
+            }>(
+              `select attempt.status attempt_status,attempt.dispatch_marked_at,
                     attempt.executor_failure_kind,
                     attempt.executor_possibly_dispatched,
                     node.status node_status
@@ -1044,46 +1194,46 @@ describeIntegration('active HTTP node attempt', () => {
              join app.node_runs node
                on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
              where attempt.workspace_id=$1 and attempt.id=$2`,
-            [workspaceId, rotatedSecond.attempt_id],
-          ),
-        (rows) => rows[0]?.executor_failure_kind === 'outcome_unknown',
-      );
-      expect(rotatedTerminal[0]).toMatchObject({
-        attempt_status: 'failed',
-        dispatch_marked_at: null,
-        executor_failure_kind: 'outcome_unknown',
-        executor_possibly_dispatched: true,
-        node_status: 'running',
-      });
-      expect(emailRequests).toHaveLength(3);
-      const rotatedTerminalContinuation = await continuation(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(rotatedTerminalContinuation);
-      await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId: rotatedTerminalContinuation,
-        },
-      });
-      await waitFor(
-        () =>
-          workerQuery<{ status: string }>(
-            `select status from app.node_runs
+              [workspaceId, rotatedSecond.attempt_id],
+            ),
+          (rows) => rows[0]?.executor_failure_kind === 'outcome_unknown',
+        );
+        expect(rotatedTerminal[0]).toMatchObject({
+          attempt_status: 'failed',
+          dispatch_marked_at: null,
+          executor_failure_kind: 'outcome_unknown',
+          executor_possibly_dispatched: true,
+          node_status: 'running',
+        });
+        expect(emailRequests).toHaveLength(3);
+        const rotatedTerminalContinuation = await continuation(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(rotatedTerminalContinuation);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: rotatedTerminalContinuation,
+          },
+        });
+        await waitFor(
+          () =>
+            workerQuery<{ status: string }>(
+              `select status from app.node_runs
              where workspace_id=$1 and id=$2`,
-            [workspaceId, rotatedSecond.node_run_id],
-          ),
-        (rows) => rows[0]?.status === 'outcome_unknown',
-      );
-      expect(emailRequests).toHaveLength(3);
+              [workspaceId, rotatedSecond.node_run_id],
+            ),
+          (rows) => rows[0]?.status === 'outcome_unknown',
+        );
+        expect(emailRequests).toHaveLength(3);
 
-      const durableSurface = await withOwner((client) =>
-        client.query<{ surface: string }>(
-          `select concat_ws(E'\n',
+        const durableSurface = await withOwner((client) =>
+          client.query<{ surface: string }>(
+            `select concat_ws(E'\n',
              (select jsonb_agg(to_jsonb(secret))::text
                 from app.connection_secret_versions secret where workspace_id=$1),
              (select jsonb_agg(to_jsonb(event))::text
@@ -1100,46 +1250,70 @@ describeIntegration('active HTTP node attempt', () => {
                 from app.inbox_receipts receipt where workspace_id=$1),
              (select jsonb_agg(to_jsonb(artifact))::text
                 from app.artifacts artifact where workspace_id=$1)) surface`,
-          [workspaceId],
-        ),
-      );
-      const queueSurface = JSON.stringify([delivery, replay.toJSON()]);
-      expect(durableSurface.rows[0]?.surface).not.toContain(plaintextSecret);
-      expect(durableSurface.rows[0]?.surface).not.toContain(slackBotToken);
-      expect(durableSurface.rows[0]?.surface).not.toContain(slackMessageText);
-      expect(durableSurface.rows[0]?.surface).not.toContain(resendApiKey);
-      expect(durableSurface.rows[0]?.surface).not.toContain(
-        rotatedResendApiKey,
-      );
-      expect(durableSurface.rows[0]?.surface).not.toContain(emailRecipient);
-      expect(durableSurface.rows[0]?.surface).not.toContain(emailSubject);
-      expect(durableSurface.rows[0]?.surface).not.toContain(emailText);
-      expect(queueSurface).not.toContain(plaintextSecret);
-      expect(
-        JSON.stringify([slackDelivery, replayedSlackJob.toJSON()]),
-      ).not.toContain(slackBotToken);
-      expect(
-        JSON.stringify([emailDelivery, replayedEmailJob.toJSON()]),
-      ).not.toContain(resendApiKey);
-      expect(JSON.stringify(telemetry)).not.toContain(plaintextSecret);
-    } finally {
-      await Promise.allSettled([
-        attempts.close(),
-        coordinator.close(),
-        producer.close(),
-        attemptQueue.close(),
-        coordinatorQueue.close(),
-        capabilities.close(),
-        ...(persistedArtifactId === undefined
-          ? []
-          : [
-              artifactVerifier
-                .delete({ artifactId: persistedArtifactId, workspaceId })
-                .catch(() => undefined),
-            ]),
-      ]);
-      artifactVerifier.close();
-    }
+            [workspaceId],
+          ),
+        );
+        const queueSurface = JSON.stringify([delivery, replay.toJSON()]);
+        expect(durableSurface.rows[0]?.surface).not.toContain(plaintextSecret);
+        expect(durableSurface.rows[0]?.surface).not.toContain(slackBotToken);
+        expect(durableSurface.rows[0]?.surface).not.toContain(slackMessageText);
+        expect(durableSurface.rows[0]?.surface).not.toContain(resendApiKey);
+        expect(durableSurface.rows[0]?.surface).not.toContain(
+          rotatedResendApiKey,
+        );
+        expect(durableSurface.rows[0]?.surface).not.toContain(emailRecipient);
+        expect(durableSurface.rows[0]?.surface).not.toContain(emailSubject);
+        expect(durableSurface.rows[0]?.surface).not.toContain(emailText);
+        expect(queueSurface).not.toContain(plaintextSecret);
+        expect(
+          JSON.stringify([slackDelivery, replayedSlackJob.toJSON()]),
+        ).not.toContain(slackBotToken);
+        expect(
+          JSON.stringify([emailDelivery, replayedEmailJob.toJSON()]),
+        ).not.toContain(resendApiKey);
+        expect(JSON.stringify(telemetry)).not.toContain(plaintextSecret);
+      },
+      async () => {
+        const errors: unknown[] = [];
+        const attempt = async (operation: () => unknown): Promise<void> => {
+          await Promise.resolve()
+            .then(operation)
+            .catch((error: unknown) => errors.push(error));
+        };
+        await attempt(() => attempts.close());
+        await attempt(() => coordinator.close());
+        await attempt(() => producer.close());
+        await attempt(() => attemptQueue.close());
+        await attempt(() => coordinatorQueue.close());
+        const baseline = artifactBaseline;
+        if (baseline !== undefined)
+          await attempt(async () => {
+            const current = await readArtifactIds();
+            for (const artifactId of current)
+              if (!baseline.has(artifactId))
+                await artifactVerifier.delete({ artifactId, workspaceId });
+          });
+        else if (persistedArtifactId !== undefined) {
+          const ownedArtifactId = persistedArtifactId;
+          await attempt(() =>
+            artifactVerifier.delete({
+              artifactId: ownedArtifactId,
+              workspaceId,
+            }),
+          );
+        }
+        await attempt(() => capabilities.close());
+        await attempt(() => {
+          artifactVerifier.close();
+        });
+        if (errors.length > 0)
+          throw new AggregateError(
+            errors,
+            'HTTP artifact scenario cleanup failed',
+          );
+      },
+      'HTTP artifact scenario',
+    );
   }, 30_000);
 
   it.each(['http', 'slack'] as const)(
@@ -1204,7 +1378,6 @@ describeIntegration('active HTTP node attempt', () => {
       const {
         attemptQueue,
         attempts,
-        capabilities,
         coordinator,
         coordinatorQueue,
         producer,
@@ -1421,15 +1594,7 @@ describeIntegration('active HTTP node attempt', () => {
         expect(transportRequests).toHaveLength(target === 'http' ? 0 : 1);
         expect(slackRequests).toHaveLength(0);
       } finally {
-        await Promise.allSettled([
-          attempts.close(),
-          coordinator.close(),
-          producer.close(),
-          attemptQueue.close(),
-          coordinatorQueue.close(),
-          capabilities.close(),
-        ]);
-        runtime.artifactVerifier.close();
+        await closeProofRuntime(runtime);
       }
     },
     30_000,
@@ -1760,15 +1925,14 @@ describeIntegration('active HTTP node attempt', () => {
       const encryption = fixtureEncryption;
       if (encryption === undefined)
         throw new Error('HTTP attempt fixture encryption is missing');
-      let signalProviderStarted: (() => void) | undefined;
-      const providerStarted = new Promise<void>((resolve) => {
-        signalProviderStarted = resolve;
-      });
+      const providerStarted = createOwnedBarrier(
+        `${reason} HTTP provider start`,
+      );
       let providerCalls = 0;
       const runtime = await createHttpNodeAttemptProofRuntime(encryption, {
         dispatchHttp: async (request) => {
           providerCalls += 1;
-          signalProviderStarted?.();
+          providerStarted.resolve();
           const signal = request.signal;
           if (signal === undefined)
             throw new Error('HTTP scenario signal is missing');
@@ -1790,7 +1954,7 @@ describeIntegration('active HTTP node attempt', () => {
         const published = await runtime.producer.publish(
           attemptJob(scenario.accepted.runId, scenario.attempt),
         );
-        await providerStarted;
+        await providerStarted.promise;
         if (reason === 'canceled')
           await cancelProviderScenarioRun(scenario.accepted.runId);
         else await expireProviderScenarioRun(scenario.accepted.runId);
@@ -1857,6 +2021,7 @@ describeIntegration('active HTTP node attempt', () => {
           { node_status: 'outcome_unknown', run_status: 'outcome_unknown' },
         ]);
       } finally {
+        providerStarted.dispose();
         await closeProofRuntime(runtime);
       }
     },
@@ -2033,18 +2198,16 @@ describeIntegration('active HTTP node attempt', () => {
       let emailResolutions = 0;
       let providerCalls = 0;
       const providerKeys: string[] = [];
-      let signalRetryResolution: (() => void) | undefined;
-      const retryResolution = new Promise<void>((resolve) => {
-        signalRetryResolution = resolve;
-      });
-      let releaseRetryResolution: (() => void) | undefined;
-      const retryResolutionRelease = new Promise<void>((resolve) => {
-        releaseRetryResolution = resolve;
-      });
-      let signalDurableAbort: (() => void) | undefined;
-      const durableAbort = new Promise<void>((resolve) => {
-        signalDurableAbort = resolve;
-      });
+      const retryResolution = createOwnedBarrier(
+        `${reason} retry resolution entry`,
+      );
+      const retryResolutionRelease = createOwnedBarrier(
+        `${reason} retry resolution release`,
+        25_000,
+      );
+      const durableAbort = createOwnedBarrier(
+        `${reason} durable abort observation`,
+      );
       const requestControl = (runId: string) =>
         reason === 'canceled'
           ? cancelProviderScenarioRun(runId)
@@ -2061,15 +2224,15 @@ describeIntegration('active HTTP node attempt', () => {
         },
         afterHeartbeat: (result) => {
           if (entryPath === 'heartbeat' && result.abortRequested)
-            signalDurableAbort?.();
+            durableAbort.resolve();
           return Promise.resolve();
         },
         beforeConnectionResolve: async (input) => {
           if (input.expectedProviderKey !== 'email') return;
           emailResolutions += 1;
           if (entryPath === 'heartbeat' && emailResolutions === 2) {
-            signalRetryResolution?.();
-            await retryResolutionRelease;
+            retryResolution.resolve();
+            await retryResolutionRelease.promise;
           }
         },
         heartbeatIntervalMillis: 50,
@@ -2093,10 +2256,10 @@ describeIntegration('active HTTP node attempt', () => {
           const published = await runtime.producer.publish(
             attemptJob(scenario.accepted.runId, scenario.retry),
           );
-          await retryResolution;
+          await retryResolution.promise;
           await requestControl(scenario.accepted.runId);
-          await durableAbort;
-          releaseRetryResolution?.();
+          await durableAbort.promise;
+          retryResolutionRelease.resolve();
           const job = await waitFor(
             () => runtime.attemptQueue.getJob(published.jobId),
             (candidate) => candidate !== undefined,
@@ -2188,7 +2351,9 @@ describeIntegration('active HTTP node attempt', () => {
           { node_status: 'outcome_unknown', run_status: 'outcome_unknown' },
         ]);
       } finally {
-        releaseRetryResolution?.();
+        retryResolution.dispose();
+        durableAbort.dispose();
+        retryResolutionRelease.resolve();
         await closeProofRuntime(runtime);
       }
     },
@@ -2200,10 +2365,7 @@ describeIntegration('active HTTP node attempt', () => {
     if (encryption === undefined)
       throw new Error('HTTP attempt fixture encryption is missing');
     let oldLease: NodeAttemptLease | undefined;
-    let signalProviderStarted: (() => void) | undefined;
-    const providerStarted = new Promise<void>((resolve) => {
-      signalProviderStarted = resolve;
-    });
+    const providerStarted = createOwnedBarrier('heartbeat-loss provider start');
     const providerKeys: string[] = [];
     let providerInFlight = false;
     const firstRuntime = await createHttpNodeAttemptProofRuntime(encryption, {
@@ -2223,7 +2385,7 @@ describeIntegration('active HTTP node attempt', () => {
         await input.beforeDispatch();
         providerKeys.push(input.idempotencyKey);
         providerInFlight = true;
-        signalProviderStarted?.();
+        providerStarted.resolve();
         const signal = input.signal;
         if (signal === undefined)
           throw new Error('Email scenario signal is missing');
@@ -2237,12 +2399,12 @@ describeIntegration('active HTTP node attempt', () => {
         throw new Error('Aborted email request unexpectedly resumed');
       },
     });
-    const scenario = await admitProviderScenario(firstRuntime, 'email');
-    const firstPublished = await firstRuntime.producer.publish(
-      attemptJob(scenario.accepted.runId, scenario.attempt),
-    );
     try {
-      await providerStarted;
+      const scenario = await admitProviderScenario(firstRuntime, 'email');
+      const firstPublished = await firstRuntime.producer.publish(
+        attemptJob(scenario.accepted.runId, scenario.attempt),
+      );
+      await providerStarted.promise;
       const failedJob = await waitFor(
         () => firstRuntime.attemptQueue.getJob(firstPublished.jobId),
         (candidate) => candidate !== undefined,
@@ -2457,150 +2619,180 @@ describeIntegration('active HTTP node attempt', () => {
         await closeProofRuntime(secondRuntime);
       }
     } finally {
+      providerStarted.dispose();
       await closeProofRuntime(firstRuntime);
     }
   }, 30_000);
 
-  it('keeps a logical retry key but derives a new provider identity for an operator replay without rewriting source history', async () => {
+  it('derives a new provider identity when replaying an intentionally seeded terminal source without rewriting its history', async () => {
     const encryption = fixtureEncryption;
     if (encryption === undefined)
       throw new Error('HTTP attempt fixture encryption is missing');
     const runtime = await createHttpNodeAttemptProofRuntime(encryption);
-    const operator = createOperatorCommandDatabase(
-      parseOperatorDatabaseConfig({
-        ...process.env,
-        DATABASE_OPERATOR_URL: databaseUrl(operatorUrl),
-      }),
-    );
-    const replayStore = createDatabaseOperatorRunReplayStore(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerUrl),
-        max: 1,
-      }),
-      'email_activation',
-    );
-    try {
-      const source = await admitProviderScenario(runtime, 'email');
-      await publishAndWaitForCompletion(
-        runtime.producer,
-        runtime.attemptQueue,
-        attemptJob(source.accepted.runId, source.attempt),
-        'Source email attempt',
-      );
-      await withOwner((client) =>
-        client.query(
-          `update app.workflow_runs
+    let operator: ReturnType<typeof createOperatorCommandDatabase> | undefined;
+    let replayStore:
+      ReturnType<typeof createDatabaseOperatorRunReplayStore> | undefined;
+    await runWithCleanup(
+      async () => {
+        operator = createOperatorCommandDatabase(
+          parseOperatorDatabaseConfig({
+            ...process.env,
+            DATABASE_OPERATOR_URL: databaseUrl(operatorUrl),
+          }),
+        );
+        replayStore = createDatabaseOperatorRunReplayStore(
+          parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+            max: 1,
+          }),
+          'email_activation',
+        );
+        const source = await admitProviderScenario(runtime, 'email');
+        await publishAndWaitForCompletion(
+          runtime.producer,
+          runtime.attemptQueue,
+          attemptJob(source.accepted.runId, source.attempt),
+          'Source email attempt',
+        );
+        await withOwner((client) =>
+          client.query(
+            `update app.workflow_runs
               set status='succeeded',completed_at=clock_timestamp(),
                   updated_at=clock_timestamp()
             where workspace_id=$1 and id=$2`,
-          [workspaceId, source.accepted.runId],
-        ),
-      );
-      const sourceRows = await workerQuery<{
-        provider_idempotency_key: string;
-        run_status: string;
-      }>(
-        `select attempt.provider_idempotency_key,run.status run_status
+            [workspaceId, source.accepted.runId],
+          ),
+        );
+        const sourceRows = await workerQuery<{
+          provider_idempotency_key: string;
+          run_status: string;
+        }>(
+          `select attempt.provider_idempotency_key,run.status run_status
            from app.node_attempts attempt
            join app.node_runs node on node.workspace_id=attempt.workspace_id
              and node.id=attempt.node_run_id
            join app.workflow_runs run on run.workspace_id=node.workspace_id
              and run.id=node.workflow_run_id
           where attempt.workspace_id=$1 and attempt.id=$2`,
-        [workspaceId, source.attempt.attempt_id],
-      );
-      const sourceRow = sourceRows[0];
-      if (sourceRow === undefined)
-        throw new Error('Source provider attempt missing');
-      expect(sourceRow.run_status).toBe('succeeded');
-      expect(sourceRow.provider_idempotency_key).toMatch(/^v1\.[0-9a-f]{64}$/u);
+          [workspaceId, source.attempt.attempt_id],
+        );
+        const sourceRow = sourceRows[0];
+        if (sourceRow === undefined)
+          throw new Error('Source provider attempt missing');
+        expect(sourceRow.run_status).toBe('succeeded');
+        expect(sourceRow.provider_idempotency_key).toMatch(
+          /^v1\.[0-9a-f]{64}$/u,
+        );
+        const sourceHistory = await readSourceRunHistory(source.accepted.runId);
 
-      const commandId = randomUUID();
-      const requested = await operator.replayRun({
-        actorRef: 'node-attempt-proof',
-        commandId,
-        dryRun: false,
-        reason: 'prove replay provider identity isolation',
-        runInput: {},
-        sourceRunId: source.accepted.runId,
-        workflowVersionId: source.accepted.workflowVersionId,
-        workspaceId,
-      });
-      const replayOutboxId = requested.result.outboxEventId;
-      if (typeof replayOutboxId !== 'string')
-        throw new Error('Replay outbox identity missing');
-      const replayed = await replayStore.replay({
-        commandId,
-        delivery: {
-          outboxEventId: replayOutboxId,
-          payloadChecksum: canonicalOutboxPayloadChecksum({
-            commandId,
+        const commandId = randomUUID();
+        const requested = await operator.replayRun({
+          actorRef: 'node-attempt-proof',
+          commandId,
+          dryRun: false,
+          reason: 'prove replay provider identity isolation',
+          runInput: {},
+          sourceRunId: source.accepted.runId,
+          workflowVersionId: source.accepted.workflowVersionId,
+          workspaceId,
+        });
+        const replayOutboxId = requested.result.outboxEventId;
+        if (typeof replayOutboxId !== 'string')
+          throw new Error('Replay outbox identity missing');
+        const replayed = await replayStore.replay({
+          commandId,
+          delivery: {
             outboxEventId: replayOutboxId,
-            schemaVersion: 1,
-            workspaceId,
-          }),
-        },
-        workspaceId,
-      });
-      if (replayed.kind !== 'processed' || replayed.runId === undefined)
-        throw new Error('Replay run was not created');
-      expect(replayed.runId).not.toBe(source.accepted.runId);
-
-      const replayInitialOutbox = await continuation(replayed.runId, []);
-      const coordinatorOutboxes = [replayInitialOutbox];
-      await publishAndWaitForCompletion(
-        runtime.producer,
-        runtime.coordinatorQueue,
-        {
-          name: JOB_NAME.advanceWorkflowRun,
-          data: {
-            schemaVersion: 1,
-            workspaceId,
-            runId: replayed.runId,
-            outboxEventId: replayInitialOutbox,
+            payloadChecksum: canonicalOutboxPayloadChecksum({
+              commandId,
+              outboxEventId: replayOutboxId,
+              schemaVersion: 1,
+              workspaceId,
+            }),
           },
-        },
-        'Replay initial coordinator',
-      );
-      const replayManual = await attemptDelivery(replayed.runId, 'manual');
-      await publishAndWaitForCompletion(
-        runtime.producer,
-        runtime.attemptQueue,
-        attemptJob(replayed.runId, replayManual),
-        'Replay manual attempt',
-      );
-      await advanceScenario(
-        runtime,
-        replayed.runId,
-        coordinatorOutboxes,
-        'Replay provider admission',
-      );
-      const replayProvider = await attemptDelivery(replayed.runId, 'provider');
-      const identities = await workerQuery<{
-        id: string;
-        provider_idempotency_key: string;
-      }>(
-        `select attempt.id,attempt.provider_idempotency_key
+          workspaceId,
+        });
+        if (replayed.kind !== 'processed' || replayed.runId === undefined)
+          throw new Error('Replay run was not created');
+        expect(replayed.runId).not.toBe(source.accepted.runId);
+
+        const replayInitialOutbox = await continuation(replayed.runId, []);
+        const coordinatorOutboxes = [replayInitialOutbox];
+        await publishAndWaitForCompletion(
+          runtime.producer,
+          runtime.coordinatorQueue,
+          {
+            name: JOB_NAME.advanceWorkflowRun,
+            data: {
+              schemaVersion: 1,
+              workspaceId,
+              runId: replayed.runId,
+              outboxEventId: replayInitialOutbox,
+            },
+          },
+          'Replay initial coordinator',
+        );
+        const replayManual = await attemptDelivery(replayed.runId, 'manual');
+        await publishAndWaitForCompletion(
+          runtime.producer,
+          runtime.attemptQueue,
+          attemptJob(replayed.runId, replayManual),
+          'Replay manual attempt',
+        );
+        await advanceScenario(
+          runtime,
+          replayed.runId,
+          coordinatorOutboxes,
+          'Replay provider admission',
+        );
+        const replayProvider = await attemptDelivery(
+          replayed.runId,
+          'provider',
+        );
+        const identities = await workerQuery<{
+          id: string;
+          provider_idempotency_key: string;
+        }>(
+          `select attempt.id,attempt.provider_idempotency_key
            from app.node_attempts attempt
           where attempt.workspace_id=$1 and attempt.id=any($2::uuid[])
           order by attempt.id`,
-        [workspaceId, [source.attempt.attempt_id, replayProvider.attempt_id]],
-      );
-      const byId = new Map(
-        identities.map((row) => [row.id, row.provider_idempotency_key]),
-      );
-      expect(byId.get(source.attempt.attempt_id)).toBe(
-        sourceRows[0]?.provider_idempotency_key,
-      );
-      expect(byId.get(replayProvider.attempt_id)).toMatch(
-        /^v1\.[0-9a-f]{64}$/u,
-      );
-      expect(byId.get(replayProvider.attempt_id)).not.toBe(
-        sourceRows[0]?.provider_idempotency_key,
-      );
-    } finally {
-      await Promise.allSettled([operator.close(), replayStore.close()]);
-      await closeProofRuntime(runtime);
-    }
+          [workspaceId, [source.attempt.attempt_id, replayProvider.attempt_id]],
+        );
+        const byId = new Map(
+          identities.map((row) => [row.id, row.provider_idempotency_key]),
+        );
+        expect(byId.get(source.attempt.attempt_id)).toBe(
+          sourceRows[0]?.provider_idempotency_key,
+        );
+        expect(byId.get(replayProvider.attempt_id)).toMatch(
+          /^v1\.[0-9a-f]{64}$/u,
+        );
+        expect(byId.get(replayProvider.attempt_id)).not.toBe(
+          sourceRows[0]?.provider_idempotency_key,
+        );
+        await expect(
+          readSourceRunHistory(source.accepted.runId),
+        ).resolves.toEqual(sourceHistory);
+      },
+      async () => {
+        const errors: unknown[] = [];
+        if (replayStore !== undefined)
+          await replayStore
+            .close()
+            .catch((error: unknown) => errors.push(error));
+        if (operator !== undefined)
+          await operator.close().catch((error: unknown) => errors.push(error));
+        await closeProofRuntime(runtime).catch((error: unknown) => {
+          errors.push(error);
+        });
+        if (errors.length > 0)
+          throw new AggregateError(
+            errors,
+            'HTTP replay scenario cleanup failed',
+          );
+      },
+      'HTTP replay scenario',
+    );
   }, 30_000);
 });

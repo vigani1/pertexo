@@ -1,15 +1,14 @@
+import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
   Pool,
-  api,
   apiBaseUrl,
   canonicalOutboxPayloadChecksum,
   checkDatabaseReadiness,
   createFailureNotificationStore,
   createInput,
   databaseUrl,
-  destinations,
   historicalDestinationId,
   historicalDispatchingIntentId,
   historicalIntentId,
@@ -22,15 +21,20 @@ import {
   ownerB,
   parseDatabaseConfig,
   pgCode,
-  priorApplied,
   priorDatabaseName,
   randomUUID,
-  upgradeApplied,
+  registerCurrentConnectionsFixture,
   upgradeDatabaseName,
   workerBaseUrl,
   workspaceA,
   workspaceB,
 } from './support/connections.integration.support.js';
+import {
+  priorApplied,
+  upgradeApplied,
+} from './support/connections-compatibility.integration.support.js';
+
+const connections = registerCurrentConnectionsFixture();
 import { expectedMigrationHistoryFrom } from './support/migration-history-fixture.js';
 
 describe('connection persistence', () => {
@@ -40,11 +44,13 @@ describe('connection persistence', () => {
       authType: 'resend_api_key',
       name: `Email ${randomUUID()}`,
     });
-    await api.createConnection(connection);
+    await connections.api.createConnection(connection);
+    expect(connection.connectionId[14]).toBe('7');
     const workflowId = randomUUID();
     const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const ownerClient = await owner.connect();
+    let ownerClient: PoolClient | undefined;
     try {
+      ownerClient = await owner.connect();
       await ownerClient.query('begin');
       await ownerClient.query('set local role pertexo_owner');
       await ownerClient.query("select set_config('app.workspace_id',$1,true)", [
@@ -57,8 +63,8 @@ describe('connection persistence', () => {
       );
       await ownerClient.query('commit');
     } finally {
-      await ownerClient.query('rollback').catch(() => undefined);
-      ownerClient.release();
+      await ownerClient?.query('rollback').catch(() => undefined);
+      ownerClient?.release();
       await owner.end();
     }
 
@@ -76,15 +82,31 @@ describe('connection persistence', () => {
       requestHash: '1'.repeat(64),
       requestId: `request-${destinationId}`,
     };
-    const created = await destinations.create(create);
+    const created = await connections.destinations.create(create);
     expect(created.config).toMatchObject({ toEmail: 'Ops@example.test' });
-    const replayed = await destinations.create({
+    await expect(
+      connections.destinations.get({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        destinationId,
+      }),
+    ).resolves.toEqual(created);
+    await expect(
+      connections.destinations.list({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+      }),
+    ).resolves.toContainEqual(created);
+    const replayed = await connections.destinations.create({
       ...create,
       destinationId: randomUUID(),
     });
     expect(replayed).toEqual(created);
     await expect(
-      destinations.create({ ...create, requestHash: '2'.repeat(64) }),
+      connections.destinations.create({
+        ...create,
+        requestHash: '2'.repeat(64),
+      }),
     ).rejects.toMatchObject({
       code: 'idempotency_conflict',
       name: 'FailureNotificationDestinationError',
@@ -98,8 +120,10 @@ describe('connection persistence', () => {
       idempotencyKey: `destination-append-${destinationId}`,
       requestHash: '3'.repeat(64),
     };
-    const appended = await destinations.appendVersion(append);
-    await expect(destinations.appendVersion(append)).resolves.toEqual(appended);
+    const appended = await connections.destinations.appendVersion(append);
+    await expect(
+      connections.destinations.appendVersion(append),
+    ).resolves.toEqual(appended);
     expect(appended).toMatchObject({
       currentVersion: 2,
       config: { toEmail: 'alerts@example.test' },
@@ -113,8 +137,19 @@ describe('connection persistence', () => {
       idempotencyKey: `policy-set-${workflowId}`,
       requestHash: '4'.repeat(64),
     };
-    await destinations.setWorkflowPolicy(setPolicy);
-    await destinations.setWorkflowPolicy(setPolicy);
+    await connections.destinations.setWorkflowPolicy(setPolicy);
+    await connections.destinations.setWorkflowPolicy(setPolicy);
+    const statusNoop = {
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      destinationId,
+      status: 'enabled' as const,
+      idempotencyKey: `destination-status-noop-${destinationId}`,
+      requestHash: '7'.repeat(64),
+    };
+    await expect(
+      connections.destinations.setStatus(statusNoop),
+    ).resolves.toEqual(appended);
     const status = {
       workspaceId: workspaceA,
       actorId: ownerA,
@@ -123,12 +158,17 @@ describe('connection persistence', () => {
       idempotencyKey: `destination-status-${destinationId}`,
       requestHash: '5'.repeat(64),
     };
-    await destinations.setStatus(status);
-    await expect(destinations.setStatus(status)).resolves.toMatchObject({
+    await connections.destinations.setStatus(status);
+    await expect(
+      connections.destinations.setStatus(status),
+    ).resolves.toMatchObject({
       status: 'disabled',
     });
     await expect(
-      destinations.list({ workspaceId: workspaceB, actorId: ownerB }),
+      connections.destinations.list({
+        workspaceId: workspaceB,
+        actorId: ownerB,
+      }),
     ).resolves.toEqual([]);
     const clearPolicy = {
       workspaceId: workspaceA,
@@ -137,29 +177,50 @@ describe('connection persistence', () => {
       idempotencyKey: `policy-clear-${workflowId}`,
       requestHash: '6'.repeat(64),
     };
-    await destinations.clearWorkflowPolicy(clearPolicy);
-    await destinations.clearWorkflowPolicy(clearPolicy);
+    await connections.destinations.clearWorkflowPolicy(clearPolicy);
+    await connections.destinations.clearWorkflowPolicy(clearPolicy);
+    await expect(
+      connections.destinations.clearWorkflowPolicy({
+        ...clearPolicy,
+        idempotencyKey: `${clearPolicy.idempotencyKey}-absent`,
+        requestHash: '8'.repeat(64),
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      connections.destinations.create({
+        ...create,
+        destinationId: randomUUID(),
+      }),
+    ).resolves.toEqual(created);
+    await expect(
+      connections.destinations.appendVersion(append),
+    ).resolves.toEqual(appended);
     const deletion = new Pool({
       connectionString: databaseUrl(migrationBaseUrl),
     });
-    const deletionClient = await deletion.connect();
-    await deletionClient.query('begin');
-    await deletionClient.query('set local role pertexo_owner');
-    await deletionClient.query(
-      "select set_config('app.workspace_id',$1,true)",
-      [workspaceA],
-    );
-    await deletionClient.query('delete from app.workflows where id=$1', [
-      workflowId,
-    ]);
-    await deletionClient.query('commit');
-    deletionClient.release();
-    await deletion.end();
+    let deletionClient: PoolClient | undefined;
+    try {
+      deletionClient = await deletion.connect();
+      await deletionClient.query('begin');
+      await deletionClient.query('set local role pertexo_owner');
+      await deletionClient.query(
+        "select set_config('app.workspace_id',$1,true)",
+        [workspaceA],
+      );
+      await deletionClient.query('delete from app.workflows where id=$1', [
+        workflowId,
+      ]);
+      await deletionClient.query('commit');
+    } finally {
+      await deletionClient?.query('rollback').catch(() => undefined);
+      deletionClient?.release();
+      await deletion.end();
+    }
     await expect(
-      destinations.clearWorkflowPolicy(clearPolicy),
+      connections.destinations.clearWorkflowPolicy(clearPolicy),
     ).resolves.toBeUndefined();
     await expect(
-      destinations.clearWorkflowPolicy({
+      connections.destinations.clearWorkflowPolicy({
         ...clearPolicy,
         idempotencyKey: `${clearPolicy.idempotencyKey}-new`,
       }),
@@ -169,30 +230,455 @@ describe('connection persistence', () => {
     });
 
     const audit = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
-    const auditClient = await audit.connect();
+    let auditClient: PoolClient | undefined;
     try {
+      auditClient = await audit.connect();
       await auditClient.query('begin');
       await auditClient.query('set local role pertexo_owner');
       await auditClient.query("select set_config('app.workspace_id',$1,true)", [
         workspaceA,
       ]);
-      const result = await auditClient.query<{ count: string }>(
-        `select count(*)::text from app.audit_events
+      const result = await auditClient.query<{
+        action: string;
+        actor_user_id: string;
+        metadata: Record<string, unknown>;
+        request_id: string | null;
+        target_id: string;
+        target_type: string;
+        trace_id: string | null;
+      }>(
+        `select action,actor_user_id::text,target_type,target_id::text,
+                request_id,trace_id,metadata
+           from app.audit_events
           where target_id in ($1,$2)
             and action in (
               'failure_notification_destination.created',
               'failure_notification_destination.version_appended',
+              'failure_notification_destination.enabled',
               'failure_notification_destination.disabled',
               'workflow.failure_notification_policy_set',
               'workflow.failure_notification_policy_cleared'
-            )`,
+            )
+          order by action`,
         [destinationId, workflowId],
       );
-      expect(result.rows[0]?.count).toBe('5');
+      expect(result.rows).toEqual([
+        {
+          action: 'failure_notification_destination.created',
+          actor_user_id: ownerA,
+          metadata: { kind: 'email', version: 1 },
+          request_id: create.requestId,
+          target_id: destinationId,
+          target_type: 'failure_notification_destination',
+          trace_id: null,
+        },
+        {
+          action: 'failure_notification_destination.disabled',
+          actor_user_id: ownerA,
+          metadata: {},
+          request_id: null,
+          target_id: destinationId,
+          target_type: 'failure_notification_destination',
+          trace_id: null,
+        },
+        {
+          action: 'failure_notification_destination.version_appended',
+          actor_user_id: ownerA,
+          metadata: { version: 2 },
+          request_id: create.requestId,
+          target_id: destinationId,
+          target_type: 'failure_notification_destination',
+          trace_id: null,
+        },
+        {
+          action: 'workflow.failure_notification_policy_cleared',
+          actor_user_id: ownerA,
+          metadata: {},
+          request_id: null,
+          target_id: workflowId,
+          target_type: 'workflow',
+          trace_id: null,
+        },
+        {
+          action: 'workflow.failure_notification_policy_set',
+          actor_user_id: ownerA,
+          metadata: { destinationId },
+          request_id: null,
+          target_id: workflowId,
+          target_type: 'workflow',
+          trace_id: null,
+        },
+      ]);
     } finally {
-      await auditClient.query('rollback').catch(() => undefined);
-      auditClient.release();
+      await auditClient?.query('rollback').catch(() => undefined);
+      auditClient?.release();
       await audit.end();
+    }
+  });
+
+  it('enforces destination capabilities, active authority, and workflow visibility', async () => {
+    const connection = createInput({
+      providerKey: 'email',
+      authType: 'resend_api_key',
+      name: `Destination roles ${randomUUID()}`,
+    });
+    await connections.api.createConnection(connection);
+    const roleActors = new Map([
+      ['owner', ownerA],
+      ...(['admin', 'builder', 'operator', 'viewer'] as const).map(
+        (role) => [role, randomUUID()] as const,
+      ),
+    ] as const);
+    const workflowIds = new Map(
+      [...roleActors.keys()].map((role) => [role, randomUUID()] as const),
+    );
+    const otherWorkspaceWorkflowId = randomUUID();
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    let client: PoolClient | undefined;
+    try {
+      client = await owner.connect();
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      for (const [role, actorId] of roleActors) {
+        if (role !== 'owner') {
+          await client.query(
+            `insert into app.users (id,email,display_name,status)
+             values ($1,$2,$3,'active')`,
+            [actorId, `${actorId}@example.test`, `Destination ${role}`],
+          );
+          await client.query(
+            `insert into app.workspace_memberships
+               (workspace_id,user_id,role,status)
+             values ($1,$2,$3,'active')`,
+            [workspaceA, actorId, role],
+          );
+        }
+        await client.query(
+          `insert into app.workflows (id,workspace_id,name,created_by)
+           values ($1,$2,$3,$4)`,
+          [
+            workflowIds.get(role),
+            workspaceA,
+            `Destination role ${role}`,
+            ownerA,
+          ],
+        );
+      }
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceB,
+      ]);
+      await client.query(
+        `insert into app.workflows (id,workspace_id,name,created_by)
+         values ($1,$2,'Other workspace policy',$3)`,
+        [otherWorkspaceWorkflowId, workspaceB, ownerB],
+      );
+      await client.query('commit');
+    } finally {
+      await client?.query('rollback').catch(() => undefined);
+      client?.release();
+      await owner.end();
+    }
+
+    const destinationId = randomUUID();
+    const destinationConfig = {
+      kind: 'email' as const,
+      connectionId: connection.connectionId,
+      toEmail: 'roles@example.test',
+    };
+    const destination = await connections.destinations.create({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      destinationId,
+      config: destinationConfig,
+      idempotencyKey: `role-base-${destinationId}`,
+      requestHash: '9'.repeat(64),
+    });
+
+    for (const [role, actorId] of roleActors) {
+      const readable = ['owner', 'admin', 'builder'].includes(role);
+      if (readable) {
+        await expect(
+          connections.destinations.get({
+            workspaceId: workspaceA,
+            actorId,
+            destinationId,
+          }),
+        ).resolves.toEqual(destination);
+        await expect(
+          connections.destinations.list({
+            workspaceId: workspaceA,
+            actorId,
+          }),
+        ).resolves.toContainEqual(destination);
+      } else {
+        await expect(
+          connections.destinations.get({
+            workspaceId: workspaceA,
+            actorId,
+            destinationId,
+          }),
+        ).rejects.toMatchObject({ code: 'not_found' });
+        await expect(
+          connections.destinations.list({
+            workspaceId: workspaceA,
+            actorId,
+          }),
+        ).rejects.toMatchObject({ code: 'not_found' });
+      }
+
+      const candidateId = randomUUID();
+      const create = connections.destinations.create({
+        workspaceId: workspaceA,
+        actorId,
+        destinationId: candidateId,
+        config: destinationConfig,
+        idempotencyKey: `role-create-${role}-${candidateId}`,
+        requestHash: 'a'.repeat(64),
+      });
+      if (role === 'owner' || role === 'admin')
+        await expect(create).resolves.toMatchObject({ id: candidateId });
+      else await expect(create).rejects.toMatchObject({ code: 'not_found' });
+
+      const workflowId = workflowIds.get(role);
+      if (workflowId === undefined) throw new Error('Role workflow missing');
+      const policy = {
+        workspaceId: workspaceA,
+        actorId,
+        workflowId,
+        destinationId,
+        idempotencyKey: `role-policy-${role}-${workflowId}`,
+        requestHash: 'b'.repeat(64),
+      };
+      if (readable) {
+        await expect(
+          connections.destinations.setWorkflowPolicy(policy),
+        ).resolves.toBeUndefined();
+        await expect(
+          connections.destinations.clearWorkflowPolicy({
+            ...policy,
+            idempotencyKey: `role-policy-clear-${role}-${workflowId}`,
+            requestHash: 'c'.repeat(64),
+          }),
+        ).resolves.toBeUndefined();
+      } else {
+        await expect(
+          connections.destinations.setWorkflowPolicy(policy),
+        ).rejects.toMatchObject({ code: 'not_found' });
+        await expect(
+          connections.destinations.clearWorkflowPolicy({
+            ...policy,
+            idempotencyKey: `role-policy-clear-${role}-${workflowId}`,
+            requestHash: 'c'.repeat(64),
+          }),
+        ).rejects.toMatchObject({ code: 'not_found' });
+      }
+    }
+
+    const adminId = roleActors.get('admin');
+    const builderId = roleActors.get('builder');
+    if (adminId === undefined || builderId === undefined)
+      throw new Error('Destination authority fixtures are missing');
+    await expect(
+      connections.destinations.appendVersion({
+        workspaceId: workspaceA,
+        actorId: adminId,
+        destinationId,
+        expectedVersion: 1,
+        config: { ...destinationConfig, toEmail: 'admin@example.test' },
+        idempotencyKey: `admin-append-${destinationId}`,
+        requestHash: 'd'.repeat(64),
+      }),
+    ).resolves.toMatchObject({ currentVersion: 2 });
+    await expect(
+      connections.destinations.appendVersion({
+        workspaceId: workspaceA,
+        actorId: builderId,
+        destinationId,
+        expectedVersion: 2,
+        config: { ...destinationConfig, toEmail: 'builder@example.test' },
+        idempotencyKey: `builder-append-${destinationId}`,
+        requestHash: 'e'.repeat(64),
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    await expect(
+      connections.destinations.setStatus({
+        workspaceId: workspaceA,
+        actorId: builderId,
+        destinationId,
+        status: 'disabled',
+        idempotencyKey: `builder-status-${destinationId}`,
+        requestHash: 'f'.repeat(64),
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    const adminReplayCommand = {
+      workspaceId: workspaceA,
+      actorId: adminId,
+      destinationId,
+      status: 'enabled' as const,
+      idempotencyKey: `admin-status-replay-${destinationId}`,
+      requestHash: '1'.repeat(64),
+    };
+    await expect(
+      connections.destinations.setStatus(adminReplayCommand),
+    ).resolves.toMatchObject({ status: 'enabled' });
+    await expect(
+      connections.destinations.setWorkflowPolicy({
+        workspaceId: workspaceA,
+        actorId: builderId,
+        workflowId: otherWorkspaceWorkflowId,
+        destinationId,
+        idempotencyKey: `foreign-workflow-${otherWorkspaceWorkflowId}`,
+        requestHash: '0'.repeat(64),
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    await expect(
+      connections.destinations.get({
+        workspaceId: workspaceB,
+        actorId: ownerB,
+        destinationId,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+
+    const authority = new Pool({
+      connectionString: databaseUrl(migrationBaseUrl),
+    });
+    try {
+      await authority.query('set role pertexo_owner');
+      await authority.query("select set_config('app.workspace_id',$1,false)", [
+        workspaceA,
+      ]);
+      const assertInactiveDenied = async (): Promise<void> => {
+        await expect(
+          connections.destinations.get({
+            workspaceId: workspaceA,
+            actorId: adminId,
+            destinationId,
+          }),
+        ).rejects.toMatchObject({ code: 'not_found' });
+        await expect(
+          connections.destinations.setStatus(adminReplayCommand),
+        ).rejects.toMatchObject({ code: 'not_found' });
+      };
+      await authority.query(
+        `update app.workspace_memberships set status='suspended'
+          where workspace_id=$1 and user_id=$2`,
+        [workspaceA, adminId],
+      );
+      await assertInactiveDenied();
+      await authority.query(
+        `update app.workspace_memberships set status='active'
+          where workspace_id=$1 and user_id=$2`,
+        [workspaceA, adminId],
+      );
+      await authority.query(
+        `update app.users set status='suspended' where id=$1`,
+        [adminId],
+      );
+      await assertInactiveDenied();
+      await authority.query(
+        `update app.users set status='active' where id=$1`,
+        [adminId],
+      );
+      await authority.query(
+        `update app.workspaces set status='suspended' where id=$1`,
+        [workspaceA],
+      );
+      await assertInactiveDenied();
+    } finally {
+      await authority
+        .query(
+          `update app.workspace_memberships set status='active'
+            where workspace_id=$1 and user_id=$2`,
+          [workspaceA, adminId],
+        )
+        .catch(() => undefined);
+      await authority
+        .query(`update app.users set status='active' where id=$1`, [adminId])
+        .catch(() => undefined);
+      await authority
+        .query(`update app.workspaces set status='active' where id=$1`, [
+          workspaceA,
+        ])
+        .catch(() => undefined);
+      await authority.end();
+    }
+  });
+
+  it('admits exactly one optimistic destination append at a version boundary', async () => {
+    const connection = createInput({
+      providerKey: 'email',
+      authType: 'resend_api_key',
+      name: `Destination append ${randomUUID()}`,
+    });
+    await connections.api.createConnection(connection);
+    const destinationId = randomUUID();
+    const base = {
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      destinationId,
+      config: {
+        kind: 'email' as const,
+        connectionId: connection.connectionId,
+        toEmail: 'base@example.test',
+      },
+    };
+    await connections.destinations.create({
+      ...base,
+      idempotencyKey: `append-base-${destinationId}`,
+      requestHash: '1'.repeat(64),
+    });
+    const append = (suffix: string) =>
+      connections.destinations
+        .appendVersion({
+          ...base,
+          expectedVersion: 1,
+          config: { ...base.config, toEmail: `${suffix}@example.test` },
+          idempotencyKey: `append-race-${suffix}-${destinationId}`,
+          requestHash: suffix.repeat(64),
+        })
+        .then(
+          (value) => ({ kind: 'appended' as const, value }),
+          (error: unknown) => ({ kind: 'failed' as const, error }),
+        );
+    const outcomes = await Promise.all([append('a'), append('b')]);
+    const appended = outcomes.filter((outcome) => outcome.kind === 'appended');
+    const failed = outcomes.filter((outcome) => outcome.kind === 'failed');
+    expect(appended).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.kind === 'failed' && failed[0].error).toMatchObject({
+      code: 'conflict',
+      name: 'FailureNotificationDestinationError',
+    });
+    await expect(
+      connections.destinations.get({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        destinationId,
+      }),
+    ).resolves.toMatchObject({
+      currentVersion: 2,
+      config: appended[0]?.kind === 'appended' ? appended[0].value.config : {},
+    });
+
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query("select set_config('app.workspace_id',$1,false)", [
+        workspaceA,
+      ]);
+      await expect(
+        owner.query<{ version_count: number }>(
+          `select count(*)::int version_count
+             from app.failure_notification_destination_versions
+            where workspace_id=$1 and destination_id=$2`,
+          [workspaceA, destinationId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ version_count: 2 }] });
+    } finally {
+      await owner.end();
     }
   });
 
@@ -213,7 +699,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -265,8 +751,9 @@ describe('connection persistence', () => {
         connectionString: databaseUrl(migrationBaseUrl, priorDatabaseName),
         max: 1,
       });
-      const historicalClient = await historicalPool.connect();
+      let historicalClient: PoolClient | undefined;
       try {
+        historicalClient = await historicalPool.connect();
         await historicalClient.query('begin');
         await historicalClient.query('set local role pertexo_owner');
         await historicalClient.query(
@@ -357,8 +844,8 @@ describe('connection persistence', () => {
           ),
         ).rejects.toSatisfy(pgCode('23503'));
       } finally {
-        await historicalClient.query('rollback').catch(() => undefined);
-        historicalClient.release();
+        await historicalClient?.query('rollback').catch(() => undefined);
+        historicalClient?.release();
         await historicalPool.end();
       }
       const historicalStore = createFailureNotificationStore(
@@ -411,7 +898,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0086_operator_attempt_reclaim_state.sql',
+        migrationHead: '0089_oidc_capacity_lock_time.sql',
       });
     } finally {
       await pool.end();

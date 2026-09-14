@@ -12,6 +12,11 @@ import {
   SecureHttpError,
   secureHttpPreDispatchError,
 } from './http/secure-http.js';
+import {
+  errorCodeIs,
+  errorNameIs,
+  safeInstanceOf,
+} from './http/unknown-error.js';
 
 function dispatchEvidenceErrorCode(
   error: unknown,
@@ -19,11 +24,11 @@ function dispatchEvidenceErrorCode(
   | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
   | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
   | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed {
-  if (!(error instanceof NodeDispatchEvidenceError))
+  if (!safeInstanceOf(error, NodeDispatchEvidenceError))
     return SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed;
-  if (error.code === 'provider_dispatch_binding_mismatch')
+  if (errorCodeIs(error, 'provider_dispatch_binding_mismatch'))
     return SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch;
-  if (error.code === 'provider_connection_fence_failed')
+  if (errorCodeIs(error, 'provider_connection_fence_failed'))
     return SECURE_HTTP_ERROR_CODE.connectionFenceFailed;
   return SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed;
 }
@@ -47,14 +52,11 @@ export function createProviderBeforeDispatch(input: {
         signal: input.signal,
       });
     } catch (error: unknown) {
-      if (error instanceof ProviderCredentialInvalidError)
+      if (safeInstanceOf(error, ProviderCredentialInvalidError))
         throw secureHttpPreDispatchError(
           SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
         );
-      if (
-        input.signal.aborted ||
-        (error instanceof Error && error.name === 'AbortError')
-      )
+      if (input.signal.aborted || errorNameIs(error, 'AbortError'))
         throw new SecureHttpError(
           SECURE_HTTP_ERROR_CODE.canceled,
           'definite_failure',

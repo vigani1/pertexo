@@ -25,6 +25,7 @@ import {
   workerUrl,
   workspaceId,
 } from './support/preview-consumer.integration.support.js';
+import { runWithCleanup } from './support/test-operation.js';
 
 const describeIntegration = workerTransportIntegrationEnabled
   ? describe
@@ -66,63 +67,86 @@ describeIntegration('preview reconciliation transport', () => {
       workerId: crashWorkerId,
     });
 
-    const reconciliationRuntime = await createPreviewMaintenanceRuntime({
-      database: parseDatabaseConfig({
-        connectionString: databaseUrl(workerUrl),
-      }),
-      redisUrl,
-    });
-    const dispatcher = createOutboxDispatcherDatabase(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(dispatcherUrl),
-        ownerRole: 'pertexo_owner',
-      }),
-    );
-    const producer = createQueueProducer({ redisUrl });
-    try {
-      await Promise.all([
-        reconciliationRuntime.consumer.waitUntilReady(5_000),
-        dispatcher.checkReadiness(),
-        producer.waitUntilReady(5_000),
-      ]);
-      const batch = await waitFor(
-        () =>
-          dispatcher.claimBatch({
-            enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
-            leaseDurationMillis: 5_000,
-            leaseOwner: 'preview-reconciliation-integration',
-            leaseToken: randomUUID(),
-            limit: 10,
-            maxAttempts: 3,
+    let reconciliationRuntime:
+      Awaited<ReturnType<typeof createPreviewMaintenanceRuntime>> | undefined;
+    let dispatcher:
+      ReturnType<typeof createOutboxDispatcherDatabase> | undefined;
+    let producer: ReturnType<typeof createQueueProducer> | undefined;
+    await runWithCleanup(
+      async () => {
+        reconciliationRuntime = await createPreviewMaintenanceRuntime({
+          database: parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
           }),
-        (value) => value.events.length > 0,
-      );
-      const event = batch.events.find(
-        (candidate) => candidate.aggregateId === accepted.previewRunId,
-      );
-      if (event === undefined)
-        throw new Error('due preview reconciliation outbox missing');
-      const job = parseQueueJob({ name: event.jobName, data: event.payload });
-      await producer.publish(job);
-      await dispatcher.markPublished(event.id, event.leaseToken);
+          redisUrl,
+        });
+        dispatcher = createOutboxDispatcherDatabase(
+          parseDatabaseConfig({
+            connectionString: databaseUrl(dispatcherUrl),
+            ownerRole: 'pertexo_owner',
+          }),
+        );
+        producer = createQueueProducer({ redisUrl });
+        const ownedRuntime = reconciliationRuntime;
+        const ownedDispatcher = dispatcher;
+        const ownedProducer = producer;
+        await Promise.all([
+          ownedRuntime.consumer.waitUntilReady(5_000),
+          ownedDispatcher.checkReadiness(),
+          ownedProducer.waitUntilReady(5_000),
+        ]);
+        const batch = await waitFor(
+          () =>
+            ownedDispatcher.claimBatch({
+              enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
+              leaseDurationMillis: 5_000,
+              leaseOwner: 'preview-reconciliation-integration',
+              leaseToken: randomUUID(),
+              limit: 10,
+              maxAttempts: 3,
+            }),
+          (value) =>
+            value.events.some(
+              (event) => event.aggregateId === accepted.previewRunId,
+            ),
+        );
+        const event = batch.events.find(
+          (candidate) => candidate.aggregateId === accepted.previewRunId,
+        );
+        if (event === undefined)
+          throw new Error('due preview reconciliation outbox missing');
+        const job = parseQueueJob({ name: event.jobName, data: event.payload });
+        await ownedProducer.publish(job);
+        await expect(
+          ownedDispatcher.markPublished(event.id, event.leaseToken),
+        ).resolves.toBe(true);
 
-      const state = await waitFor(
-        () => previewState(accepted.previewRunId),
-        (value) => value?.run_status === 'outcome_unknown',
-      );
-      expect(state).toMatchObject({
-        run_status: 'outcome_unknown',
-        safe_error_code: 'preview.outcome_unknown',
-      });
-      expect(Number(state?.attempt_fence)).toBe(
-        claimed.lease.attemptFenceToken + 1,
-      );
-    } finally {
-      await Promise.allSettled([
-        reconciliationRuntime.close(),
-        dispatcher.close(),
-        producer.close(),
-      ]);
-    }
+        const state = await waitFor(
+          () => previewState(accepted.previewRunId),
+          (value) => value?.run_status === 'outcome_unknown',
+        );
+        expect(state).toMatchObject({
+          run_status: 'outcome_unknown',
+          safe_error_code: 'preview.outcome_unknown',
+        });
+        expect(Number(state?.attempt_fence)).toBe(
+          claimed.lease.attemptFenceToken + 1,
+        );
+      },
+      async () => {
+        const errors: unknown[] = [];
+        await reconciliationRuntime
+          ?.close()
+          .catch((error: unknown) => errors.push(error));
+        await producer?.close().catch((error: unknown) => errors.push(error));
+        await dispatcher?.close().catch((error: unknown) => errors.push(error));
+        if (errors.length > 0)
+          throw new AggregateError(
+            errors,
+            'Preview reconciliation cleanup failed',
+          );
+      },
+      'Preview reconciliation',
+    );
   });
 });

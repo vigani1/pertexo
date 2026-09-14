@@ -22,8 +22,38 @@ import {
   fixture,
   key,
 } from './support/control-ledger.fixture.js';
+import { assertDedicatedControlLedgerIntegrationFixture } from './support/control-ledger-integration-gate.js';
 
-describe('external control ledger', () => {
+describe('external control ledger readiness', () => {
+  it.each([
+    [
+      'unknown provider',
+      {
+        CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true',
+        CONTROL_LEDGER_INTEGRATION_PROVIDER: 'future-provider',
+      },
+    ],
+    ['non-dedicated fixture', { CONTROL_LEDGER_INTEGRATION_PROVIDER: 'minio' }],
+  ] as const)(
+    'rejects unsafe integration selection: %s',
+    (_case, environment) => {
+      expect(() =>
+        assertDedicatedControlLedgerIntegrationFixture(environment),
+      ).toThrow();
+    },
+  );
+
+  it.each(['aws', 'minio'] as const)(
+    'admits an explicitly dedicated %s integration fixture',
+    (provider) => {
+      expect(
+        assertDedicatedControlLedgerIntegrationFixture({
+          CONTROL_LEDGER_INTEGRATION_DEDICATED_FIXTURE: 'true',
+          CONTROL_LEDGER_INTEGRATION_PROVIDER: provider,
+        }),
+      ).toBe(provider);
+    },
+  );
   it.each(['append', 'reconcile'] as const)(
     'preserves readiness cancellation and timeout for %s',
     async (operation) => {

@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "test": "vitest run",
+    "test:coverage:entrypoints": "vitest run --config vitest.entrypoints-coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/retention-entrypoints/test-results.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {

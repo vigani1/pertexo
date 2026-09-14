@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import { count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
+  IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from '../src/execution/execution-acceptance.js';
 import {
@@ -32,6 +35,36 @@ import {
 installExecutionAcceptanceFixture();
 
 describe('workflow run acceptance persistence and idempotency', () => {
+  it('fails closed for a malformed completed idempotency record', async () => {
+    const input = acceptanceInput();
+    await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db
+        .insert(idempotencyRecords)
+        .values({
+          id: randomUUID(),
+          workspaceId: workspaceA,
+          operation: input.operation,
+          scope: input.scope,
+          keyHash: input.keyHash,
+          requestHash: input.requestHash,
+          status: 'completed',
+          resourceId: randomUUID(),
+          resultRef: {},
+        })
+        .then(() => undefined),
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, input),
+      ),
+    ).rejects.toBeInstanceOf(IdempotencyRecordCorruptError);
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      expect(await db.select({ count: count() }).from(workflowRuns)).toEqual([
+        { count: 0 },
+      ]);
+    });
+  });
+
   it('commits one queued run, accepted event, revision-0 checkpoint, idempotency claim, and coordinator outbox', async () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,

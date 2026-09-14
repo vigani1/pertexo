@@ -11,13 +11,40 @@ import {
   coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
+  normalizedSourceSpan,
   partitionApiPriorityCoverage,
   produceIntegrationEvidenceArtifact,
   RISK_COVERAGE_COHORTS,
+  riskCoverageCohortFileInventories,
   riskCoverageSourceRevision,
   summarizeVitestResult,
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
+
+test('source spans preserve literal whitespace and honor absolute columns', () => {
+  const source = 'before if (value === "a  b") deny(); after\nnext line\n';
+  assert.equal(
+    normalizedSourceSpan(source, {
+      start: { line: 1, column: 7 },
+      end: { line: 1, column: 33 },
+    }),
+    'if (value === "a  b") deny',
+  );
+  assert.equal(
+    normalizedSourceSpan(source, {
+      start: { line: 1, column: 30 },
+      end: { line: 2, column: 4 },
+    }),
+    'eny(); after\nnext',
+  );
+  assert.equal(
+    normalizedSourceSpan(source, {
+      start: { line: 0, column: 0 },
+      end: { line: 0, column: 0 },
+    }),
+    source,
+  );
+});
 
 test('enforces strict cohorts and rejects new unreviewed debt independently', () => {
   assert.ok(RISK_COVERAGE_COHORTS.includes('api-orchestration'));
@@ -28,6 +55,11 @@ test('enforces strict cohorts and rejects new unreviewed debt independently', ()
     'integrations',
     'workflow-engine',
     'api-priority',
+    'api-entrypoints',
+    'worker-entrypoints',
+    'operator-command-entrypoints',
+    'recovery-entrypoints',
+    'retention-entrypoints',
   ]) {
     assert.doesNotThrow(() =>
       assertRiskCoveragePolicies({ uncoveredBranches: [] }),
@@ -44,6 +76,95 @@ test('enforces strict cohorts and rejects new unreviewed debt independently', ()
     assertRiskCoveragePolicies({
       uncoveredBranches: [{ cohort: 'api', reviewStatus: 'reviewed' }],
     }),
+  );
+});
+
+test('pins each app entrypoint risk cohort to exactly one owning main', () => {
+  const inventories = {
+    'api-entrypoints': ['apps/api/src/main.ts'],
+    'operator-command-entrypoints': ['apps/operator-command/src/main.ts'],
+    'recovery-entrypoints': ['apps/recovery/src/main.ts'],
+    'retention-entrypoints': ['apps/retention/src/main.ts'],
+    'worker-entrypoints': ['apps/worker/src/main.ts'],
+  };
+
+  for (const [cohort, files] of Object.entries(inventories)) {
+    assert.ok(RISK_COVERAGE_COHORTS.includes(cohort));
+    assert.throws(
+      () =>
+        assertRiskCoverageCohort(
+          { scope: { cohorts: [] }, uncoveredBranches: [] },
+          cohort,
+          files,
+        ),
+      new RegExp(`Missing ${cohort} risk-coverage cohort`, 'u'),
+    );
+    assert.doesNotThrow(() =>
+      assertRiskCoverageCohort(
+        {
+          scope: { cohorts: [{ cohort, files }] },
+          uncoveredBranches: [],
+        },
+        cohort,
+        files,
+      ),
+    );
+    assert.throws(
+      () =>
+        assertRiskCoverageCohort(
+          {
+            scope: {
+              cohorts: [
+                { cohort, files: [...files, 'apps/other/src/main.ts'] },
+              ],
+            },
+            uncoveredBranches: [],
+          },
+          cohort,
+          files,
+        ),
+      new RegExp(`Unexpected ${cohort} risk-coverage file inventory`, 'u'),
+    );
+  }
+});
+
+test('pins an exact file inventory for every risk cohort', async () => {
+  const inventories = await riskCoverageCohortFileInventories(
+    path.resolve(import.meta.dirname, '..'),
+  );
+  assert.deepEqual(
+    [...inventories.keys()].sort(),
+    [...RISK_COVERAGE_COHORTS].sort(),
+  );
+  assert.ok(
+    inventories
+      .get('workflow-engine')
+      .includes('packages/workflow-engine/src/advance-workflow.ts'),
+  );
+  assert.throws(
+    () =>
+      assertRiskCoverageCohort(
+        {
+          scope: {
+            cohorts: [
+              {
+                cohort: 'workflow-engine',
+                files: inventories
+                  .get('workflow-engine')
+                  .filter(
+                    (file) =>
+                      file !==
+                      'packages/workflow-engine/src/advance-workflow.ts',
+                  ),
+              },
+            ],
+          },
+          uncoveredBranches: [],
+        },
+        'workflow-engine',
+        inventories.get('workflow-engine'),
+      ),
+    /Unexpected workflow-engine risk-coverage file inventory/u,
   );
 });
 
@@ -257,10 +378,11 @@ test('binds execution evidence to the exact selected source contents', () => {
 test('summarizes duration and test health without retry-masked flakes', () => {
   assert.deepEqual(
     summarizeVitestResult({
+      success: true,
       numTotalTests: 4,
-      numPassedTests: 3,
+      numPassedTests: 4,
       numFailedTests: 0,
-      numPendingTests: 1,
+      numPendingTests: 0,
       numTodoTests: 0,
       startTime: 100,
       testResults: [{ endTime: 145 }],
@@ -268,14 +390,65 @@ test('summarizes duration and test health without retry-masked flakes', () => {
     {
       durationMs: 45,
       totalTests: 4,
-      passedTests: 3,
+      passedTests: 4,
       failedTests: 0,
-      skippedTests: 1,
+      skippedTests: 0,
       todoTests: 0,
-      retryPolicy: 'disabled',
-      retryAttempts: 0,
-      flakyTests: 0,
+      retryPolicy: 'disabled-by-configuration',
     },
+  );
+  assert.throws(
+    () =>
+      summarizeVitestResult({
+        success: false,
+        numTotalTests: 1,
+        numPassedTests: 0,
+        numFailedTests: 1,
+        numPendingTests: 0,
+        numTodoTests: 0,
+        startTime: 100,
+        testResults: [{ endTime: 145 }],
+      }),
+    /failed/u,
+  );
+});
+
+test('rejects malformed or mismatched Istanbul counters', () => {
+  assert.throws(
+    () => coverageMetrics({ '/repo/policy.ts': {} }),
+    /Malformed Istanbul s coverage/u,
+  );
+  assert.throws(
+    () =>
+      coverageMetrics({
+        '/repo/policy.ts': { statementMap: { 0: {} } },
+      }),
+    /Malformed Istanbul s coverage/u,
+  );
+  assert.throws(
+    () =>
+      coverageMetrics({
+        '/repo/policy.ts': {
+          statementMap: { 0: {} },
+          s: { 0: Number.NaN },
+        },
+      }),
+    /Malformed Istanbul s hits/u,
+  );
+  assert.throws(
+    () =>
+      uncoveredBranches(
+        {
+          '/repo/policy.ts': {
+            branchMap: {
+              0: { type: 'if', locations: [{ start: { line: 1, column: 0 } }] },
+            },
+            b: { 0: [0, 1] },
+          },
+        },
+        'api',
+      ),
+    /Malformed Istanbul branch locations/u,
   );
 });
 
@@ -354,6 +527,10 @@ test('describes only the exact selected files without claiming classification', 
         'database',
         {
           '/repo/packages/database/src/workspace.ts': {
+            statementMap: {},
+            s: {},
+            fnMap: {},
+            f: {},
             branchMap: {},
             b: {},
           },
@@ -388,6 +565,10 @@ test('attaches exact durable reviews and rejects stale review locations', () => 
       'api',
       {
         '/repo/apps/api/src/generated.ts': {
+          statementMap: {},
+          s: {},
+          fnMap: {},
+          f: {},
           branchMap: {
             0: {
               type: 'cond-expr',
@@ -463,6 +644,10 @@ test('reviews distinct instrumentation branches at the same source location', ()
       'worker',
       {
         '/repo/apps/worker/src/generated.ts': {
+          statementMap: {},
+          s: {},
+          fnMap: {},
+          f: {},
           branchMap: {
             7: {
               type: 'branch',
@@ -524,6 +709,10 @@ test('labels source-linked integration evidence as referenced-only', () => {
       'worker',
       {
         '/repo/apps/worker/src/adapter.ts': {
+          statementMap: {},
+          s: {},
+          fnMap: {},
+          f: {},
           branchMap: {
             3: {
               type: 'cond-expr',
@@ -608,6 +797,10 @@ test('accepts only evidence produced by the matching qualification run', async (
       'worker',
       {
         '/repo/apps/worker/src/adapter.ts': {
+          statementMap: {},
+          s: {},
+          fnMap: {},
+          f: {},
           branchMap: {
             0: {
               type: 'if',
@@ -825,6 +1018,10 @@ test('rejects a review after source semantics change at the same location', () =
       'api',
       {
         '/repo/apps/api/src/policy.ts': {
+          statementMap: {},
+          s: {},
+          fnMap: {},
+          f: {},
           branchMap: {
             0: {
               type: 'cond-expr',

@@ -1,8 +1,9 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import type { DatabaseError, Pool } from 'pg';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
+import { withPlatformTransaction } from './workspace.js';
 
 import type {
   CreateSessionInput,
@@ -14,6 +15,7 @@ import {
   IdentityNotFoundError,
 } from './identity-workspace-errors.js';
 import { mapSession } from './identity-workspace-rows.js';
+import { readIdentityDatabaseErrorCode } from './identity-workspace-support.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
@@ -33,9 +35,13 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
     ): Promise<SessionRecord> => {
       const id = uuidSchema.parse(input.id ?? generatePersistedId());
       const tokenDigest = digestSchema.parse(input.tokenDigest);
+      const expiresAt: unknown = input.expiresAt;
+      const expiryMillis =
+        expiresAt instanceof Date ? expiresAt.getTime() : Number.NaN;
       if (
-        !(input.expiresAt instanceof Date) ||
-        input.expiresAt.getTime() <= Date.now()
+        !(expiresAt instanceof Date) ||
+        !Number.isFinite(expiryMillis) ||
+        expiryMillis <= Date.now()
       )
         throw new Error('Session expiry must be in the future');
       try {
@@ -51,7 +57,7 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
             id,
             uuidSchema.parse(input.userId),
             tokenDigest,
-            input.expiresAt,
+            expiresAt,
             input.userAgent ?? null,
             input.ipAddress ?? null,
           ],
@@ -62,8 +68,7 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
         return mapSession(row);
       } catch (error: unknown) {
         if (error instanceof IdentityNotFoundError) throw error;
-        const code =
-          error instanceof Error ? (error as DatabaseError).code : undefined;
+        const code = readIdentityDatabaseErrorCode(error);
         if (code === '23505' || code === '23503')
           throw new IdentityConflictError(
             'Session conflicts with an existing identity record',
@@ -76,18 +81,24 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
       tokenDigestInput: string,
       options: Readonly<{ signal?: AbortSignal }> = {},
     ): Promise<SessionRecord | null> => {
-      const result = await pool.query({
-        text: `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
+      const tokenDigest = digestSchema.parse(tokenDigestInput);
+      return withPlatformTransaction(
+        pool,
+        async (client) => {
+          const result = await client.query(
+            `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
                 s.user_agent, s.ip_address, s.created_at
          from app.sessions s
          join app.users u on u.id = s.user_id and u.status = 'active'
          where s.token_digest = $1 and s.revoked_at is null
            and s.expires_at > clock_timestamp()`,
-        values: [digestSchema.parse(tokenDigestInput)],
-        ...(options.signal === undefined ? {} : { signal: options.signal }),
-      });
-      const row = result.rows[0] as Record<string, unknown> | undefined;
-      return row === undefined ? null : mapSession(row);
+            [tokenDigest],
+          );
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          return row === undefined ? null : mapSession(row);
+        },
+        options,
+      );
     },
     revokeSession: async (sessionIdInput: string): Promise<boolean> => {
       const result = await pool.query(

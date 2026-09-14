@@ -4,18 +4,22 @@ import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   Pool,
+  asOwner,
   asRuntime,
   checkpoint,
+  coordinatorStoreApplicationName,
   databaseUrl,
   insertRun,
   randomUUID,
   seedSucceededFact,
-  store,
+  ownedDeliveryStore,
   versionA,
+  waitForApplicationLocks,
   workerBaseUrl,
   workspaceA,
   workspaceB,
 } from './coordinator-run-store.fixtures.js';
+import { generatePersistedId } from '../src/platform/persisted-id.js';
 
 describe('Coordinator output commit invariants', () => {
   it('commits a terminal fact only when checkpoint output ownership is exact', async () => {
@@ -70,7 +74,7 @@ describe('Coordinator output commit invariants', () => {
       attempts: [],
     } as const;
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -89,7 +93,7 @@ describe('Coordinator output commit invariants', () => {
       value: { ok: true },
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: wrongInlineRun,
         workflowVersionId: versionA,
@@ -125,7 +129,7 @@ describe('Coordinator output commit invariants', () => {
       { ...immutableBase, remainingIterationBudget: 1 },
     ]) {
       await expect(
-        store.commitAdvancePlan({
+        ownedDeliveryStore.commitAdvancePlan({
           workspaceId: workspaceA,
           runId: immutableRun,
           workflowVersionId: versionA,
@@ -150,7 +154,7 @@ describe('Coordinator output commit invariants', () => {
       ).rejects.toBeInstanceOf(CoordinatorPlanInvalidError);
     }
 
-    const artifactId = randomUUID();
+    const artifactId = generatePersistedId();
     await asRuntime(workerBaseUrl, workspaceB, (client) =>
       client.query(
         `insert into app.artifacts (
@@ -192,7 +196,8 @@ describe('Coordinator output commit invariants', () => {
   });
 
   it('waits for artifact invalidation and rejects the now-unavailable checkpoint output', async () => {
-    const artifactId = randomUUID();
+    const artifactId = generatePersistedId();
+    expect(artifactId[14]).toBe('7');
     await asRuntime(workerBaseUrl, workspaceA, (client) =>
       client.query(
         `insert into app.artifacts (
@@ -228,6 +233,20 @@ describe('Coordinator output commit invariants', () => {
       kind: 'artifact',
       artifactId,
     });
+    await expect(
+      ownedDeliveryStore.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'ready',
+      state: {
+        observations: [
+          { kind: 'outcome', output: { kind: 'artifact', artifactId } },
+        ],
+      },
+    });
     const invalidator = new Pool({
       connectionString: databaseUrl(workerBaseUrl),
       max: 1,
@@ -242,7 +261,7 @@ describe('Coordinator output commit invariants', () => {
         `update app.artifacts set status='deleting' where id=$1`,
         [artifactId],
       );
-      const commit = store.commitAdvancePlan({
+      const commit = ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -277,17 +296,7 @@ describe('Coordinator output commit invariants', () => {
           attempts: [],
         },
       });
-      let settled = false;
-      void commit.then(
-        () => {
-          settled = true;
-        },
-        () => {
-          settled = true;
-        },
-      );
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(settled).toBe(false);
+      await waitForApplicationLocks(coordinatorStoreApplicationName, 1);
       await invalidator.query('commit');
       await expect(commit).rejects.toBeInstanceOf(
         CoordinatorRunStateCorruptError,
@@ -296,6 +305,135 @@ describe('Coordinator output commit invariants', () => {
       await invalidator.query('rollback').catch(() => undefined);
       await invalidator.end();
     }
+  });
+
+  it('enforces v4 and v7 artifact references on every execution row surface', async () => {
+    const availableV7 = generatePersistedId();
+    const availableV4 = randomUUID();
+    const deletingV7 = generatePersistedId();
+    const wrongWorkspaceV7 = generatePersistedId();
+    const missingV7 = generatePersistedId();
+    expect([availableV7, deletingV7, wrongWorkspaceV7, missingV7]).toSatisfy(
+      (values: string[]) => values.every((value) => value[14] === '7'),
+    );
+    const seedArtifact = (
+      workspaceId: string,
+      artifactId: string,
+      status: string,
+    ) =>
+      asRuntime(workerBaseUrl, workspaceId, (client) =>
+        client.query(
+          `insert into app.artifacts (
+             id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+             status,expires_at,finalized_at
+           ) values ($1,$2,'node-output',$3,'application/json',1,$4,
+             $5,now()+interval '1 day',now())`,
+          [
+            artifactId,
+            workspaceId,
+            `workspaces/${workspaceId}/artifacts/${artifactId}`,
+            'd'.repeat(64),
+            status,
+          ],
+        ),
+      );
+    await Promise.all([
+      seedArtifact(workspaceA, availableV7, 'available'),
+      seedArtifact(workspaceA, availableV4, 'available'),
+      seedArtifact(workspaceA, deletingV7, 'deleting'),
+      seedArtifact(workspaceB, wrongWorkspaceV7, 'available'),
+    ]);
+
+    const reference = (artifactId: string) => ({
+      artifactId,
+      byteLength: 1,
+      kind: 'artifact',
+      mediaType: 'application/json',
+      schemaVersion: 1,
+      sha256: 'd'.repeat(64),
+    });
+    const runId = await insertRun({
+      inputRef: reference(availableV7),
+      schedulerState: {
+        ...checkpoint({ runStatus: 'running' }),
+        artifactProof: reference(availableV7),
+      },
+      status: 'running',
+    });
+    const nodeRunId = randomUUID();
+    const attemptId = randomUUID();
+    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+      await client.query(
+        `insert into app.node_runs (
+           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+           status,side_effect_class,input_ref,output_ref
+         ) values ($1,$2,$3,'artifact-matrix','artifact-matrix','{}','running',
+           'safe',$4::jsonb,$4::jsonb)`,
+        [nodeRunId, workspaceA, runId, JSON.stringify(reference(availableV7))],
+      );
+      await client.query(
+        `insert into app.node_attempts (
+           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+           output_ref,reconciliation_ref
+         ) values ($1,$2,$3,1,'running','safe',$4::jsonb,$4::jsonb)`,
+        [
+          attemptId,
+          workspaceA,
+          nodeRunId,
+          JSON.stringify(reference(availableV7)),
+        ],
+      );
+      await client.query(
+        `insert into app.run_events (
+           workspace_id,workflow_run_id,sequence,type,payload
+         ) values ($1,$2,2,'run.started',$3::jsonb)`,
+        [workspaceA, runId, JSON.stringify(reference(availableV7))],
+      );
+    });
+
+    const updates = [
+      `update app.workflow_runs set input_ref=$2::jsonb,
+         input_ref_expires_at=created_at+interval '1 day',output_ref=$2::jsonb
+       where id=$1`,
+      `update app.run_events set payload=$2::jsonb
+       where workflow_run_id=$1 and sequence=2`,
+      `update app.run_checkpoints set scheduler_state=
+         jsonb_set(scheduler_state,'{artifactProof}',$2::jsonb)
+       where workflow_run_id=$1`,
+      `update app.node_runs set input_ref=$2::jsonb,output_ref=$2::jsonb
+       where id=$1`,
+      `update app.node_attempts set output_ref=$2::jsonb,reconciliation_ref=$2::jsonb
+       where id=$1`,
+    ] as const;
+    const targets = [runId, runId, runId, nodeRunId, attemptId] as const;
+
+    await asOwner(workspaceA, async (client) => {
+      for (const candidate of [availableV7, availableV4])
+        for (const [index, statement] of updates.entries())
+          await client.query(statement, [
+            targets[index],
+            JSON.stringify(reference(candidate)),
+          ]);
+
+      const ordinaryJson = JSON.stringify({
+        artifactId: missingV7,
+        kind: 'inline',
+        nested: { value: true },
+      });
+      for (const [index, statement] of updates.entries())
+        await client.query(statement, [targets[index], ordinaryJson]);
+    });
+
+    for (const candidate of [missingV7, deletingV7, wrongWorkspaceV7])
+      for (const [index, statement] of updates.entries())
+        await expect(
+          asOwner(workspaceA, (client) =>
+            client.query(statement, [
+              targets[index],
+              JSON.stringify(reference(candidate)),
+            ]),
+          ),
+        ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('atomically commits exact events, all logical rows, an attempt subset, and IDs-only outbox', async () => {
@@ -323,7 +461,7 @@ describe('Coordinator output commit invariants', () => {
         },
       ],
     });
-    const result = await store.commitAdvancePlan({
+    const result = await ownedDeliveryStore.commitAdvancePlan({
       workspaceId: workspaceA,
       runId,
       workflowVersionId: versionA,
@@ -472,7 +610,7 @@ describe('Coordinator output commit invariants', () => {
           ],
         );
       });
-      const fresh = await store.loadAdvanceState({
+      const fresh = await ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -505,7 +643,7 @@ describe('Coordinator output commit invariants', () => {
         ],
       });
       await expect(
-        store.commitAdvancePlan({
+        ownedDeliveryStore.commitAdvancePlan({
           workspaceId: workspaceA,
           runId,
           workflowVersionId: versionA,
@@ -529,7 +667,7 @@ describe('Coordinator output commit invariants', () => {
         }),
       ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
 
-      const afterWaiting = await store.loadAdvanceState({
+      const afterWaiting = await ownedDeliveryStore.loadAdvanceState({
         workspaceId: workspaceA,
         runId,
         signal: new AbortController().signal,
@@ -582,7 +720,7 @@ describe('Coordinator output commit invariants', () => {
           },
         ],
       } as const;
-      const retry = store.commitAdvancePlan({
+      const retry = ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -621,7 +759,7 @@ describe('Coordinator output commit invariants', () => {
       value: { ok: true },
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: terminalRun,
         workflowVersionId: versionA,
@@ -672,8 +810,10 @@ describe('Coordinator output commit invariants', () => {
       await client.query(
         `insert into app.node_runs (
              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number,retry_due_at
-           ) values ($1,$2,$3,'retry',$4,'{}','waiting','safe',$5,1,$6)`,
+             status,side_effect_class,current_attempt_id,current_attempt_number,
+             retry_due_at,wait_kind
+           ) values ($1,$2,$3,'retry',$4,'{}','waiting','safe',$5,1,$6,
+             'retry_backoff')`,
         [nodeRunId, workspaceA, retryRun, retryInvocation, attemptId, dueAt],
       );
       await client.query(
@@ -699,7 +839,7 @@ describe('Coordinator output commit invariants', () => {
       );
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId: retryRun,
         workflowVersionId: versionA,
@@ -752,8 +892,10 @@ describe('Coordinator output commit invariants', () => {
       await client.query(
         `insert into app.node_runs (
              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number,resume_at
-           ) values ($1,$2,$3,'persisted',$4,'{}','waiting','safe',$5,1,$6)`,
+             status,side_effect_class,current_attempt_id,current_attempt_number,
+             resume_at,wait_kind
+           ) values ($1,$2,$3,'persisted',$4,'{}','waiting','safe',$5,1,$6,
+             'node_wait')`,
         [nodeRunId, workspaceA, runId, invocationKey, attemptId, resumeAt],
       );
       await client.query(
@@ -779,7 +921,7 @@ describe('Coordinator output commit invariants', () => {
       );
     });
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,
@@ -839,9 +981,11 @@ describe('Coordinator output commit invariants', () => {
       await client.query(
         `insert into app.node_runs (
              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-             status,side_effect_class,current_attempt_id,current_attempt_number,resume_at
+             status,side_effect_class,current_attempt_id,current_attempt_number,
+             resume_at,wait_kind
            )
-           select physical_id,$1,$2,node_id,invocation_key,'{}','waiting','safe',attempt_id,1,$3
+           select physical_id,$1,$2,node_id,invocation_key,'{}','waiting','safe',
+             attempt_id,1,$3,'node_wait'
            from unnest($4::uuid[],$5::uuid[],$6::varchar[],$7::varchar[])
              as due(physical_id,attempt_id,invocation_key,node_id)`,
         [
@@ -875,7 +1019,7 @@ describe('Coordinator output commit invariants', () => {
       })),
     ];
     await expect(
-      store.commitAdvancePlan({
+      ownedDeliveryStore.commitAdvancePlan({
         workspaceId: workspaceA,
         runId,
         workflowVersionId: versionA,

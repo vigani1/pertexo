@@ -13,6 +13,7 @@ import {
   workspaceMemberships,
   workspaces,
   type WorkspaceDatabase,
+  type IdentityWorkspaceDatabase,
 } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
@@ -28,8 +29,13 @@ import type {
   OidcProviderPort,
 } from '../../src/identity/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createActorContext } from '../../src/workspaces/index.js';
 import { StreamRunEventsUseCase } from '../../src/workflow-runs/index.js';
+import {
+  FixtureResourceOwner,
+  rethrowFixtureSetupFailure,
+} from '../support/fixture-resource-owner.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
 const redisUrl =
@@ -116,36 +122,75 @@ type SessionCookies = Readonly<{
 
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   const provider = new FakeOidcProvider();
-  const identityDatabase = createIdentityWorkspaceDatabase(databaseConfig);
-  const transactionStore = createOidcLoginTransactionStore(
-    databaseConfig,
-    createOidcSecretEncryptionAdapter({
-      current: { version: 'integration-v1', key: encryptionKey },
-    }),
-  );
   let application: Awaited<ReturnType<typeof createApiApplication>>;
+  let identityDatabase: IdentityWorkspaceDatabase;
   let workspaceDatabase: WorkspaceDatabase;
-  let primaryWorkspaceId: string;
+  let resources: FixtureResourceOwner | undefined;
   let identityNow = new Date();
 
   beforeAll(async () => {
-    workspaceDatabase = createWorkspaceDatabase(databaseConfig);
-    application = await createApiApplication(config(), {
-      database: workspaceDatabase,
-      identityOverrides: {
-        provider,
-        database: identityDatabase,
-        transactions: transactionStore,
-        clock: { now: () => new Date(identityNow.getTime()) },
-      },
-      logger,
-      telemetry,
-    });
-    await application.init();
+    const owner = new FixtureResourceOwner();
+    resources = owner;
+    try {
+      identityDatabase = owner.acquire(
+        'identity database',
+        createIdentityWorkspaceDatabase(databaseConfig),
+        (database) => database.close(),
+      );
+      const transactionStore = owner.acquire(
+        'OIDC transaction store',
+        createOidcLoginTransactionStore(
+          databaseConfig,
+          createOidcSecretEncryptionAdapter({
+            current: { version: 'integration-v1', key: encryptionKey },
+          }),
+        ),
+        (store) => store.close(),
+      );
+      workspaceDatabase = owner.acquire(
+        'workspace database',
+        createWorkspaceDatabase(databaseConfig),
+        (database) => database.close(),
+      );
+      const identityConfig = config().identity;
+      if (identityConfig === undefined)
+        throw new Error('Identity integration configuration is missing');
+      owner.transfer(identityDatabase);
+      owner.transfer(transactionStore);
+      const identityRuntime = owner.acquire(
+        'identity runtime',
+        await createApiIdentityRuntime(identityConfig, databaseConfig, {
+          provider,
+          persistence: {
+            database: identityDatabase,
+            transactions: transactionStore,
+          },
+          clock: { now: () => new Date(identityNow.getTime()) },
+        }),
+        (runtime) => runtime.close(),
+      );
+      const borrowedIdentityRuntime = Object.freeze({
+        dependencies: identityRuntime.dependencies,
+        close: () => Promise.resolve(),
+      });
+      application = owner.acquire(
+        'API application',
+        await createApiApplication(config(), {
+          database: workspaceDatabase,
+          identityRuntime: borrowedIdentityRuntime,
+          logger,
+          telemetry,
+        }),
+        (app) => app.close(),
+      );
+      await application.init();
+    } catch (error: unknown) {
+      await rethrowFixtureSetupFailure(owner, error);
+    }
   });
 
   afterAll(async () => {
-    await application.close();
+    await resources?.close();
   });
 
   it('persists state, nonce, and PKCE and establishes only secure opaque cookies', async () => {
@@ -216,136 +261,15 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(provider.exchangeCount).toBe(exchangeCount);
   });
 
-  it('authors and publishes a workflow through real auth, RLS, ETags, and durable replay', async () => {
+  it('authors and publishes a workflow through real auth, RLS, and ETags', async () => {
     const cookies = await login();
-    const workspaceResponse = await application.inject({
-      method: 'POST',
-      url: '/v1/workspaces',
-      headers: mutationHeaders(cookies),
-      payload: {
-        name: 'Workflow Proof',
-        slug: `workflow-proof-${randomUUID().slice(0, 12)}`,
-      },
-    });
-    expect(workspaceResponse.statusCode).toBe(201);
-    const workspace = workspaceResponse.json<Readonly<{ id: string }>>();
-    const base = `/v1/workspaces/${workspace.id}/workflows`;
+    await createPublishedWorkflow(cookies);
+  });
 
-    const created = await application.inject({
-      method: 'POST',
-      url: base,
-      headers: mutationHeaders(cookies, {
-        'idempotency-key': 'workflow-create-proof',
-      }),
-      payload: { name: 'Inbound automation' },
-    });
-    expect(created.statusCode, created.payload).toBe(201);
-    expect(String(created.headers.etag)).toMatch(
-      /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u,
-    );
-    const createdBody = created.json<
-      Readonly<{
-        workflow: Readonly<{ id: string }>;
-        draft: Readonly<{ revision: number }>;
-      }>
-    >();
-    expect(createdBody.draft.revision).toBe(1);
-
-    const listed = await application.inject({
-      method: 'GET',
-      url: `${base}?limit=1`,
-      headers: { cookie: cookies.cookieHeader },
-    });
-    expect(listed.statusCode).toBe(200);
-    expect(listed.json()).toMatchObject({
-      items: [{ id: createdBody.workflow.id }],
-    });
-
-    const draftUrl = `${base}/${createdBody.workflow.id}/draft`;
-    const firstDraft = await application.inject({
-      method: 'GET',
-      url: draftUrl,
-      headers: { cookie: cookies.cookieHeader },
-    });
-    expect(firstDraft.statusCode).toBe(200);
-    const firstTag = String(firstDraft.headers.etag);
-    expect(firstTag).toMatch(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
-
-    const missingPrecondition = await application.inject({
-      method: 'PUT',
-      url: draftUrl,
-      headers: mutationHeaders(cookies),
-      payload: { graph: emptyWorkflowGraph() },
-    });
-    expectProblem(missingPrecondition, 428, 'request.precondition_required');
-
-    const saved = await application.inject({
-      method: 'PUT',
-      url: draftUrl,
-      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
-      payload: { graph: emptyWorkflowGraph() },
-    });
-    expect(saved.statusCode).toBe(200);
-    expect(saved.json()).toMatchObject({ revision: 2 });
-    const secondTag = String(saved.headers.etag);
-    expect(secondTag).not.toBe(firstTag);
-
-    const stale = await application.inject({
-      method: 'PUT',
-      url: draftUrl,
-      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
-      payload: { graph: emptyWorkflowGraph() },
-    });
-    expectProblem(stale, 412, 'workflow.revision_conflict');
-    expect(stale.headers.etag).toBe(secondTag);
-    expect(stale.json()).toMatchObject({
-      currentRevision: 2,
-      currentEtag: secondTag,
-    });
-
-    const validated = await application.inject({
-      method: 'POST',
-      url: `${base}/${createdBody.workflow.id}/validate`,
-      headers: mutationHeaders(cookies),
-    });
-    expect(validated.statusCode).toBe(200);
-    expect(validated.json()).toMatchObject({ valid: true, issues: [] });
-
-    const publishHeaders = mutationHeaders(cookies, {
-      'idempotency-key': 'workflow-publish-proof',
-      'if-match': secondTag,
-    });
-    const published = await application.inject({
-      method: 'POST',
-      url: `${base}/${createdBody.workflow.id}/publish`,
-      headers: publishHeaders,
-    });
-    expect(published.statusCode).toBe(200);
-    const publishedBody = published.json<
-      Readonly<{
-        version: Readonly<{ id: string }>;
-      }>
-    >();
-
-    const replay = await application.inject({
-      method: 'POST',
-      url: `${base}/${createdBody.workflow.id}/publish`,
-      headers: publishHeaders,
-    });
-    expect(replay.statusCode).toBe(200);
-    expect(replay.json()).toMatchObject({
-      version: { id: publishedBody.version.id },
-    });
-
-    const versions = await application.inject({
-      method: 'GET',
-      url: `${base}/${createdBody.workflow.id}/versions`,
-      headers: { cookie: cookies.cookieHeader },
-    });
-    expect(versions.statusCode).toBe(200);
-    expect(versions.json()).toMatchObject({
-      items: [{ id: publishedBody.version.id }],
-    });
+  it('starts, replays, reads, cancels, and streams a durable workflow run', async () => {
+    const cookies = await login();
+    const { workspace, base, createdBody, publishedBody } =
+      await createPublishedWorkflow(cookies);
 
     const runHeaders = mutationHeaders(cookies, {
       'idempotency-key': 'workflow-run-start-proof',
@@ -611,8 +535,15 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       },
       signal: streamAbort.signal,
     });
-    const event = await frames[Symbol.asyncIterator]().next();
-    streamAbort.abort();
+    const iterator = frames[Symbol.asyncIterator]();
+    let event: IteratorResult<unknown>;
+    try {
+      event = await withTimeout(iterator.next(), 2_000);
+    } finally {
+      streamAbort.abort();
+      if (iterator.return !== undefined)
+        await withTimeout(iterator.return(), 2_000);
+    }
     const eventValue = event.value as Readonly<{
       id: number;
       event: string;
@@ -696,7 +627,6 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(created.headers['x-request-id']).toBe(requestId);
     const workspace = created.json<{ id: string; status: string }>();
     expect(workspace.status).toBe('active');
-    primaryWorkspaceId = workspace.id;
 
     const creationRetry = await application.inject({
       method: 'POST',
@@ -758,6 +688,10 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
 
   it('accepts and exposes one safe asynchronous deletion operation without projecting state', async () => {
     const deletionCookies = await login();
+    const primaryWorkspaceId = await createWorkspace(
+      deletionCookies,
+      'Deletion Proof',
+    );
     const deletionRequestId = `phase1-delete-${randomUUID()}`;
     const deletionKey = `delete-${randomUUID()}`;
     const deletion = await application.inject({
@@ -836,6 +770,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
 
   it('serves a private current-user projection and bounded authorized member pages', async () => {
     const cookies = await login();
+    const primaryWorkspaceId = await createWorkspace(cookies, 'Member Proof');
     const unauthenticated = await application.inject({
       method: 'GET',
       url: '/v1/users/me',
@@ -917,7 +852,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(afterLogout.payload).not.toContain(logoutCookies.rawSession);
 
     const expiringCookies = await login();
-    identityNow = new Date(identityNow.getTime() + 5_100);
+    identityNow = new Date(identityNow.getTime() + 120_100);
     const expired = await authenticatedMutation(expiringCookies);
     expectProblem(expired, 401, 'auth.unauthenticated');
     expect(expired.payload).not.toContain(expiringCookies.rawSession);
@@ -964,6 +899,137 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     return sessionCookies(response.headers['set-cookie']);
   }
 
+  async function createPublishedWorkflow(cookies: SessionCookies) {
+    const fixtureId = randomUUID();
+    const workspaceResponse = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies),
+      payload: {
+        name: 'Workflow Proof',
+        slug: `workflow-proof-${fixtureId.slice(0, 12)}`,
+      },
+    });
+    expect(workspaceResponse.statusCode).toBe(201);
+    const workspace = workspaceResponse.json<Readonly<{ id: string }>>();
+    const base = `/v1/workspaces/${workspace.id}/workflows`;
+
+    const created = await application.inject({
+      method: 'POST',
+      url: base,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': `workflow-create-${fixtureId}`,
+      }),
+      payload: { name: 'Inbound automation' },
+    });
+    expect(created.statusCode, created.payload).toBe(201);
+    expect(String(created.headers.etag)).toMatch(
+      /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u,
+    );
+    const createdBody = created.json<
+      Readonly<{
+        workflow: Readonly<{ id: string }>;
+        draft: Readonly<{ revision: number }>;
+      }>
+    >();
+    expect(createdBody.draft.revision).toBe(1);
+
+    const listed = await application.inject({
+      method: 'GET',
+      url: `${base}?limit=1`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({
+      items: [{ id: createdBody.workflow.id }],
+    });
+
+    const draftUrl = `${base}/${createdBody.workflow.id}/draft`;
+    const firstDraft = await application.inject({
+      method: 'GET',
+      url: draftUrl,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(firstDraft.statusCode).toBe(200);
+    const firstTag = String(firstDraft.headers.etag);
+    expect(firstTag).toMatch(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+
+    const missingPrecondition = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expectProblem(missingPrecondition, 428, 'request.precondition_required');
+
+    const saved = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ revision: 2 });
+    const secondTag = String(saved.headers.etag);
+    expect(secondTag).not.toBe(firstTag);
+
+    const stale = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expectProblem(stale, 412, 'workflow.revision_conflict');
+    expect(stale.headers.etag).toBe(secondTag);
+    expect(stale.json()).toMatchObject({
+      currentRevision: 2,
+      currentEtag: secondTag,
+    });
+
+    const validated = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/validate`,
+      headers: mutationHeaders(cookies),
+    });
+    expect(validated.statusCode).toBe(200);
+    expect(validated.json()).toMatchObject({ valid: true, issues: [] });
+
+    const publishHeaders = mutationHeaders(cookies, {
+      'idempotency-key': `workflow-publish-${fixtureId}`,
+      'if-match': secondTag,
+    });
+    const published = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/publish`,
+      headers: publishHeaders,
+    });
+    expect(published.statusCode).toBe(200);
+    const publishedBody =
+      published.json<Readonly<{ version: Readonly<{ id: string }> }>>();
+
+    const replay = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/publish`,
+      headers: publishHeaders,
+    });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toMatchObject({
+      version: { id: publishedBody.version.id },
+    });
+
+    const versions = await application.inject({
+      method: 'GET',
+      url: `${base}/${createdBody.workflow.id}/versions`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(versions.statusCode).toBe(200);
+    expect(versions.json()).toMatchObject({
+      items: [{ id: publishedBody.version.id }],
+    });
+
+    return { workspace, base, createdBody, publishedBody } as const;
+  }
+
   async function authenticatedMutation(cookies: SessionCookies) {
     return application.inject({
       method: 'POST',
@@ -974,6 +1040,23 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         slug: `session-probe-${randomUUID().slice(0, 12)}`,
       },
     });
+  }
+
+  async function createWorkspace(
+    cookies: SessionCookies,
+    name: string,
+  ): Promise<string> {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies),
+      payload: {
+        name,
+        slug: `${name.toLowerCase().replaceAll(' ', '-')}-${randomUUID().slice(0, 12)}`,
+      },
+    });
+    expect(response.statusCode, response.payload).toBe(201);
+    return response.json<Readonly<{ id: string }>>().id;
   }
 
   async function workspaceAggregate(workspaceId: string) {
@@ -1062,7 +1145,7 @@ function config(): ApiConfig {
         previous: [],
       },
       session: {
-        ttlMillis: 5_000,
+        ttlMillis: 120_000,
         secureCookie: true,
         sameSite: 'lax',
       },
@@ -1157,6 +1240,30 @@ function sha256Hex(value: string): string {
 
 function sha256Base64Url(value: string): string {
   return createHash('sha256').update(value).digest('base64url');
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMillis: number,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('integration operation timed out'));
+    }, timeoutMillis);
+    timeout.unref();
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(
+          error instanceof Error ? error : new Error('integration failed'),
+        );
+      },
+    );
+  });
 }
 
 function expectProblem(

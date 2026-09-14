@@ -12,10 +12,11 @@ export interface DatabaseRuntime {
 
 export type DatabaseRuntimeOptions = DatabasePoolOptions;
 
-type RuntimeState = Readonly<{
+interface RuntimeState {
   authority: string;
+  closed: boolean;
   pool: Pool;
-}>;
+}
 
 const runtimeState = new WeakMap<DatabaseRuntime, RuntimeState>();
 
@@ -35,14 +36,22 @@ export function createDatabaseRuntime(
   options: DatabaseRuntimeOptions,
 ): DatabaseRuntime {
   const pool = createDatabasePool(config, options);
+  const state: RuntimeState = {
+    authority: authority(config),
+    closed: false,
+    pool,
+  };
   let closePromise: Promise<void> | undefined;
   const runtime: DatabaseRuntime = Object.freeze({
     close: (): Promise<void> => {
-      closePromise ??= pool.end();
+      if (closePromise === undefined) {
+        state.closed = true;
+        closePromise = Promise.resolve().then(() => pool.end());
+      }
       return closePromise;
     },
   });
-  runtimeState.set(runtime, { authority: authority(config), pool });
+  runtimeState.set(runtime, state);
   return runtime;
 }
 
@@ -65,6 +74,8 @@ export function acquireDatabasePool(
       throw new TypeError(
         'Database runtime authority does not match repository config',
       );
+    if (state.closed)
+      throw new TypeError('Database runtime is closed and cannot be acquired');
     return Object.freeze({
       pool: state.pool,
       close: () => Promise.resolve(),
@@ -75,7 +86,7 @@ export function acquireDatabasePool(
   return Object.freeze({
     pool,
     close: (): Promise<void> => {
-      closePromise ??= pool.end();
+      closePromise ??= Promise.resolve().then(() => pool.end());
       return closePromise;
     },
   });

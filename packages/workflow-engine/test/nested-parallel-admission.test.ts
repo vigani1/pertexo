@@ -8,13 +8,16 @@ import type {
   WorkflowNode,
 } from '@pertexo/workflow-model/graph';
 
-import { parseCheckpoint } from '../src/index.js';
-import type { AdvanceWorkflowInput, WorkflowCheckpoint } from '../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createCheckpointV2,
+  parseCheckpoint,
+  type AdvanceWorkflowInput,
+  type WorkflowCheckpoint,
+} from '../src/index.js';
+import {
   forEachGraph,
   nodeRelease,
   pairedParallelGraph,

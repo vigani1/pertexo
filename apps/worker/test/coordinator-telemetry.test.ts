@@ -14,12 +14,15 @@ describe('coordinator telemetry', () => {
     const telemetry = createCoordinatorTelemetry(meter);
 
     telemetry.scheduleStarted(4.25);
+    telemetry.scheduleStarted(0);
     telemetry.scheduleStarted(-0.5);
     telemetry.scheduleStarted(Number.NaN);
+    telemetry.scheduleStarted(Number.POSITIVE_INFINITY);
+    telemetry.scheduleStarted(Number.NEGATIVE_INFINITY);
 
-    expect(record).toHaveBeenCalledOnce();
-    expect(record).toHaveBeenCalledWith(4.25);
+    expect(record.mock.calls).toEqual([[4.25], [0]]);
     expect(add.mock.calls).toEqual([
+      [1, { outcome: 'observed' }],
       [1, { outcome: 'observed' }],
       [1, { outcome: 'clock_skew' }],
     ]);

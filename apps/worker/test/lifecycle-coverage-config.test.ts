@@ -23,5 +23,8 @@ describe('worker lifecycle coverage inventory', () => {
         statements: 81,
       },
     });
+    expect(config.test?.environment).toBe('node');
+    expect(config.test?.maxWorkers).toBe(4);
+    expect(config.resolve?.alias).toHaveProperty('@pertexo/queue');
   });
 });

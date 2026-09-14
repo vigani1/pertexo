@@ -1,30 +1,69 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
 import { createOutboxDispatcherDatabase } from '../../src/execution/dispatcher.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
+import { createDisposableDatabaseFixture } from './disposable-database.js';
+
+function deferredHandle<T extends object>(resolve: () => T): T {
+  return new Proxy(Object.create(null) as T, {
+    get: (_target, property) => {
+      const resource = resolve();
+      const value = Reflect.get(resource, property) as unknown;
+      if (typeof value !== 'function') return value;
+      return (...arguments_: unknown[]): unknown =>
+        Reflect.apply(value, resource, arguments_) as unknown;
+    },
+  });
+}
 
 export function createTransportTestEnvironment() {
-  const migrationUrl =
+  const sharedDatabase = process.env.PERTEXO_Q11_SHARED_DATABASE === '1';
+  const adminUrl =
+    process.env.DATABASE_ADMIN_URL ??
+    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const migrationBaseUrl =
     process.env.DATABASE_MIGRATION_URL ??
     'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const apiUrl =
+  const apiBaseUrl =
     process.env.DATABASE_API_URL ??
     'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-  const workerUrl =
+  const workerBaseUrl =
     process.env.DATABASE_WORKER_URL ??
     'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
-  const dispatcherUrl =
+  const dispatcherBaseUrl =
     process.env.DATABASE_DISPATCHER_URL ??
     'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
-  const operatorUrl =
+  const operatorBaseUrl =
     process.env.DATABASE_OPERATOR_URL ??
     'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
+  const databaseName = `pertexo_test_transport_${randomUUID().replaceAll('-', '')}`;
+  const disposableDatabase = createDisposableDatabaseFixture({
+    adminUrl,
+    connectRoles: [
+      'pertexo_migration',
+      'pertexo_api',
+      'pertexo_worker',
+      'pertexo_dispatcher',
+      'pertexo_operator',
+      'pertexo_maintenance',
+      'pertexo_lifecycle_command',
+    ],
+    databaseName,
+    ownerRole: 'pertexo_owner',
+  });
+  const testUrl = (base: string): string =>
+    sharedDatabase ? base : disposableDatabase.databaseUrl(base);
+  const migrationUrl = testUrl(migrationBaseUrl);
+  const apiUrl = testUrl(apiBaseUrl);
+  const workerUrl = testUrl(workerBaseUrl);
+  const dispatcherUrl = testUrl(dispatcherBaseUrl);
+  const operatorUrl = testUrl(operatorBaseUrl);
 
   const workspaceA = randomUUID();
   const workspaceB = randomUUID();
@@ -32,21 +71,50 @@ export function createTransportTestEnvironment() {
   const checksumA = createHash('sha256').update('payload-a').digest('hex');
   const checksumB = createHash('sha256').update('payload-b').digest('hex');
 
-  const apiDatabase = createWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  type ApiDatabase = ReturnType<typeof createWorkspaceDatabase>;
+  type Dispatcher = ReturnType<typeof createOutboxDispatcherDatabase>;
+  type Operator = ReturnType<typeof createOperatorCommandDatabase>;
+  let apiDatabaseResource: ApiDatabase | undefined;
+  let workerDatabaseResource: ApiDatabase | undefined;
+  let dispatcherResource: Dispatcher | undefined;
+  let operatorResource: Operator | undefined;
+  let operatorReplicaResource: Operator | undefined;
+  const required = <T>(resource: T | undefined, name: string): T => {
+    if (resource === undefined)
+      throw new Error(`Transport fixture ${name} is not initialized`);
+    return resource;
+  };
+  const apiDatabase = deferredHandle(() =>
+    required(apiDatabaseResource, 'API database'),
   );
-  const workerDatabase = createWorkspaceDatabase(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
+  const workerDatabase = deferredHandle(() =>
+    required(workerDatabaseResource, 'worker database'),
   );
-  const dispatcher = createOutboxDispatcherDatabase(
-    parseDatabaseConfig({ connectionString: dispatcherUrl, max: 2 }),
+  const dispatcher = deferredHandle(() =>
+    required(dispatcherResource, 'dispatcher'),
   );
-  const operator = createOperatorCommandDatabase(
-    parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+  const operator = deferredHandle(() => required(operatorResource, 'operator'));
+  const operatorReplica = deferredHandle(() =>
+    required(operatorReplicaResource, 'operator replica'),
   );
-  const operatorReplica = createOperatorCommandDatabase(
-    parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
-  );
+
+  const closeResources = async (): Promise<unknown[]> => {
+    const resources = [
+      apiDatabaseResource,
+      workerDatabaseResource,
+      dispatcherResource,
+      operatorResource,
+      operatorReplicaResource,
+    ].filter((resource): resource is NonNullable<typeof resource> =>
+      Boolean(resource),
+    );
+    const outcomes = await Promise.allSettled(
+      resources.map((resource) => resource.close()),
+    );
+    return outcomes.flatMap((outcome) =>
+      outcome.status === 'rejected' ? [outcome.reason as unknown] : [],
+    );
+  };
 
   const migrationConfig = {
     apiRuntimeRole: 'pertexo_api',
@@ -68,8 +136,9 @@ export function createTransportTestEnvironment() {
       .replaceAll('{{api_runtime_role}}', 'pertexo_api')
       .replaceAll('{{worker_runtime_role}}', 'pertexo_worker');
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-    const client = await pool.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await pool.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query(fixture);
@@ -90,7 +159,7 @@ export function createTransportTestEnvironment() {
           `transport-b-${workspaceB}`,
         ],
       );
-      if (process.env.PERTEXO_Q11_SHARED_DATABASE === '1')
+      if (sharedDatabase)
         await client.query(
           `update app.retention_schedule_state
               set next_scan_at=clock_timestamp()+interval '1 day'
@@ -99,18 +168,19 @@ export function createTransportTestEnvironment() {
         );
       await client.query('commit');
     } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
+      await client?.query('rollback').catch(() => undefined);
       throw error;
     } finally {
-      client.release();
+      client?.release();
       await pool.end();
     }
   };
 
   const reset = async (): Promise<void> => {
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-    const client = await pool.connect();
+    let client: PoolClient | undefined;
     try {
+      client = await pool.connect();
       await client.query('begin');
       await client.query('set local role pertexo_owner');
       await client.query(`
@@ -132,10 +202,10 @@ export function createTransportTestEnvironment() {
       `);
       await client.query('commit');
     } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
+      await client?.query('rollback').catch(() => undefined);
       throw error;
     } finally {
-      client.release();
+      client?.release();
       await pool.end();
     }
   };
@@ -145,30 +215,68 @@ export function createTransportTestEnvironment() {
     apiUrl,
     checksumA,
     checksumB,
-    close: () =>
-      Promise.all([
-        apiDatabase.close(),
-        workerDatabase.close(),
-        dispatcher.close(),
-        operator.close(),
-        operatorReplica.close(),
-      ]).then(() => undefined),
+    close: async (): Promise<void> => {
+      const failures = await closeResources();
+      if (!sharedDatabase) {
+        try {
+          await disposableDatabase.drop();
+        } catch (error: unknown) {
+          failures.push(error);
+        }
+      }
+      if (failures.length > 0)
+        throw new AggregateError(failures, 'Transport fixture cleanup failed');
+    },
     dispatcher,
     dispatcherUrl,
     hasPostgresCode:
       (expectedCode: string) =>
       (error: unknown): boolean => {
         let current = error;
-        while (current instanceof Error) {
-          if ('code' in current && current.code === expectedCode) return true;
-          current = current.cause;
+        const visited = new Set<object>();
+        for (let depth = 0; depth < 16; depth += 1) {
+          if (!(current instanceof Error) || visited.has(current)) return false;
+          visited.add(current);
+          try {
+            if (Reflect.get(current, 'code') === expectedCode) return true;
+            current = Reflect.get(current, 'cause');
+          } catch {
+            return false;
+          }
         }
         return false;
       },
     initialize: async (): Promise<void> => {
-      if (process.env.PERTEXO_Q11_SHARED_DATABASE !== '1')
-        await migrateDatabase(migrationConfig);
-      await applyProofFixture();
+      if (!sharedDatabase) await disposableDatabase.create();
+      try {
+        if (!sharedDatabase) await migrateDatabase(migrationConfig);
+        await applyProofFixture();
+        apiDatabaseResource = createWorkspaceDatabase(
+          parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+        );
+        workerDatabaseResource = createWorkspaceDatabase(
+          parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
+        );
+        dispatcherResource = createOutboxDispatcherDatabase(
+          parseDatabaseConfig({ connectionString: dispatcherUrl, max: 2 }),
+        );
+        operatorResource = createOperatorCommandDatabase(
+          parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+        );
+        operatorReplicaResource = createOperatorCommandDatabase(
+          parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+        );
+      } catch (error: unknown) {
+        const failures = [error, ...(await closeResources())];
+        if (!sharedDatabase)
+          try {
+            await disposableDatabase.drop();
+          } catch (cleanupError: unknown) {
+            failures.push(cleanupError);
+          }
+        if (failures.length === 1) throw error;
+        throw new AggregateError(failures, 'Transport fixture setup failed');
+      }
     },
     migrationUrl,
     operator,

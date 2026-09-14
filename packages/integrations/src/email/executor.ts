@@ -8,10 +8,13 @@ import {
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
+import { SECURE_HTTP_ERROR_CODE } from '../http/secure-http.js';
+import { inspectSecureHttpError } from '../http/secure-http-error.js';
 import {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-} from '../http/secure-http.js';
+  errorNameIs,
+  safeInstanceOf,
+  safeNumberProperty,
+} from '../http/unknown-error.js';
 import type { ResendApiResult, ResendClient } from './client.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import {
@@ -130,8 +133,6 @@ function classifyResult(
         throw failure('failed', 'provider', false);
       if (result.error === 'invalid_idempotent_request')
         throw failure('failed', 'provider', false);
-      if (result.error === 'concurrent_idempotent_requests')
-        throw failure('retry', 'provider', true);
       throw failure('retry', 'provider', true);
   }
 }
@@ -139,6 +140,7 @@ function classifyResult(
 async function withEmailCredential<T>(
   resolved: ResolvedEmailConnection,
   connectionId: string,
+  runtime: NodeExecutionRuntime,
   work: (credential: EmailCredential) => Promise<T>,
 ): Promise<T> {
   try {
@@ -147,7 +149,7 @@ async function withEmailCredential<T>(
       resolved.providerKey !== 'email' ||
       resolved.authType !== 'resend_api_key'
     )
-      throw failure('failed', 'configuration', false);
+      throw dispatchIdentityFailure(runtime, 'configuration');
     let credential: EmailCredential;
     try {
       credential = resolvedResendApiKeyCredentialSchema.parse(
@@ -156,7 +158,7 @@ async function withEmailCredential<T>(
         ),
       );
     } catch {
-      throw failure('failed', 'authentication', false);
+      throw dispatchIdentityFailure(runtime, 'authentication');
     }
     return await work(credential);
   } finally {
@@ -202,74 +204,89 @@ async function execute(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
-    if (error instanceof ProviderExecutionRateLimitError)
-      throw failure(
-        'retry',
-        'rate_limit',
-        false,
-        error.retryAfterSeconds * 1_000,
-      );
-    if (error instanceof ProviderCredentialInvalidError)
+    if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
+      if (runtime.providerDispatchUnresolved === true)
+        throw failure('outcome_unknown', 'provider', true);
+      const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
+      if (retryAfterSeconds === undefined)
+        throw failure('retry', 'provider', false);
+      throw failure('retry', 'rate_limit', false, retryAfterSeconds * 1_000);
+    }
+    if (safeInstanceOf(error, ProviderCredentialInvalidError))
       throw credentialFailure(runtime);
     if (runtime.providerDispatchUnresolved === true)
       throw failure('outcome_unknown', 'provider', true);
-    if (
-      invocation.signal.aborted ||
-      (error instanceof Error && error.name === 'AbortError')
-    )
+    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
       throw failure('canceled', 'canceled', false);
     throw failure('retry', 'provider', false);
   }
-  return withEmailCredential(resolved, connectionId, async (credential) => {
-    let result;
-    try {
-      result = await dependencies.client.sendNotification({
-        apiKey: credential.apiKey,
-        fromEmail: credential.fromEmail,
-        toEmail: input.toEmail,
-        subject: input.subject,
-        text: input.text,
-        idempotencyKey: runtime.providerIdempotencyKey,
-        timeoutMillis: config.timeoutMillis,
-        signal: invocation.signal,
-        beforeDispatch: createProviderBeforeDispatch({
-          assertCurrent,
-          connectionId,
-          expectedProviderKey: 'email',
-          expectedAuthType: 'resend_api_key',
-          secretVersionId: resolved.secretVersionId,
+  return withEmailCredential(
+    resolved,
+    connectionId,
+    runtime,
+    async (credential) => {
+      let result;
+      try {
+        result = await dependencies.client.sendNotification({
+          apiKey: credential.apiKey,
+          fromEmail: credential.fromEmail,
+          toEmail: input.toEmail,
+          subject: input.subject,
+          text: input.text,
+          idempotencyKey: runtime.providerIdempotencyKey,
+          timeoutMillis: config.timeoutMillis,
           signal: invocation.signal,
-          runtime,
-        }),
-      });
-    } catch (error: unknown) {
-      if (error instanceof EmailSendNotificationExecutorError) throw error;
-      if (error instanceof SecureHttpError) {
-        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
-          throw dispatchIdentityFailure(runtime, 'configuration');
-        if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
-          throw dispatchIdentityFailure(runtime, 'authentication');
-        if (error.code === SECURE_HTTP_ERROR_CODE.canceled)
-          throw failure('canceled', 'canceled', error.possiblyDispatched);
-        if (runtime.providerDispatchUnresolved === true)
-          throw failure('outcome_unknown', 'provider', true);
-        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
-          throw failure('retry', 'provider', false);
-        throw failure(
-          'retry',
-          error.code === SECURE_HTTP_ERROR_CODE.timedOut
-            ? 'timeout'
-            : 'network',
-          error.possiblyDispatched,
-        );
+          beforeDispatch: createProviderBeforeDispatch({
+            assertCurrent,
+            connectionId,
+            expectedProviderKey: 'email',
+            expectedAuthType: 'resend_api_key',
+            secretVersionId: resolved.secretVersionId,
+            signal: invocation.signal,
+            runtime,
+          }),
+        });
+      } catch (error: unknown) {
+        if (safeInstanceOf(error, EmailSendNotificationExecutorError))
+          throw error;
+        const secureError = inspectSecureHttpError(error);
+        if (secureError !== undefined) {
+          if (
+            secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
+          )
+            throw dispatchIdentityFailure(runtime, 'configuration');
+          if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+            throw dispatchIdentityFailure(runtime, 'authentication');
+          if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled)
+            throw failure(
+              'canceled',
+              'canceled',
+              secureError.possiblyDispatched,
+            );
+          if (runtime.providerDispatchUnresolved === true)
+            throw failure('outcome_unknown', 'provider', true);
+          if (
+            secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed
+          )
+            throw failure('retry', 'provider', false);
+          throw failure(
+            'retry',
+            secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
+              ? 'timeout'
+              : 'network',
+            secureError.possiblyDispatched,
+          );
+        }
+        throw runtime.providerDispatchUnresolved === true
+          ? failure('outcome_unknown', 'provider', true)
+          : failure('retry', 'network', true);
       }
-      throw runtime.providerDispatchUnresolved === true
-        ? failure('outcome_unknown', 'provider', true)
-        : failure('retry', 'network', true);
-    }
-    if (result.kind !== 'succeeded') classifyResult(result, runtime);
-    return emailSendNotificationOutputSchema.parse({ emailId: result.emailId });
-  });
+      if (result.kind !== 'succeeded') classifyResult(result, runtime);
+      return emailSendNotificationOutputSchema.parse({
+        emailId: result.emailId,
+      });
+    },
+  );
 }
 
 export function createEmailSendNotificationExecutorRegistration(

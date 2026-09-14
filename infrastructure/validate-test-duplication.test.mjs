@@ -30,7 +30,12 @@ function report(overrides = {}) {
       },
     ],
     statistics: {
-      total: { clones: 1, duplicatedLines: 20, duplicatedTokens: 100 },
+      total: {
+        clones: 1,
+        duplicatedLines: 20,
+        duplicatedTokens: 100,
+        percentage: 0.1,
+      },
     },
     ...overrides,
   };
@@ -71,9 +76,18 @@ test('rejects stale, harmful, or unexplained baseline entries', () => {
     /unsupported classification/u,
   );
   assert.match(
-    validateCloneReport('test', scope, { ...report(), duplicates: [] }).join(
-      '\n',
-    ),
+    validateCloneReport('test', scope, {
+      ...report(),
+      duplicates: [],
+      statistics: {
+        total: {
+          clones: 0,
+          duplicatedLines: 0,
+          duplicatedTokens: 0,
+          percentage: 0,
+        },
+      },
+    }).join('\n'),
     /is stale/u,
   );
 });
@@ -97,5 +111,59 @@ test('enforces each reviewed clone line ceiling independently', () => {
   assert.match(
     validateCloneReport('test', multiple, report()).join('\n'),
     /review 1 grew from 19 to 20 lines/u,
+  );
+});
+
+test('rejects missing and malformed report totals before comparison', () => {
+  for (const changed of [
+    {},
+    { statistics: { total: {} }, duplicates: [] },
+    report({
+      statistics: {
+        total: {
+          clones: Number.NaN,
+          duplicatedLines: -1,
+          duplicatedTokens: 1.5,
+          percentage: Number.POSITIVE_INFINITY,
+        },
+      },
+    }),
+    report({
+      statistics: {
+        total: {
+          clones: '1',
+          duplicatedLines: null,
+          duplicatedTokens: 100,
+          percentage: 0,
+        },
+      },
+    }),
+  ])
+    assert.notEqual(validateCloneReport('test', scope, changed).length, 0);
+});
+
+test('rejects malformed, duplicate, and count-mismatched clone evidence', () => {
+  const malformed = report();
+  malformed.duplicates[0].lines = -1;
+  assert.match(
+    validateCloneReport('test', scope, malformed).join('\n'),
+    /duplicate 1 is malformed/u,
+  );
+
+  const duplicated = report();
+  duplicated.duplicates.push(
+    JSON.parse(JSON.stringify(duplicated.duplicates[0])),
+  );
+  duplicated.statistics.total.clones = 2;
+  assert.match(
+    validateCloneReport('test', scope, duplicated).join('\n'),
+    /duplicate clone evidence/u,
+  );
+
+  const mismatched = report();
+  mismatched.statistics.total.clones = 0;
+  assert.match(
+    validateCloneReport('test', scope, mismatched).join('\n'),
+    /clone total does not match evidence/u,
   );
 });

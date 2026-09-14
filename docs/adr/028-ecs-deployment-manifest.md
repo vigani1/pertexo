@@ -15,9 +15,9 @@ immutable containers, and migrations that finish before serving tasks roll.
 The repository owns a small declarative ECS workload manifest, a deterministic
 renderer for ECS task-definition JSON, and a versioned external-platform
 contract. The manifest is the reviewed source of truth for the API, worker,
-lifecycle-command, retention, recovery, and migration roles. API, worker,
-lifecycle-command, and retention are independent services; recovery and
-migration are explicitly invoked jobs.
+lifecycle-command, retention, recovery, operator-command, and migration roles.
+API, worker, lifecycle-command, and retention are independent services;
+recovery, operator-command, and migration are explicitly invoked jobs.
 
 All deployed credentials are individual AWS Secrets Manager values injected
 through the ECS `secrets` field. Plaintext task environment values are limited
@@ -31,22 +31,27 @@ for a zero exit code, and only then update serving services to the compatible
 task definitions. API startup migration compatibility remains a second,
 fail-closed guard; the API never runs migrations.
 
-API container health calls dependency-aware `/health/ready`. Long-running
-non-HTTP roles use process health because their dependency readiness is proven
-at bootstrap and their internal loops already expose operational metrics.
-One-shot migration and recovery jobs have no container health check: their exit
-status is the truthful result.
+API container health calls dependency-aware `/health/ready`. The worker requires
+its ready marker, absence of its not-ready marker, and a live process;
+lifecycle-command requires its ready marker and a live process. Retention uses
+PID liveness and remains intentionally distinct from dependency readiness. The
+internal loops also expose operational metrics. One-shot migration, recovery,
+and operator-command jobs have no container health check: their exit status is
+the truthful result.
 
 The external platform remains free to use its own versioned IaC implementation,
 but it must export a normalized AWS-API snapshot matching
 `infrastructure/ecs/external-platform-contract.json`. The repository validator
-binds that snapshot to the exact contract hash and rejects stale or synthetic
-evidence, role reuse or wildcard IAM, public task addresses, network endpoint or
-secret/KMS drift, unhealthy rollout/drain state, missing telemetry and alarm
-wiring, scaling drift, overlapping or late migrations, and an open recovery
-writer fence. This normalized snapshot is the deployment seam: platform
-implementation details stay behind it while release review has one small,
-versioned interface.
+binds that snapshot to exact hashes for the platform contract, workload manifest
+and autoscaling policy. It requires collector and raw-observation provenance,
+and rejects stale or self-claimed-verified records, role reuse or wildcard IAM,
+public task addresses, network endpoint, SSM/secret/KMS drift, unhealthy
+rollout/drain state, missing telemetry and alarm wiring, scaling-policy drift,
+overlapping or late migrations, and an open recovery writer fence. The
+normalized JSON and its literal provenance fields do not authenticate AWS
+collection; independent review of the referenced raw records remains required.
+This normalized snapshot is the deployment seam: platform implementation
+details stay behind it while release review has one small, versioned interface.
 
 ## Consequences
 

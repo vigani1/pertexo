@@ -89,6 +89,9 @@ export function createCompatibilityReleaseMaintenance(
     operation: (client: PoolClient) => Promise<void>,
   ): Promise<void> => {
     const client = await pool.connect();
+    let operationFailed = false;
+    let operationError: unknown;
+    let disposalError: Error | undefined;
     try {
       await client.query('begin');
       await client.query(`set local role ${quoteIdentifier(config.ownerRole)}`);
@@ -100,11 +103,23 @@ export function createCompatibilityReleaseMaintenance(
       await operation(client);
       await client.query('commit');
     } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
+      operationFailed = true;
+      operationError = error;
+      try {
+        await client.query('rollback');
+      } catch (rollbackError: unknown) {
+        disposalError = new Error(
+          'Compatibility maintenance rollback failed; discard the client',
+          { cause: rollbackError },
+        );
+      }
     }
+    try {
+      client.release(disposalError);
+    } catch (releaseError: unknown) {
+      if (!operationFailed) throw releaseError;
+    }
+    if (operationFailed) throw operationError;
   };
 
   return Object.freeze({

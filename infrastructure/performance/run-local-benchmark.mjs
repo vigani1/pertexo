@@ -1,16 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import {
   access,
   mkdtemp,
   open,
+  readdir,
   readFile,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises';
 import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { clearTimeout, setTimeout } from 'node:timers';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { URL } from 'node:url';
@@ -21,6 +25,7 @@ import {
   OwnedProcessSupervisor,
   runManagedCommand,
 } from '../owned-process-tree.mjs';
+import { isolatedGitEnvironment } from '../git-environment.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const requireDatabaseDependency = createRequire(
@@ -34,6 +39,20 @@ const databaseScopes = new Set([
   'runner-owned-fixture',
   'runner-owned-shared',
 ]);
+const COMMAND_TIMEOUT_MILLIS = 600_000;
+const COMMAND_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
+const DATABASE_CONNECTION_TIMEOUT_MILLIS = 2_000;
+const DATABASE_QUERY_TIMEOUT_MILLIS = 30_000;
+const SAMPLER_STOP_GRACE_MILLIS = 1_000;
+const EVIDENCE_SCHEMA_VERSION = 5;
+const BENCHMARK_TIMEOUT_MILLIS = 600_000;
+
+function settled(promise) {
+  return Promise.resolve(promise).then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason) => ({ status: 'rejected', reason }),
+  );
+}
 
 function runnerOwnsScenarioDatabase(scenario) {
   return (
@@ -67,6 +86,14 @@ export async function run(command, args, options = {}) {
   assertNotInterrupted();
   let stdout = '';
   let stderr = '';
+  const append = (current, chunk, stream) => {
+    const next = current + String(chunk);
+    if (Buffer.byteLength(next) > COMMAND_OUTPUT_LIMIT_BYTES)
+      throw new Error(
+        `${command} ${stream} exceeded the ${String(COMMAND_OUTPUT_LIMIT_BYTES)} byte capture limit`,
+      );
+    return next;
+  };
   const result = await runManagedCommand({
     args,
     command,
@@ -75,8 +102,8 @@ export async function run(command, args, options = {}) {
         `${command} failed (${String(code ?? signal)})${stderr || stdout ? `: ${stderr || stdout}` : ''}`,
       ),
     onStarted: options.started,
-    onStdout: (chunk) => (stdout += String(chunk)),
-    onStderr: (chunk) => (stderr += String(chunk)),
+    onStdout: (chunk) => (stdout = append(stdout, chunk, 'stdout')),
+    onStderr: (chunk) => (stderr = append(stderr, chunk, 'stderr')),
     releaseOwned:
       options.releaseOwned ?? processSupervisor.release.bind(processSupervisor),
     spawnOwned:
@@ -86,6 +113,11 @@ export async function run(command, args, options = {}) {
       env: options.env ?? process.env,
       stdio: options.stdio ?? ['ignore', 'pipe', 'pipe'],
     },
+    timeoutFailure: () =>
+      new Error(
+        `${command} timed out after ${String(options.timeoutMillis ?? COMMAND_TIMEOUT_MILLIS)} ms`,
+      ),
+    timeoutMillis: options.timeoutMillis ?? COMMAND_TIMEOUT_MILLIS,
   });
   return { ...result, stdout, stderr };
 }
@@ -96,40 +128,98 @@ export function percentile(values, proportion) {
   return sorted[Math.ceil(proportion * sorted.length) - 1] ?? sorted[0];
 }
 
+function sameFileIdentity(left, right) {
+  return (
+    left === undefined ||
+    right === undefined ||
+    (left.dev === right.dev && left.ino === right.ino)
+  );
+}
+
+export async function reserveBenchmarkEvidence(outputFile, operations = {}) {
+  const openOutput = operations.open ?? open;
+  const removeOutput = operations.rm ?? rm;
+  const inspectOutput = operations.stat ?? stat;
+  const resolvedOutput = path.resolve(outputFile);
+  const handle = await openOutput(resolvedOutput, 'wx');
+  const reservationIdentity =
+    typeof handle.stat === 'function' ? await handle.stat() : undefined;
+  let closed = false;
+  let closeAttempted = false;
+  let finalized = false;
+
+  const close = async () => {
+    if (closed || closeAttempted) return;
+    closeAttempted = true;
+    await handle.close();
+    closed = true;
+  };
+  const removeReservation = async () => {
+    if (reservationIdentity === undefined) {
+      await removeOutput(resolvedOutput, { force: true });
+      return;
+    }
+    let currentIdentity;
+    try {
+      currentIdentity = await inspectOutput(resolvedOutput);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return;
+      throw error;
+    }
+    if (!sameFileIdentity(reservationIdentity, currentIdentity))
+      throw new Error(
+        'Benchmark output ownership changed before incomplete artifact cleanup',
+      );
+    await removeOutput(resolvedOutput, { force: true });
+  };
+  const abandon = async (primaryError) => {
+    if (finalized) return;
+    const failures = primaryError === undefined ? [] : [primaryError];
+    try {
+      await close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await removeReservation();
+    } catch (error) {
+      failures.push(error);
+    }
+    finalized = true;
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1)
+      throw new AggregateError(
+        failures,
+        'Benchmark failed and its incomplete output reservation could not be cleaned up safely',
+      );
+  };
+
+  return Object.freeze({
+    path: resolvedOutput,
+    abandon,
+    complete: async (evidence) => {
+      if (finalized)
+        throw new Error('Benchmark output reservation is already finalized');
+      try {
+        validateBenchmarkEvidence(evidence, 'Generated benchmark');
+        await handle.writeFile(`${JSON.stringify(evidence, null, 2)}\n`);
+        await close();
+        finalized = true;
+      } catch (error) {
+        await abandon(error);
+      }
+    },
+  });
+}
+
 export async function writeBenchmarkEvidence(
   outputFile,
   evidence,
   operations = {},
 ) {
   validateBenchmarkEvidence(evidence, 'Generated benchmark');
-  const openOutput = operations.open ?? open;
-  const removeOutput = operations.rm ?? rm;
-  const resolvedOutput = path.resolve(outputFile);
-  const handle = await openOutput(resolvedOutput, 'wx');
-  const failures = [];
-
-  try {
-    await handle.writeFile(`${JSON.stringify(evidence, null, 2)}\n`);
-  } catch (error) {
-    failures.push(error);
-  }
-  try {
-    await handle.close();
-  } catch (error) {
-    failures.push(error);
-  }
-  if (failures.length === 0) return;
-
-  try {
-    await removeOutput(resolvedOutput, { force: true });
-  } catch (error) {
-    failures.push(error);
-  }
-  if (failures.length === 1) throw failures[0];
-  throw new AggregateError(
-    failures,
-    'Benchmark output failed and its incomplete artifact could not be finalized safely',
-  );
+  const reservation = await reserveBenchmarkEvidence(outputFile, operations);
+  await reservation.complete(evidence);
 }
 
 export function summarize(values) {
@@ -230,14 +320,22 @@ export function parseOperationSamples(output) {
 }
 
 function assertManifestHeader(manifest) {
-  if (manifest?.schemaVersion !== 4)
+  if (manifest?.schemaVersion !== EVIDENCE_SCHEMA_VERSION)
     throw new Error('Unsupported benchmark manifest');
-  if (!Number.isInteger(manifest.rounds) || manifest.rounds < 3)
+  if (
+    !Number.isSafeInteger(manifest.rounds) ||
+    manifest.rounds < 3 ||
+    manifest.rounds > 100
+  )
     throw new Error('Benchmark requires at least three measured rounds');
-  if (!Number.isInteger(manifest.warmupRounds) || manifest.warmupRounds < 1)
+  if (
+    !Number.isSafeInteger(manifest.warmupRounds) ||
+    manifest.warmupRounds < 1 ||
+    manifest.warmupRounds > 100
+  )
     throw new Error('Benchmark requires at least one warmup round');
-  if (!Number.isInteger(manifest.seed))
-    throw new Error('Benchmark seed must be an integer');
+  if (!Number.isSafeInteger(manifest.seed))
+    throw new Error('Benchmark seed must be a safe integer');
   if (!Array.isArray(manifest.scenarios) || manifest.scenarios.length === 0)
     throw new Error('Benchmark scenarios are required');
 }
@@ -252,8 +350,14 @@ function assertScenarioShape(scenario, names) {
       'Benchmark scenario names must be unique non-empty strings',
     );
   names.add(scenario.name);
-  if (!Number.isInteger(scenario.concurrency) || scenario.concurrency < 1)
-    throw new Error(`${scenario.name}: concurrency must be a positive integer`);
+  if (
+    !Number.isSafeInteger(scenario.concurrency) ||
+    scenario.concurrency < 1 ||
+    scenario.concurrency > 64
+  )
+    throw new Error(
+      `${scenario.name}: concurrency must be a bounded positive safe integer`,
+    );
   const hasFixturePopulation =
     scenario.fixturePopulation !== null &&
     typeof scenario.fixturePopulation === 'object' &&
@@ -261,11 +365,20 @@ function assertScenarioShape(scenario, names) {
     Object.keys(scenario.fixturePopulation).length > 0;
   if (!hasFixturePopulation)
     throw new Error(`${scenario.name}: fixturePopulation is required`);
+  if (
+    Object.values(scenario.fixturePopulation).some(
+      (population) => !Number.isSafeInteger(population) || population < 1,
+    )
+  )
+    throw new Error(
+      `${scenario.name}: fixture populations must be positive safe integers`,
+    );
   if (!Array.isArray(scenario.commands) || scenario.commands.length === 0)
     throw new Error(`${scenario.name}: commands are required`);
 }
 
-function assertExpectedOperation(operation, operationNames, scenarioName) {
+function assertExpectedOperation(operation, operationNames, scenario) {
+  const scenarioName = scenario.name;
   if (
     typeof operation.name !== 'string' ||
     !/^[a-z0-9][a-z0-9.-]{0,79}$/u.test(operation.name)
@@ -289,10 +402,11 @@ function assertExpectedOperation(operation, operationNames, scenarioName) {
     throw new Error(
       `${scenarioName}: expected operation contracts are invalid`,
     );
-  if (
-    operation.databaseScope !== undefined &&
-    operation.databaseScope !== 'runner-owned-shared'
-  )
+  const expectedDatabaseScope =
+    scenario.databaseScope === 'runner-owned-shared'
+      ? 'runner-owned-shared'
+      : undefined;
+  if (operation.databaseScope !== expectedDatabaseScope)
     throw new Error(
       `${scenarioName}: expected operation contracts are invalid`,
     );
@@ -307,21 +421,23 @@ function assertScenarioCommands(scenario) {
   for (const command of scenario.commands) {
     const hasArgvContract =
       typeof command.file === 'string' &&
+      command.file.trim().length > 0 &&
       Array.isArray(command.args) &&
+      command.args.every((argument) => typeof argument === 'string') &&
       Array.isArray(command.expectedOperations) &&
       command.expectedOperations.length > 0;
     if (!hasArgvContract)
       throw new Error(`${scenario.name}: command must use an argv array`);
     for (const operation of command.expectedOperations)
-      assertExpectedOperation(operation, operationNames, scenario.name);
-    if (scenario.requireOverlap === true) {
+      assertExpectedOperation(operation, operationNames, scenario);
+    if (scenario.databaseScope === 'runner-owned-shared') {
       const hasUniqueParticipant =
         typeof command.participant === 'string' &&
         /^[a-z0-9][a-z0-9-]{0,39}$/u.test(command.participant) &&
         !participants.has(command.participant);
       if (!hasUniqueParticipant)
         throw new Error(
-          `${scenario.name}: overlap participants must be unique`,
+          `${scenario.name}: shared-database participants must be unique`,
         );
       participants.add(command.participant);
     }
@@ -331,16 +447,17 @@ function assertScenarioCommands(scenario) {
 function assertScenarioDatabasePolicy(scenario) {
   if (scenario.requireOverlap === true && scenario.commands.length < 2)
     throw new Error(`${scenario.name}: overlap requires multiple commands`);
-  if (
-    scenario.databaseScope !== undefined &&
-    !databaseScopes.has(scenario.databaseScope)
-  )
+  if (!databaseScopes.has(scenario.databaseScope))
     throw new Error(`${scenario.name}: database scope is invalid`);
   if (
     scenario.requireOverlap === true &&
     scenario.databaseScope !== 'runner-owned-shared'
   )
     throw new Error(`${scenario.name}: overlap requires a shared database`);
+  if (scenario.requireOverlap === true && scenario.concurrency !== 1)
+    throw new Error(
+      `${scenario.name}: overlap barrier supports exactly one execution per participant`,
+    );
 }
 
 export function validateManifest(manifest) {
@@ -351,23 +468,50 @@ export function validateManifest(manifest) {
     assertScenarioCommands(scenario);
     assertScenarioDatabasePolicy(scenario);
   }
-  return manifest;
+  return {
+    ...manifest,
+    scenarios: manifest.scenarios.map((scenario) => ({
+      ...scenario,
+      requireOverlap: scenario.requireOverlap === true,
+      commands: scenario.commands.map((command) => ({
+        ...command,
+        args: [...command.args],
+        expectedOperations: command.expectedOperations.map((operation) => ({
+          ...operation,
+        })),
+      })),
+      fixturePopulation: { ...scenario.fixturePopulation },
+    })),
+  };
 }
 
-async function sourceIdentity() {
-  const head = await run('git', ['rev-parse', 'HEAD']);
-  const files = await run('git', [
-    'ls-files',
-    '-co',
-    '--exclude-standard',
-    '-z',
-  ]);
+async function sourceIdentity(options = {}) {
+  const gitEnvironment = isolatedGitEnvironment(process.env);
+  const excluded = new Set(
+    (options.excludedPaths ?? []).map((file) =>
+      path.relative(root, path.resolve(file)),
+    ),
+  );
+  const commandOptions = { cwd: root, env: gitEnvironment };
+  const head = await run('git', ['rev-parse', 'HEAD'], commandOptions);
+  const files = await run(
+    'git',
+    ['ls-files', '-co', '--exclude-standard', '-z'],
+    commandOptions,
+  );
   if (head.code !== 0 || files.code !== 0)
     throw new Error('Cannot identify source tree');
   const hash = createHash('sha256');
-  const paths = files.stdout.split('\0').filter(Boolean).sort();
+  const paths = files.stdout
+    .split('\0')
+    .filter((file) => file.length > 0 && !excluded.has(file))
+    .sort();
   let dirtyFiles = 0;
-  const status = await run('git', ['status', '--porcelain=v1', '-z']);
+  const status = await run(
+    'git',
+    ['status', '--porcelain=v1', '-z'],
+    commandOptions,
+  );
   for (const relative of paths) {
     hash.update(relative).update('\0');
     try {
@@ -378,7 +522,11 @@ async function sourceIdentity() {
     }
     hash.update('\0');
   }
-  dirtyFiles = status.stdout.split('\0').filter(Boolean).length;
+  dirtyFiles = status.stdout.split('\0').filter((entry) => {
+    if (entry.length === 0) return false;
+    const relative = entry.slice(3);
+    return !excluded.has(relative);
+  }).length;
   return {
     head: head.stdout.trim(),
     workingTreeSha256: hash.digest('hex'),
@@ -388,10 +536,86 @@ async function sourceIdentity() {
   };
 }
 
+async function filesBelow(directory) {
+  const entries = await readdir(directory, { withFileTypes: true }).catch(
+    (error) => {
+      if (error?.code === 'ENOENT') return [];
+      throw error;
+    },
+  );
+  return (
+    await Promise.all(
+      entries.map(async (entry) => {
+        const item = path.join(directory, entry.name);
+        if (entry.isDirectory()) return filesBelow(item);
+        return entry.isFile() ? [item] : [];
+      }),
+    )
+  ).flat();
+}
+
+async function buildOutputIdentity() {
+  const owners = await Promise.all(
+    ['apps', 'packages'].map(async (collection) => {
+      const directory = path.join(root, collection);
+      const entries = await readdir(directory, { withFileTypes: true });
+      return (
+        await Promise.all(
+          entries
+            .filter((entry) => entry.isDirectory())
+            .map((entry) =>
+              filesBelow(path.join(directory, entry.name, 'dist')),
+            ),
+        )
+      ).flat();
+    }),
+  );
+  const files = owners.flat().sort();
+  if (files.length === 0)
+    throw new Error('Benchmark build produced no compiled package output');
+  const hash = createHash('sha256');
+  for (const file of files) {
+    hash.update(path.relative(root, file)).update('\0');
+    hash.update(await readFile(file));
+    hash.update('\0');
+  }
+  return {
+    outputSha256: hash.digest('hex'),
+    fileCount: files.length,
+  };
+}
+
+async function qualifyBuild() {
+  await run('pnpm', ['build'], { timeoutMillis: 1_200_000 });
+  return buildOutputIdentity();
+}
+
+const retainedConnectionParameters = new Set([
+  'application_name',
+  'connect_timeout',
+  'sslmode',
+  'target_session_attrs',
+]);
+
+function normalizedServiceUrl(value) {
+  const url = new URL(value);
+  const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost';
+  return {
+    protocol: url.protocol,
+    role: url.username,
+    hostScope: loopback ? 'loopback' : url.hostname,
+    portScope: loopback ? 'ephemeral-loopback' : url.port || 'default',
+    pathname: url.pathname,
+    parameters: [...url.searchParams]
+      .filter(([name]) => retainedConnectionParameters.has(name))
+      .sort(([left], [right]) => left.localeCompare(right)),
+  };
+}
+
 function serviceConfigurationSha256(environment) {
   const keys = Object.keys(environment)
     .filter((key) =>
-      /^(?:DATABASE_[A-Z_]+_URL|REDIS_URL|S3_[A-Z_]+|OBJECT_STORE_[A-Z_]+)$/u.test(
+      /^(?:DATABASE_[A-Z_]+_URL|REDIS_URL|S3_[A-Z_]+|OBJECT_STORE_[A-Z_]+|POSTGRES_IMAGE|REDIS_IMAGE|MINIO_IMAGE)$/u.test(
         key,
       ),
     )
@@ -404,19 +628,7 @@ function serviceConfigurationSha256(environment) {
     if (typeof value !== 'string') return [key, value];
     if (value.length === 0) return [key, 'unconfigured'];
     if (/_URL$|_ENDPOINT$/u.test(key)) {
-      const url = new URL(value);
-      return [
-        key,
-        {
-          protocol: url.protocol,
-          role: url.username,
-          hostScope:
-            url.hostname === '127.0.0.1' || url.hostname === 'localhost'
-              ? 'loopback'
-              : url.hostname,
-          pathname: url.pathname,
-        },
-      ];
+      return [key, normalizedServiceUrl(value)];
     }
     return [key, value];
   });
@@ -424,7 +636,9 @@ function serviceConfigurationSha256(environment) {
 }
 
 async function processGroupMetrics(rootPid) {
-  const result = await run('ps', ['-axo', 'pid=,pgid=,rss=,%cpu=']);
+  const result = await run('ps', ['-axo', 'pid=,pgid=,rss=,%cpu='], {
+    timeoutMillis: 10_000,
+  });
   if (result.code !== 0) return null;
   const rows = result.stdout
     .trim()
@@ -535,10 +749,13 @@ async function prepareScenarioDatabase(scenario, environment) {
     return { environment, close: async () => undefined };
   if (!environment.DATABASE_ADMIN_URL || !environment.DATABASE_MIGRATION_URL)
     throw new Error(`${scenario.name}: shared database URLs are required`);
-  const databaseName = `pertexo_q11_${randomUUID().replaceAll('-', '')}`;
+  const databaseName = `pertexo_test_q11_${randomUUID().replaceAll('-', '')}`;
   const { Client } = requireDatabaseDependency('pg');
   const admin = new Client({
     connectionString: environment.DATABASE_ADMIN_URL,
+    connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
   });
   let created = false;
   try {
@@ -574,6 +791,9 @@ async function prepareScenarioDatabase(scenario, environment) {
             resetUrl.pathname = `/${databaseName}`;
             const resetClient = new Client({
               connectionString: resetUrl.toString(),
+              connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+              query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+              statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
             });
             await runWithOwnedDatabaseClient(
               resetClient,
@@ -765,191 +985,227 @@ async function executeRound(scenario, inheritedEnvironment, roundIndex) {
   const startedAt = process.hrtime.bigint();
   const processSamples = [];
   const children = [];
-  const overlapDirectory =
-    scenario.requireOverlap === true
-      ? await mkdtemp(path.join(os.tmpdir(), 'pertexo-q11-overlap-'))
-      : undefined;
-  const executions = scenario.commands.flatMap((command) =>
-    Array.from({ length: scenario.concurrency }, (_, concurrencyIndex) => {
-      const execution = {
-        command,
-        concurrencyIndex,
-        settled: false,
-        promise: undefined,
-      };
-      const commandEnvironment = scenarioCommandEnvironment(
-        inheritedEnvironment,
-        scenario,
-        command,
-      );
-      execution.promise = run(command.file, command.args, {
-        env: {
-          ...commandEnvironment,
-          ...command.environment,
-          PERTEXO_Q11_OPERATION_TIMING: '1',
-          PERTEXO_Q11_ROUND_INDEX: String(roundIndex),
-          ...(overlapDirectory === undefined
-            ? {}
-            : {
-                PERTEXO_Q11_OVERLAP_DIRECTORY: overlapDirectory,
-                PERTEXO_Q11_OVERLAP_PARTICIPANT: command.participant,
-              }),
-        },
-        started: (child) => children.push(child),
-      }).finally(() => {
-        execution.settled = true;
-      });
-      return execution;
-    }),
-  );
-  let sampling = true;
-  const sampleStartedAt = performance.now();
-  let samplingFailed = false;
-  let samplingError;
-  const sampler = (async () => {
-    try {
-      while (sampling) {
-        const values = await Promise.all(
-          children
-            .filter(({ pid }) => pid !== undefined)
-            .map(({ pid }) => processGroupMetrics(pid)),
-        );
-        const available = values.filter((value) => value !== null);
-        if (available.length > 0)
-          processSamples.push({
-            elapsedMs: performance.now() - sampleStartedAt,
-            processCount: available.reduce(
-              (sum, value) => sum + value.processCount,
-              0,
-            ),
-            rssBytes: available.reduce((sum, value) => sum + value.rssBytes, 0),
-            cpuPercent: available.reduce(
-              (sum, value) => sum + value.cpuPercent,
-              0,
-            ),
-          });
-        await delay(100);
-      }
-    } catch (error) {
-      samplingFailed = true;
-      samplingError = error;
-    }
-  })();
-  let results;
-  let roundFailed = false;
-  let roundError;
+  const executions = [];
+  let overlapDirectory;
+  let sampling = false;
+  let samplerOutcome = Promise.resolve({ status: 'fulfilled' });
+  let roundEvidence;
+  let primaryFailed = false;
+  let primaryError;
+  const cleanupErrors = [];
   try {
+    overlapDirectory =
+      scenario.requireOverlap === true
+        ? await mkdtemp(path.join(os.tmpdir(), 'pertexo-q11-overlap-'))
+        : undefined;
+    for (const command of scenario.commands)
+      for (
+        let concurrencyIndex = 0;
+        concurrencyIndex < scenario.concurrency;
+        concurrencyIndex += 1
+      ) {
+        const execution = {
+          command,
+          concurrencyIndex,
+          settled: false,
+          outcome: undefined,
+        };
+        executions.push(execution);
+        const commandEnvironment = scenarioCommandEnvironment(
+          inheritedEnvironment,
+          scenario,
+          command,
+        );
+        execution.outcome = run(command.file, command.args, {
+          env: {
+            ...commandEnvironment,
+            ...command.environment,
+            PERTEXO_Q11_OPERATION_TIMING: '1',
+            PERTEXO_Q11_ROUND_INDEX: String(roundIndex),
+            ...(overlapDirectory === undefined
+              ? {}
+              : {
+                  PERTEXO_Q11_OVERLAP_DIRECTORY: overlapDirectory,
+                  PERTEXO_Q11_OVERLAP_PARTICIPANT: command.participant,
+                }),
+          },
+          started: (child) => children.push(child),
+        }).then(
+          (value) => {
+            execution.settled = true;
+            return { status: 'fulfilled', value };
+          },
+          (reason) => {
+            execution.settled = true;
+            return { status: 'rejected', reason };
+          },
+        );
+      }
+    sampling = true;
+    const sampleStartedAt = performance.now();
+    samplerOutcome = settled(
+      (async () => {
+        while (sampling) {
+          const values = await Promise.all(
+            children
+              .filter(({ pid }) => pid !== undefined)
+              .map(({ pid }) => processGroupMetrics(pid)),
+          );
+          const available = values.filter((value) => value !== null);
+          if (available.length > 0)
+            processSamples.push({
+              elapsedMs: performance.now() - sampleStartedAt,
+              processCount: available.reduce(
+                (sum, value) => sum + value.processCount,
+                0,
+              ),
+              rssBytes: available.reduce(
+                (sum, value) => sum + value.rssBytes,
+                0,
+              ),
+              cpuPercent: available.reduce(
+                (sum, value) => sum + value.cpuPercent,
+                0,
+              ),
+            });
+          await delay(100);
+        }
+      })(),
+    );
     if (overlapDirectory !== undefined)
       await waitForOverlapBarrier(overlapDirectory, executions);
-    results = await Promise.all(executions.map(({ promise }) => promise));
+    const outcomes = await Promise.all(
+      executions.map(({ outcome }) => outcome),
+    );
+    const executionFailures = outcomes.flatMap((outcome) =>
+      outcome.status === 'rejected' ? [outcome.reason] : [],
+    );
+    if (executionFailures.length === 1) throw executionFailures[0];
+    if (executionFailures.length > 1)
+      throw new AggregateError(
+        executionFailures,
+        `${scenario.name} workload commands failed`,
+      );
+    const results = outcomes.map(({ value }) => value);
+    const launcherElapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    const workloads = executions.map((execution, index) => {
+      const result = results[index];
+      const samples = parseOperationSamples(
+        `${result.stdout}\n${result.stderr}`,
+      );
+      validateOperationContract(
+        scenario,
+        execution.command,
+        samples,
+        inheritedEnvironment.PERTEXO_Q11_SHARED_DATABASE_NAME,
+      );
+      return { ...execution, samples };
+    });
+    const operationSamples = workloads.flatMap(({ samples }) => samples);
+    const workloadStartedAtUnixMs = Math.min(
+      ...operationSamples.map(({ startedAtUnixMs }) => startedAtUnixMs),
+    );
+    const workloadEndedAtUnixMs = Math.max(
+      ...operationSamples.map(({ endedAtUnixMs }) => endedAtUnixMs),
+    );
+    const workloadIntervalMs = workloadEndedAtUnixMs - workloadStartedAtUnixMs;
+    // The sampler may finish one in-flight `ps` observation after the workload
+    // commands settle. Retain one immutable snapshot so the raw samples and
+    // their derived summary cannot describe different observation sets.
+    const completedProcessSamples = processSamples.slice();
+    roundEvidence = {
+      operationSamples,
+      operationLatencyMs: operationSamples.map(({ durationMs }) => durationMs),
+      workloadInterval: {
+        startedAtUnixMs: workloadStartedAtUnixMs,
+        endedAtUnixMs: workloadEndedAtUnixMs,
+        durationMs: workloadIntervalMs,
+      },
+      operationThroughputPerSecond:
+        operationSamples.length / (workloadIntervalMs / 1_000),
+      overlap:
+        scenario.requireOverlap === true
+          ? overlapEvidence(workloads, scenario)
+          : null,
+      launcherElapsedMs,
+      workloadProcessMetrics: {
+        sampleIntervalMs: 100,
+        samples: completedProcessSamples,
+        peakRssBytes:
+          completedProcessSamples.length === 0
+            ? null
+            : Math.max(
+                ...completedProcessSamples.map(({ rssBytes }) => rssBytes),
+              ),
+        peakCpuPercent:
+          completedProcessSamples.length === 0
+            ? null
+            : Math.max(
+                ...completedProcessSamples.map(({ cpuPercent }) => cpuPercent),
+              ),
+        peakProcessCount:
+          completedProcessSamples.length === 0
+            ? null
+            : Math.max(
+                ...completedProcessSamples.map(
+                  ({ processCount }) => processCount,
+                ),
+              ),
+        rssTrendBytes:
+          completedProcessSamples.length === 0
+            ? null
+            : {
+                first: completedProcessSamples[0].rssBytes,
+                last: completedProcessSamples.at(-1).rssBytes,
+                delta:
+                  completedProcessSamples.at(-1).rssBytes -
+                  completedProcessSamples[0].rssBytes,
+              },
+      },
+    };
   } catch (error) {
-    roundFailed = true;
-    roundError = error;
+    primaryFailed = true;
+    primaryError = error;
     const cleanup = await Promise.allSettled([
       processSupervisor.terminateAll(),
-      ...executions.map(({ promise }) => promise),
+      ...executions
+        .map(({ outcome }) => outcome)
+        .filter((outcome) => outcome !== undefined),
     ]);
-    const cleanupFailures = cleanup.flatMap((result) =>
-      result.status === 'rejected' ? [result.reason] : [],
+    cleanupErrors.push(
+      ...cleanup.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason] : [],
+      ),
     );
-    if (cleanupFailures.length > 0)
-      roundError = new AggregateError(
-        [error, ...cleanupFailures],
-        `${scenario.name} failed and cleanup was incomplete`,
-      );
+    for (const outcome of cleanup.slice(1))
+      if (
+        outcome.status === 'fulfilled' &&
+        outcome.value?.status === 'rejected' &&
+        outcome.value.reason !== primaryError
+      )
+        cleanupErrors.push(outcome.value.reason);
   }
   sampling = false;
-  await sampler;
-  let overlapCleanupFailed = false;
-  let overlapCleanupError;
+  const sampler = await samplerOutcome;
+  if (sampler.status === 'rejected') cleanupErrors.push(sampler.reason);
   if (overlapDirectory !== undefined)
     try {
       await rm(overlapDirectory, { recursive: true, force: true });
     } catch (error) {
-      overlapCleanupFailed = true;
-      overlapCleanupError = error;
+      cleanupErrors.push(error);
     }
-  const trailingErrors = [
-    ...(samplingFailed ? [samplingError] : []),
-    ...(overlapCleanupFailed ? [overlapCleanupError] : []),
-  ];
-  if (roundFailed && trailingErrors.length > 0)
+  if (primaryFailed && cleanupErrors.length > 0)
     throw new AggregateError(
-      [roundError, ...trailingErrors],
+      [primaryError, ...cleanupErrors],
       `${scenario.name} failed and diagnostics cleanup was incomplete`,
     );
-  if (roundFailed) throw roundError;
-  if (trailingErrors.length > 0)
+  if (primaryFailed) throw primaryError;
+  if (cleanupErrors.length > 0)
     throw new AggregateError(
-      trailingErrors,
+      cleanupErrors,
       `${scenario.name} diagnostics cleanup failed`,
     );
-  const launcherElapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
-  const failure = results.find((result) => result.code !== 0);
-  if (failure)
-    throw new Error(
-      `${scenario.name} failed (${String(failure.code ?? failure.signal)}): ${failure.stderr.slice(-2_000)}`,
-    );
-  const workloads = executions.map((execution, index) => {
-    const result = results[index];
-    const samples = parseOperationSamples(`${result.stdout}\n${result.stderr}`);
-    validateOperationContract(
-      scenario,
-      execution.command,
-      samples,
-      inheritedEnvironment.PERTEXO_Q11_SHARED_DATABASE_NAME,
-    );
-    return { ...execution, samples };
-  });
-  const operationSamples = workloads.flatMap(({ samples }) => samples);
-  const workloadStartedAtUnixMs = Math.min(
-    ...operationSamples.map(({ startedAtUnixMs }) => startedAtUnixMs),
-  );
-  const workloadEndedAtUnixMs = Math.max(
-    ...operationSamples.map(({ endedAtUnixMs }) => endedAtUnixMs),
-  );
-  const workloadIntervalMs = workloadEndedAtUnixMs - workloadStartedAtUnixMs;
-  return {
-    operationSamples,
-    operationLatencyMs: operationSamples.map(({ durationMs }) => durationMs),
-    workloadInterval: {
-      startedAtUnixMs: workloadStartedAtUnixMs,
-      endedAtUnixMs: workloadEndedAtUnixMs,
-      durationMs: workloadIntervalMs,
-    },
-    operationThroughputPerSecond:
-      operationSamples.length / (workloadIntervalMs / 1_000),
-    overlap:
-      scenario.requireOverlap === true
-        ? overlapEvidence(workloads, scenario)
-        : null,
-    launcherElapsedMs,
-    workloadProcessMetrics: {
-      sampleIntervalMs: 100,
-      samples: processSamples,
-      peakRssBytes:
-        processSamples.length === 0
-          ? null
-          : Math.max(...processSamples.map(({ rssBytes }) => rssBytes)),
-      peakCpuPercent:
-        processSamples.length === 0
-          ? null
-          : Math.max(...processSamples.map(({ cpuPercent }) => cpuPercent)),
-      peakProcessCount:
-        processSamples.length === 0
-          ? null
-          : Math.max(...processSamples.map(({ processCount }) => processCount)),
-      rssTrendBytes:
-        processSamples.length === 0
-          ? null
-          : {
-              first: processSamples[0].rssBytes,
-              last: processSamples.at(-1).rssBytes,
-              delta:
-                processSamples.at(-1).rssBytes - processSamples[0].rssBytes,
-            },
-    },
-  };
+  return roundEvidence;
 }
 
 export async function startDatabaseSampler(environment, options = {}) {
@@ -964,34 +1220,38 @@ export async function startDatabaseSampler(environment, options = {}) {
     .slice(1)
     .split('/')[0];
   const { Client } = options.Client ? options : requireDatabaseDependency('pg');
+  const samplerStopGraceMillis =
+    options.samplerStopGraceMillis ?? SAMPLER_STOP_GRACE_MILLIS;
+  if (
+    !Number.isSafeInteger(samplerStopGraceMillis) ||
+    samplerStopGraceMillis < 1
+  )
+    throw new Error('Sampler stop grace must be a positive safe integer');
   const client = new Client({
     connectionString: environment.DATABASE_ADMIN_URL,
-    connectionTimeoutMillis: 2_000,
+    connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
   });
   const statisticsUrl = new URL(environment.DATABASE_ADMIN_URL);
   statisticsUrl.pathname = new URL(environment.DATABASE_MIGRATION_URL).pathname;
   const statistics = new Client({
     connectionString: statisticsUrl.toString(),
-    connectionTimeoutMillis: 2_000,
+    connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    query_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
+    statement_timeout: DATABASE_QUERY_TIMEOUT_MILLIS,
   });
-  let clientConnected = false;
-  let statisticsConnected = false;
   let workloadTracker;
   try {
     await client.connect();
-    clientConnected = true;
     await statistics.connect();
-    statisticsConnected = true;
     await statistics.query('create extension if not exists pg_stat_statements');
     workloadTracker = await createDatabaseWorkloadTracker(
       statistics,
       databaseName,
     );
   } catch (error) {
-    const closing = await Promise.allSettled([
-      clientConnected ? client.end() : Promise.resolve(),
-      statisticsConnected ? statistics.end() : Promise.resolve(),
-    ]);
+    const closing = await Promise.allSettled([client.end(), statistics.end()]);
     const closeFailures = closing.flatMap((result) =>
       result.status === 'rejected' ? [result.reason] : [],
     );
@@ -1037,10 +1297,17 @@ export async function startDatabaseSampler(environment, options = {}) {
     ...workloadTracker,
     stop: async () => {
       stopped = true;
+      const completedBeforeCancellation = await Promise.race([
+        sampling.then(() => true),
+        delay(samplerStopGraceMillis, false, { ref: false }),
+      ]);
+      let clientClose;
+      if (!completedBeforeCancellation)
+        clientClose = Promise.resolve().then(() => client.end());
       await sampling;
       const closing = await Promise.allSettled([
-        client.end(),
-        statistics.end(),
+        clientClose ?? Promise.resolve().then(() => client.end()),
+        Promise.resolve().then(() => statistics.end()),
       ]);
       const closeFailures = closing.filter(
         (result) => result.status === 'rejected',
@@ -1085,6 +1352,30 @@ export async function createDatabaseWorkloadTracker(statistics, databaseName) {
     throw new Error(
       `Cannot resolve PostgreSQL database OID for ${databaseName}`,
     );
+  const captureScenario = async () => {
+    const result = await statistics.query(
+      `select coalesce(sum(calls),0)::float8 statement_executions,
+              coalesce(sum(total_exec_time),0)::float8 server_execution_ms
+         from pg_stat_statements
+        where dbid=$1::oid
+          and query not like '/* pertexo-q11-sampler */%'
+          and query not like '/* pertexo-q11-statistics */%'
+          and query not like '%pg_stat_statements%'`,
+      [databaseOid],
+    );
+    const statementExecutions = Number(
+      result.rows[0]?.statement_executions ?? 0,
+    );
+    const serverExecutionMs = Number(result.rows[0]?.server_execution_ms ?? 0);
+    if (
+      !Number.isSafeInteger(statementExecutions) ||
+      statementExecutions < 0 ||
+      !Number.isFinite(serverExecutionMs) ||
+      serverExecutionMs < 0
+    )
+      throw new Error('PostgreSQL returned invalid statement statistics');
+    return { statementExecutions, serverExecutionMs };
+  };
   return {
     beginScenario: async () => {
       await statistics.query(
@@ -1092,37 +1383,270 @@ export async function createDatabaseWorkloadTracker(statistics, databaseName) {
         [databaseOid],
       );
     },
-    endScenario: async () => {
-      const result = await statistics.query(
-        `select coalesce(sum(calls),0)::float8 sql_round_trips,
-                coalesce(sum(total_exec_time),0)::float8 server_execution_ms
-           from pg_stat_statements
-          where dbid=$1::oid
-            and query not like '/* pertexo-q11-sampler */%'
-            and query not like '%pg_stat_statements%'`,
-        [databaseOid],
+    captureScenario,
+  };
+}
+
+function subtractSqlSnapshot(after, before) {
+  const statementExecutions =
+    after.statementExecutions - before.statementExecutions;
+  const serverExecutionMs = after.serverExecutionMs - before.serverExecutionMs;
+  if (
+    !Number.isSafeInteger(statementExecutions) ||
+    statementExecutions < 0 ||
+    !Number.isFinite(serverExecutionMs) ||
+    serverExecutionMs < -1e-9
+  )
+    throw new Error('PostgreSQL statement statistics moved backwards');
+  return {
+    statementExecutions,
+    serverExecutionMs: Math.max(0, serverExecutionMs),
+  };
+}
+
+function sumSqlMeasurements(measurements) {
+  return measurements.reduce(
+    (total, measurement) => ({
+      statementExecutions:
+        total.statementExecutions + measurement.statementExecutions,
+      serverExecutionMs:
+        total.serverExecutionMs + measurement.serverExecutionMs,
+    }),
+    { statementExecutions: 0, serverExecutionMs: 0 },
+  );
+}
+
+function createScenarioSqlRecorder(sampler, warmupRounds, measuredRounds) {
+  if (
+    typeof sampler?.beginScenario !== 'function' ||
+    typeof sampler?.captureScenario !== 'function'
+  )
+    return null;
+  const phaseMeasurements = {
+    fixtureReset: [],
+    warmupWorkload: [],
+    measuredWorkload: [],
+  };
+  let origin;
+  return {
+    begin: async () => {
+      await sampler.beginScenario();
+      origin = await sampler.captureScenario();
+    },
+    before: () => sampler.captureScenario(),
+    record: (phase, roundIndex, before, after) => {
+      phaseMeasurements[phase].push({
+        roundIndex,
+        ...subtractSqlSnapshot(after, before),
+      });
+    },
+    finish: async () => {
+      const completed = await sampler.captureScenario();
+      const total = subtractSqlSnapshot(completed, origin);
+      const classified = sumSqlMeasurements(
+        Object.values(phaseMeasurements).flat(),
       );
+      const unclassified = subtractSqlSnapshot(total, classified);
+      if (
+        phaseMeasurements.fixtureReset.length !==
+          warmupRounds + measuredRounds ||
+        phaseMeasurements.warmupWorkload.length !== warmupRounds ||
+        phaseMeasurements.measuredWorkload.length !== measuredRounds
+      )
+        throw new Error(
+          'PostgreSQL scenario phase measurements are incomplete',
+        );
       return {
-        sqlRoundTrips: Number(result.rows[0]?.sql_round_trips ?? 0),
-        serverExecutionMs: Number(result.rows[0]?.server_execution_ms ?? 0),
+        scope: 'scenarioIncludingWarmupAndFixtures',
+        ...total,
+        phaseMeasurements,
+        unclassified,
       };
     },
   };
 }
 
+async function measureSqlPhase(recorders, phase, roundIndex, operation) {
+  const active = recorders.filter(Boolean);
+  const capture = async (label) => {
+    const outcomes = await Promise.allSettled(
+      active.map((recorder) => recorder.before()),
+    );
+    const failures = outcomes.flatMap((outcome) =>
+      outcome.status === 'rejected' ? [outcome.reason] : [],
+    );
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1)
+      throw new AggregateError(
+        failures,
+        `PostgreSQL ${label} snapshots failed`,
+      );
+    return outcomes.map(({ value }) => value);
+  };
+  const before = await capture('before-phase');
+  const result = await operation();
+  const after = await capture('after-phase');
+  for (const [index, recorder] of active.entries())
+    recorder.record(phase, roundIndex, before[index], after[index]);
+  return result;
+}
+
+async function finishSqlRecorders(base, target) {
+  const recorders = [base, target];
+  const outcomes = await Promise.allSettled(
+    recorders.map((recorder) =>
+      recorder === null ? Promise.resolve(undefined) : recorder.finish(),
+    ),
+  );
+  const failures = outcomes.flatMap((outcome) =>
+    outcome.status === 'rejected' ? [outcome.reason] : [],
+  );
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      'PostgreSQL scenario measurements failed',
+    );
+  return outcomes.map(({ value }) => value);
+}
+
+function summarizeScenario({
+  databaseWorkload,
+  rounds,
+  scenario,
+  targetDatabaseObservations,
+  targetDatabaseWorkload,
+  targetDatabaseName,
+}) {
+  const expectedOperationsPerRound =
+    scenario.concurrency *
+    scenario.commands.reduce(
+      (sum, command) => sum + expectedOperationCount(command),
+      0,
+    );
+  const samplesByOperation = new Map();
+  for (const round of rounds)
+    for (const sample of round.operationSamples) {
+      const samples = samplesByOperation.get(sample.name) ?? [];
+      samples.push(sample);
+      samplesByOperation.set(sample.name, samples);
+    }
+  const operationBreakdown = Object.fromEntries(
+    [...samplesByOperation].map(([name, samples]) => {
+      const roundThroughputs = rounds.flatMap((round) => {
+        const roundSamples = round.operationSamples.filter(
+          (sample) => sample.name === name,
+        );
+        if (roundSamples.length === 0) return [];
+        const interval =
+          Math.max(...roundSamples.map(({ endedAtUnixMs }) => endedAtUnixMs)) -
+          Math.min(
+            ...roundSamples.map(({ startedAtUnixMs }) => startedAtUnixMs),
+          );
+        return [roundSamples.length / (interval / 1_000)];
+      });
+      return [
+        name,
+        {
+          latencyMs: summarize(samples.map(({ durationMs }) => durationMs)),
+          throughputPerSecond: summarize(roundThroughputs),
+          populations: [
+            ...new Set(samples.map(({ population }) => population)),
+          ],
+        },
+      ];
+    }),
+  );
+  return {
+    name: scenario.name,
+    description: scenario.description,
+    configuration: {
+      concurrency: scenario.concurrency,
+      expectedOperationsPerRound,
+      fixturePopulation: scenario.fixturePopulation,
+      workloadProcessCount: scenario.commands.length * scenario.concurrency,
+      requireOverlap: scenario.requireOverlap,
+      databaseScope: scenario.databaseScope,
+      operationContracts: scenario.commands.flatMap((command) =>
+        command.expectedOperations.map((operation) => ({
+          ...operation,
+          participant: command.participant ?? null,
+        })),
+      ),
+    },
+    rounds,
+    operationLatencyMs: summarize(
+      rounds.flatMap((round) => round.operationLatencyMs),
+    ),
+    operationThroughputPerSecond: summarize(
+      rounds.map((round) => round.operationThroughputPerSecond),
+    ),
+    launcherElapsedMs: summarize(
+      rounds.map((round) => round.launcherElapsedMs),
+    ),
+    workloadProcessPeakRssBytes: summarize(
+      rounds.flatMap((round) =>
+        round.workloadProcessMetrics.peakRssBytes === null
+          ? []
+          : [round.workloadProcessMetrics.peakRssBytes],
+      ),
+    ),
+    workloadProcessPeakCpuPercent: summarize(
+      rounds.flatMap((round) =>
+        round.workloadProcessMetrics.peakCpuPercent === null
+          ? []
+          : [round.workloadProcessMetrics.peakCpuPercent],
+      ),
+    ),
+    workloadProcessPeakCount: summarize(
+      rounds.flatMap((round) =>
+        round.workloadProcessMetrics.peakProcessCount === null
+          ? []
+          : [round.workloadProcessMetrics.peakProcessCount],
+      ),
+    ),
+    workloadProcessRssDeltaBytes: summarize(
+      rounds.flatMap((round) =>
+        round.workloadProcessMetrics.rssTrendBytes === null
+          ? []
+          : [round.workloadProcessMetrics.rssTrendBytes.delta],
+      ),
+    ),
+    operationBreakdown,
+    databaseWorkload,
+    targetDatabase:
+      targetDatabaseName === undefined
+        ? null
+        : {
+            scope:
+              scenario.databaseScope === 'runner-owned-shared'
+                ? 'runner-owned shared disposable database'
+                : 'runner-owned fixture database',
+            databaseName: targetDatabaseName,
+            workload: targetDatabaseWorkload,
+            observations: targetDatabaseObservations,
+          },
+  };
+}
+
 export async function benchmark(
-  manifest,
+  inputManifest,
   environment = process.env,
   options = {},
 ) {
-  validateManifest(manifest);
+  const manifest = validateManifest(inputManifest);
   if (environment.PERTEXO_Q11_ISOLATED !== '1')
     throw new Error(
       'Refusing benchmark outside the Q02-owned isolated services',
     );
   assertNotInterrupted();
-  const lag = monitorEventLoopDelay({ resolution: 10 });
-  lag.enable();
+  const identifySource = options.sourceIdentity ?? sourceIdentity;
+  const excludedPaths = options.excludedSourcePaths ?? [];
+  const sourceStarted = await identifySource({ excludedPaths });
+  const buildStarted = await (options.qualifyBuild ?? qualifyBuild)();
+  const sourceAfterBuild = await identifySource({ excludedPaths });
+  if (sourceStarted.workingTreeSha256 !== sourceAfterBuild.workingTreeSha256)
+    throw new Error('Source changed while qualifying the benchmark build');
   const benchmarkEnvironment = {
     ...environment,
     PERTEXO_BENCHMARK_SEED: String(manifest.seed),
@@ -1131,14 +1655,40 @@ export async function benchmark(
     options.startDatabaseSampler ?? startDatabaseSampler;
   const createScenarioDatabase =
     options.prepareScenarioDatabase ?? prepareScenarioDatabase;
-  const databaseSampler = await createDatabaseSampler(benchmarkEnvironment);
+  const createEventLoopMonitor =
+    options.createEventLoopMonitor ?? monitorEventLoopDelay;
+  const lag = createEventLoopMonitor({ resolution: 10 });
+  const benchmarkTimeoutMillis =
+    options.benchmarkTimeoutMillis ?? BENCHMARK_TIMEOUT_MILLIS;
+  if (
+    !Number.isSafeInteger(benchmarkTimeoutMillis) ||
+    benchmarkTimeoutMillis < 1
+  )
+    throw new Error('Benchmark timeout must be a positive safe integer');
+  let deadlineError;
+  const deadline = setTimeout(() => {
+    deadlineError = new Error(
+      `Benchmark timed out after ${String(benchmarkTimeoutMillis)} ms`,
+    );
+    requestOwnedProcessTermination();
+  }, benchmarkTimeoutMillis);
+  deadline.unref();
+  const assertWithinDeadline = () => {
+    if (deadlineError !== undefined) throw deadlineError;
+    assertNotInterrupted();
+  };
   const scenarios = [];
+  let databaseSampler;
   let databaseObservations;
   let benchmarkFailed = false;
   let benchmarkError;
+  let monitorEnabled = false;
   try {
+    lag.enable();
+    monitorEnabled = true;
+    databaseSampler = await createDatabaseSampler(benchmarkEnvironment);
     for (const scenario of manifest.scenarios) {
-      assertNotInterrupted();
+      assertWithinDeadline();
       const scenarioDatabase = await createScenarioDatabase(
         scenario,
         benchmarkEnvironment,
@@ -1146,34 +1696,66 @@ export async function benchmark(
       let targetDatabaseSampler;
       let targetDatabaseObservations;
       let targetDatabaseWorkload;
+      let databaseWorkload;
       let scenarioFailed = false;
       let scenarioError;
       const rounds = [];
       try {
-        await databaseSampler.beginScenario?.();
         if (scenarioDatabase.databaseName !== undefined) {
           targetDatabaseSampler = await createDatabaseSampler(
             scenarioDatabase.environment,
           );
-          await targetDatabaseSampler.beginScenario?.();
         }
+        const databaseRecorder = createScenarioSqlRecorder(
+          databaseSampler,
+          manifest.warmupRounds,
+          manifest.rounds,
+        );
+        const targetDatabaseRecorder = createScenarioSqlRecorder(
+          targetDatabaseSampler,
+          manifest.warmupRounds,
+          manifest.rounds,
+        );
+        const recorders = [databaseRecorder, targetDatabaseRecorder].filter(
+          Boolean,
+        );
+        const started = await Promise.allSettled(
+          recorders.map((recorder) => recorder.begin()),
+        );
+        const startFailures = started.flatMap((outcome) =>
+          outcome.status === 'rejected' ? [outcome.reason] : [],
+        );
+        if (startFailures.length === 1) throw startFailures[0];
+        if (startFailures.length > 1)
+          throw new AggregateError(
+            startFailures,
+            'PostgreSQL scenario measurement startup failed',
+          );
         for (let index = 0; index < manifest.warmupRounds; index += 1) {
-          assertNotInterrupted();
-          await scenarioDatabase.reset?.();
-          await executeRound(
-            scenario,
-            scenarioDatabase.environment,
-            -index - 1,
+          assertWithinDeadline();
+          const roundIndex = -index - 1;
+          await measureSqlPhase(recorders, 'fixtureReset', roundIndex, () =>
+            scenarioDatabase.reset?.(),
+          );
+          await measureSqlPhase(recorders, 'warmupWorkload', roundIndex, () =>
+            executeRound(scenario, scenarioDatabase.environment, roundIndex),
           );
         }
         for (let index = 0; index < manifest.rounds; index += 1) {
-          assertNotInterrupted();
-          await scenarioDatabase.reset?.();
+          assertWithinDeadline();
+          await measureSqlPhase(recorders, 'fixtureReset', index, () =>
+            scenarioDatabase.reset?.(),
+          );
           rounds.push(
-            await executeRound(scenario, scenarioDatabase.environment, index),
+            await measureSqlPhase(recorders, 'measuredWorkload', index, () =>
+              executeRound(scenario, scenarioDatabase.environment, index),
+            ),
           );
         }
-        targetDatabaseWorkload = await targetDatabaseSampler?.endScenario?.();
+        [databaseWorkload, targetDatabaseWorkload] = await finishSqlRecorders(
+          databaseRecorder,
+          targetDatabaseRecorder,
+        );
       } catch (error) {
         scenarioFailed = true;
         scenarioError = error;
@@ -1195,151 +1777,75 @@ export async function benchmark(
           [...(scenarioFailed ? [scenarioError] : []), ...cleanupErrors],
           `${scenario.name} failed or its shared database did not close cleanly`,
         );
-      const databaseWorkload = await databaseSampler.endScenario?.();
-      const expectedOperationsPerRound =
-        scenario.concurrency *
-        scenario.commands.reduce(
-          (sum, command) => sum + expectedOperationCount(command),
-          0,
-        );
-      scenarios.push({
-        name: scenario.name,
-        description: scenario.description,
-        configuration: {
-          concurrency: scenario.concurrency,
-          expectedOperationsPerRound,
-          fixturePopulation: scenario.fixturePopulation,
-          workloadProcessCount: scenario.commands.length * scenario.concurrency,
-          requireOverlap: scenario.requireOverlap === true,
-          databaseScope: scenario.databaseScope ?? 'configured-base',
-          operationContracts: scenario.commands.flatMap((command) =>
-            command.expectedOperations.map((operation) => ({
-              ...operation,
-              participant: command.participant ?? null,
-            })),
-          ),
-        },
-        rounds,
-        operationLatencyMs: summarize(
-          rounds.flatMap((round) => round.operationLatencyMs),
-        ),
-        operationThroughputPerSecond: summarize(
-          rounds.map((round) => round.operationThroughputPerSecond),
-        ),
-        launcherElapsedMs: summarize(
-          rounds.map((round) => round.launcherElapsedMs),
-        ),
-        workloadProcessPeakRssBytes: summarize(
-          rounds.flatMap((round) =>
-            round.workloadProcessMetrics.peakRssBytes === null
-              ? []
-              : [round.workloadProcessMetrics.peakRssBytes],
-          ),
-        ),
-        workloadProcessPeakCpuPercent: summarize(
-          rounds.flatMap((round) =>
-            round.workloadProcessMetrics.peakCpuPercent === null
-              ? []
-              : [round.workloadProcessMetrics.peakCpuPercent],
-          ),
-        ),
-        workloadProcessPeakCount: summarize(
-          rounds.flatMap((round) =>
-            round.workloadProcessMetrics.peakProcessCount === null
-              ? []
-              : [round.workloadProcessMetrics.peakProcessCount],
-          ),
-        ),
-        workloadProcessRssDeltaBytes: summarize(
-          rounds.flatMap((round) =>
-            round.workloadProcessMetrics.rssTrendBytes === null
-              ? []
-              : [round.workloadProcessMetrics.rssTrendBytes.delta],
-          ),
-        ),
-        operationBreakdown: Object.fromEntries(
-          [
-            ...new Set(
-              rounds.flatMap((round) =>
-                round.operationSamples.map(({ name }) => name),
-              ),
-            ),
-          ].map((name) => [
-            name,
-            {
-              latencyMs: summarize(
-                rounds.flatMap((round) =>
-                  round.operationSamples
-                    .filter((sample) => sample.name === name)
-                    .map(({ durationMs }) => durationMs),
-                ),
-              ),
-              throughputPerSecond: summarize(
-                rounds.flatMap((round) => {
-                  const samples = round.operationSamples.filter(
-                    (sample) => sample.name === name,
-                  );
-                  if (samples.length === 0) return [];
-                  const interval =
-                    Math.max(
-                      ...samples.map(({ endedAtUnixMs }) => endedAtUnixMs),
-                    ) -
-                    Math.min(
-                      ...samples.map(({ startedAtUnixMs }) => startedAtUnixMs),
-                    );
-                  return [samples.length / (interval / 1_000)];
-                }),
-              ),
-              populations: [
-                ...new Set(
-                  rounds.flatMap((round) =>
-                    round.operationSamples
-                      .filter((sample) => sample.name === name)
-                      .map(({ population }) => population),
-                  ),
-                ),
-              ],
-            },
-          ]),
-        ),
-        databaseWorkload,
-        targetDatabase: scenarioDatabase.databaseName
-          ? {
-              scope:
-                scenario.databaseScope === 'runner-owned-shared'
-                  ? 'runner-owned shared disposable database'
-                  : 'runner-owned fixture database',
-              databaseName: scenarioDatabase.databaseName,
-              workload: targetDatabaseWorkload,
-              observations: targetDatabaseObservations,
-            }
-          : null,
-      });
+      scenarios.push(
+        summarizeScenario({
+          databaseWorkload,
+          rounds,
+          scenario,
+          targetDatabaseName: scenarioDatabase.databaseName,
+          targetDatabaseObservations,
+          targetDatabaseWorkload,
+        }),
+      );
     }
   } catch (error) {
     benchmarkFailed = true;
     benchmarkError = error;
   }
-  let samplerStopFailed = false;
-  let samplerStopError;
-  try {
-    databaseObservations = await databaseSampler.stop();
-  } catch (error) {
-    samplerStopFailed = true;
-    samplerStopError = error;
+  const cleanupErrors = [];
+  if (databaseSampler !== undefined)
+    try {
+      databaseObservations = await databaseSampler.stop();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  if (monitorEnabled)
+    try {
+      lag.disable();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  clearTimeout(deadline);
+  if (deadlineError !== undefined) {
+    if (activeTermination !== undefined)
+      try {
+        await activeTermination;
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    if (benchmarkFailed && benchmarkError !== deadlineError)
+      benchmarkError = new AggregateError(
+        [deadlineError, benchmarkError],
+        'Benchmark deadline elapsed during workload execution',
+      );
+    else {
+      benchmarkFailed = true;
+      benchmarkError = deadlineError;
+    }
   }
-  lag.disable();
-  if (benchmarkFailed && samplerStopFailed)
+  if (benchmarkFailed && cleanupErrors.length > 0)
     throw new AggregateError(
-      [benchmarkError, samplerStopError],
-      'Benchmark failed and database sampler cleanup was incomplete',
+      [benchmarkError, ...cleanupErrors],
+      'Benchmark failed and resource cleanup was incomplete',
     );
   if (benchmarkFailed) throw benchmarkError;
-  if (samplerStopFailed) throw samplerStopError;
+  if (cleanupErrors.length === 1) throw cleanupErrors[0];
+  if (cleanupErrors.length > 1)
+    throw new AggregateError(
+      cleanupErrors,
+      'Benchmark resource cleanup failed',
+    );
   const postgresEvidence = await (
     options.capturePostgresEvidence ?? capturePostgresEvidence
   )(benchmarkEnvironment);
   const pnpm = await run('pnpm', ['--version']);
+  const buildCompleted = await (options.buildIdentity ?? buildOutputIdentity)();
+  const sourceCompleted = await identifySource({ excludedPaths });
+  const sourceStable =
+    sourceStarted.workingTreeSha256 === sourceCompleted.workingTreeSha256;
+  const buildStable =
+    buildStarted.outputSha256 === buildCompleted.outputSha256 &&
+    buildStarted.fileCount === buildCompleted.fileCount;
   const foregroundAlone = scenarios.find(
     ({ name }) => name === 'foreground-alone',
   );
@@ -1378,10 +1884,22 @@ export async function benchmark(
         }
       : null;
   return {
-    schemaVersion: 4,
-    status: 'complete',
+    schemaVersion: EVIDENCE_SCHEMA_VERSION,
+    status: sourceStable && buildStable ? 'complete' : 'partial',
     recordedAt: new Date().toISOString(),
-    source: await (options.sourceIdentity ?? sourceIdentity)(),
+    source: {
+      started: sourceStarted,
+      afterBuild: sourceAfterBuild,
+      completed: sourceCompleted,
+      stable: sourceStable,
+    },
+    build: {
+      command: 'pnpm build',
+      qualifiedSourceSha256: sourceStarted.workingTreeSha256,
+      started: buildStarted,
+      completed: buildCompleted,
+      stable: buildStable,
+    },
     manifestSha256: createHash('sha256')
       .update(JSON.stringify(manifest))
       .digest('hex'),
@@ -1438,15 +1956,26 @@ async function main() {
   );
   if (option === '--validate') return;
   if (!outputFile) throw new Error('Output path is required');
+  const reservation = await reserveBenchmarkEvidence(outputFile);
   let primaryFailed = false;
   let primaryError;
   try {
-    const evidence = await benchmark(manifest);
+    const evidence = await benchmark(manifest, process.env, {
+      excludedSourcePaths: [reservation.path],
+    });
     if (receivedSignal) throw new Error(`Interrupted by ${receivedSignal}`);
-    await writeBenchmarkEvidence(outputFile, evidence);
+    await reservation.complete(evidence);
   } catch (error) {
     primaryFailed = true;
     primaryError = error;
+    try {
+      await reservation.abandon();
+    } catch (cleanupError) {
+      primaryError = new AggregateError(
+        [error, cleanupError],
+        'Benchmark failed and its output reservation cleanup was incomplete',
+      );
+    }
   }
   let cleanupFailed = false;
   let cleanupError;

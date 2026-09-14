@@ -35,7 +35,6 @@ import {
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
-  WorkspaceAuthorizationPort,
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import { NodeTestRequestError, NodeTestInvalidError } from './errors.js';
@@ -59,10 +58,28 @@ export type NodeTestUseCaseInput = Readonly<{
   traceparent?: string;
 }>;
 
-type Authorization = WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
+type Authorization = WorkspaceAuthorizationSource;
 type PreviewOutput = NonNullable<
   Awaited<ReturnType<NodeTestingPersistence['readPreview']>>
 >['output'];
+type PreviewRunRecord = NonNullable<
+  Awaited<ReturnType<NodeTestingPersistence['resolvePreviewReplay']>>
+>;
+type PreviewAcceptanceView = Pick<
+  PreviewRunRecord,
+  | 'id'
+  | 'workspaceId'
+  | 'workflowId'
+  | 'draftRevision'
+  | 'nodeId'
+  | 'status'
+  | 'sideEffectClass'
+  | 'mayContactProvider'
+  | 'mayCauseExternalSideEffect'
+  | 'dryRun'
+  | 'createdAt'
+  | 'expiresAt'
+>;
 
 function validationInputFields(
   request: NodeTestRequest,
@@ -87,7 +104,7 @@ export class TestWorkflowNodeUseCase {
   public constructor(
     private readonly persistence: Pick<
       NodeTestingPersistence,
-      'acceptPreview' | 'getDraft'
+      'acceptPreview' | 'getDraft' | 'resolvePreviewReplay'
     >,
     private readonly authorization: Authorization,
     private readonly release: RegistryRelease,
@@ -100,6 +117,26 @@ export class TestWorkflowNodeUseCase {
   ): Promise<NodeValidationResponse | NodeTestExecuteAcceptedResponse> {
     const request = input.request;
     await this.authorize(input, 'workflow:update');
+    const executionIdentity =
+      request.mode === 'test_execute'
+        ? previewExecutionIdentity(input, request)
+        : undefined;
+    if (executionIdentity !== undefined) {
+      let replay: PreviewRunRecord | null;
+      try {
+        replay = await this.persistence.resolvePreviewReplay({
+          workspaceId: input.routeWorkspaceId,
+          actorUserId: input.actor.actorId,
+          workflowId: input.workflowId,
+          ...executionIdentity,
+        });
+      } catch (error: unknown) {
+        if (error instanceof PreviewIdempotencyConflictError)
+          throw new NodeTestRequestError('idempotency_conflict');
+        throw error;
+      }
+      if (replay !== null) return previewAcceptanceResponse(replay, true);
+    }
     const draft = await this.currentDraft(input);
     if (draft.revision !== request.expectedRevision)
       throw new WorkflowRevisionConflictError(
@@ -137,8 +174,8 @@ export class TestWorkflowNodeUseCase {
         disclosure: prepared.disclosure,
       });
 
-    if (input.idempotencyKey === undefined)
-      throw new NodeTestRequestError('idempotency_required');
+    if (executionIdentity === undefined)
+      throw new Error('Preview execution identity is unavailable');
     if (prepared.issues.length > 0)
       throw new NodeTestInvalidError(prepared.issues);
 
@@ -146,15 +183,7 @@ export class TestWorkflowNodeUseCase {
     const executionRelease = composeExecutableCompatibilityRelease(
       this.release,
     );
-    const requestHash = digest({
-      domain: 'pertexo.preview.execute-request',
-      schemaVersion: 1,
-      actorId: input.actor.actorId,
-      workspaceId: input.routeWorkspaceId,
-      workflowId: input.workflowId,
-      nodeId: input.nodeId,
-      request,
-    });
+    const { keyHash, requestHash } = executionIdentity;
     try {
       const accepted = await this.persistence.acceptPreview({
         workspaceId: input.routeWorkspaceId,
@@ -176,9 +205,7 @@ export class TestWorkflowNodeUseCase {
         mayCauseExternalSideEffect:
           prepared.disclosure.mayCauseExternalSideEffect,
         dryRun: prepared.disclosure.dryRun,
-        keyHash: createHash('sha256')
-          .update(input.idempotencyKey)
-          .digest('hex'),
+        keyHash,
         requestHash,
         operation: 'preview.execute',
         ...(prepared.integration === undefined
@@ -210,25 +237,24 @@ export class TestWorkflowNodeUseCase {
           ? {}
           : { traceparent: input.traceparent }),
       });
-      return nodeTestExecuteAcceptedResponseSchema.parse({
-        mode: 'test_execute',
-        replayed: accepted.duplicate,
-        preview: {
+      return previewAcceptanceResponse(
+        {
           id: accepted.previewRunId,
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,
           draftRevision: draft.revision,
           nodeId: input.nodeId,
           status: accepted.status,
-          disclosure: prepared.disclosure,
-          output: null,
-          safeErrorCode: null,
-          createdAt: accepted.acceptedAt.toISOString(),
-          startedAt: null,
-          completedAt: null,
-          expiresAt: accepted.expiresAt.toISOString(),
+          sideEffectClass: prepared.disclosure.sideEffectClass,
+          mayContactProvider: prepared.disclosure.mayContactProvider,
+          mayCauseExternalSideEffect:
+            prepared.disclosure.mayCauseExternalSideEffect,
+          dryRun: prepared.disclosure.dryRun,
+          createdAt: accepted.acceptedAt,
+          expiresAt: accepted.expiresAt,
         },
-      });
+        accepted.duplicate,
+      );
     } catch (error: unknown) {
       if (error instanceof PreviewIdempotencyConflictError)
         throw new NodeTestRequestError('idempotency_conflict');
@@ -331,6 +357,56 @@ export class GetPreviewRunUseCase {
 
 function digest(value: unknown): string {
   return createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+function previewExecutionIdentity(
+  input: NodeTestUseCaseInput,
+  request: Extract<NodeTestRequest, Readonly<{ mode: 'test_execute' }>>,
+): Readonly<{ keyHash: string; requestHash: string }> {
+  if (input.idempotencyKey === undefined)
+    throw new NodeTestRequestError('idempotency_required');
+  return Object.freeze({
+    keyHash: createHash('sha256').update(input.idempotencyKey).digest('hex'),
+    requestHash: digest({
+      domain: 'pertexo.preview.execute-request',
+      schemaVersion: 1,
+      actorId: input.actor.actorId,
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+      nodeId: input.nodeId,
+      request,
+    }),
+  });
+}
+
+function previewAcceptanceResponse(
+  preview: PreviewAcceptanceView,
+  replayed: boolean,
+): NodeTestExecuteAcceptedResponse {
+  return nodeTestExecuteAcceptedResponseSchema.parse({
+    mode: 'test_execute',
+    replayed,
+    preview: {
+      id: preview.id,
+      workspaceId: preview.workspaceId,
+      workflowId: preview.workflowId,
+      draftRevision: preview.draftRevision,
+      nodeId: preview.nodeId,
+      status: preview.status,
+      disclosure: {
+        sideEffectClass: preview.sideEffectClass,
+        mayContactProvider: preview.mayContactProvider,
+        mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
+        dryRun: preview.dryRun,
+      },
+      output: null,
+      safeErrorCode: null,
+      createdAt: preview.createdAt.toISOString(),
+      startedAt: null,
+      completedAt: null,
+      expiresAt: preview.expiresAt.toISOString(),
+    },
+  });
 }
 
 function canonicalExecutableNode(value: unknown) {

@@ -59,25 +59,34 @@ describe('request context', () => {
   it('echoes a valid request id and ignores untrusted actor/workspace headers', async () => {
     const store = new RequestContextStore();
     const middleware = new RequestContextMiddleware(store);
-    const response = { header: (): void => undefined };
+    const responseHeaders = new Map<string, string>();
+    const response = {
+      header: (name: string, value: string): void => {
+        responseHeaders.set(name, value);
+      },
+    };
+    const request: {
+      headers: Record<string, string>;
+      requestId?: string;
+    } = {
+      headers: {
+        'x-request-id': 'client-request-42',
+        'x-actor-id': 'attacker-controlled',
+        'x-workspace-id': workspaceB,
+      },
+    };
     let context: ReturnType<RequestContextStore['get']> | undefined;
 
-    await middleware.use(
-      {
-        headers: {
-          'x-request-id': 'client-request-42',
-          'x-actor-id': 'attacker-controlled',
-          'x-workspace-id': workspaceB,
-        },
-      },
-      response,
-      () => {
-        context = store.get();
-      },
-    );
+    await middleware.use(request, response, () => {
+      context = store.get();
+    });
 
     expect(context).toMatchObject({ requestId: 'client-request-42' });
     expect(context?.requestId).toBe('client-request-42');
+    expect(request.requestId).toBe('client-request-42');
+    expect(responseHeaders).toEqual(
+      new Map([['x-request-id', 'client-request-42']]),
+    );
     expect(context?.actor).toBeUndefined();
     expect(context?.workspaceId).toBeUndefined();
   });

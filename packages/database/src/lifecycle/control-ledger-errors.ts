@@ -19,12 +19,17 @@ export class ControlLedgerReconciliationBoundError extends ControlLedgerReconcil
 }
 
 export function controlLedgerClientReleaseError(
+  rollbackFailed: boolean,
   rollbackError: unknown,
+  unlockFailed: boolean,
+  unlockError: unknown,
   cancellationRequested: boolean,
 ): Error | undefined {
-  if (rollbackError instanceof Error) return rollbackError;
+  if (rollbackFailed || unlockFailed)
+    return new Error('Control ledger transaction cleanup failed', {
+      cause: rollbackFailed ? rollbackError : unlockError,
+    });
   if (cancellationRequested)
     return new Error('Control ledger transaction was canceled');
-  if (rollbackError === undefined) return undefined;
-  return new Error('Control ledger transaction could not roll back');
+  return undefined;
 }

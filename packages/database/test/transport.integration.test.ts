@@ -283,8 +283,12 @@ describe('transactional outbox persistence', () => {
         lostAckAcceptanceId,
         lostAckOutbox,
       );
+      const observedUncertain = uncertain.then(
+        () => undefined,
+        (error: unknown) => error,
+      );
       await acknowledgementDropped;
-      await expect(uncertain).rejects.toThrow();
+      expect(await observedUncertain).toBeInstanceOf(Error);
       await expect(
         inspect(lostAckAcceptanceId, lostAckMessageId, lostAckOutbox.id),
       ).resolves.toEqual({
@@ -310,8 +314,7 @@ describe('transactional outbox persistence', () => {
       await proxy.close();
       expect(proxy.activeSocketCount()).toBe(0);
     } finally {
-      await proxiedDatabase.close();
-      await proxy.close();
+      await Promise.all([proxiedDatabase.close(), proxy.close()]);
     }
   });
 
@@ -754,6 +757,50 @@ describe('transactional outbox persistence', () => {
   it('verifies the dedicated dispatcher grants and migration head', async () => {
     await expect(dispatcher.checkReadiness()).resolves.toBeUndefined();
   });
+
+  it.each([
+    {
+      name: 'required lifecycle-column grant',
+      drift:
+        'revoke update (last_error_code) on app.outbox_events from pertexo_dispatcher',
+      restore:
+        'grant update (last_error_code) on app.outbox_events to pertexo_dispatcher',
+    },
+    {
+      name: 'dispatcher update-policy expression',
+      drift:
+        'alter policy outbox_events_dispatcher_update on app.outbox_events using (false)',
+      restore:
+        'alter policy outbox_events_dispatcher_update on app.outbox_events using (true) with check (true)',
+    },
+    {
+      name: 'dispatch-index key order',
+      drift:
+        'drop index app.outbox_events_dispatch_job_due_idx; create index outbox_events_dispatch_job_due_idx on app.outbox_events (available_at,job_name,id) where published_at is null and failed_at is null',
+      restore:
+        'drop index app.outbox_events_dispatch_job_due_idx; create index outbox_events_dispatch_job_due_idx on app.outbox_events (job_name,available_at,id) where published_at is null and failed_at is null',
+    },
+  ])(
+    'rejects isolated $name drift and accepts its exact restoration',
+    async ({ drift, restore }) => {
+      const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+      const client = await owner.connect();
+      let driftApplied = false;
+      try {
+        await client.query('set role pertexo_owner');
+        await client.query(drift);
+        driftApplied = true;
+        await expect(dispatcher.checkReadiness()).rejects.toThrow(
+          'Outbox dispatcher database boundary is incompatible',
+        );
+      } finally {
+        if (driftApplied) await client.query(restore);
+        client.release();
+        await owner.end();
+      }
+      await expect(dispatcher.checkReadiness()).resolves.toBeUndefined();
+    },
+  );
 
   it('dry-runs and exactly replays a durable failed-row redispatch command', async () => {
     const input = outboxInput();

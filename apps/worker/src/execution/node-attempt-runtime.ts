@@ -123,6 +123,10 @@ type OwnedNodeAttemptResource = Readonly<{
   phase: 'drain' | 'release';
 }>;
 
+function assertNodeAttemptRuntimeOpen(lifecycle: { terminal: boolean }): void {
+  if (lifecycle.terminal) throw new Error('Node-attempt runtime is closed');
+}
+
 async function closeNodeAttemptResources(
   resources: readonly OwnedNodeAttemptResource[],
   primary?: Readonly<{ error: unknown }>,
@@ -130,12 +134,12 @@ async function closeNodeAttemptResources(
   const drainSettled = await Promise.allSettled(
     resources
       .filter(({ phase }) => phase === 'drain')
-      .map(({ close }) => close()),
+      .map(({ close }) => Promise.resolve().then(close)),
   );
   const releaseSettled = await Promise.allSettled(
     resources
       .filter(({ phase }) => phase === 'release')
-      .map(({ close }) => close()),
+      .map(({ close }) => Promise.resolve().then(close)),
   );
   const cleanupFailures: unknown[] = [];
   for (const result of [...drainSettled, ...releaseSettled])
@@ -386,37 +390,32 @@ export async function createNodeAttemptRuntime(
       runtimeCapabilities = production.runtimeCapabilities;
       nodeHandler = production.handler;
     }
+    const selectedPreviewCapabilities =
+      options.preview?.runtimeCapabilities ?? runtimeCapabilities;
+    const previewHandler =
+      options.preview === undefined
+        ? undefined
+        : (dependencies.previewHandlerFactory ?? createPreviewAttemptHandler)({
+            heartbeatIntervalMillis:
+              options.preview.heartbeatIntervalMillis ??
+              options.heartbeatIntervalMillis,
+            invoker: options.preview.invoker,
+            leaseDurationSeconds:
+              options.preview.leaseDurationSeconds ??
+              options.leaseDurationSeconds,
+            runStore: options.preview.runStore,
+            telemetry:
+              dependencies.previewTelemetry ??
+              createProductionPreviewTelemetry(),
+            ...(selectedPreviewCapabilities === undefined
+              ? {}
+              : { runtimeCapabilities: selectedPreviewCapabilities }),
+            workerId: options.workerId,
+          });
     const consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
       queueName: QUEUE_NAME.nodeAttempts,
       redisUrl: options.redisUrl,
-      handler: queueHandler(
-        nodeHandler,
-        options.preview === undefined
-          ? undefined
-          : (dependencies.previewHandlerFactory ?? createPreviewAttemptHandler)(
-              {
-                heartbeatIntervalMillis:
-                  options.preview.heartbeatIntervalMillis ??
-                  options.heartbeatIntervalMillis,
-                invoker: options.preview.invoker,
-                leaseDurationSeconds:
-                  options.preview.leaseDurationSeconds ??
-                  options.leaseDurationSeconds,
-                runStore: options.preview.runStore,
-                telemetry:
-                  dependencies.previewTelemetry ??
-                  createProductionPreviewTelemetry(),
-                ...(options.preview.runtimeCapabilities === undefined
-                  ? runtimeCapabilities === undefined
-                    ? {}
-                    : { runtimeCapabilities }
-                  : {
-                      runtimeCapabilities: options.preview.runtimeCapabilities,
-                    }),
-                workerId: options.workerId,
-              },
-            ),
-      ),
+      handler: queueHandler(nodeHandler, previewHandler),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner: createQueueTraceRunner(),
     });
@@ -426,12 +425,19 @@ export async function createNodeAttemptRuntime(
       phase: 'drain',
     });
     let closePromise: Promise<void> | undefined;
+    const lifecycle = { terminal: false };
     return Object.freeze({
       consumer,
-      checkReadiness: (): Promise<void> =>
-        capabilityRuntime?.checkReadiness() ?? Promise.resolve(),
+      checkReadiness: async (): Promise<void> => {
+        assertNodeAttemptRuntimeOpen(lifecycle);
+        await capabilityRuntime?.checkReadiness();
+        assertNodeAttemptRuntimeOpen(lifecycle);
+      },
       close: (): Promise<void> => {
-        closePromise ??= closeNodeAttemptResources(ownedResources);
+        if (closePromise === undefined) {
+          lifecycle.terminal = true;
+          closePromise = closeNodeAttemptResources(ownedResources);
+        }
         return closePromise;
       },
     });

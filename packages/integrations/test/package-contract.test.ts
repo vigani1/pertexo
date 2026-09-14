@@ -1,6 +1,13 @@
 import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { describe, expect, it } from 'vitest';
+
+const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const execFileAsync = promisify(execFile);
 
 describe('integration package exports', () => {
   it('keeps KMS and credential code behind the server-only export', async () => {
@@ -33,5 +40,22 @@ describe('integration package exports', () => {
       expect(source).not.toContain('http-request/executor');
     }
     expect(serverEntry).toContain('http-request/executor');
+  });
+
+  it('keeps every provider browser entry transitively free of Node and server modules', async () => {
+    await expect(
+      execFileAsync(process.execPath, [
+        resolve(
+          packageDirectory,
+          '../../infrastructure/browser-entry-dependencies.mjs',
+        ),
+        '--root',
+        resolve(packageDirectory, '../..'),
+        'packages/integrations/src/index.ts',
+        'packages/integrations/src/email/index.ts',
+        'packages/integrations/src/http-request/index.ts',
+        'packages/integrations/src/slack/index.ts',
+      ]),
+    ).resolves.toMatchObject({ stderr: '' });
   });
 });

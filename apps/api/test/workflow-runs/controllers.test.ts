@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { WorkflowRunsController } from '../../src/workflow-runs/controllers.js';
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
+import { ApiDrainState } from '../../src/platform/health/drain-state.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
@@ -49,11 +50,11 @@ function sseReply() {
     headersSent: boolean;
     destroyed: boolean;
     chunks: string[];
-    setHeader(name: string, value: string): void;
-    flushHeaders(): void;
-    write(chunk: string): boolean;
-    end(): void;
-    destroy(): void;
+    setHeader: (name: string, value: string) => void;
+    flushHeaders: () => void;
+    write: (chunk: string) => boolean;
+    end: () => void;
+    destroy: () => void;
   };
   raw.statusCode = 0;
   raw.headersSent = false;
@@ -346,6 +347,193 @@ describe('workflow runs controller public seam', () => {
       createdAt: new Date('2026-08-21T12:00:00.000Z'),
       path: 'live_wakeup',
     });
+  });
+
+  it('delivers every frame and cleans the producer when visibility metrics throw', async () => {
+    const metricFailure = new Error('visibility recorder failed');
+    const visibilityMetrics = {
+      recordFirstEligibleFrame: vi.fn(() => {
+        throw metricFailure;
+      }),
+    };
+    const returned = vi.fn();
+    const stream = {
+      execute: vi.fn().mockResolvedValue({
+        async *[Symbol.asyncIterator]() {
+          try {
+            await Promise.resolve();
+            for (const sequence of [1, 2]) {
+              yield {
+                id: sequence,
+                event: 'run.started',
+                data: JSON.stringify({
+                  sequence,
+                  type: 'run.started',
+                  createdAt: '2026-08-21T12:00:00.000Z',
+                  payload: { schemaVersion: 1 },
+                }),
+                visibilityPath: 'live_wakeup' as const,
+              };
+            }
+          } finally {
+            returned();
+          }
+        },
+      }),
+    };
+    const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      stream as never,
+      { execute: vi.fn() } as never,
+      visibilityMetrics,
+    );
+    const reply = sseReply();
+
+    await instance.streamRunEvents(
+      request(),
+      { workspaceId, runId },
+      reply as never,
+    );
+
+    expect(reply.raw.chunks).toHaveLength(2);
+    expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledTimes(2);
+    expect(returned).toHaveBeenCalledOnce();
+    const end = vi.mocked(reply.raw.end);
+    expect(end).toHaveBeenCalledOnce();
+  });
+
+  it('ends a committed response on the cleanup budget but retains drain ownership until late cleanup settles', async () => {
+    vi.useFakeTimers();
+    const drainState = new ApiDrainState();
+    const heldReturn = Promise.withResolvers<IteratorResult<never>>();
+    const returnIterator = vi.fn(() => heldReturn.promise);
+    const stream = {
+      execute: vi.fn().mockResolvedValue({
+        [Symbol.asyncIterator]: () => ({
+          next: () =>
+            Promise.reject<IteratorResult<never>>(
+              new Error('producer read failed'),
+            ),
+          return: returnIterator,
+        }),
+      }),
+    };
+    const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      stream as never,
+      { execute: vi.fn() } as never,
+      { recordFirstEligibleFrame: vi.fn() },
+      drainState,
+    );
+    const reply = sseReply();
+    let streaming: Promise<void> | undefined;
+    try {
+      streaming = instance.streamRunEvents(
+        request(),
+        { workspaceId, runId },
+        reply as never,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(drainState.activeStreamCount()).toBe(1);
+      expect(returnIterator).toHaveBeenCalledOnce();
+      const end = vi.mocked(reply.raw.end);
+      expect(end).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await expect(streaming).resolves.toBeUndefined();
+      expect(reply.raw.destroyed).toBe(true);
+      expect(drainState.activeStreamCount()).toBe(1);
+
+      heldReturn.resolve({ done: true, value: undefined });
+      await vi.waitFor(() => {
+        expect(drainState.activeStreamCount()).toBe(0);
+      });
+    } finally {
+      heldReturn.resolve({ done: true, value: undefined });
+      await vi.runAllTimersAsync();
+      await streaming;
+      vi.useRealTimers();
+    }
+  });
+
+  it('releases request and drain ownership when SSE response preparation fails before producer acquisition', async () => {
+    const preparationFailure = new Error('flush headers failed');
+    const iteratorFactory = vi.fn();
+    const stream = {
+      execute: vi.fn().mockResolvedValue({
+        [Symbol.asyncIterator]: iteratorFactory,
+      }),
+    };
+    const drainState = new ApiDrainState();
+    const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      stream as never,
+      { execute: vi.fn() } as never,
+      { recordFirstEligibleFrame: vi.fn() },
+      drainState,
+    );
+    const selectedRequest = request();
+    const removeCloseListener = vi.spyOn(selectedRequest.raw, 'off');
+    const reply = sseReply();
+    reply.raw.flushHeaders = vi.fn(() => {
+      throw preparationFailure;
+    });
+
+    await expect(
+      instance.streamRunEvents(
+        selectedRequest,
+        { workspaceId, runId },
+        reply as never,
+      ),
+    ).rejects.toBe(preparationFailure);
+
+    expect(iteratorFactory).not.toHaveBeenCalled();
+    expect(removeCloseListener).toHaveBeenCalledOnce();
+    expect(drainState.activeStreamCount()).toBe(0);
+  });
+
+  it('ends and destroys a committed response when the producer iterator factory throws', async () => {
+    const iteratorFailure = new Error('producer iterator failed');
+    const stream = {
+      execute: vi.fn().mockResolvedValue({
+        [Symbol.asyncIterator]: () => {
+          throw iteratorFailure;
+        },
+      }),
+    };
+    const drainState = new ApiDrainState();
+    const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      stream as never,
+      { execute: vi.fn() } as never,
+      { recordFirstEligibleFrame: vi.fn() },
+      drainState,
+    );
+    const selectedRequest = request();
+    const removeCloseListener = vi.spyOn(selectedRequest.raw, 'off');
+    const reply = sseReply();
+
+    await expect(
+      instance.streamRunEvents(
+        selectedRequest,
+        { workspaceId, runId },
+        reply as never,
+      ),
+    ).resolves.toBeUndefined();
+
+    const end = vi.mocked(reply.raw.end);
+    expect(end).toHaveBeenCalledOnce();
+    expect(reply.raw.destroyed).toBe(true);
+    expect(removeCloseListener).toHaveBeenCalledOnce();
+    expect(drainState.activeStreamCount()).toBe(0);
   });
 
   it('forwards durable cancellation actor, reason, and trace context', async () => {

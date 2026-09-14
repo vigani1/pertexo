@@ -220,6 +220,19 @@ export function validateTransitionDelta(
       invocation,
     ]),
   );
+  const scopedInvocations = new Map<
+    string,
+    (typeof current.invocations)[number]
+  >();
+  for (const invocation of nextInvocations.values()) {
+    const key = serializeStoredExecutionJsonValue([
+      invocation.nodeId,
+      invocationScope(invocation, 'branchPath'),
+      invocationScope(invocation, 'iterationPath'),
+    ]);
+    // Array.find previously selected the first matching checkpoint entry.
+    if (!scopedInvocations.has(key)) scopedInvocations.set(key, invocation);
+  }
   for (const loop of plan.checkpoint.loops) {
     for (const ordinal of loop.activeOrdinals) {
       const iterationPath = [
@@ -227,15 +240,12 @@ export function validateTransitionDelta(
         { loopNodeId: loop.loopId, ordinal },
       ];
       for (const rootNodeId of loop.bodyRootNodeIds) {
-        const root = [...nextInvocations.values()].find(
-          (invocation) =>
-            invocation.nodeId === rootNodeId &&
-            serializeStoredExecutionJsonValue(
-              invocationScope(invocation, 'branchPath'),
-            ) === serializeStoredExecutionJsonValue(loop.branchPath) &&
-            serializeStoredExecutionJsonValue(
-              invocationScope(invocation, 'iterationPath'),
-            ) === serializeStoredExecutionJsonValue(iterationPath),
+        const root = scopedInvocations.get(
+          serializeStoredExecutionJsonValue([
+            rootNodeId,
+            loop.branchPath,
+            iterationPath,
+          ]),
         );
         if (
           root === undefined ||
@@ -300,6 +310,7 @@ export async function validateCheckpointOutputOwnership(
   client: PoolClient,
   workspaceId: string,
   runId: string,
+  currentCheckpoint: PersistedWorkflowCheckpoint,
   checkpoint: PersistedWorkflowCheckpoint,
   waitResumeKeys: ReadonlySet<string>,
 ): Promise<void> {
@@ -330,9 +341,16 @@ export async function validateCheckpointOutputOwnership(
     [workspaceId, runId, expected.map(({ invocationKey }) => invocationKey)],
   );
   const physical = new Map(rows.rows.map((row) => [row.invocation_key, row]));
+  const currentInvocations = new Map(
+    currentCheckpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
   const artifacts = new Set<string>();
   for (const invocation of expected) {
     const row = physical.get(invocation.invocationKey);
+    const previous = currentInvocations.get(invocation.invocationKey);
     const isLoopControl = checkpoint.loops.some(
       ({ controlInvocationKey }) =>
         controlInvocationKey === invocation.invocationKey,
@@ -343,18 +361,25 @@ export async function validateCheckpointOutputOwnership(
         : 'succeeded';
     const isSuspendedNodeWait =
       invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
+    const isStoppedSuspendedNodeWait =
+      previous?.status === 'waiting' &&
+      previous.waitKind === 'node_wait' &&
+      (invocation.status === 'canceled' || invocation.status === 'timed_out');
     const isWaitResume =
       invocation.status === 'running' &&
       invocation.waitKind === undefined &&
       waitResumeKeys.has(invocation.invocationKey);
     const expectedNodeStatus =
-      isSuspendedNodeWait || isWaitResume
+      isSuspendedNodeWait || isStoppedSuspendedNodeWait || isWaitResume
         ? 'waiting'
         : isLoopControl
           ? physicalLoopStatus
           : invocation.status;
     const expectedAttemptStatus =
-      isSuspendedNodeWait || isWaitResume || isLoopControl
+      isSuspendedNodeWait ||
+      isStoppedSuspendedNodeWait ||
+      isWaitResume ||
+      isLoopControl
         ? 'succeeded'
         : invocation.status;
     if (

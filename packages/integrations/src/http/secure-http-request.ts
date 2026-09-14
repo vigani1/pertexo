@@ -2,10 +2,11 @@ import { z } from 'zod';
 import { isSerializableHttpHeaderValue } from './header-value.js';
 import {
   SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
   failure,
+  inspectSecureHttpError,
 } from './secure-http-error.js';
 import type { SecureHttpRequest } from './secure-http.js';
+import { safeInstanceOf } from './unknown-error.js';
 
 const MAX_REQUEST_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 10_485_760;
@@ -28,7 +29,7 @@ const requestSchema = z
     maxResponseBytes: z.number(),
     sensitiveValues: z.array(z.string()).optional(),
     signal: z
-      .custom<AbortSignal>((value) => value instanceof AbortSignal)
+      .custom<AbortSignal>((value) => safeInstanceOf(value, AbortSignal))
       .optional(),
     beforeDispatch: z.custom<() => Promise<void>>(
       (value) => typeof value === 'function',
@@ -157,7 +158,8 @@ export function parseRequest(
       beforeDispatch: parsed.beforeDispatch,
     });
   } catch (error: unknown) {
-    if (error instanceof SecureHttpError) throw error;
+    const secureError = inspectSecureHttpError(error);
+    if (secureError !== undefined) throw secureError.error;
     throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, false, false, error);
   }
 }

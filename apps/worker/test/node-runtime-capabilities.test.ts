@@ -105,6 +105,39 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toThrow('Worker artifact capability is incomplete');
   });
 
+  it('preserves construction and synchronous owned-resource cleanup failures', async () => {
+    const cleanupError = new Error('injected synchronous Redis close failure');
+    const close = vi
+      .spyOn(RedisRateLimitRuntime.prototype, 'close')
+      .mockImplementationOnce(() => {
+        throw cleanupError;
+      });
+    try {
+      const result = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig, redisUrl: 'redis://localhost:6379/0' },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret: vi.fn(),
+            assertConnectionSecretCurrent: vi.fn(),
+          },
+        },
+      ).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(result).toBeInstanceOf(AggregateError);
+      expect((result as AggregateError).errors).toEqual([
+        expect.objectContaining({
+          message: 'Worker connection capability is incomplete',
+        }),
+        cleanupError,
+      ]);
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      close.mockRestore();
+    }
+  });
+
   it('closes partial capability assembly after a database authority failure', async () => {
     const databaseRuntime = createDatabaseRuntime(
       { ...databaseConfig, max: 2 },
@@ -166,19 +199,27 @@ describe('worker node runtime capabilities', () => {
     const close = vi
       .spyOn(RedisRateLimitRuntime.prototype, 'close')
       .mockRejectedValueOnce(new Error('injected Redis close failure'));
-    const runtime = await createWorkerNodeRuntimeCapabilities({
-      connectionEncryption: {
-        keyReference: 'alias/pertexo',
-        region: 'eu-central-1',
-      },
-      database: databaseConfig,
-      redisUrl: 'redis://localhost:6379/0',
-    });
+    try {
+      const runtime = await createWorkerNodeRuntimeCapabilities({
+        connectionEncryption: {
+          keyReference: 'alias/pertexo',
+          region: 'eu-central-1',
+        },
+        database: databaseConfig,
+        redisUrl: 'redis://localhost:6379/0',
+      });
 
-    await expect(runtime.close()).rejects.toThrow(
-      'Worker node runtime capability shutdown failed',
-    );
-    close.mockRestore();
+      const first = runtime.close();
+      expect(runtime.close()).toBe(first);
+      await expect(first).rejects.toThrow(
+        'Worker node runtime capability shutdown failed',
+      );
+      await expect(runtime.checkReadiness()).rejects.toThrow(
+        'Worker node runtime capabilities are closed',
+      );
+    } finally {
+      close.mockRestore();
+    }
   });
 
   it('binds JIT connection resolution and pre-dispatch currency checks to the attempt workspace', async () => {
@@ -249,6 +290,7 @@ describe('worker node runtime capabilities', () => {
       expectedProviderKey: 'http',
       workerId: 'worker-1',
       purpose: 'http.request.execute',
+      signal,
     });
     expect(consumeProviderLimit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -285,6 +327,7 @@ describe('worker node runtime capabilities', () => {
       expectedProviderKey: 'http',
       expectedAuthType: 'http_headers',
       secretVersionId,
+      signal,
     });
     await runtime.close();
   });
@@ -323,6 +366,119 @@ describe('worker node runtime capabilities', () => {
       }),
     ).rejects.toEqual(new ProviderExecutionRateLimitError(9));
     expect(resolveConnectionSecret).not.toHaveBeenCalled();
+    await runtime.close();
+  });
+
+  it.each([true, false])(
+    'gives cancellation precedence when rate admission settles late with allowed=%s',
+    async (allowed) => {
+      const admission = Promise.withResolvers<
+        | { allowed: true }
+        | {
+            allowed: false;
+            retryAfterSeconds: number;
+            limitedDimension: 'connection';
+          }
+      >();
+      const resolveConnectionSecret = vi.fn();
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret,
+            assertConnectionSecretCurrent: vi.fn(),
+          },
+          connectionEncryption: { open: vi.fn() },
+          providerRateLimiter: { consume: () => admission.promise },
+        },
+      );
+      const connections = runtime.factories.connections?.(context);
+      if (connections === undefined)
+        throw new Error('connection capability missing');
+      const controller = new AbortController();
+      const resolving = connections.resolve({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        purpose: 'http.request.execute',
+        signal: controller.signal,
+      });
+      controller.abort();
+      admission.resolve(
+        allowed
+          ? { allowed: true }
+          : {
+              allowed: false,
+              retryAfterSeconds: 3,
+              limitedDimension: 'connection',
+            },
+      );
+
+      await expect(resolving).rejects.toMatchObject({ name: 'AbortError' });
+      expect(resolveConnectionSecret).not.toHaveBeenCalled();
+      await runtime.close();
+    },
+  );
+
+  it('propagates cancellation into resolution and rechecks it before decryption', async () => {
+    const resolvedSecret = Promise.withResolvers<{
+      connection: {
+        id: string;
+        workspaceId: string;
+        providerKey: string;
+        authType: 'http_headers';
+      };
+      secretVersionId: string;
+      sealed: never;
+    }>();
+    const resolveConnectionSecret = vi
+      .fn()
+      .mockReturnValue(resolvedSecret.promise);
+    const open = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret: resolveConnectionSecret as never,
+          assertConnectionSecretCurrent: vi.fn(),
+        },
+        connectionEncryption: { open },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections === undefined)
+      throw new Error('connection capability missing');
+    const controller = new AbortController();
+    const resolving = connections.resolve({
+      connectionId,
+      expectedProviderKey: 'http',
+      expectedAuthType: 'http_headers',
+      purpose: 'http.request.execute',
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => {
+      expect(resolveConnectionSecret).toHaveBeenCalledOnce();
+    });
+    expect(resolveConnectionSecret).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: controller.signal }),
+    );
+    controller.abort();
+    resolvedSecret.resolve({
+      connection: {
+        id: connectionId,
+        workspaceId,
+        providerKey: 'http',
+        authType: 'http_headers',
+      },
+      secretVersionId,
+      sealed: {} as never,
+    });
+
+    await expect(resolving).rejects.toMatchObject({ name: 'AbortError' });
+    expect(open).not.toHaveBeenCalled();
     await runtime.close();
   });
 
@@ -465,6 +621,89 @@ describe('worker node runtime capabilities', () => {
       connections.resolve({ ...request, signal: secondController.signal }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(secret.every((byte) => byte === 0)).toBe(true);
+    await runtime.close();
+  });
+
+  it('awaits late decryption, clears its secret, and refuses it after cancellation', async () => {
+    const decrypted = Promise.withResolvers<Uint8Array>();
+    const open = vi.fn().mockReturnValue(decrypted.promise);
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret: vi.fn().mockResolvedValue({
+            connection: {
+              id: connectionId,
+              workspaceId,
+              providerKey: 'http',
+              authType: 'http_headers',
+            },
+            secretVersionId,
+            sealed: {},
+          }),
+          assertConnectionSecretCurrent: vi.fn(),
+        },
+        connectionEncryption: { open },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections === undefined)
+      throw new Error('connection capability missing');
+    const controller = new AbortController();
+    const resolving = connections.resolve({
+      connectionId,
+      expectedProviderKey: 'http',
+      expectedAuthType: 'http_headers',
+      purpose: 'http.request.execute',
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => {
+      expect(open).toHaveBeenCalledOnce();
+    });
+    controller.abort();
+    const secret = new TextEncoder().encode('late-secret');
+    decrypted.resolve(secret);
+
+    await expect(resolving).rejects.toMatchObject({ name: 'AbortError' });
+    expect(secret.every((byte) => byte === 0)).toBe(true);
+    await runtime.close();
+  });
+
+  it('preserves a hostile unknown database rejection without inspecting it unsafely', async () => {
+    const hostile = new Proxy(Object.create(null) as object, {
+      getPrototypeOf: () => {
+        throw new Error('hostile prototype');
+      },
+    });
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret: vi.fn().mockRejectedValue(hostile),
+          assertConnectionSecretCurrent: vi.fn(),
+        },
+        connectionEncryption: { open: vi.fn() },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections === undefined)
+      throw new Error('connection capability missing');
+
+    await expect(
+      connections.resolve({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        purpose: 'http.request.execute',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(hostile);
     await runtime.close();
   });
 
@@ -709,6 +948,86 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it.each([
+    ['empty', [] as number[]],
+    ['short writes', [1, 2, 3]],
+  ] as const)(
+    'supports %s while preserving the exact byte count',
+    async (mode, bytes) => {
+      const spoolDirectory = await mkdtemp(
+        path.join(tmpdir(), 'pertexo-capability-test-'),
+      );
+      temporaryDirectories.push(spoolDirectory);
+      const uploaded: number[] = [];
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          artifactPersistence: {
+            createPending: vi.fn().mockResolvedValue(undefined),
+            finalize: vi.fn().mockResolvedValue(undefined),
+          },
+          artifactStore: {
+            put: async (request) => {
+              for await (const chunk of request.body) {
+                const value: unknown = chunk;
+                if (!(value instanceof Uint8Array))
+                  throw new TypeError('artifact chunk is not bytes');
+                uploaded.push(...value);
+              }
+              return {
+                artifactId: request.artifactId,
+                workspaceId: request.workspaceId,
+                byteLength: request.byteLength,
+                mediaType: request.mediaType,
+                sha256: request.sha256,
+              };
+            },
+          },
+          ...(mode === 'short writes'
+            ? {
+                artifactSpoolOperations: {
+                  openFile: async (filePath: string) => {
+                    const file = await open(filePath, 'wx', 0o600);
+                    const write = file.write.bind(file);
+                    file.write = ((
+                      buffer: Uint8Array,
+                      offset: number,
+                      _length: number,
+                      position: number | null,
+                    ) => write(buffer, offset, 1, position)) as never;
+                    return file;
+                  },
+                  removeDirectory: (directory: string) =>
+                    rm(directory, { recursive: true, force: true }),
+                },
+              }
+            : {}),
+          spoolDirectory,
+        },
+      );
+      const artifacts = runtime.factories.artifacts?.(context);
+      if (artifacts === undefined)
+        throw new Error('artifact capability missing');
+      const source = Uint8Array.from(bytes);
+
+      const reference = await artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          if (source.byteLength > 0) yield source;
+        })(),
+        maxBytes: Math.max(1, source.byteLength),
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      });
+      expect(reference.byteLength).toBe(source.byteLength);
+      expect(uploaded).toEqual(bytes);
+      expect(source.every((byte) => byte === 0)).toBe(true);
+      expect(await readdir(spoolDirectory)).toEqual([]);
+      await runtime.close();
+    },
+  );
+
   it('does not upload or leave spool data when the bounded stream overflows', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -728,12 +1047,13 @@ describe('worker node runtime capabilities', () => {
     );
     const artifacts = runtime.factories.artifacts?.(context);
     if (artifacts === undefined) throw new Error('artifact capability missing');
+    const overflow = new Uint8Array([1, 2, 3]);
 
     await expect(
       artifacts.write({
         body: (async function* (): AsyncGenerator<Uint8Array> {
           await Promise.resolve();
-          yield new Uint8Array([1, 2, 3]);
+          yield overflow;
         })(),
         maxBytes: 2,
         mediaType: 'application/octet-stream',
@@ -741,6 +1061,286 @@ describe('worker node runtime capabilities', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(RangeError);
+    expect(overflow).toEqual(new Uint8Array([0, 0, 0]));
+    expect(put).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('requests source return on abort, awaits the pending chunk, and clears it', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const pendingChunk = Promise.withResolvers<IteratorResult<Uint8Array>>();
+    const next = vi.fn().mockReturnValue(pendingChunk.promise);
+    const returnIterator = vi.fn().mockResolvedValue({
+      done: true as const,
+      value: undefined,
+    });
+    const put = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const controller = new AbortController();
+    const chunk = new Uint8Array([7, 8]);
+    const written = artifacts.write({
+      body: {
+        [Symbol.asyncIterator]: () => ({ next, return: returnIterator }),
+      },
+      maxBytes: 2,
+      mediaType: 'application/octet-stream',
+      purpose: 'node-output',
+      signal: controller.signal,
+    });
+    const settled = vi.fn();
+    void written.then(settled, settled);
+    await vi.waitFor(() => {
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    controller.abort();
+    await vi.waitFor(() => {
+      expect(returnIterator).toHaveBeenCalledOnce();
+    });
+    expect(settled).not.toHaveBeenCalled();
+    pendingChunk.resolve({ done: false, value: chunk });
+    await expect(written).rejects.toMatchObject({ name: 'AbortError' });
+    expect(chunk).toEqual(new Uint8Array([0, 0]));
+    expect(put).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('preserves source and return failures after clearing an overflowing chunk', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const returnError = new Error('artifact source return failed');
+    const overflow = new Uint8Array([1, 2]);
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put: vi.fn() },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    const result = await artifacts
+      .write({
+        body: {
+          [Symbol.asyncIterator]: () => ({
+            next: vi
+              .fn()
+              .mockResolvedValueOnce({ done: false, value: overflow }),
+            return: vi.fn().mockRejectedValue(returnError),
+          }),
+        },
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(result).toBeInstanceOf(AggregateError);
+    expect((result as AggregateError).errors[0]).toBeInstanceOf(RangeError);
+    expect((result as AggregateError).errors[1]).toBe(returnError);
+    expect(overflow).toEqual(new Uint8Array([0, 0]));
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('closes an upload stream when the artifact store throws before reading', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const uploadError = new Error('artifact upload rejected before read');
+    let uploadBody:
+      | (PutArtifactRequest['body'] & {
+          closed: boolean;
+          destroyed: boolean;
+        })
+      | undefined;
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn().mockResolvedValue(undefined),
+          finalize: vi.fn(),
+        },
+        artifactStore: {
+          put: (request) => {
+            uploadBody = request.body;
+            throw uploadError;
+          },
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(uploadError);
+    expect(uploadBody).toMatchObject({ closed: true, destroyed: true });
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('closes a late upload stream and skips finalize when cancellation wins', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const uploadResult = Promise.withResolvers<{
+      artifactId: string;
+      workspaceId: string;
+      byteLength: number;
+      mediaType: string;
+      sha256: string;
+    }>();
+    let uploadBody:
+      | (PutArtifactRequest['body'] & {
+          closed: boolean;
+          destroyed: boolean;
+        })
+      | undefined;
+    const put = vi.fn((request: PutArtifactRequest) => {
+      uploadBody = request.body;
+      return uploadResult.promise;
+    });
+    const finalize = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn().mockResolvedValue(undefined),
+          finalize,
+        },
+        artifactStore: { put },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const controller = new AbortController();
+    const writing = artifacts.write({
+      body: (async function* (): AsyncGenerator<Uint8Array> {
+        await Promise.resolve();
+        yield new Uint8Array([1]);
+      })(),
+      maxBytes: 1,
+      mediaType: 'application/octet-stream',
+      purpose: 'node-output',
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => {
+      expect(put).toHaveBeenCalledOnce();
+    });
+    const request = put.mock.calls[0]?.[0];
+    if (request === undefined) throw new Error('upload request missing');
+
+    controller.abort();
+    uploadResult.resolve({
+      artifactId: request.artifactId,
+      workspaceId: request.workspaceId,
+      byteLength: request.byteLength,
+      mediaType: request.mediaType,
+      sha256: request.sha256,
+    });
+    await expect(writing).rejects.toMatchObject({ name: 'AbortError' });
+    expect(uploadBody).toMatchObject({ closed: true, destroyed: true });
+    expect(finalize).not.toHaveBeenCalled();
+    expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('awaits an in-flight spool write after cancellation and then clears its chunk', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const writeResult = Promise.withResolvers<{ bytesWritten: number }>();
+    const write = vi.fn().mockReturnValue(writeResult.promise);
+    const put = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(),
+          finalize: vi.fn(),
+        },
+        artifactStore: { put },
+        artifactSpoolOperations: {
+          openFile: async (filePath) => {
+            const file = await open(filePath, 'wx', 0o600);
+            file.write = write as never;
+            return file;
+          },
+          removeDirectory: (directory) =>
+            rm(directory, { recursive: true, force: true }),
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const controller = new AbortController();
+    const chunk = new Uint8Array([9]);
+    const writing = artifacts.write({
+      body: (async function* (): AsyncGenerator<Uint8Array> {
+        await Promise.resolve();
+        yield chunk;
+      })(),
+      maxBytes: 1,
+      mediaType: 'application/octet-stream',
+      purpose: 'node-output',
+      signal: controller.signal,
+    });
+    const settled = vi.fn();
+    void writing.then(settled, settled);
+    await vi.waitFor(() => {
+      expect(write).toHaveBeenCalledOnce();
+    });
+
+    controller.abort();
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+    expect(chunk).toEqual(new Uint8Array([9]));
+    writeResult.resolve({ bytesWritten: 1 });
+    await expect(writing).rejects.toMatchObject({ name: 'AbortError' });
+    expect(chunk).toEqual(new Uint8Array([0]));
     expect(put).not.toHaveBeenCalled();
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
@@ -912,6 +1512,73 @@ describe('worker node runtime capabilities', () => {
       cause: undefined,
     });
     expect(await readdir(spoolDirectory)).toEqual([]);
+    await runtime.close();
+  });
+
+  it('preserves sole and combined spool-directory cleanup failures', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const cleanupError = new Error('spool directory removal failed');
+    const operationError = new Error('pending metadata failed');
+    const createPending = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(operationError);
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending,
+          finalize: vi.fn().mockResolvedValue(undefined),
+        },
+        artifactStore: {
+          put: async (request) => {
+            for await (const chunk of request.body) {
+              // Consume the owned upload stream before acknowledging storage.
+              void chunk;
+            }
+            return {
+              artifactId: request.artifactId,
+              workspaceId: request.workspaceId,
+              byteLength: request.byteLength,
+              mediaType: request.mediaType,
+              sha256: request.sha256,
+            };
+          },
+        },
+        artifactSpoolOperations: {
+          openFile: (filePath) => open(filePath, 'wx', 0o600),
+          removeDirectory: vi.fn().mockRejectedValue(cleanupError),
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const write = () =>
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      });
+
+    await expect(write()).rejects.toBe(cleanupError);
+    const combined = await write().then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(combined).toBeInstanceOf(AggregateError);
+    expect((combined as AggregateError).errors).toEqual([
+      operationError,
+      cleanupError,
+    ]);
     await runtime.close();
   });
 
@@ -1109,6 +1776,41 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it.each([new Date(Number.NaN), new Date(8.64e15)])(
+    'rejects an invalid or overflowing artifact clock %s before persistence',
+    async (clock) => {
+      const createPending = vi.fn();
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig, artifactRetentionMillis: 60_000 },
+        {
+          artifactPersistence: { createPending, finalize: vi.fn() },
+          artifactStore: { put: vi.fn() },
+          now: () => clock,
+        },
+      );
+      try {
+        const artifacts = runtime.factories.artifacts?.(context);
+        if (artifacts === undefined)
+          throw new Error('artifact capability missing');
+        await expect(
+          artifacts.write({
+            body: (async function* (): AsyncGenerator<Uint8Array> {
+              await Promise.resolve();
+              yield new Uint8Array([1]);
+            })(),
+            maxBytes: 1,
+            mediaType: 'application/octet-stream',
+            purpose: 'node-output',
+            signal: new AbortController().signal,
+          }),
+        ).rejects.toBeInstanceOf(TypeError);
+        expect(createPending).not.toHaveBeenCalled();
+      } finally {
+        await runtime.close();
+      }
+    },
+  );
+
   it.each([0, 1.5, 10_485_761])(
     'rejects invalid artifact byte limit %s',
     async (maxBytes) => {
@@ -1176,43 +1878,55 @@ describe('worker node runtime capabilities', () => {
     },
   );
 
-  it('rejects incompatible artifact-store metadata and keeps readiness optional', async () => {
-    const runtime = await createWorkerNodeRuntimeCapabilities(
-      { database: databaseConfig },
-      {
-        artifactPersistence: {
-          createPending: vi.fn(() => Promise.resolve()),
-          finalize: vi.fn(),
+  it.each([
+    ['artifactId', 'wrong-artifact'],
+    ['workspaceId', 'wrong-workspace'],
+    ['byteLength', 2],
+    ['mediaType', 'wrong/type'],
+    ['sha256', '0'.repeat(64)],
+  ] as const)(
+    'rejects incompatible artifact-store %s metadata and keeps readiness optional',
+    async (field, value) => {
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          artifactPersistence: {
+            createPending: vi.fn(() => Promise.resolve()),
+            finalize: vi.fn(),
+          },
+          artifactStore: {
+            put: (request) => {
+              const uploaded = {
+                artifactId: request.artifactId,
+                workspaceId: request.workspaceId,
+                byteLength: request.byteLength,
+                mediaType: request.mediaType,
+                sha256: request.sha256,
+              };
+              return Promise.resolve({ ...uploaded, [field]: value } as never);
+            },
+          },
+          artifactId: () => artifactId,
         },
-        artifactStore: {
-          put: (request) =>
-            Promise.resolve({
-              artifactId: 'wrong',
-              workspaceId: request.workspaceId,
-              byteLength: request.byteLength,
-              mediaType: request.mediaType,
-              sha256: request.sha256,
-            }),
-        },
-        artifactId: () => artifactId,
-      },
-    );
-    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
-    const artifacts = runtime.factories.artifacts?.(context);
-    if (artifacts === undefined) throw new Error('artifact capability missing');
-    await expect(
-      artifacts.write({
-        body: (async function* (): AsyncGenerator<Uint8Array> {
-          await Promise.resolve();
-          yield new Uint8Array([1]);
-        })(),
-        maxBytes: 1,
-        mediaType: 'text/plain',
-        purpose: 'test',
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toThrow('Artifact store returned incompatible metadata');
-    await runtime.close();
-    await runtime.close();
-  });
+      );
+      await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+      const artifacts = runtime.factories.artifacts?.(context);
+      if (artifacts === undefined)
+        throw new Error('artifact capability missing');
+      await expect(
+        artifacts.write({
+          body: (async function* (): AsyncGenerator<Uint8Array> {
+            await Promise.resolve();
+            yield new Uint8Array([1]);
+          })(),
+          maxBytes: 1,
+          mediaType: 'text/plain',
+          purpose: 'test',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Artifact store returned incompatible metadata');
+      await runtime.close();
+      await runtime.close();
+    },
+  );
 });

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
 import {
@@ -73,7 +73,6 @@ async function readReplicaIdentity(): Promise<{
 beforeAll(async () => {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
@@ -95,6 +94,24 @@ beforeAll(async () => {
   });
 }, 60_000);
 
+beforeEach(async () => {
+  await migration.query('begin');
+  try {
+    await migration.query('set local role pertexo_owner');
+    await migration.query(`
+      update app.regional_write_admission
+         set status='unavailable',replica_identity_status='missing',
+             replica_session_count=0,replay_lag_millis=null,observed_at=null,
+             updated_at=clock_timestamp()
+       where singleton
+    `);
+    await migration.query('commit');
+  } catch (error: unknown) {
+    await migration.query('rollback').catch(() => undefined);
+    throw error;
+  }
+});
+
 afterAll(async () => {
   await Promise.all([api.end(), maintenance.end(), migration.end()]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
@@ -106,6 +123,55 @@ afterAll(async () => {
 });
 
 describe('regional write admission fence', () => {
+  it('removes the old overload and exposes only the exact maintenance function', async () => {
+    await migration.query('begin');
+    try {
+      await migration.query('set local role pertexo_owner');
+      const result = await migration.query<{
+        api_execute: boolean;
+        maintenance_execute: boolean;
+        new_signature: string;
+        old_signature: string | null;
+        owner: string;
+        proconfig: string[];
+        prosecdef: boolean;
+      }>(`
+      select
+        to_regprocedure(
+          'app.record_regional_replica_lag(varchar,varchar,bigint)'
+        )::text old_signature,
+        to_regprocedure(
+          'app.record_regional_replica_lag(varchar,varchar,bigint,integer)'
+        )::text new_signature,
+        pg_get_userbyid(proc.proowner) owner,proc.prosecdef,proc.proconfig,
+        has_function_privilege(
+          'pertexo_maintenance',proc.oid,'execute'
+        ) maintenance_execute,
+        has_function_privilege('pertexo_api',proc.oid,'execute') api_execute
+      from pg_proc proc
+      where proc.oid=to_regprocedure(
+        'app.record_regional_replica_lag(varchar,varchar,bigint,integer)'
+      )
+      `);
+      expect(result.rows).toEqual([
+        {
+          api_execute: false,
+          maintenance_execute: true,
+          new_signature:
+            'app.record_regional_replica_lag(character varying,character varying,bigint,integer)',
+          old_signature: null,
+          owner: 'pertexo_owner',
+          proconfig: ['search_path=pg_catalog, app', 'row_security=on'],
+          prosecdef: true,
+        },
+      ]);
+      await migration.query('commit');
+    } catch (error: unknown) {
+      await migration.query('rollback').catch(() => undefined);
+      throw error;
+    }
+  });
+
   it('keeps the catalog audit at startup and steady readiness bounded', async () => {
     await expect(
       checkDatabaseReadiness(api, {
@@ -114,8 +180,9 @@ describe('regional write admission fence', () => {
       }),
     ).resolves.toMatchObject({ role: 'pertexo_api' });
 
-    await migration.query('begin');
+    let operationError: unknown;
     try {
+      await migration.query('begin');
       await migration.query('set local role pertexo_owner');
       await migration.query(
         'alter function app.assert_regional_write_admission() set row_security=off',
@@ -127,19 +194,39 @@ describe('regional write admission fence', () => {
       await expect(checkDatabaseReadiness(api)).rejects.toThrow(
         'Regional write admission persistence is incompatible',
       );
-    } finally {
+    } catch (error: unknown) {
+      operationError = error;
       await migration.query('rollback').catch(() => undefined);
-      await migration.query('begin').catch(() => undefined);
-      await migration
-        .query('set local role pertexo_owner')
-        .catch(() => undefined);
-      await migration
-        .query(
-          'alter function app.assert_regional_write_admission() set row_security=on',
-        )
-        .catch(() => undefined);
-      await migration.query('commit').catch(() => undefined);
     }
+    let restorationError: unknown;
+    try {
+      await migration.query('begin');
+      await migration.query('set local role pertexo_owner');
+      await migration.query(
+        'alter function app.assert_regional_write_admission() set row_security=on',
+      );
+      await migration.query('commit');
+    } catch (error: unknown) {
+      restorationError = error;
+      await migration.query('rollback').catch(() => undefined);
+    }
+    if (operationError !== undefined && restorationError !== undefined)
+      throw new AggregateError(
+        [operationError, restorationError],
+        'Regional admission audit and schema restoration both failed',
+      );
+    if (restorationError !== undefined)
+      throw restorationError instanceof Error
+        ? restorationError
+        : new Error('Regional admission schema restoration failed', {
+            cause: restorationError,
+          });
+    if (operationError !== undefined)
+      throw operationError instanceof Error
+        ? operationError
+        : new Error('Regional admission audit failed', {
+            cause: operationError,
+          });
   });
 
   it('starts unavailable and opens only below the five-minute bound', async () => {

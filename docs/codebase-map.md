@@ -6,6 +6,11 @@ authoritative; this map describes the current implementation, not a new layer
 to build. The [structure audit](./repository-structure-audit.md) records the
 review and verification behind the latest cleanup.
 
+The broader live review is tracked in the
+[whole-codebase implementation record](./whole-codebase-implementation-progress.md).
+Its open Q01–Q04 producer/isolation gates qualify this map's dated Q9 evidence;
+they do not invalidate the ownership routes below.
+
 ## Applications: process ownership
 
 | Application | Start reading | Responsibility and internal organization |

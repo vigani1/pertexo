@@ -1,22 +1,14 @@
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { mkdtemp, open, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-
 import {
   createDualRegionArtifactStore,
   type ArtifactStore,
   type DualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
-  artifactStorageKey,
   createWorkerConnectionResolutionDatabase,
   createPendingArtifact,
   createPendingPreviewArtifact,
   createWorkspaceDatabase,
   finalizeArtifactUpload,
-  generatePersistedId,
   type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
   type DatabaseRuntime,
@@ -28,26 +20,29 @@ import {
   type AwsConnectionEnvelopeEncryptionRuntime,
   type ConnectionEnvelopeEncryption,
 } from '@pertexo/integrations/server';
-import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
-import type {
-  NodeExecutionCapabilityContext,
-  NodeExecutionCapabilityFactories,
-} from './node-execution-capabilities.js';
+import type { NodeExecutionCapabilityFactories } from './node-execution-capabilities.js';
 import {
   createProviderConnectionRuntimeFactory,
   type ProviderRateLimiter,
 } from './provider-connection-runtime.js';
 import {
-  artifactExpiry,
-  assertArtifactByteLimit,
-  assertUploadedArtifactMatches,
   MAXIMUM_ARTIFACT_RETENTION_MILLIS,
   MINIMUM_ARTIFACT_RETENTION_MILLIS,
 } from './node-artifact-policy.js';
+import {
+  createNodeArtifactRuntimeFactory,
+  type ArtifactSpoolOperations,
+  type WorkerArtifactPersistence,
+} from './node-artifact-runtime.js';
 
 const DEFAULT_ARTIFACT_RETENTION_MILLIS = 30 * 24 * 60 * 60_000;
+
+function assertCapabilityRuntimeOpen(lifecycle: { terminal: boolean }): void {
+  if (lifecycle.terminal)
+    throw new Error('Worker node runtime capabilities are closed');
+}
 
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
@@ -69,10 +64,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
-  artifactSpoolOperations?: Readonly<{
-    openFile(path: string): ReturnType<typeof open>;
-    removeDirectory(path: string): Promise<void>;
-  }>;
+  artifactSpoolOperations?: ArtifactSpoolOperations;
   providerRateLimiter?: ProviderRateLimiter;
 }>;
 
@@ -81,214 +73,6 @@ export type WorkerNodeRuntimeCapabilities = Readonly<{
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }>;
-
-type ArtifactDescriptor = Readonly<{
-  artifactId: string;
-  workspaceId: string;
-  byteLength: number;
-  mediaType: string;
-  sha256: string;
-  storageKey: string;
-  previewRunId?: string;
-}>;
-
-interface WorkerArtifactPersistence {
-  createPending(
-    input: ArtifactDescriptor &
-      Readonly<{ expiresAt: Date; purpose: string; signal: AbortSignal }>,
-  ): Promise<void>;
-  finalize(
-    input: ArtifactDescriptor & Readonly<{ signal: AbortSignal }>,
-  ): Promise<void>;
-}
-
-type SpooledArtifact = Readonly<{
-  byteLength: number;
-  sha256: string;
-}>;
-function abortError(): DOMException {
-  return new DOMException('The operation was aborted', 'AbortError');
-}
-
-function assertNotAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw abortError();
-}
-
-async function writeAll(
-  file: Awaited<ReturnType<typeof open>>,
-  chunk: Uint8Array,
-): Promise<void> {
-  let offset = 0;
-  while (offset < chunk.byteLength) {
-    const result = await file.write(
-      chunk,
-      offset,
-      chunk.byteLength - offset,
-      null,
-    );
-    if (result.bytesWritten <= 0)
-      throw new Error('Artifact spool made no write progress');
-    offset += result.bytesWritten;
-  }
-}
-
-async function completeWithCleanup<T>(
-  operation: () => Promise<T>,
-  cleanup: () => Promise<void>,
-  combinedFailureMessage: string,
-): Promise<T> {
-  let result: T | undefined;
-  let operationFailed = false;
-  let operationError: unknown;
-  try {
-    result = await operation();
-  } catch (error) {
-    operationFailed = true;
-    operationError = error;
-  }
-  try {
-    await cleanup();
-  } catch (cleanupError) {
-    if (operationFailed)
-      throw new AggregateError(
-        [operationError, cleanupError],
-        combinedFailureMessage,
-      );
-    throw cleanupError instanceof Error
-      ? cleanupError
-      : new Error('Artifact cleanup failed with a non-Error value', {
-          cause: cleanupError,
-        });
-  }
-  if (operationFailed)
-    throw operationError instanceof Error
-      ? operationError
-      : new Error('Artifact operation failed with a non-Error value', {
-          cause: operationError,
-        });
-  return result as T;
-}
-
-async function spoolArtifactBody(
-  body: AsyncIterable<Uint8Array>,
-  maxBytes: number,
-  signal: AbortSignal,
-  spoolPath: string,
-  openFile: NonNullable<
-    WorkerNodeRuntimeCapabilityDependencies['artifactSpoolOperations']
-  >['openFile'],
-): Promise<SpooledArtifact> {
-  const digest = createHash('sha256');
-  let byteLength = 0;
-  const file = await openFile(spoolPath);
-  await completeWithCleanup(
-    async () => {
-      for await (const chunk of body) {
-        assertNotAborted(signal);
-        byteLength += chunk.byteLength;
-        if (byteLength > maxBytes)
-          throw new RangeError('Node artifact exceeds its byte limit');
-        try {
-          digest.update(chunk);
-          await writeAll(file, chunk);
-        } finally {
-          chunk.fill(0);
-        }
-      }
-      await file.sync();
-    },
-    () => file.close(),
-    'Artifact spool write and file close both failed',
-  );
-  return Object.freeze({ byteLength, sha256: digest.digest('hex') });
-}
-
-function artifactFactory(
-  persistence: WorkerArtifactPersistence,
-  store: Pick<ArtifactStore, 'put'>,
-  retentionMillis: number,
-  artifactId: () => string,
-  now: () => Date,
-  spoolDirectory: string,
-  spoolOperations: NonNullable<
-    WorkerNodeRuntimeCapabilityDependencies['artifactSpoolOperations']
-  >,
-): (context: NodeExecutionCapabilityContext) => NodeArtifactRuntime {
-  return (context) =>
-    Object.freeze({
-      write: async (input: Parameters<NodeArtifactRuntime['write']>[0]) => {
-        assertArtifactByteLimit(input.maxBytes);
-        assertNotAborted(input.signal);
-        const directory = await mkdtemp(
-          path.join(spoolDirectory, 'pertexo-node-artifact-'),
-        );
-        const spoolPath = path.join(directory, 'body');
-        return completeWithCleanup(
-          async () => {
-            const spooled = await spoolArtifactBody(
-              input.body,
-              input.maxBytes,
-              input.signal,
-              spoolPath,
-              spoolOperations.openFile,
-            );
-            assertNotAborted(input.signal);
-            const id = artifactId();
-            const storageKey = artifactStorageKey(context.workspaceId, id);
-            const createdAt = now();
-            const descriptor: ArtifactDescriptor = Object.freeze({
-              artifactId: id,
-              workspaceId: context.workspaceId,
-              byteLength: spooled.byteLength,
-              mediaType: input.mediaType,
-              sha256: spooled.sha256,
-              storageKey,
-              ...(context.previewRunId === undefined
-                ? {}
-                : { previewRunId: context.previewRunId }),
-            });
-            await persistence.createPending({
-              ...descriptor,
-              expiresAt: artifactExpiry(
-                createdAt,
-                retentionMillis,
-                context.artifactRetentionDeadline,
-              ),
-              purpose: input.purpose,
-              signal: input.signal,
-            });
-            const uploaded = await store.put({
-              artifactId: descriptor.artifactId,
-              workspaceId: descriptor.workspaceId,
-              byteLength: descriptor.byteLength,
-              mediaType: descriptor.mediaType,
-              sha256: descriptor.sha256,
-              body: createReadStream(spoolPath),
-              signal: input.signal,
-            });
-            assertUploadedArtifactMatches(uploaded, descriptor);
-            await persistence.finalize({
-              artifactId: descriptor.artifactId,
-              workspaceId: descriptor.workspaceId,
-              byteLength: descriptor.byteLength,
-              mediaType: descriptor.mediaType,
-              sha256: descriptor.sha256,
-              storageKey: descriptor.storageKey,
-              signal: input.signal,
-            });
-            return Object.freeze({
-              artifactId: id,
-              byteLength: spooled.byteLength,
-              mediaType: input.mediaType,
-              sha256: spooled.sha256,
-            });
-          },
-          () => spoolOperations.removeDirectory(directory),
-          'Artifact write failed and spool cleanup was incomplete',
-        );
-      },
-    });
-}
 
 function artifactPersistence(
   database: WorkspaceDatabase,
@@ -376,25 +160,32 @@ export async function createWorkerNodeRuntimeCapabilities(
     artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
   } = {};
   let closePromise: Promise<void> | undefined;
+  const lifecycle = { terminal: false };
   let checkArtifactReadiness: (() => Promise<unknown>) | undefined;
   const closeOwnedResources = (): Promise<void> => {
-    closePromise ??= (async (): Promise<void> => {
-      const results = await Promise.allSettled([
-        ownedConnectionDatabase?.close(),
-        ownedArtifactDatabase?.close(),
-        Promise.resolve(encryptionRuntime?.close()),
-        Promise.resolve(ownedArtifactStore?.close()),
-        ownedProviderRateLimiter?.close(),
-      ]);
-      const failures = results.flatMap((result) =>
-        result.status === 'rejected' ? [result.reason as unknown] : [],
-      );
-      if (failures.length > 0)
-        throw new AggregateError(
-          failures,
-          'Worker node runtime capability shutdown failed',
+    if (closePromise === undefined) {
+      lifecycle.terminal = true;
+      closePromise = (async (): Promise<void> => {
+        const closeOperations = [
+          ownedConnectionDatabase?.close.bind(ownedConnectionDatabase),
+          ownedArtifactDatabase?.close.bind(ownedArtifactDatabase),
+          encryptionRuntime?.close.bind(encryptionRuntime),
+          ownedArtifactStore?.close.bind(ownedArtifactStore),
+          ownedProviderRateLimiter?.close.bind(ownedProviderRateLimiter),
+        ].filter((close): close is () => unknown => Boolean(close));
+        const results = await Promise.allSettled(
+          closeOperations.map((close) => Promise.resolve().then(close)),
         );
-    })();
+        const failures = results.flatMap((result) =>
+          result.status === 'rejected' ? [result.reason as unknown] : [],
+        );
+        if (failures.length > 0)
+          throw new AggregateError(
+            failures,
+            'Worker node runtime capability shutdown failed',
+          );
+      })();
+    }
     return closePromise;
   };
   try {
@@ -454,29 +245,44 @@ export async function createWorkerNodeRuntimeCapabilities(
       const checkReadiness = readiness.checkReadiness;
       if (checkReadiness !== undefined)
         checkArtifactReadiness = () => checkReadiness.call(readiness);
-      factories.artifacts = artifactFactory(
+      factories.artifacts = createNodeArtifactRuntimeFactory({
         persistence,
         store,
         retentionMillis,
-        dependencies.artifactId ?? generatePersistedId,
-        dependencies.now ?? (() => new Date()),
-        dependencies.spoolDirectory ?? tmpdir(),
-        dependencies.artifactSpoolOperations ?? {
-          openFile: (filePath) => open(filePath, 'wx', 0o600),
-          removeDirectory: (directory) =>
-            rm(directory, { recursive: true, force: true }),
-        },
-      );
+        ...(dependencies.artifactId === undefined
+          ? {}
+          : { artifactId: dependencies.artifactId }),
+        ...(dependencies.now === undefined ? {} : { now: dependencies.now }),
+        ...(dependencies.spoolDirectory === undefined
+          ? {}
+          : { spoolDirectory: dependencies.spoolDirectory }),
+        ...(dependencies.artifactSpoolOperations === undefined
+          ? {}
+          : { spoolOperations: dependencies.artifactSpoolOperations }),
+      });
     }
   } catch (error: unknown) {
-    await closeOwnedResources().catch(() => undefined);
+    try {
+      await closeOwnedResources();
+    } catch (cleanupError: unknown) {
+      const cleanupFailures =
+        cleanupError instanceof AggregateError
+          ? (cleanupError.errors as unknown[])
+          : [cleanupError];
+      throw new AggregateError(
+        [error, ...cleanupFailures],
+        'Worker node runtime capability construction failed and cleanup was incomplete',
+      );
+    }
     throw error;
   }
 
   return Object.freeze({
     factories: Object.freeze(factories),
     checkReadiness: async (): Promise<void> => {
+      assertCapabilityRuntimeOpen(lifecycle);
       await checkArtifactReadiness?.();
+      assertCapabilityRuntimeOpen(lifecycle);
     },
     close: closeOwnedResources,
   });

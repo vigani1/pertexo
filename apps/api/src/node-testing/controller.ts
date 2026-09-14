@@ -19,10 +19,7 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
 } from '../identity-workspace/index.js';
-import {
-  optionalAuthorizedWorkspace,
-  projectAuthenticatedWorkspaceContext,
-} from '../identity-workspace/authenticated-command-context.js';
+import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { parseIdempotencyKey } from '../platform/http/index.js';
 import {
@@ -54,10 +51,16 @@ export class NodeTestingController {
     @Param() params: unknown,
   ) {
     const route = previewRunParamsSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return this.getPreview.execute({
-      actor: actorFrom(request, route.workspaceId),
+      actor: context.actor,
       routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
+      ...(context.authorizedWorkspace === undefined
+        ? {}
+        : { authorizedWorkspace: context.authorizedWorkspace }),
       previewRunId: route.previewRunId,
     });
   }
@@ -82,32 +85,22 @@ export class NodeTestingController {
         ? requiredIdempotencyKey(request)
         : undefined;
     const traceparent = singleHeader(request, 'traceparent');
-    const actor = actorFrom(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await this.testNode.execute({
-      actor,
+      ...context,
       routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
       workflowId: route.workflowId,
       nodeId: route.nodeId,
       request: command,
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-      requestId: actor.requestId,
-      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
       ...(traceparent === undefined ? {} : { traceparent }),
     });
     if (command.mode === 'test_execute') response.status(202);
     return result;
   }
-}
-
-function guardAuthorization(
-  request: IdentityWorkspaceRequest,
-): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
-  return optionalAuthorizedWorkspace(request);
-}
-
-function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
-  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
 function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {
