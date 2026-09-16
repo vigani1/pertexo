@@ -397,6 +397,58 @@
       ]
     },
     {
+      "cohort": "contracts",
+      "file": "packages/contracts/src/http/connections.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 70,
+          "column": 4,
+          "sourceFingerprint": "sha256:24a1ad9d3b5f67421ddb7d62487cc0e4e6f75cc9e1ac0bf1d4989e42e7a05974",
+          "classification": "defensive",
+          "justification": "This residual contract arm rejects malformed transport material before it crosses the public API boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "contracts",
+      "file": "packages/contracts/src/http/workflow-runs.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 66,
+          "column": 2,
+          "sourceFingerprint": "sha256:bbacbbc5f2d15bb0853ec5656c34b73decb7e6501c77594ac996386291065725",
+          "classification": "defensive",
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 69,
+          "column": 2,
+          "sourceFingerprint": "sha256:bbacbbc5f2d15bb0853ec5656c34b73decb7e6501c77594ac996386291065725",
+          "classification": "defensive",
+          "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 73,
+          "column": 37,
+          "sourceFingerprint": "sha256:f7bc0c0b29881bd86b56707c4f53f8ebedebf31fd2f009ee6336f2ddff432e3a",
+          "classification": "defensive",
+          "justification": "This residual contract arm preserves fail-closed workflow-run cursor normalization."
+        }
+      ]
+    },
+    {
       "cohort": "integrations",
       "file": "packages/integrations/src/crypto/envelope-cipher.ts",
       "reviews": [
@@ -3463,6 +3515,22 @@
       ]
     },
     {
+      "cohort": "database",
+      "file": "packages/database/src/tenant-access/workspace.ts",
+      "reviews": [
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 154,
+          "column": 4,
+          "sourceFingerprint": "sha256:8eb31591588f1c23a488f69f906d5c8c73dcfc7650ebb4b079c8aaa8ddd784a6",
+          "classification": "unreachable",
+          "justification": "The released-client guard is fail-closed after deterministic ownership cleanup; the branch protects against impossible re-entry once release has completed."
+        }
+      ]
+    },
+    {
       "cohort": "worker",
       "file": "apps/worker/src/execution/failure-notification-delivery.ts",
       "reviews": [
@@ -3734,6 +3802,88 @@
     },
     {
       "cohort": "api-priority",
+      "file": "apps/api/src/identity-workspace/use-cases.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:9f52e9c8e00d2498350c74b16c670773c3934e15ba56f4295f2ba1466620d346",
+          "classification": "generated",
+          "justification": "V8 reports this synthetic branch arm at line zero for transpiled control-flow bookkeeping; it has no distinct source location or independently callable source behavior."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
+      "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
+      "reviews": [
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 113,
+          "column": 16,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles optional configuration and malformed provider material while preserving deterministic authentication behavior."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "switch",
+          "line": 204,
+          "column": 8,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 2,
+          "branchType": "switch",
+          "line": 205,
+          "column": 8,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 222,
+          "column": 42,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 223,
+          "column": 38,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 224,
+          "column": 34,
+          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "classification": "defensive",
+          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+        }
+      ]
+    },
+    {
+      "cohort": "api-priority",
       "file": "apps/api/src/app.ts",
       "reviews": [
         {
@@ -3961,11 +4111,6 @@
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         }
       ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
-      "reviews": []
     },
     {
       "cohort": "api-priority",
