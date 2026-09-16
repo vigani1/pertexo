@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0089_oidc_capacity_lock_time.sql');
+    expect(expected.at(-1)).toBe('0093_workspace_member_role_management.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -28,6 +28,10 @@ describe('retained migration history fixture', () => {
       '0087_workspace_maintenance_rerun_purge.sql',
       '0088_sql_boundary_integrity.sql',
       '0089_oidc_capacity_lock_time.sql',
+      '0090_workspace_discovery_policy.sql',
+      '0091_workspace_discovery_scope.sql',
+      '0092_workflow_run_history_indexes.sql',
+      '0093_workspace_member_role_management.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),

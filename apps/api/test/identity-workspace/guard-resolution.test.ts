@@ -88,7 +88,9 @@ const identityDependencies: IdentityWorkspaceDependencies = {
     findByDigest: sessionLookup,
     revokeByDigest: () => Promise.resolve(false),
     findUserById: () => Promise.resolve(null),
+    listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
     listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+    changeWorkspaceMemberRole: () => Promise.reject(new Error('not exercised')),
     resolveOrCreateIdentity: () => Promise.resolve({ userId }),
     createWorkspaceWithOwner: () => Promise.reject(new Error('not exercised')),
     requestWorkspaceLifecycleOperation: () =>

@@ -1,5 +1,6 @@
 import type {
   ConnectionManagementDatabase,
+  ConnectionReadDatabase,
   ConnectionTestDatabase,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/api';
@@ -16,9 +17,12 @@ import type { ConnectionTelemetry } from './telemetry.js';
 
 export type ConnectionCommandPersistence = ConnectionManagementDatabase;
 
+export type ConnectionReadPersistence = ConnectionReadDatabase;
+
 export type ConnectionTestPersistence = ConnectionTestDatabase;
 
 export type ConnectionPersistence = ConnectionCommandPersistence &
+  ConnectionReadPersistence &
   ConnectionTestPersistence;
 
 export interface ConnectionSecretEncryptionPort {

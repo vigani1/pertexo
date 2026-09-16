@@ -19,6 +19,17 @@ export class ConnectionManageGuard extends WorkspaceCapabilityGuard {
 }
 
 @Injectable()
+export class ConnectionReadGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(CONNECTION_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('connection:read', authorization, contexts, 'not_found', ['active']);
+  }
+}
+
+@Injectable()
 export class ConnectionUseGuard extends WorkspaceCapabilityGuard {
   public constructor(
     @Inject(CONNECTION_AUTHORIZATION)

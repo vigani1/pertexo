@@ -27,6 +27,99 @@ import {
 const connections = registerCurrentConnectionsFixture();
 
 describe('connection concurrency and security', () => {
+  it('lists and reads actor-scoped metadata with deterministic keyset pagination', async () => {
+    const first = createInput({ name: `Readable ${randomUUID().slice(0, 8)}` });
+    const second = createInput({
+      name: `Readable ${randomUUID().slice(0, 8)}`,
+    });
+    await connections.api.createConnection(first);
+    await connections.api.createConnection(second);
+
+    const page = await connections.api.listConnections({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      limit: 1,
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeDefined();
+    expect(page.items[0]).not.toHaveProperty('sealed');
+
+    if (page.nextCursor === undefined)
+      throw new Error('Expected a cursor for the populated fixture');
+    const nextPage = await connections.api.listConnections({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      limit: 1,
+      after: page.nextCursor,
+    });
+    expect(nextPage.items[0]?.id).not.toBe(page.items[0]?.id);
+    await expect(
+      connections.api.readConnection({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+      }),
+    ).resolves.toMatchObject({
+      id: first.connectionId,
+      workspaceId: workspaceA,
+    });
+    await expect(
+      connections.api.readConnection({
+        workspaceId: workspaceB,
+        actorId: ownerB,
+        connectionId: first.connectionId,
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it('paginates same-status rows within one millisecond without gaps or duplicates', async () => {
+    const inputs = [createInput(), createInput(), createInput()];
+    for (const input of inputs) await connections.api.createConnection(input);
+
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      for (const [index, input] of inputs.entries()) {
+        await owner.query(
+          `update app.connections
+           set created_at = ('2099-01-01T00:00:00.000100Z'::timestamptz
+             + $2::integer * interval '100 microseconds')
+           where workspace_id = $1 and id = $3`,
+          [workspaceA, index, input.connectionId],
+        );
+      }
+      await owner.query('commit');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await owner.end();
+    }
+
+    const seen: string[] = [];
+    let after: Parameters<typeof connections.api.listConnections>[0]['after'];
+    for (let pageNumber = 0; pageNumber < 3; pageNumber += 1) {
+      const page = await connections.api.listConnections({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        limit: 1,
+        ...(after === undefined ? {} : { after }),
+      });
+      const item = page.items[0];
+      if (item === undefined)
+        throw new Error('Expected a connection page item');
+      seen.push(item.id);
+      after = page.nextCursor;
+    }
+
+    expect(new Set(seen).size).toBe(3);
+    expect(seen.toSorted()).toEqual(
+      inputs.map((input) => input.connectionId).toSorted(),
+    );
+  });
+
   it('uses capability roles and rejects inactive authority states', async () => {
     const roleActors = new Map([
       ['owner', ownerA],
@@ -314,7 +407,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0089_oidc_capacity_lock_time.sql',
+        migrationHead: '0093_workspace_member_role_management.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -322,7 +415,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0089_oidc_capacity_lock_time.sql',
+        migrationHead: '0093_workspace_member_role_management.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

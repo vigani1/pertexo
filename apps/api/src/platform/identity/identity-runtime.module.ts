@@ -108,6 +108,9 @@ export async function createApiIdentityRuntime(
             issuer: config.oidc.issuer,
             authorizationEndpoint: config.oidc.authorizationEndpoint,
             clientId: config.oidc.clientId,
+            ...(config.oidc.callbackLandingPath === undefined
+              ? {}
+              : { callbackLandingPath: config.oidc.callbackLandingPath }),
             redirectUri: config.oidc.redirectUri,
             scopes: config.oidc.scopes,
             transactionTtlMillis: config.oidc.transactionTtlMillis,

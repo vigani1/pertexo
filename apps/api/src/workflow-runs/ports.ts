@@ -53,6 +53,21 @@ export type WorkflowRunReadModel = Readonly<{
   nodes: readonly WorkflowNodeRunRecord[];
 }>;
 
+export type WorkflowRunListPosition = Readonly<{
+  createdAt: string;
+  id: string;
+}>;
+
+export type ListWorkflowRunsQuery = Readonly<{
+  workspaceId: string;
+  limit: number;
+  workflowId?: string;
+  status?: WorkflowRunRecord['status'];
+  createdAtFrom?: string;
+  createdAtBefore?: string;
+  after?: WorkflowRunListPosition;
+}>;
+
 export type StartWorkflowRunCommand = Readonly<{
   actorId: string;
   workspaceId: string;
@@ -108,6 +123,12 @@ export interface WorkflowRunPersistence {
   get(
     input: Readonly<{ workspaceId: string; runId: string }>,
   ): Promise<WorkflowRunReadModel | undefined>;
+  list(input: ListWorkflowRunsQuery): Promise<
+    Readonly<{
+      items: readonly WorkflowRunRecord[];
+      nextCursor?: WorkflowRunListPosition;
+    }>
+  >;
   cancel(input: CancelWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;

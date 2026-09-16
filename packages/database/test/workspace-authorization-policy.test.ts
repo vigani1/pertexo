@@ -4,6 +4,7 @@ import {
   AUTHORIZATION_CAPABILITIES,
   ROLES,
   capabilitiesForRole,
+  canChangeWorkspaceMemberRole,
   hasCapability,
   rolesForCapability,
   type AuthorizationCapability,
@@ -91,6 +92,27 @@ describe('workspace authorization policy', () => {
         includesCapability(expectedCapabilitiesByRole[role], capability),
       );
       expect(rolesForCapability(capability)).toEqual(expectedRoles);
+    }
+  });
+
+  it('encodes the complete approved existing-member role transition matrix', () => {
+    const delegated = new Set<Role>(['builder', 'operator', 'viewer']);
+    for (const actor of ROLES) {
+      for (const current of ROLES) {
+        for (const next of ROLES) {
+          const expected =
+            current !== 'owner' &&
+            next !== 'owner' &&
+            (actor === 'owner' ||
+              (actor === 'admin' &&
+                delegated.has(current) &&
+                delegated.has(next)));
+          expect(
+            canChangeWorkspaceMemberRole(actor, current, next),
+            `${actor}: ${current} -> ${next}`,
+          ).toBe(expected);
+        }
+      }
     }
   });
 });

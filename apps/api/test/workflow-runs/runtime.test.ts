@@ -34,6 +34,7 @@ const persistence = {
   start: () => Promise.reject(new Error('not exercised')),
   replay: () => Promise.reject(new Error('not exercised')),
   get: () => Promise.resolve(undefined),
+  list: () => Promise.resolve({ items: [] }),
   cancel: () => Promise.reject(new Error('not exercised')),
 } satisfies WorkflowRunPersistence;
 const streamer = {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiProblemSchema } from '@pertexo/contracts/errors';
 
 import {
+  accessibleWorkspacesResponseSchema,
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
   oidcCallbackRequestSchema,
@@ -11,6 +12,8 @@ import {
   workspaceDeletionRequestSchema,
   workspaceLifecycleOperationResponseSchema,
   workspaceMembersResponseSchema,
+  workspaceMemberRoleChangeRequestSchema,
+  workspaceMemberRoleChangeResponseSchema,
   userProfileResponseSchema,
   workspaceResponseSchema,
 } from '../../src/identity-workspace/index.js';
@@ -20,6 +23,10 @@ describe('identity/workspace generated contracts', () => {
     expect(identityWorkspaceClientContract).toEqual({
       schemaVersion: '1.0.0',
       schemas: {
+        AccessibleWorkspacesResponse: generated(
+          accessibleWorkspacesResponseSchema,
+          'output',
+        ),
         ApiProblem: generated(apiProblemSchema, 'output'),
         OidcCallbackRequest: generated(oidcCallbackRequestSchema, 'input'),
         OidcStartResponse: generated(oidcStartResponseSchema, 'output'),
@@ -41,6 +48,14 @@ describe('identity/workspace generated contracts', () => {
           workspaceMembersResponseSchema,
           'output',
         ),
+        WorkspaceMemberRoleChangeRequest: generated(
+          workspaceMemberRoleChangeRequestSchema,
+          'input',
+        ),
+        WorkspaceMemberRoleChangeResponse: generated(
+          workspaceMemberRoleChangeResponseSchema,
+          'output',
+        ),
       },
     });
   });
@@ -56,6 +71,7 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/deletion',
       '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}',
       '/v1/workspaces/{workspaceId}/members',
+      '/v1/workspaces/{workspaceId}/members/{userId}/role',
     ]);
     expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(
       identityWorkspaceClientContract.schemas,

@@ -12,6 +12,8 @@ import {
   responseReference,
 } from './openapi-primitives.js';
 import {
+  accessibleWorkspacesQuerySchema,
+  accessibleWorkspacesResponseSchema,
   oidcAuthorizationCodeSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
@@ -21,6 +23,8 @@ import {
   workspaceIdentifierSchema,
   workspaceLifecycleOperationIdentifierSchema,
   workspaceLifecycleOperationResponseSchema,
+  workspaceMemberRoleChangeRequestSchema,
+  workspaceMemberRoleChangeResponseSchema,
   workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
   userProfileResponseSchema,
@@ -43,6 +47,18 @@ const schemas = Object.freeze({
   WorkspaceResponse: jsonSchema(workspaceResponseSchema, 'output'),
   WorkspaceMembersResponse: jsonSchema(
     workspaceMembersResponseSchema,
+    'output',
+  ),
+  WorkspaceMemberRoleChangeRequest: jsonSchema(
+    workspaceMemberRoleChangeRequestSchema,
+    'input',
+  ),
+  WorkspaceMemberRoleChangeResponse: jsonSchema(
+    workspaceMemberRoleChangeResponseSchema,
+    'output',
+  ),
+  AccessibleWorkspacesResponse: jsonSchema(
+    accessibleWorkspacesResponseSchema,
     'output',
   ),
 });
@@ -101,7 +117,15 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
           queryParameter('state', oidcStateSchema),
         ],
         responses: {
-          '204': { description: 'Browser session established' },
+          '303': {
+            description: 'Browser session established; return to the web app',
+            headers: {
+              Location: {
+                description: 'Configured same-origin application landing path',
+                schema: { type: 'string', pattern: '^/(?!/)' },
+              },
+            },
+          },
           '400': responseReference('BadRequest'),
           '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
@@ -122,6 +146,24 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       },
     },
     '/v1/workspaces': {
+      get: {
+        operationId: 'listAccessibleWorkspaces',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          queryParameter('limit', accessibleWorkspacesQuerySchema.shape.limit),
+          queryParameter('after', accessibleWorkspacesQuerySchema.shape.after),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Workspaces accessible to the current user',
+            'AccessibleWorkspacesResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
       post: {
         operationId: 'createWorkspace',
         security: [{ cookieSession: [] }],
@@ -209,6 +251,32 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/members/{userId}/role': {
+      post: {
+        operationId: 'changeWorkspaceMemberRole',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          memberPathParameter(),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
+        requestBody: jsonRequest('WorkspaceMemberRoleChangeRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Workspace member role change receipt',
+            'WorkspaceMemberRoleChangeResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': problemResponse('Workspace member not found'),
+          '409': responseReference('Conflict'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
   },
   components: authenticatedComponents(schemas, problemResponses),
 });
@@ -240,6 +308,15 @@ function lifecycleOperationPathParameter() {
     in: 'path',
     required: true,
     schema: jsonSchema(workspaceLifecycleOperationIdentifierSchema, 'input'),
+  } as const;
+}
+
+function memberPathParameter() {
+  return {
+    name: 'userId',
+    in: 'path',
+    required: true,
+    schema: { type: 'string', format: 'uuid' },
   } as const;
 }
 

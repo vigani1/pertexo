@@ -15,6 +15,23 @@ function adapterWith(database: object): DatabaseIdentityWorkspaceAdapter {
 }
 
 describe('identity/workspace database adapter', () => {
+  it('forwards actor-scoped workspace discovery without widening records', async () => {
+    const page = { items: [], nextCursor: workspaceId };
+    const listAccessibleWorkspaces = vi.fn().mockResolvedValue(page);
+    const adapter = adapterWith({ listAccessibleWorkspaces });
+
+    await expect(
+      adapter.listAccessibleWorkspaces(actorId, {
+        limit: 10,
+        after: workspaceId,
+      }),
+    ).resolves.toBe(page);
+    expect(listAccessibleWorkspaces).toHaveBeenCalledWith(actorId, {
+      limit: 10,
+      after: workspaceId,
+    });
+  });
+
   it('projects the stable identities from resolve-or-create', async () => {
     const resolveOrCreateIdentity = vi.fn().mockResolvedValue({
       user: { id: actorId },

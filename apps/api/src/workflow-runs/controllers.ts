@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Optional,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -14,6 +15,8 @@ import {
 import {
   lastRunEventIdHeaderSchema,
   workflowRunCancelRequestSchema,
+  workflowRunListParamsSchema,
+  workflowRunListQuerySchema,
   workflowRunParamsSchema,
   workflowRunReplayRequestSchema,
   workflowRunStartParamsSchema,
@@ -59,6 +62,7 @@ import { writeSseFrames } from './sse-transport.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
+  ListWorkflowRunsUseCase,
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
@@ -90,6 +94,7 @@ export class WorkflowRunsController {
     private readonly startWorkflowRun: StartWorkflowRunUseCase,
     private readonly replayWorkflowRun: ReplayWorkflowRunUseCase,
     private readonly getWorkflowRun: GetWorkflowRunUseCase,
+    private readonly listWorkflowRuns: ListWorkflowRunsUseCase,
     private readonly streamEvents: StreamRunEventsUseCase,
     private readonly cancelWorkflowRun: CancelWorkflowRunUseCase,
     @Optional()
@@ -172,6 +177,34 @@ export class WorkflowRunsController {
       routeWorkspaceId: route.workspaceId,
       ...guardAuthorization(request),
       runId: route.runId,
+    });
+  }
+
+  @Get('runs')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async listRuns(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = workflowRunListParamsSchema.parse(params);
+    const input = workflowRunListQuerySchema.parse(query ?? {});
+    return this.listWorkflowRuns.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+      ...(input.workflowId === undefined
+        ? {}
+        : { workflowId: input.workflowId }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.createdAtFrom === undefined
+        ? {}
+        : { createdAtFrom: input.createdAtFrom }),
+      ...(input.createdAtBefore === undefined
+        ? {}
+        : { createdAtBefore: input.createdAtBefore }),
     });
   }
 

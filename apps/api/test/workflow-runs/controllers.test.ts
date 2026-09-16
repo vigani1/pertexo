@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { WorkflowRunsController } from '../../src/workflow-runs/controllers.js';
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import { ApiDrainState } from '../../src/platform/health/drain-state.js';
+import type { SseVisibilityMetrics } from '../../src/platform/observability/sse-visibility-metrics.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
@@ -83,6 +84,9 @@ function controller() {
     execute: vi.fn().mockResolvedValue({ run: {}, replayed: false }),
   };
   const get = { execute: vi.fn().mockResolvedValue({ run: {}, nodes: [] }) };
+  const list = {
+    execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  };
   const cancel = {
     execute: vi.fn().mockResolvedValue({ run: {}, alreadyRequested: false }),
   };
@@ -108,18 +112,83 @@ function controller() {
       start as never,
       replay as never,
       get as never,
+      list as never,
       stream as never,
       cancel as never,
     ),
     start,
     replay,
     get,
+    list,
     stream,
     cancel,
   };
 }
 
+function streamController(
+  stream: unknown,
+  visibilityMetrics: SseVisibilityMetrics,
+  drainState = new ApiDrainState(),
+) {
+  return new WorkflowRunsController(
+    { execute: vi.fn() } as never,
+    { execute: vi.fn() } as never,
+    { execute: vi.fn() } as never,
+    { execute: vi.fn() } as never,
+    stream as never,
+    { execute: vi.fn() } as never,
+    visibilityMetrics,
+    drainState,
+  );
+}
+
 describe('workflow runs controller public seam', () => {
+  it('strictly parses and forwards bounded run-history filters', async () => {
+    const fixture = controller();
+    await fixture.instance.listRuns(
+      request(),
+      { workspaceId },
+      {
+        limit: '25',
+        workflowId,
+        status: 'succeeded',
+        createdAtFrom: '2026-08-20T00:00:00.000Z',
+        createdAtBefore: '2026-08-21T00:00:00.000Z',
+      },
+    );
+    expect(fixture.list.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeWorkspaceId: workspaceId,
+        limit: 25,
+        workflowId,
+        status: 'succeeded',
+      }),
+    );
+    await expect(
+      fixture.instance.listRuns(request(), { workspaceId }, { unknown: true }),
+    ).rejects.toBeDefined();
+    expect(fixture.list.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards distinct sub-millisecond run-history boundaries', async () => {
+    const fixture = controller();
+    await fixture.instance.listRuns(
+      request(),
+      { workspaceId },
+      {
+        createdAtFrom: '2026-08-21T00:00:00.000100Z',
+        createdAtBefore: '2026-08-21T00:00:00.000900Z',
+      },
+    );
+
+    expect(fixture.list.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdAtFrom: '2026-08-21T00:00:00.000100Z',
+        createdAtBefore: '2026-08-21T00:00:00.000900Z',
+      }),
+    );
+  });
+
   it('uses session context without a guard and gives guarded context precedence', async () => {
     const fixture = controller();
     await fixture.instance.startRun(
@@ -325,14 +394,7 @@ describe('workflow runs controller public seam', () => {
         },
       }),
     };
-    const instance = new WorkflowRunsController(
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      stream as never,
-      { execute: vi.fn() } as never,
-      visibilityMetrics,
-    );
+    const instance = streamController(stream, visibilityMetrics);
 
     const reply = sseReply();
     await instance.streamRunEvents(
@@ -381,14 +443,7 @@ describe('workflow runs controller public seam', () => {
         },
       }),
     };
-    const instance = new WorkflowRunsController(
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      stream as never,
-      { execute: vi.fn() } as never,
-      visibilityMetrics,
-    );
+    const instance = streamController(stream, visibilityMetrics);
     const reply = sseReply();
 
     await instance.streamRunEvents(
@@ -420,12 +475,8 @@ describe('workflow runs controller public seam', () => {
         }),
       }),
     };
-    const instance = new WorkflowRunsController(
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      stream as never,
-      { execute: vi.fn() } as never,
+    const instance = streamController(
+      stream,
       { recordFirstEligibleFrame: vi.fn() },
       drainState,
     );
@@ -469,12 +520,8 @@ describe('workflow runs controller public seam', () => {
       }),
     };
     const drainState = new ApiDrainState();
-    const instance = new WorkflowRunsController(
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      stream as never,
-      { execute: vi.fn() } as never,
+    const instance = streamController(
+      stream,
       { recordFirstEligibleFrame: vi.fn() },
       drainState,
     );
@@ -508,12 +555,8 @@ describe('workflow runs controller public seam', () => {
       }),
     };
     const drainState = new ApiDrainState();
-    const instance = new WorkflowRunsController(
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      { execute: vi.fn() } as never,
-      stream as never,
-      { execute: vi.fn() } as never,
+    const instance = streamController(
+      stream,
       { recordFirstEligibleFrame: vi.fn() },
       drainState,
     );

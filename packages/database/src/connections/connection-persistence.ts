@@ -101,6 +101,32 @@ export type ConnectionRecord = Readonly<{
   updatedAt: Date;
 }>;
 
+export type ListConnectionsInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  limit?: number;
+  after?: Readonly<{
+    status: ConnectionStatus;
+    createdAt: string;
+    id: string;
+  }>;
+}>;
+
+export type ConnectionPage = Readonly<{
+  items: readonly ConnectionRecord[];
+  nextCursor?: Readonly<{
+    status: ConnectionStatus;
+    createdAt: string;
+    id: string;
+  }>;
+}>;
+
+export type ReadConnectionInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  connectionId: string;
+}>;
+
 export type ResolvedConnectionSecretRecord = Readonly<{
   connection: ConnectionRecord;
   secretVersionId: string;
@@ -271,6 +297,8 @@ export type AbandonConnectionTestInput = Readonly<{
 }>;
 
 export interface ConnectionDatabase {
+  listConnections(input: ListConnectionsInput): Promise<ConnectionPage>;
+  readConnection(input: ReadConnectionInput): Promise<ConnectionRecord | null>;
   createConnection(input: CreateConnectionInput): Promise<ConnectionRecord>;
   findConnectionCreateReplay(
     input: FindConnectionCreateReplayInput,
@@ -327,6 +355,12 @@ export type ConnectionManagementDatabase = Pick<
   | 'revokeConnection'
 >;
 
+/** Safe metadata reads for authenticated API consumers. */
+export type ConnectionReadDatabase = Pick<
+  ConnectionDatabase,
+  'listConnections' | 'readConnection'
+>;
+
 /** API-owned connection-test state transitions. */
 export type ConnectionTestDatabase = Pick<
   ConnectionDatabase,
@@ -345,6 +379,7 @@ export type ConnectionResolutionDatabase = Pick<
 
 /** API capability plus the lifecycle operation owned by its runtime factory. */
 export type ApiConnectionDatabase = ConnectionManagementDatabase &
+  ConnectionReadDatabase &
   ConnectionTestDatabase &
   Pick<ConnectionDatabase, 'close'>;
 
@@ -605,46 +640,3 @@ export function serializeConnectionTestResult(
     outcome: result.outcome,
   });
 }
-
-export function connectionTestScope(
-  actorId: string,
-  connectionId: string,
-): string {
-  return `${uuidSchema.parse(actorId)}:${uuidSchema.parse(connectionId)}`;
-}
-
-export function connectionTestClaim(
-  dispatchToken: string,
-  state: 'claimed' | 'dispatched',
-  secretVersionId?: string,
-) {
-  const base = {
-    schemaVersion: 1 as const,
-    dispatchToken: uuidSchema.parse(dispatchToken),
-  };
-  if (state === 'claimed') return Object.freeze({ ...base, state });
-  return Object.freeze({
-    ...base,
-    state,
-    secretVersionId: uuidSchema.parse(secretVersionId),
-  });
-}
-
-export const connectionTestClaimSchema = z.discriminatedUnion('state', [
-  z
-    .object({
-      schemaVersion: z.literal(1),
-      state: z.literal('claimed'),
-      dispatchToken: z.uuid(),
-    })
-    .strict(),
-  z
-    .object({
-      schemaVersion: z.literal(1),
-      state: z.literal('dispatched'),
-      dispatchToken: z.uuid(),
-      // Optional only for already-persisted version-1 in-flight claims.
-      secretVersionId: z.uuid().optional(),
-    })
-    .strict(),
-]);

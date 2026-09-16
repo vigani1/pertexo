@@ -83,6 +83,10 @@ const apiEnvironmentSchema = z
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     OIDC_ALLOWED_ALGORITHMS: z.string().optional(),
     OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
+    OIDC_CALLBACK_LANDING_PATH: z
+      .string()
+      .regex(/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/u)
+      .default('/'),
     OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
     OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
     OIDC_ISSUER: z.url().optional(),
@@ -159,6 +163,7 @@ export type ApiIdentityConfig = Readonly<{
     jwksUri: string;
     clientId: string;
     clientSecret?: string;
+    callbackLandingPath?: string;
     redirectUri: string;
     scopes: readonly string[];
     allowedAlgorithms: readonly (typeof OIDC_SIGNING_ALGORITHMS)[number][];
@@ -386,6 +391,7 @@ function parseIdentityConfig(
         tokenEndpoint,
         jwksUri,
         clientId,
+        callbackLandingPath: environment.OIDC_CALLBACK_LANDING_PATH,
         ...(environment.OIDC_CLIENT_SECRET === undefined
           ? {}
           : { clientSecret: environment.OIDC_CLIENT_SECRET }),

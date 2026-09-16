@@ -37,6 +37,7 @@ import {
 } from './types.js';
 import {
   IDENTITY_WORKSPACE_TELEMETRY,
+  OIDC_CALLBACK_LANDING_PATH,
   SESSION_COOKIE_POLICY,
 } from './tokens.js';
 import {
@@ -56,6 +57,8 @@ export class OidcController {
     private readonly csrf: DoubleSubmitCsrfPolicy,
     @Inject(SESSION_COOKIE_POLICY)
     private readonly cookiePolicy: SessionCookiePolicy,
+    @Inject(OIDC_CALLBACK_LANDING_PATH)
+    private readonly callbackLandingPath = '/',
     @Inject(IDENTITY_WORKSPACE_TELEMETRY)
     telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {
@@ -85,7 +88,7 @@ export class OidcController {
 
   @Get('callback')
   @RateLimit('identity_callback')
-  @HttpCode(204)
+  @HttpCode(303)
   public async callback(
     @Query() query: unknown,
     @Req() request: IdentityWorkspaceRequest,
@@ -103,6 +106,7 @@ export class OidcController {
         readCookie(request, OIDC_BROWSER_BINDING_COOKIE_NAME),
         cookies,
       );
+      response.header('location', this.callbackLandingPath);
     } catch (error: unknown) {
       try {
         response.header('set-cookie', clearedBinding);

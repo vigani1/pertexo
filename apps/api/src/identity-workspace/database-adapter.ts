@@ -80,6 +80,21 @@ export class DatabaseIdentityWorkspaceAdapter
     return this.database.listWorkspaceMembers(workspaceId, actorId, input);
   }
 
+  public changeWorkspaceMemberRole(
+    input: Parameters<
+      IdentityWorkspaceDatabase['changeWorkspaceMemberRole']
+    >[0],
+  ) {
+    return this.database.changeWorkspaceMemberRole(input);
+  }
+
+  public listAccessibleWorkspaces(
+    actorId: string,
+    input?: Readonly<{ limit?: number; after?: string }>,
+  ) {
+    return this.database.listAccessibleWorkspaces(actorId, input);
+  }
+
   public requestWorkspaceLifecycleOperation(
     ...input: Parameters<
       IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']

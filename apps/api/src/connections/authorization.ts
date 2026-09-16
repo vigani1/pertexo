@@ -15,7 +15,10 @@ export type ConnectionAuthorizationInput = Readonly<{
 export async function authorizeConnectionOperation(
   input: ConnectionAuthorizationInput,
   access: WorkspaceAuthorizationSource,
-  capability: 'connection:manage' | 'connection:use' = 'connection:manage',
+  capability:
+    | 'connection:manage'
+    | 'connection:read'
+    | 'connection:use' = 'connection:manage',
 ): Promise<void> {
   await authorizeWorkspaceOperation({
     actor: input.actor,

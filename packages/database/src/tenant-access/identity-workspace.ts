@@ -13,8 +13,10 @@ export {
   IdentityNotFoundError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
   type IdentityConflictReason,
   type WorkspaceLifecycleConflictReason,
+  type WorkspaceMemberRoleCommandConflictReason,
 } from './identity-workspace-errors.js';
 import {
   IDEMPOTENCY_STATUS,
@@ -36,6 +38,7 @@ import {
 } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
 import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
+import { createIdentityWorkspaceRoleCommandStore } from './identity-workspace-role-command.js';
 
 const idempotencyKeySchema = z
   .string()
@@ -58,7 +61,10 @@ export {
   USER_STATUS,
   WORKSPACE_STATUS,
   type AuthIdentityRecord,
+  type AccessibleWorkspaceRecord,
+  type AccessibleWorkspacesPage,
   type CreateAuthIdentityInput,
+  type ChangeWorkspaceMemberRoleInput,
   type CreateSessionInput,
   type CreateUserInput,
   type IdentityWorkspaceDatabase,
@@ -72,6 +78,7 @@ export {
   type WorkspaceAccessRecord,
   type WorkspaceLifecycleOperation,
   type WorkspaceMemberRecord,
+  type WorkspaceMemberRoleChangeResult,
   type WorkspaceMembersPage,
   type WorkspaceRecord,
   type WorkspaceStatus,
@@ -249,6 +256,7 @@ export function createIdentityWorkspaceDatabase(
   const database = {
     ...createIdentityWorkspaceIdentityStore(pool),
     ...createIdentityWorkspaceMemberStore(pool),
+    ...createIdentityWorkspaceRoleCommandStore(pool),
 
     ...createIdentityWorkspaceSessionStore(pool),
 

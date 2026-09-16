@@ -13,6 +13,7 @@ const dependencies = {
     start: () => Promise.reject(new Error('not exercised')),
     replay: () => Promise.reject(new Error('not exercised')),
     get: () => Promise.resolve(undefined),
+    list: () => Promise.resolve({ items: [] }),
     cancel: () => Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },

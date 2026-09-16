@@ -3,6 +3,7 @@ import {
   IdempotencyRequestConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
 } from '@pertexo/database/testing';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -12,6 +13,20 @@ import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace conflict mapping', () => {
+  it.each([
+    ['revision_conflict', 'workspace.member_role_revision_conflict', 409],
+    ['target_inactive', 'workspace.member_role_transition_conflict', 409],
+    ['target_missing', 'resource.not_found', 404],
+    ['transition_forbidden', 'auth.forbidden', 403],
+  ] as const)('maps member-role %s to %s', (reason, code, status) => {
+    const error = mapIdentityWorkspaceError(
+      new WorkspaceMemberRoleCommandConflictError(reason, 'unsafe detail'),
+    );
+    expect(error.code).toBe(code);
+    expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(status);
+    expect(JSON.stringify(error)).not.toContain('unsafe');
+  });
+
   it('maps a stale member-read authorization to safe forbidden', () => {
     const error = mapIdentityWorkspaceError(
       new WorkspaceAccessDeniedError('unsafe membership detail'),

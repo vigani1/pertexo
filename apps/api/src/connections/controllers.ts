@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   Param,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,15 +21,22 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../identity-workspace/authenticated-command-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
-import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
+import {
+  ConnectionManageGuard,
+  ConnectionReadGuard,
+  ConnectionUseGuard,
+} from './guards.js';
 import {
   CreateConnectionUseCase,
+  GetConnectionUseCase,
+  ListConnectionsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
 } from './use-cases.js';
 import {
   connectionIdParamSchema,
+  connectionListQuerySchema,
   connectionWorkspaceParamSchema,
   type ConnectionRequest,
 } from './types.js';
@@ -36,11 +45,48 @@ import {
 @RateLimit('connection_mutation')
 export class ConnectionsController {
   public constructor(
+    private readonly listConnections: ListConnectionsUseCase,
+    private readonly getConnection: GetConnectionUseCase,
     private readonly createConnection: CreateConnectionUseCase,
     private readonly rotateSecret: RotateConnectionSecretUseCase,
     private readonly revokeConnection: RevokeConnectionUseCase,
     private readonly testConnection: TestConnectionUseCase,
   ) {}
+
+  @Get()
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
+  public list(
+    @Req() request: ConnectionRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const { workspaceId } = workspaceParams(params);
+    const input = connectionListQuerySchema.parse(query ?? {});
+    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
+    return this.listConnections.execute({
+      ...context,
+      routeWorkspaceId: workspaceId,
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+    });
+  }
+
+  @Get(':connectionId')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
+  public read(@Req() request: ConnectionRequest, @Param() params: unknown) {
+    const route = connectionIdParamSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
+    return this.getConnection.execute({
+      ...context,
+      routeWorkspaceId: route.workspaceId,
+      connectionId: route.connectionId,
+    });
+  }
 
   @Post()
   @RateLimit('ordinary_mutation')

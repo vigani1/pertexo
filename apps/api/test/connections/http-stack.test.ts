@@ -65,7 +65,9 @@ function identityRuntime(
         }),
       revokeByDigest: () => Promise.resolve(false),
       findUserById: () => Promise.resolve(null),
+      listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
       listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+      changeWorkspaceMemberRole: () => Promise.reject(new Error('not used')),
       resolveOrCreateIdentity: () => Promise.resolve({ userId: actorId }),
       createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
       requestWorkspaceLifecycleOperation: () =>
@@ -225,6 +227,15 @@ function connectionRuntime(
         execute: executeHttp,
       },
       persistence: {
+        listConnections: () =>
+          Promise.resolve({ items: stored === null ? [] : [stored] }),
+        readConnection: (input) =>
+          Promise.resolve(
+            stored?.workspaceId === input.workspaceId &&
+              stored.id === input.connectionId
+              ? stored
+              : null,
+          ),
         createConnection,
         findConnectionCreateReplay: (input) =>
           Promise.resolve(
@@ -437,6 +448,26 @@ describe('connections real Nest HTTP stack', () => {
     expect(created.payload).not.toContain(credentialValue);
     expect(created.payload).not.toContain('credential');
 
+    const connectionId = connectionResponseSchema.parse(created.json()).id;
+    const listed = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}?limit=1`,
+      headers: authenticatedHeaders,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toEqual({
+      items: [expect.objectContaining({ id: connectionId })],
+      nextCursor: null,
+    });
+    const read = await application.inject({
+      method: 'GET',
+      url: `${connectionUrl}/${connectionId}`,
+      headers: authenticatedHeaders,
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({ id: connectionId, workspaceId });
+    expect(`${listed.payload}${read.payload}`).not.toContain(credentialValue);
+
     const replay = await application.inject({
       method: 'POST',
       url: connectionUrl,
@@ -448,7 +479,6 @@ describe('connections real Nest HTTP stack', () => {
     expect(connection.createConnection).toHaveBeenCalledOnce();
     expect(connection.encryption.seal).toHaveBeenCalledOnce();
 
-    const connectionId = connectionResponseSchema.parse(created.json()).id;
     const testHeaders = {
       ...authenticatedHeaders,
       'idempotency-key': 'test-http-stack',

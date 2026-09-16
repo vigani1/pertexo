@@ -13,6 +13,11 @@ import {
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
   lastRunEventIdHeaderSchema,
+  workflowRunCreatedAtSchema,
+  workflowRunCursorSchema,
+  workflowRunListResponseSchema,
+  workflowRunPageLimitSchema,
+  workflowRunStatusSchema,
   workflowNodeRunSummarySchema,
   workflowRunCancelRequestSchema,
   workflowRunCancelResponseSchema,
@@ -20,6 +25,7 @@ import {
   workflowRunResponseSchema,
   workflowRunReplayRequestSchema,
   workflowRunStartRequestSchema,
+  workflowRunStartParamsSchema,
   workflowRunStartResponseSchema,
   workflowRunSummarySchema,
 } from './http/workflow-runs.js';
@@ -35,6 +41,7 @@ const schemas = Object.freeze({
     'output',
   ),
   WorkflowRunSummary: jsonSchema(workflowRunSummarySchema, 'output'),
+  WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
   WorkflowNodeRunSummary: jsonSchema(workflowNodeRunSummarySchema, 'output'),
   WorkflowRunResponse: jsonSchema(workflowRunResponseSchema, 'output'),
   WorkflowRunCancelRequest: jsonSchema(workflowRunCancelRequestSchema, 'input'),
@@ -72,11 +79,47 @@ const lastEventIdParameter = {
   required: false,
   schema: jsonSchema(lastRunEventIdHeaderSchema, 'input'),
 } as const;
+const queryParameter = (
+  name: string,
+  schema: Parameters<typeof jsonSchema>[0],
+) =>
+  ({
+    name,
+    in: 'query',
+    required: false,
+    schema: jsonSchema(schema, 'input'),
+  }) as const;
 
 export const workflowRunsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Workflow Runs API', version: '1.0.0' },
   paths: {
+    '/v1/workspaces/{workspaceId}/runs': {
+      get: {
+        operationId: 'listWorkflowRuns',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          queryParameter('limit', workflowRunPageLimitSchema),
+          queryParameter('after', workflowRunCursorSchema),
+          queryParameter(
+            'workflowId',
+            workflowRunStartParamsSchema.shape.workflowId,
+          ),
+          queryParameter('status', workflowRunStatusSchema),
+          queryParameter('createdAtFrom', workflowRunCreatedAtSchema),
+          queryParameter('createdAtBefore', workflowRunCreatedAtSchema),
+        ],
+        responses: {
+          '200': jsonResponse('Workflow runs', 'WorkflowRunListResponse'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs': {
       post: {
         operationId: 'startWorkflowRun',

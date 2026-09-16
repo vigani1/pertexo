@@ -5,6 +5,8 @@ import { mapConnectionError } from '../../src/connections/errors.js';
 import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import type {
   CreateConnectionUseCase,
+  GetConnectionUseCase,
+  ListConnectionsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
@@ -47,6 +49,16 @@ function request(headers: Record<string, string> = {}) {
 }
 
 function controller() {
+  const list = {
+    execute: vi.fn<ListConnectionsUseCase['execute']>(() =>
+      Promise.resolve({ items: [connectionResponse], nextCursor: null }),
+    ),
+  };
+  const read = {
+    execute: vi.fn<GetConnectionUseCase['execute']>(() =>
+      Promise.resolve(connectionResponse),
+    ),
+  };
   const create = {
     execute: vi.fn<CreateConnectionUseCase['execute']>(() =>
       Promise.resolve(connectionResponse),
@@ -72,11 +84,15 @@ function controller() {
   };
   return {
     instance: new ConnectionsController(
+      list as unknown as ListConnectionsUseCase,
+      read as unknown as GetConnectionUseCase,
       create as unknown as CreateConnectionUseCase,
       rotate as unknown as RotateConnectionSecretUseCase,
       revoke as unknown as RevokeConnectionUseCase,
       test as unknown as TestConnectionUseCase,
     ),
+    list,
+    read,
     create,
     rotate,
     revoke,
@@ -91,6 +107,38 @@ const credential = {
 } as const;
 
 describe('connections controller public seam', () => {
+  it('validates and forwards list and read queries through the guarded context', async () => {
+    const { instance, list, read } = controller();
+    await instance.list(
+      request(),
+      { workspaceId },
+      { limit: '1', after: 'cursor-1' },
+    );
+    await instance.read(request(), { workspaceId, connectionId });
+
+    const listInput = list.execute.mock.calls[0]?.[0];
+    const readInput = read.execute.mock.calls[0]?.[0];
+    expect(listInput).toMatchObject({
+      routeWorkspaceId: workspaceId,
+      limit: 1,
+      after: 'cursor-1',
+    });
+    expect(listInput?.actor).toMatchObject({ actorId, workspaceId });
+    expect(readInput).toMatchObject({
+      routeWorkspaceId: workspaceId,
+      connectionId,
+    });
+    expect(readInput?.actor).toMatchObject({ actorId, workspaceId });
+  });
+
+  it('rejects unknown list query fields before delegating', () => {
+    const { instance, list } = controller();
+    expect(() =>
+      instance.list(request(), { workspaceId }, { provider: 'http' }),
+    ).toThrow();
+    expect(list.execute).not.toHaveBeenCalled();
+  });
+
   it('forwards create input with immutable actor and request metadata once', async () => {
     const { instance, create } = controller();
     const body = { providerKey: 'http', name: 'Operations API', credential };

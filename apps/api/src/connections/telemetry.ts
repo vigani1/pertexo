@@ -1,4 +1,6 @@
 export const CONNECTION_OPERATION = Object.freeze({
+  list: 'connection.list',
+  read: 'connection.read',
   create: 'connection.create',
   rotate: 'connection.secret.rotate',
   revoke: 'connection.revoke',

@@ -88,6 +88,17 @@ export const workflowRuns = appSchema.table(
       table.createdAt,
       table.id,
     ),
+    index('workflow_runs_workspace_created_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
+    index('workflow_runs_workspace_workflow_created_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.createdAt,
+      table.id,
+    ),
     index('workflow_runs_workflow_version_idx').on(
       table.workspaceId,
       table.workflowVersionId,

@@ -1,9 +1,19 @@
-# Pertexo web foundation
+# Pertexo web
 
-React 19 + TypeScript + Vite, in the existing pnpm workspace. This is **only a
-boilerplate**: one removable foundation page, theme, routing, query provider,
-one shadcn/Base UI button, and tests. No API calls, authentication, workflow
-editor, persistence, or execution UI are implemented.
+React 19 + TypeScript + Vite, in the existing pnpm workspace. Stages 1–6 are
+implemented: browser-safe contracts and transport, provider-only OIDC sign-in,
+session recovery/logout, workspace entry, workflow list/create and discovery,
+the bounded workflow editor with conflict-safe draft persistence, validation,
+node preview, exact-version publishing, run start, live run detail and
+contract-backed workflow settings/operations.
+
+For the proposed implementation direction, read
+[Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
+folder ownership, API/shared types, Router/Query/Zustand communication, forms,
+errors, saving conflicts, auth, SSE, legacy design reuse and delivery gates. It
+is a plan, not a list of delivered features. It also specifies function/helper
+placement, component composition, skill usage, and the proposed screen/user-flow
+map with backend prerequisites and deferred surfaces.
 
 ## Run and verify
 
@@ -19,71 +29,138 @@ pnpm --filter @pertexo/web exec playwright install chromium
 pnpm --filter @pertexo/web test:e2e
 ```
 
-Development uses `http://127.0.0.1:5173`. Browser tests build the app and own a
-preview server on port 4173. Optionally set
+Development uses `http://127.0.0.1:5173` and proxies unchanged `/v1` requests to
+`http://127.0.0.1:3000`. Set the server-only `PERTEXO_API_PROXY_TARGET` to a
+different HTTP(S) origin when needed; do not use a `VITE_*` value for this.
+Browser tests build the app, own a preview server on port 4173 and control the
+identity/workspace HTTP boundary. Optionally set
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing Chromium/Chrome executable.
-No backend, Redis, database, or environment file is needed for this foundation.
+The tests do not require a live identity provider, backend, Redis or database;
+the API/database suites separately exercise the real callback and discovery
+stack.
 
-Root build/typecheck/lint/test commands include this workspace, and the existing
-CI services matrix includes its unit tests. Browser tests are a separate
-command, not yet an additional CI gate. The production output is `dist/`; a
-future host must serve `index.html` for application deep links. Vite's
-dev/preview fallback does not configure that production host.
+Root build/typecheck/lint/test commands include this workspace. CI runs both its
+unit tests and the authenticated Chromium journeys. The production output is
+`dist/`; the production reverse-proxy template is
+`deployment/nginx.conf.template`. A web runtime must render
+`PERTEXO_API_UPSTREAM` as an internal HTTP(S) origin without a trailing path,
+serve `dist/` from `/usr/share/nginx/html`, and retain the template's distinct
+`/v1`, hashed-asset, and SPA-fallback locations. The hosting/load-balancer
+wiring remains deployment-owned.
 
 ## Small structure, clear ownership
 
-| Location             | Responsibility                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `src/main.tsx`       | Create one router and query cache for the application lifetime.                       |
-| `src/app/`           | Router factory and server-cache defaults.                                             |
-| `src/routes/`        | Route definitions, shell, error/not-found recovery and temporary foundation page.     |
-| `src/components/ui/` | Owned shadcn primitives built on Base UI. Add only components needed by a real slice. |
-| `src/lib/`           | Small domain-independent helpers such as class merging.                               |
-| `src/styles/`        | Semantic Tailwind tokens and original visual identity.                                |
-| `test/`, `e2e/`      | Component/unit checks and real-browser smoke tests.                                   |
+| Location                              | Responsibility                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/main.tsx`                        | Create one router, query cache and browser API client for the application lifetime.         |
+| `src/app/`                            | Router factory and server-cache defaults.                                                   |
+| `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                       |
+| `src/features/auth/`                  | OIDC start, current session, login presentation and logout cleanup.                         |
+| `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.      |
+| `src/features/workflows/`             | Workflow list/create transport, cache ownership, recovery and presentation.                 |
+| `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                              |
+| `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.         |
+| `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references. |
+| `src/features/workflow-editor/`       | Route-scoped graph editing, history, save coordination and conflict recovery.               |
+| `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                            |
+| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                          |
+| `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                          |
+| `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.      |
+| `src/features/workflow-settings/`     | Versions, lifecycle, published triggers and failure-notification controls.                  |
+| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                |
+| `src/components/ui/`                  | Owned shadcn primitives built on Base UI. Add only components needed by a real slice.       |
+| `src/components/patterns/`            | Shared glass-panel composition and decorative aurora border.                                |
+| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors and CSRF cookie adapter.             |
+| `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                             |
+| `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                      |
+| `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                         |
 
-When the first feature is approved, add `src/features/<feature>/` with its UI,
-queries and model together. Routes compose features; features depend on shared
-UI and reviewed contracts. Do not create every future directory in advance.
-Extract a shared pattern only when real repetition demonstrates its interface.
+Routes compose features; features keep their API calls, queries and UI together
+and depend only on shared UI and reviewed contracts. Do not create every future
+directory in advance. Extract a shared pattern only when real repetition
+demonstrates its interface.
 
 The current router is code-based, so there is no generated route-tree file or
-router build plugin. Add routes in `src/routes/route-tree.ts`. Split heavy
-editor route code when it actually exists.
+router build plugin. Add routes in `src/routes/route-tree.ts`. Editor, settings
+and run pages use explicit lazy route modules; loader/query public interfaces
+remain separate so static loader imports do not collapse those chunks.
 
-## Patterns for the next slices
+## Browser contract and transport foundation
 
-1. **Server data:** feature-local `queryOptions` definitions shared by route
-   loaders (`context.queryClient.ensureQueryData(...)`) and components. Query
-   keys include workspace, entity ID and filters. Pass the abort signal through
-   the HTTP adapter. The app defaults to 30-second freshness and no automatic
-   retries; choose read retry rules per endpoint. Writes never retry blindly.
-   Clear protected caches when the authenticated identity changes.
-2. **Editing:** React Flow handles canvas rendering. A provider-scoped Zustand
-   store will own each editor's unsaved draft/history; selection and drag state
-   must not trigger unrelated subscriptions. Keep ephemeral canvas fields out of
-   saved domain objects through an explicit graph adapter. Neither package is
-   imported into the foundation bundle yet; both are deliberately installed for
-   the requested stack and temporarily listed in Knip's dependency exceptions.
-3. **Saving:** preserve backend ETag/`If-Match` concurrency. A conflict retains
-   local edits; a background refetch must not overwrite an unsaved draft. Run
-   actions use published versions, not arbitrary unsaved canvas state.
-4. **Composition:** small components accept children and explicit variants. Use
-   local state for local interaction, as the foundation page demonstrates. Avoid
-   a global app store or generic service/repository hierarchy.
-5. **UI:** use semantic Tailwind tokens and the `cn` helper. Keep controls
-   keyboard-accessible. Links remain links (use `buttonVariants` for styling),
-   not buttons pretending to be links. Use shadcn's CLI and review generated
-   code.
-6. **Contracts:** no duplicated backend domain models. Add only verified
-   browser-safe workspace package subpaths when a real integration needs them;
-   extend the import allowlist and TypeScript references together.
+Stage 1 of the frontend delivery plan is complete. Browser code consumes runtime
+validators through schema-only `@pertexo/contracts/schemas/<domain>` package
+exports. These exports point directly to the existing schema definitions and do
+not initialize client/OpenAPI projection code. Stage 1 publishes catalog,
+errors, identity/workspace and transport schema paths; stage 3 adds the reviewed
+workflow-authoring and connection schema paths; later delivered slices add the
+reviewed run, trigger, notification and artifact schema paths. The web allowlist
+permits only those browser-safe paths; future slices must review and allow their
+exact contract paths when needed.
 
-The theme selectively carries over the old app's charcoal surfaces, cyan and
-violet accents, and Inter/Hanken Grotesk/JetBrains Mono typography. Font files
-are bundled locally. No legacy feature CSS, old auth/backend adapters, animation
-engine or 3D library was copied. The single glass utility is intentionally
-small.
+`src/lib/api/client.ts` exposes one injected request interface. It owns
+same-origin `/v1` paths, cookie credentials, fresh CSRF headers for mutations,
+JSON serialization/decoding, bounded byte streams, cancellation/timeouts, safe
+problem fallback and bounded response metadata. Endpoint modules will continue
+to own paths, request/response schemas, concurrency/idempotency headers and
+endpoint-specific problem decoders. Feature endpoint modules for auth,
+workspaces, workflows, catalog, connections, publishing, runs, settings and
+artifacts are the current production callers.
 
-The first feature should replace the temporary foundation page, not preserve it
-as a second product interface. Decide that slice before adding more code.
+## Next implementation
+
+The staged frontend baseline, connection-management increments, explicit run
+replay, workspace run history, notification-destination management, authorized
+member list and workspace lifecycle settings slices in the architecture plan are
+complete. Remaining workspace administration—including invitations, role
+mutation and renaming—stays product/API gated. Add future surfaces only from
+concrete product demand and existing contracts, following the
+[delivery gates](ARCHITECTURE.md#14-delivery-sequence-and-acceptance-gates) and
+[coding patterns](ARCHITECTURE.md#2-folders-and-dependency-direction). Do not
+invent discovery contracts or enable artifact uploads without the required
+real-browser signing/CORS/checksum/finalize proof.
+
+## Shared visual kit
+
+Adapted from `/Users/vigan/Projects/work/dynamic-process-v3`, without its
+Next.js or backend dependencies:
+
+- Branded translucent cyan button,
+  solid/outline/secondary/ghost/destructive/link variants and locally bundled
+  Inter/Hanken Grotesk/JetBrains Mono fonts.
+- Recessed `Input` and `Textarea`; a small presentational `Field` composition
+  for labels, descriptions and errors. Callers own validation and matching IDs.
+- `GlassSection` with header/title/description/content parts and directional
+  border tokens. No context, data fetching or domain-specific behavior.
+- `AuroraLoadingPanel`: compose a rounded surface as children and set `active`
+  to show its decorative border. It does not imply execution progress or set
+  `aria-busy`; the caller supplies appropriate real loading semantics.
+- Run detail resolves the exact immutable workflow version and renders a
+  read-only execution map. Active node state drives luminous incoming edges and
+  transfer markers; queued runs use the adapted loading wave. Reduced-motion
+  users receive the same status treatment without moving markers.
+- Container-sized CSS aurora animation, static reduced-motion/high-contrast
+  treatment, and a glass fallback where backdrop filtering is unavailable.
+
+The login and workspace entry adapt the legacy glass, typography and signal-line
+language without copying its credential form, Next.js code or backend
+assumptions. No Motion, dropzone or 3D dependency was added: the selected
+effects use CSS, Canvas 2D and SVG animation. File-drop motion remains for its
+feature slice.
+
+Verification covers transport failures, browser bundle composition,
+unauthenticated redirects, OIDC start/error, workspace empty/error/deep-link
+states, confirmed logout cleanup, late-response cancellation, keyboard focus,
+narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
+desktop shell and the 390-pixel editor fallback, including keyboard panel
+switching, useful canvas dimensions and retained inspector scratch state. React
+Doctor's changed-scope scan reports 100/100. Its full scan still reports
+pre-existing diagnostics outside the completed frontend review fixes, so the
+score is treated as a triage aid rather than a delivery gate. Firefox/WebKit and
+a live-backend journey through the controlled OIDC provider remain pending; the
+mocked Chromium lane does not prove either integration.
+
+React Compiler was evaluated with the documented Babel/Vite integration and was
+not adopted: the controlled trial increased build work and emitted bundle size
+without establishing a repeatable editor interaction improvement. Existing
+purposeful memoization remains in place; revisit only with representative
+runtime measurements.

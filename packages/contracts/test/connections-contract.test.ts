@@ -223,6 +223,11 @@ describe('connection public contracts', () => {
     ).toEqual(['workspaceId', 'x-csrf-token', 'Idempotency-Key']);
     expect(
       connectionsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/connections'
+      ].get.responses,
+    ).toHaveProperty('404');
+    expect(
+      connectionsOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/connections/{connectionId}/test'
       ].post.parameters.map(({ name }) => name),
     ).toEqual([

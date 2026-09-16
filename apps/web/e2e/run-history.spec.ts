@@ -1,0 +1,184 @@
+import { expect, test, type Page } from '@playwright/test';
+
+const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const workflowVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const firstRunId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const secondRunId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+const replayRunId = '11111111-1111-4111-8111-111111111111';
+const csrfToken = 'csrf-token-for-run-replay-tests-123456789012345678';
+const timestamp = '2026-09-15T10:00:00.000Z';
+
+function run(id: string, status: 'failed' | 'succeeded') {
+  return {
+    id,
+    workspaceId,
+    workflowId,
+    workflowVersionId,
+    status,
+    triggerType: 'manual',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    startedAt: timestamp,
+    completedAt: '2026-09-15T10:00:02.000Z',
+    deadlineAt: null,
+    cancelRequestedAt: null,
+  };
+}
+
+async function installRoutes(page: Page) {
+  await page.route('**/v1/users/me', (route) =>
+    route.fulfill({
+      json: {
+        id: userId,
+        email: 'operator@example.test',
+        displayName: 'Pertexo Operator',
+        status: 'active',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    }),
+  );
+  await page.route('**/v1/workspaces?**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: workspaceId,
+            name: 'Control Operations',
+            slug: 'control-operations',
+            status: 'active',
+            role: 'viewer',
+            capabilities: ['workspace:read', 'run:read', 'run:replay'],
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    const filtered = query.get('status') === 'succeeded';
+    const after = query.get('after');
+    return route.fulfill({
+      json: filtered
+        ? { items: [run(firstRunId, 'succeeded')], nextCursor: null }
+        : after === null
+          ? { items: [run(firstRunId, 'succeeded')], nextCursor: 'next' }
+          : { items: [run(secondRunId, 'failed')], nextCursor: null },
+    });
+  });
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
+    (route) =>
+      route.fulfill({
+        json: { run: run(firstRunId, 'succeeded'), nodes: [] },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${replayRunId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          run: {
+            ...run(replayRunId, 'failed'),
+            triggerType: 'replay',
+          },
+          nodes: [],
+        },
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/events`,
+    (route) =>
+      route.fulfill({
+        contentType: 'text/event-stream',
+        body: '',
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${replayRunId}/events`,
+    (route) =>
+      route.fulfill({
+        contentType: 'text/event-stream',
+        body: '',
+      }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/replay`,
+    async (route) => {
+      expect(route.request().headers()['x-csrf-token']).toBe(csrfToken);
+      expect(route.request().headers()['idempotency-key']).toBeTruthy();
+      expect(route.request().postDataJSON()).toEqual({
+        workflowVersionId,
+        input: { incident: 'INC-42' },
+      });
+      await route.fulfill({
+        status: 202,
+        json: {
+          run: {
+            ...run(replayRunId, 'failed'),
+            triggerType: 'replay',
+          },
+          replayed: false,
+        },
+      });
+    },
+  );
+}
+
+test('filters and paginates workspace history, then opens the exact run', async ({
+  page,
+}) => {
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/runs`);
+
+  await expect(page.getByRole('link', { name: 'Run history' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(page.getByText(firstRunId)).toBeVisible();
+  await page.getByRole('button', { name: 'Load more' }).click();
+  await expect(page.getByText(secondRunId)).toBeVisible();
+
+  await page.getByLabel('Status').selectOption('succeeded');
+  await page.getByLabel('Created from').fill('2026-09-14');
+  await page.getByLabel('Created before').fill('2026-09-16');
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await expect(page).toHaveURL(/status=succeeded/u);
+  await expect(page).toHaveURL(/createdAtFrom=2026-09-14/u);
+  await expect(page.getByText(secondRunId)).not.toBeVisible();
+
+  await page.getByRole('button', { name: `Open run ${firstRunId}` }).click();
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
+  await expect(
+    page.getByRole('heading', { name: 'Workflow run' }),
+  ).toBeVisible();
+  await expect(page.getByText(workflowVersionId)).toBeVisible();
+});
+
+test('replays the exact displayed version with explicit input', async ({
+  context,
+  page,
+}) => {
+  await context.addCookies([
+    { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
+  ]);
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+
+  await page.getByRole('button', { name: 'Replay run' }).click();
+  await expect(
+    page.getByText(
+      /does not copy hidden input or assume earlier provider effects/u,
+    ),
+  ).toBeVisible();
+  await page.getByLabel('Replay input (JSON)').fill('{"incident":"INC-42"}');
+  await page.getByRole('button', { name: 'Replay this version' }).click();
+
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
+  await expect(page.getByText(replayRunId)).toBeVisible();
+});

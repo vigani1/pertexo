@@ -141,7 +141,7 @@ export async function insertWorkflowRunAudit(
   `);
 }
 
-function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
+export function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
   const row = runRowSchema.parse(value);
   return Object.freeze({
     id: row.id,

@@ -4,6 +4,8 @@ import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 export {
   connectionCreateRequestSchema,
   connectionIdParamSchema,
+  connectionListQuerySchema,
+  connectionListResponseSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
@@ -12,6 +14,7 @@ export {
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
   type ConnectionResponse,
+  type ConnectionListResponse,
   type ConnectionTestResponse,
 } from '@pertexo/contracts/connections';
 

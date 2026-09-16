@@ -90,9 +90,9 @@ export async function loginThroughOidc(
       cookie: `pertexo_oidc_binding=${encodeURIComponent(browserBinding)}`,
     },
   });
-  if (callback.statusCode !== 204)
+  if (callback.statusCode !== 303)
     throw new Error(
-      `OIDC callback failed: ${String(callback.statusCode)} ${callback.payload}`,
+      `OIDC callback failed: ${String(callback.statusCode)} ${String(callback.headers.location)} ${callback.payload}`,
     );
   return parseSessionCookies(callback.headers['set-cookie']);
 }

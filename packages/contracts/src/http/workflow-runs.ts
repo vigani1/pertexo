@@ -4,6 +4,9 @@ export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
   .object({ workspaceId: z.uuid(), runId: workflowRunIdentifierSchema })
   .strict();
+export const workflowRunListParamsSchema = z
+  .object({ workspaceId: z.uuid() })
+  .strict();
 export const workflowRunStartParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid() })
   .strict();
@@ -37,6 +40,41 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'schedule',
   'webhook',
 ]);
+export const workflowRunPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(100);
+export const workflowRunCursorSchema = z.string().min(1).max(1_024);
+const workflowRunCreatedAtInputSchema = z.union([
+  z.iso.datetime({ offset: true, precision: 0 }),
+  z.iso.datetime({ offset: true, precision: 1 }),
+  z.iso.datetime({ offset: true, precision: 2 }),
+  z.iso.datetime({ offset: true, precision: 3 }),
+  z.iso.datetime({ offset: true, precision: 4 }),
+  z.iso.datetime({ offset: true, precision: 5 }),
+  z.iso.datetime({ offset: true, precision: 6 }),
+]);
+
+/** Canonical UTC form that preserves PostgreSQL's supported microseconds. */
+export function normalizeWorkflowRunCreatedAt(value: string): string {
+  const parsed = workflowRunCreatedAtInputSchema.parse(value);
+  const match =
+    /^(?<whole>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?<fraction>\d{1,6}))?(?<offset>Z|[+-]\d{2}:\d{2})$/u.exec(
+      parsed,
+    );
+  if (match?.groups === undefined)
+    throw new TypeError('workflow run timestamp is invalid');
+  const { whole, fraction, offset } = match.groups;
+  if (whole === undefined || offset === undefined)
+    throw new TypeError('workflow run timestamp is invalid');
+  const epochMilliseconds = Date.parse(`${whole}.000${offset}`);
+  const utcWhole = new Date(epochMilliseconds).toISOString().slice(0, 19);
+  return `${utcWhole}.${(fraction ?? '').padEnd(6, '0')}Z`;
+}
+
+export const workflowRunCreatedAtSchema =
+  workflowRunCreatedAtInputSchema.transform(normalizeWorkflowRunCreatedAt);
 
 /**
  * The server applies the exact bounded execution-value contract before
@@ -78,6 +116,37 @@ export const workflowRunSummarySchema = z
     completedAt: z.iso.datetime({ offset: true }).nullable(),
     deadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
+  })
+  .strict();
+
+export const workflowRunListQuerySchema = z
+  .object({
+    limit: workflowRunPageLimitSchema.optional(),
+    after: workflowRunCursorSchema.optional(),
+    workflowId: z.uuid().optional(),
+    status: workflowRunStatusSchema.optional(),
+    createdAtFrom: workflowRunCreatedAtSchema.optional(),
+    createdAtBefore: workflowRunCreatedAtSchema.optional(),
+  })
+  .strict()
+  .superRefine((query, context) => {
+    if (
+      query.createdAtFrom !== undefined &&
+      query.createdAtBefore !== undefined &&
+      query.createdAtFrom >= query.createdAtBefore
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['createdAtBefore'],
+        message: 'createdAtBefore must be later than createdAtFrom',
+      });
+    }
+  });
+
+export const workflowRunListResponseSchema = z
+  .object({
+    items: z.array(workflowRunSummarySchema).max(100),
+    nextCursor: workflowRunCursorSchema.nullable(),
   })
   .strict();
 
@@ -162,6 +231,10 @@ export const lastRunEventIdHeaderSchema = z
   .regex(/^(?:0|[1-9][0-9]{0,14})$/u);
 
 export type WorkflowRunSummary = z.output<typeof workflowRunSummarySchema>;
+export type WorkflowRunListQuery = z.output<typeof workflowRunListQuerySchema>;
+export type WorkflowRunListResponse = z.output<
+  typeof workflowRunListResponseSchema
+>;
 export type WorkflowNodeRunSummary = z.output<
   typeof workflowNodeRunSummarySchema
 >;

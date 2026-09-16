@@ -2,9 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   CreateWorkspaceUseCase,
+  ChangeWorkspaceMemberRoleUseCase,
   GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   UserController,
+  WorkspaceDiscoveryController,
   WorkspaceMembersController,
   WorkspaceController,
   type CookieResponse,
@@ -178,6 +181,9 @@ describe('identity workspace-route controllers', () => {
           }),
         },
       ),
+      new ChangeWorkspaceMemberRoleUseCase({
+        changeWorkspaceMemberRole: vi.fn(),
+      }),
     );
 
     await controller.list(
@@ -201,6 +207,73 @@ describe('identity workspace-route controllers', () => {
         { limit: '101' },
         response,
       ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
+  it('parses and forwards a strict member role command', async () => {
+    const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const changeWorkspaceMemberRole = vi.fn().mockResolvedValue({
+      userId: targetUserId,
+      role: 'operator',
+      roleRevision: 2,
+      changed: true,
+      replayed: false,
+    });
+    const controller = new WorkspaceMembersController(
+      new ListWorkspaceMembersUseCase(
+        { listWorkspaceMembers: vi.fn() },
+        { findAccess: vi.fn() },
+      ),
+      new ChangeWorkspaceMemberRoleUseCase({ changeWorkspaceMemberRole }),
+    );
+    await controller.changeRole(
+      workspaceRequest(),
+      { workspaceId, userId: targetUserId },
+      { role: 'operator', expectedRoleRevision: 1 },
+    );
+    expect(changeWorkspaceMemberRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        actorUserId: actorId,
+        targetUserId,
+        role: 'operator',
+        expectedRoleRevision: 1,
+        idempotencyKey: 'workspace-lifecycle',
+      }),
+    );
+    await expect(
+      controller.changeRole(
+        workspaceRequest(),
+        { workspaceId, userId: targetUserId },
+        { role: 'operator', expectedRoleRevision: 1, extra: true },
+      ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
+  it('lists only the authenticated user workspaces with bounded input and private caching', async () => {
+    const response: CookieResponse = { header: vi.fn() };
+    const listAccessibleWorkspaces = vi.fn().mockResolvedValue({ items: [] });
+    const controller = new WorkspaceDiscoveryController(
+      new ListAccessibleWorkspacesUseCase({ listAccessibleWorkspaces }),
+    );
+
+    await controller.list(
+      workspaceRequest(),
+      { limit: '2', after: workspaceId },
+      response,
+    );
+
+    expect(listAccessibleWorkspaces).toHaveBeenCalledWith(actorId, {
+      limit: 2,
+      after: workspaceId,
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store',
+    );
+    await expect(
+      controller.list(workspaceRequest(), { limit: '101' }, response),
     ).rejects.toMatchObject({ name: 'ZodError' });
   });
 

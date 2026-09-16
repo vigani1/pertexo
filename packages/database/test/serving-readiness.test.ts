@@ -68,7 +68,9 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0089_oidc_capacity_lock_time.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0093_workspace_member_role_management.sql',
+    );
   });
 
   it('checks only bounded live compatibility state', async () => {

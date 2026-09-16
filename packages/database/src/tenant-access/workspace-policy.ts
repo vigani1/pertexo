@@ -113,3 +113,24 @@ export function rolesForCapability(
 ): readonly Role[] {
   return Object.freeze(ROLES.filter((role) => hasCapability(role, capability)));
 }
+
+const delegatedRoles = Object.freeze([
+  'builder',
+  'operator',
+  'viewer',
+] as const satisfies readonly Role[]);
+
+/** ADR 037 role-transition policy, shared by UI projection and the database command. */
+export function canChangeWorkspaceMemberRole(
+  actorRole: Role,
+  targetRole: Role,
+  nextRole: Role,
+): boolean {
+  if (nextRole === 'owner' || targetRole === 'owner') return false;
+  if (actorRole === 'owner') return true;
+  return (
+    actorRole === 'admin' &&
+    delegatedRoles.includes(targetRole as (typeof delegatedRoles)[number]) &&
+    delegatedRoles.includes(nextRole as (typeof delegatedRoles)[number])
+  );
+}

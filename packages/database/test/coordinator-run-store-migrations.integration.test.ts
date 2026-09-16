@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0089_oidc_capacity_lock_time.sql',
+          migrationHead: '0093_workspace_member_role_management.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -174,6 +174,10 @@ describe('Coordinator migration and identity invariants', () => {
         '0087_workspace_maintenance_rerun_purge.sql',
         '0088_sql_boundary_integrity.sql',
         '0089_oidc_capacity_lock_time.sql',
+        '0090_workspace_discovery_policy.sql',
+        '0091_workspace_discovery_scope.sql',
+        '0092_workflow_run_history_indexes.sql',
+        '0093_workspace_member_role_management.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -189,7 +193,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0089_oidc_capacity_lock_time.sql',
+          migrationHead: '0093_workspace_member_role_management.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -259,7 +263,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0089_oidc_capacity_lock_time.sql',
+        migrationHead: '0093_workspace_member_role_management.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -498,7 +502,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0089_oidc_capacity_lock_time.sql',
+        migrationHead: '0093_workspace_member_role_management.sql',
       });
     } finally {
       await readinessPool.end();

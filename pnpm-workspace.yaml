@@ -11,4 +11,5 @@ allowBuilds:
   core-js: false
   esbuild: true
   msgpackr-extract: false
+  msw: false
   protobufjs: false

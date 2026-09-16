@@ -13,6 +13,7 @@ import {
   IdempotencyRequestConflictError,
   IdentityNotFoundError,
   WorkspaceAccessDeniedError,
+  WorkspaceMemberRoleCommandConflictError,
   OidcTransactionCapacityError,
   OidcTransactionSealingError,
   parseDatabaseConfig,
@@ -237,6 +238,85 @@ afterAll(async () => {
 });
 
 describe('identity/workspace persistence', () => {
+  it('discovers only the actor active workspaces with stable keyset pagination', async () => {
+    const second = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Second Accessible Workspace',
+      slug: `second-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const outsider = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Workspace Outsider',
+    });
+    const hidden = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Hidden Workspace',
+      slug: `hidden-${randomUUID().slice(0, 12)}`,
+      ownerUserId: outsider.id,
+    });
+
+    const discovered: string[] = [];
+    let after: string | undefined;
+    do {
+      const page = await identityDatabase.listAccessibleWorkspaces(
+        ownerUserId,
+        { limit: 1, ...(after === undefined ? {} : { after }) },
+      );
+      discovered.push(...page.items.map((workspace) => workspace.id));
+      for (const accessibleWorkspace of page.items) {
+        expect(accessibleWorkspace).toMatchObject({
+          role: 'owner',
+          status: 'active',
+        });
+      }
+      after = page.nextCursor;
+    } while (after !== undefined);
+
+    expect(discovered).toContain(workspaceId);
+    expect(discovered).toContain(second.id);
+    expect(discovered).not.toContain(hidden.id);
+    expect(discovered).toEqual([...discovered].sort());
+
+    const outsiderPage = await identityDatabase.listAccessibleWorkspaces(
+      outsider.id,
+    );
+    expect(outsiderPage.items.map((workspace) => workspace.id)).toEqual([
+      hidden.id,
+    ]);
+  });
+
+  it('does not apply actor discovery inside an ordinary workspace transaction', async () => {
+    const second = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Same actor isolated workspace',
+      slug: `same-actor-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        await client.query(
+          `select set_config('app.workspace_id', $1, true),
+                  set_config('app.actor_id', $2, true)`,
+          [workspaceId, ownerUserId],
+        );
+        const rows = await client.query<{ workspace_id: string }>(
+          'select workspace_id from app.workspace_memberships order by workspace_id',
+        );
+        expect(rows.rows.map((row) => row.workspace_id)).toEqual([workspaceId]);
+        expect(rows.rows.map((row) => row.workspace_id)).not.toContain(
+          second.id,
+        );
+        await client.query('commit');
+      } finally {
+        await client.query('rollback').catch(() => undefined);
+        client.release();
+      }
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('links identities idempotently and only resolves live session digests', async () => {
     const liveDigest = createHash('sha256').update(randomUUID()).digest('hex');
     const live = await identityDatabase.createSession({
@@ -567,6 +647,541 @@ describe('identity/workspace persistence', () => {
       ).rejects.toMatchObject({ name: 'ZodError' });
     },
   );
+
+  it('changes an existing member role once, revokes sessions, and replays without reapplying', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Role command',
+      slug: `role-command-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const target = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Role target',
+    });
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: commandWorkspace.id,
+        userId: target.id,
+        role: 'viewer',
+        status: 'active',
+      });
+    });
+    const targetSession = await identityDatabase.createSession({
+      userId: target.id,
+      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const original = {
+      workspaceId: commandWorkspace.id,
+      actorUserId: ownerUserId,
+      targetUserId: target.id,
+      role: 'builder' as const,
+      expectedRoleRevision: 1,
+      idempotencyKey: `role-${randomUUID()}`,
+      requestId: 'role-request',
+      traceId: 'role-trace',
+    };
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole(original),
+    ).resolves.toEqual({
+      userId: target.id,
+      role: 'builder',
+      roleRevision: 2,
+      changed: true,
+      replayed: false,
+    });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(targetSession.tokenDigest),
+    ).resolves.toBeNull();
+
+    await identityDatabase.changeWorkspaceMemberRole({
+      ...original,
+      role: 'operator',
+      expectedRoleRevision: 2,
+      idempotencyKey: `role-${randomUUID()}`,
+    });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole(original),
+    ).resolves.toMatchObject({
+      role: 'builder',
+      roleRevision: 2,
+      replayed: true,
+    });
+    const noOpDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: target.id,
+      tokenDigest: noOpDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const noOpKey = `role-${randomUUID()}`;
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        ...original,
+        role: 'operator',
+        expectedRoleRevision: 3,
+        idempotencyKey: noOpKey,
+      }),
+    ).resolves.toMatchObject({
+      role: 'operator',
+      roleRevision: 3,
+      changed: false,
+      replayed: false,
+    });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(noOpDigest),
+    ).resolves.toMatchObject({ userId: target.id });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        ...original,
+        role: 'viewer',
+        expectedRoleRevision: 3,
+        idempotencyKey: noOpKey,
+      }),
+    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    const rows = await identityDatabase.listWorkspaceMembers(
+      commandWorkspace.id,
+      ownerUserId,
+    );
+    expect(
+      rows.items.find((member) => member.userId === target.id),
+    ).toMatchObject({
+      role: 'operator',
+      roleRevision: 3,
+    });
+    const facts = await tenantDatabase.withWorkspace(
+      commandWorkspace.id,
+      async ({ db }) =>
+        db
+          .select()
+          .from(auditEvents)
+          .where(eq(auditEvents.workspaceId, commandWorkspace.id)),
+    );
+    expect(
+      facts.filter((event) => event.action === 'workspace.member_role_changed'),
+    ).toHaveLength(2);
+  });
+
+  it('serializes same-revision role changes and rejects stale and forbidden transitions', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Role concurrency',
+      slug: `role-concurrency-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const [target, admin] = await Promise.all([
+      identityDatabase.createUser({
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Target',
+      }),
+      identityDatabase.createUser({
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Admin',
+      }),
+    ]);
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values([
+        {
+          workspaceId: commandWorkspace.id,
+          userId: target.id,
+          role: 'viewer',
+          status: 'active',
+        },
+        {
+          workspaceId: commandWorkspace.id,
+          userId: admin.id,
+          role: 'admin',
+          status: 'active',
+        },
+      ]);
+    });
+    const results = await Promise.allSettled([
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: 'builder',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: 'operator',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    expect(rejected?.status).toBe('rejected');
+    if (rejected?.status !== 'rejected')
+      throw new Error('A concurrent role command should have failed');
+    expect(
+      (rejected.reason as WorkspaceMemberRoleCommandConflictError).reason,
+    ).toBe('revision_conflict');
+    const afterConcurrent = (
+      await identityDatabase.listWorkspaceMembers(
+        commandWorkspace.id,
+        ownerUserId,
+      )
+    ).items.find((member) => member.userId === target.id);
+    if (afterConcurrent === undefined)
+      throw new Error('Concurrent target member is unavailable');
+    if (afterConcurrent.role === 'owner')
+      throw new Error('Concurrent target unexpectedly became owner');
+    const alternateRole =
+      afterConcurrent.role === 'builder' ? 'operator' : 'builder';
+    await identityDatabase.changeWorkspaceMemberRole({
+      workspaceId: commandWorkspace.id,
+      actorUserId: ownerUserId,
+      targetUserId: target.id,
+      role: alternateRole,
+      expectedRoleRevision: afterConcurrent.roleRevision,
+      idempotencyKey: randomUUID(),
+    });
+    await identityDatabase.changeWorkspaceMemberRole({
+      workspaceId: commandWorkspace.id,
+      actorUserId: ownerUserId,
+      targetUserId: target.id,
+      role: afterConcurrent.role,
+      expectedRoleRevision: afterConcurrent.roleRevision + 1,
+      idempotencyKey: randomUUID(),
+    });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: alternateRole,
+        expectedRoleRevision: afterConcurrent.roleRevision,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ reason: 'revision_conflict' });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: randomUUID(),
+        role: 'viewer',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ reason: 'target_missing' });
+    for (const status of ['suspended', 'removed'] as const) {
+      await tenantDatabase.withWorkspace(
+        commandWorkspace.id,
+        async ({ db }) => {
+          await db
+            .update(workspaceMemberships)
+            .set({ status })
+            .where(eq(workspaceMemberships.userId, target.id));
+        },
+      );
+      await expect(
+        identityDatabase.changeWorkspaceMemberRole({
+          workspaceId: commandWorkspace.id,
+          actorUserId: ownerUserId,
+          targetUserId: target.id,
+          role: alternateRole,
+          expectedRoleRevision: afterConcurrent.roleRevision + 2,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ reason: 'target_inactive' });
+    }
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db
+        .update(workspaceMemberships)
+        .set({ status: 'active' })
+        .where(eq(workspaceMemberships.userId, target.id));
+    });
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(`update app.users set status='suspended' where id=$1`, [
+        target.id,
+      ]);
+      await expect(
+        identityDatabase.changeWorkspaceMemberRole({
+          workspaceId: commandWorkspace.id,
+          actorUserId: ownerUserId,
+          targetUserId: target.id,
+          role: alternateRole,
+          expectedRoleRevision: afterConcurrent.roleRevision + 2,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ reason: 'target_inactive' });
+    } finally {
+      await owner.end();
+    }
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: admin.id,
+        targetUserId: ownerUserId,
+        role: 'viewer',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ reason: 'owner_change' });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: admin.id,
+        targetUserId: admin.id,
+        role: 'viewer',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(WorkspaceMemberRoleCommandConflictError);
+  });
+
+  it('rolls back role, session, audit, and receipt writes when a late audit insert fails', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Role rollback',
+      slug: `role-rollback-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const target = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Rollback target',
+    });
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: commandWorkspace.id,
+        userId: target.id,
+        role: 'viewer',
+        status: 'active',
+      });
+    });
+    const digest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: target.id,
+      tokenDigest: digest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const idempotencyKey = randomUUID();
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: 'builder',
+        expectedRoleRevision: 1,
+        idempotencyKey,
+        requestId: 'x'.repeat(129),
+      }),
+    ).rejects.toBeDefined();
+    const unchanged = await identityDatabase.listWorkspaceMembers(
+      commandWorkspace.id,
+      ownerUserId,
+    );
+    expect(
+      unchanged.items.find((member) => member.userId === target.id),
+    ).toMatchObject({
+      role: 'viewer',
+      roleRevision: 1,
+    });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(digest),
+    ).resolves.toMatchObject({ userId: target.id });
+    await expect(
+      identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: 'builder',
+        expectedRoleRevision: 1,
+        idempotencyKey,
+      }),
+    ).resolves.toMatchObject({ changed: true, replayed: false });
+  });
+
+  it('coalesces concurrent duplicate role commands into one durable side effect', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Role duplicate',
+      slug: `role-duplicate-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const target = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Duplicate target',
+    });
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: commandWorkspace.id,
+        userId: target.id,
+        role: 'viewer',
+        status: 'active',
+      });
+    });
+    const command = {
+      workspaceId: commandWorkspace.id,
+      actorUserId: ownerUserId,
+      targetUserId: target.id,
+      role: 'operator' as const,
+      expectedRoleRevision: 1,
+      idempotencyKey: randomUUID(),
+    };
+    const receipts = await Promise.all([
+      identityDatabase.changeWorkspaceMemberRole(command),
+      identityDatabase.changeWorkspaceMemberRole(command),
+    ]);
+    expect(receipts.map((receipt) => receipt.replayed).sort()).toEqual([
+      false,
+      true,
+    ]);
+    const facts = await tenantDatabase.withWorkspace(
+      commandWorkspace.id,
+      async ({ db }) =>
+        db
+          .select()
+          .from(auditEvents)
+          .where(eq(auditEvents.workspaceId, commandWorkspace.id)),
+    );
+    expect(
+      facts.filter((event) => event.action === 'workspace.member_role_changed'),
+    ).toHaveLength(1);
+  });
+
+  it('serializes a manager demotion ahead of the manager’s queued command', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Manager demotion',
+      slug: `manager-demotion-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const [manager, target] = await Promise.all([
+      identityDatabase.createUser({
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Manager',
+      }),
+      identityDatabase.createUser({
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Managed target',
+      }),
+    ]);
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values([
+        {
+          workspaceId: commandWorkspace.id,
+          userId: manager.id,
+          role: 'admin',
+          status: 'active',
+        },
+        {
+          workspaceId: commandWorkspace.id,
+          userId: target.id,
+          role: 'viewer',
+          status: 'active',
+        },
+      ]);
+    });
+    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const blocker = await blockerPool.connect();
+    let demotion: Promise<unknown> | undefined;
+    let staleManagerCommand: Promise<unknown> | undefined;
+    try {
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query(
+        'select id from app.workspaces where id=$1 for update',
+        [commandWorkspace.id],
+      );
+      demotion = identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: manager.id,
+        role: 'viewer',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      });
+      void demotion.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      staleManagerCommand = identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: manager.id,
+        targetUserId: target.id,
+        role: 'operator',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      });
+      void staleManagerCommand.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await blocker.query('commit');
+      await expect(demotion).resolves.toMatchObject({ role: 'viewer' });
+      await expect(staleManagerCommand).rejects.toMatchObject({
+        reason: 'actor_inactive',
+      });
+    } finally {
+      await blocker.query('rollback').catch(() => undefined);
+      blocker.release();
+      await blockerPool.end();
+    }
+  }, 15_000);
+
+  it('serializes role mutation with the workspace lifecycle command lock', async () => {
+    const commandWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Role lifecycle lock',
+      slug: `role-lifecycle-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const target = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Lifecycle target',
+    });
+    await tenantDatabase.withWorkspace(commandWorkspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: commandWorkspace.id,
+        userId: target.id,
+        role: 'viewer',
+        status: 'active',
+      });
+    });
+    const blockerPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const blocker = await blockerPool.connect();
+    let lifecycle: Promise<unknown> | undefined;
+    let roleChange: Promise<unknown> | undefined;
+    try {
+      await blocker.query('begin');
+      await blocker.query('set local role pertexo_owner');
+      await blocker.query(
+        'select id from app.workspaces where id=$1 for update',
+        [commandWorkspace.id],
+      );
+      lifecycle = identityDatabase.requestWorkspaceLifecycleOperation({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        commandType: 'deletion_requested',
+        reason: 'Concurrency proof',
+        idempotencyKey: randomUUID(),
+      });
+      void lifecycle.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      roleChange = identityDatabase.changeWorkspaceMemberRole({
+        workspaceId: commandWorkspace.id,
+        actorUserId: ownerUserId,
+        targetUserId: target.id,
+        role: 'builder',
+        expectedRoleRevision: 1,
+        idempotencyKey: randomUUID(),
+      });
+      void roleChange.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await blocker.query('commit');
+      await expect(lifecycle).resolves.toMatchObject({
+        commandType: 'deletion_requested',
+      });
+      await expect(roleChange).resolves.toMatchObject({
+        role: 'builder',
+        roleRevision: 2,
+      });
+    } finally {
+      await blocker.query('rollback').catch(() => undefined);
+      blocker.release();
+      await blockerPool.end();
+    }
+  }, 15_000);
 
   it('provides a valid ordered index for non-removed member discovery', async () => {
     const pool = new Pool({ connectionString: apiUrl, max: 1 });

@@ -73,12 +73,19 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and to_regclass('app.sessions') is not null
         and to_regclass('app.workspaces') is not null
         and to_regclass('app.workspace_memberships') is not null
+        and to_regclass('app.workspace_member_role_command_receipts') is not null
         and to_regclass('app.audit_events') is not null
         and exists (
           select 1 from pg_attribute a
           where a.attrelid = to_regclass('app.workspace_memberships')
             and a.attname = 'workspace_id' and a.attnotnull
             and a.atttypid = 'uuid'::regtype and not a.attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.workspace_memberships')
+            and a.attname = 'role_revision' and a.attnotnull
+            and a.atttypid = 'int4'::regtype and not a.attisdropped
         )
         and exists (
           select 1 from pg_attribute a
@@ -92,8 +99,11 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
          from pg_class c where c.oid = to_regclass('app.workspace_memberships'))
         and
         (select c.relrowsecurity and c.relforcerowsecurity
+         from pg_class c where c.oid = to_regclass('app.workspace_member_role_command_receipts'))
+        and
+        (select c.relrowsecurity and c.relforcerowsecurity
          from pg_class c where c.oid = to_regclass('app.audit_events'))
-        and (select count(*) from pg_policy where polrelid = to_regclass('app.workspace_memberships')) = 1
+        and (select count(*) from pg_policy where polrelid = to_regclass('app.workspace_memberships')) = 2
         and (select count(*) from pg_policy where polrelid = to_regclass('app.audit_events')) = 3
         and not exists (
           select 1 from (values
@@ -124,6 +134,27 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         )
         and exists (
           select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.workspace_memberships')
+            and policy.polname = 'workspace_memberships_actor_discovery'
+            and policy.polcmd = 'r'
+            and policy.polpermissive
+            and cardinality(policy.polroles) = 1
+            and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((current_setting(''app.discovery_scope''::text, true) = ''workspace_memberships''::text) AND (NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text) IS NULL) AND ((user_id)::text = NULLIF(current_setting(''app.actor_id''::text, true), ''''::text)) AND ((status)::text = ''active''::text))'
+            and policy.polwithcheck is null
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.workspace_member_role_command_receipts')
+            and policy.polname = 'workspace_member_role_command_receipts_workspace_scope'
+            and policy.polcmd = '*'
+            and cardinality(policy.polroles) = 1
+            and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and exists (
+          select 1 from pg_policy policy
           where policy.polrelid = to_regclass('app.audit_events')
             and policy.polname = 'audit_events_retention_scope'
             and policy.polcmd = '*'
@@ -141,6 +172,11 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and has_table_privilege(current_user, 'app.workspaces', 'SELECT')
         and has_table_privilege(current_user, 'app.workspace_memberships', 'SELECT')
         and has_table_privilege(current_user, 'app.audit_events', 'SELECT')
+        and has_table_privilege(current_user, 'app.workspace_member_role_command_receipts', 'SELECT')
+        and has_table_privilege(current_user, 'app.workspace_member_role_command_receipts', 'INSERT')
+        and has_column_privilege(current_user, 'app.workspace_member_role_command_receipts', 'status', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workspace_member_role_command_receipts', 'result_ref', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workspace_memberships', 'role_revision', 'UPDATE')
         and has_function_privilege(current_user, 'app.request_workspace_lifecycle_operation(uuid,uuid,character,character varying,uuid,character varying,character)', 'EXECUTE')
         and has_function_privilege(current_user, 'app.read_workspace_lifecycle_operation(uuid,uuid,uuid)', 'EXECUTE')
         and not has_column_privilege(current_user, 'app.workspaces', 'status', 'UPDATE')
@@ -150,6 +186,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not has_column_privilege(current_user, 'app.workspaces', 'purge_after', 'UPDATE')
         and not has_table_privilege(current_user, 'app.audit_events', 'UPDATE')
         and not has_table_privilege(current_user, 'app.audit_events', 'DELETE')
+        and not has_table_privilege(current_user, 'app.workspace_member_role_command_receipts', 'DELETE')
         else
           not has_table_privilege(current_user, 'app.users', 'SELECT')
           and not has_table_privilege(current_user, 'app.sessions', 'SELECT')

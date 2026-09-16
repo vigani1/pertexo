@@ -484,7 +484,7 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0089_oidc_capacity_lock_time.sql',
+      migrationHead: '0093_workspace_member_role_management.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

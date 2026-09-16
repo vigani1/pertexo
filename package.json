@@ -13,17 +13,14 @@
       "jscpd"
     ],
     "ignoreIssues": {
+      "packages/contracts/src/http/workflow-authoring.ts": [
+        "duplicates"
+      ],
       "packages/workflow-engine/src/executable-foundation.ts": [
         "duplicates"
       ]
     },
     "workspaces": {
-      "apps/web": {
-        "ignoreDependencies": [
-          "@xyflow/react",
-          "zustand"
-        ]
-      },
       "packages/workflow-model": {
         "entry": [
           "src/expression-worker-runtime.ts"

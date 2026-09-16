@@ -7,6 +7,7 @@ import {
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
+  ListWorkflowRunsUseCase,
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
@@ -73,14 +74,24 @@ function persistence() {
   const get = vi
     .fn<WorkflowRunPersistence['get']>()
     .mockResolvedValue({ run: run(), nodes: [] });
+  const list = vi
+    .fn<WorkflowRunPersistence['list']>()
+    .mockResolvedValue({ items: [run()] });
   const cancel = vi
     .fn<WorkflowRunPersistence['cancel']>()
     .mockResolvedValue({ run: run(), alreadyRequested: false });
   return {
-    store: { start, replay, get, cancel } satisfies WorkflowRunPersistence,
+    store: {
+      start,
+      replay,
+      get,
+      list,
+      cancel,
+    } satisfies WorkflowRunPersistence,
     start,
     replay,
     get,
+    list,
     cancel,
   };
 }
@@ -137,6 +148,79 @@ async function replayCommand(overrides: Partial<ReplayWorkflowRunInput> = {}) {
 }
 
 describe('workflow run application seams', () => {
+  it('binds exact-precision pagination cursors to workspace and normalized filters', async () => {
+    const fixture = persistence();
+    fixture.list
+      .mockResolvedValueOnce({
+        items: [run()],
+        nextCursor: {
+          createdAt: '2026-08-21T12:00:00.000123Z',
+          id: runId,
+        },
+      })
+      .mockResolvedValueOnce({ items: [] });
+    const useCase = new ListWorkflowRunsUseCase(fixture.store, authorization());
+    const first = await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      status: 'queued',
+      createdAtFrom: '2026-08-21T14:00:00+02:00',
+      limit: 1,
+    });
+
+    expect(first.nextCursor).toEqual(expect.any(String));
+    if (first.nextCursor === null) throw new Error('expected a next cursor');
+    await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      status: 'queued',
+      createdAtFrom: '2026-08-21T12:00:00.000000Z',
+      limit: 1,
+      after: first.nextCursor,
+    });
+    expect(fixture.list).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        createdAtFrom: '2026-08-21T12:00:00.000000Z',
+        after: {
+          createdAt: '2026-08-21T12:00:00.000123Z',
+          id: runId,
+        },
+      }),
+    );
+
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        status: 'running',
+        limit: 1,
+        after: first.nextCursor,
+      }),
+    ).rejects.toThrow('workflow run cursor is invalid');
+    expect(fixture.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves fractional run-history boundaries through the use-case seam', async () => {
+    const fixture = persistence();
+    fixture.list.mockResolvedValue({ items: [] });
+    await new ListWorkflowRunsUseCase(fixture.store, authorization()).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      createdAtFrom: '2026-08-21T00:00:00.000100Z',
+      createdAtBefore: '2026-08-21T00:00:00.000900Z',
+    });
+
+    expect(fixture.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdAtFrom: '2026-08-21T00:00:00.000100Z',
+        createdAtBefore: '2026-08-21T00:00:00.000900Z',
+      }),
+    );
+  });
+
   it('reuses guard authorization without repeating the access lookup', async () => {
     const fixture = persistence();
     const access = authorization();

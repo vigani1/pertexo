@@ -9,6 +9,7 @@ import {
 import {
   idempotencyKeySchema,
   workspaceCreateRequestSchema,
+  workspaceMemberRoleChangeRequestSchema,
 } from '../src/http/identity-workspace.js';
 import {
   identityWorkspaceClientContract,
@@ -61,6 +62,18 @@ describe('identity and problem public contracts', () => {
     expect(idempotencyKeySchema.safeParse('one-two').success).toBe(true);
     expect(idempotencyKeySchema.safeParse('one,two').success).toBe(false);
     expect(
+      workspaceMemberRoleChangeRequestSchema.parse({
+        role: 'operator',
+        expectedRoleRevision: 7,
+      }),
+    ).toEqual({ role: 'operator', expectedRoleRevision: 7 });
+    expect(
+      workspaceMemberRoleChangeRequestSchema.safeParse({
+        role: 'owner',
+        expectedRoleRevision: 7,
+      }).success,
+    ).toBe(false);
+    expect(
       apiProblemSchema.parse({
         type: 'urn:pertexo:problem:workspace.conflict',
         title: 'Workspace conflict',
@@ -97,5 +110,14 @@ describe('identity and problem public contracts', () => {
       identityWorkspaceOpenApiDocument.paths['/v1/auth/oidc/callback'].get
         .responses['503'],
     ).toEqual({ $ref: '#/components/responses/ServiceUnavailable' });
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/auth/oidc/callback'].get
+        .responses['303'].headers.Location,
+    ).toBeDefined();
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].get.responses[
+        '200'
+      ],
+    ).toBeDefined();
   });
 });

@@ -4,6 +4,8 @@ import {
   ConnectionsController,
   ConnectionsModule,
   CreateConnectionUseCase,
+  GetConnectionUseCase,
+  ListConnectionsUseCase,
   FailureNotificationDestinationsController,
   FailureNotificationDestinationUseCases,
   type ConnectionDependencies,
@@ -13,6 +15,8 @@ import { CONNECTION_AUTHORIZATION } from '../../src/connections/tokens.js';
 const dependencies = {
   persistence: {
     createConnection: () => Promise.reject(new Error('not exercised')),
+    listConnections: () => Promise.resolve({ items: [] }),
+    readConnection: () => Promise.resolve(null),
     findConnectionCreateReplay: () => Promise.resolve(null),
     findConnectionRotateReplay: () => Promise.resolve(null),
     rotateConnectionSecret: () => Promise.reject(new Error('not exercised')),
@@ -55,6 +59,8 @@ describe('connections Nest module', () => {
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provide: CreateConnectionUseCase }),
+        expect.objectContaining({ provide: ListConnectionsUseCase }),
+        expect.objectContaining({ provide: GetConnectionUseCase }),
         expect.objectContaining({
           provide: FailureNotificationDestinationUseCases,
         }),

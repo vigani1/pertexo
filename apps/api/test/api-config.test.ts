@@ -12,6 +12,7 @@ function validDeployedEnvironment(): Record<string, string> {
     OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
     OIDC_JWKS_URI: 'https://identity.example.test/jwks',
     OIDC_CLIENT_ID: 'pertexo-api',
+    OIDC_CALLBACK_LANDING_PATH: '/workspaces',
     OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
     OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
     OIDC_TRANSACTION_KEY_VERSION: 'v2',
@@ -105,6 +106,19 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({ ...validDeployedEnvironment(), ...changed }),
     ).toThrow('Identity configuration is invalid');
+  });
+
+  it.each([
+    '//evil.example.test',
+    '/workspaces?next=evil',
+    'https://evil.test',
+  ])('rejects unsafe callback landing path %s', (callbackLandingPath) => {
+    expect(() =>
+      parseApiConfig({
+        ...validDeployedEnvironment(),
+        OIDC_CALLBACK_LANDING_PATH: callbackLandingPath,
+      }),
+    ).toThrow();
   });
   it.each(['for_each_staging', 'for_each_activation'] as const)(
     'accepts the %s compatibility cohort',
@@ -252,6 +266,7 @@ describe('parseApiConfig', () => {
       OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/oauth2/token',
       OIDC_JWKS_URI: 'https://identity.example.test/.well-known/jwks.json',
       OIDC_CLIENT_ID: 'pertexo-api',
+      OIDC_CALLBACK_LANDING_PATH: '/workspaces',
       OIDC_CLIENT_SECRET: 'provider-secret',
       OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
       OIDC_ALLOWED_ALGORITHMS: 'RS256,ES256',
@@ -283,6 +298,7 @@ describe('parseApiConfig', () => {
       oidc: {
         issuer: 'https://identity.example.test',
         clientId: 'pertexo-api',
+        callbackLandingPath: '/workspaces',
         scopes: ['openid', 'profile', 'email'],
         allowedAlgorithms: ['RS256', 'ES256'],
         allowInsecureHttpForTests: false,

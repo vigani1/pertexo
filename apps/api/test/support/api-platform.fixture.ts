@@ -97,6 +97,7 @@ export function createStubApiWorkflowRuntime(
         start: () => Promise.reject(new Error('not used')),
         replay: () => Promise.reject(new Error('not used')),
         get: () => Promise.resolve(undefined),
+        list: () => Promise.resolve({ items: [] }),
         cancel: () => Promise.reject(new Error('not used')),
       },
       streamer: {

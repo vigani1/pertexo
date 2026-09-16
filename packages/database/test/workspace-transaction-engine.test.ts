@@ -2,6 +2,7 @@ import type { Pool, PoolClient, QueryResult } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  withActorScopedClient,
   withPlatformTransaction,
   withTenantScopedReadClient,
   withTenantScopedClient,
@@ -10,6 +11,7 @@ import {
 } from '../src/testing.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
+const actorId = '22222222-2222-4222-8222-222222222222';
 
 function result(rows: readonly Record<string, unknown>[] = []): QueryResult {
   return { rows } as unknown as QueryResult;
@@ -69,6 +71,111 @@ describe('shared workspace transaction engine', () => {
     expect(statements).toContain(
       'begin isolation level repeatable read read only',
     );
+  });
+
+  it('installs and verifies the bounded actor discovery scope', async () => {
+    const statements: string[] = [];
+    let transactionActive = false;
+    let activeActorId: string | null = null;
+    let discoveryScope: string | null = null;
+    const release = vi.fn();
+    const query = vi.fn((statement: string, values?: readonly unknown[]) => {
+      statements.push(statement);
+      if (statement.startsWith('begin')) transactionActive = true;
+      if (statement.includes("set_config('app.actor_id'")) {
+        activeActorId = String(values?.[0]);
+        discoveryScope = String(values?.[1]);
+      }
+      if (statement === 'commit') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'"))
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: null,
+              actor_id: transactionActive ? activeActorId : null,
+              discovery_scope: transactionActive ? discoveryScope : null,
+              statement_timeout_millis: 0,
+            },
+          ]),
+        );
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withActorScopedClient(poolWith({ query, release }), actorId, () =>
+        Promise.resolve('members'),
+      ),
+    ).resolves.toBe('members');
+    expect(statements).toContain(
+      'begin isolation level repeatable read read only',
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("set_config('app.discovery_scope', $2, true)"),
+      [actorId, 'workspace_memberships'],
+    );
+    expect(release).toHaveBeenCalledWith();
+  });
+
+  it('rejects a client retaining discovery context before actor work', async () => {
+    const release = vi.fn();
+    const operation = vi.fn();
+    const query = vi.fn().mockResolvedValue(
+      result([
+        {
+          workspace_id: null,
+          actor_id: null,
+          discovery_scope: 'workspace_memberships',
+        },
+      ]),
+    );
+
+    await expect(
+      withActorScopedClient(poolWith({ query, release }), actorId, operation),
+    ).rejects.toMatchObject({ message: 'Actor context cleanup failed' });
+    expect(operation).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledWith(true);
+  });
+
+  it.each([
+    { rows: [], label: 'missing verification row' },
+    {
+      rows: [
+        {
+          workspace_id: '',
+          actor_id: actorId,
+          discovery_scope: 'wrong-scope',
+          statement_timeout_millis: 0,
+        },
+      ],
+      label: 'wrong discovery scope',
+    },
+  ])('fails actor context verification for $label', async ({ rows }) => {
+    let contextReads = 0;
+    const operation = vi.fn();
+    const release = vi.fn();
+    const query = vi.fn((statement: string) => {
+      if (statement.includes("current_setting('app.workspace_id'")) {
+        contextReads += 1;
+        if (contextReads === 1 || contextReads === 3)
+          return Promise.resolve(
+            result([
+              {
+                workspace_id: null,
+                actor_id: null,
+                discovery_scope: null,
+              },
+            ]),
+          );
+        return Promise.resolve(result(rows));
+      }
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withActorScopedClient(poolWith({ query, release }), actorId, operation),
+    ).rejects.toThrow('PostgreSQL tenant context verification failed');
+    expect(operation).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledWith();
   });
 
   it('adapts a workspace read transaction onto the repeatable-read owner', async () => {

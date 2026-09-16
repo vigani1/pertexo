@@ -15,6 +15,12 @@ export const connectionStatusSchema = z.enum([
   'reauthorization_required',
   'revoked',
 ]);
+export const connectionCursorSchema = z.string().min(1).max(512);
+export const connectionPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(100);
 
 const connectionNameSchema = z.string().trim().min(1).max(128);
 const httpHeaderNameSchema = z
@@ -286,6 +292,22 @@ export const connectionResponseSchema = z
   .strict()
   .readonly();
 
+export const connectionListQuerySchema = z
+  .object({
+    limit: connectionPageLimitSchema.optional(),
+    after: connectionCursorSchema.optional(),
+  })
+  .strict()
+  .readonly();
+
+export const connectionListResponseSchema = z
+  .object({
+    items: z.array(connectionResponseSchema).max(100),
+    nextCursor: connectionCursorSchema.nullable(),
+  })
+  .strict()
+  .readonly();
+
 export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
   z
     .object({
@@ -335,6 +357,9 @@ export type ParsedConnectionTestRequest = z.output<
   typeof connectionTestRequestSchema
 >;
 export type ConnectionResponse = z.output<typeof connectionResponseSchema>;
+export type ConnectionListResponse = z.output<
+  typeof connectionListResponseSchema
+>;
 export type ConnectionTestResponse = z.output<
   typeof connectionTestResponseSchema
 >;

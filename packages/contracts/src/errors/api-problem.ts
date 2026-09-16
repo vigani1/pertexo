@@ -13,6 +13,8 @@ export const API_PROBLEM_CODES = [
   'artifact.conflict',
   'artifact.unavailable',
   'workspace.conflict',
+  'workspace.member_role_revision_conflict',
+  'workspace.member_role_transition_conflict',
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
   'workflow.invalid',
@@ -147,6 +149,18 @@ const apiProblemDetails = {
     status: 409,
     title: 'Workspace conflict',
     severity: 'info',
+    exposeDetail: true,
+  },
+  'workspace.member_role_revision_conflict': {
+    status: 409,
+    title: 'Workspace member role changed',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workspace.member_role_transition_conflict': {
+    status: 409,
+    title: 'Workspace member role transition conflict',
+    severity: 'warn',
     exposeDetail: true,
   },
   'workflow.revision_conflict': {

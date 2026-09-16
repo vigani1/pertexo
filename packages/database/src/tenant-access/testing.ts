@@ -7,6 +7,7 @@ export {
   USER_STATUS,
   WORKSPACE_STATUS,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
 } from './identity-workspace.js';
 export type {
   AuthIdentityRecord,
@@ -27,6 +28,7 @@ export type {
   WorkspaceMembersPage,
   WorkspaceLifecycleOperation,
   WorkspaceLifecycleConflictReason,
+  WorkspaceMemberRoleCommandConflictReason,
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
@@ -45,6 +47,7 @@ export type {
 } from './oidc-login-transactions.js';
 export {
   parseWorkspaceId,
+  withActorScopedClient,
   withPlatformTransaction,
   withTenantScopedReadClient,
   withTenantScopedClient,

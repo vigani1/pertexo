@@ -146,6 +146,8 @@ describe('identity authentication controllers', () => {
         ),
       ]),
     );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(response.header)).toHaveBeenCalledWith('location', '/');
   });
 
   it('revokes the persisted session when the combined cookie header fails', async () => {
