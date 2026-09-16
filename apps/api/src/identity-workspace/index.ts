@@ -10,7 +10,6 @@ export {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
-  WorkspaceMemberManageGuard,
   authenticatedSession,
   readHeader,
 } from './guards.js';

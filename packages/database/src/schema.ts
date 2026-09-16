@@ -73,7 +73,6 @@ export {
   sessions,
   workspaces,
   workspaceMemberships,
-  workspaceMemberRoleCommandReceipts,
   auditEvents,
   usageEvents,
   rlsProbeRecords,
