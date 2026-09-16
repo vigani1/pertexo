@@ -85,7 +85,7 @@ const apiEnvironmentSchema = z
     OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
     OIDC_CALLBACK_LANDING_PATH: z
       .string()
-      .regex(/^\/(?:[A-Za-z0-9._~-]+\/?)*$/u)
+      .regex(/^\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]*$/u)
       .default('/'),
     OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
     OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
