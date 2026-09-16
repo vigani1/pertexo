@@ -20,12 +20,9 @@ import {
   workspaceResponseSchema,
   userProfileResponseSchema,
   workspaceMembersResponseSchema,
-  workspaceMemberRoleChangeRequestSchema,
-  workspaceMemberRoleChangeResponseSchema,
   type AccessibleWorkspacesResponse,
   type UserProfileResponse,
   type WorkspaceMembersResponse,
-  type WorkspaceMemberRoleChangeResponse,
   type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from './types.js';
@@ -61,10 +58,6 @@ type AccessibleWorkspacesPersistence = Pick<
 type WorkspaceMembersPersistence = Pick<
   IdentityWorkspacePersistence,
   'listWorkspaceMembers'
->;
-type WorkspaceMemberRolePersistence = Pick<
-  IdentityWorkspacePersistence,
-  'changeWorkspaceMemberRole'
 >;
 type WorkspaceCreationPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -235,47 +228,6 @@ export class ListWorkspaceMembersUseCase {
   }
 }
 
-export class ChangeWorkspaceMemberRoleUseCase {
-  public constructor(
-    private readonly persistence: WorkspaceMemberRolePersistence,
-    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
-  ) {}
-
-  public execute(
-    input: Readonly<{
-      actor: ActorContext;
-      routeWorkspaceId: string;
-      targetUserId: string;
-      request: unknown;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<WorkspaceMemberRoleChangeResponse> {
-    return this.telemetry.measure(
-      IDENTITY_WORKSPACE_OPERATION.workspaceMemberRoleChange,
-      async () => {
-        const request = workspaceMemberRoleChangeRequestSchema.parse(
-          input.request,
-        );
-        const result = await this.persistence.changeWorkspaceMemberRole({
-          workspaceId: input.routeWorkspaceId,
-          actorUserId: input.actor.actorId,
-          targetUserId: input.targetUserId,
-          role: request.role,
-          expectedRoleRevision: request.expectedRoleRevision,
-          idempotencyKey: input.idempotencyKey,
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-        });
-        return workspaceMemberRoleChangeResponseSchema.parse(result);
-      },
-    );
-  }
-}
-
 export class OidcApplicationService {
   public constructor(
     private readonly oidc: OidcLoginPort,
@@ -318,6 +270,8 @@ export class OidcApplicationService {
     );
   }
 }
+
+export { ChangeWorkspaceMemberRoleUseCase } from './member-role-use-case.js';
 
 export type CreateWorkspaceInput = Readonly<{
   actorId: string;
