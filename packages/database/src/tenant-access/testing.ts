@@ -47,6 +47,7 @@ export type {
 } from './oidc-login-transactions.js';
 export {
   parseWorkspaceId,
+  withActorScopedClient,
   withPlatformTransaction,
   withTenantScopedReadClient,
   withTenantScopedClient,
