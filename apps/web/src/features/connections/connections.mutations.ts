@@ -46,19 +46,21 @@ function removeSecretMutation(
     cache.remove(mutation);
 }
 
-export function useCreateSlackConnectionMutation(
+function useSecretConnectionMutation<TCommand, TResult>(
   scope: ConnectionMutationScope,
+  operation: 'create' | 'rotate',
+  execute: (command: TCommand) => Promise<TResult>,
 ) {
   const queryClient = useQueryClient();
   const ownerId = useId();
   const mutationKey = useMemo(
-    () => secretMutationKey(scope.userId, scope.workspaceId, 'create', ownerId),
-    [ownerId, scope.userId, scope.workspaceId],
+    () =>
+      secretMutationKey(scope.userId, scope.workspaceId, operation, ownerId),
+    [operation, ownerId, scope.userId, scope.workspaceId],
   );
   const mutation = useMutation({
     mutationKey,
-    mutationFn: (command: SlackConnectionCommand) =>
-      createSlackConnection(scope.apiClient, scope.workspaceId, command),
+    mutationFn: execute,
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
@@ -77,6 +79,17 @@ export function useCreateSlackConnectionMutation(
     [mutationKey, queryClient],
   );
   return { mutation, clearSensitiveState } as const;
+}
+
+export function useCreateSlackConnectionMutation(
+  scope: ConnectionMutationScope,
+) {
+  return useSecretConnectionMutation(
+    scope,
+    'create',
+    (command: SlackConnectionCommand) =>
+      createSlackConnection(scope.apiClient, scope.workspaceId, command),
+  );
 }
 
 export type TestConnectionCommand = Readonly<{
@@ -107,34 +120,12 @@ export type RotateSlackConnectionCommand = Readonly<{
 export function useRotateSlackConnectionMutation(
   scope: ConnectionMutationScope,
 ) {
-  const queryClient = useQueryClient();
-  const ownerId = useId();
-  const mutationKey = useMemo(
-    () => secretMutationKey(scope.userId, scope.workspaceId, 'rotate', ownerId),
-    [ownerId, scope.userId, scope.workspaceId],
-  );
-  const mutation = useMutation({
-    mutationKey,
-    mutationFn: (command: RotateSlackConnectionCommand) =>
+  return useSecretConnectionMutation(
+    scope,
+    'rotate',
+    (command: RotateSlackConnectionCommand) =>
       rotateSlackConnectionSecret(scope.apiClient, scope.workspaceId, command),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
-  });
-  const reset = mutation.reset;
-  const clearSensitiveState = useCallback(() => {
-    reset();
-    removeSecretMutation(queryClient, mutationKey);
-  }, [mutationKey, queryClient, reset]);
-  useEffect(
-    () => () => {
-      removeSecretMutation(queryClient, mutationKey);
-    },
-    [mutationKey, queryClient],
   );
-  return { mutation, clearSensitiveState } as const;
 }
 
 export function useRevokeConnectionMutation(scope: ConnectionMutationScope) {
