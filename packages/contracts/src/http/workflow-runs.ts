@@ -65,11 +65,12 @@ export function normalizeWorkflowRunCreatedAt(value: string): string {
     );
   if (match?.groups === undefined)
     throw new TypeError('workflow run timestamp is invalid');
-  const epochMilliseconds = Date.parse(
-    `${match.groups.whole}.000${match.groups.offset}`,
-  );
+  const { whole, fraction, offset } = match.groups;
+  if (whole === undefined || offset === undefined)
+    throw new TypeError('workflow run timestamp is invalid');
+  const epochMilliseconds = Date.parse(`${whole}.000${offset}`);
   const utcWhole = new Date(epochMilliseconds).toISOString().slice(0, 19);
-  return `${utcWhole}.${(match.groups.fraction ?? '').padEnd(6, '0')}Z`;
+  return `${utcWhole}.${(fraction ?? '').padEnd(6, '0')}Z`;
 }
 
 export const workflowRunCreatedAtSchema =
