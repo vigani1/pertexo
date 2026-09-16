@@ -5,6 +5,7 @@ import type { DatabaseConfig } from '../config.js';
 import { createConnectionHealthPersistence } from './connection-health-persistence.js';
 import { createConnectionManagementPersistence } from './connection-management-persistence.js';
 import { createConnectionResolutionPersistence } from './connection-resolution-persistence.js';
+import { createConnectionReadPersistence } from './connection-read-persistence.js';
 import { createConnectionSecretPersistence } from './connection-secret-persistence.js';
 import { createConnectionTestPersistence } from './connection-test-persistence.js';
 import type {
@@ -32,6 +33,8 @@ export type {
   ConnectionAuthType,
   ConnectionDatabase,
   ConnectionManagementDatabase,
+  ConnectionPage,
+  ConnectionReadDatabase,
   ConnectionRecord,
   ConnectionResolutionDatabase,
   ConnectionStatus,
@@ -41,8 +44,10 @@ export type {
   CreateConnectionInput,
   FindConnectionCreateReplayInput,
   FindConnectionRotateReplayInput,
+  ListConnectionsInput,
   MarkConnectionTestDispatchedInput,
   RecordConnectionHealthInput,
+  ReadConnectionInput,
   ResolvedConnectionSecretRecord,
   ResolveConnectionSecretInput,
   ResolveConnectionTestSecretInput,
@@ -62,6 +67,7 @@ export function createConnectionDatabase(
   const { pool } = lease;
   return Object.freeze({
     ...createConnectionManagementPersistence(pool),
+    ...createConnectionReadPersistence(pool),
     ...createConnectionSecretPersistence(pool),
     ...createConnectionResolutionPersistence(pool),
     ...createConnectionHealthPersistence(pool),
@@ -76,6 +82,8 @@ export function createApiConnectionDatabase(
 ): ApiConnectionDatabase {
   const database = createConnectionDatabase(config, runtime);
   return Object.freeze({
+    listConnections: database.listConnections.bind(database),
+    readConnection: database.readConnection.bind(database),
     createConnection: database.createConnection.bind(database),
     findConnectionCreateReplay:
       database.findConnectionCreateReplay.bind(database),

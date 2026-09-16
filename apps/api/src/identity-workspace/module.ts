@@ -11,6 +11,7 @@ import type { IdentityClock, IdentityCrypto } from '../identity/index.js';
 import { RequestContextStore } from '../platform/http/index.js';
 import {
   UserController,
+  WorkspaceDiscoveryController,
   WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
@@ -19,11 +20,14 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
+  WorkspaceMemberManageGuard,
   WorkspaceMemberReadGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
+  ChangeWorkspaceMemberRoleUseCase,
   GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
@@ -35,6 +39,7 @@ import {
   IDENTITY_WORKSPACE_CONFIG,
   IDENTITY_WORKSPACE_PERSISTENCE,
   OIDC_PROVIDER,
+  OIDC_CALLBACK_LANDING_PATH,
   OIDC_TRANSACTIONS,
   WORKSPACE_AUTHORIZATION,
   SESSION_COOKIE_POLICY,
@@ -64,6 +69,10 @@ export class IdentityWorkspaceModule {
         useValue: dependencies.telemetry ?? NOOP_IDENTITY_WORKSPACE_TELEMETRY,
       },
       { provide: OIDC_PROVIDER, useValue: dependencies.provider },
+      {
+        provide: OIDC_CALLBACK_LANDING_PATH,
+        useValue: dependencies.config.oidc.callbackLandingPath ?? '/',
+      },
       { provide: OIDC_TRANSACTIONS, useValue: dependencies.transactions },
       {
         provide: IDENTITY_WORKSPACE_PERSISTENCE,
@@ -182,6 +191,7 @@ export class IdentityWorkspaceModule {
         inject: [CSRF_POLICY],
       },
       WorkspaceManageGuard,
+      WorkspaceMemberManageGuard,
       WorkspaceMemberReadGuard,
     ];
     return {
@@ -190,6 +200,7 @@ export class IdentityWorkspaceModule {
         OidcController,
         SessionController,
         UserController,
+        WorkspaceDiscoveryController,
         WorkspaceMembersController,
         WorkspaceController,
       ],
@@ -202,10 +213,13 @@ export class IdentityWorkspaceModule {
         CreateWorkspaceUseCase,
         WorkspaceLifecycleUseCase,
         GetCurrentUserUseCase,
+        ListAccessibleWorkspacesUseCase,
         ListWorkspaceMembersUseCase,
+        ChangeWorkspaceMemberRoleUseCase,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
         WorkspaceManageGuard,
+        WorkspaceMemberManageGuard,
         WorkspaceMemberReadGuard,
       ],
     };
@@ -214,6 +228,22 @@ export class IdentityWorkspaceModule {
 
 function identityReadProviders(): Provider[] {
   return [
+    {
+      provide: ChangeWorkspaceMemberRoleUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) => new ChangeWorkspaceMemberRoleUseCase(persistence, telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: ListAccessibleWorkspacesUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) => new ListAccessibleWorkspacesUseCase(persistence, telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
     {
       provide: GetCurrentUserUseCase,
       useFactory: (

@@ -10,8 +10,11 @@ import {
   responseReference,
 } from './openapi-primitives.js';
 import {
+  connectionCursorSchema,
   connectionCreateRequestSchema,
   connectionIdentifierSchema,
+  connectionListResponseSchema,
+  connectionPageLimitSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
@@ -25,6 +28,7 @@ import {
   failureNotificationDestinationStatusRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
 } from './http/failure-notification-destinations.js';
+import type { z } from 'zod';
 
 export * from './http/connections.js';
 export * from './http/failure-notification-destinations.js';
@@ -32,6 +36,7 @@ export * from './http/failure-notification-destinations.js';
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   ConnectionCreateRequest: jsonSchema(connectionCreateRequestSchema, 'input'),
+  ConnectionListResponse: jsonSchema(connectionListResponseSchema, 'output'),
   ConnectionResponse: jsonSchema(connectionResponseSchema, 'output'),
   ConnectionRotateSecretRequest: jsonSchema(
     connectionRotateSecretRequestSchema,
@@ -66,7 +71,7 @@ const schemas = Object.freeze({
 });
 
 export const connectionsClientContract = Object.freeze({
-  schemaVersion: '1.1.0',
+  schemaVersion: '1.2.0',
   schemas,
 });
 
@@ -110,9 +115,26 @@ const idempotencyParameter = idempotencyHeaderParameter();
 
 export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
-  info: { title: 'Pertexo Connections API', version: '1.1.0' },
+  info: { title: 'Pertexo Connections API', version: '1.2.0' },
   paths: {
     '/v1/workspaces/{workspaceId}/connections': {
+      get: {
+        operationId: 'listConnections',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          queryParameter('limit', connectionPageLimitSchema),
+          queryParameter('after', connectionCursorSchema),
+        ],
+        responses: {
+          '200': jsonResponse('Connections', 'ConnectionListResponse'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
       post: {
         operationId: 'createConnection',
         security: [{ cookieSession: [] }],
@@ -156,6 +178,19 @@ export const connectionsOpenApiDocument = Object.freeze({
       },
     },
     '/v1/workspaces/{workspaceId}/connections/{connectionId}': {
+      get: {
+        operationId: 'getConnection',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, connectionParameter],
+        responses: {
+          '200': jsonResponse('Connection', 'ConnectionResponse'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
       delete: {
         operationId: 'revokeConnection',
         security: [{ cookieSession: [] }],
@@ -350,3 +385,12 @@ export const connectionsOpenApiDocument = Object.freeze({
   },
   components: authenticatedComponents(schemas, problemResponses),
 });
+
+function queryParameter(name: 'limit' | 'after', schema: z.ZodType) {
+  return {
+    name,
+    in: 'query',
+    required: false,
+    schema: jsonSchema(schema, 'input'),
+  } as const;
+}

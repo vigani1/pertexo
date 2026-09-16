@@ -23,6 +23,7 @@ import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
+  ListWorkflowRunsUseCase,
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
@@ -79,6 +80,13 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: ListWorkflowRunsUseCase,
+        useValue: new ListWorkflowRunsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: StreamRunEventsUseCase,
         useValue: new StreamRunEventsUseCase(
           dependencies.persistence,
@@ -103,6 +111,7 @@ export class WorkflowRunsModule {
         StartWorkflowRunUseCase,
         ReplayWorkflowRunUseCase,
         GetWorkflowRunUseCase,
+        ListWorkflowRunsUseCase,
         StreamRunEventsUseCase,
         CancelWorkflowRunUseCase,
       ],

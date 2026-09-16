@@ -11,10 +11,14 @@ export {
 export type {
   ApiConnectionDatabase,
   ConnectionManagementDatabase,
+  ConnectionReadDatabase,
   ConnectionTestDatabase,
+  ConnectionPage,
   ConnectionRecord,
   ConnectionTestOutcome,
   ConnectionTestResult,
+  ListConnectionsInput,
+  ReadConnectionInput,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
 export {
@@ -69,13 +73,18 @@ export {
   IdentityConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
   createIdentityWorkspaceDatabase,
 } from './tenant-access/identity-workspace.js';
 export type {
+  AccessibleWorkspaceRecord,
+  ChangeWorkspaceMemberRoleInput,
+  AccessibleWorkspacesPage,
   IdentityWorkspaceDatabase,
   SessionRecord,
   UserRecord,
   WorkspaceMemberRecord,
+  WorkspaceMemberRoleChangeResult,
   WorkspaceMembersPage,
 } from './tenant-access/identity-workspace.js';
 export { createOidcLoginTransactionStore } from './tenant-access/oidc-login-transactions.js';

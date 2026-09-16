@@ -184,6 +184,7 @@ export type WorkflowLifecycleConflictProblem = z.output<
 >;
 
 export type WorkflowSummary = z.output<typeof workflowSummarySchema>;
+export type WorkflowListResponse = z.output<typeof workflowListResponseSchema>;
 export type WorkflowCreateResponse = z.output<
   typeof workflowCreateResponseSchema
 >;

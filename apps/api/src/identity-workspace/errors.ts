@@ -3,6 +3,7 @@ import {
   IdempotencyRequestConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
 } from '@pertexo/database/api';
 import {
   applicationError,
@@ -45,6 +46,25 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     }
     return applicationError('auth.forbidden', {
       safeDetail: 'The workspace cannot perform this lifecycle operation.',
+    });
+  }
+  if (error instanceof WorkspaceMemberRoleCommandConflictError) {
+    if (error.reason === 'target_missing')
+      return applicationError('resource.not_found');
+    if (error.reason === 'revision_conflict')
+      return applicationError('workspace.member_role_revision_conflict', {
+        safeDetail: 'The member role changed since it was loaded.',
+      });
+    if (error.reason === 'idempotency_conflict')
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+    if (error.reason === 'target_inactive')
+      return applicationError('workspace.member_role_transition_conflict', {
+        safeDetail: 'Only an active member role can be changed.',
+      });
+    return applicationError('auth.forbidden', {
+      safeDetail: 'This member role transition is not allowed.',
     });
   }
   if (error instanceof IdentityConflictError) {

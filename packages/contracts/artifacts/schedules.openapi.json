@@ -51,6 +51,8 @@
               "artifact.conflict",
               "artifact.unavailable",
               "workspace.conflict",
+              "workspace.member_role_revision_conflict",
+              "workspace.member_role_transition_conflict",
               "workflow.revision_conflict",
               "workflow.lifecycle_conflict",
               "workflow.invalid",

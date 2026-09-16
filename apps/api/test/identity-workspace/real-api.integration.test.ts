@@ -1,4 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  request as httpRequest,
+  type ClientRequest,
+  type IncomingMessage,
+} from 'node:http';
 
 import {
   auditEvents,
@@ -226,7 +231,8 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
       headers: { cookie: start.browserCookie },
     });
-    expect(callback.statusCode).toBe(204);
+    expect(callback.statusCode).toBe(303);
+    expect(callback.headers.location).toBe('/workspaces');
     const cookies = sessionCookies(callback.headers['set-cookie']);
     expect(String(callback.headers['set-cookie'])).toContain('HttpOnly');
     expect(String(callback.headers['set-cookie'])).toContain('Secure');
@@ -628,6 +634,27 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const workspace = created.json<{ id: string; status: string }>();
     expect(workspace.status).toBe('active');
 
+    const discovered = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces?limit=100',
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(discovered.statusCode).toBe(200);
+    expect(discovered.headers['cache-control']).toBe('private, no-store');
+    const discoveredItems = discovered.json<{
+      items: { id: string; role: string; capabilities: string[] }[];
+    }>().items;
+    const discoveredWorkspace = discoveredItems.find(
+      (item) => item.id === workspace.id,
+    );
+    expect(discoveredWorkspace).toMatchObject({
+      id: workspace.id,
+      role: 'owner',
+    });
+    expect(discoveredWorkspace?.capabilities).toEqual(
+      expect.arrayContaining(['workspace:manage', 'workflow:create']),
+    );
+
     const creationRetry = await application.inject({
       method: 'POST',
       url: '/v1/workspaces',
@@ -836,7 +863,94 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       headers: { cookie: cookies.cookieHeader },
     });
     expectProblem(crossTenant, 403, 'auth.forbidden');
-  });
+
+    const { base, createdBody } = await createPublishedWorkflow(
+      cookies,
+      primaryWorkspaceId,
+    );
+    const started = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/runs`,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': `role-revocation-run-${randomUUID()}`,
+      }),
+      payload: { input: { source: 'role-revocation-proof' } },
+    });
+    expect(started.statusCode, started.payload).toBe(202);
+    const runId = started.json<{ run: { id: string } }>().run.id;
+    const runUrl = `/v1/workspaces/${primaryWorkspaceId}/runs/${runId}`;
+
+    const rawTargetSession = `${randomUUID()}${randomUUID()}`;
+    await identityDatabase.createSession({
+      userId: memberA.id,
+      tokenDigest: sha256Hex(rawTargetSession),
+      expiresAt: new Date(identityNow.getTime() + 60_000),
+    });
+    const targetCookie = `pertexo_session=${rawTargetSession}`;
+    const beforeChange = await application.inject({
+      method: 'GET',
+      url: runUrl,
+      headers: { cookie: targetCookie },
+    });
+    expect(beforeChange.statusCode, beforeChange.payload).toBe(200);
+
+    await application.listen(0, '127.0.0.1');
+    const address = application.getHttpServer().address() as { port: number };
+    const openStream = openHttpEventStream(
+      address.port,
+      `${runUrl}/events`,
+      targetCookie,
+      1,
+    );
+    await withTimeout(openStream.started, 2_000);
+
+    const roleHeaders = mutationHeaders(cookies, {
+      'idempotency-key': `member-role-${randomUUID()}`,
+    });
+    try {
+      const roleChange = await application.inject({
+        method: 'POST',
+        url: `/v1/workspaces/${primaryWorkspaceId}/members/${memberA.id}/role`,
+        headers: roleHeaders,
+        payload: { role: 'operator', expectedRoleRevision: 1 },
+      });
+      expect(roleChange.statusCode).toBe(200);
+      expect(roleChange.json()).toEqual({
+        userId: memberA.id,
+        role: 'operator',
+        roleRevision: 2,
+        changed: true,
+        replayed: false,
+      });
+      await expect(
+        identityDatabase.findActiveSessionByDigest(sha256Hex(rawTargetSession)),
+      ).resolves.toBeNull();
+      const afterChange = await application.inject({
+        method: 'GET',
+        url: runUrl,
+        headers: { cookie: targetCookie },
+      });
+      expectProblem(afterChange, 401, 'auth.unauthenticated');
+      await withTimeout(openStream.closed, 6_500);
+    } finally {
+      openStream.request.destroy();
+    }
+    const replay = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${primaryWorkspaceId}/members/${memberA.id}/role`,
+      headers: roleHeaders,
+      payload: { role: 'operator', expectedRoleRevision: 1 },
+    });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toMatchObject({ replayed: true, roleRevision: 2 });
+    const stale = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${primaryWorkspaceId}/members/${memberA.id}/role`,
+      headers: mutationHeaders(cookies),
+      payload: { role: 'viewer', expectedRoleRevision: 1 },
+    });
+    expectProblem(stale, 409, 'workspace.member_role_revision_conflict');
+  }, 15_000);
 
   it('rejects explicitly revoked and expired sessions without exposing cookie values', async () => {
     const logoutCookies = await login();
@@ -895,23 +1009,20 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(state)}`,
       headers: { cookie: start.browserCookie },
     });
-    expect(response.statusCode).toBe(204);
+    expect(response.statusCode).toBe(303);
+    expect(response.headers.location).toBe('/workspaces');
     return sessionCookies(response.headers['set-cookie']);
   }
 
-  async function createPublishedWorkflow(cookies: SessionCookies) {
+  async function createPublishedWorkflow(
+    cookies: SessionCookies,
+    existingWorkspaceId?: string,
+  ) {
     const fixtureId = randomUUID();
-    const workspaceResponse = await application.inject({
-      method: 'POST',
-      url: '/v1/workspaces',
-      headers: mutationHeaders(cookies),
-      payload: {
-        name: 'Workflow Proof',
-        slug: `workflow-proof-${fixtureId.slice(0, 12)}`,
-      },
-    });
-    expect(workspaceResponse.statusCode).toBe(201);
-    const workspace = workspaceResponse.json<Readonly<{ id: string }>>();
+    const workspace =
+      existingWorkspaceId === undefined
+        ? await createWorkflowWorkspace(cookies, fixtureId)
+        : { id: existingWorkspaceId };
     const base = `/v1/workspaces/${workspace.id}/workflows`;
 
     const created = await application.inject({
@@ -1030,6 +1141,23 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     return { workspace, base, createdBody, publishedBody } as const;
   }
 
+  async function createWorkflowWorkspace(
+    cookies: SessionCookies,
+    fixtureId: string,
+  ): Promise<Readonly<{ id: string }>> {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies),
+      payload: {
+        name: 'Workflow Proof',
+        slug: `workflow-proof-${fixtureId.slice(0, 12)}`,
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    return response.json<Readonly<{ id: string }>>();
+  }
+
   async function authenticatedMutation(cookies: SessionCookies) {
     return application.inject({
       method: 'POST',
@@ -1133,6 +1261,7 @@ function config(): ApiConfig {
         tokenEndpoint: `${issuer}/token`,
         jwksUri: `${issuer}/jwks`,
         clientId,
+        callbackLandingPath: '/workspaces',
         redirectUri: 'https://api.integration.test/v1/auth/oidc/callback',
         scopes: ['openid', 'profile', 'email'],
         allowedAlgorithms: ['RS256'],
@@ -1264,6 +1393,57 @@ function withTimeout<T>(
       },
     );
   });
+}
+
+function openHttpEventStream(
+  port: number,
+  path: string,
+  cookie: string,
+  lastEventId: number,
+): Readonly<{
+  request: ClientRequest;
+  started: Promise<void>;
+  closed: Promise<void>;
+}> {
+  const started = Promise.withResolvers<void>();
+  const closed = Promise.withResolvers<void>();
+  let response: IncomingMessage | undefined;
+  const request = httpRequest({
+    host: '127.0.0.1',
+    port,
+    path,
+    headers: {
+      accept: 'text/event-stream',
+      cookie,
+      'last-event-id': String(lastEventId),
+    },
+  });
+  request.once('error', (error) => {
+    if (response === undefined) started.reject(error);
+    closed.resolve();
+  });
+  request.once('response', (incoming) => {
+    response = incoming;
+    if (incoming.statusCode !== 200) {
+      started.reject(
+        new Error(
+          `SSE request failed before opening: ${String(incoming.statusCode)}`,
+        ),
+      );
+    } else {
+      started.resolve();
+    }
+    const resolveClosed = (): void => {
+      closed.resolve();
+    };
+    incoming.once('aborted', resolveClosed);
+    incoming.once('close', resolveClosed);
+    incoming.once('end', resolveClosed);
+    incoming.once('error', resolveClosed);
+    incoming.resume();
+  });
+  request.end();
+  return { request, started: started.promise, closed: closed.promise };
 }
 
 function expectProblem(

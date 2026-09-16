@@ -17,6 +17,7 @@ export type IdentityWorkspaceConfig = Readonly<{
     issuer: string;
     authorizationEndpoint: string;
     clientId: string;
+    callbackLandingPath?: string;
     redirectUri: string;
     scopes: readonly string[];
     transactionTtlMillis: number;
@@ -63,6 +64,35 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
       nextCursor?: Readonly<{ createdAt: string; userId: string }>;
     }>
   >;
+  changeWorkspaceMemberRole(
+    input: Readonly<{
+      workspaceId: string;
+      actorUserId: string;
+      targetUserId: string;
+      role: 'admin' | 'builder' | 'operator' | 'viewer';
+      expectedRoleRevision: number;
+      idempotencyKey: string;
+      requestId?: string;
+      traceId?: string;
+    }>,
+  ): Promise<
+    Readonly<{
+      userId: string;
+      role: 'admin' | 'builder' | 'operator' | 'viewer';
+      roleRevision: number;
+      changed: boolean;
+      replayed: boolean;
+    }>
+  >;
+  listAccessibleWorkspaces(
+    actorId: string,
+    input?: Readonly<{ limit?: number; after?: string }>,
+  ): Promise<
+    Readonly<{
+      items: readonly AccessibleWorkspacePersistenceRecord[];
+      nextCursor?: string;
+    }>
+  >;
   requestWorkspaceLifecycleOperation(input: {
     workspaceId: WorkspaceId;
     actorUserId: string;
@@ -91,7 +121,18 @@ export type WorkspaceMemberPersistenceRecord = Readonly<{
   email: string;
   displayName: string;
   role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
+  roleRevision: number;
   membershipStatus: 'active' | 'suspended';
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type AccessibleWorkspacePersistenceRecord = Readonly<{
+  id: string;
+  name: string;
+  slug: string;
+  status: 'active' | 'suspended' | 'pending_deletion';
+  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
   createdAt: Date;
   updatedAt: Date;
 }>;

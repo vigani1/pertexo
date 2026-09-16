@@ -7,6 +7,7 @@ export {
   USER_STATUS,
   WORKSPACE_STATUS,
   WorkspaceLifecycleConflictError,
+  WorkspaceMemberRoleCommandConflictError,
 } from './identity-workspace.js';
 export type {
   AuthIdentityRecord,
@@ -27,6 +28,7 @@ export type {
   WorkspaceMembersPage,
   WorkspaceLifecycleOperation,
   WorkspaceLifecycleConflictReason,
+  WorkspaceMemberRoleCommandConflictReason,
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,

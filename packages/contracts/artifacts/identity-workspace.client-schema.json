@@ -46,6 +46,8 @@
             "artifact.conflict",
             "artifact.unavailable",
             "workspace.conflict",
+            "workspace.member_role_revision_conflict",
+            "workspace.member_role_transition_conflict",
             "workflow.revision_conflict",
             "workflow.lifecycle_conflict",
             "workflow.invalid",
@@ -420,6 +422,11 @@
                   "viewer"
                 ]
               },
+              "roleRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
               "membershipStatus": {
                 "type": "string",
                 "enum": [
@@ -443,6 +450,7 @@
               "email",
               "displayName",
               "role",
+              "roleRevision",
               "membershipStatus",
               "createdAt",
               "updatedAt"
@@ -456,6 +464,178 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 512
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "nextCursor"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceMemberRoleChangeRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "admin",
+            "builder",
+            "operator",
+            "viewer"
+          ]
+        },
+        "expectedRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "role",
+        "expectedRoleRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceMemberRoleChangeResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "admin",
+            "builder",
+            "operator",
+            "viewer"
+          ]
+        },
+        "roleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "userId",
+        "role",
+        "roleRevision",
+        "changed",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "AccessibleWorkspacesResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "items": {
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "suspended",
+                  "pending_deletion"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "admin",
+                  "builder",
+                  "operator",
+                  "viewer"
+                ]
+              },
+              "capabilities": {
+                "maxItems": 17,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "workspace:read",
+                    "workspace:manage",
+                    "artifact:read",
+                    "artifact:upload",
+                    "workflow:read",
+                    "workflow:create",
+                    "workflow:update",
+                    "workflow:publish",
+                    "run:read",
+                    "run:start",
+                    "run:cancel",
+                    "run:replay",
+                    "connection:read",
+                    "connection:use",
+                    "connection:manage",
+                    "member:read",
+                    "member:manage"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug",
+              "status",
+              "createdAt",
+              "updatedAt",
+              "role",
+              "capabilities"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             {
               "type": "null"

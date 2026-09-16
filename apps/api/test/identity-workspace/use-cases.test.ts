@@ -3,7 +3,9 @@ import { WorkspaceLifecycleConflictError } from '@pertexo/database/testing';
 
 import {
   CreateWorkspaceUseCase,
+  ChangeWorkspaceMemberRoleUseCase,
   GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   OidcApplicationService,
   WorkspaceLifecycleUseCase,
@@ -65,7 +67,15 @@ function user() {
 function persistence() {
   return {
     findUserById: vi.fn(),
+    listAccessibleWorkspaces: vi.fn().mockResolvedValue({ items: [] }),
     listWorkspaceMembers: vi.fn().mockResolvedValue({ items: [] }),
+    changeWorkspaceMemberRole: vi.fn().mockResolvedValue({
+      userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      role: 'operator',
+      roleRevision: 2,
+      changed: true,
+      replayed: false,
+    }),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue(workspace()),
     requestWorkspaceLifecycleOperation: vi
       .fn()
@@ -101,6 +111,38 @@ function actor() {
 }
 
 describe('identity/workspace application use cases', () => {
+  it('validates and forwards the exact member role command', async () => {
+    const store = persistence();
+    const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await expect(
+      new ChangeWorkspaceMemberRoleUseCase(store).execute({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        targetUserId,
+        request: { role: 'operator', expectedRoleRevision: 1 },
+        idempotencyKey,
+        requestId,
+        traceId: 'trace-42',
+      }),
+    ).resolves.toEqual({
+      userId: targetUserId,
+      role: 'operator',
+      roleRevision: 2,
+      changed: true,
+      replayed: false,
+    });
+    expect(store.changeWorkspaceMemberRole).toHaveBeenCalledWith({
+      workspaceId,
+      actorUserId: actorId,
+      targetUserId,
+      role: 'operator',
+      expectedRoleRevision: 1,
+      idempotencyKey,
+      requestId,
+      traceId: 'trace-42',
+    });
+  });
+
   it('returns only the allowlisted current-user profile fields', async () => {
     const store = persistence();
     vi.mocked(store.findUserById).mockResolvedValue(user());
@@ -127,6 +169,41 @@ describe('identity/workspace application use cases', () => {
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
   });
 
+  it('projects accessible workspaces with server-owned role capabilities', async () => {
+    const store = persistence();
+    vi.mocked(store.listAccessibleWorkspaces).mockResolvedValue({
+      items: [{ ...workspace(), role: 'builder' }],
+      nextCursor: workspaceId,
+    });
+
+    const result = await new ListAccessibleWorkspacesUseCase(store).execute(
+      actorId,
+      { limit: 1 },
+    );
+
+    expect(result).toMatchObject({
+      items: [
+        {
+          ...workspace(),
+          role: 'builder',
+          createdAt: '2026-08-20T12:00:00.000Z',
+          updatedAt: '2026-08-20T12:00:00.000Z',
+        },
+      ],
+      nextCursor: workspaceId,
+    });
+    expect(result.items[0]?.capabilities).toEqual(
+      expect.arrayContaining([
+        'workspace:read',
+        'workflow:create',
+        'workflow:update',
+      ]),
+    );
+    expect(store.listAccessibleWorkspaces).toHaveBeenCalledWith(actorId, {
+      limit: 1,
+    });
+  });
+
   it('authorizes and passes an opaque member cursor to the bounded persistence page', async () => {
     const store = persistence();
     const member = {
@@ -134,6 +211,7 @@ describe('identity/workspace application use cases', () => {
       email: 'person@example.test',
       displayName: 'Person',
       role: 'admin' as const,
+      roleRevision: 1,
       membershipStatus: 'active' as const,
       createdAt: new Date('2026-08-20T12:00:00.000Z'),
       updatedAt: new Date('2026-08-20T12:00:00.000Z'),

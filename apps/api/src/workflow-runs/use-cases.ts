@@ -2,9 +2,12 @@ import { createHash } from 'node:crypto';
 
 import {
   workflowRunCancelResponseSchema,
+  normalizeWorkflowRunCreatedAt,
+  workflowRunListResponseSchema,
   workflowRunResponseSchema,
   workflowRunStartResponseSchema,
   type WorkflowRunCancelResponse,
+  type WorkflowRunListResponse,
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
 } from '@pertexo/contracts/workflow-runs';
@@ -24,6 +27,11 @@ import type {
   WorkflowRunReadModel,
   WorkflowRunRecord,
 } from './ports.js';
+import {
+  decodeWorkflowRunCursor,
+  encodeWorkflowRunCursor,
+  type WorkflowRunCursorContext,
+} from './cursor.js';
 import {
   createStreamAuthorizationLifetime,
   nextFrameOrAuthorizationLoss,
@@ -65,6 +73,16 @@ export type ReplayWorkflowRunInput = WorkflowRunApplicationInput &
 
 export type GetWorkflowRunInput = WorkflowRunApplicationInput &
   Readonly<{ runId: string }>;
+
+export type ListWorkflowRunsInput = WorkflowRunApplicationInput &
+  Readonly<{
+    limit?: number;
+    after?: string;
+    workflowId?: string;
+    status?: WorkflowRunRecord['status'];
+    createdAtFrom?: string;
+    createdAtBefore?: string;
+  }>;
 
 export type CancelWorkflowRunInput = GetWorkflowRunInput &
   Readonly<{
@@ -173,6 +191,48 @@ export class GetWorkflowRunUseCase {
     });
     if (result === undefined) throw new WorkflowRunNotFoundError();
     return toRunResponse(result);
+  }
+}
+
+export class ListWorkflowRunsUseCase {
+  public constructor(
+    private readonly persistence: Pick<WorkflowRunPersistence, 'list'>,
+    private readonly authorization: WorkspaceAuthorizationSource,
+  ) {}
+
+  public async execute(
+    input: ListWorkflowRunsInput,
+  ): Promise<WorkflowRunListResponse> {
+    await authorize(input, 'run:read', this.authorization, [
+      'active',
+      'suspended',
+      'pending_deletion',
+    ]);
+    const context = normalizedCursorContext(input);
+    const page = await this.persistence.list({
+      workspaceId: input.routeWorkspaceId,
+      limit: input.limit ?? 50,
+      ...(context.workflowId === undefined
+        ? {}
+        : { workflowId: context.workflowId }),
+      ...(context.status === undefined ? {} : { status: context.status }),
+      ...(context.createdAtFrom === undefined
+        ? {}
+        : { createdAtFrom: context.createdAtFrom }),
+      ...(context.createdAtBefore === undefined
+        ? {}
+        : { createdAtBefore: context.createdAtBefore }),
+      ...(input.after === undefined
+        ? {}
+        : { after: decodeWorkflowRunCursor(input.after, context) }),
+    });
+    return workflowRunListResponseSchema.parse({
+      items: page.items.map(toRunSummary),
+      nextCursor:
+        page.nextCursor === undefined
+          ? null
+          : encodeWorkflowRunCursor(context, page.nextCursor),
+    });
   }
 }
 
@@ -384,6 +444,24 @@ function replayRequestHash(input: ReplayWorkflowRunInput): string {
 
 function iso(value: Date | null): string | null {
   return value === null ? null : value.toISOString();
+}
+
+function normalizedCursorContext(
+  input: ListWorkflowRunsInput,
+): WorkflowRunCursorContext {
+  return {
+    workspaceId: input.routeWorkspaceId,
+    ...(input.workflowId === undefined ? {} : { workflowId: input.workflowId }),
+    ...(input.status === undefined ? {} : { status: input.status }),
+    ...(input.createdAtFrom === undefined
+      ? {}
+      : { createdAtFrom: normalizeWorkflowRunCreatedAt(input.createdAtFrom) }),
+    ...(input.createdAtBefore === undefined
+      ? {}
+      : {
+          createdAtBefore: normalizeWorkflowRunCreatedAt(input.createdAtBefore),
+        }),
+  };
 }
 
 function toRunSummary(run: WorkflowRunRecord) {

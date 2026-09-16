@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0089_oidc_capacity_lock_time.sql',
+          migrationHead: '0093_workspace_member_role_management.sql',
           role: expectedRole,
         });
       } finally {

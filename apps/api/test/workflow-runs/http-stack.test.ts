@@ -60,7 +60,9 @@ function identityRuntime(
         }),
       revokeByDigest: () => Promise.resolve(false),
       findUserById: () => Promise.resolve(null),
+      listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
       listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+      changeWorkspaceMemberRole: () => Promise.reject(new Error('not used')),
       resolveOrCreateIdentity: () => Promise.resolve({ userId: actorId }),
       createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
       requestWorkspaceLifecycleOperation: () =>
@@ -90,17 +92,20 @@ function persistenceFixture() {
   const start = vi.fn<WorkflowRunPersistence['start']>();
   const replay = vi.fn<WorkflowRunPersistence['replay']>();
   const get = vi.fn<WorkflowRunPersistence['get']>();
+  const list = vi.fn<WorkflowRunPersistence['list']>();
   const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
   return {
     persistence: {
       start,
       replay,
       get,
+      list,
       cancel,
     } satisfies WorkflowRunPersistence,
     start,
     replay,
     get,
+    list,
     cancel,
   };
 }
@@ -161,6 +166,13 @@ describe('workflow runs real Nest HTTP stack', () => {
     });
     expect(fixture.get).not.toHaveBeenCalled();
 
+    const unauthenticatedList = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs`,
+    });
+    expect(unauthenticatedList.statusCode).toBe(401);
+    expect(fixture.list).not.toHaveBeenCalled();
+
     const unauthorizedStart = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
@@ -173,6 +185,51 @@ describe('workflow runs real Nest HTTP stack', () => {
       code: 'resource.not_found',
     });
     expect(fixture.start).not.toHaveBeenCalled();
+  });
+
+  it('lists safe run summaries and rejects unsupported filters', async () => {
+    const { application, fixture } = await start('viewer');
+    const createdAt = new Date('2026-08-21T12:00:00.000Z');
+    fixture.list.mockResolvedValue({
+      items: [
+        {
+          id: runId,
+          workspaceId,
+          workflowId,
+          workflowVersionId,
+          status: 'succeeded',
+          triggerType: 'manual',
+          createdAt,
+          updatedAt: createdAt,
+          startedAt: createdAt,
+          completedAt: createdAt,
+          deadlineAt: null,
+          cancelRequestedAt: null,
+        },
+      ],
+    });
+
+    const response = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs?limit=25&workflowId=${workflowId}&status=succeeded`,
+      headers: authHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [{ id: runId, status: 'succeeded' }],
+      nextCursor: null,
+    });
+    expect(fixture.list).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 25, workflowId, status: 'succeeded' }),
+    );
+
+    const invalid = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs?status=invalid`,
+      headers: authHeaders,
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(fixture.list).toHaveBeenCalledTimes(1);
   });
 
   it('maps workflow domain failures to exact public status and problem bodies', async () => {

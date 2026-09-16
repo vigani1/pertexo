@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   workflowRunCancelRequestSchema,
+  workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
   workflowRunStartRequestSchema,
 } from '../src/http/workflow-runs.js';
@@ -47,6 +48,7 @@ describe('workflow-run public contracts', () => {
 
   it('documents acceptance, cancellation, replay, reads and SSE independently', () => {
     expect(Object.keys(workflowRunsOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/runs',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs',
       '/v1/workspaces/{workspaceId}/runs/{runId}',
       '/v1/workspaces/{workspaceId}/runs/{runId}/events',
@@ -72,5 +74,42 @@ describe('workflow-run public contracts', () => {
     expect(workflowRunsClientContract.schemas).not.toHaveProperty(
       'WorkflowCheckpoint',
     );
+  });
+
+  it('bounds run-history filters and enforces an inclusive/exclusive date range', () => {
+    const parsed = workflowRunListQuerySchema.parse({
+      limit: '100',
+      status: 'succeeded',
+      createdAtFrom: '2026-08-20T00:00:00.000Z',
+      createdAtBefore: '2026-08-21T00:00:00.000Z',
+    });
+    expect(parsed.limit).toBe(100);
+    expect(parsed.createdAtFrom).toBe('2026-08-20T00:00:00.000000Z');
+    expect(workflowRunListQuerySchema.safeParse({ limit: 101 }).success).toBe(
+      false,
+    );
+    expect(
+      workflowRunListQuerySchema.safeParse({
+        createdAtFrom: '2026-08-21T00:00:00.000Z',
+        createdAtBefore: '2026-08-21T00:00:00.000Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      workflowRunListQuerySchema.safeParse({ status: 'not-a-status' }).success,
+    ).toBe(false);
+    expect(
+      workflowRunListQuerySchema.parse({
+        createdAtFrom: '2026-08-21T00:00:00.000100Z',
+        createdAtBefore: '2026-08-21T00:00:00.000900Z',
+      }),
+    ).toEqual({
+      createdAtFrom: '2026-08-21T00:00:00.000100Z',
+      createdAtBefore: '2026-08-21T00:00:00.000900Z',
+    });
+    expect(
+      workflowRunListQuerySchema.safeParse({
+        createdAtFrom: '2026-08-21T00:00:00.0000001Z',
+      }).success,
+    ).toBe(false);
   });
 });

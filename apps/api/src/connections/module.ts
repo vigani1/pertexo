@@ -6,6 +6,7 @@ import { FailureNotificationDestinationsController } from './failure-notificatio
 import { FailureNotificationDestinationUseCases } from './failure-notification-destinations.js';
 import {
   ConnectionManageGuard,
+  ConnectionReadGuard,
   ConnectionUseGuard,
   FailureNotificationWorkflowEditGuard,
 } from './guards.js';
@@ -14,6 +15,8 @@ import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
 import { CONNECTION_AUTHORIZATION } from './tokens.js';
 import {
   CreateConnectionUseCase,
+  GetConnectionUseCase,
+  ListConnectionsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
@@ -34,8 +37,25 @@ export class ConnectionsModule {
         useValue: dependencies.authorization,
       },
       ConnectionManageGuard,
+      ConnectionReadGuard,
       ConnectionUseGuard,
       FailureNotificationWorkflowEditGuard,
+      {
+        provide: ListConnectionsUseCase,
+        useValue: new ListConnectionsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      },
+      {
+        provide: GetConnectionUseCase,
+        useValue: new GetConnectionUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      },
       {
         provide: CreateConnectionUseCase,
         useValue: new CreateConnectionUseCase(
@@ -94,6 +114,8 @@ export class ConnectionsModule {
       ],
       providers,
       exports: [
+        ListConnectionsUseCase,
+        GetConnectionUseCase,
         CreateConnectionUseCase,
         RotateConnectionSecretUseCase,
         RevokeConnectionUseCase,

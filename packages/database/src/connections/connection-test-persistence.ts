@@ -19,10 +19,12 @@ import {
   connectionTestOutcomeSchema,
   parseConnectionTestResult,
   serializeConnectionTestResult,
-  connectionTestScope,
+} from './connection-persistence.js';
+import {
   connectionTestClaim,
   connectionTestClaimSchema,
-} from './connection-persistence.js';
+  connectionTestScope,
+} from './connection-test-claim.js';
 import { requireConnectionUser } from './connection-authority.js';
 import { markConnectionTestDispatched } from './connection-test-dispatch.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';

@@ -22,6 +22,28 @@ export class WorkspaceAccessDeniedError extends Error {
   public override readonly name = 'WorkspaceAccessDeniedError';
 }
 
+export type WorkspaceMemberRoleCommandConflictReason =
+  | 'actor_inactive'
+  | 'target_missing'
+  | 'target_inactive'
+  | 'self_change'
+  | 'owner_change'
+  | 'transition_forbidden'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class WorkspaceMemberRoleCommandConflictError extends Error {
+  public override readonly name = 'WorkspaceMemberRoleCommandConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceMemberRoleCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export type WorkspaceLifecycleConflictReason =
   'actor_inactive' | 'invalid_state';
 

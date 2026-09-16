@@ -19,19 +19,24 @@ import {
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
   WorkspaceMemberReadGuard,
+  WorkspaceMemberManageGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
   GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
+  ChangeWorkspaceMemberRoleUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 import {
+  accessibleWorkspacesQuerySchema,
   idempotencyKeySchema,
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
   workspaceLifecycleOperationParamsSchema,
   workspaceMembersQuerySchema,
+  workspaceMemberRoleParamsSchema,
   type CookieResponse,
   type IdentityWorkspaceRequest,
 } from './types.js';
@@ -58,8 +63,34 @@ export class UserController {
 }
 
 @Controller('v1/workspaces')
+export class WorkspaceDiscoveryController {
+  public constructor(
+    private readonly workspaces: ListAccessibleWorkspacesUseCase,
+  ) {}
+
+  @Get()
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard)
+  public async list(
+    @Req() request: IdentityWorkspaceRequest,
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ) {
+    const input = accessibleWorkspacesQuerySchema.parse(query ?? {});
+    response.header('Cache-Control', 'private, no-store');
+    return this.workspaces.execute(authenticatedSession(request).userId, {
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+    });
+  }
+}
+
+@Controller('v1/workspaces')
 export class WorkspaceMembersController {
-  public constructor(private readonly members: ListWorkspaceMembersUseCase) {}
+  public constructor(
+    private readonly members: ListWorkspaceMembersUseCase,
+    private readonly roleChange: ChangeWorkspaceMemberRoleUseCase,
+  ) {}
 
   @Get(':workspaceId/members')
   @RateLimit('authenticated_read')
@@ -80,6 +111,33 @@ export class WorkspaceMembersController {
       routeWorkspaceId: workspaceId,
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),
+    });
+  }
+
+  @Post(':workspaceId/members/:userId/role')
+  @HttpCode(200)
+  @RateLimit('ordinary_mutation')
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceMemberManageGuard,
+  )
+  public async changeRole(
+    @Req() request: IdentityWorkspaceRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const { workspaceId, userId } =
+      workspaceMemberRoleParamsSchema.parse(params);
+    const actor = lifecycleActorFrom(request, workspaceId);
+    return this.roleChange.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      targetUserId: userId,
+      request: body,
+      idempotencyKey: requestIdempotencyKey(request),
+      requestId: actor.requestId,
+      ...traceFields(actor.traceId),
     });
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '../identity/index.js';
 import {
   authorizeWorkspaceOperation,
+  capabilitiesForRole,
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type AuthorizationCapability,
@@ -13,13 +14,18 @@ import {
   type WorkspaceStatus,
 } from '../workspaces/index.js';
 import {
+  accessibleWorkspacesResponseSchema,
   workspaceCreateRequestSchema,
   workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
   userProfileResponseSchema,
   workspaceMembersResponseSchema,
+  workspaceMemberRoleChangeRequestSchema,
+  workspaceMemberRoleChangeResponseSchema,
+  type AccessibleWorkspacesResponse,
   type UserProfileResponse,
   type WorkspaceMembersResponse,
+  type WorkspaceMemberRoleChangeResponse,
   type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from './types.js';
@@ -48,9 +54,17 @@ type CurrentUserPersistence = Pick<
   IdentityWorkspacePersistence,
   'findUserById'
 >;
+type AccessibleWorkspacesPersistence = Pick<
+  IdentityWorkspacePersistence,
+  'listAccessibleWorkspaces'
+>;
 type WorkspaceMembersPersistence = Pick<
   IdentityWorkspacePersistence,
   'listWorkspaceMembers'
+>;
+type WorkspaceMemberRolePersistence = Pick<
+  IdentityWorkspacePersistence,
+  'changeWorkspaceMemberRole'
 >;
 type WorkspaceCreationPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -107,6 +121,41 @@ export class GetCurrentUserUseCase {
           status: user.status,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
+        });
+      },
+    );
+  }
+}
+
+export class ListAccessibleWorkspacesUseCase {
+  public constructor(
+    private readonly persistence: AccessibleWorkspacesPersistence,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  ) {}
+
+  public execute(
+    userId: string,
+    input: Readonly<{ limit?: number; after?: string }> = {},
+  ): Promise<AccessibleWorkspacesResponse> {
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.accessibleWorkspacesList,
+      async () => {
+        const page = await this.persistence.listAccessibleWorkspaces(
+          userId,
+          input,
+        );
+        return accessibleWorkspacesResponseSchema.parse({
+          items: page.items.map((workspace) => ({
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug,
+            status: workspace.status,
+            role: workspace.role,
+            capabilities: capabilitiesForRole(workspace.role),
+            createdAt: workspace.createdAt.toISOString(),
+            updatedAt: workspace.updatedAt.toISOString(),
+          })),
+          nextCursor: page.nextCursor ?? null,
         });
       },
     );
@@ -171,6 +220,7 @@ export class ListWorkspaceMembersUseCase {
             email: member.email,
             displayName: member.displayName,
             role: member.role,
+            roleRevision: member.roleRevision,
             membershipStatus: member.membershipStatus,
             createdAt: member.createdAt.toISOString(),
             updatedAt: member.updatedAt.toISOString(),
@@ -180,6 +230,47 @@ export class ListWorkspaceMembersUseCase {
               ? null
               : encodeWorkspaceMemberCursor(page.nextCursor),
         });
+      },
+    );
+  }
+}
+
+export class ChangeWorkspaceMemberRoleUseCase {
+  public constructor(
+    private readonly persistence: WorkspaceMemberRolePersistence,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  ) {}
+
+  public execute(
+    input: Readonly<{
+      actor: ActorContext;
+      routeWorkspaceId: string;
+      targetUserId: string;
+      request: unknown;
+      idempotencyKey: string;
+      requestId?: string;
+      traceId?: string;
+    }>,
+  ): Promise<WorkspaceMemberRoleChangeResponse> {
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceMemberRoleChange,
+      async () => {
+        const request = workspaceMemberRoleChangeRequestSchema.parse(
+          input.request,
+        );
+        const result = await this.persistence.changeWorkspaceMemberRole({
+          workspaceId: input.routeWorkspaceId,
+          actorUserId: input.actor.actorId,
+          targetUserId: input.targetUserId,
+          role: request.role,
+          expectedRoleRevision: request.expectedRoleRevision,
+          idempotencyKey: input.idempotencyKey,
+          ...(input.requestId === undefined
+            ? {}
+            : { requestId: input.requestId }),
+          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+        });
+        return workspaceMemberRoleChangeResponseSchema.parse(result);
       },
     );
   }

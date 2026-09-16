@@ -2,6 +2,7 @@ export { IdentityWorkspaceModule } from './module.js';
 export { OidcController, SessionController } from './auth-controllers.js';
 export {
   UserController,
+  WorkspaceDiscoveryController,
   WorkspaceMembersController,
   WorkspaceController,
 } from './controllers.js';
@@ -9,12 +10,15 @@ export {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   WorkspaceManageGuard,
+  WorkspaceMemberManageGuard,
   authenticatedSession,
   readHeader,
 } from './guards.js';
 export {
   CreateWorkspaceUseCase,
+  ChangeWorkspaceMemberRoleUseCase,
   GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   OidcApplicationService,
   WorkspaceLifecycleUseCase,

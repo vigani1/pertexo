@@ -96,7 +96,9 @@ describe('identity/workspace telemetry', () => {
       'session.logout',
       'user.profile_read',
       'workspace.create',
+      'workspace.accessible_list',
       'workspace.members_list',
+      'workspace.member_role_change',
       'workspace.request_deletion',
       'workspace.restore',
     ]);
@@ -265,7 +267,9 @@ function workspacePersistence(): IdentityWorkspacePersistence {
     findByDigest: vi.fn(),
     revokeByDigest: vi.fn(),
     findUserById: vi.fn(),
+    listAccessibleWorkspaces: vi.fn(),
     listWorkspaceMembers: vi.fn(),
+    changeWorkspaceMemberRole: vi.fn(),
     resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue({
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

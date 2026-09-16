@@ -1,15 +1,21 @@
-import { generatePersistedId } from '@pertexo/database/api';
+import {
+  ConnectionNotFoundError,
+  generatePersistedId,
+} from '@pertexo/database/api';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 import { authorizeConnectionOperation } from './authorization.js';
 import type {
   ConnectionCommandPersistence,
+  ConnectionReadPersistence,
   ConnectionSecretEncryptionPort,
 } from './ports.js';
+import { decodeConnectionCursor, encodeConnectionCursor } from './cursor.js';
 import {
   encodeCredential,
   encryptionSignal,
   hashRequest,
+  toListResponse,
   toResponse,
   type ConnectionCommandInput,
 } from './use-case-support.js';
@@ -42,6 +48,70 @@ export type RotateConnectionSecretCommand = ConnectionCommandInput &
 
 export type RevokeConnectionCommand = ConnectionCommandInput &
   Readonly<{ connectionId: string }>;
+
+export type ListConnectionsQuery = ConnectionCommandInput &
+  Readonly<{ limit?: number; after?: string }>;
+
+export type GetConnectionQuery = ConnectionCommandInput &
+  Readonly<{ connectionId: string }>;
+
+export class ListConnectionsUseCase {
+  public constructor(
+    private readonly persistence: ConnectionReadPersistence,
+    private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
+  ) {}
+
+  public execute(input: ListConnectionsQuery) {
+    return this.telemetry.measure(CONNECTION_OPERATION.list, async () => {
+      await authorizeConnectionOperation(
+        input,
+        this.authorization,
+        'connection:read',
+      );
+      const page = await this.persistence.listConnections({
+        workspaceId: input.routeWorkspaceId,
+        actorId: input.actor.actorId,
+        ...(input.limit === undefined ? {} : { limit: input.limit }),
+        ...(input.after === undefined
+          ? {}
+          : { after: decodeConnectionCursor(input.after) }),
+      });
+      return toListResponse(
+        page.items,
+        page.nextCursor === undefined
+          ? null
+          : encodeConnectionCursor(page.nextCursor),
+      );
+    });
+  }
+}
+
+export class GetConnectionUseCase {
+  public constructor(
+    private readonly persistence: ConnectionReadPersistence,
+    private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
+  ) {}
+
+  public execute(input: GetConnectionQuery) {
+    return this.telemetry.measure(CONNECTION_OPERATION.read, async () => {
+      await authorizeConnectionOperation(
+        input,
+        this.authorization,
+        'connection:read',
+      );
+      const connection = await this.persistence.readConnection({
+        workspaceId: input.routeWorkspaceId,
+        actorId: input.actor.actorId,
+        connectionId: input.connectionId,
+      });
+      if (connection === null)
+        throw new ConnectionNotFoundError('Connection is not visible');
+      return toResponse(connection);
+    });
+  }
+}
 
 export class CreateConnectionUseCase {
   public constructor(

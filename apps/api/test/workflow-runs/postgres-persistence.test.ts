@@ -367,6 +367,9 @@ function databaseWith(
       run: run(),
       nodes: [],
     }),
+    list: vi.fn<WorkflowRunDatabase['list']>().mockResolvedValue({
+      items: [run()],
+    }),
     cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
       run: run(),
       alreadyRequested: false,
@@ -580,6 +583,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         .mockRejectedValue(new RegionalWriteAdmissionPausedError()),
       replay: vi.fn<WorkflowRunDatabase['replay']>(),
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
+      list: vi
+        .fn<WorkflowRunDatabase['list']>()
+        .mockResolvedValue({ items: [] }),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
@@ -615,6 +621,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       start: vi.fn<WorkflowRunDatabase['start']>(),
       replay,
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
+      list: vi
+        .fn<WorkflowRunDatabase['list']>()
+        .mockResolvedValue({ items: [] }),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
@@ -956,6 +965,9 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       start,
       replay: vi.fn<WorkflowRunDatabase['replay']>(),
       get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
+      list: vi
+        .fn<WorkflowRunDatabase['list']>()
+        .mockResolvedValue({ items: [] }),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
         run: run(),
         alreadyRequested: false,

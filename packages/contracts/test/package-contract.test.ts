@@ -35,7 +35,27 @@ describe('contracts package boundary', () => {
       './workflow-runs',
       './webhooks',
       './schedules',
+      './schemas/artifacts',
+      './schemas/catalog',
+      './schemas/connections',
+      './schemas/errors',
+      './schemas/identity-workspace',
+      './schemas/node-testing',
+      './schemas/failure-notifications',
+      './schemas/schedules',
+      './schemas/transport',
+      './schemas/workflow-authoring',
+      './schemas/workflow-runs',
+      './schemas/webhooks',
     ]);
+    expect(manifest.exports['./schemas/catalog']?.default).toBe(
+      './dist/http/catalog.js',
+    );
+    expect(
+      Object.entries(manifest.exports)
+        .filter(([name]) => name.startsWith('./schemas/'))
+        .map(([, exported]) => exported.default),
+    ).not.toContain('./dist/schema-projection.js');
 
     const repositoryRootUrl = new URL('../../../', import.meta.url);
     const applicationSources = [

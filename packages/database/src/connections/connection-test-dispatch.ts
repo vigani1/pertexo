@@ -4,12 +4,14 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import { requireConnectionUser } from './connection-authority.js';
 import {
-  CONNECTION_STATUS,
-  ConnectionTestInProgressError,
-  ConnectionUnavailableError,
   connectionTestClaim,
   connectionTestClaimSchema,
   connectionTestScope,
+} from './connection-test-claim.js';
+import {
+  CONNECTION_STATUS,
+  ConnectionTestInProgressError,
+  ConnectionUnavailableError,
   keyDigest,
   parseRequestMetadata,
   selectConnection,

@@ -153,6 +153,19 @@ export class WorkspaceMemberReadGuard extends WorkspaceCapabilityGuard {
   }
 }
 
+/** Coarse route guard; persistence rechecks current roles and the transition. */
+@Injectable()
+export class WorkspaceMemberManageGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKSPACE_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    @Inject(RequestContextStore)
+    contexts: RequestContextStore,
+  ) {
+    super('member:manage', authorization, contexts, 'forbidden', ['active']);
+  }
+}
+
 function requestFrom(context: ExecutionContext): IdentityWorkspaceRequest {
   return context.switchToHttp().getRequest<IdentityWorkspaceRequest>();
 }

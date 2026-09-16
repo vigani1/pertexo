@@ -10,7 +10,7 @@ async function requireConnectionCapability(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-  capability: 'connection:manage' | 'connection:use',
+  capability: 'connection:manage' | 'connection:read' | 'connection:use',
 ): Promise<void> {
   const result = await client.query(
     `select 1 from app.workspace_memberships membership
@@ -41,6 +41,19 @@ export function requireConnectionManager(
     workspaceId,
     actorId,
     'connection:manage',
+  );
+}
+
+export function requireConnectionReader(
+  client: PoolClient,
+  workspaceId: string,
+  actorId: string,
+): Promise<void> {
+  return requireConnectionCapability(
+    client,
+    workspaceId,
+    actorId,
+    'connection:read',
   );
 }
 

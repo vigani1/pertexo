@@ -3,6 +3,7 @@ import {
   char,
   foreignKey,
   index,
+  integer,
   inet,
   jsonb,
   primaryKey,
@@ -165,6 +166,7 @@ export const workspaceMemberships = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
     role: varchar('role', { length: 32 }).notNull(),
+    roleRevision: integer('role_revision').notNull().default(1),
     status: varchar('status', { length: 32 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -184,6 +186,38 @@ export const workspaceMemberships = appSchema.table(
     index('workspace_memberships_workspace_created_idx')
       .on(table.workspaceId, table.createdAt, table.userId)
       .where(sql`${table.status} in ('active', 'suspended')`),
+  ],
+);
+
+export const workspaceMemberRoleCommandReceipts = appSchema.table(
+  'workspace_member_role_command_receipts',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    targetUserId: uuid('target_user_id').notNull(),
+    keyHash: char('key_hash', { length: 64 }).notNull(),
+    requestHash: char('request_hash', { length: 64 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull(),
+    resultRef: jsonb('result_ref'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('workspace_member_role_command_receipts_key_unique').on(
+      table.actorUserId,
+      table.workspaceId,
+      table.keyHash,
+    ),
+    index('workspace_member_role_command_receipts_workspace_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
   ],
 );
 export const auditEvents = appSchema.table(

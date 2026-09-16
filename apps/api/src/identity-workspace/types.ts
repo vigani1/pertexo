@@ -1,4 +1,6 @@
 export {
+  accessibleWorkspacesQuerySchema,
+  accessibleWorkspacesResponseSchema,
   idempotencyKeySchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
@@ -9,12 +11,17 @@ export {
   workspaceLifecycleOperationResponseSchema,
   workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
+  workspaceMemberRoleParamsSchema,
+  workspaceMemberRoleChangeRequestSchema,
+  workspaceMemberRoleChangeResponseSchema,
   userProfileResponseSchema,
   workspaceResponseSchema,
   type WorkspaceLifecycleOperationResponse,
+  type AccessibleWorkspacesResponse,
   type WorkspaceResponse,
   type UserProfileResponse,
   type WorkspaceMembersResponse,
+  type WorkspaceMemberRoleChangeResponse,
 } from '@pertexo/contracts/identity-workspace';
 import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 

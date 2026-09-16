@@ -100,13 +100,44 @@ export type WorkspaceMemberRecord = Readonly<{
   email: string;
   displayName: string;
   role: MembershipRole;
+  roleRevision: number;
   membershipStatus: 'active' | 'suspended';
   createdAt: Date;
   updatedAt: Date;
 }>;
+export type ChangeWorkspaceMemberRoleInput = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  targetUserId: string;
+  role: Exclude<MembershipRole, 'owner'>;
+  expectedRoleRevision: number;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+export type WorkspaceMemberRoleChangeResult = Readonly<{
+  userId: string;
+  role: Exclude<MembershipRole, 'owner'>;
+  roleRevision: number;
+  changed: boolean;
+  replayed: boolean;
+}>;
 export type WorkspaceMembersPage = Readonly<{
   items: readonly WorkspaceMemberRecord[];
   nextCursor?: Readonly<{ createdAt: string; userId: string }>;
+}>;
+export type AccessibleWorkspaceRecord = Readonly<{
+  id: string;
+  name: string;
+  slug: string;
+  status: Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>;
+  role: MembershipRole;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+export type AccessibleWorkspacesPage = Readonly<{
+  items: readonly AccessibleWorkspaceRecord[];
+  nextCursor?: string;
 }>;
 export type CreateSessionInput = Readonly<{
   id?: string;
@@ -168,6 +199,13 @@ export type IdentityWorkspaceDatabase = Readonly<{
       after?: Readonly<{ createdAt: string; userId: string }>;
     }>,
   ): Promise<WorkspaceMembersPage>;
+  changeWorkspaceMemberRole(
+    input: ChangeWorkspaceMemberRoleInput,
+  ): Promise<WorkspaceMemberRoleChangeResult>;
+  listAccessibleWorkspaces(
+    actorId: string,
+    input?: Readonly<{ limit?: number; after?: string }>,
+  ): Promise<AccessibleWorkspacesPage>;
   findAuthIdentity(
     issuer: string,
     providerSubject: string,

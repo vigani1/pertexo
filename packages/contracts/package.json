@@ -52,6 +52,54 @@
     "./schedules": {
       "types": "./dist/schedules.d.ts",
       "default": "./dist/schedules.js"
+    },
+    "./schemas/artifacts": {
+      "types": "./dist/http/artifact-transfer.d.ts",
+      "default": "./dist/http/artifact-transfer.js"
+    },
+    "./schemas/catalog": {
+      "types": "./dist/http/catalog.d.ts",
+      "default": "./dist/http/catalog.js"
+    },
+    "./schemas/connections": {
+      "types": "./dist/http/connections.d.ts",
+      "default": "./dist/http/connections.js"
+    },
+    "./schemas/errors": {
+      "types": "./dist/errors/api-problem.d.ts",
+      "default": "./dist/errors/api-problem.js"
+    },
+    "./schemas/identity-workspace": {
+      "types": "./dist/http/identity-workspace.d.ts",
+      "default": "./dist/http/identity-workspace.js"
+    },
+    "./schemas/node-testing": {
+      "types": "./dist/http/node-testing.d.ts",
+      "default": "./dist/http/node-testing.js"
+    },
+    "./schemas/failure-notifications": {
+      "types": "./dist/http/failure-notification-destinations.d.ts",
+      "default": "./dist/http/failure-notification-destinations.js"
+    },
+    "./schemas/schedules": {
+      "types": "./dist/http/schedules.d.ts",
+      "default": "./dist/http/schedules.js"
+    },
+    "./schemas/transport": {
+      "types": "./dist/http/transport-headers.d.ts",
+      "default": "./dist/http/transport-headers.js"
+    },
+    "./schemas/workflow-authoring": {
+      "types": "./dist/http/workflow-authoring.d.ts",
+      "default": "./dist/http/workflow-authoring.js"
+    },
+    "./schemas/workflow-runs": {
+      "types": "./dist/http/workflow-runs.d.ts",
+      "default": "./dist/http/workflow-runs.js"
+    },
+    "./schemas/webhooks": {
+      "types": "./dist/http/webhooks.d.ts",
+      "default": "./dist/http/webhooks.js"
     }
   },
   "scripts": {

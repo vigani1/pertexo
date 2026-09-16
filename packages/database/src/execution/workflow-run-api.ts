@@ -37,6 +37,12 @@ import {
 } from './workflow-run-persistence-support.js';
 import type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
 import { replayWorkflowRunInTransaction } from './workflow-run-replay.js';
+import {
+  listWorkflowRunsInTransaction,
+  parseWorkflowRunListInput,
+  type ListWorkflowRunsDatabaseInput,
+  type WorkflowRunListPage,
+} from './workflow-run-list.js';
 
 export {
   WorkflowRunNotExecutableError,
@@ -175,7 +181,6 @@ export type GetWorkflowRunInput = Readonly<z.input<typeof getInputSchema>>;
 export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
 >;
-
 export interface WorkflowRunDatabase {
   start(input: StartPublishedWorkflowRunInput): Promise<
     Readonly<{
@@ -190,6 +195,7 @@ export interface WorkflowRunDatabase {
     }>
   >;
   get(input: GetWorkflowRunInput): Promise<WorkflowRunReadModel | undefined>;
+  list(input: ListWorkflowRunsDatabaseInput): Promise<WorkflowRunListPage>;
   cancel(input: CancelWorkflowRunInput): Promise<
     Readonly<{
       run: WorkflowRunRecord;
@@ -244,6 +250,29 @@ export function createWorkflowRunDatabase(
         pool,
         parsed.workspaceId,
         async (transaction) => readRunModel(transaction, parsed.runId),
+        parsed.signal === undefined ? {} : { signal: parsed.signal },
+      );
+    },
+    list: async (input: ListWorkflowRunsDatabaseInput) => {
+      const parsed = parseWorkflowRunListInput(input);
+      return withWorkspaceReadTransaction(
+        pool,
+        parsed.workspaceId,
+        async (transaction) =>
+          listWorkflowRunsInTransaction(transaction, {
+            limit: parsed.limit,
+            ...(parsed.workflowId === undefined
+              ? {}
+              : { workflowId: parsed.workflowId }),
+            ...(parsed.status === undefined ? {} : { status: parsed.status }),
+            ...(parsed.createdAtFrom === undefined
+              ? {}
+              : { createdAtFrom: parsed.createdAtFrom }),
+            ...(parsed.createdAtBefore === undefined
+              ? {}
+              : { createdAtBefore: parsed.createdAtBefore }),
+            ...(parsed.after === undefined ? {} : { after: parsed.after }),
+          }),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },

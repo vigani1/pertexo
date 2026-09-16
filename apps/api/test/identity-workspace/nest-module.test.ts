@@ -46,7 +46,9 @@ const dependencies: IdentityWorkspaceDependencies = {
     findByDigest: () => Promise.resolve(undefined),
     revokeByDigest: () => Promise.resolve(false),
     findUserById: () => Promise.resolve(null),
+    listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
     listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+    changeWorkspaceMemberRole: () => Promise.reject(new Error('not exercised')),
     resolveOrCreateIdentity: () =>
       Promise.resolve({
         userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

@@ -50,6 +50,8 @@ function dependencies(
 function identityRuntime(
   close = vi.fn().mockResolvedValue(undefined),
   authenticated = false,
+  changeWorkspaceMemberRole: IdentityWorkspaceDependencies['persistence']['changeWorkspaceMemberRole'] = () =>
+    Promise.reject(new Error('not used')),
 ): ApiIdentityRuntime {
   const identityDependencies: IdentityWorkspaceDependencies = {
     config: {
@@ -80,7 +82,9 @@ function identityRuntime(
           createdAt: new Date('2026-01-01T00:00:00.000Z'),
           updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         }),
+      listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
       listWorkspaceMembers: () => Promise.resolve({ items: [] }),
+      changeWorkspaceMemberRole,
       create: () => Promise.resolve(),
       findByDigest: () =>
         Promise.resolve(
@@ -948,6 +952,63 @@ describe('API bootstrap ownership and health', () => {
       },
     );
 
+    it('enforces the member-role mutation HTTP boundary', async () => {
+      const changeWorkspaceMemberRole = vi.fn().mockResolvedValue({
+        userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        role: 'operator' as const,
+        roleRevision: 2,
+        changed: true,
+        replayed: false,
+      });
+      application = await createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: identityRuntime(
+          vi.fn().mockResolvedValue(undefined),
+          true,
+          changeWorkspaceMemberRole,
+        ),
+      });
+      await application.init();
+      const url =
+        '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/members/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/role';
+      const cookie = `pertexo_session=${'s'.repeat(43)}`;
+      const csrf = 'c'.repeat(32);
+      const missingCsrf = await application.inject({
+        method: 'POST',
+        url,
+        headers: { cookie, 'idempotency-key': 'member-role' },
+        payload: { role: 'operator', expectedRoleRevision: 1 },
+      });
+      expect(missingCsrf.statusCode).toBe(403);
+      const invalid = await application.inject({
+        method: 'POST',
+        url,
+        headers: {
+          cookie: `${cookie}; pertexo_csrf=${csrf}`,
+          'x-csrf-token': csrf,
+          'idempotency-key': 'member-role',
+        },
+        payload: { role: 'operator', expectedRoleRevision: 1, extra: true },
+      });
+      expect(invalid.statusCode).toBe(400);
+      const changed = await application.inject({
+        method: 'POST',
+        url,
+        headers: {
+          cookie: `${cookie}; pertexo_csrf=${csrf}`,
+          'x-csrf-token': csrf,
+          'idempotency-key': 'member-role',
+        },
+        payload: { role: 'operator', expectedRoleRevision: 1 },
+      });
+      expect(changed.statusCode).toBe(200);
+      expect(changed.json()).toMatchObject({
+        role: 'operator',
+        roleRevision: 2,
+      });
+      expect(changeWorkspaceMemberRole).toHaveBeenCalledOnce();
+    });
+
     it.each(['core', 'http_activation'] as const)(
       'uses the configured %s cohort for integration discovery',
       async (nodeCompatibilityCohort) => {
@@ -1218,6 +1279,7 @@ describe('API bootstrap ownership and health', () => {
               start: () => Promise.reject(new Error('not used')),
               replay: () => Promise.reject(new Error('not used')),
               get: () => Promise.resolve(undefined),
+              list: () => Promise.resolve({ items: [] }),
               cancel: () => Promise.reject(new Error('not used')),
             },
           },
@@ -1279,6 +1341,7 @@ describe('API bootstrap ownership and health', () => {
               start: () => Promise.reject(new Error('not used')),
               replay: () => Promise.reject(new Error('not used')),
               get: () => Promise.resolve(undefined),
+              list: () => Promise.resolve({ items: [] }),
               cancel: () => Promise.reject(new Error('not used')),
             },
           },

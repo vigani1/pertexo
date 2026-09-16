@@ -11,6 +11,8 @@ import type {
 } from '../workspaces/index.js';
 import {
   connectionResponseSchema,
+  connectionListResponseSchema,
+  type ConnectionListResponse,
   connectionTestResponseSchema,
   type ConnectionResponse,
   type ConnectionTestResponse,
@@ -60,6 +62,16 @@ export function toResponse(record: ConnectionRecord): ConnectionResponse {
     },
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+export function toListResponse(
+  records: readonly ConnectionRecord[],
+  nextCursor: string | null,
+): ConnectionListResponse {
+  return connectionListResponseSchema.parse({
+    items: records.map((record) => toResponse(record)),
+    nextCursor,
   });
 }
 
