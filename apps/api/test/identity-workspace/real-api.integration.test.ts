@@ -1405,8 +1405,8 @@ function openHttpEventStream(
   started: Promise<void>;
   closed: Promise<void>;
 }> {
-  const started = Promise.withResolvers<void>();
-  const closed = Promise.withResolvers<void>();
+  const started = Promise.withResolvers<undefined>();
+  const closed = Promise.withResolvers<undefined>();
   let response: IncomingMessage | undefined;
   const request = httpRequest({
     host: '127.0.0.1',
@@ -1420,7 +1420,7 @@ function openHttpEventStream(
   });
   request.once('error', (error) => {
     if (response === undefined) started.reject(error);
-    closed.resolve();
+    closed.resolve(undefined);
   });
   request.once('response', (incoming) => {
     response = incoming;
@@ -1431,10 +1431,10 @@ function openHttpEventStream(
         ),
       );
     } else {
-      started.resolve();
+      started.resolve(undefined);
     }
     const resolveClosed = (): void => {
-      closed.resolve();
+      closed.resolve(undefined);
     };
     incoming.once('aborted', resolveClosed);
     incoming.once('close', resolveClosed);
