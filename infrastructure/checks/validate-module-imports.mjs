@@ -6,6 +6,21 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const webAllowedWorkspaceImports = new Set([
+  '@pertexo/contracts/schemas/artifacts',
+  '@pertexo/contracts/schemas/errors',
+  '@pertexo/contracts/schemas/identity-workspace',
+  '@pertexo/contracts/schemas/node-testing',
+  '@pertexo/contracts/schemas/failure-notifications',
+  '@pertexo/contracts/schemas/schedules',
+  '@pertexo/contracts/schemas/catalog',
+  '@pertexo/contracts/schemas/connections',
+  '@pertexo/contracts/schemas/workflow-authoring',
+  '@pertexo/contracts/schemas/workflow-runs',
+  '@pertexo/contracts/schemas/webhooks',
+  '@pertexo/contracts/schemas/transport',
+]);
+const webRawFetchOwners = new Set(['apps/web/src/lib/api/client.ts']);
 
 function isRuntimeImport(statement) {
   if (ts.isImportDeclaration(statement)) {
@@ -45,14 +60,48 @@ export function validateModuleImports(sources) {
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');
     const resolveTarget = (specifier) => {
-      const target = path.posix
-        .normalize(path.posix.join(path.posix.dirname(file), specifier))
-        .replace(/\.js$/u, '.ts');
-      if (!target.startsWith(`${workspace}/`))
+      const unresolved = specifier.startsWith('@/')
+        ? path.posix.join('apps/web/src', specifier.slice(2))
+        : path.posix.normalize(
+            path.posix.join(path.posix.dirname(file), specifier),
+          );
+      if (!unresolved.startsWith(`${workspace}/`))
         errors.push(
           `${file}: use a public workspace package export instead of ${specifier}`,
         );
-      return target;
+      const withoutExtension = unresolved.replace(/\.(?:js|ts|tsx)$/u, '');
+      return [
+        unresolved,
+        `${withoutExtension}.ts`,
+        `${withoutExtension}.tsx`,
+        `${withoutExtension}/index.ts`,
+        `${withoutExtension}/index.tsx`,
+      ].find((candidate) => Object.hasOwn(sources, candidate));
+    };
+    const inspectSpecifier = (specifier, runtime) => {
+      if (file.startsWith('apps/web/src/')) {
+        const featureImport = specifier.match(/^@\/features\/([^/]+)\/(.+)$/u);
+        const owner = file.match(/^apps\/web\/src\/features\/([^/]+)\//u)?.[1];
+        if (
+          featureImport !== null &&
+          featureImport[1] !== owner &&
+          featureImport[2] !== 'public' &&
+          !featureImport[2].endsWith('.public')
+        )
+          errors.push(
+            `${file}: cross-feature imports must use ${`@/features/${featureImport[1]}/public`}`,
+          );
+        if (
+          specifier.startsWith('@pertexo/') &&
+          !webAllowedWorkspaceImports.has(specifier)
+        )
+          errors.push(
+            `${file}: web source cannot import unreviewed workspace package path ${specifier}`,
+          );
+      }
+      if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return;
+      const target = resolveTarget(specifier);
+      if (runtime && target !== undefined) dependencies.push(target);
     };
     for (const statement of source.statements) {
       if (
@@ -61,15 +110,8 @@ export function validateModuleImports(sources) {
       )
         continue;
       const specifier = statement.moduleSpecifier;
-      if (
-        !specifier ||
-        !ts.isStringLiteral(specifier) ||
-        !specifier.text.startsWith('.')
-      )
-        continue;
-      const target = resolveTarget(specifier.text);
-      if (isRuntimeImport(statement) && Object.hasOwn(sources, target))
-        dependencies.push(target);
+      if (!specifier || !ts.isStringLiteral(specifier)) continue;
+      inspectSpecifier(specifier.text, isRuntimeImport(statement));
     }
     const inspectDeferredImport = (node) => {
       const argument =
@@ -82,12 +124,36 @@ export function validateModuleImports(sources) {
       if (
         argument &&
         ts.isStringLiteral(argument) &&
-        argument.text.startsWith('.')
+        (argument.text.startsWith('.') ||
+          argument.text.startsWith('@/') ||
+          argument.text.startsWith('@pertexo/'))
       )
-        resolveTarget(argument.text);
+        inspectSpecifier(argument.text, false);
       ts.forEachChild(node, inspectDeferredImport);
     };
     inspectDeferredImport(source);
+    const inspectRawFetch = (node) => {
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression;
+        const isGlobalFetch =
+          ts.isIdentifier(callee) && callee.text === 'fetch'
+            ? true
+            : ts.isPropertyAccessExpression(callee) &&
+              callee.name.text === 'fetch' &&
+              ts.isIdentifier(callee.expression) &&
+              ['globalThis', 'self', 'window'].includes(callee.expression.text);
+        if (
+          isGlobalFetch &&
+          file.startsWith('apps/web/src/') &&
+          !webRawFetchOwners.has(file)
+        )
+          errors.push(
+            `${file}: raw fetch belongs in the reviewed web transport adapter`,
+          );
+      }
+      ts.forEachChild(node, inspectRawFetch);
+    };
+    inspectRawFetch(source);
     graph.set(file, dependencies);
   }
   const completed = new Set();
@@ -121,7 +187,7 @@ export async function inspectModuleImports(directory = root) {
       if (entry.isDirectory()) await visit(file);
       else if (
         entry.isFile() &&
-        entry.name.endsWith('.ts') &&
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
         !entry.name.endsWith('.d.ts')
       )
         sources[path.relative(directory, file).split(path.sep).join('/')] =

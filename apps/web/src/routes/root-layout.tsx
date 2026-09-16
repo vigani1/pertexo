@@ -4,50 +4,81 @@ import {
   useRouter,
   type ErrorComponentProps,
 } from '@tanstack/react-router';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 
 export function RootLayout() {
   return (
     <>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-primary focus:p-3 focus:text-primary-foreground"
+        className="fixed left-4 top-4 z-50 -translate-y-16 rounded-md bg-primary p-3 text-primary-foreground opacity-0 transition-[transform,opacity] focus:translate-y-0 focus:opacity-100 motion-reduce:transition-none"
       >
         Skip to content
       </a>
-      <header className="mx-auto flex max-w-5xl items-center justify-between border-b px-6 py-6">
-        <Link
-          to="/"
-          className="font-heading text-xl font-semibold tracking-tight"
-        >
-          pertexo<span className="text-primary">.</span>
-        </Link>
-        <span className="font-mono text-xs text-muted-foreground">
-          FRONTEND FOUNDATION
-        </span>
-      </header>
-      <main
-        id="main"
-        tabIndex={-1}
-        className="mx-auto max-w-5xl px-6 py-12 sm:py-20"
-      >
-        <Outlet />
-      </main>
+      <Outlet />
     </>
+  );
+}
+
+export function PendingPage() {
+  return (
+    <main
+      id="main"
+      className="app-stage grid min-h-svh place-items-center px-6"
+    >
+      <div
+        role="status"
+        className="flex items-center gap-3 text-muted-foreground"
+      >
+        <span className="session-pulse" aria-hidden="true" />
+        Checking your session…
+      </div>
+    </main>
+  );
+}
+
+export function WorkspaceUnavailablePage() {
+  return (
+    <main
+      id="main"
+      className="app-stage grid min-h-svh place-items-center px-6"
+    >
+      <section className="flex max-w-lg flex-col items-start gap-5">
+        <p className="font-mono text-xs tracking-[0.2em] text-secondary">
+          WORKSPACE UNAVAILABLE
+        </p>
+        <h1 className="text-4xl font-semibold tracking-tight text-balance">
+          This workspace is not available
+        </h1>
+        <p className="leading-relaxed text-muted-foreground">
+          The address is invalid or your current account does not have access.
+          Choose one of your available workspaces instead.
+        </p>
+        <Link to="/workspaces" className={buttonVariants()}>
+          Choose a workspace
+        </Link>
+      </section>
+    </main>
   );
 }
 
 export function NotFoundPage() {
   return (
-    <section className="flex flex-col items-start gap-5">
-      <h1 className="text-3xl font-semibold">Page not found</h1>
-      <p className="text-muted-foreground">
-        Only the frontend foundation is available right now.
-      </p>
-      <Link to="/" className={buttonVariants({ variant: 'outline' })}>
-        Back to foundation
-      </Link>
-    </section>
+    <main
+      id="main"
+      className="app-stage grid min-h-svh place-items-center px-6"
+    >
+      <section className="flex max-w-lg flex-col items-start gap-5">
+        <h1 className="text-4xl font-semibold text-balance">Page not found</h1>
+        <p className="text-muted-foreground">
+          This address does not match an available Pertexo screen.
+        </p>
+        <Link to="/" className={buttonVariants({ variant: 'outline' })}>
+          Return to Pertexo
+        </Link>
+      </section>
+    </main>
   );
 }
 
@@ -58,18 +89,26 @@ export function RouteError({ reset }: ErrorComponentProps) {
     reset();
   }
   return (
-    <section className="flex flex-col items-start gap-5" role="alert">
-      <h1 className="text-3xl font-semibold">This page could not load</h1>
-      <p className="text-muted-foreground">
-        Try again. If the problem continues, reload the page.
-      </p>
-      <Button
-        onClick={() => {
-          void retry();
-        }}
+    <main
+      id="main"
+      className="app-stage grid min-h-svh place-items-center px-6"
+    >
+      <section
+        className="flex max-w-lg flex-col items-start gap-5"
+        role="alert"
       >
-        Try again
-      </Button>
-    </section>
+        <p className="font-mono text-xs tracking-[0.2em] text-secondary">
+          CONNECTION INTERRUPTED
+        </p>
+        <h1 className="text-4xl font-semibold text-balance">
+          Pertexo could not load this screen
+        </h1>
+        <p className="leading-relaxed text-muted-foreground">
+          Check your connection and try again. Your browser session has not been
+          changed.
+        </p>
+        <Button onClick={() => void retry()}>Try again</Button>
+      </section>
+    </main>
   );
 }

@@ -107,6 +107,7 @@ function syntheticValue(name, cohort) {
       'postgresql://worker:password@postgres.example.test:5432/pertexo',
     OIDC_AUTHORIZATION_ENDPOINT:
       'https://identity.example.test/oauth2/authorize',
+    OIDC_CALLBACK_LANDING_PATH: '/workspaces',
     OIDC_CLIENT_ID: 'pertexo-api',
     OIDC_CLIENT_SECRET: 'oidc-client-secret',
     OIDC_ISSUER: 'https://identity.example.test',

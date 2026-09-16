@@ -16,5 +16,5 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"],
-  "references": []
+  "references": [{ "path": "../../packages/contracts/tsconfig.json" }]
 }

@@ -278,8 +278,8 @@
       "minTokens": 130,
       "maximums": {
         "clones": 11,
-        "duplicatedLines": 327,
-        "duplicatedTokens": 3065
+        "duplicatedLines": 328,
+        "duplicatedTokens": 3090
       },
       "families": [
         {
@@ -368,20 +368,6 @@
         },
         {
           "files": [
-            "apps/api/test/workflow-runs/postgres-persistence.test.ts",
-            "packages/workflow-engine/test/executable-workflow.fixtures.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "API persistence and engine execution independently spell out the canonical parallel graph because they validate serialization and scheduling at different package boundaries.",
-          "clones": [
-            {
-              "hash": "84c66cbe400e9d9e28909959c7114b8068c022c93bec958faea07c4e4dd9a0c1",
-              "maxLines": 36
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/api/test/executions/run-event-stream.test.ts",
             "apps/api/test/executions/run-event-stream.test.ts"
           ],
@@ -400,15 +386,15 @@
             "apps/api/test/workflow-runs/http-stack.test.ts"
           ],
           "classification": "false-positive",
-          "reason": "Connection and workflow HTTP stack tests each own an authenticated identity runtime; common session plumbing supports different route modules and authorization assertions.",
+          "reason": "Connection and workflow HTTP stack tests each own an authenticated identity runtime; common session and complete persistence-contract plumbing supports different route modules and authorization assertions.",
           "clones": [
             {
               "hash": "b832ca02c90e7f90579066d1603da362282eac911aa3bfb97b7f821abd7f5edf",
               "maxLines": 26
             },
             {
-              "hash": "11a9d73e86d2eb917c2186bad81edb08457bf7e85334147dd93f3477ff0ef60a",
-              "maxLines": 35
+              "hash": "6e254674b3b063d2c60e82bdab4333b4be46724e326ff9114b1d0987815e17fb",
+              "maxLines": 36
             }
           ]
         },

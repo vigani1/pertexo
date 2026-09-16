@@ -18,7 +18,62 @@ export const BUILT_PACKAGE_CONSUMER_CASES = Object.freeze([
   {
     conditions: ['browser'],
     packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/artifacts',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
     specifier: '@pertexo/contracts/workflow-runs',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/catalog',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/connections',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/errors',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/identity-workspace',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/node-testing',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/failure-notifications',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/schedules',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/workflow-authoring',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/workflow-runs',
+  },
+  {
+    conditions: ['browser'],
+    packageDirectory: 'packages/contracts',
+    specifier: '@pertexo/contracts/schemas/webhooks',
   },
   {
     conditions: ['browser'],
