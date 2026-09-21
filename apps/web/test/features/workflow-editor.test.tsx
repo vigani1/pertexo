@@ -186,6 +186,23 @@ describe('workflow editor route', () => {
         },
         { graph, definitions: [manualDefinition, mappingDefinition] },
       ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+        () =>
+          HttpResponse.json({
+            workflow: {
+              id: workflowId,
+              workspaceId,
+              name: 'Mapping workflow',
+              lifecycleStatus: 'active',
+              lifecycleRevision: 1,
+              activationStatus: 'inactive',
+              publishedVersionId: null,
+              createdAt: user.createdAt,
+              updatedAt: user.updatedAt,
+            },
+          }),
+      ),
     );
     renderApp(`/w/${workspaceId}/workflows/${workflowId}`, { strict: true });
     const event = userEvent.setup();
