@@ -139,6 +139,16 @@ function adapterWithToken(
 }
 
 describe('generic OIDC provider adapter', () => {
+  it('forwards an explicit account-selection prompt', () => {
+    const adapter = new GenericOidcProviderAdapter(configuration);
+
+    const authorization = new URL(
+      adapter.authorizationUrl({ ...request, prompt: 'select_account' }),
+    );
+
+    expect(authorization.searchParams.get('prompt')).toBe('select_account');
+  });
+
   it('rejects a host without a callable Fetch implementation', () => {
     vi.stubGlobal('fetch', undefined);
     try {

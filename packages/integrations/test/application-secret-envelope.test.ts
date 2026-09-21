@@ -3,6 +3,30 @@ import { describe, expect, it } from 'vitest';
 import { createApplicationSecretEnvelope } from '../src/security/application-secret-envelope.js';
 
 describe('application secret envelope', () => {
+  it('rejects malformed keys and bounded inputs', () => {
+    expect(() =>
+      createApplicationSecretEnvelope({
+        current: {
+          version: 'invalid',
+          key: Buffer.alloc(31).toString('base64'),
+        },
+      }),
+    ).toThrow('Application secret key must encode exactly 32 bytes');
+
+    const envelope = createApplicationSecretEnvelope({
+      current: {
+        version: 'v1',
+        key: Buffer.alloc(32, 1).toString('base64'),
+      },
+    });
+    expect(() => envelope.seal('', 'attempt-1')).toThrow(
+      'Application secret input is invalid',
+    );
+    expect(() => envelope.seal('secret', '')).toThrow(
+      'Application secret input is invalid',
+    );
+  });
+
   it('opens only with matching associated data and supports prior keys', () => {
     const prior = createApplicationSecretEnvelope({
       current: {
@@ -25,5 +49,8 @@ describe('application secret envelope', () => {
       'sensitive invitation token',
     );
     expect(() => rotated.open(sealed, 'attempt-2')).toThrow();
+    expect(() =>
+      rotated.open({ ...sealed, keyVersion: 'unknown' }, 'attempt-1'),
+    ).toThrow('Application secret key is unavailable');
   });
 });

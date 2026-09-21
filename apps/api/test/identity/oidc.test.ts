@@ -199,6 +199,36 @@ describe('managed OIDC application service', () => {
     expect(transaction?.codeVerifier).not.toBe(request?.codeChallenge);
   });
 
+  it('preserves an invitation continuation through explicit account verification', async () => {
+    const setup = service(new FakeClock());
+    const continuation = {
+      kind: 'invitation_acceptance' as const,
+      workspaceId: '33333333-3333-4333-8333-333333333333',
+      intentId: '44444444-4444-4444-8444-444444444444',
+      bindingDigest: 'a'.repeat(64),
+    };
+    const start = await setup.app.startLogin(continuation);
+    const transaction = defined(
+      setup.transactions.records.values().next().value,
+    );
+    setup.provider.requestVerifier = transaction.codeVerifier;
+    setup.provider.response = {
+      ...setup.provider.response,
+      nonce: transaction.nonce,
+    };
+
+    expect(setup.provider.request?.prompt).toBe('select_account');
+    await expect(
+      setup.app.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(setup.provider.request).state,
+        },
+        start.browserBinding,
+      ),
+    ).resolves.toMatchObject({ continuation });
+  });
+
   it('verifies issuer, audience, nonce, subject and maps the stable external identity', async () => {
     const setup = service(new FakeClock());
     const start = await setup.app.startLogin();

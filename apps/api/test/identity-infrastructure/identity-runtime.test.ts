@@ -85,7 +85,12 @@ describe('identity runtime composition', () => {
     const runtime = await createApiIdentityRuntime(
       {
         ...identityConfig,
-        oidc: { ...identityConfig.oidc, clientSecret: 'client-secret' },
+        publicWebOrigin: 'https://app.example.test',
+        oidc: {
+          ...identityConfig.oidc,
+          clientSecret: 'client-secret',
+          callbackLandingPath: '/invitation/continue',
+        },
       },
       databaseConfig,
       {
@@ -99,6 +104,12 @@ describe('identity runtime composition', () => {
 
     expect(runtime.dependencies.clock).toBe(clock);
     expect(runtime.dependencies.provider).toBeDefined();
+    expect(runtime.dependencies.config.publicWebOrigin).toBe(
+      'https://app.example.test',
+    );
+    expect(runtime.dependencies.config.oidc.callbackLandingPath).toBe(
+      '/invitation/continue',
+    );
     await runtime.close();
   });
 
@@ -230,7 +241,10 @@ describe('identity runtime composition', () => {
     const consume = vi
       .fn()
       .mockResolvedValueOnce({ status: 'ok', transaction })
-      .mockResolvedValueOnce({ status: 'replayed', transaction });
+      .mockResolvedValueOnce({ status: 'missing' })
+      .mockResolvedValueOnce({ status: 'expired' })
+      .mockResolvedValueOnce({ status: 'replayed', transaction })
+      .mockResolvedValueOnce({ status: 'binding_mismatch' });
     const databaseTransactions = { ...transactionStore(), consume };
     const runtime = await createApiIdentityRuntime(
       identityConfig,
@@ -250,13 +264,20 @@ describe('identity runtime composition', () => {
         new Date('2026-08-20T12:00:00.000Z'),
       ),
     ).resolves.toEqual({ status: 'ok', transaction });
-    await expect(
-      runtime.dependencies.transactions.consume(
-        transaction.stateDigest,
-        transaction.browserBindingDigest,
-        new Date('2026-08-20T12:00:00.000Z'),
-      ),
-    ).resolves.toEqual({ status: 'replayed' });
+    for (const status of [
+      'missing',
+      'expired',
+      'replayed',
+      'binding_mismatch',
+    ] as const) {
+      await expect(
+        runtime.dependencies.transactions.consume(
+          transaction.stateDigest,
+          transaction.browserBindingDigest,
+          new Date('2026-08-20T12:00:00.000Z'),
+        ),
+      ).resolves.toEqual({ status });
+    }
     await runtime.close();
   });
 
