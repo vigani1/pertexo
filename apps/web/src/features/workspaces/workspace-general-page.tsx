@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { ApiClient } from '@/lib/api/client';
 import { WorkspaceLifecycleSection } from './components/settings/workspace-lifecycle-section';
+import { WorkspaceNameSection } from './components/settings/workspace-name-section';
 import { WorkspaceSettingsNavigation } from './components/settings/workspace-settings-navigation';
 import {
   accessibleWorkspacesQueryOptions,
@@ -36,6 +37,7 @@ export function WorkspaceGeneralPage({
   onWorkspaceChanged: () => void;
 }>) {
   const queryClient = useQueryClient();
+  const canManage = workspace.capabilities.includes('workspace:manage');
   const operationQuery = useQuery({
     ...workspaceLifecycleOperationQueryOptions(
       apiClient,
@@ -43,7 +45,7 @@ export function WorkspaceGeneralPage({
       workspace.id,
       operationId ?? '00000000-0000-4000-8000-000000000000',
     ),
-    enabled: operationId !== undefined,
+    enabled: canManage && operationId !== undefined,
   });
   const handledTerminal = useRef<string | undefined>(undefined);
 
@@ -79,26 +81,32 @@ export function WorkspaceGeneralPage({
           General
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Review the authoritative workspace identity and manage its lifecycle.
+          Review workspace details and manage its lifecycle.
         </p>
       </header>
 
       <div className="mt-8 grid gap-6">
+        <WorkspaceNameSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          onWorkspaceChanged={onWorkspaceChanged}
+          onAccessLost={onWorkspaceChanged}
+        />
         <GlassSection>
           <GlassSectionHeader>
             <GlassSectionTitle>Workspace identity</GlassSectionTitle>
             <GlassSectionDescription>
-              Names and slugs are read-only until the platform exposes a
-              supported update contract.
+              The slug is a stable identifier and remains read-only.
             </GlassSectionDescription>
           </GlassSectionHeader>
           <GlassSectionContent>
             <dl className="grid gap-6 sm:grid-cols-3">
-              <div>
+              <div className="min-w-0">
                 <dt className="text-xs font-medium text-muted-foreground uppercase">
                   Name
                 </dt>
-                <dd className="mt-2 break-words text-sm">{workspace.name}</dd>
+                <dd className="mt-2 break-all text-sm">{workspace.name}</dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-muted-foreground uppercase">
@@ -130,26 +138,28 @@ export function WorkspaceGeneralPage({
           </GlassSectionContent>
         </GlassSection>
 
-        <WorkspaceLifecycleSection
-          apiClient={apiClient}
-          workspace={workspace}
-          {...(operationQuery.data === undefined
-            ? {}
-            : { operation: operationQuery.data })}
-          operationLoading={
-            operationQuery.isPending && operationId !== undefined
-          }
-          operationReadError={operationQuery.isError}
-          onOperationAccepted={(id) => {
-            onOperationChange(id);
-          }}
-          onOperationDismissed={() => {
-            onOperationChange();
-          }}
-          onRetryOperationRead={() => {
-            void operationQuery.refetch();
-          }}
-        />
+        {canManage ? (
+          <WorkspaceLifecycleSection
+            apiClient={apiClient}
+            workspace={workspace}
+            {...(operationQuery.data === undefined
+              ? {}
+              : { operation: operationQuery.data })}
+            operationLoading={
+              operationQuery.isPending && operationId !== undefined
+            }
+            operationReadError={operationQuery.isError}
+            onOperationAccepted={(id) => {
+              onOperationChange(id);
+            }}
+            onOperationDismissed={() => {
+              onOperationChange();
+            }}
+            onRetryOperationRead={() => {
+              void operationQuery.refetch();
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

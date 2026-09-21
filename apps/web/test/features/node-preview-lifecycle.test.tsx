@@ -24,6 +24,7 @@ const workspace = {
   name: 'Workspace',
   slug: 'workspace',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: ['workflow:read', 'workflow:update'],
   createdAt: '2026-09-15T10:00:00.000Z',

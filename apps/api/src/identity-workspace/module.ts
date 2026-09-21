@@ -16,6 +16,11 @@ import {
   WorkspaceController,
 } from './controllers.js';
 import { OidcController, SessionController } from './auth-controllers.js';
+import { WorkspaceInvitationsController } from './invitation-management-controller.js';
+import { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
+import { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
+import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
+import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -31,7 +36,11 @@ import {
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
-import type { IdentityWorkspaceDependencies } from './ports.js';
+import type {
+  IdentityWorkspaceDependencies,
+  IdentityWorkspacePersistence,
+  InvitationTokenProtector,
+} from './ports.js';
 import {
   CSRF_POLICY,
   IDENTITY_CLOCK,
@@ -44,6 +53,8 @@ import {
   WORKSPACE_AUTHORIZATION,
   SESSION_COOKIE_POLICY,
   IDENTITY_WORKSPACE_TELEMETRY,
+  INVITATION_TOKEN_PROTECTOR,
+  INVITATION_ALLOWED_ORIGIN,
 } from './tokens.js';
 import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
@@ -62,6 +73,12 @@ export class IdentityWorkspaceModule {
     };
     const providers: Provider[] = [
       { provide: IDENTITY_WORKSPACE_CONFIG, useValue: dependencies.config },
+      {
+        provide: INVITATION_ALLOWED_ORIGIN,
+        useValue:
+          dependencies.config.publicWebOrigin ??
+          new URL(dependencies.config.oidc.redirectUri).origin,
+      },
       { provide: IDENTITY_CRYPTO, useValue: crypto },
       { provide: IDENTITY_CLOCK, useValue: clock },
       {
@@ -77,6 +94,11 @@ export class IdentityWorkspaceModule {
       {
         provide: IDENTITY_WORKSPACE_PERSISTENCE,
         useValue: dependencies.persistence,
+      },
+      {
+        provide: INVITATION_TOKEN_PROTECTOR,
+        useValue:
+          dependencies.invitationTokens ?? missingInvitationTokenProtector,
       },
       {
         provide: WORKSPACE_AUTHORIZATION,
@@ -162,6 +184,15 @@ export class IdentityWorkspaceModule {
         inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
       },
       {
+        provide: RenameWorkspaceUseCase,
+        useFactory: (
+          persistence: IdentityWorkspaceDependencies['persistence'],
+          telemetry: IdentityWorkspaceTelemetry,
+        ) =>
+          new RenameWorkspaceUseCase(renamePersistence(persistence), telemetry),
+        inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+      },
+      {
         provide: WorkspaceLifecycleUseCase,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
@@ -176,6 +207,51 @@ export class IdentityWorkspaceModule {
         ],
       },
       ...identityReadProviders(),
+      {
+        provide: WorkspaceInvitationManagementUseCase,
+        useFactory: (
+          persistence: IdentityWorkspaceDependencies['persistence'],
+          invitationTokens: InvitationTokenProtector,
+          identityCrypto: IdentityCrypto,
+          identityClock: IdentityClock,
+        ) =>
+          new WorkspaceInvitationManagementUseCase(
+            invitationPersistence(persistence),
+            invitationTokens,
+            identityCrypto,
+            identityClock,
+          ),
+        inject: [
+          IDENTITY_WORKSPACE_PERSISTENCE,
+          INVITATION_TOKEN_PROTECTOR,
+          IDENTITY_CRYPTO,
+          IDENTITY_CLOCK,
+        ],
+      },
+      {
+        provide: InvitationAcceptanceUseCase,
+        useFactory: (
+          persistence: IdentityWorkspaceDependencies['persistence'],
+          oidc: OidcLoginService,
+          identityCrypto: IdentityCrypto,
+          identityClock: IdentityClock,
+          config: IdentityWorkspaceDependencies['config'],
+        ) =>
+          new InvitationAcceptanceUseCase(
+            acceptancePersistence(persistence),
+            oidc,
+            identityCrypto,
+            identityClock,
+            config,
+          ),
+        inject: [
+          IDENTITY_WORKSPACE_PERSISTENCE,
+          OidcLoginService,
+          IDENTITY_CRYPTO,
+          IDENTITY_CLOCK,
+          IDENTITY_WORKSPACE_CONFIG,
+        ],
+      },
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -202,6 +278,8 @@ export class IdentityWorkspaceModule {
         UserController,
         WorkspaceDiscoveryController,
         WorkspaceMembersController,
+        WorkspaceInvitationsController,
+        InvitationAcceptanceController,
         WorkspaceController,
       ],
       providers,
@@ -211,11 +289,14 @@ export class IdentityWorkspaceModule {
         CSRF_POLICY,
         DoubleSubmitCsrfPolicy,
         CreateWorkspaceUseCase,
+        RenameWorkspaceUseCase,
         WorkspaceLifecycleUseCase,
         GetCurrentUserUseCase,
         ListAccessibleWorkspacesUseCase,
         ListWorkspaceMembersUseCase,
         ChangeWorkspaceMemberRoleUseCase,
+        WorkspaceInvitationManagementUseCase,
+        InvitationAcceptanceUseCase,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
         WorkspaceManageGuard,
@@ -225,6 +306,134 @@ export class IdentityWorkspaceModule {
     };
   }
 }
+
+const missingInvitationTokenProtector: InvitationTokenProtector = Object.freeze(
+  {
+    seal: () => {
+      throw new Error('Invitation token protection is not configured');
+    },
+  },
+);
+
+type InvitationPersistence = Required<
+  Pick<
+    IdentityWorkspacePersistence,
+    | 'listWorkspaceInvitations'
+    | 'createWorkspaceInvitation'
+    | 'resendWorkspaceInvitation'
+    | 'revokeWorkspaceInvitation'
+  >
+>;
+type RenamePersistence = Required<
+  Pick<IdentityWorkspacePersistence, 'renameWorkspace'>
+>;
+
+function renamePersistence(
+  persistence: IdentityWorkspacePersistence,
+): RenamePersistence {
+  return persistence.renameWorkspace === undefined
+    ? missingRenamePersistence
+    : Object.freeze({
+        renameWorkspace: persistence.renameWorkspace.bind(persistence),
+      });
+}
+
+const missingRenamePersistence: RenamePersistence = Object.freeze({
+  renameWorkspace: () =>
+    Promise.reject(new Error('Workspace rename persistence is not configured')),
+});
+
+type AcceptancePersistence = Required<
+  Pick<
+    IdentityWorkspacePersistence,
+    | 'resolveInvitationAcceptance'
+    | 'readInvitationAcceptance'
+    | 'recordInvitationAcceptanceProof'
+    | 'completeInvitationAcceptance'
+    | 'abandonInvitationAcceptance'
+  >
+>;
+
+function invitationPersistence(
+  persistence: IdentityWorkspacePersistence,
+): InvitationPersistence {
+  if (
+    persistence.listWorkspaceInvitations === undefined ||
+    persistence.createWorkspaceInvitation === undefined ||
+    persistence.resendWorkspaceInvitation === undefined ||
+    persistence.revokeWorkspaceInvitation === undefined
+  )
+    return missingInvitationPersistence;
+  return Object.freeze({
+    listWorkspaceInvitations:
+      persistence.listWorkspaceInvitations.bind(persistence),
+    createWorkspaceInvitation:
+      persistence.createWorkspaceInvitation.bind(persistence),
+    resendWorkspaceInvitation:
+      persistence.resendWorkspaceInvitation.bind(persistence),
+    revokeWorkspaceInvitation:
+      persistence.revokeWorkspaceInvitation.bind(persistence),
+  });
+}
+
+const missingInvitationPersistence: InvitationPersistence = Object.freeze({
+  listWorkspaceInvitations: () =>
+    Promise.reject(new Error('Invitation persistence is not configured')),
+  createWorkspaceInvitation: () =>
+    Promise.reject(new Error('Invitation persistence is not configured')),
+  resendWorkspaceInvitation: () =>
+    Promise.reject(new Error('Invitation persistence is not configured')),
+  revokeWorkspaceInvitation: () =>
+    Promise.reject(new Error('Invitation persistence is not configured')),
+});
+
+function acceptancePersistence(
+  persistence: IdentityWorkspacePersistence,
+): AcceptancePersistence {
+  if (
+    persistence.resolveInvitationAcceptance === undefined ||
+    persistence.readInvitationAcceptance === undefined ||
+    persistence.recordInvitationAcceptanceProof === undefined ||
+    persistence.completeInvitationAcceptance === undefined ||
+    persistence.abandonInvitationAcceptance === undefined
+  )
+    return missingAcceptancePersistence;
+  return Object.freeze({
+    resolveInvitationAcceptance:
+      persistence.resolveInvitationAcceptance.bind(persistence),
+    readInvitationAcceptance:
+      persistence.readInvitationAcceptance.bind(persistence),
+    recordInvitationAcceptanceProof:
+      persistence.recordInvitationAcceptanceProof.bind(persistence),
+    completeInvitationAcceptance:
+      persistence.completeInvitationAcceptance.bind(persistence),
+    abandonInvitationAcceptance:
+      persistence.abandonInvitationAcceptance.bind(persistence),
+  });
+}
+
+const missingAcceptancePersistence: AcceptancePersistence = Object.freeze({
+  resolveInvitationAcceptance: () =>
+    Promise.reject(
+      new Error('Invitation acceptance persistence is not configured'),
+    ),
+  readInvitationAcceptance: () =>
+    Promise.reject(
+      new Error('Invitation acceptance persistence is not configured'),
+    ),
+  recordInvitationAcceptanceProof: () =>
+    Promise.reject(
+      new Error('Invitation acceptance persistence is not configured'),
+    ),
+  completeInvitationAcceptance: () =>
+    Promise.reject(
+      new Error('Invitation acceptance persistence is not configured'),
+    ),
+  abandonInvitationAcceptance: () =>
+    Promise.reject(
+      new Error('Invitation acceptance persistence is not configured'),
+    ),
+});
 
 function identityReadProviders(): Provider[] {
   return [

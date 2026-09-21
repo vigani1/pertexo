@@ -1,5 +1,8 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  workflowGraphSchema,
+  type WorkflowGraphContract,
+} from '@pertexo/contracts/schemas/workflow-authoring';
 import { describe, expect, it, vi } from 'vitest';
 import {
   addDefinitionNode,
@@ -16,6 +19,14 @@ import {
   numericScratchFor,
   schemaFields,
 } from '@/features/workflow-editor/model/inspector-draft';
+import {
+  directPredecessorOptions,
+  inputKeySuggestions,
+  inputMappingRowsFor,
+  inputMappingSourceErrors,
+  nodeUsesRunInputDirectly,
+  validateInputMappingRows,
+} from '@/features/workflow-editor/model/input-mappings';
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/workflow-editor.api';
 
 const etagA = `"draft-v1.${'a'.repeat(43)}"`;
@@ -67,6 +78,268 @@ function snapshot(
 }
 
 describe('workflow editor model', () => {
+  it('round-trips editable and advanced mappings without flattening typed literals', () => {
+    const mappings = {
+      literal: { kind: 'literal', value: { count: 2, active: true } },
+      run: { kind: 'run_input', path: "$.customers[0]['display-name']" },
+      upstream: {
+        kind: 'node_output',
+        nodeId: 'source',
+        path: '$.customer',
+      },
+      expression: {
+        kind: 'expression',
+        language: 'jsonata',
+        expression: 'runInput.customer',
+        policyVersion: 1,
+      },
+      structured: {
+        kind: 'structured_input',
+        port: 'item',
+        path: '$.id',
+      },
+    } satisfies WorkflowGraphContract['nodes'][number]['inputMappings'];
+    const sourceNode = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'source',
+    ).nodes[0];
+    const targetNode = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 100, y: 0 },
+      'target',
+    ).nodes[0];
+    if (sourceNode === undefined || targetNode === undefined)
+      throw new Error('expected mapping test nodes');
+    const graph: WorkflowGraphContract = {
+      schemaVersion: 1,
+      nodes: [
+        sourceNode,
+        {
+          ...targetNode,
+          inputMappings: mappings,
+        },
+      ],
+      edges: [
+        {
+          id: 'source-target',
+          source: { nodeId: 'source', port: 'out' },
+          target: { nodeId: 'target', port: 'in' },
+        },
+      ],
+      settings: {},
+    };
+
+    const result = validateInputMappingRows(
+      inputMappingRowsFor(mappings),
+      graph,
+      'target',
+    );
+    expect(result.errors).toEqual({});
+    expect(result.inputMappings).toEqual(mappings);
+  });
+
+  it('validates duplicates, paths and direct predecessors without losing special keys', () => {
+    const source = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'source',
+    );
+    const graph = addDefinitionNode(
+      source,
+      definition,
+      { x: 100, y: 0 },
+      'target',
+    );
+    const connected = connectWorkflowNodes(
+      graph,
+      {
+        source: 'source',
+        sourceHandle: 'out',
+        target: 'target',
+        targetHandle: 'in',
+      },
+      'source-target',
+    );
+    if (connected === null) throw new Error('expected connected graph');
+    const valid = validateInputMappingRows(
+      [
+        {
+          id: 'literal',
+          destinationKey: '__proto__',
+          kind: 'literal',
+          literalJson: '[null, -2, {"active": true}]',
+        },
+        {
+          id: 'run',
+          destinationKey: 'customer.name',
+          kind: 'run_input',
+          path: "$.customers[0]['display-name']",
+        },
+        {
+          id: 'upstream',
+          destinationKey: 'source',
+          kind: 'node_output',
+          nodeId: 'source',
+          path: '$',
+        },
+      ],
+      connected,
+      'target',
+    );
+    expect(valid.errors).toEqual({});
+    expect(Object.hasOwn(valid.inputMappings ?? {}, '__proto__')).toBe(true);
+    expect(valid.inputMappings?.['customer.name']).toEqual({
+      kind: 'run_input',
+      path: "$.customers[0]['display-name']",
+    });
+    if (valid.inputMappings === undefined)
+      throw new Error('valid mappings were not produced');
+    expect(
+      workflowGraphSchema.safeParse(
+        updateWorkflowNode(connected, 'target', {
+          inputMappings: valid.inputMappings,
+        }),
+      ).success,
+    ).toBe(true);
+
+    const invalid = validateInputMappingRows(
+      [
+        {
+          id: 'one',
+          destinationKey: 'duplicate',
+          kind: 'run_input',
+          path: '$.*',
+        },
+        {
+          id: 'two',
+          destinationKey: 'duplicate',
+          kind: 'node_output',
+          nodeId: 'unconnected',
+          path: '$',
+        },
+        {
+          id: 'three',
+          destinationKey: '',
+          kind: 'literal',
+          literalJson: '{',
+        },
+      ],
+      connected,
+      'target',
+    );
+    expect(invalid.inputMappings).toBeUndefined();
+    expect(invalid.errors).toEqual({
+      one: {
+        destinationKey: 'Destination keys must be unique.',
+        source: 'Use $, dot properties, array indexes, or quoted properties.',
+      },
+      two: {
+        destinationKey: 'Destination keys must be unique.',
+        source: 'The source must be a directly connected predecessor.',
+      },
+      three: {
+        destinationKey: 'Destination key is required.',
+        source: 'Literal value must be valid JSON.',
+      },
+    });
+  });
+
+  it('derives only direct predecessor and schema suggestions and matches trigger identities', () => {
+    const first = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'source',
+    );
+    const second = addDefinitionNode(
+      first,
+      definition,
+      { x: 100, y: 0 },
+      'middle',
+    );
+    const third = addDefinitionNode(
+      second,
+      definition,
+      { x: 200, y: 0 },
+      'target',
+    );
+    const oneEdge = connectWorkflowNodes(
+      third,
+      {
+        source: 'source',
+        sourceHandle: 'out',
+        target: 'middle',
+        targetHandle: 'in',
+      },
+      'source-middle',
+    );
+    const connected = connectWorkflowNodes(
+      oneEdge ?? third,
+      {
+        source: 'middle',
+        sourceHandle: 'out',
+        target: 'target',
+        targetHandle: 'in',
+      },
+      'middle-target',
+    );
+    expect(directPredecessorOptions(connected ?? third, 'target')).toEqual([
+      { nodeId: 'middle', label: 'core.set' },
+    ]);
+    const renamed = updateWorkflowNode(connected ?? third, 'middle', {
+      label: 'Renamed source',
+    });
+    expect(directPredecessorOptions(renamed, 'target')).toEqual([
+      { nodeId: 'middle', label: 'Renamed source' },
+    ]);
+    const mappingRows = [
+      {
+        id: 'source-row',
+        destinationKey: 'source',
+        kind: 'node_output',
+        nodeId: 'middle',
+        path: '$',
+      },
+    ] as const;
+    expect(inputMappingSourceErrors(mappingRows, renamed, 'target')).toEqual(
+      {},
+    );
+    expect(
+      inputMappingSourceErrors(
+        mappingRows,
+        { ...renamed, edges: renamed.edges.slice(0, -1) },
+        'target',
+      ),
+    ).toEqual({
+      'source-row': {
+        source: 'The source must be a directly connected predecessor.',
+      },
+    });
+    expect(
+      inputKeySuggestions({
+        type: 'object',
+        properties: {
+          customer: { type: 'string', title: 'Customer' },
+          count: { type: 'number', description: 'Requested count' },
+        },
+        additionalProperties: true,
+      }),
+    ).toEqual([
+      { key: 'customer', label: 'Customer' },
+      { key: 'count', label: 'count', description: 'Requested count' },
+    ]);
+    expect(nodeUsesRunInputDirectly({ key: 'core.manual', version: 1 })).toBe(
+      true,
+    );
+    expect(nodeUsesRunInputDirectly({ key: 'core.set', version: 1 })).toBe(
+      false,
+    );
+  });
+
   it('keeps numeric scratch textual until Apply and preserves unknown config fields', () => {
     const fields = schemaFields({
       type: 'object',
@@ -315,6 +588,60 @@ describe('workflow editor model', () => {
     expect(store.getState().conflict?.local).toBe(local);
     store.getState().dismissConflictComparison();
     expect(store.getState().conflict).toBeNull();
+    coordinator.destroy();
+  });
+
+  it('keeps mapping-only edits in conflict comparison for explicit reapplication', async () => {
+    const first = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'source',
+    );
+    const base = addDefinitionNode(
+      first,
+      definition,
+      { x: 100, y: 0 },
+      'target',
+    );
+    const local = updateWorkflowNode(base, 'target', {
+      inputMappings: {
+        customer: { kind: 'run_input', path: '$.customer' },
+      },
+    });
+    const remote = updateWorkflowNode(base, 'target', {
+      inputMappings: {
+        remote: { kind: 'literal', value: true },
+      },
+    });
+    const store = createEditorStore({ graph: base, etag: etagA, revision: 1 });
+    store.getState().transact(local);
+    const coordinator = createSaveCoordinator(store, {
+      save: vi.fn().mockRejectedValue(new Error('conflict')),
+      reload: vi.fn().mockResolvedValue(snapshot(remote, etagB, 2)),
+      isConflict: () => true,
+      isUncertain: () => false,
+      message: () => 'failed',
+    });
+
+    await coordinator.flush();
+    expect(store.getState().conflict?.local).toBe(local);
+    expect(store.getState().conflict?.remote).toBe(remote);
+    store.getState().acceptRemoteForReview();
+    expect(store.getState().graph.nodes[1]?.inputMappings).toEqual({
+      remote: { kind: 'literal', value: true },
+    });
+    const localMappings = local.nodes[1]?.inputMappings;
+    if (localMappings === undefined) throw new Error('local target is missing');
+    store.getState().transact(
+      updateWorkflowNode(store.getState().graph, 'target', {
+        inputMappings: localMappings,
+      }),
+    );
+    expect(store.getState().graph.nodes[1]?.inputMappings).toEqual({
+      customer: { kind: 'run_input', path: '$.customer' },
+    });
+    expect(store.getState().etag).toBe(etagB);
     coordinator.destroy();
   });
 

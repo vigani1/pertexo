@@ -16,6 +16,17 @@ import {
   workspaceMemberRoleChangeResponseSchema,
   userProfileResponseSchema,
   workspaceResponseSchema,
+  workspaceRenameRequestSchema,
+  workspaceRenameResponseSchema,
+  workspaceInvitationCreateRequestSchema,
+  workspaceInvitationCommandRequestSchema,
+  workspaceInvitationCommandResponseSchema,
+  workspaceInvitationsResponseSchema,
+  invitationAcceptanceResolveRequestSchema,
+  invitationAcceptanceOidcRequestSchema,
+  invitationAcceptanceCompleteRequestSchema,
+  invitationAcceptanceJourneySchema,
+  invitationAcceptanceReceiptSchema,
 } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace generated contracts', () => {
@@ -33,6 +44,14 @@ describe('identity/workspace generated contracts', () => {
         WorkspaceCreateRequest: generated(
           workspaceCreateRequestSchema,
           'input',
+        ),
+        WorkspaceRenameRequest: generated(
+          workspaceRenameRequestSchema,
+          'input',
+        ),
+        WorkspaceRenameResponse: generated(
+          workspaceRenameResponseSchema,
+          'output',
         ),
         WorkspaceDeletionRequest: generated(
           workspaceDeletionRequestSchema,
@@ -56,6 +75,42 @@ describe('identity/workspace generated contracts', () => {
           workspaceMemberRoleChangeResponseSchema,
           'output',
         ),
+        WorkspaceInvitationCreateRequest: generated(
+          workspaceInvitationCreateRequestSchema,
+          'input',
+        ),
+        WorkspaceInvitationCommandRequest: generated(
+          workspaceInvitationCommandRequestSchema,
+          'input',
+        ),
+        WorkspaceInvitationCommandResponse: generated(
+          workspaceInvitationCommandResponseSchema,
+          'output',
+        ),
+        WorkspaceInvitationsResponse: generated(
+          workspaceInvitationsResponseSchema,
+          'output',
+        ),
+        InvitationAcceptanceResolveRequest: generated(
+          invitationAcceptanceResolveRequestSchema,
+          'input',
+        ),
+        InvitationAcceptanceOidcRequest: generated(
+          invitationAcceptanceOidcRequestSchema,
+          'input',
+        ),
+        InvitationAcceptanceCompleteRequest: generated(
+          invitationAcceptanceCompleteRequestSchema,
+          'input',
+        ),
+        InvitationAcceptanceJourney: generated(
+          invitationAcceptanceJourneySchema,
+          'output',
+        ),
+        InvitationAcceptanceReceipt: generated(
+          invitationAcceptanceReceiptSchema,
+          'output',
+        ),
       },
     });
   });
@@ -71,7 +126,15 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/deletion',
       '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}',
       '/v1/workspaces/{workspaceId}/members',
+      '/v1/workspaces/{workspaceId}',
       '/v1/workspaces/{workspaceId}/members/{userId}/role',
+      '/v1/workspaces/{workspaceId}/invitations',
+      '/v1/workspaces/{workspaceId}/invitations/{invitationId}/resend',
+      '/v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke',
+      '/v1/invitation-acceptance/resolve',
+      '/v1/invitation-acceptance',
+      '/v1/invitation-acceptance/oidc',
+      '/v1/invitation-acceptance/complete',
     ]);
     expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(
       identityWorkspaceClientContract.schemas,
@@ -80,6 +143,21 @@ describe('identity/workspace generated contracts', () => {
       identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.requestBody
         .content['application/json'].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceCreateRequest' });
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/workspaces/{workspaceId}']
+        .patch.requestBody.content['application/json'].schema,
+    ).toEqual({ $ref: '#/components/schemas/WorkspaceRenameRequest' });
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/workspaces/{workspaceId}']
+        .patch.responses['412'],
+    ).toMatchObject({
+      description: 'Workspace revision changed',
+      content: {
+        'application/problem+json': {
+          schema: { $ref: '#/components/schemas/ApiProblem' },
+        },
+      },
+    });
     expect(
       identityWorkspaceOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/deletion'

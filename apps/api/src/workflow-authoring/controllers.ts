@@ -36,6 +36,7 @@ import {
 import { parseIdempotencyKey, parseStrongIfMatch } from './preconditions.js';
 import {
   CreateWorkflowUseCase,
+  GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
   ListWorkflowVersionsUseCase,
   ListWorkflowsUseCase,
@@ -63,6 +64,7 @@ export class WorkflowAuthoringController {
   public constructor(
     private readonly listWorkflows: ListWorkflowsUseCase,
     private readonly createWorkflow: CreateWorkflowUseCase,
+    private readonly getWorkflow: GetWorkflowUseCase,
     private readonly getDraft: GetWorkflowDraftUseCase,
     private readonly saveDraft: SaveWorkflowDraftUseCase,
     private readonly validateDraft: ValidateWorkflowDraftUseCase,
@@ -87,6 +89,7 @@ export class WorkflowAuthoringController {
       routeWorkspaceId: workspaceId,
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),
+      ...(input.order === undefined ? {} : { order: input.order }),
     });
   }
 
@@ -116,6 +119,20 @@ export class WorkflowAuthoringController {
     });
     response.header('ETag', result.representationTag);
     return result.body;
+  }
+
+  @Get(':workflowId')
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  public async get(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowParams(params);
+    return this.getWorkflow.execute({
+      ...requestContext(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+    });
   }
 
   @Get(':workflowId/draft')

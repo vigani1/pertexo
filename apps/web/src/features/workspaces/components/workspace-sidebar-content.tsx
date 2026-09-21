@@ -53,6 +53,10 @@ export function WorkspaceSidebarContent({
 
       <WorkspaceNavigation
         workspaceId={workspace.id}
+        canReadOverview={
+          workspace.capabilities.includes('workflow:read') ||
+          workspace.capabilities.includes('run:read')
+        }
         canReadRuns={workspace.capabilities.includes('run:read')}
         canReadConnections={workspace.capabilities.includes('connection:read')}
         canReadMembers={workspace.capabilities.includes('member:read')}

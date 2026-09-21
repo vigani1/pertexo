@@ -11,6 +11,7 @@ export type WorkflowAuthoringPersistence = Pick<
   WorkflowAuthoringDatabase,
   | 'createWorkflow'
   | 'listWorkflows'
+  | 'getWorkflow'
   | 'getDraft'
   | 'listVersions'
   | 'saveDraft'

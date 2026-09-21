@@ -1190,7 +1190,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0093_workspace_member_role_management.sql',
+      migrationHead: '0099_workflow_recent_list.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

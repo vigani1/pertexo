@@ -3,6 +3,7 @@ import {
   useLoaderData,
   useNavigate,
   useRouteContext,
+  useRouter,
 } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/features/auth/public';
@@ -64,9 +65,11 @@ export function WorkspaceSelectionRoute() {
   const { apiClient } = useRouteContext({ from: '/workspaces' });
   const { user, workspaces } = useLoaderData({ from: '/workspaces' });
   const navigate = useNavigate();
+  const router = useRouter();
   const logoutState = useLogout(apiClient);
   return (
     <WorkspaceSelectionPage
+      apiClient={apiClient}
       user={user}
       workspaces={workspaces}
       logoutPending={logoutState.pending}
@@ -82,6 +85,15 @@ export function WorkspaceSelectionRoute() {
           params: { workspaceId: workspace.id },
         });
       }}
+      onCreated={(workspace) => {
+        void navigate({
+          to: '/w/$workspaceId/workflows',
+          params: { workspaceId: workspace.id },
+        });
+      }}
+      onSessionInvalidated={() => {
+        void router.invalidate();
+      }}
       onLogout={logoutState.requestLogout}
     />
   );
@@ -92,7 +104,6 @@ export function WorkspaceRoute() {
     from: '/w/$workspaceId/workflows',
   });
   const data = useLoaderData({ from: '/w/$workspaceId/workflows' });
-  const navigate = useNavigate();
   if (data.workspace === null) return <WorkspaceUnavailablePage />;
   const workspace = data.workspace;
   return (
@@ -106,12 +117,6 @@ export function WorkspaceRoute() {
         apiClient={apiClient}
         user={data.user}
         workspace={workspace}
-        onOpenWorkflow={(workflowId) => {
-          void navigate({
-            to: '/w/$workspaceId/workflows/$workflowId',
-            params: { workspaceId: workspace.id, workflowId },
-          });
-        }}
       />
     </WorkspaceRouteShell>
   );

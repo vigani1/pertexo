@@ -55,9 +55,11 @@ export function WorkflowValidationFindings({
                     onNavigate(target);
                   }}
                 >
-                  {target.fieldKey === undefined
-                    ? 'Go to node'
-                    : `Go to ${target.fieldKey}`}
+                  {target.mappingKey !== undefined
+                    ? `Go to ${target.mappingKey} input`
+                    : target.fieldKey === undefined
+                      ? 'Go to node'
+                      : `Go to ${target.fieldKey}`}
                 </Button>
               )}
             </li>

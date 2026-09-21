@@ -8,7 +8,6 @@ const itemClass =
 export function WorkspaceSettingsNavigation({
   workspace,
 }: Readonly<{ workspace: AccessibleWorkspace }>) {
-  const canManage = workspace.capabilities.includes('workspace:manage');
   const canReadMembers = workspace.capabilities.includes('member:read');
   const canReadNotifications =
     workspace.capabilities.includes('workflow:update');
@@ -18,19 +17,17 @@ export function WorkspaceSettingsNavigation({
       aria-label="Workspace settings"
       className="mb-8 flex gap-1 overflow-x-auto border-b border-border pb-3"
     >
-      {canManage ? (
-        <Link
-          to="/w/$workspaceId/settings/general"
-          params={{ workspaceId: workspace.id }}
-          className={itemClass}
-          activeProps={{
-            'aria-current': 'page',
-            className: cn(itemClass, 'bg-primary/10 text-primary'),
-          }}
-        >
-          General
-        </Link>
-      ) : null}
+      <Link
+        to="/w/$workspaceId/settings/general"
+        params={{ workspaceId: workspace.id }}
+        className={itemClass}
+        activeProps={{
+          'aria-current': 'page',
+          className: cn(itemClass, 'bg-primary/10 text-primary'),
+        }}
+      >
+        General
+      </Link>
       {canReadMembers ? (
         <Link
           to="/w/$workspaceId/settings/members"

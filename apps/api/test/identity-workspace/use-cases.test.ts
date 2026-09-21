@@ -172,7 +172,7 @@ describe('identity/workspace application use cases', () => {
   it('projects accessible workspaces with server-owned role capabilities', async () => {
     const store = persistence();
     vi.mocked(store.listAccessibleWorkspaces).mockResolvedValue({
-      items: [{ ...workspace(), role: 'builder' }],
+      items: [{ ...workspace(), revision: 1, role: 'builder' }],
       nextCursor: workspaceId,
     });
 
@@ -185,6 +185,7 @@ describe('identity/workspace application use cases', () => {
       items: [
         {
           ...workspace(),
+          revision: 1,
           role: 'builder',
           createdAt: '2026-08-20T12:00:00.000Z',
           updatedAt: '2026-08-20T12:00:00.000Z',

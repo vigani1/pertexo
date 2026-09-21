@@ -14,11 +14,18 @@ import {
 import {
   accessibleWorkspacesQuerySchema,
   accessibleWorkspacesResponseSchema,
+  invitationAcceptanceCompleteRequestSchema,
+  invitationAcceptanceJourneySchema,
+  invitationAcceptanceOidcRequestSchema,
+  invitationAcceptanceReceiptSchema,
+  invitationAcceptanceResolveRequestSchema,
   oidcAuthorizationCodeSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
   oidcStateSchema,
   workspaceCreateRequestSchema,
+  workspaceRenameRequestSchema,
+  workspaceRenameResponseSchema,
   workspaceDeletionRequestSchema,
   workspaceIdentifierSchema,
   workspaceLifecycleOperationIdentifierSchema,
@@ -27,6 +34,12 @@ import {
   workspaceMemberRoleChangeResponseSchema,
   workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
+  workspaceInvitationCommandRequestSchema,
+  workspaceInvitationCommandResponseSchema,
+  workspaceInvitationIdentifierSchema,
+  workspaceInvitationCreateRequestSchema,
+  workspaceInvitationsQuerySchema,
+  workspaceInvitationsResponseSchema,
   userProfileResponseSchema,
   workspaceResponseSchema,
 } from './http/identity-workspace.js';
@@ -38,6 +51,8 @@ const schemas = Object.freeze({
   OidcCallbackRequest: jsonSchema(oidcCallbackRequestSchema, 'input'),
   OidcStartResponse: jsonSchema(oidcStartResponseSchema, 'output'),
   WorkspaceCreateRequest: jsonSchema(workspaceCreateRequestSchema, 'input'),
+  WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
+  WorkspaceRenameResponse: jsonSchema(workspaceRenameResponseSchema, 'output'),
   WorkspaceDeletionRequest: jsonSchema(workspaceDeletionRequestSchema, 'input'),
   WorkspaceLifecycleOperationResponse: jsonSchema(
     workspaceLifecycleOperationResponseSchema,
@@ -55,6 +70,42 @@ const schemas = Object.freeze({
   ),
   WorkspaceMemberRoleChangeResponse: jsonSchema(
     workspaceMemberRoleChangeResponseSchema,
+    'output',
+  ),
+  WorkspaceInvitationCreateRequest: jsonSchema(
+    workspaceInvitationCreateRequestSchema,
+    'input',
+  ),
+  WorkspaceInvitationCommandRequest: jsonSchema(
+    workspaceInvitationCommandRequestSchema,
+    'input',
+  ),
+  WorkspaceInvitationCommandResponse: jsonSchema(
+    workspaceInvitationCommandResponseSchema,
+    'output',
+  ),
+  WorkspaceInvitationsResponse: jsonSchema(
+    workspaceInvitationsResponseSchema,
+    'output',
+  ),
+  InvitationAcceptanceResolveRequest: jsonSchema(
+    invitationAcceptanceResolveRequestSchema,
+    'input',
+  ),
+  InvitationAcceptanceOidcRequest: jsonSchema(
+    invitationAcceptanceOidcRequestSchema,
+    'input',
+  ),
+  InvitationAcceptanceCompleteRequest: jsonSchema(
+    invitationAcceptanceCompleteRequestSchema,
+    'input',
+  ),
+  InvitationAcceptanceJourney: jsonSchema(
+    invitationAcceptanceJourneySchema,
+    'output',
+  ),
+  InvitationAcceptanceReceipt: jsonSchema(
+    invitationAcceptanceReceiptSchema,
     'output',
   ),
   AccessibleWorkspacesResponse: jsonSchema(
@@ -251,6 +302,31 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}': {
+      patch: {
+        operationId: 'renameWorkspace',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
+        requestBody: jsonRequest('WorkspaceRenameRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Workspace display-name change receipt',
+            'WorkspaceRenameResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '409': responseReference('Conflict'),
+          '412': problemResponse('Workspace revision changed'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/members/{userId}/role': {
       post: {
         operationId: 'changeWorkspaceMemberRole',
@@ -277,8 +353,151 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/invitations': {
+      get: {
+        operationId: 'listWorkspaceInvitations',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          queryParameter('limit', workspaceInvitationsQuerySchema.shape.limit),
+          queryParameter('after', workspaceInvitationsQuerySchema.shape.after),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Workspace invitations',
+            'WorkspaceInvitationsResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+      post: {
+        operationId: 'createWorkspaceInvitation',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
+        requestBody: jsonRequest('WorkspaceInvitationCreateRequest'),
+        responses: invitationCommandResponses('Invitation accepted'),
+      },
+    },
+    '/v1/workspaces/{workspaceId}/invitations/{invitationId}/resend': {
+      post: {
+        operationId: 'resendWorkspaceInvitation',
+        security: [{ cookieSession: [] }],
+        parameters: invitationCommandParameters(),
+        requestBody: jsonRequest('WorkspaceInvitationCommandRequest'),
+        responses: invitationCommandResponses('Invitation resend accepted'),
+      },
+    },
+    '/v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke': {
+      post: {
+        operationId: 'revokeWorkspaceInvitation',
+        security: [{ cookieSession: [] }],
+        parameters: invitationCommandParameters(),
+        requestBody: jsonRequest('WorkspaceInvitationCommandRequest'),
+        responses: invitationCommandResponses('Invitation revoked'),
+      },
+    },
+    '/v1/invitation-acceptance/resolve': {
+      post: {
+        operationId: 'resolveInvitationAcceptance',
+        parameters: [invitationRequestHeaderParameter()],
+        requestBody: jsonRequest('InvitationAcceptanceResolveRequest'),
+        responses: {
+          '201': jsonResponse(
+            'Browser-bound invitation journey',
+            'InvitationAcceptanceJourney',
+          ),
+          '400': responseReference('BadRequest'),
+          '403': responseReference('Forbidden'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/invitation-acceptance': {
+      get: {
+        operationId: 'getInvitationAcceptance',
+        security: [{ invitationBinding: [] }],
+        responses: {
+          '200': jsonResponse(
+            'Current invitation journey',
+            'InvitationAcceptanceJourney',
+          ),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+      delete: {
+        operationId: 'abandonInvitationAcceptance',
+        security: [{ invitationBinding: [] }],
+        parameters: [invitationCsrfHeaderParameter()],
+        responses: {
+          '204': { description: 'Invitation journey abandoned' },
+          '403': responseReference('Forbidden'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/invitation-acceptance/oidc': {
+      post: {
+        operationId: 'startInvitationAcceptanceOidc',
+        security: [{ invitationBinding: [] }],
+        parameters: [invitationCsrfHeaderParameter()],
+        requestBody: jsonRequest('InvitationAcceptanceOidcRequest'),
+        responses: {
+          '200': jsonResponse(
+            'OIDC authorization transaction',
+            'OidcStartResponse',
+          ),
+          '403': responseReference('Forbidden'),
+          '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/invitation-acceptance/complete': {
+      post: {
+        operationId: 'completeInvitationAcceptance',
+        security: [{ cookieSession: [], invitationBinding: [] }],
+        parameters: [
+          csrfHeaderParameter(),
+          invitationCsrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
+        requestBody: jsonRequest('InvitationAcceptanceCompleteRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Invitation acceptance receipt',
+            'InvitationAcceptanceReceipt',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '409': responseReference('Conflict'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
   },
-  components: authenticatedComponents(schemas, problemResponses),
+  components: {
+    ...authenticatedComponents(schemas, problemResponses),
+    securitySchemes: {
+      ...authenticatedComponents(schemas, problemResponses).securitySchemes,
+      invitationBinding: {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'pertexo_invitation_intent',
+      },
+    },
+  },
 });
 
 function queryParameter(
@@ -317,6 +536,56 @@ function memberPathParameter() {
     in: 'path',
     required: true,
     schema: { type: 'string', format: 'uuid' },
+  } as const;
+}
+
+function invitationPathParameter() {
+  return {
+    name: 'invitationId',
+    in: 'path',
+    required: true,
+    schema: jsonSchema(workspaceInvitationIdentifierSchema, 'input'),
+  } as const;
+}
+
+function invitationRequestHeaderParameter() {
+  return {
+    name: 'X-Pertexo-Invitation-Request',
+    in: 'header',
+    required: true,
+    schema: { type: 'string', const: 'resolve' },
+  } as const;
+}
+
+function invitationCsrfHeaderParameter() {
+  return {
+    name: 'X-Invitation-Csrf-Token',
+    in: 'header',
+    required: true,
+    schema: { type: 'string', minLength: 1, maxLength: 512 },
+  } as const;
+}
+
+function invitationCommandParameters() {
+  return [
+    pathParameter(),
+    invitationPathParameter(),
+    csrfHeaderParameter(),
+    idempotencyHeaderParameter(),
+  ] as const;
+}
+
+function invitationCommandResponses(description: string) {
+  return {
+    '202': jsonResponse(description, 'WorkspaceInvitationCommandResponse'),
+    '400': responseReference('BadRequest'),
+    '401': responseReference('Unauthenticated'),
+    '403': responseReference('Forbidden'),
+    '404': problemResponse('Invitation unavailable'),
+    '409': responseReference('Conflict'),
+    '429': responseReference('RateLimited'),
+    '503': responseReference('ServiceUnavailable'),
+    '500': responseReference('Unexpected'),
   } as const;
 }
 

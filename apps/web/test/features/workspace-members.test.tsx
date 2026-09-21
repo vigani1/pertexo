@@ -23,6 +23,7 @@ const workspace = {
   name: 'Control Operations With A Deliberately Long Workspace Name',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'viewer',
   capabilities: ['workspace:read', 'member:read'],
   createdAt: timestamp,
@@ -90,6 +91,142 @@ function deferred<T>() {
 }
 
 describe('workspace members', () => {
+  it('creates an invitation and retries an uncertain command with the exact body and key', async () => {
+    const commandRequests: { body: unknown; key: string | null }[] = [];
+    let attempt = 0;
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        role: 'owner',
+        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      }),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
+        HttpResponse.json({
+          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
+          nextCursor: null,
+        }),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        () => HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        async ({ request }) => {
+          commandRequests.push({
+            body: await request.json(),
+            key: request.headers.get('idempotency-key'),
+          });
+          attempt += 1;
+          if (attempt === 1) return HttpResponse.error();
+          return HttpResponse.json(
+            {
+              invitation: {
+                id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+                email: 'new.member@example.test',
+                role: 'viewer',
+                status: 'pending',
+                revision: 1,
+                deliveryStatus: 'queued',
+                expiresAt: '2026-09-22T10:00:00.000Z',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+              replayed: true,
+            },
+            { status: 202 },
+          );
+        },
+      ),
+    );
+    const browser = userEvent.setup();
+    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    await browser.click(
+      await screen.findByRole('button', { name: 'Invite member' }),
+    );
+    await browser.type(
+      screen.getByLabelText('Recipient email'),
+      'new.member@example.test',
+    );
+    await browser.click(
+      screen.getByRole('button', { name: 'Send invitation' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'result is uncertain',
+    );
+    await browser.click(
+      screen.getByRole('button', { name: 'Retry same invitation' }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(commandRequests).toHaveLength(2);
+    expect(commandRequests[1]).toEqual(commandRequests[0]);
+    expect(commandRequests[0]?.body).toEqual({
+      email: 'new.member@example.test',
+      role: 'viewer',
+    });
+    expect(commandRequests[0]?.key).toBeTruthy();
+  });
+
+  it('paginates pending invitations independently from members', async () => {
+    const requestedCursors: (string | null)[] = [];
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        role: 'owner',
+        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      }),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
+        HttpResponse.json({
+          items: [member(firstMemberId, 'Ada Operator', 'owner')],
+          nextCursor: null,
+        }),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        ({ request }) => {
+          const after = new URL(request.url).searchParams.get('after');
+          requestedCursors.push(after);
+          return HttpResponse.json({
+            items: [
+              {
+                id:
+                  after === null
+                    ? 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+                    : 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+                email:
+                  after === null
+                    ? 'first.invite@example.test'
+                    : 'second.invite@example.test',
+                role: 'viewer',
+                status: 'pending',
+                revision: 1,
+                deliveryStatus: 'queued',
+                expiresAt: '2026-09-22T10:00:00.000Z',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+            ],
+            nextCursor: after === null ? 'next-invitation-page' : null,
+          });
+        },
+      ),
+    );
+
+    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    expect(await screen.findByText('first.invite@example.test')).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Load more invitations' }));
+    expect(await screen.findByText('second.invite@example.test')).toBeVisible();
+    expect(requestedCursors).toContain(null);
+    expect(
+      requestedCursors.filter((cursor) => cursor === 'next-invitation-page'),
+    ).toHaveLength(1);
+    expect(requestedCursors.at(-1)).toBe('next-invitation-page');
+  });
+
   it('paginates safe member projections in StrictMode', async () => {
     const requestedCursors: (string | null)[] = [];
     mockServer.use(

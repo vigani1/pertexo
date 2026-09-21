@@ -20,6 +20,8 @@ import {
   type WorkspaceDatabase,
   type IdentityWorkspaceDatabase,
 } from '@pertexo/database/testing';
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { workflowRunListResponseSchema } from '@pertexo/contracts/workflow-runs';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -78,6 +80,12 @@ class FakeOidcProvider implements OidcProviderPort {
   public latestRequest: OidcAuthorizationRequest | undefined;
   public latestVerifier: string | undefined;
   public exchangeCount = 0;
+  public profile = {
+    subject: 'phase1-real-stack-user',
+    email: 'phase1-real-stack@example.test',
+    displayName: 'Phase One Real Stack',
+    emailVerified: true,
+  };
 
   public authorizationUrl(request: OidcAuthorizationRequest): string {
     this.latestRequest = request;
@@ -106,15 +114,15 @@ class FakeOidcProvider implements OidcProviderPort {
     if (request === undefined) throw new Error('authorization was not started');
     return Promise.resolve({
       issuer,
-      subject: 'phase1-real-stack-user',
+      subject: this.profile.subject,
       audience: clientId,
       nonce:
         input.code === 'bad-nonce'
           ? 'forged-nonce-that-does-not-match'
           : request.nonce,
-      email: 'phase1-real-stack@example.test',
-      displayName: 'Phase One Real Stack',
-      emailVerified: true,
+      email: this.profile.email,
+      displayName: this.profile.displayName,
+      emailVerified: this.profile.emailVerified,
     });
   }
 }
@@ -132,6 +140,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   let workspaceDatabase: WorkspaceDatabase;
   let resources: FixtureResourceOwner | undefined;
   let identityNow = new Date();
+  let loginAttempt = 0;
 
   beforeAll(async () => {
     const owner = new FixtureResourceOwner();
@@ -465,9 +474,36 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       run: {
         id: startedBody.run.id,
         workflowVersionId: publishedBody.version.id,
+        workflowName: 'Inbound automation',
       },
       nodes: [],
     });
+    const workflowMetadata = await application.inject({
+      method: 'GET',
+      url: `${base}/${createdBody.workflow.id}`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(workflowMetadata.statusCode).toBe(200);
+    expect(workflowMetadata.json()).toMatchObject({
+      workflow: {
+        id: createdBody.workflow.id,
+        name: 'Inbound automation',
+        lifecycleStatus: 'archived',
+      },
+    });
+    const namedRuns = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspace.id}/runs?workflowNamePrefix=inbound`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(namedRuns.statusCode).toBe(200);
+    const namedRunsBody = workflowRunListResponseSchema.parse(namedRuns.json());
+    expect(
+      namedRunsBody.items.some(
+        ({ id, workflowName }) =>
+          id === startedBody.run.id && workflowName === 'Inbound automation',
+      ),
+    ).toBe(true);
 
     const canceled = await application.inject({
       method: 'POST',
@@ -711,6 +747,88 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       payload: { reason: 'forged workspace context' },
     });
     expectProblem(forgedWorkspace, 403, 'auth.forbidden');
+  });
+
+  it('conditionally renames a workspace and safely reconciles lost acknowledgements', async () => {
+    const cookies = await login();
+    const targetId = await createWorkspace(cookies, 'Rename proof');
+    const firstKey = `rename-${randomUUID()}`;
+    const missingCsrf = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: {
+        cookie: cookies.cookieHeader,
+        'idempotency-key': firstKey,
+      },
+      payload: { name: 'Rejected rename', expectedRevision: 1 },
+    });
+    expectProblem(missingCsrf, 403, 'auth.forbidden');
+
+    const renamed = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies, { 'idempotency-key': firstKey }),
+      payload: { name: 'Authoritative rename', expectedRevision: 1 },
+    });
+    expect(renamed.statusCode, renamed.payload).toBe(200);
+    expect(renamed.json()).toMatchObject({
+      workspace: {
+        id: targetId,
+        name: 'Authoritative rename',
+        revision: 2,
+      },
+      changed: true,
+      replayed: false,
+    });
+    const exactRetry = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies, { 'idempotency-key': firstKey }),
+      payload: { name: 'Authoritative rename', expectedRevision: 1 },
+    });
+    expect(exactRetry.statusCode, exactRetry.payload).toBe(200);
+    expect(exactRetry.json()).toMatchObject({ replayed: true });
+
+    const newer = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies),
+      payload: { name: 'Newer tab rename', expectedRevision: 2 },
+    });
+    expect(newer.statusCode, newer.payload).toBe(200);
+    const historicalRetry = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies, { 'idempotency-key': firstKey }),
+      payload: { name: 'Authoritative rename', expectedRevision: 1 },
+    });
+    expect(historicalRetry.statusCode, historicalRetry.payload).toBe(200);
+    expect(historicalRetry.json()).toMatchObject({ replayed: true });
+
+    const discovery = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces?limit=100',
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(
+      discovery
+        .json<{ items: { id: string; name: string; revision: number }[] }>()
+        .items.find((item) => item.id === targetId),
+    ).toMatchObject({ name: 'Newer tab rename', revision: 3 });
+    const stale = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies),
+      payload: { name: 'Stale overwrite', expectedRevision: 2 },
+    });
+    expectProblem(stale, 412, 'workspace.revision_conflict');
+    const changedExactRetry = await application.inject({
+      method: 'PATCH',
+      url: `/v1/workspaces/${targetId}`,
+      headers: mutationHeaders(cookies, { 'idempotency-key': firstKey }),
+      payload: { name: 'Changed command', expectedRevision: 1 },
+    });
+    expectProblem(changedExactRetry, 409, 'request.idempotency_conflict');
   });
 
   it('accepts and exposes one safe asynchronous deletion operation without projecting state', async () => {
@@ -972,14 +1090,425 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(expired.payload).not.toContain(expiringCookies.rawSession);
   });
 
+  it('accepts a delivered invitation once, rotates the recipient session, and closes an existing SSE stream', async () => {
+    const ownerProfile = provider.profile;
+    const manager = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Invitation integration manager',
+    });
+    const managerRawSession = `${randomUUID()}${randomUUID()}`;
+    await identityDatabase.createSession({
+      userId: manager.id,
+      tokenDigest: sha256Hex(managerRawSession),
+      expiresAt: new Date(identityNow.getTime() + 120_000),
+    });
+    const managerCsrf = sha256Base64Url(randomUUID());
+    const managerCookies = {
+      rawSession: managerRawSession,
+      csrf: managerCsrf,
+      cookieHeader: `pertexo_session=${managerRawSession}; pertexo_csrf=${managerCsrf}`,
+    };
+    const invitedWorkspaceId = await createWorkspace(
+      managerCookies,
+      'Invitation acceptance proof',
+    );
+    const streamWorkspaceId = await createWorkspace(
+      managerCookies,
+      'Invitation stream proof',
+    );
+    const { base, createdBody } = await createPublishedWorkflow(
+      managerCookies,
+      streamWorkspaceId,
+    );
+    const started = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/runs`,
+      headers: mutationHeaders(managerCookies, {
+        'idempotency-key': `invitation-run-${randomUUID()}`,
+      }),
+      payload: { input: { source: 'invitation-session-proof' } },
+    });
+    expect(started.statusCode, started.payload).toBe(202);
+    const runId = started.json<{ run: { id: string } }>().run.id;
+    const runUrl = `/v1/workspaces/${streamWorkspaceId}/runs/${runId}`;
+    const recipientEmail = `${randomUUID()}@example.test`;
+    const createdInvitation = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${invitedWorkspaceId}/invitations`,
+      headers: mutationHeaders(managerCookies, {
+        'idempotency-key': `invitation-create-${randomUUID()}`,
+      }),
+      payload: { email: recipientEmail, role: 'viewer' },
+    });
+    expect(createdInvitation.statusCode, createdInvitation.payload).toBe(202);
+    const invitationId = createdInvitation.json<{
+      invitation: { id: string };
+    }>().invitation.id;
+    let invitationToken = '';
+    await withOwnerWorkspace(invitedWorkspaceId, async (client) => {
+      const delivery = await client.query<{
+        id: string;
+        token_ciphertext: string;
+        token_nonce: string;
+        token_tag: string;
+        token_key_version: string;
+      }>(
+        `select id,token_ciphertext,token_nonce,token_tag,token_key_version
+           from app.workspace_invitation_delivery_attempts
+          where workspace_id=$1 and invitation_id=$2`,
+        [invitedWorkspaceId, invitationId],
+      );
+      const row = delivery.rows[0];
+      if (row === undefined)
+        throw new Error('Invitation delivery was not stored');
+      const identityConfig = config().identity;
+      if (identityConfig === undefined)
+        throw new Error('Identity configuration is missing');
+      invitationToken = createApplicationSecretEnvelope(
+        identityConfig.invitationTokenEncryption ??
+          identityConfig.secretEncryption,
+      ).open(
+        {
+          ciphertext: row.token_ciphertext,
+          nonce: row.token_nonce,
+          tag: row.token_tag,
+          keyVersion: row.token_key_version,
+        },
+        `pertexo/workspace-invitation/${invitedWorkspaceId}/${invitationId}/${row.id}`,
+      );
+    });
+
+    const resolved = await application.inject({
+      method: 'POST',
+      url: '/v1/invitation-acceptance/resolve',
+      remoteAddress: '198.51.100.25',
+      headers: {
+        origin: 'https://api.integration.test',
+        'content-type': 'application/json',
+        'x-pertexo-invitation-request': 'resolve',
+      },
+      payload: { token: invitationToken },
+    });
+    expect(resolved.statusCode, resolved.payload).toBe(201);
+    let resolvedBody = resolved.json<{
+      state: string;
+      intentId: string;
+      csrfToken: string;
+    }>();
+    expect(resolvedBody.state).toBe('sign_in_required');
+    const originalInvitationBinding = cookieValue(
+      Array.isArray(resolved.headers['set-cookie'])
+        ? resolved.headers['set-cookie']
+        : [String(resolved.headers['set-cookie'])],
+      'pertexo_invitation_intent',
+    );
+    const lostReplacement = await application.inject({
+      method: 'POST',
+      url: '/v1/invitation-acceptance/resolve',
+      remoteAddress: '198.51.100.25',
+      headers: {
+        cookie: `pertexo_invitation_intent=${encodeURIComponent(originalInvitationBinding)}`,
+        origin: 'https://api.integration.test',
+        'content-type': 'application/json',
+        'x-pertexo-invitation-request': 'resolve',
+      },
+      payload: { token: invitationToken },
+    });
+    expect(lostReplacement.statusCode, lostReplacement.payload).toBe(201);
+    const lostReplacementBody = lostReplacement.json<{
+      state: string;
+      intentId: string;
+      csrfToken: string;
+    }>();
+    const lostReplacementBinding = cookieValue(
+      Array.isArray(lostReplacement.headers['set-cookie'])
+        ? lostReplacement.headers['set-cookie']
+        : [String(lostReplacement.headers['set-cookie'])],
+      'pertexo_invitation_intent',
+    );
+    const recoveredReplacement = await application.inject({
+      method: 'POST',
+      url: '/v1/invitation-acceptance/resolve',
+      remoteAddress: '198.51.100.25',
+      headers: {
+        cookie: `pertexo_invitation_intent=${encodeURIComponent(originalInvitationBinding)}`,
+        origin: 'https://api.integration.test',
+        'content-type': 'application/json',
+        'x-pertexo-invitation-request': 'resolve',
+      },
+      payload: { token: invitationToken },
+    });
+    expect(recoveredReplacement.statusCode, recoveredReplacement.payload).toBe(
+      201,
+    );
+    expect(recoveredReplacement.json()).toEqual(lostReplacementBody);
+    const invitationBinding = cookieValue(
+      Array.isArray(recoveredReplacement.headers['set-cookie'])
+        ? recoveredReplacement.headers['set-cookie']
+        : [String(recoveredReplacement.headers['set-cookie'])],
+      'pertexo_invitation_intent',
+    );
+    expect(invitationBinding).toBe(lostReplacementBinding);
+    resolvedBody = lostReplacementBody;
+    const oidcStart = await application.inject({
+      method: 'POST',
+      url: '/v1/invitation-acceptance/oidc',
+      remoteAddress: '198.51.100.25',
+      headers: {
+        cookie: `pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+        'x-invitation-csrf-token': resolvedBody.csrfToken,
+      },
+      payload: {},
+    });
+    expect(oidcStart.statusCode, oidcStart.payload).toBe(200);
+    const oidcState = new URL(
+      oidcStart.json<{ authorizationUrl: string }>().authorizationUrl,
+    ).searchParams.get('state');
+    if (oidcState === null) throw new Error('Invitation OIDC state is missing');
+    const oidcBinding = cookieValue(
+      Array.isArray(oidcStart.headers['set-cookie'])
+        ? oidcStart.headers['set-cookie']
+        : [String(oidcStart.headers['set-cookie'])],
+      'pertexo_oidc_binding',
+    );
+
+    provider.profile = {
+      subject: `invited-${randomUUID()}`,
+      email: recipientEmail,
+      displayName: 'Invited integration recipient',
+      emailVerified: true,
+    };
+    let openStream: ReturnType<typeof openHttpEventStream> | undefined;
+    try {
+      const callback = await application.inject({
+        method: 'GET',
+        url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(oidcState)}`,
+        headers: {
+          cookie: `pertexo_oidc_binding=${encodeURIComponent(oidcBinding)}`,
+        },
+      });
+      expect(callback.statusCode, callback.payload).toBe(303);
+      expect(callback.headers.location).toBe('/invitations/accept');
+      const recipientCookies = sessionCookies(callback.headers['set-cookie']);
+      const recipientSession = await identityDatabase.findActiveSessionByDigest(
+        sha256Hex(recipientCookies.rawSession),
+      );
+      if (recipientSession === null)
+        throw new Error('Invitation recipient session is unavailable');
+      await withOwnerWorkspace(streamWorkspaceId, (client) =>
+        client.query(
+          `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+           values($1,$2,'viewer','active')`,
+          [streamWorkspaceId, recipientSession.userId],
+        ),
+      );
+      const beforeAcceptance = await application.inject({
+        method: 'GET',
+        url: runUrl,
+        headers: { cookie: recipientCookies.cookieHeader },
+      });
+      expect(beforeAcceptance.statusCode, beforeAcceptance.payload).toBe(200);
+      if (!application.getHttpServer().listening)
+        await application.listen(0, '127.0.0.1');
+      const address = application.getHttpServer().address() as { port: number };
+      openStream = openHttpEventStream(
+        address.port,
+        `${runUrl}/events`,
+        recipientCookies.cookieHeader,
+        1,
+      );
+      await withTimeout(openStream.started, 2_000);
+
+      const ready = await application.inject({
+        method: 'GET',
+        url: '/v1/invitation-acceptance',
+        headers: {
+          cookie: `${recipientCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+        },
+      });
+      expect(ready.statusCode, ready.payload).toBe(200);
+      const readyBody = ready.json<{
+        state: string;
+        intentId: string;
+        csrfToken: string;
+        invitationRevision: number;
+      }>();
+      expect(readyBody).toMatchObject({
+        state: 'ready',
+        intentId: resolvedBody.intentId,
+        csrfToken: resolvedBody.csrfToken,
+        invitationRevision: 1,
+      });
+      const acceptanceKey = `invitation-accept-${randomUUID()}`;
+      const completed = await application.inject({
+        method: 'POST',
+        url: '/v1/invitation-acceptance/complete',
+        headers: mutationHeaders(recipientCookies, {
+          cookie: `${recipientCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+          'idempotency-key': acceptanceKey,
+          'x-invitation-csrf-token': readyBody.csrfToken,
+        }),
+        payload: {
+          intentId: readyBody.intentId,
+          expectedRevision: readyBody.invitationRevision,
+        },
+      });
+      expect(completed.statusCode, completed.payload).toBe(200);
+      expect(completed.json()).toMatchObject({
+        workspaceId: invitedWorkspaceId,
+        membershipCreated: true,
+        role: 'viewer',
+      });
+      const replacementCookies = sessionCookies(
+        completed.headers['set-cookie'],
+      );
+      expect(String(completed.headers['set-cookie'])).not.toContain(
+        'pertexo_invitation_intent=;',
+      );
+      const reconciledWithReplacement = await application.inject({
+        method: 'GET',
+        url: '/v1/invitation-acceptance',
+        headers: {
+          cookie: `${replacementCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+        },
+      });
+      expect(reconciledWithReplacement.statusCode).toBe(200);
+      expect(reconciledWithReplacement.json()).toMatchObject({
+        state: 'completed',
+        workspace: { id: invitedWorkspaceId },
+      });
+      const oldSession = await application.inject({
+        method: 'GET',
+        url: runUrl,
+        headers: { cookie: recipientCookies.cookieHeader },
+      });
+      expectProblem(oldSession, 401, 'auth.unauthenticated');
+      await withTimeout(openStream.closed, 6_500);
+
+      const recoveryRequired = await application.inject({
+        method: 'GET',
+        url: '/v1/invitation-acceptance',
+        headers: {
+          cookie: `pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+        },
+      });
+      expect(recoveryRequired.statusCode, recoveryRequired.payload).toBe(200);
+      expect(recoveryRequired.json()).toMatchObject({
+        state: 'sign_in_required',
+        intentId: readyBody.intentId,
+      });
+
+      const recoveryStart = await application.inject({
+        method: 'POST',
+        url: '/v1/invitation-acceptance/oidc',
+        headers: {
+          cookie: `pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+          'x-invitation-csrf-token': readyBody.csrfToken,
+        },
+        payload: {},
+      });
+      expect(recoveryStart.statusCode, recoveryStart.payload).toBe(200);
+      const recoveryState = new URL(
+        recoveryStart.json<{ authorizationUrl: string }>().authorizationUrl,
+      ).searchParams.get('state');
+      if (recoveryState === null)
+        throw new Error('Invitation recovery OIDC state is missing');
+      const recoveryBinding = cookieValue(
+        Array.isArray(recoveryStart.headers['set-cookie'])
+          ? recoveryStart.headers['set-cookie']
+          : [String(recoveryStart.headers['set-cookie'])],
+        'pertexo_oidc_binding',
+      );
+      const recoveryCallback = await application.inject({
+        method: 'GET',
+        url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(recoveryState)}`,
+        headers: {
+          cookie: `pertexo_oidc_binding=${encodeURIComponent(recoveryBinding)}`,
+        },
+      });
+      expect(recoveryCallback.statusCode, recoveryCallback.payload).toBe(303);
+      const recoveredCookies = sessionCookies(
+        recoveryCallback.headers['set-cookie'],
+      );
+      const reconciledAfterLostCookies = await application.inject({
+        method: 'GET',
+        url: '/v1/invitation-acceptance',
+        headers: {
+          cookie: `${recoveredCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+        },
+      });
+      expect(reconciledAfterLostCookies.statusCode).toBe(200);
+      expect(reconciledAfterLostCookies.json()).toMatchObject({
+        state: 'completed',
+        workspace: { id: invitedWorkspaceId },
+      });
+      const changedExactRetry = await application.inject({
+        method: 'POST',
+        url: '/v1/invitation-acceptance/complete',
+        headers: mutationHeaders(recoveredCookies, {
+          cookie: `${recoveredCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+          'idempotency-key': acceptanceKey,
+          'x-invitation-csrf-token': readyBody.csrfToken,
+        }),
+        payload: {
+          intentId: readyBody.intentId,
+          expectedRevision: readyBody.invitationRevision + 1,
+        },
+      });
+      expectProblem(changedExactRetry, 409, 'request.idempotency_conflict');
+      const historicalRecovery = await application.inject({
+        method: 'POST',
+        url: '/v1/invitation-acceptance/complete',
+        headers: mutationHeaders(recoveredCookies, {
+          cookie: `${recoveredCookies.cookieHeader}; pertexo_invitation_intent=${encodeURIComponent(invitationBinding)}`,
+          'idempotency-key': `invitation-recovery-${randomUUID()}`,
+          'x-invitation-csrf-token': readyBody.csrfToken,
+        }),
+        payload: {
+          intentId: readyBody.intentId,
+          expectedRevision: readyBody.invitationRevision + 1,
+        },
+      });
+      expect(historicalRecovery.statusCode, historicalRecovery.payload).toBe(
+        200,
+      );
+      expect(historicalRecovery.json()).toMatchObject({
+        replayed: true,
+        membershipCreated: true,
+      });
+      const granted = await application.inject({
+        method: 'GET',
+        url: '/v1/workspaces',
+        headers: { cookie: replacementCookies.cookieHeader },
+      });
+      expect(granted.statusCode, granted.payload).toBe(200);
+      expect(
+        granted
+          .json<{ items: { id: string; role: string }[] }>()
+          .items.find((item) => item.id === invitedWorkspaceId),
+      ).toMatchObject({ id: invitedWorkspaceId, role: 'viewer' });
+      const aggregate = await workspaceAggregate(invitedWorkspaceId);
+      expect(
+        aggregate.events.filter(
+          (event) => event.action === 'workspace.invitation_accepted',
+        ),
+      ).toHaveLength(1);
+    } finally {
+      openStream?.request.destroy();
+      provider.profile = ownerProfile;
+    }
+  }, 20_000);
+
   async function startLogin(): Promise<{
     authorizationUrl: string;
     expiresAt: string;
     browserCookie: string;
   }> {
+    loginAttempt += 1;
     const response = await application.inject({
       method: 'GET',
       url: '/v1/auth/oidc/start',
+      remoteAddress: `198.51.100.${String(30 + loginAttempt)}`,
     });
     expect(response.statusCode).toBe(200);
     const payload = response.json<{

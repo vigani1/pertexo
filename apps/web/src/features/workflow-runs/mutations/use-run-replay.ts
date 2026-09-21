@@ -1,8 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { canonicalizeJson } from '@/lib/canonical-json';
 import { replayWorkflowRun } from '../workflow-runs.api';
+import { workflowRunKeys } from '../workflow-runs.queries';
 
 export type RunReplayIntent = Readonly<{
   value: unknown;
@@ -17,17 +19,20 @@ type RunReplayAttempt = Readonly<{
 
 export function useRunReplay({
   apiClient,
+  userId,
   workspaceId,
   sourceRunId,
   workflowVersionId,
   onRunAccepted,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspaceId: string;
   sourceRunId: string;
   workflowVersionId: string;
   onRunAccepted: (runId: string) => void;
 }>) {
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [retryAvailable, setRetryAvailable] = useState(false);
@@ -65,6 +70,10 @@ export function useRunReplay({
       );
       if (owner.current !== submissionOwner) return false;
       attempt.current = undefined;
+      await queryClient.invalidateQueries({
+        queryKey: workflowRunKeys.scope(userId, workspaceId),
+      });
+      if (owner.current !== submissionOwner) return false;
       onRunAccepted(response.run.id);
       return true;
     } catch (cause) {

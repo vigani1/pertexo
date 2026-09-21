@@ -21,6 +21,9 @@ const statusLabel = {
 
 export function EditorCommandBar({
   workflowId,
+  workflowName,
+  workflowNameUnavailable,
+  onRetryWorkflowName,
   canUpdate,
   onBack,
   onSave,
@@ -30,6 +33,9 @@ export function EditorCommandBar({
   onOpenSettings,
 }: Readonly<{
   workflowId: string;
+  workflowName: string | undefined;
+  workflowNameUnavailable: boolean;
+  onRetryWorkflowName: () => void;
   canUpdate: boolean;
   onBack: () => void;
   onSave: () => void;
@@ -43,20 +49,41 @@ export function EditorCommandBar({
   const canUndo = useEditorStore((state) => state.history.past.length > 0);
   const canRedo = useEditorStore((state) => state.history.future.length > 0);
   return (
-    <header className="relative z-20 flex min-h-18 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-card/75 px-4 py-3 shadow-[0_12px_36px_rgb(0_0_0/18%)] backdrop-blur-xl">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="relative z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/8 bg-card/75 px-3 py-2 shadow-[0_12px_36px_rgb(0_0_0/18%)] backdrop-blur-xl sm:min-h-18 sm:gap-3 sm:px-4 sm:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <Button type="button" variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeftIcon data-icon="inline-start" />
           Back
         </Button>
-        <span className="h-8 w-px bg-border" aria-hidden="true" />
-        <div className="min-w-0">
-          <h1 className="truncate font-heading text-base font-semibold">
-            Workflow editor
+        <span
+          className="hidden h-8 w-px bg-border sm:block"
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <h1
+            className="truncate font-heading text-sm font-semibold sm:text-base"
+            title={workflowName}
+          >
+            {workflowName ??
+              (workflowNameUnavailable
+                ? 'Workflow name unavailable'
+                : 'Loading workflow…')}
           </h1>
-          <p className="mt-0.5 max-w-64 truncate font-mono text-[0.66rem] text-muted-foreground">
+          <p
+            className="mt-0.5 max-w-64 truncate font-mono text-[0.62rem] text-muted-foreground sm:text-[0.66rem]"
+            title={workflowId}
+          >
             {workflowId}
           </p>
+          {workflowNameUnavailable ? (
+            <button
+              type="button"
+              className="mt-1 text-xs text-secondary underline-offset-2 hover:underline"
+              onClick={onRetryWorkflowName}
+            >
+              Retry name
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">

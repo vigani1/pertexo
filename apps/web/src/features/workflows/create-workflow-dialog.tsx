@@ -45,7 +45,7 @@ export function CreateWorkflowDialog({
     ...createWorkflowMutationOptions(apiClient, workspaceId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: workflowKeys.list(userId, workspaceId),
+        queryKey: workflowKeys.scope(userId, workspaceId),
       });
       attempt.current = undefined;
       setName('');

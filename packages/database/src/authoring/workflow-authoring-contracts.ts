@@ -61,11 +61,12 @@ export type ListWorkflowsInput = Readonly<{
   workspaceId: string;
   actorId: string;
   limit?: number;
-  after?: Readonly<{ createdAt: Date; id: string }>;
+  order?: 'created_asc' | 'updated_desc';
+  after?: Readonly<{ positionAt: string; id: string }>;
 }>;
 export type WorkflowPage = Readonly<{
   items: readonly WorkflowRecord[];
-  nextCursor?: Readonly<{ createdAt: Date; id: string }>;
+  nextCursor?: Readonly<{ positionAt: string; id: string }>;
 }>;
 export type ListWorkflowVersionsInput = Readonly<{
   workspaceId: string;
@@ -116,6 +117,11 @@ export type WorkflowAuthoringDatabase = Readonly<{
   ): Promise<PreviewReplayRecord | null>;
   createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
   listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
+  getWorkflow(
+    workspaceId: string,
+    workflowId: string,
+    actorId: string,
+  ): Promise<WorkflowRecord | null>;
   getDraft(
     workspaceId: string,
     workflowId: string,

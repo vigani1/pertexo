@@ -96,6 +96,7 @@ describe('identity/workspace telemetry', () => {
       'session.logout',
       'user.profile_read',
       'workspace.create',
+      'workspace.rename',
       'workspace.accessible_list',
       'workspace.members_list',
       'workspace.member_role_change',

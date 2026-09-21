@@ -6,6 +6,7 @@ import {
   GetCurrentUserUseCase,
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
+  RenameWorkspaceUseCase,
   UserController,
   WorkspaceDiscoveryController,
   WorkspaceMembersController,
@@ -38,6 +39,7 @@ function lifecycleController(lifecycle: object): WorkspaceController {
   return new WorkspaceController(
     { execute: vi.fn() } as unknown as CreateWorkspaceUseCase,
     lifecycle as unknown as WorkspaceLifecycleUseCase,
+    { execute: vi.fn() } as never,
   );
 }
 
@@ -286,6 +288,7 @@ describe('identity workspace-route controllers', () => {
         restore: vi.fn(),
         readOperation: vi.fn(),
       } as unknown as WorkspaceLifecycleUseCase,
+      { execute: vi.fn() } as never,
     );
 
     await expect(
@@ -295,6 +298,63 @@ describe('identity workspace-route controllers', () => {
       }),
     ).rejects.toMatchObject({ name: 'ZodError' });
     expect(createWorkspaceWithOwner).not.toHaveBeenCalled();
+  });
+
+  it('forwards a strict conditional rename command with actor and command identity', async () => {
+    const renameWorkspace = vi.fn().mockResolvedValue({
+      workspace: {
+        id: workspaceId,
+        name: 'Renamed workspace',
+        slug: 'workspace',
+        status: 'active',
+        revision: 2,
+        createdBy: actorId,
+        deletionRequestedAt: null,
+        deletionRequestedBy: null,
+        deletionReason: null,
+        purgeAfter: null,
+        createdAt: new Date('2026-08-20T12:00:00.000Z'),
+        updatedAt: new Date('2026-08-20T12:05:00.000Z'),
+      },
+      changed: true,
+      replayed: false,
+    });
+    const controller = new WorkspaceController(
+      { execute: vi.fn() } as unknown as CreateWorkspaceUseCase,
+      {} as WorkspaceLifecycleUseCase,
+      new RenameWorkspaceUseCase({ renameWorkspace }),
+    );
+
+    await expect(
+      controller.rename(
+        workspaceRequest(),
+        { workspaceId },
+        { name: 'Renamed workspace', expectedRevision: 1 },
+      ),
+    ).resolves.toMatchObject({
+      workspace: { name: 'Renamed workspace', revision: 2 },
+      changed: true,
+      replayed: false,
+    });
+    expect(renameWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        actorUserId: actorId,
+        name: 'Renamed workspace',
+        expectedRevision: 1,
+        idempotencyKey: 'workspace-lifecycle',
+        requestId: 'request-identity',
+        traceId: 'trace-identity',
+      }),
+    );
+    await expect(
+      controller.rename(
+        workspaceRequest(),
+        { workspaceId },
+        { name: 'Changed', expectedRevision: 1, slug: 'forged' },
+      ),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(renameWorkspace).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -311,6 +371,7 @@ describe('identity workspace-route controllers', () => {
     const controller = new WorkspaceController(
       { execute } as unknown as CreateWorkspaceUseCase,
       {} as WorkspaceLifecycleUseCase,
+      { execute: vi.fn() } as never,
     );
 
     await expect(

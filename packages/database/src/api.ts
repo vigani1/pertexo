@@ -74,6 +74,9 @@ export {
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceRenameCommandConflictError,
+  WorkspaceInvitationCommandConflictError,
+  InvitationAcceptanceConflictError,
   createIdentityWorkspaceDatabase,
 } from './tenant-access/identity-workspace.js';
 export type {
@@ -85,7 +88,20 @@ export type {
   UserRecord,
   WorkspaceMemberRecord,
   WorkspaceMemberRoleChangeResult,
+  RenameWorkspaceInput,
+  WorkspaceRenameResult,
   WorkspaceMembersPage,
+  ChangeWorkspaceInvitationInput,
+  CreateWorkspaceInvitationInput,
+  DelegatedMembershipRole,
+  SealedInvitationToken,
+  WorkspaceInvitationCommandResult,
+  WorkspaceInvitationRecord,
+  WorkspaceInvitationsPage,
+  CompleteInvitationAcceptanceInput,
+  InvitationAcceptanceIntentRecord,
+  InvitationAcceptanceResult,
+  ResolveInvitationAcceptanceInput,
 } from './tenant-access/identity-workspace.js';
 export { createOidcLoginTransactionStore } from './tenant-access/oidc-login-transactions.js';
 export type {

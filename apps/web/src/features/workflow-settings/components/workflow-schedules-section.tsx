@@ -40,6 +40,7 @@ export function WorkflowSchedulesSection({
 
   return (
     <SettingsSection
+      id="workflow-schedules"
       title="Schedules"
       description="Controls are derived from schedule nodes in the published workflow version."
     >

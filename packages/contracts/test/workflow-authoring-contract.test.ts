@@ -6,7 +6,9 @@ import {
   workflowCreateRequestSchema,
   workflowDraftSaveRequestSchema,
   workflowGraphSchema,
+  workflowListQuerySchema,
   workflowRevisionConflictProblemSchema,
+  workflowVersionsQuerySchema,
 } from '../src/http/workflow-authoring.js';
 import {
   workflowAuthoringClientContract,
@@ -15,6 +17,15 @@ import {
 
 describe('workflow-authoring public contracts', () => {
   it('defines strict authoring input and strong ETag preconditions', () => {
+    expect(
+      workflowListQuerySchema.parse({ limit: '5', order: 'updated_desc' }),
+    ).toEqual({ limit: 5, order: 'updated_desc' });
+    expect(workflowListQuerySchema.safeParse({ order: 'newest' }).success).toBe(
+      false,
+    );
+    expect(
+      workflowVersionsQuerySchema.safeParse({ order: 'updated_desc' }).success,
+    ).toBe(false);
     expect(
       workflowCompatibilityReportSchema.safeParse({
         compatible: true,
@@ -64,6 +75,7 @@ describe('workflow-authoring public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore',
       '/v1/workspaces/{workspaceId}/workflows',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/validate',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish',
@@ -91,6 +103,11 @@ describe('workflow-authoring public contracts', () => {
       paths['/v1/workspaces/{workspaceId}/workflows'].post.responses['201']
         .headers,
     ).toHaveProperty('ETag');
+    expect(
+      paths['/v1/workspaces/{workspaceId}/workflows'].get.parameters.map(
+        ({ name }) => name,
+      ),
+    ).toContain('order');
     expect(
       workflowAuthoringClientContract.schemas.WorkflowDraftResponse,
     ).toBeDefined();

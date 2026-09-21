@@ -67,6 +67,11 @@ export type { SlackApiResult, SlackClient } from './slack/client.js';
 export { createResendClient, RESEND_API_ENDPOINT } from './email/client.js';
 export type { ResendApiResult, ResendClient } from './email/client.js';
 export {
+  createApplicationSecretEnvelope,
+  type ApplicationSealedSecret,
+  type ApplicationSecretEnvelope,
+} from './security/application-secret-envelope.js';
+export {
   createEmailSendNotificationExecutorRegistration,
   EmailSendNotificationExecutorError,
 } from './email/executor.js';

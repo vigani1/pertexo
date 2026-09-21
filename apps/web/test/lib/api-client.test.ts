@@ -33,6 +33,28 @@ function fetchMock(response: Response) {
   return vi.fn<typeof globalThis.fetch>().mockResolvedValue(response);
 }
 
+describe('external CSRF ownership', () => {
+  it('allows a mutating request without a session CSRF cookie when declared', async () => {
+    const fetch = fetchMock(jsonResponse({ accepted: true }));
+    const client = createApiClient({ fetch, readCsrfToken: () => undefined });
+
+    await expect(
+      client.request({
+        path: '/v1/invitation-acceptance/resolve',
+        method: 'POST',
+        csrf: 'external',
+        headers: { 'X-Pertexo-Invitation-Request': 'resolve' },
+        body: { token: 'opaque' },
+        response: { kind: 'json', decode: (value) => value },
+      }),
+    ).resolves.toEqual({ accepted: true });
+
+    const headers = fetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get('x-csrf-token')).toBeNull();
+    expect(headers.get('x-pertexo-invitation-request')).toBe('resolve');
+  });
+});
+
 async function apiErrorFrom(
   promise: Promise<unknown>,
   kind: ApiError['kind'],

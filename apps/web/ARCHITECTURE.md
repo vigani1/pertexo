@@ -5,6 +5,10 @@ Inspected 2026-09-14 against foundation commit `9b1e28e` (merged to main as
 `12aded2`). The current app has browser-safe contracts and transport,
 provider-only OIDC entry, workspace selection, workflow discovery/create and a
 lazy, conflict-safe graph editor, publishing/run flow and workflow operations.
+Existing-member role management is also implemented and locally verified.
+Workspace invitations are implemented in the current working tree under the
+approved ADR 038 policy; their delivery evidence and remaining environment gates
+are recorded in section 18.
 
 This is the frontend's implementation reference: ownership, communication,
 coding patterns, visual migration and delivery gates. [README.md](README.md)
@@ -1379,7 +1383,7 @@ value. Commit only when separately authorized under root Git instructions.
   references, while workflow settings reuses its public query/status seam for
   policy selection.
 - Current web verification: production build/typecheck and zero-warning lint
-  pass; 22 unit/component files with 163 tests and 24 mocked-boundary Chromium
+  pass; 23 unit/component files with 177 tests and 27 mocked-boundary Chromium
   journeys pass. The editor journeys cover dirty-editor logout ordering, the
   explicit narrow/compact-screen panel fallback, permission-aware read-only
   geometry and canvas-local toolbar bounds. Component coverage also exercises
@@ -1409,9 +1413,10 @@ value. Commit only when separately authorized under root Git instructions.
   inheritance. Validation presents both structural and catalog-compatibility
   findings with guarded node navigation. Degraded run-event snapshot recovery
   retains bounded server-directed `Retry-After` delays and cancels them on scope
-  disposal. Firefox/WebKit and the live-backend/OIDC browser journey remain
-  outstanding. Architecture and built-export gates pass. Contract
-  build/typecheck and 71 contract tests pass; generated artifacts are current
+  disposal. Firefox/WebKit and the broader live-backend browser journey remain
+  outstanding; invitation OIDC/session/SSE behavior has controlled API-level
+  integration evidence. Architecture and built-export gates pass. Contract
+  build/typecheck and 73 contract tests pass; generated artifacts are current
   and the connections OpenAPI now declares its existing nondisclosing list
   `404`. The latest full React Doctor scan (including untracked files) reports
   zero errors and 51 warnings; warnings are triage input, not proof of a defect
@@ -1649,7 +1654,7 @@ current workflow-list landing page.
 
 ### Current implementation status
 
-#### Reviewed checkpoint — 2026-09-15
+#### Reviewed checkpoint — 2026-09-16
 
 The implemented scope below is a working-tree baseline, not a claim that every
 planned product feature is delivered or that the changes are committed,
@@ -1663,8 +1668,9 @@ deployed, or verified against a live identity provider.
   and conflict recovery; validation, preview and publishing; run start/history,
   live detail, cancellation/replay and artifact metadata/download access;
   versions/restore, schedules, webhooks and failure policies; Slack connection
-  management, notification destinations, member listing and workspace lifecycle
-  controls. The table below records their exact limits.
+  management, notification destinations, member listing, bounded existing-
+  member role changes and workspace lifecycle controls. The table below records
+  their exact limits.
 - The frontend review-fix cycle is closed with no outstanding findings in its
   reviewed scope. It covers incomplete JSON preservation, accessible form
   validation, uncertain settings commands, denied-data handling, webhook
@@ -1676,33 +1682,34 @@ deployed, or verified against a live identity provider.
   receipt. Actual scope disposal clears recovery state and fences late work.
   This does not make browser verification and server writes atomic, or undo a
   command already accepted by the server.
-- Latest review verification: 163 web tests in 22 files, 24 mocked-boundary
-  Chromium journeys, web build/typecheck, lint, architecture checks and
-  `git diff --check` passed. Additional targeted recovery regressions passed.
-  This is scoped evidence, not a whole-application bug-free guarantee.
+- Existing-member role management verification is recorded in its delivery
+  evidence below: 172 web tests in 22 files, 25 mocked-boundary Chromium
+  journeys, contract/API/database checks and the controlled full-stack session
+  and SSE revocation sequence passed. The identity provider in that sequence was
+  controlled, not a live managed provider; Firefox/WebKit and production
+  deployment verification remain outstanding. This is scoped evidence, not a
+  whole-application bug-free guarantee.
 
 Remaining work is explicitly separate from completed review fixes:
 
-| Remaining scope                               | Gate / next action                                                                                                           |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Existing-member role changes                  | Approved next slice; implement the role-management contract, transaction, UI and acceptance gates below.                     |
-| Workspace invitations                         | Recipient-verification and delivery decisions remain gated; separate from the approved role-management slice.                |
-| Workspace creation/onboarding UI and renaming | Separate bounded slice and confirmed contracts; neither UI is delivered.                                                     |
-| Overview                                      | Agree metrics, time windows, freshness and scoped aggregate APIs before implementation.                                      |
-| Browser artifact uploads / asset browser      | Real-browser signing, CORS, checksum and finalization evidence; listing contract for a browser.                              |
-| Templates, usage and billing                  | Product scope and contracts; not part of the delivered baseline.                                                             |
-| Release integration verification              | Live OIDC/backend browser journey, production proxy/deployment verification, and Firefox/WebKit coverage remain outstanding. |
+| Remaining scope                             | Gate / next action                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Workspace invitations                       | Implemented bounded slice; complete the controlled provider/full-stack and production sender environment gates recorded below. |
+| Workspace creation and display-name editing | N1 and N2 implemented; detailed delivery evidence and environment limitations are recorded below.                              |
+| Overview                                    | N3 bounded recent-list page implemented; aggregates remain excluded.                                                           |
+| Visual node input mapping                   | M1 is implemented; focused delivery evidence and remaining live-integration limits are recorded below.                         |
+| Browser artifact uploads / asset browser    | Real-browser signing, CORS, checksum and finalization evidence; listing contract for a browser.                                |
+| Templates, usage and billing                | Product scope and contracts; not part of the delivered baseline.                                                               |
+| Release integration verification            | Live OIDC/backend browser journey, production proxy/deployment verification, and Firefox/WebKit coverage remain outstanding.   |
 
-Next approved implementation slice: existing-member role management, specified
-below. The user approved doing roles before invitations and approved the bounded
-owner/admin transition policy on 2026-09-15. Implement in the order contract →
-API/database → frontend → browser tests. Invitations still require separate
-recipient-verification and delivery decisions. Do not reopen completed frontend
-architecture or repeat a whole-app audit without a concrete new reason.
+Existing-member role management is complete within the evidence and limitations
+recorded below. Workspace invitations now follow the bounded design and ADR 038;
+do not reopen completed frontend architecture or repeat a whole-app audit
+without a concrete new reason.
 
 | Surface                                                         | Working-tree status                                                                                                             |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Login and workspace selection                                   | Implemented; workspace creation/onboarding UI is not delivered                                                                  |
+| Login and workspace selection                                   | Implemented, including first/additional workspace creation through the existing owner-assignment contract                       |
 | Workflow list/create                                            | Implemented                                                                                                                     |
 | Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline                                                                                                    |
 | Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                               |
@@ -1710,8 +1717,8 @@ architecture or repeat a whole-app audit without a concrete new reason.
 | Workflow settings                                               | Implemented versions/restore, lifecycle, schedule toggles, webhook operations and failure-policy commands                       |
 | Connections                                                     | Implemented safe cursor list plus Slack bot-token create/test/rotate and generic revocation; additional auth types remain gated |
 | Notification destinations                                       | Implemented safe list/create/version/status management using existing Slack or email connection references                      |
-| Workspace members                                               | Implemented capability-gated safe member list with cursor pagination; invitations and role mutation are not delivered           |
-| Workspace general                                               | Implemented read-only identity plus asynchronous deletion/restore operation tracking; rename is not delivered                   |
+| Workspace members                                               | Implemented capability-gated list, cursor pagination, bounded existing-member role changes and invitation management            |
+| Workspace general                                               | Implemented conditional display-name editing, read-only slug and asynchronous deletion/restore operation tracking               |
 | Artifact downloads and route fallbacks                          | Implemented; upload/asset browser deferred                                                                                      |
 
 The tables below describe target capabilities as well as existing ones. Do not
@@ -1721,7 +1728,7 @@ infer that every listed action is already implemented.
 | ------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Sign in                        | `/login`                                           | Start provider login, progress/error/retry, safe return                                                 | Existing OIDC start; backend callback return required; order 2                                            |
 | Login/session recovery         | Login error state or inline expired-session dialog | Explain failure, retry login, protect dirty edits before navigation                                     | No SPA token handling; section 5 identity verification; order 2                                           |
-| Workspace selection/onboarding | `/workspaces`; future create dialog                | List accessible workspaces, enter one; add creation only in a scoped onboarding slice                   | Discovery and permission contracts now used by selection; separately verify creation prerequisites        |
+| Workspace selection/onboarding | `/workspaces`; feature-owned create dialog         | List accessible workspaces, enter one, or create the first/additional workspace                         | Discovery, session, CSRF, idempotency and server-owned owner-assignment contracts are used directly       |
 | Workflow list                  | `B/workflows`                                      | Cursor pagination, create dialog, open workflow; only supported filters                                 | Existing list/create; read/create authorization; order 3                                                  |
 | Editor                         | `E`                                                | Palette, canvas, inspector, apply form, undo/redo, save state, validation and supported actions         | Draft/catalog; connection discovery before credential picker; read/update/publish permissions; orders 4–5 |
 | Conflict resolution            | Editor dialog/panel, not another top-level page    | Local/remote comparison, explicit reload or manual reapply                                              | Conditional-save contract and retained local data; order 4                                                |
@@ -1748,7 +1755,7 @@ local-only scope.
 | Workflow triggers              | `E/settings`, schedule/webhook sections               | Published trigger status, enable/disable schedule; provision/rotate webhook endpoint/secret | Existing list/control contracts; derive trigger definitions from published workflow, not invented independent CRUD  |
 | Workflow failure notifications | `E/settings` section                                  | Set/clear failure policy and select a configured destination                                | Existing policy/destination contracts; proper permissions and keyed commands                                        |
 | Workflow lifecycle             | Workflow action menu + confirmation/status            | Archive/unarchive; show authoritative result                                                | Existing lifecycle revision/idempotency semantics; keep distinct from restoring a version                           |
-| Workspace members              | `B/settings/members`                                  | Paginated member listing delivered; later invitations and role/access management            | `member:read` gating and safe projections verified; invitations/role changes remain gated on supported contracts    |
+| Workspace members              | `B/settings/members`; `/invitations/accept`           | Paginated members, bounded role changes, invitation management and recipient acceptance     | ADR 037/038 authority, current-database checks, dedicated delivery and browser-bound OIDC acceptance                |
 | Notification destinations      | `B/settings/notifications`                            | Delivered list/create/version/status management using safe connection references            | Separate read/manage gates, stable uncertain retries, version preconditions and browser regression coverage         |
 | Workspace lifecycle            | `B/settings/general` danger zone / operation status   | Request deletion or recovery where allowed; show operation status                           | Existing lifecycle commands; current authority and server deadlines; no invented workspace rename/settings API      |
 | Artifact access                | Run/node output panel first                           | Request download; explicit upload/finalize when a feature needs input files                 | Existing transfer contracts and real-browser signing/CORS proof; artifact browser/list deferred without listing API |
@@ -1766,13 +1773,14 @@ Deferred candidates below do not change that baseline.
 Implement one bounded vertical slice at a time. This sequence follows the
 existing section 14 baseline; it does not reopen completed architecture work.
 
-| Order                   | Page                                                                    | Initial scope                                                                                                                                               | Gate / completion evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1 — Delivered           | Connections, `B/connections`                                            | Safe paginated list, Slack bot-token create/test/rotate and generic revocation; confirmed results refresh editor discovery.                                 | Separate read/use/manage capability gates; transient token forms and explicit MutationCache eviction; exact uncertain create/test/rotate retries; expected-secret-version rotation; historical-reference-safe revocation wording; component coverage and Chromium create → picker plus test/rotate/revoke journeys. Additional auth types remain gated.                                                                                                                                                                                          |
-| 2 — Delivered           | Run history, `B/runs`                                                   | Workspace run list with supported status/workflow/date filters and links to existing run detail.                                                            | Shared bounded contract, exact-precision filter-bound cursor, workspace RLS, URL-owned filters, capability/empty/error states, component coverage and history → detail Chromium journey. No remembered-ID substitute.                                                                                                                                                                                                                                                                                                                            |
-| 3 — Delivered           | Notification destinations, `B/settings/notifications`                   | Workspace destination list/create, configuration-version append and enable/disable against existing Slack or email connections.                             | `workflow:update` read and `connection:manage` mutation gates remain distinct; forms store references rather than credentials; uncertain commands retain exact bodies, preconditions and keys from the opened editing snapshot; component and Chromium coverage pass.                                                                                                                                                                                                                                                                            |
-| 4 — Partially delivered | Workspace administration, `B/settings/members` and `B/settings/general` | Member listing and lifecycle controls are delivered. Existing-member role management is the approved next slice below; invitations and rename remain gated. | Member reads are identity/workspace scoped and capability gated. Eligible pending-deletion workspaces route from selection to General recovery without enabling execution. Lifecycle commands retain the exact action, revision and idempotency key across uncertain retries, expose durable operation state in the URL, poll accepted work and refresh discovery only after terminal results. Component and Chromium coverage include denial, pagination, confirmation, recovery and pending/failed states. No rename/profile API was invented. |
-| 5 — Planned, data-gated | Overview, `B/overview`                                                  | Recent workflow activity, recent runs and failures needing attention, with links into existing pages.                                                       | Real scoped summary/list data, defined time windows/freshness and authorized visibility. No fabricated metrics, fetching all history to calculate totals, or infrastructure-monitoring dashboard. Keep workflow list as landing page unless separately changed.                                                                                                                                                                                                                                                                                  |
+| Order                                    | Page                                                                    | Initial scope                                                                                                                   | Gate / completion evidence                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 — Delivered                            | Connections, `B/connections`                                            | Safe paginated list, Slack bot-token create/test/rotate and generic revocation; confirmed results refresh editor discovery.     | Separate read/use/manage capability gates; transient token forms and explicit MutationCache eviction; exact uncertain create/test/rotate retries; expected-secret-version rotation; historical-reference-safe revocation wording; component coverage and Chromium create → picker plus test/rotate/revoke journeys. Additional auth types remain gated.      |
+| 2 — Delivered                            | Run history, `B/runs`                                                   | Workspace run list with supported status/workflow/date filters and links to existing run detail.                                | Shared bounded contract, exact-precision filter-bound cursor, workspace RLS, URL-owned filters, capability/empty/error states, component coverage and history → detail Chromium journey. No remembered-ID substitute.                                                                                                                                        |
+| 3 — Delivered                            | Notification destinations, `B/settings/notifications`                   | Workspace destination list/create, configuration-version append and enable/disable against existing Slack or email connections. | `workflow:update` read and `connection:manage` mutation gates remain distinct; forms store references rather than credentials; uncertain commands retain exact bodies, preconditions and keys from the opened editing snapshot; component and Chromium coverage pass.                                                                                        |
+| 4 — Partially delivered                  | Workspace administration, `B/settings/members` and `B/settings/general` | Member listing, bounded existing-member role changes, invitations and lifecycle controls are delivered; rename remains gated.   | Role and invitation commands are identity/workspace scoped, capability gated and transactionally authorized. Controlled full-stack role-change evidence includes target-session and SSE revocation. Invitation-specific evidence and remaining provider limitations are recorded below. Eligible pending-deletion workspaces route only to General recovery. |
+| 5 — Implemented; verification incomplete | Workspace invitations, member page plus `/invitations/accept`           | Manager list/create/resend/revoke and OIDC-bound, single-use recipient acceptance.                                              | ADR 038 is accepted. Contracts, database, API, dedicated system delivery, frontend and mocked Chromium are implemented. Disposable PostgreSQL concurrency/RLS and controlled OIDC session/SSE evidence pass; controlled provider email delivery, production sender/domain, Firefox and WebKit remain completion gates.                                       |
+| 6 — Planned, data-gated                  | Overview, `B/overview`                                                  | Recent workflow activity, recent runs and failures needing attention, with links into existing pages.                           | Real scoped summary/list data, defined time windows/freshness and authorized visibility. No fabricated metrics, fetching all history to calculate totals, or infrastructure-monitoring dashboard. Keep workflow list as landing page unless separately changed.                                                                                              |
 
 “Planned” identifies direction, not authorization to build all pages in one
 turn. If an API prerequisite is missing, establish its contract and obtain the
@@ -1781,7 +1789,7 @@ placeholder.
 
 ### Backend requirements for the next-page roadmap
 
-This is the cross-stack delivery checklist for the four slices above, not a
+This is the cross-stack delivery checklist for the roadmap slices above, not a
 replacement backend architecture plan. Existing endpoints below describe the
 current implementation; proposed endpoints and gated commands are not delivered
 features or authorization to implement them all at once.
@@ -1919,9 +1927,11 @@ capability. Proposed route: `GET /v1/workspaces/:workspaceId/runs`.
 
 #### 4. Workspace administration: separate existing reads from new authority
 
-Existing APIs include workspace discovery, member listing, workspace creation,
-deletion request/cancel and lifecycle-operation reads. Invitation and
-member-role mutation APIs are not implemented prerequisites to assume away.
+Existing APIs include workspace discovery, member listing, existing-member role
+changes, workspace creation, deletion request/cancel and lifecycle-operation
+reads. Invitation management and recipient-bound OIDC continuation are now
+implemented under ADR 038; production provider evidence remains a separate
+deployment gate rather than an application-code prerequisite.
 
 - The authorized, paginated member read is delivered using the existing safe
   member projection and role vocabulary. Its query is scoped by authenticated
@@ -1930,22 +1940,17 @@ member-role mutation APIs are not implemented prerequisites to assume away.
   request suppression and distinct read failure; the browser journey verifies
   navigation, active state and the second cursor page. No owner/admin hierarchy
   or editable profile/rename fields were invented.
-- Before invitation implementation, settle invited identity verification,
-  acceptance, expiry, revocation, duplicate invitations and delivery failure.
-  The verified OIDC `(issuer, subject)` remains the identity authority;
-  possession of an arbitrary email string must not grant membership. Specify
-  single-use acceptance, hashed token storage if tokens are used,
-  transaction/concurrency behavior and safe audit fields. Review this decision
-  against ADR 004 and create an ADR where it introduces new architectural
-  semantics. Existing email workflow actions are not automatically an
-  identity-invitation delivery service.
-- The approved role-management slice below specifies the role-transition matrix
-  and capability, self-change/last-privileged-member protection where
-  applicable, concurrent update handling, audit evidence and when revoked
-  privileges take effect on existing sessions/streams. Enforce these atomically
-  on the server; hiding a button or keeping a cached role is not enforcement.
-  Confirm exact command routes/payloads through the approved slice's
-  shared-contract checkpoint.
+- The role-management slice below is delivered. Its transaction remains the
+  reference for fresh database authorization, workspace-first lock ordering,
+  exact command receipts, audit and session effects; invitations must not route
+  acceptance through that command or expand its approved transition scope.
+- The implemented invitation slice below specifies recipient verification,
+  acceptance, expiry, revocation, duplicate behavior, delivery failure, token
+  handling, concurrency and safe audit fields. The verified OIDC
+  `(issuer, subject)` remains the identity authority; possession of an arbitrary
+  email string does not grant membership. ADR 038 records the approved policy.
+  Existing workflow email actions and workspace-owned Resend connections are not
+  an identity-invitation delivery service.
 - Keep workspace lifecycle operations asynchronous under
   [ADR 027](../../docs/adr/027-workspace-lifecycle-command-dispatch.md):
   acceptance returns an operation, not completed deletion/restoration. Poll the
@@ -2015,13 +2020,13 @@ exact-retry mutation and targeted query invalidation.
 **Existing evidence and ownership.** The canonical policy is
 `packages/database/src/tenant-access/workspace-policy.ts`: owner and admin have
 `member:manage`, but only owner has `workspace:manage`. The current shared
-`WorkspaceMember` response has user identity, role, membership status and
-timestamps, but no concurrency revision. Memberships use the composite
-workspace/user key and an existing single-owner constraint. The member list
-already lives in the identity/workspace API, tenant-access persistence and
-`apps/web/src/features/workspaces/components/members/`. There is no current
-member-role command to merely wire up. Do not invent a new role hierarchy,
-replace the capability policy, or use email as the target identity.
+`WorkspaceMember` response has user identity, role, monotonic role revision,
+membership status and timestamps. Memberships use the composite workspace/user
+key and the existing single-owner constraint. The guarded command, database
+transaction and member UI live in the identity/workspace API, tenant-access
+persistence and `apps/web/src/features/workspaces/components/members/`. Do not
+invent a new role hierarchy, replace the capability policy, or use email as the
+target identity.
 
 **Approved transition matrix.** Workspace, actor user/membership and target
 user/membership must be active. The target must be another existing member.
@@ -2040,7 +2045,7 @@ No removal, suspension, self-demotion, ownership transfer, invitations, custom
 roles or bulk changes. The immutable owner means this slice cannot remove the
 last owner; do not add an unrelated admin-count invariant.
 
-**Shared HTTP contract.** Add
+**Implemented shared HTTP contract.** The slice uses
 `POST /v1/workspaces/{workspaceId}/members/{userId}/role`, authenticated
 cookie/CSRF protected and guarded by `member:manage` plus the transition rule.
 Request is strict `{ role, expectedRoleRevision }`; require `Idempotency-Key`.
@@ -2051,7 +2056,7 @@ status 200. The receipt represents the accepted command, not necessarily the
 latest state on replay. Refresh member data after success. Do not return
 emails/session identifiers or secrets in the receipt.
 
-Declare all responses in the shared schemas and generated contract artifacts:
+Responses are declared in the shared schemas and generated contract artifacts:
 400 malformed input, 401 unauthenticated, 403 forbidden workspace/capability or
 transition (consistent with existing member-list disclosure), 404 missing target
 only after workspace authorization, 409 stale role revision, inactive target or
@@ -2060,14 +2065,12 @@ problem codes for these conflicts through the existing error registry/decoder;
 do not parse human messages. Preserve existing global error conventions where
 they already name the equivalent failure.
 
-**Transaction and persistence.** Add one focused role-command persistence seam
-under tenant-access, exposed through the existing database public API and
-identity/workspace port/adapter. Reuse existing transaction/audit/idempotency
-conventions; add a narrowly owned durable command-receipt table if no suitable
-existing store supports this actor/workspace/command scope. Do not reuse the
-workspace-creation receipt store for a different command. Include new tables in
-forced RLS, migration execution/readiness/schema ownership, purge/retention and
-runtime grants. Do not edit published migrations.
+**Implemented transaction and persistence.** One focused role-command
+persistence seam under tenant-access, exposed through the existing database
+public API and identity/workspace port/adapter. Migration 0093 uses a narrowly
+owned durable command-receipt table rather than the workspace-creation receipt
+store, and includes it in forced RLS, runtime grants, schema/readiness checks
+and workspace purge participation. Published migrations remain immutable.
 
 Within one tenant-scoped transaction: lock the workspace first, then actor and
 target users/memberships in stable identifier order consistent with existing
@@ -2092,12 +2095,12 @@ Session revocation is global to the target user: warn in confirmation that they
 must sign in again. Test next-request denial and existing SSE revocation bounds;
 do not claim already-running business operations are rolled back.
 
-**Frontend placement and behavior.** Extend the existing members page/table; no
-new top-level page. Keep a small role-change dialog beside the member table,
-feature-local API/query/mutation code and a pure allowed-option helper. Consume
-shared schemas/types from the existing browser-safe contracts export. Do not
-import backend policy code into React or mirror the member list into Zustand.
-The UI helper is only presentation; the backend remains authoritative.
+**Frontend placement and behavior.** The existing members page/table is extended
+without a new top-level page. A small role-change dialog sits beside the member
+table, feature-local API/query/mutation code and a pure allowed-option helper.
+Consume shared schemas/types from the existing browser-safe contracts export. Do
+not import backend policy code into React or mirror the member list into
+Zustand. The UI helper is only presentation; the backend remains authoritative.
 
 Only eligible rows expose Change role, with the permitted choices from the
 matrix. Label current/new role and session-sign-out consequence. Use the
@@ -2118,7 +2121,7 @@ preserve recoverable input. Dispose/fence identity/workspace-scoped late results
 and follow the established session recovery conventions without broadening
 editor-specific machinery.
 
-**Implementation checkpoints (no automatic commits).**
+**Delivered sequence (no automatic commits).**
 
 1. Shared request/receipt/revision contracts and generated artifacts, migration,
    database transaction and API command. Add the role-specific matrix to the
@@ -2152,10 +2155,561 @@ editor-specific machinery.
   diagnostics, not proof. Report unavailable integration checks explicitly; do
   not mark the slice complete with unproven required concurrency gates.
 
-Invitations remain separately planned: recipient verification, acceptance,
-expiry/revocation, duplicate behavior, delivery, tokens and audit decisions in
-the preceding workspace-administration requirements must be settled before that
-slice. Do not add invitation scaffolding during role management.
+#### Implemented slice: workspace invitations
+
+**Status:** implemented in the current working tree under accepted ADR 038.
+Existing-member role management remains unchanged. Required verification is
+tracked below; unavailable provider and cross-browser gates are not treated as
+passed.
+
+**Existing foundation and confirmed gaps.** Pertexo already has one stable
+external identity key, OIDC `(issuer, subject)`, platform-owned users and opaque
+sessions, current-database workspace authorization, forced-RLS memberships,
+append-only audit facts, durable idempotency patterns, a PostgreSQL outbox and
+the role-management transaction described above. The members page already owns
+member administration UI and Query scope. The canonical capability policy gives
+owner and admin `member:manage`, and ADR 037 defines which non-owner roles each
+may manage.
+
+The slice extends that foundation without changing ordinary sign-in. Invitation
+acceptance requires a fresh `email_verified` claim through a fixed server-owned
+OIDC continuation; internal email remains a recipient check rather than the
+durable identity key. Invitation contracts, tables, commands, the standalone
+acceptance route and an application-owned sender now form a separate identity
+boundary. Customer workflow Resend connections remain excluded from
+security-sensitive identity mail, while the generic outbox transport is reused
+for identifier-only delivery jobs.
+
+##### Approved product decisions
+
+ADR 038 records the approved first-slice policies in this table.
+
+| Decision                          | Recommended first-slice policy                                                                                                                                                                                                                                                                                                                 | Material alternative / consequence                                                                                                                                                                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invitation authority              | Extend ADR 037 symmetrically: an owner may invite `admin`, `builder`, `operator` or `viewer`; an admin may invite only `builder`, `operator` or `viewer`. Never invite `owner`. Authorize from current locked database state.                                                                                                                  | Owner-only invitations are simpler but make the existing admin `member:manage` capability narrower than role management. Any broader admin policy would contradict ADR 037.                                                                              |
+| Recipient proof                   | Require a fresh OIDC result for acceptance and an exact match between the normalized invited email and a provider-verified email claim. Require `email_verified: true`; a provider that omits it needs an explicitly approved trusted-issuer rule. `(issuer, subject)` still resolves the user and email never links two identities.           | Trusting the existing session or an unverified/missing claim is less friction but does not prove control of the invited address with the current model.                                                                                                  |
+| Wrong account and existing member | A wrong OIDC account neither consumes nor changes the invitation; show the mismatch and offer an explicit sign-out/use-another-account action. A matching user who is already an active member completes the invitation as an audited no-op and keeps the current role. Suspended/removed membership is a conflict, not implicit reactivation. | Changing an existing member to the invited role would bypass ADR 037 concurrency and session rules. Treating already-member as a terminal error leaves valid links indefinitely unresolved.                                                              |
+| Invitation lifecycle              | Seven-day expiry; one pending invitation per workspace plus normalized email; recipient/role are immutable. Resend is explicit, rotates the token, increments the invitation revision and starts a new seven-day window. Revoked or expired invitations allow a new invitation.                                                                | Different expiry/retention requirements affect copy, cleanup, indexes and support procedures. Updating a pending role in place makes uncertain retries and old emailed links ambiguous.                                                                  |
+| Delivery                          | Use a dedicated application-owned transactional-email adapter and sender identity, invoked through a durable identity-invitation outbox job. Reusing the current worker deployment is acceptable; reusing workflow nodes, destinations or customer connection credentials is not.                                                              | A copy-link-only release cannot reach new users reliably. A new deployable service adds operational cost without a first-slice need. The actual provider, sending domain, credentials and sandbox must be provisioned before the delivery gate can pass. |
+| Session effect on acceptance      | Treat membership creation as a privilege-changing boundary: revoke the accepting user's older sessions and issue/rotate the completing browser session from the same accepted command. Existing SSE streams then stop under ADR 004's bound. Explain this before final acceptance. An already-member no-op does not revoke sessions.           | Letting every existing session gain the new workspace on its next request is simpler, but conflicts with ADR 004's session-rotation rule for privilege changes.                                                                                          |
+
+Terminal invitation recipient data is minimized after 90 days while legally
+permitted audit facts retain invitation/user identifiers. Legal holds prevent
+minimization. This is platform retention policy, not a frontend preference.
+
+##### Smallest coherent first implementation
+
+Deliver email-address invitations for one workspace and one non-owner role at a
+time. Include manager list/create/resend/revoke, dedicated delivery, OIDC-bound
+single-use acceptance for new and existing users, and the members-page and
+recipient UI needed to recover expected failures. Exclude bulk/domain invites,
+owner transfer, custom roles, custom messages, invitation role editing,
+removal/suspension, SCIM/group sync, multiple identity providers, provider
+logout and a general email framework.
+
+Apply the approved matrix only while the workspace, actor user and actor
+membership are active. Creation, resend and acceptance require an active
+workspace. Workspace deletion must serialize on the same workspace lock, revoke
+pending invitations and cancel undispatched delivery; restore to `suspended`
+does not reactivate them. Revocation may be performed only before the lifecycle
+transition removes ordinary member administration. Invitation acceptance grants
+the stored role once; it never invokes the existing-member role-change command,
+changes an active member's role or promotes an owner.
+
+New recipients first become internal users through the existing OIDC mapper,
+then receive membership in the acceptance transaction. Existing
+`(issuer, subject)` identities reuse their internal user. A fresh claim whose
+email is already owned by another internal user must follow the current
+identity-conflict path; this slice must not add email-based account linking.
+Email comparison uses one documented normalization consistent with the current
+case-insensitive user constraint (trim plus Unicode-safe lowercase, with no
+provider-specific dot or plus rewriting).
+
+##### Public contracts and API ownership
+
+At the contract checkpoint, add browser-safe schemas and generated OpenAPI for:
+
+- `GET /v1/workspaces/{workspaceId}/invitations` — authorized cursor list of
+  safe invitation metadata;
+- `POST /v1/workspaces/{workspaceId}/invitations` — strict `{ email, role }`,
+  CSRF and `Idempotency-Key`, returning `202` with the accepted invitation and
+  queued delivery state;
+- `POST /v1/workspaces/{workspaceId}/invitations/{invitationId}/resend` — strict
+  `{ expectedRevision }`, CSRF and key, returning the new revision and delivery
+  attempt without exposing a token;
+- `POST /v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke` — strict
+  `{ expectedRevision }`, CSRF and key, returning a small historical command
+  receipt; and
+- a separate, rate-limited acceptance boundary: resolve a fragment-carried token
+  into a short-lived browser-bound acceptance intent, start OIDC with a
+  server-owned continuation, read the safe pending state, and explicitly
+  complete acceptance. The OIDC callback may redirect only to the fixed
+  allowlisted `/invitations/accept` route for that continuation, never an
+  arbitrary caller URL.
+
+Invitation projections contain ID, masked or manager-visible recipient email as
+appropriate, role, status, revision, expiry, created/updated timestamps and a
+truthful delivery state (`queued`, `submitted`, `failed` or `canceled`). A
+provider-accepted message is not described as delivered to an inbox. Management
+responses never contain the link/token. Acceptance responses expose only the
+workspace and membership result the verified recipient is entitled to see.
+
+Use shared, machine-readable problems for invalid input, unauthenticated,
+forbidden, unavailable/not-found disclosure, duplicate pending recipient,
+already-member/inactive-member, stale revision, expired/revoked/consumed token,
+recipient mismatch, delivery unavailable and idempotency-body mismatch. Do not
+parse messages in React. Invalid random tokens receive the same safe unavailable
+shape; a valid browser-bound recipient flow may distinguish expired, revoked,
+wrong-account and already-member states so recovery is actionable.
+
+##### Token, OIDC and database ownership
+
+Email links carry an opaque high-entropy value in the URL fragment, not query or
+path data. Capture the fragment in short-lived route-owned memory, remove it
+immediately, and send it in a JSON body to the resolver; it is never stored in
+local/session storage, Query cache, logs, telemetry or audit metadata. A
+versioned token may include a non-secret invitation identifier plus at least 256
+random bits. Store only the secret digest on the invitation. Keep the raw value
+sealed with a dedicated application encryption adapter only for the bounded
+delivery attempt, with invitation/delivery identifiers as associated data; erase
+sealed material after terminal delivery, revocation, acceptance or expiry.
+
+Resolving a valid token creates a short-lived, single-use acceptance intent and
+an independent HttpOnly browser-binding cookie. The OIDC transaction references
+only that intent identifier. The callback records fresh `(issuer, subject)` and
+verified-email evidence for the intent, establishes the internal user through
+the existing mapper, and returns to the fixed acceptance route. Completion
+requires the same browser binding, current session/internal user and fresh
+verified-email match. Wrong identity, replay, expiry or cookie mismatch cannot
+consume the invitation. Extend the existing OIDC transaction model narrowly; do
+not add arbitrary return URLs or put the raw invitation token in OIDC state.
+
+##### Concrete acceptance interface
+
+These contracts and endpoints are implemented. The identity/workspace module
+owns the entire command; React does not orchestrate membership creation and
+session revocation as separate requests:
+
+| Endpoint                                  | Request and result                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /v1/invitation-acceptance/resolve`  | Strict `{ token }`; `201` establishes an HttpOnly intent-binding cookie and returns safe journey state. Resolution does not consume the invitation or grant access.                                                                                                                                                            |
+| `GET /v1/invitation-acceptance`           | Cookie-selected intent; `200` returns a discriminated journey state, expiry and binding-specific CSRF token. Before recipient verification, disclose no recipient address or workspace details. Missing binding returns `unavailable`.                                                                                         |
+| `POST /v1/invitation-acceptance/oidc`     | Strict `{}` plus binding-specific CSRF; starts the existing OIDC flow with a server-owned intent continuation and returns the validated provider authorization URL. Also supports explicit account switching and recovery sign-in.                                                                                             |
+| `POST /v1/invitation-acceptance/complete` | Strict `{ intentId, expectedRevision }`, authenticated session, binding, ordinary session CSRF, binding-specific invitation CSRF and `Idempotency-Key`; `200` returns an acceptance receipt and sets a replacement session cookie if membership was created. `intentId` is a non-secret concurrency identifier, not authority. |
+| `DELETE /v1/invitation-acceptance`        | Binding-specific CSRF; `204` clears the binding and abandons the local journey, without revoking the invitation or undoing acceptance. Repeating with no binding is harmless.                                                                                                                                                  |
+
+All responses are `Cache-Control: no-store`; never persist acceptance responses
+or CSRF material in Query caches. Pre-session resolution requires exact allowed
+Origin validation, JSON-only requests and a required non-simple header, with
+restrictive credentialed CORS. Reject requests that cannot satisfy this browser
+origin policy. Subsequent mutations require the intent's synchronizer CSRF token
+as well; completion also uses the ordinary authenticated CSRF defense. Bindings
+are random, stored as digests, HttpOnly, Secure in deployment and use the
+configured OIDC-compatible SameSite policy. Callback continuation is only the
+fixed `/invitations/accept` route, never a caller-supplied return URL.
+
+Shared journey variants are `sign_in_required`, `ready`, `wrong_account`,
+`completed`, `expired`, `revoked`, `superseded` and `unavailable`. Only a bound,
+verified recipient may see detailed lifecycle states. A completed receipt is
+visible only to the same authenticated internal user with the bound intent;
+current workspace access is separately authorized. Use `401` for completion
+without a valid session, `403` for failed binding/CSRF, `409` for lifecycle or
+revision conflicts and idempotency-body mismatch, and the existing validation
+status for malformed bodies. Preserve the safe-disclosure rules above.
+
+##### Acceptance lifetime, invalidation and recovery
+
+Capture these technical defaults in the follow-up ADR and shared contracts; they
+do not approve the product policies above:
+
+- An intent and its binding have an absolute 15-minute lifetime, capped by the
+  invitation expiry. OIDC transactions retain their existing shorter lifetime
+  where applicable. Verified-email evidence expires five minutes after the
+  validated callback. Another OIDC round trip refreshes proof, but retries and
+  reauthentication never extend the intent's absolute lifetime. Fresh evidence
+  means this bound OIDC transaction, not a claim that the provider forced the
+  user to re-enter credentials.
+- Store invitation ID and token generation on the intent. Use the monotonic
+  invitation revision as generation: only lifecycle commands, not delivery
+  status updates, advance it. Completion locks the invitation and rechecks
+  pending status, expiry, active workspace/user, matching generation, recipient
+  proof and membership state before any grant. Resend invalidates both unopened
+  old links and already-resolved old intents. Revoke/expiry/deletion also block
+  completion; an in-flight callback cannot restore a stale intent.
+- One active journey is selected per browser cookie scope. Replacing a binding
+  invalidates the previous binding without revoking the invitation. Completion
+  must match both the supplied intent ID and its bound intent, so another tab
+  cannot accidentally accept the newly selected invitation. Hash the
+  invitation/intent identity into the idempotent request. Serialize requests per
+  journey and discard stale UI responses; browser tabs still require server-side
+  concurrency checks.
+- Replacement lineage is owned by the durable claim graph, not by short-lived
+  acceptance-intent rows. Each claim maps one prior binding identity to its
+  successor binding identity; traversal follows the next claim even when the
+  intermediate intent has already been pruned. A present, unexpired intent in
+  `pending`, `verified`, `wrong_account` or `completed` state is live or still
+  recoverable and fences every stale ancestor. Abandoned, superseded, expired or
+  missing intents are terminal only when no later claim continues their lineage.
+  Traversal is bounded to 32 links; a cycle, malformed continuation or
+  over-bound chain fails closed rather than authorizing another successor.
+- If resolution has an uncertain outcome, first read cookie-selected state. With
+  no usable binding, allow an explicit retry using the same token while it
+  remains in route-owned memory. A replacement resolution derives repeatable,
+  domain-separated intent, binding and CSRF material from the presented token
+  and prior HttpOnly binding. The database returns an already-committed exact
+  replacement, while its durable claim rejects a different competing target; no
+  raw value is persisted. Clear route-owned token memory on confirmed
+  resolution, route disposal or terminal failure. After reload without a usable
+  binding, ask the user to reopen the original email; reopening the link on an
+  already-mounted route starts the same recovery. An abandoned binding returns
+  `unavailable` rather than advertising an OIDC action that the API rejects.
+  Re-resolving never consumes the invitation. Rate-limit intent creation and
+  clean up expired/abandoned rows; do not persist raw tokens to make reload
+  recovery seamless.
+- Retain the exact completion body/key for uncertain retries in the current
+  journey. Reload first reads server state and never automatically submits a new
+  command. The intent identifies one acceptance outcome even if a client loses
+  its key. Atomically record accepted user, invitation generation and receipt on
+  the consumed intent alongside the membership transaction.
+- If completion commits but the response or replacement `Set-Cookie` is lost,
+  the old session is revoked and the replacement raw token is unrecoverable from
+  its digest. Do not persist recoverable session tokens, authenticate by
+  receipt, or replay session issuance from the acceptance command. Require
+  ordinary OIDC sign-in again. An unexpired bound continuation then reads the
+  completed receipt for the same internal user without re-granting membership,
+  reapplying a role or revoking sessions again. If the binding expired or was
+  cleared, normal sign-in and current workspace discovery provide recovery;
+  there is no receipt-based authorization exception.
+- If the new cookie arrived but the response body was lost, authenticated state
+  read or an exact completion retry returns the receipt without another session
+  rotation. Resolve a completed same-user intent before checking fresh proof or
+  pending-invitation preconditions: these govern new grants, not historical
+  receipts. Expired bindings still require normal sign-in/discovery. Later
+  membership or workspace changes never get undone by recovery; distinguish
+  historical success from present access.
+- Preserve the consumed intent for authenticated reconciliation until its
+  original expiry. Single use prohibits another grant, not safe receipt reads.
+  Clear the binding on explicit abandonment, reconciled success, expiry or
+  invalid binding. Wrong-account recovery explicitly restarts OIDC and clears
+  old proof without consuming the invitation; only a still-valid generation may
+  continue. Never automatically log out the user or assume local logout ends the
+  provider's SSO session.
+- The maintenance reaper expires unattended pending invitations, clears sealed
+  material and removes bounded expired or abandoned intents. Unknown delivery
+  status remains evidence rather than being rewritten as a definite cancel;
+  active legal holds retain acceptance evidence, and durable command/audit
+  receipts are not deleted by this cleanup.
+- A replacement claim is cleanup-eligible only when its entire bounded
+  descendant lineage contains no live/recoverable intent, unresolved next link,
+  invalid/cyclic tail or active legal hold on the prior or any successor
+  workspace. Cleanup takes the same binding-digest fences as resolution,
+  rechecks eligibility after locking and deletes at most the configured page
+  size. Workspace purge applies this same rule to claims where the purged
+  workspace is either the prior or successor side. A cross-workspace claim that
+  still fences an unrelated live descendant temporarily survives tenant-row
+  purge as minimal UUID/digest security evidence; it contains no raw token,
+  recipient address or authorization grant and is removed by later bounded
+  cleanup once the lineage becomes terminal. This deliberate exception prevents
+  tenant purge from creating a second live successor while still ensuring
+  eligible claims are eventually removed.
+- Claim cleanup scans use durable keyset progress rather than repeatedly taking
+  the oldest rows. Each bounded cycle records an immutable high-water tuple and
+  advances after every examined page, including pages retained by legal holds or
+  live descendants. Rows arriving after that high water wait for the next cycle;
+  completing a cycle starts from the beginning again, so a released hold or a
+  newly terminal descendant is reconsidered without letting new arrivals starve
+  older work. Transient cleanup owns one maintenance cursor. Tenant-row purge
+  owns cursor state per purge job and must finish a bounded claim-scan cycle
+  before it may complete while intentionally retained cross-workspace claims
+  remain. Cursor updates and claim eligibility checks share the existing
+  transaction and binding-digest fences. Migrations `0095` and `0096` remain
+  immutable. Forward migration `0097` repairs completed workspace-purge cycle
+  restarts by selecting the next high-water boundary before atomically
+  persisting both the prior cursor and that boundary. A previously empty cycle
+  keeps a null cursor while installing its first non-null boundary; every
+  persisted row therefore satisfies the cursor/boundary constraint, and rows
+  arriving above a running cycle's fixed high water remain deferred to the
+  following bounded cycle.
+
+The UI distinguishes an unknown outcome requiring a state check/sign-in from a
+definite rejection. Acceptance stays durable even when the success screen is
+lost; recovery changes authentication, not the accepted grant.
+
+The forward migrations add focused identity/workspace-owned tables:
+
+- `workspace_invitations`, forced-RLS and workspace scoped, with normalized
+  recipient, non-owner role, monotonic revision, digest, status, expiry,
+  creator/acceptor and terminal timestamps;
+- invitation command receipts scoped by actor/workspace/operation/key and exact
+  request hash, unless the contract checkpoint proves an existing receipt store
+  has precisely those semantics;
+- bounded invitation delivery attempts with safe provider status/reference and
+  separately sealed transient payload material; and
+- short-lived platform acceptance intents/bindings with least-privilege API
+  access. Any token-to-workspace resolver that must precede tenant scope is a
+  narrowly audited database function/policy exception, not a general RLS bypass.
+
+Include indexes for cursor order, digest lookup, expiry cleanup and one pending
+recipient per workspace. Because a time expression cannot safely define the
+partial uniqueness rule, creation first locks and transitions an expired pending
+row, while a status-based unique index arbitrates concurrent creators. Add
+runtime grants, forced RLS, migration-history/schema/readiness checks, retention
+and workspace purge participation without rewriting published migrations.
+
+All manager commands use the role-command lock order: workspace first, then
+involved users/memberships in stable identifier order, then invitation and
+receipt rows. Re-read active workspace, actor capability and the approved role
+matrix inside the transaction. Acceptance and revoke/resend lock the same
+invitation row; acceptance versus acceptance, revoke, resend or deletion has one
+winner. Membership insert, invitation consumption, audit, session revocation /
+replacement and acceptance receipt commit together. Exact completed retries
+return their historical receipt and then refresh current state; they never
+recreate membership, rotate another token, resend another message or reapply an
+old role after later state changes.
+
+Delivery workers lock invitation before delivery attempt and never acquire a
+workspace row after either lock. Lifecycle and retention paths already own or
+lock workspace before following invitation -> delivery attempt -> acceptance
+intent order, preventing the former attempt/invitation inversion.
+
+Record safe facts such as `workspace.invitation_created`,
+`workspace.invitation_resent`, `workspace.invitation_revoked` and
+`workspace.invitation_accepted` in the command transaction. Use invitation and
+accepted-user identifiers, role, revision and bounded result metadata. Do not
+put raw tokens, browser bindings, session identifiers or recipient email in
+audit metadata. Delivery attempts and failure classes are operational records /
+telemetry, not reconstructed security audit history.
+
+##### Dedicated delivery boundary
+
+Create a small identity-invitation delivery port owned by the identity/workspace
+feature and a versioned identifier-only job handled by the existing outbox /
+dispatcher / worker machinery. The worker loads the invitation and sealed
+delivery material under the job's workspace scope, renders one fixed security
+template, and calls an application-owned transactional-email adapter. It must
+not load a workflow graph, connection, notification destination or node
+definition.
+
+Use the provider's idempotency facility when available. Transport redelivery may
+otherwise submit the same still-valid link more than once; that must be reported
+truthfully and is rendered harmless by the single-use token, not called
+exactly-once email. A definite failure leaves the invitation pending and visible
+with an explicit resend action. An unknown provider outcome retains the same
+sealed attempt for reconciliation; it must not mint a new token silently. Resend
+is a new manager command after the previous attempt is terminal or explicitly
+reconciled.
+
+Provider selection, system API credentials, verified sending domain/from
+address, templates, rate limits, sandbox and operational alert owner are missing
+deployment prerequisites. The existing low-level HTTP/client utilities may be
+reused after review, but customer Resend connections and workflow retry policy
+remain out of scope.
+
+##### Frontend placement and recovery
+
+Keep management in `features/workspaces`: add an **Invite member** action and a
+pending-invitations section to the existing members page, visible only when the
+current workspace projection includes `member:manage`. Use a feature-local
+dialog, list/table, API functions, scoped Query keys and focused mutations for
+create/resend/revoke. The UI may derive permitted options from the current
+workspace role for honest presentation; the database remains authoritative. No
+optimistic invitation, membership or role updates.
+
+The create dialog owns email/role scratch, validates on initial blur and again
+while correcting after submit, associates errors with controls and focuses the
+first invalid field. Confirmation explains assigned access, expiry and the
+recipient's sign-in/session consequence. Mutations retain exact body, revision
+and key across uncertain retries, block conflicting commands until resolution,
+and reconcile by refetch. Stale revision, duplicate, access loss and delivery
+failure have distinct recovery. Authentication/permission loss removes cached
+protected rows and open commands; transient refresh failure keeps stale data and
+editing state with retry. Long addresses and roles remain usable on mobile and
+with keyboard/screen-reader navigation.
+
+Add `/invitations/accept` outside the authenticated workspace shell and its
+workspace discovery loaders. It owns only the transient acceptance journey:
+invalid/expired/revoked link, OIDC progress, wrong account, confirmation,
+already-member no-op, success into the accepted workspace, and retryable
+provider/network failure. It never displays another workspace's member list,
+automatically logs out a wrong account, stores the token, or bypasses ordinary
+route authorization. After success, clear acceptance cookies/state, refresh
+current user/workspace discovery, and navigate only on explicit user action.
+
+##### Delivery sequence
+
+1. Record the approved authorization, recipient-proof, lifecycle, delivery and
+   session policies in a follow-up ADR to ADR 004. Confirm provider and
+   retention prerequisites; do not create UI scaffolding first.
+2. Add shared schemas/error codes/OpenAPI and generated artifacts, including
+   verified-email/OIDC-continuation contracts and safe invitation projections.
+   Specify the acceptance interface, absolute lifetimes, generation binding and
+   lost-response recovery above in the ADR/contracts before frontend callers.
+3. Add forward migrations and focused database ports/use cases. Prove lock order
+   against role changes and workspace lifecycle, RLS, uniqueness, idempotency,
+   single use, audit and session rotation with real PostgreSQL.
+4. Add guarded NestJS management and acceptance controllers plus the dedicated
+   delivery port/job. Verify strict bodies, CSRF, disclosure, rate limits,
+   callback binding and controlled-provider delivery/recovery.
+5. Add member-page management and the standalone acceptance route using the
+   existing Query/router/error conventions. Preserve role-management behavior.
+6. Run the complete acceptance matrix below. Only then mark invitations
+   delivered and record concrete evidence here; mocks alone are insufficient.
+
+##### Required tests and completion gates
+
+- Contract/unit: strict schemas, generated artifacts, normalization and role
+  options; safe problem decoding; token/parser bounds; template escaping; no
+  secret fields in projections, jobs, logs or audit.
+- Real PostgreSQL/runtime roles: owner/admin/forbidden matrix from current
+  locked state; admin demotion race; cross-workspace RLS; concurrent duplicate
+  creation; one pending recipient; exact command replay/mismatched key; resend
+  rotation; expiry/reinvite; accept-versus-accept/revoke/resend/deletion;
+  rollback around membership, audit, receipt and session writes; purge and PII
+  retention. Use the established disposable database only.
+- Identity/API: new and existing users; fresh verified claim; missing/false
+  verification; wrong account; same address casing; different subject claiming
+  an existing address; active/suspended/removed already-member cases; callback
+  replay/binding mismatch; token expiry/reuse; CSRF and rate limits; safe
+  not-found disclosure. The old session must fail after acceptance, the new
+  session must access the granted workspace, and an already-open SSE stream must
+  close within ADR 004's bound.
+- Delivery: transaction plus outbox atomicity, dispatcher redelivery, provider
+  idempotency where supported, definite/unknown failures, sealed-token cleanup,
+  revoke/expiry cancellation and explicit resend. Prove a controlled provider
+  receives the fixed invitation template without workspace credentials or raw
+  secrets in the job payload.
+- Acceptance recovery: lose the completion response before and after the
+  replacement cookie arrives; retry with the revoked old session and the new
+  session; recover through OIDC as the same and a different user; reload with a
+  valid, expired and cleared binding. Assert exactly one membership grant,
+  acceptance audit and command-driven session rotation, no recoverable raw
+  session token, and no repeated role application. Ordinary recovery sign-in may
+  issue a session through the existing login flow, not command replay. Cover
+  proof expiry before completion, consumed-intent reads after proof expiry, and
+  later role/access changes before reconciliation.
+- Generation and bootstrap recovery: resolve then resend/revoke/expire/delete,
+  including a callback already in flight; old intents must never grant access.
+  Lose the resolver response with and without its cookie, retry from memory,
+  reload and reopen the email. Cover competing browser tabs/binding replacement,
+  mismatched intent IDs, duplicate completion keys and changed bodies. Assert
+  resolver calls never consume invitations, delivery updates do not invalidate
+  intent generations, and stale responses cannot select another journey.
+- Web/component: accessible create/confirm/resend/revoke forms; exact uncertain
+  retry; duplicate/stale/access-loss/transient states; cached list pagination;
+  wrong-account and already-member recovery; token removal from the URL and
+  browser storage; StrictMode/scope disposal with no late cross-user state.
+- Browser: owner and admin journeys on desktop/mobile; new-user and existing-
+  user OIDC acceptance; wrong account then explicit switch; expired/revoked and
+  delivery-failure recovery; refreshed members/invitations display. Run mocked
+  Chromium for UI boundaries and a controlled full-stack OIDC/email sandbox
+  journey for completion. Report live managed-provider, production sender and
+  Firefox/WebKit evidence separately if unavailable.
+- Repository gates: contracts generation/check, affected package tests and
+  typechecks, API/database integration, web build/lint/tests/Chromium,
+  architecture/schema/readiness/purge checks, React Doctor as diagnostics and
+  `git diff --check`.
+
+##### Delivery status and evidence
+
+- ADR 038, shared schemas/OpenAPI, migration `0094` plus forward corrective
+  migrations `0095`, `0096` and `0097`, forced-RLS invitation, receipt, delivery
+  and acceptance records, current-state authorization, generation fencing, exact
+  command replay, audit and session rotation are implemented.
+- The API owns manager commands and browser-bound acceptance. The durable worker
+  uses a dedicated application credential, fixed template and provider
+  idempotency per delivery attempt; no workflow/customer credential
+  participates.
+- The members page owns invitation management and the standalone route owns its
+  fragment token and acceptance journey without Query cache or browser storage.
+- Acceptance recovery now gives an unusable or expired continuation an ordinary
+  sign-in/workspace-discovery exit, distinguishes expired recipient proof so a
+  still-bound user can verify again, retires exact commands when reconciliation
+  selects another intent, and fences workspace-opening cleanup from route
+  disposal. A completed bound intent still requires the same authenticated user
+  before its receipt is disclosed.
+- Browser-binding replacement is one database transaction. A durable consumed-
+  replacement claim, scoped by forced RLS to the prior binding's workspace, plus
+  a transaction-scoped fence lets only one resolver replace a shared active
+  prior binding. The claim carries only opaque successor coordinates, so the
+  store can inspect a successor under that successor's own tenant scope without
+  exposing its invitation details. Terminal or pruned successor journeys do not
+  block a legitimate fresh invitation in another workspace, while an exact
+  delayed retry cannot revive an abandoned successor or disturb its newer
+  journey. An exact live retry after a committed but lost resolver response
+  reproduces the same browser binding and reads its existing intent; a different
+  invitation cannot take over that claim. Transaction rollback removes an
+  uncommitted claim and preserves the prior binding if creation of the
+  replacement fails. Completed acceptance retries validate a reused key's
+  original request hash before returning the historical receipt; a new key may
+  reconcile that receipt but cannot grant membership, restore a role, write
+  another audit fact or rotate a session.
+- A failed binding cleanup after acceptance no longer gates workspace access.
+  The completed page stops retrying the stale invitation credential and offers
+  ordinary workspace navigation/discovery, which remains subject to normal
+  authentication and authorization. Cleanup and navigation callbacks remain
+  fenced from route disposal, and a replacement journey in another tab is not
+  cleared.
+- The mounted acceptance route advances explicit journey ownership whenever a
+  different invitation token is selected. It cancels abortable bootstrap,
+  reconciliation, OIDC and cleanup work, retires the prior exact completion
+  command, and ignores every late result from the former journey. An acceptance
+  request already received by the server is not treated as undone; only its
+  stale browser callback is fenced. Reopening the same token retains its normal
+  exact-retry semantics.
+- Corrective evidence before the `0097` restart repair: contracts passed 73/73
+  with generated artifacts current; database unit tests passed 766/766; the
+  disposable PostgreSQL identity suite passes 56/56, including exact committed
+  replacement recovery, recovery racing another invitation, resend after the
+  claimant becomes terminal, superseded/completed/pruned prior journeys, the
+  connected A→B→C delayed-retry lifecycle, lineage traversal after the
+  intermediate B intent is physically removed, a terminal successor in another
+  workspace, simultaneous cross-workspace replacement, rollback, exact-key
+  conflict and durable lock-order assertions. Retention and purge integration
+  coverage proves that terminal claim lineages are reaped in bounded pages, live
+  descendants survive intermediate-intent cleanup and cross-workspace purge,
+  purge selects eligible claims from either the prior or successor side, legal
+  holds retain claims, later terminal cleanup removes the surviving opaque
+  evidence, and cleanup races real resolution and acceptance without duplicate
+  membership or audit effects. Forward migration `0096` adds durable
+  keyset/high-water scan progress: real PostgreSQL regressions cover a held
+  oldest page, later terminal rows, new arrivals between runs, per-purge cursor
+  advancement and reconsideration after hold release or descendant termination
+  without unbounded scanning. The focused identity/retention/purge/legal-hold
+  run passed 73/73, and the complete disposable PostgreSQL run passed 559/559
+  across 85 files. The `0097` restart correction has additional
+  disposable-PostgreSQL evidence for a completed non-empty purge scan followed
+  by a later page, an empty completed scan followed by its first claim, and an
+  arrival above the fixed boundary while the resumed bounded cycle is running.
+  Those tests assert the durable cursor/high-water constraint after each
+  transition, deferral to the next cycle, and eventual deletion; the existing
+  held-page/legal-hold and full tenant-purge regressions remain green. On the
+  current tree, the affected real PostgreSQL retention/purge suites pass 17/17
+  and the migration repair/execution-mode suites pass 4/4. The complete database
+  unit suite passes 767/767; database build/typecheck, schema ownership (5/5),
+  architecture and diff checks pass. The 559/559 full disposable PostgreSQL
+  result is retained as prior evidence and was not rerun for this narrowly
+  scoped repair. The focused API invitation/contract tests pass 13/13 and the
+  full API unit suite passes 1,314/1,314. Web component tests pass 190/190,
+  including delayed completion and cleanup while a second token becomes current,
+  and all 32 mocked-boundary Chromium journeys pass, including reopening the
+  same email after response-and-cookie loss, reloading after the cookie arrives
+  before an unreadable body, and cleanup rejection followed by ordinary
+  workspace discovery without another cleanup request. Web build/typecheck/lint,
+  affected backend typecheck, architecture, schema, contract and final diff
+  checks pass. Changed-scope React Doctor remains 72/100 with 51 warnings; none
+  points to the invitation files, so those unrelated diagnostics were not used
+  as correctness evidence.
+- The controlled real-API/OIDC suite has prior 9/9 evidence for old-cookie
+  rejection and SSE shutdown, and now contains cookie-level exact resolver
+  recovery plus same-user completion recovery assertions for response loss
+  before and after replacement cookies. Its current rerun skipped all 9 tests
+  because `API_IDENTITY_INTEGRATION=true` and an explicitly provisioned
+  API/Redis integration environment were unavailable; these updated assertions
+  are therefore not claimed as newly executed full-stack evidence.
+- Controlled managed-provider email delivery, production sender/domain
+  verification and Firefox/WebKit remain explicit environment gates until run;
+  the slice is implemented and locally verified but is not fully
+  production-verified before those gates pass.
 
 #### 5. Overview: agree data semantics before adding aggregation
 
@@ -2196,6 +2750,795 @@ Mocks and frontend success states alone are not backend completion evidence.
 
 Deferred templates, usage and billing below need their own selected scope and
 contracts before backend work; this checklist does not authorize building them.
+
+### Remaining non-payment delivery plan
+
+**Delivery update (2026-09-21):** N1, N2 and N3 are implemented in the working
+tree with the evidence recorded below. The remaining entries are planned slices,
+not delivered features. Billing, payments, subscriptions, invoices, checkout and
+payment-provider integration are explicitly outside this work. Implement one
+slice at a time; do not create all folders or expand the node runtime while
+completing pages. N4 remains gated on a concrete supported artifact-valued
+node/input use case. N5 remains gated on approved template examples and import
+semantics. N6 remains gated on the product's usage units, purpose, period,
+coverage and read policy. N5 and N6 are optional product increments, not release
+prerequisites.
+
+#### Common implementation contract
+
+- Use the existing feature-first structure. Routes compose feature pages;
+  `components/<responsibility>/` owns presentation, `*.api.ts` owns endpoint
+  calls/decoding, `*.queries.ts` owns Query keys/options/invalidation, and a
+  `mutations/` hook exists only when command coordination warrants it. Keep pure
+  transformations beside their owner, not in catch-all utility files.
+- Public schemas and transport types belong to `packages/contracts`; database
+  models stay private to `packages/database`. Frontend display/form models stay
+  in their feature. Export only deliberate cross-feature interfaces through
+  `public.ts` or a focused lazy-safe public module. Do not copy backend DTOs.
+- Query owns remote data, Router owns navigation/filter state, forms own input
+  scratch. Only the existing route-scoped editor store owns unsaved graph state.
+  Derive capability, validity and labels rather than storing duplicate booleans.
+  No new global store, synchronization effect or manual memoization by default.
+- Validate forms using the shared request schema and validate again at HTTP
+  entry. Map validation to fields; use one visible owner for other errors.
+  Distinguish unavailable, forbidden, empty, conflict and expired-session
+  states. Keep submitted body/key/preconditions for uncertain commands; never
+  replay a changed body with the old key. A success toast is not authoritative
+  persistence.
+- For every slice, use applicable skills from the existing skill-to-task map,
+  preserve mechanical import rules, and run affected unit/contract/type/lint
+  checks. Add real PostgreSQL coverage for changed persistence/authorization,
+  browser behavior for visible flows, and React Doctor after React changes.
+  Record executed evidence separately from mocks or unavailable environments.
+
+#### N1. Workspace creation and first-workspace onboarding
+
+**Delivered in the working tree (2026-09-21).** Workspace selection now uses one
+feature-owned form for empty and populated discovery states. The command owner
+preserves the exact validated body and idempotency key after an uncertain
+response, verifies the original session identity before dispatch/retry, and
+separates confirmed creation from discovery refresh so refresh recovery never
+repeats `POST /v1/workspaces`. Changed identities retire the command and remove
+the prior identity's discovery cache before route reconciliation.
+
+Evidence executed for this slice:
+
+- web component/routed suite: 199 tests passed, including nine focused creation
+  regressions for first/additional creation, validation/focus/cancel, duplicate
+  slug, forbidden access, exact uncertain retry, explicit abandonment, session
+  change and discovery-refresh recovery;
+- Chromium browser suite: 33 tests passed, including the 390 px reduced-motion
+  empty-state journey, dialog focus/Escape restoration, shared transport headers
+  and navigation to the authoritative empty workflow list;
+- disposable PostgreSQL: the two focused workspace creation concurrency tests
+  passed, proving one complete aggregate for duplicate slugs and one owner
+  membership/audit fact for concurrent exact-key retries;
+- contracts: 73 tests passed and generated artifacts matched; API contract unit
+  tests: 3 passed; web production build, typecheck and lint passed; architecture
+  and diff checks passed.
+
+The existing real-API PostgreSQL test was inspected and covers CSRF, discovery,
+owner capabilities, exact retry, changed-body conflict, duplicate slug and one
+owner membership/audit fact, but it was not executed in this pass because its
+separately provisioned `API_IDENTITY_INTEGRATION` environment was not used.
+Chromium used controlled HTTP mocks; no managed OIDC provider, Firefox or WebKit
+claim is made. React Doctor scanned the dirty branch (72/100); it reported only
+pre-existing/out-of-scope diagnostics and none in the N1 files.
+
+**Existing foundation:** `POST /v1/workspaces` accepts strict `{ name, slug }`,
+requires cookie session, CSRF and an idempotency key, and returns the created
+workspace. Reuse the shared name/slug validation and existing server-side
+creation/owner policy; do not create a second onboarding endpoint.
+
+- Entry: add Create workspace to workspace selection, including its empty state.
+  Use one feature-owned form for first and additional workspaces. Do not force
+  users with existing workspaces through an onboarding wizard.
+- Form: labelled name and slug, shared constraints, editable slug suggestion
+  only until the user edits it, inline validation and explicit submit/cancel. Do
+  not silently rewrite a user-selected slug or preflight availability as a
+  substitute for the authoritative create result.
+- Own the form in `features/workspaces/components/creation/`; add transport and
+  Query integration to the existing workspaces modules. No new feature package.
+- On confirmed creation, invalidate the current identity's workspace discovery
+  and navigate to the created workspace's workflow list. If discovery refresh
+  fails, show a recoverable refresh error without submitting creation again. Do
+  not fabricate cached memberships/capabilities from the workspace response.
+- Handle duplicate slug/conflict, forbidden creation, invalid input,
+  CSRF/session expiry and response loss. Disable duplicate concurrent
+  submission; retain an exact retry after uncertainty and block changed-body
+  resubmission until that attempt is resolved or explicitly abandoned under the
+  existing contract.
+- Acceptance: empty state → create → authorized empty workflow list; additional
+  workspace creation; keyboard/focus/cancel; invalid slug; duplicate slug;
+  lost-response retry creates exactly one workspace and owner membership;
+  session change does not expose the previous identity's discovery cache. Verify
+  existing API/database owner assignment and idempotency coverage before
+  claiming reuse.
+
+#### N2. Workspace display-name editing
+
+**Delivered in the working tree (2026-09-21).** The strict conditional rename
+command is `PATCH /v1/workspaces/{workspaceId}` with
+`{ name, expectedRevision }`, session CSRF and an idempotency key. Workspace
+discovery supplies the integer revision. The database command reauthorizes the
+current actor and active workspace under locks, changes only the display name
+and revision, and records one `workspace.renamed` audit fact. A completed exact
+retry returns its historical result without reapplying an old name; a changed
+body with the same key is rejected. Stale revisions require an explicit refresh
+and user-confirmed reapply with a new command.
+
+General settings now exposes a feature-owned edit section to actors with
+`workspace:manage` and a read-only view to other members. The mutation owner
+keeps the exact uncertain body, revision and key, verifies session identity
+before every dispatch, separates command acceptance from discovery refresh and
+fences late completions. Confirmed renames refresh the workspace selector and
+shell while stable ID routes remain unchanged. No slug, ownership, membership or
+lifecycle behavior was added. This followed the already approved capability and
+command conventions and did not require a new architectural decision.
+
+Evidence executed for this slice:
+
+- shared contracts and generated artifacts: 73 tests passed; the existing
+  Redocly warning for an invitation operation without a 2xx response remains
+  unrelated to rename;
+- disposable PostgreSQL: 58 focused identity/workspace tests passed, including
+  exact and conflicting retries, concurrent renames, current-role
+  reauthorization, inactive workspaces and audit cardinality; 43 RLS/schema and
+  20 migration/readiness tests also passed;
+- the full database integration run passed 562 of 563 tests while run in
+  parallel with the browser suite; one unrelated 64 MiB observation test hit its
+  five-second timeout and passed on focused rerun. Database unit tests passed
+  767 tests and schema validation passed;
+- API unit/integration-shaped suite: 1,320 tests passed and typecheck passed. A
+  real HTTP/PostgreSQL rename regression was added, but the separately
+  provisioned `API_IDENTITY_INTEGRATION`, database and Redis environment was not
+  available for that gate;
+- web component/routed suite: 205 tests passed, including authorized/read-only
+  rendering, StrictMode submission, validation, exact uncertain retry, conflict
+  refresh/reapply, capability loss, identity change and accepted
+  command/discovery-refresh recovery;
+- web production build/typecheck, lint and architecture checks passed; Chromium
+  passed 34 journeys, including keyboard/native validation and the authoritative
+  shell/selector refresh. Chromium used controlled HTTP mocks; no managed OIDC
+  provider, Firefox or WebKit claim is made;
+- React Doctor scanned changed and untracked files with uploads disabled
+  (72/100). Its 51 diagnostics were pre-existing/out-of-scope findings; none
+  identified an N2 source file.
+
+The implementation below remains the lasting contract for this slice.
+
+- Contract gate before implementation: propose a strict `{ name }` rename
+  command under the existing workspace resource, authorized by current database
+  `workspace:manage` and active workspace state. Confirm this policy and
+  concrete HTTP method/path before publishing schemas. Specify an opaque
+  precondition or revision, exact idempotent retry and a safe workspace
+  response. Reuse existing command conventions; do not silently allow
+  last-write-wins.
+- Establish how clients obtain the rename precondition from an authorized read;
+  do not use a formatted timestamp as an invented revision. Specify stale
+  precondition, duplicate-key/different-body, forbidden and inactive-workspace
+  errors in the shared contract. Review ADR applicability before adding policy.
+- Backend: existing identity/workspace controller/use case and database adapter;
+  transactional current-role/status checks, concurrent rename fencing, and safe
+  audit fact with actor/workspace and approved changed fields. Add a
+  forward-only migration only if revision/idempotency/audit persistence needs
+  it.
+- Frontend: General settings name section under
+  `workspaces/components/settings/`, read-only without capability. Local edit
+  scratch; explicit Save/Cancel; no autosave. Preserve input on conflict and
+  offer refresh/reapply against a new revision, never automatic overwrite.
+- Refresh workspace discovery and affected shell/general queries after confirmed
+  success. Keep stable ID-based routes; renaming must not break deep links.
+- Acceptance: authorized rename updates shell and selector; denied and inactive
+  cases; two editors conflict safely; lost-response replay has one effect/audit;
+  simultaneous role/lifecycle changes are reauthorized; cancel leaves no change.
+
+#### N3. Overview without invented aggregate metrics
+
+**Delivered in the working tree (2026-09-21).** The optional workspace Overview
+route composes three independently authorized, cached and recoverable source
+queries: five recently managed workflows ordered by parent lifecycle/publication
+metadata, five recent runs and five runs whose status is exactly `failed`.
+Draft- only saves do not advance the parent workflow timestamp. It exposes no
+totals, rates, trends, usage claims or incident semantics. Actors without a
+card's source capability do not issue its request. Each card owns loading,
+empty, failure, retry and last-successful- refresh presentation; manual refresh
+and focus refresh preserve independent query results.
+
+The workflow list contract gained only the optional `updated_desc` order. Its
+opaque cursor has a distinct variant and retains PostgreSQL microsecond
+precision; migration `0099_workflow_recent_list.sql` adds the matching
+`(workspace_id, updated_at DESC, id DESC)` index, and the typed Drizzle schema
+declares the same index. Existing created-order callers remain unchanged. Run
+cards reuse the existing newest-first run contract and failed-status filter.
+Source feature Query interfaces own transport/cache keys, and workflow
+creation/publication plus run acceptance/cancellation invalidate the
+corresponding source scopes.
+
+Evidence executed for this slice:
+
+- contracts: 73 tests passed, generated artifacts matched and OpenAPI lint
+  retained one unrelated invitation warning;
+- API: 1,321 tests passed, including order forwarding and cursor-variant
+  regressions;
+- disposable PostgreSQL: the complete integration suite passed 85 files and 563
+  tests. The focused recent-workflow regression paginates updates at `.000100Z`
+  and `.000900Z` without duplicates or omissions; database unit tests passed 767
+  tests and migration/schema/readiness checks passed;
+- web component/routed suite: 209 tests passed, including bounded request
+  shapes, independent card recovery, StrictMode and denied-card request
+  suppression; production build/typecheck and lint passed;
+- Chromium exercised the responsive Overview, source links, mobile drawer,
+  explicit refresh and exact query filters; the complete Chromium suite passed
+  35 journeys. Chromium used controlled HTTP mocks; no live backend/provider,
+  Firefox or WebKit claim is made;
+- React Doctor scanned changed and untracked files with uploads disabled
+  (72/100, 51 diagnostics). None names an N3 source file; reported items remain
+  previously triaged test-secret false positives and pre-existing complexity,
+  lifecycle, cache and accessibility hypotheses outside this slice.
+
+The implementation below remains the lasting contract for this slice.
+
+**Initial scope:** an optional `B/overview` destination, not a new landing page.
+Version one shows bounded recent lists only: five recently updated workflows,
+five recent runs, and five failed runs labelled “Recent failed runs.” A failure
+is not an unresolved incident. No totals, trends, success percentages, usage
+meters or synthetic event feed in this slice.
+
+- Contract gate: confirm existing list filters, descending ordering and stable
+  tie-breakers support each card. Where unsupported, add the smallest scoped
+  list-query contract/index; do not fetch all history or sort a single arbitrary
+  page and claim it is the most recent. Cards describe retained available data,
+  not lifetime history or a fixed reporting window.
+- `features/overview/` owns page/card composition. Consume deliberately exported
+  workflow/run Query interfaces; existing features retain transport ownership.
+  Add no overview service unless an actual missing contract requires one.
+- Fetch authorized cards independently. Denied cards make no requests; empty,
+  loading and failed cards remain distinct, with per-card retry. One failed card
+  must not erase successful cards or turn failure into a zero count.
+- Query policy: identity/workspace/filter-scoped keys, 30-second stale time,
+  refetch on window focus and an explicit Refresh action; no background polling
+  in version one. Show last successful refresh information without suggesting
+  the three requests are an atomic snapshot. Existing mutations invalidate the
+  corresponding source queries, including these list variants.
+- Links open the source workflow/run or appropriately filtered run history. Keep
+  graph/draft state out of Overview. Follow existing shell and card design,
+  semantic tokens, loading patterns and keyboard-accessible links.
+- Acceptance: exact ordering/limit/status semantics; permission and tenant
+  isolation; independently failed/empty cards; focus/manual refresh; no
+  unbounded reads; browser navigation into existing editor/run pages; no
+  invented metrics. Aggregates remain a later separately defined slice under the
+  preceding rules.
+
+#### N4. Artifact input upload, then optional asset discovery
+
+**Gate:** select an existing supported node/input contract that accepts an
+artifact reference before adding upload UI. Current artifact metadata/download
+UI and upload/finalize contracts are foundations, not evidence of browser upload
+support. Do not invent artifact-valued inputs for nodes that cannot execute
+them.
+
+- First slice is an input-local upload, owned by `features/artifacts` and
+  exposed through its public interface to the consuming feature. No
+  asset-browser page is necessary for this slice. Persist only the finalized
+  artifact reference in workflow input; never a `File`, signed URL, storage key
+  or byte buffer.
+- Flow: select file → validate supported size/type → compute SHA-256 → request
+  upload → PUT exactly the signed bytes/headers → finalize → attach
+  authoritative available artifact. Do not report completion after PUT alone.
+- Specify a browser-safe size ceiling based on measured hashing/memory cost
+  before enabling selection; the API's 5 GiB ceiling is not a browser memory
+  budget. Large-file streaming/worker hashing needs its own validated design.
+- Keep file/progress/cancellation local to the upload lifecycle; do not retain
+  file contents or signed credentials in Query, persisted stores, logs or error
+  telemetry. Query may cache safe metadata. Reuse exact command keys where the
+  contract requires them; distinguish upload failure from uncertain
+  finalization.
+- A dedicated artifact transfer adapter is the only exception for signed
+  external PUTs; review the existing raw-fetch/import rule rather than bypassing
+  it inside a component. Send no session cookies or API CSRF headers to object
+  storage.
+- Prove real-browser signing, browser-controlled Content-Length, allowed
+  origins, preflight, required headers, checksum mismatch and expiry against a
+  disposable storage environment. Verify finalization retries, auth loss,
+  cancellation, navigation/unmount and abandoned-upload cleanup. Do not claim
+  abort deletes an already uploaded object or automatically allocate a second
+  artifact on retry.
+- Asset discovery is a separate follow-on: define bounded cursor listing, safe
+  metadata, supported filters, download/use permissions and expired/pending
+  visibility first. No listing endpoint is currently assumed. Delete/retention
+  management is excluded unless separately authorized.
+
+#### N5. Optional curated workflow templates
+
+**Proposed bounded scope:** a chooser inside workflow creation, not a
+marketplace, public publishing system or separate management console. Confirm
+actual template examples before implementation; this is not required to finish
+N1–N4.
+
+- Define a versioned safe manifest and catalog compatibility check. A template
+  contains supported node types/versions, graph/configuration and presentation,
+  never credentials, workspace IDs, historical runs or legacy backend payloads.
+- Establish import/create semantics in contracts before exposing a chooser:
+  validate through normal authoring rules, allocate new workflow/node identities
+  and remap every edge/reference consistently. Required connections remain
+  explicitly unconfigured; never copy another workspace's connection IDs.
+- Prefer repository-owned reviewed examples initially. Use existing create/save
+  commands if they support safe recovery; otherwise define the minimum atomic or
+  resumable command rather than leaving silent orphan drafts after partial
+  import.
+- `features/workflows/components/templates/` owns chooser presentation; the
+  owning authoring module owns instantiation/validation. Publish/run remain
+  explicit later user actions, not import side effects.
+- Acceptance: incompatible/unknown catalog entry rejected clearly; graph and
+  references remapped; no secret/cross-tenant leakage; duplicate-click and lost
+  response recovery; resulting draft opens, validates and can be configured.
+
+#### N6. Optional non-billing usage reporting
+
+**Decision-gated, not implementation-authorized:** usage is not payment work.
+Before building this page, select measurement units and purpose (for example
+retained execution counts or storage consumption), period/timezone, retention
+coverage, refresh delay and read capability. Do not invent quotas or pricing.
+
+- Specify each counter's authoritative source, treatment of retries/canceled
+  runs, period boundaries and unknown/partial retention coverage. If no durable
+  source exists, explicitly defer that counter rather than estimating it from
+  paginated UI data or relabelling Prometheus infrastructure metrics.
+- Define a bounded workspace-scoped read contract with period, measured-through
+  time and coverage semantics. Use scoped SQL first; introduce a durable rollup
+  only after measured need and an accepted architectural decision, including
+  backfill/reconciliation and late-arrival semantics.
+- A future `features/usage/` page owns filters and read-only presentation; URL
+  owns reporting period, Query owns results. Render stale/unavailable separately
+  from zero. No upgrade buttons, invoices, checkout or payment SDKs.
+- Acceptance: exact period boundaries, retry counting, retention/late data,
+  permission/tenant isolation, bounded query performance and browser period
+  navigation. Product choices above must be resolved before a coding prompt.
+
+#### Node editor status and a separate authoring increment
+
+The editor already places catalog definitions, renders nodes/ports/edges, edits
+labels and primitive/enum configuration (with advanced JSON fallback), selects
+connection references, saves with conflict recovery, validates/previews,
+publishes and starts runs. Run detail displays the versioned execution graph and
+node statuses. Node execution is backend-owned, not JavaScript executed by the
+canvas.
+
+Do not equate this with a complete visual data-mapping experience:
+
+- `inputMappings` are preserved in the graph, but the current inspector does not
+  provide controls to edit them. New nodes begin with empty mappings.
+- Nested object/array configuration relies on advanced JSON, not specialized
+  nested form controls. Catalog credential requirements are not automatically
+  equivalent to supported connection selectors.
+- Local edge checks are limited; backend graph validation remains authoritative
+  for semantic validity. Unknown definitions remain visibly unsupported and
+  preserved rather than silently substituted.
+
+#### M1. Visual input mappings
+
+**Status (2026-09-21): implemented with focused mocked-browser and real-engine
+evidence; live browser/backend execution remains outstanding.** N1–N3 and M1 are
+ready for the planned integrated review. Do not invent an artifact-consuming
+node for N4 as part of that review. Payments remain excluded.
+
+##### Existing contracts and execution semantics
+
+- `packages/workflow-model/src/graph-contract.ts` defines
+  `inputMappings: Record<string, ValueSource>`. Browser callers already obtain
+  the graph through the reviewed workflow-authoring contract. Derive mapping
+  types from that contract; do not copy the discriminated union into web code.
+- Existing variants are `literal` (`value`), `run_input` (`path`), `node_output`
+  (`nodeId`, `path`), `expression` (`language: 'jsonata'`, `expression`,
+  `policyVersion`) and `structured_input` (`port`, `path`). M1 offers creation
+  and editing of the first three only. Preserve expression/structured mappings
+  unchanged as labelled advanced rows; allow explicit removal with confirmation,
+  but no implicit conversion or expression evaluation in the browser.
+- Mapping keys are top-level keys in the resolved input object, not edge-port
+  names and not destination JSON paths. For example key `customer` with source
+  `{ kind: 'node_output', nodeId: 'source-id', path: '$.customer' }` produces an
+  input property named `customer`. A key containing a dot remains a literal key;
+  do not transform it into nested assignment. Literal null is a value; missing
+  paths cause omission in the engine, not automatic null/default substitution.
+- `graph-validation.ts` allows node-output sources only from a direct local
+  predecessor connected by an edge. Never offer arbitrary ancestors, self,
+  downstream nodes or nodes inside another structured body. Output paths address
+  the source node's output value, not a made-up envelope keyed by output port.
+- `workflow-engine/src/operations.ts` resolves these sources into the input
+  object; trigger source definitions receive run input directly. Do not imply
+  editing mappings changes trigger execution. Match the actual trigger-source
+  definition policy before enabling its mapping section; do not infer this only
+  from a decorative catalog family label.
+- `catalog` exposes `inputSchema`, `outputSchema`, ports and definition version.
+  Use schemas for field suggestions/descriptions, not as proof of runtime data.
+  Dynamic object schemas need custom top-level keys; bounded support must not
+  make `core.set` unusable merely because it lacks enumerated properties.
+- Reuse the existing browser-safe `@pertexo/workflow-model/json-path` parser
+  after confirming its package export and browser allowlist. Its dialect
+  supports `$`, dot properties, numeric array indices and quoted bracket
+  properties; no wildcard, filter or JSONata syntax in a path field. Do not
+  import server-only mapping/expression modules or implement a second parser.
+  Add only a narrowly reviewed schema-only contract export if individual mapping
+  validation needs it.
+
+##### UI and ownership
+
+1. Add an Inputs section to the selected ordinary node inspector. Each row has a
+   destination key, source-kind selector, source controls, error text and
+   Remove. Provide Add input, useful empty-state copy and schema-based key
+   suggestions. Clearly distinguish configuration, execution input mappings and
+   edge routing.
+2. Literal rows accept JSON values without coercing numbers/booleans/null into
+   strings; provide clear JSON validation. Run-input rows accept a path. Node-
+   output rows choose a directly connected predecessor (label plus stable ID
+   disambiguation) and a path, with `$` as the explicit whole-output choice.
+   Path suggestions must not claim every field exists or fetch all prior runs.
+3. Put presentation under
+   `workflow-editor/components/inspector/input-mappings/`, split by cohesive
+   responsibility (section, row, source controls) only where useful. Put pure
+   row-to-contract conversion, source options and validation under
+   `workflow-editor/model/input-mappings.ts` or a small owner-local directory.
+   Do not append another large feature to `workflow-inspector.tsx`, add a global
+   mapping store or spread new files into shared components/lib folders.
+4. Integrate mapping scratch with the existing inspector Apply/Cancel and dirty
+   state. The draft graph remains the only persisted authority; Apply updates
+   the selected node atomically through the current editor command/history seam,
+   and Cancel never changes graph state. A rejected row does not partially apply
+   other rows. Node switches, route changes, incoming snapshots and save actions
+   must obey existing scratch/dirty-exit behavior rather than silently
+   discarding edits. Extend persisted-node comparison to include mappings where
+   necessary.
+5. Use stable UI row identity independent of the editable destination key;
+   reject duplicate keys before conversion to a record. Preserve unknown or
+   currently unsupported existing rows, including keys not suggested by schema.
+   Use safe own-property/object construction for arbitrary keys such as
+   `__proto__`; never mutate prototypes or silently discard valid existing data.
+6. Label changes must not rewrite ID references. Removing the last connecting
+   edge or a referenced source node leaves the mapping visibly invalid until
+   explicitly repaired/removed; do not silently remove it or synthesize edges.
+   Reconnecting a valid source can repair the mapping. Undo restores graph and
+   mapping validity together. Unsupported definitions remain preserved.
+7. Reuse existing permission/read-only behavior, focus/error IDs, keyboard and
+   responsive inspector layout. Only current draft editing may mutate mappings;
+   historical run graphs remain read-only. Do not add an effect or memo merely
+   to derive source choices, validity or serialized state.
+
+##### API, validation and save behavior
+
+- Reuse current draft read/save, validation, preview, publish and run endpoints.
+  No mapping-specific persistence table, backend endpoint, node executor or
+  migration is expected. If a genuine missing contract prevents this slice,
+  document it before expanding scope rather than inventing frontend-only data.
+- Apply performs structural/path/duplicate/reference checks and shared contract
+  admission. Schema suggestions are not a replacement for backend semantic
+  validation, particularly dynamic values, branch outputs and input types.
+  Preserve existing save/validation distinction: unsupported or semantically
+  invalid drafts must not become silently sanitized valid graphs.
+- Use current serialized ETag save and conflict/uncertain-outcome recovery.
+  Mapping edits must participate in dirty tracking, undo/redo, snapshot
+  comparison and reconciliation exactly like configuration edits; no separate
+  autosave. Map authoritative `inputMappings` validation issues to the
+  appropriate row or section, with an accessible summary fallback when paths
+  cannot be resolved.
+- Preview must use the existing explicit sample-input/upstream-output contract;
+  saving a mapping does not magically provide execution data for a preview.
+  Never silently select a historical run as the mapping's runtime source.
+  Runtime values/credentials stay out of persistent editor preferences/logs.
+
+##### Implementation order and acceptance evidence
+
+1. Confirm the current implementation has not already added part of M1.
+   Establish the graph update/history and inspector scratch seams; add pure
+   model tests for all three editable variants and preservation of the other
+   two.
+2. Implement the feature-owned UI and graph updates; integrate backend
+   validation paths and existing save/conflict handling. Add behavior tests as
+   each part is completed, not only at final handoff.
+3. Cover add/edit/remove/apply/cancel; typed literals including
+   null/arrays/objects; duplicate/special keys; valid/invalid paths;
+   direct-predecessor filtering; missing/deleted source and disconnected edge;
+   label rename; unsupported mappings/definitions; read-only state;
+   selection/route changes; and keyboard focus. Verify unrelated config,
+   connections, positions and mappings survive.
+4. Cover mapping-only dirty detection, exact save/reload, undo/redo, serialized
+   saves, conflict comparison/reapply and lost-response reconciliation. Browser
+   tests must edit through rendered controls, not seed the entire mapping into a
+   mocked draft and claim creation coverage.
+5. Use an existing side-effect-free example: `core.manual` → `core.set` with a
+   real edge. Set `customer` from the manual node's `$.customer`, another field
+   from run input and a literal field; save/reload, publish/run with explicit
+   sample input, and verify the target's actual input/output values. Add a
+   missing-path case proving omission rather than null substitution. Use
+   existing engine/API integration seams and a disposable environment, never a
+   production workflow. Distinguish mocked UI round-trip, real engine resolution
+   and a live browser/backend run; if the latter cannot run, report the specific
+   gate and do not mark end-to-end verification complete.
+6. Run affected web unit/component tests, typecheck, lint, build, browser
+   journeys, React Doctor and architecture/import checks; run model/engine/API
+   tests if their seams change or provide necessary mapping proof. Update this
+   section with files and actually executed evidence, preserving outstanding
+   limitations.
+
+##### Delivery evidence (2026-09-21)
+
+- The ordinary-node inspector now owns mapping scratch alongside configuration:
+  feature-local section, row and source-control components author literal JSON,
+  run-input paths and direct-local-predecessor output paths. Expression and
+  structured-input rows remain labelled, unchanged advanced values unless the
+  user confirms removal. Apply is atomic through the existing graph history
+  seam; Cancel, dirty navigation, undo/redo, conflict comparison and serialized
+  saving include `inputMappings`.
+- Pure mapping logic derives its wire types from the shared workflow graph,
+  validates exact duplicate destinations and the shared JSON-path dialect,
+  constructs null-prototype records, filters node-output sources to direct
+  predecessors and matches trigger sources by exact definition identity. The
+  shared graph parser now preserves own mapping keys including `__proto__`,
+  `constructor`, `toString` and escape-prefix collisions without mutating the
+  admitted immutable snapshot or changing object prototypes.
+- Backend validation findings targeting `inputMappings.<key>` focus the matching
+  row when it exists and retain the general accessible fallback otherwise.
+  Unknown schema keys and unsupported mapping variants survive unrelated edits.
+- Executed web checks: typecheck and lint passed; 25 Vitest files / 218 tests
+  passed; production build passed. Mocked-boundary Chromium passed the focused
+  editor journey (11/11) and the complete web suite (36/36). The rendered
+  journey created literal, run-input and predecessor mappings through the
+  controls, autosaved, reloaded and restored them; read-only controls were also
+  checked.
+- Executed shared checks: workflow-model 9 files / 112 tests and workflow-engine
+  32 files / 376 tests passed, including real engine resolution for
+  `core.manual` to `core.set`, typed literal/run/upstream sources and
+  missing-path omission. Workflow-model and workflow-engine typechecks, the 19
+  architecture checks, contract generation/check (with the existing
+  identity-workspace OpenAPI 2XX warning) and `git diff --check` passed.
+- React Doctor ran against changed and untracked web files with score/telemetry
+  and supply-chain uploads disabled. Its 71 advisory warnings include known
+  broad-component/command-lifecycle findings and two false-positive
+  missing-label reports for the new native selects; both selects have matching
+  `htmlFor`/`id` associations. The inspector dirty callback effect is required
+  by the existing single dirty-state ownership seam. No M1 diagnostic
+  established a regression.
+- Not executed: a live API/database browser journey that publishes and runs the
+  mapped workflow, or Firefox/WebKit coverage. The engine proof is real runtime
+  resolution, while the browser evidence uses controlled HTTP mocks; therefore
+  M1 is not claimed as live-provider/backend end-to-end verified.
+
+After M1 implementation, reconcile stale roadmap summaries and prepare one
+integrated review of N1–N3 plus M1 against the agreed baseline. Do not
+auto-start uploads, templates, usage, JSONata editing, nested loop editing or
+credential authoring. Those remain separate decisions, not prerequisites for
+completing M1.
+
+#### U5 — workflow identity and name-based run discovery
+
+**Delivery status (2026-09-21): implemented; required local gates pass.** The
+reviewing task owns this plan. The implementation task follows it and reports
+concrete blockers instead of replacing it with another roadmap. This closes the
+remaining U5 gap only; it does not reopen the completed audit slices.
+
+Implementation evidence: shared contracts now expose the optional nullable
+read-only `workflowName`, normalized `workflowNamePrefix`, and the exact
+workflow-summary route. The database read model uses one workspace-scoped join,
+literal LIKE escaping and unchanged microsecond keyset ordering; the exact
+authoring read stays under its reader/RLS transaction. The API derives name
+visibility from centralized capabilities, leaves command receipts unchanged, and
+binds normalized prefixes into cursors. The web renders current names in
+history/detail/Overview, keeps IDs secondary, uses an exact metadata Query in
+the editor, and owns applied prefix filters in the URL.
+
+Executed evidence: contracts 74/74; API unit 1325/1325; database unit 768/768;
+focused disposable PostgreSQL authoring/run reads 23/23, including prefix
+escaping, archived metadata, microsecond pagination, exact lookup beyond 100
+workflows and normal-planner `EXPLAIN (ANALYZE, BUFFERS)` coverage over 10,000
+runs. The measured emitted row instances were 10,100 absent / 851 selective /
+15,120 common / 0 no-match / 10,120 combined / 7,120 deep-cursor; rejected-row
+work was respectively 0 / 41 / 22 / 42 / 2,522 / 4,022. Their sums are plan-node
+work, not unique rows visited. Root shared-buffer touches were 182 / 11 / 189 /
+1 / 189 / 189. The normal planner chose a sequential run scan without a prefix
+and nested-loop plus bitmap scans for prefix cases. On this representative
+fixture, selective and no-match work stayed small while broad prefixes
+necessarily touched more rows, so the evidence did not justify a schema change;
+it is not a general production-performance guarantee. Web 221/221; production
+build/typecheck/lint; Chromium 40/40; focused U5 Firefox 15/15 and WebKit 15/15;
+architecture, generated-contract and diff checks. The disposable real-HTTP API
+lane passed 16/16 suites and 66/66 tests against PostgreSQL/Redis, including the
+U5 projection, archived exact metadata and literal-prefix assertions. Browser
+journeys use controlled HTTP fixtures; they are not a deployed
+browser-to-provider test. React Doctor changed-scope reported 50
+existing/whole-diff warnings and no confirmed U5 regression; its score is not a
+completion claim. Coordinated client/API deployment remains required for this
+unreleased strict-response change.
+
+**User-visible outcome and scope**
+
+- Run history, run detail and Overview recent-run cards display the workflow's
+  **current name**, with workflow/run IDs secondary and available in full for
+  copying. Duplicate names remain distinguishable by identity. The editor header
+  also displays the current workflow name through an exact metadata lookup.
+- Run history gains a field labelled **Workflow name starts with**, so a person
+  does not need a UUID to find runs. Keep the exact workflow-ID filter as an
+  optional advanced filter. This is literal prefix matching, not fuzzy search,
+  substring search, an autocomplete catalog or a scan of downloaded workflows.
+- A current name is not the name at execution time. Run inspection and replay
+  continue to resolve the immutable `workflowVersionId`; never resolve the
+  latest graph instead. Do not add name snapshots, rename commands, execution
+  changes, billing, uploads, templates or a general search service.
+
+**1. Shared contracts and compatibility**
+
+- In the workflow-runs HTTP contracts, introduce a read-summary schema extending
+  the existing `workflowRunSummarySchema` with optional nullable `workflowName`
+  (the existing workflow-name constraints). Use it only in list and get
+  responses. The new server emits a string or `null`; a new client treats a
+  missing field from an older server as unavailable. Keep start, replay and
+  cancel summaries/receipts unchanged, including idempotency replay bytes.
+- Add optional `workflowNamePrefix` to the existing list query: trim outer
+  whitespace, require 1–128 characters after trimming, reject invalid lengths.
+  The UI omits blank input. Match case-insensitively using PostgreSQL `lower` on
+  both operands under the database's existing locale; do not promise accent
+  folding. Escape `%`, `_` and the escape character as literals before `LIKE`.
+  Prefix, exact ID, status and time predicates combine with AND.
+- Add `GET /v1/workspaces/:workspaceId/workflows/:workflowId`, returning a
+  strict `{ workflow: WorkflowSummary }` response using the existing summary
+  schema. This is metadata only, not a draft/graph read. Register the route,
+  projections, browser-safe exports and generated contract artifacts through
+  existing seams.
+- Do not call this universally backward compatible: older strict clients may
+  reject enriched responses. Record the coordinated deployment requirement for
+  this unreleased app; do not claim rolling mixed-version support without proof.
+  New UI must not silently ignore unsupported filtering on an older API.
+
+**2. Authorization and read-model ownership**
+
+- Run reads retain `run:read` and their current workspace lifecycle policy.
+  Names additionally require `workflow:read`. Derive that decision through the
+  existing centralized capability policy from a freshly validated authorization
+  context, not client input or hard-coded role lists. Existing roles currently
+  have both capabilities; keep that distinction explicit for future policies.
+- A run-readable caller without workflow-read permission receives `null` names
+  and may still read runs. A name-filter request without workflow-read
+  permission is denied before querying metadata, using the established
+  disclosure/error policy; never silently ignore the filter. Do not catch
+  arbitrary authorization or database failures and disguise them as a missing
+  name.
+- An issued context is bound to its capability. Do not reuse a `run:read`
+  context as a `workflow:read` authorization proof. The metadata GET uses its
+  own normal authoring read authorization and reader check, with the same
+  lifecycle allowances/disclosure behavior as the existing authoring list.
+- Extend run **read projections**, not worker/runtime run records or command
+  persistence contracts. The run feature owns mapping to the HTTP read summary;
+  the authoring feature owns exact workflow metadata reads. No generic
+  repository framework or cross-feature transport calls are needed.
+
+**3. Database queries and pagination**
+
+- Implement exact metadata lookup through the existing authoring read store:
+  explicit workspace and workflow-ID predicates, existing tenant transaction,
+  reader checks and forced RLS. Do not search the first page of workflow lists.
+- Enrich run list/detail using a workspace-scoped left join on workflow ID and
+  workspace ID, or one bounded batch within the same tenant transaction. Never
+  issue one lookup per row. Preserve runs without a visible workflow summary;
+  their names are `null`, not grounds for dropping the run. Do not exclude
+  archived workflow metadata when the existing authorization permits reading it.
+- Apply the name predicate in SQL before the page limit. Preserve run ordering
+  `created_at DESC, id DESC`, the existing microsecond cursor timestamps and
+  `limit + 1` behavior. A join must not duplicate rows. Filtering by current
+  name may change membership after a concurrent rename; this is not historical
+  snapshot pagination and must not be described as such.
+- Bind cursors to the normalized prefix as well as the existing workspace and
+  filter tuple. Accept legacy cursors with no prefix only for no-prefix
+  requests. Normalize absent legacy prefix to `null` before comparison; reject
+  altered filters/workspace and malformed cursors through existing invalid-query
+  errors. Emit the existing cursor shape for unfiltered requests where
+  practical; do not lower precision by round-tripping cursor timestamps through
+  JavaScript Date.
+- Inspect `EXPLAIN (ANALYZE, BUFFERS)` on disposable representative data for no
+  prefix, selective/common/no-match prefixes, combined filters and deep cursors.
+  Existing `(workspace_id, name, id)` does not prove support for `lower(name)`.
+  Add a scoped functional prefix index only if the plans justify it; do not add
+  an extension or claim LIMIT alone bounds scan cost. If needed, append the next
+  migration after the actual current head, keep typed schema/readiness/migration
+  bookkeeping consistent, and test fresh and prior-head upgrades. Never rewrite
+  the existing 0099 migration or published migration history.
+
+**4. Frontend ownership, state and presentation**
+
+- `features/workflow-runs` owns its query schema use, filter model, API
+  parameters, query keys and presentation. Router search parameters own applied
+  filters; a form may own only unapplied text. Apply/clear resets pagination.
+  Back/Forward restores filters. Include normalized prefix in query identity and
+  never show results for an old filter as if they belong to the new one.
+- Run pages and Overview consume names from the enriched run read response, not
+  per-row queries or a global workflow catalog. Existing loading/error/retry and
+  identity/workspace cache fences remain authoritative. Clear sensitive cached
+  metadata with existing membership/session invalidation; do not mask permission
+  failures with cached names. Keep Overview's independent card recovery.
+- `features/workflows` owns exact metadata transport and Query options, keyed by
+  user, workspace and workflow ID. Export a narrow query interface for the
+  editor through the established public seam. Fetch once for editor identity
+  without coupling name loading to draft revision, save ETag or graph state. A
+  metadata failure must not erase edits or disable otherwise authorized draft
+  editing; show a local fallback/retry. Do not duplicate the name in
+  Zustand/local state.
+- Prefer existing small components and semantic tokens. Show “Workflow name
+  unavailable” for absent metadata, not “deleted”; display the actual ID
+  alongside that fallback. Preserve native links, visible focus, full accessible
+  labels, copy access and existing run/version identity. Long names may truncate
+  visually but must not force viewport overflow or hide the only way to discover
+  identity.
+- Keep feature-local components separate by responsibility, not one large page
+  component or a generic application-wide identity framework. No new effects,
+  memoization or state merely to mirror query results. Scope any genuinely
+  shared presentational identity component to its existing feature/public
+  interface.
+
+**5. Verification and completion gates**
+
+- Contract tests cover old-server missing names, new nullable/string names,
+  unchanged command responses, prefix validation and generated route artifacts.
+- Database/API tests cover tenant isolation, metadata permission enforcement,
+  exact lookup beyond the first 100 workflows, archived/missing metadata,
+  duplicate names, literal wildcard/backslash input, non-ASCII names, combined
+  filters and empty results. Test a permission-limited policy seam without
+  changing production roles or forging issued authorization contexts.
+- Prove stable tie/microsecond pagination, no duplicates/skips for unchanged
+  data, legacy cursor handling and mismatched-prefix rejection. Demonstrate
+  bounded query count as page size grows and record representative query plans.
+- Component tests exercise Apply/clear/Back/Forward, pagination reset, query-key
+  isolation, name fallbacks, denied/error recovery, editor metadata failure and
+  no loss of dirty draft. Regression-test cancellation/replay updates so a
+  command summary lacking a name cannot erase or corrupt the read cache.
+- Browser verification covers history → name filter → detail, Overview → detail,
+  and editor identity at desktop and 320/390px widths with long/duplicate names,
+  keyboard use and secondary IDs. Run Chromium plus focused Firefox/WebKit.
+  Include a disposable real API/database journey for prefix filtering and name
+  projection; distinguish this from mocked UI evidence and deployed-provider
+  verification. Exact-version rendering/replay must remain unchanged.
+- Run affected contract, database, API and web tests, build/typecheck/lint,
+  architecture, generated-contract, schema (if touched) and documentation
+  checks. Use relevant React/Query skills during implementation and React Doctor
+  after React edits; its score is not a correctness gate. Inspect rendered UI,
+  not just test exit codes. Record executed commands, results and skipped gates.
+
+**Execution order and handoff**
+
+Implement contracts → authorized database/API reads and filtering →
+feature-owned frontend → integrated verification. Keep changes in the existing
+dirty worktree and preserve unrelated work. No commits, pushes or merges are
+authorized by this slice. Do not create another planning/audit file or add an
+ADR for these routine read-model extensions. If implementation reveals a new
+consequential policy or architecture decision, stop and report the evidence to
+the reviewing task. Update this section and U5 in `FRONTEND-AUDIT.md` with
+actual evidence at completion; until all required gates pass, U5 remains
+partial. Do not label blocked or mocked checks as live verification, or mark the
+whole application fully verified.
+
+#### Completion and one integrated audit
+
+**Corrective audit update (2026-09-21):** the S1–S4, B1–B4, V1 and U1–U7
+findings recorded in `FRONTEND-AUDIT.md` have been worked through. All confirmed
+bounded defects are fixed; S3/S4 retain their existing cohesive owners with a
+documented no-change rationale. U5 now implements authorized current workflow
+names, exact editor metadata and literal name-prefix run filtering, and its
+required local gates pass. Final evidence includes web 221/221, workflow-model
+112/112, workflow-engine 376/376, database unit 768/768, disposable PostgreSQL
+565/565 (including focused U5 PostgreSQL 23/23), real API integration 66/66,
+Chromium 40/40 and focused U5 Firefox/WebKit 15/15 each. Browser evidence uses
+controlled HTTP mocks; provider/deployed-worker and physical-device verification
+remain outside these claims.
+
+For each selected slice record implementation, executed verification and
+remaining environment gates separately here. Run focused checks while
+implementing; do not postpone permission, data-loss or migration issues to the
+final audit. Once the selected slices are complete, perform one fixed-baseline
+integrated review of their changes and real journeys: sign in → create/select
+workspace → author and save nodes → publish/run → inspect results, plus
+applicable invitations, rename and upload paths. Cover state/effect redundancy,
+types, feature ownership, error/retry consistency, API/database authorization,
+accessibility, responsive layout, cross-browser behavior and
+deployment/proxy/session/SSE operation. Use a disposable integration environment
+and record skipped checks honestly. Do not reopen settled architecture or
+implement deferred product scope merely to obtain a higher audit score.
 
 ### Deferred product pages
 

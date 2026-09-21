@@ -26,6 +26,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: ['workspace:read', 'workspace:manage'],
   createdAt: '2026-09-14T10:00:00.000Z',
@@ -242,6 +243,7 @@ describe('authentication and workspace entry', () => {
     const deniedWorkspace = {
       ...workspace,
       status: 'pending_deletion',
+      revision: 1,
       role: 'viewer',
       capabilities: ['workspace:read'],
     };
@@ -303,7 +305,7 @@ describe('authentication and workspace entry', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('shows a genuine no-membership state without inventing an action', async () => {
+  it('offers first-workspace creation from the no-membership state', async () => {
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
         HttpResponse.json(user),
@@ -317,8 +319,8 @@ describe('authentication and workspace entry', () => {
       await screen.findByRole('heading', { name: 'No workspace access yet' }),
     ).toBeVisible();
     expect(
-      screen.queryByRole('button', { name: /create/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Create your first workspace' }),
+    ).toBeVisible();
   });
 
   it('shows route-level recovery when workspace discovery fails', async () => {

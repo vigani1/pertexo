@@ -7,9 +7,9 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 20,
-        "duplicatedLines": 340,
-        "duplicatedTokens": 3042
+        "clones": 21,
+        "duplicatedLines": 353,
+        "duplicatedTokens": 3223
       },
       "families": [
         {
@@ -44,6 +44,20 @@
           "clones": [
             {
               "hash": "702de3a814d23c7e91741749f0e28f0240d8397c85c59fed1bf2a7d0ec2d4bac",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/schema/foundation.ts",
+            "packages/database/src/schema/foundation.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Role-change and workspace-rename command receipt tables explicitly retain their independently migrated idempotency columns; a shared schema builder would obscure their separate durable contracts.",
+          "clones": [
+            {
+              "hash": "52522359101543d79cc5e675275f430086b44004bae3f642a89ee148e40c7f07",
               "maxLines": 14
             }
           ]

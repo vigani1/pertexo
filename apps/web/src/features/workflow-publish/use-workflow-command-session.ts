@@ -16,6 +16,8 @@ export function useWorkflowCommandSession({
   isSessionPaused,
   ensureSaved,
   onRunAccepted,
+  onRunCommandAccepted,
+  onPublicationAccepted,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
@@ -24,6 +26,8 @@ export function useWorkflowCommandSession({
   isSessionPaused: () => boolean;
   ensureSaved: () => Promise<SavedDraftIdentity>;
   onRunAccepted: (runId: string) => void;
+  onRunCommandAccepted?: () => void;
+  onPublicationAccepted?: () => void;
 }>) {
   const publication = useWorkflowPublication({
     apiClient,
@@ -31,6 +35,7 @@ export function useWorkflowCommandSession({
     workflowId,
     verifyIdentity,
     ensureSaved,
+    ...(onPublicationAccepted === undefined ? {} : { onPublicationAccepted }),
   });
   const runSubmission = useWorkflowRunSubmission({
     apiClient,
@@ -40,6 +45,7 @@ export function useWorkflowCommandSession({
     isSessionPaused,
     ensureSaved,
     onRunAccepted,
+    ...(onRunCommandAccepted === undefined ? {} : { onRunCommandAccepted }),
   });
 
   return { publication, runSubmission } as const;

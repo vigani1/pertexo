@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import {
-  toWorkflowRunRecord,
-  type WorkflowRunRecord,
+  toWorkflowRunReadRecord,
+  type WorkflowRunReadRecord,
 } from './workflow-run-persistence-support.js';
 
 const runStatusSchema = z.enum([
@@ -30,6 +30,8 @@ export type ListWorkflowRunsDatabaseInput = Readonly<{
   workspaceId: string;
   limit: number;
   workflowId?: string;
+  workflowNamePrefix?: string;
+  includeWorkflowName?: boolean;
   status?: z.output<typeof runStatusSchema>;
   createdAtFrom?: string;
   createdAtBefore?: string;
@@ -38,7 +40,7 @@ export type ListWorkflowRunsDatabaseInput = Readonly<{
 }>;
 
 export type WorkflowRunListPage = Readonly<{
-  items: readonly WorkflowRunRecord[];
+  items: readonly WorkflowRunReadRecord[];
   nextCursor?: WorkflowRunListPosition;
 }>;
 
@@ -47,6 +49,8 @@ const inputSchema = z
     workspaceId: z.uuid(),
     limit: z.number().int().min(1).max(100),
     workflowId: z.uuid().optional(),
+    workflowNamePrefix: z.string().trim().min(1).max(128).optional(),
+    includeWorkflowName: z.boolean().default(false),
     status: runStatusSchema.optional(),
     createdAtFrom: z.iso.datetime({ offset: true }).optional(),
     createdAtBefore: z.iso.datetime({ offset: true }).optional(),
@@ -66,46 +70,67 @@ export async function listWorkflowRunsInTransaction(
   transaction: WorkspaceTransaction,
   input: Omit<ListWorkflowRunsDatabaseInput, 'workspaceId' | 'signal'>,
 ): Promise<WorkflowRunListPage> {
-  const result = await transaction.db.execute(sql`
+  const escapedPrefix =
+    input.workflowNamePrefix === undefined
+      ? null
+      : escapeLikePattern(input.workflowNamePrefix);
+  const result = input.includeWorkflowName
+    ? await transaction.db.execute(sql`
     select
-      id,
-      workspace_id,
-      workflow_id,
-      workflow_version_id,
-      status,
-      trigger_type,
-      created_at,
-      updated_at,
-      started_at,
-      completed_at,
-      deadline_at,
-      cancel_requested_at,
+      run.id, run.workspace_id, run.workflow_id, run.workflow_version_id,
+      run.status, run.trigger_type, run.created_at, run.updated_at,
+      run.started_at, run.completed_at, run.deadline_at,
+      run.cancel_requested_at, workflow.name as workflow_name,
       to_char(
-        created_at at time zone 'UTC',
+        run.created_at at time zone 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
       ) as created_at_cursor
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId}
+    from app.workflow_runs run
+    left join app.workflows workflow
+      on workflow.workspace_id = run.workspace_id
+     and workflow.id = run.workflow_id
+    where run.workspace_id = ${transaction.workspaceId}
       and (${input.workflowId ?? null}::uuid is null
-        or workflow_id = ${input.workflowId ?? null}::uuid)
+        or run.workflow_id = ${input.workflowId ?? null}::uuid)
+      and (${escapedPrefix}::text is null
+        or lower(workflow.name) like lower(${escapedPrefix}::text) || '%' escape '\')
       and (${input.status ?? null}::text is null
-        or status = ${input.status ?? null}::text)
+        or run.status = ${input.status ?? null}::text)
       and (${input.createdAtFrom ?? null}::timestamptz is null
-        or created_at >= ${input.createdAtFrom ?? null}::timestamptz)
+        or run.created_at >= ${input.createdAtFrom ?? null}::timestamptz)
       and (${input.createdAtBefore ?? null}::timestamptz is null
-        or created_at < ${input.createdAtBefore ?? null}::timestamptz)
+        or run.created_at < ${input.createdAtBefore ?? null}::timestamptz)
       and (${input.after?.createdAt ?? null}::timestamptz is null
-        or created_at < ${input.after?.createdAt ?? null}::timestamptz
+        or run.created_at < ${input.after?.createdAt ?? null}::timestamptz
         or (
-          created_at = ${input.after?.createdAt ?? null}::timestamptz
-          and id < ${input.after?.id ?? null}::uuid
+          run.created_at = ${input.after?.createdAt ?? null}::timestamptz
+          and run.id < ${input.after?.id ?? null}::uuid
         ))
-    order by created_at desc, id desc
+    order by run.created_at desc, run.id desc
     limit ${input.limit + 1}
-  `);
+  `)
+    : await transaction.db.execute(sql`
+      select
+        id, workspace_id, workflow_id, workflow_version_id, status,
+        trigger_type, created_at, updated_at, started_at, completed_at,
+        deadline_at, cancel_requested_at, null::text as workflow_name,
+        to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
+      from app.workflow_runs
+      where workspace_id = ${transaction.workspaceId}
+        and (${input.workflowId ?? null}::uuid is null
+          or workflow_id = ${input.workflowId ?? null}::uuid)
+        and (${input.status ?? null}::text is null or status = ${input.status ?? null}::text)
+        and (${input.createdAtFrom ?? null}::timestamptz is null or created_at >= ${input.createdAtFrom ?? null}::timestamptz)
+        and (${input.createdAtBefore ?? null}::timestamptz is null or created_at < ${input.createdAtBefore ?? null}::timestamptz)
+        and (${input.after?.createdAt ?? null}::timestamptz is null
+          or created_at < ${input.after?.createdAt ?? null}::timestamptz
+          or (created_at = ${input.after?.createdAt ?? null}::timestamptz and id < ${input.after?.id ?? null}::uuid))
+      order by created_at desc, id desc
+      limit ${input.limit + 1}
+    `);
   const rows = result.rows.map((value) => {
     const { created_at_cursor: cursor, ...runRow } = rowSchema.parse(value);
-    return { cursor, run: toWorkflowRunRecord(runRow) };
+    return { cursor, run: toWorkflowRunReadRecord(runRow) };
   });
   const hasMore = rows.length > input.limit;
   const visible = rows.slice(0, input.limit);
@@ -121,6 +146,13 @@ export async function listWorkflowRunsInTransaction(
         }
       : {}),
   });
+}
+
+function escapeLikePattern(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('%', '\\%')
+    .replaceAll('_', '\\_');
 }
 
 export function parseWorkflowRunListInput(

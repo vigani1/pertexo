@@ -74,6 +74,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and to_regclass('app.workspaces') is not null
         and to_regclass('app.workspace_memberships') is not null
         and to_regclass('app.workspace_member_role_command_receipts') is not null
+        and to_regclass('app.workspace_rename_command_receipts') is not null
         and to_regclass('app.audit_events') is not null
         and exists (
           select 1 from pg_attribute a
@@ -100,6 +101,9 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and
         (select c.relrowsecurity and c.relforcerowsecurity
          from pg_class c where c.oid = to_regclass('app.workspace_member_role_command_receipts'))
+        and
+        (select c.relrowsecurity and c.relforcerowsecurity
+         from pg_class c where c.oid = to_regclass('app.workspace_rename_command_receipts'))
         and
         (select c.relrowsecurity and c.relforcerowsecurity
          from pg_class c where c.oid = to_regclass('app.audit_events'))
@@ -145,6 +149,16 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         )
         and exists (
           select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.workspace_rename_command_receipts')
+            and policy.polname = 'workspace_rename_command_receipts_workspace_scope'
+            and policy.polcmd = '*'
+            and cardinality(policy.polroles) = 1
+            and (select oid from pg_roles where rolname = $3) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and exists (
+          select 1 from pg_policy policy
           where policy.polrelid = to_regclass('app.workspace_member_role_command_receipts')
             and policy.polname = 'workspace_member_role_command_receipts_workspace_scope'
             and policy.polcmd = '*'
@@ -176,6 +190,12 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and has_table_privilege(current_user, 'app.workspace_member_role_command_receipts', 'INSERT')
         and has_column_privilege(current_user, 'app.workspace_member_role_command_receipts', 'status', 'UPDATE')
         and has_column_privilege(current_user, 'app.workspace_member_role_command_receipts', 'result_ref', 'UPDATE')
+        and has_table_privilege(current_user, 'app.workspace_rename_command_receipts', 'SELECT')
+        and has_table_privilege(current_user, 'app.workspace_rename_command_receipts', 'INSERT')
+        and has_column_privilege(current_user, 'app.workspace_rename_command_receipts', 'status', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workspace_rename_command_receipts', 'result_ref', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workspaces', 'name', 'UPDATE')
+        and has_column_privilege(current_user, 'app.workspaces', 'revision', 'UPDATE')
         and has_column_privilege(current_user, 'app.workspace_memberships', 'role_revision', 'UPDATE')
         and has_function_privilege(current_user, 'app.request_workspace_lifecycle_operation(uuid,uuid,character,character varying,uuid,character varying,character)', 'EXECUTE')
         and has_function_privilege(current_user, 'app.read_workspace_lifecycle_operation(uuid,uuid,uuid)', 'EXECUTE')
@@ -187,6 +207,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not has_table_privilege(current_user, 'app.audit_events', 'UPDATE')
         and not has_table_privilege(current_user, 'app.audit_events', 'DELETE')
         and not has_table_privilege(current_user, 'app.workspace_member_role_command_receipts', 'DELETE')
+        and not has_table_privilege(current_user, 'app.workspace_rename_command_receipts', 'DELETE')
         else
           not has_table_privilege(current_user, 'app.users', 'SELECT')
           and not has_table_privilege(current_user, 'app.sessions', 'SELECT')
@@ -297,6 +318,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflow_versions') and conname = 'workflow_versions_schema_version_supported' and pg_get_constraintdef(oid) like '%schema_version = 1%')
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflow_versions') and conname = 'workflow_versions_checksum_format')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_created_idx' and indexdef like '%workspace_id, created_at, id%')
+        and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_updated_idx' and indexdef like '%workspace_id, updated_at DESC, id DESC%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_name_idx' and indexdef like '%workspace_id, name, id%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflow_drafts' and indexname = 'workflow_drafts_workspace_idx' and indexdef like '%workspace_id, workflow_id%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflow_versions' and indexname = 'workflow_versions_workspace_workflow_idx' and indexdef like '%workspace_id, workflow_id, version_number DESC%')

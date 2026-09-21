@@ -612,6 +612,14 @@ describe('workspace purge foundation', () => {
     const destinationId = randomUUID();
     const previewRunId = randomUUID();
     const previewAttemptId = randomUUID();
+    const replacementPriorIntentId = randomUUID();
+    const replacementSuccessorIntentId = randomUUID();
+    const externalWorkspaceId = randomUUID();
+    const externalHoldId = randomUUID();
+    const externalInvitationId = randomUUID();
+    const externalIntentId = randomUUID();
+    const externalClaimPriorIntentId = randomUUID();
+    const incomingClaimPriorIntentId = randomUUID();
     const requestHash = '1'.repeat(64);
     await owner.query('begin');
     try {
@@ -641,6 +649,124 @@ describe('workspace purge foundation', () => {
       await owner.query(
         "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'owner')",
         [workspaceId, userId],
+      );
+      await owner.query(
+        "insert into app.workspaces(id,name,slug,created_by) values($1,'Purge external successor',$2,$3)",
+        [externalWorkspaceId, `purge-external-${externalWorkspaceId}`, userId],
+      );
+      await owner.query(
+        `select app.project_workspace_legal_hold(
+          $1,1,$2,'legal_hold_placed',$3,$4,$5,'operator:test',
+          'purge-test','claim scan hold',clock_timestamp())`,
+        [
+          externalWorkspaceId,
+          randomUUID(),
+          externalHoldId,
+          '0'.repeat(64),
+          '7'.repeat(64),
+        ],
+      );
+      await owner.query(
+        `insert into app.workspace_invitations
+          (id,workspace_id,recipient_email,normalized_email,role,status,revision,
+           token_digest,delivery_status,created_by,expires_at)
+         values($1,$2,$3,$3,'viewer','pending',1,$4,'submitted',$5,
+           clock_timestamp()+interval '1 day')`,
+        [
+          externalInvitationId,
+          externalWorkspaceId,
+          `${externalInvitationId}@example.test`,
+          'd'.repeat(64),
+          userId,
+        ],
+      );
+      await owner.query(
+        `insert into app.workspace_invitation_acceptance_intents
+          (id,workspace_id,invitation_id,invitation_revision,binding_digest,
+           csrf_digest,status,expires_at)
+         values($1,$2,$3,1,$4,$5,'pending',clock_timestamp()+interval '10 minutes')`,
+        [
+          externalIntentId,
+          externalWorkspaceId,
+          externalInvitationId,
+          'e'.repeat(64),
+          'f'.repeat(64),
+        ],
+      );
+      await owner.query(
+        `insert into app.workspace_invitation_binding_replacement_claims
+          (prior_workspace_id,prior_intent_id,prior_binding_digest,
+           successor_workspace_id,successor_intent_id,successor_invitation_id,
+           successor_invitation_revision,successor_binding_digest,
+           successor_csrf_digest)
+         values($1,$2,$3,$1,$4,$5,1,$6,$7)`,
+        [
+          workspaceId,
+          replacementPriorIntentId,
+          'a'.repeat(64),
+          replacementSuccessorIntentId,
+          randomUUID(),
+          'b'.repeat(64),
+          'c'.repeat(64),
+        ],
+      );
+      for (let ordinal = 1; ordinal <= 10; ordinal += 1)
+        await owner.query(
+          `insert into app.workspace_invitation_binding_replacement_claims
+            (prior_workspace_id,prior_intent_id,prior_binding_digest,
+             successor_workspace_id,successor_intent_id,successor_invitation_id,
+             successor_invitation_revision,successor_binding_digest,
+             successor_csrf_digest,created_at,updated_at)
+           values($1,$2,$3,$4,$5,$6,1,$7,$8,
+             timestamptz '2025-01-01 00:00:00+00'+$9*interval '1 second',
+             timestamptz '2025-01-01 00:00:00+00'+$9*interval '1 second')`,
+          [
+            workspaceId,
+            randomUUID(),
+            ordinal.toString(16).padStart(64, '0'),
+            externalWorkspaceId,
+            randomUUID(),
+            randomUUID(),
+            (ordinal + 16).toString(16).padStart(64, '0'),
+            (ordinal + 32).toString(16).padStart(64, '0'),
+            ordinal,
+          ],
+        );
+      await owner.query(
+        `insert into app.workspace_invitation_binding_replacement_claims
+          (prior_workspace_id,prior_intent_id,prior_binding_digest,
+           successor_workspace_id,successor_intent_id,successor_invitation_id,
+           successor_invitation_revision,successor_binding_digest,
+           successor_csrf_digest)
+         values($1,$2,$3,$4,$5,$6,1,$7,$8)`,
+        [
+          workspaceId,
+          externalClaimPriorIntentId,
+          '1'.repeat(64),
+          externalWorkspaceId,
+          externalIntentId,
+          externalInvitationId,
+          'e'.repeat(64),
+          'f'.repeat(64),
+        ],
+      );
+      await owner.query(
+        `insert into app.workspace_invitation_binding_replacement_claims
+          (prior_workspace_id,prior_intent_id,prior_binding_digest,
+           successor_workspace_id,successor_intent_id,successor_invitation_id,
+           successor_invitation_revision,successor_binding_digest,
+           successor_csrf_digest)
+         values($1,$2,$3,$4,$5,$6,1,$7,$8)`,
+        [
+          externalWorkspaceId,
+          incomingClaimPriorIntentId,
+          '4'.repeat(64),
+          workspaceId,
+          randomUUID(),
+          randomUUID(),
+          '5'.repeat(64),
+          '6'.repeat(64),
+        ],
       );
       await owner.query(
         `insert into app.audit_events
@@ -997,6 +1123,7 @@ describe('workspace purge foundation', () => {
       workspaceId,
     ]);
     let tenantRowsCompleted = false;
+    const claimScanPositions = new Set<string>();
     for (let page = 0; page < 80 && !tenantRowsCompleted; page += 1) {
       const claim = await maintenance.query<{
         lease_fence: string;
@@ -1012,7 +1139,10 @@ describe('workspace purge foundation', () => {
       if (lease === undefined)
         throw new Error('Expected tenant-row purge claim');
       expect(lease.step_name).toBe('tenant_rows');
-      const executed = await maintenance.query<{ completed: boolean }>(
+      const executed = await maintenance.query<{
+        completed: boolean;
+        surface: string;
+      }>(
         `select * from app.execute_workspace_tenant_rows_page(
           $1,$2,$3,10,4,$4
         )`,
@@ -1024,8 +1154,30 @@ describe('workspace purge foundation', () => {
         ],
       );
       tenantRowsCompleted = executed.rows[0]?.completed === true;
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        const cursor = await owner.query<{
+          cursor_position: string | null;
+        }>(
+          `select concat_ws(':',cursor_updated_at::text,
+                    cursor_prior_workspace_id::text,cursor_prior_intent_id::text,
+                    cursor_prior_binding_digest) cursor_position
+             from app.workspace_invitation_claim_cleanup_cursors
+            where scan_kind='workspace_purge' and scan_id=$1`,
+          [retry.rows[0]?.job_id],
+        );
+        const position = cursor.rows[0]?.cursor_position;
+        if (position !== undefined && position !== null)
+          claimScanPositions.add(position);
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback').catch(() => undefined);
+        throw error;
+      }
     }
     expect(tenantRowsCompleted).toBe(true);
+    expect(claimScanPositions.size).toBeGreaterThanOrEqual(2);
     await owner.query('begin');
     try {
       await owner.query('set local role pertexo_owner');
@@ -1072,11 +1224,14 @@ describe('workspace purge foundation', () => {
         audit_sensitive: string;
         artifact_count: string;
         membership_count: string;
+        replacement_claim_count: string;
         security_sensitive: string;
         usage_sensitive: string;
       }>(
         `select
           (select count(*) from app.workspace_memberships where workspace_id=$1) membership_count,
+          (select count(*) from app.workspace_invitation_binding_replacement_claims
+            where prior_workspace_id=$1 or successor_workspace_id=$1) replacement_claim_count,
           (select count(*) from app.artifacts where workspace_id=$1) artifact_count,
           (select count(*) from app.audit_events where workspace_id=$1 and
             (actor_user_id is not null or request_id is not null or trace_id is not null
@@ -1092,9 +1247,66 @@ describe('workspace purge foundation', () => {
         audit_sensitive: '0',
         artifact_count: '0',
         membership_count: '0',
+        replacement_claim_count: '12',
         security_sensitive: '0',
         usage_sensitive: '0',
       });
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback');
+      throw error;
+    }
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        `select app.project_workspace_legal_hold(
+          $1,2,$2,'legal_hold_released',$3,$4,$5,'operator:test',
+          'purge-test','claim scan released',clock_timestamp())`,
+        [
+          externalWorkspaceId,
+          randomUUID(),
+          externalHoldId,
+          '7'.repeat(64),
+          '8'.repeat(64),
+        ],
+      );
+      await owner.query(
+        `update app.workspace_invitation_acceptance_intents
+            set status='superseded',updated_at=clock_timestamp()
+          where id=$1`,
+        [externalIntentId],
+      );
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback');
+      throw error;
+    }
+    await expect(
+      maintenance.query(
+        'select * from app.reap_workspace_invitation_transients(10)',
+      ),
+    ).resolves.toMatchObject({
+      rows: [expect.objectContaining({ replacement_claims_deleted: 10 })],
+    });
+    await expect(
+      maintenance.query(
+        'select * from app.reap_workspace_invitation_transients(10)',
+      ),
+    ).resolves.toMatchObject({
+      rows: [expect.objectContaining({ replacement_claims_deleted: 2 })],
+    });
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await expect(
+        owner.query(
+          `select count(*)::integer count
+             from app.workspace_invitation_binding_replacement_claims
+            where prior_workspace_id=$1 or successor_workspace_id=$1`,
+          [workspaceId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
       await owner.query('commit');
     } catch (error: unknown) {
       await owner.query('rollback');

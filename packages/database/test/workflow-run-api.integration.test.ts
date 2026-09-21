@@ -213,6 +213,71 @@ async function apiQueryWithIndexPreference(
   }
 }
 
+type ExplainNode = Readonly<{
+  'Node Type': string;
+  'Actual Rows': number;
+  'Actual Loops': number;
+  'Rows Removed by Filter'?: number;
+  'Rows Removed by Join Filter'?: number;
+  'Rows Removed by Index Recheck'?: number;
+  'Shared Hit Blocks'?: number;
+  'Shared Read Blocks'?: number;
+  Plans?: readonly ExplainNode[];
+}>;
+
+type ExplainDocument = Readonly<{
+  Plan: ExplainNode;
+  'Execution Time'?: number;
+  Settings?: Readonly<Record<string, string>>;
+}>;
+
+function explainDocument(result: QueryResult): ExplainDocument {
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  const documents = row?.['QUERY PLAN'];
+  if (!Array.isArray(documents) || documents.length !== 1)
+    throw new Error('expected one PostgreSQL JSON plan');
+  return documents[0] as ExplainDocument;
+}
+
+type ExplainWork = Readonly<{
+  outputRowInstances: number;
+  rejectedRowInstances: number;
+  summedNodeRowWork: number;
+  rootSharedBufferTouches: number;
+  nodeTypes: readonly string[];
+}>;
+
+function explainWork(node: ExplainNode): ExplainWork {
+  const childWork = (node.Plans ?? []).map(explainWork);
+  const loops = node['Actual Loops'];
+  const outputRowInstances = node['Actual Rows'] * loops;
+  const rejectedRowInstances =
+    ((node['Rows Removed by Filter'] ?? 0) +
+      (node['Rows Removed by Join Filter'] ?? 0) +
+      (node['Rows Removed by Index Recheck'] ?? 0)) *
+    loops;
+  return {
+    outputRowInstances:
+      outputRowInstances +
+      childWork.reduce((total, child) => total + child.outputRowInstances, 0),
+    rejectedRowInstances:
+      rejectedRowInstances +
+      childWork.reduce((total, child) => total + child.rejectedRowInstances, 0),
+    summedNodeRowWork:
+      outputRowInstances +
+      rejectedRowInstances +
+      childWork.reduce((total, child) => total + child.summedNodeRowWork, 0),
+    // PostgreSQL reports aggregate buffer use at the plan root. Do not add the
+    // child counters again because that would double-count the same blocks.
+    rootSharedBufferTouches:
+      (node['Shared Hit Blocks'] ?? 0) + (node['Shared Read Blocks'] ?? 0),
+    nodeTypes: [
+      node['Node Type'],
+      ...childWork.flatMap((child) => child.nodeTypes),
+    ],
+  };
+}
+
 async function resetFixture(): Promise<void> {
   await ownerQuery(`
     truncate table
@@ -348,6 +413,24 @@ afterAll(async () => {
 });
 
 describe('workflow run API persistence', () => {
+  it('counts filtered rows as plan work even when a scan emits no rows', () => {
+    expect(
+      explainWork({
+        'Node Type': 'Seq Scan',
+        'Actual Rows': 0,
+        'Actual Loops': 1,
+        'Rows Removed by Filter': 10_000,
+        'Shared Hit Blocks': 125,
+      }),
+    ).toEqual({
+      outputRowInstances: 0,
+      rejectedRowInstances: 10_000,
+      summedNodeRowWork: 10_000,
+      rootSharedBufferTouches: 125,
+      nodeTypes: ['Seq Scan'],
+    });
+  });
+
   it('paginates sub-millisecond run history completely without duplicates or cross-workspace rows', async () => {
     const first = await database.start(
       startInput(digest('history-request-1'), digest('history-key-1')),
@@ -402,6 +485,8 @@ describe('workflow run API persistence', () => {
       const page = await database.list({
         workspaceId,
         workflowId,
+        workflowNamePrefix: 'Executable Run',
+        includeWorkflowName: true,
         limit: 1,
         createdAtFrom: '2026-08-21T12:00:00.000000Z',
         createdAtBefore: '2026-08-21T12:00:00.001000Z',
@@ -414,6 +499,67 @@ describe('workflow run API persistence', () => {
     expect(seen).toHaveLength(2);
     expect(new Set(seen)).toEqual(new Set([first.run.id, second.run.id]));
     expect(seen).not.toContain(other.run.id);
+    const named = await database.list({
+      workspaceId,
+      workflowNamePrefix: 'Executable Run API',
+      includeWorkflowName: true,
+      limit: 10,
+    });
+    expect(named.items.length).toBeGreaterThan(0);
+    expect(
+      named.items.every(
+        ({ workflowName }) => workflowName === 'Executable Run API',
+      ),
+    ).toBe(true);
+    await expect(
+      database.list({
+        workspaceId,
+        workflowNamePrefix: 'Executable Run API%',
+        includeWorkflowName: true,
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({ items: [] });
+    await expect(
+      database.list({
+        workspaceId,
+        workflowNamePrefix: 'Executable Run API\\',
+        includeWorkflowName: true,
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({ items: [] });
+    await ownerQuery(
+      `update app.workflows set name = 'Éxecutable Run API'
+       where workspace_id = $1 and id = $2`,
+      [workspaceId, workflowId],
+    );
+    const literalSpecials = await database.list({
+      workspaceId,
+      workflowNamePrefix: 'Éxecutable',
+      includeWorkflowName: true,
+      limit: 10,
+    });
+    expect(literalSpecials.items.length).toBeGreaterThan(0);
+    expect(
+      literalSpecials.items.every(
+        ({ workflowName }) => workflowName === 'Éxecutable Run API',
+      ),
+    ).toBe(true);
+    await ownerQuery(
+      `update app.workflows set lifecycle_status = 'archived'
+       where workspace_id = $1 and id = $2`,
+      [workspaceId, workflowId],
+    );
+    const archivedNamed = await database.list({
+      workspaceId,
+      workflowNamePrefix: 'Éxecutable',
+      includeWorkflowName: true,
+      limit: 10,
+    });
+    expect(
+      archivedNamed.items.some(
+        ({ workflowName }) => workflowName === 'Éxecutable Run API',
+      ),
+    ).toBe(true);
     await expect(
       database.list({ workspaceId, workflowId, status: 'failed', limit: 10 }),
     ).resolves.toMatchObject({ items: [{ id: filtered.run.id }] });
@@ -440,6 +586,137 @@ describe('workflow run API persistence', () => {
     expect(JSON.stringify(plan.rows)).toContain(
       'workflow_runs_workspace_workflow_created_idx',
     );
+    const namePlan = await apiQueryWithIndexPreference(
+      `explain (analyze, buffers, format json)
+       select run.id
+       from app.workflow_runs run
+       join app.workflows workflow
+         on workflow.workspace_id = run.workspace_id
+        and workflow.id = run.workflow_id
+       where run.workspace_id = $1
+         and lower(workflow.name) like lower($2) || '%' escape '\\'
+       order by run.created_at desc, run.id desc
+       limit 50`,
+      [workspaceId, 'Éxecutable'],
+    );
+    expect(JSON.stringify(namePlan.rows)).toContain(
+      'workflow_runs_workspace_created_idx',
+    );
+  });
+
+  it('records production-shaped name-filter work under normal planner settings', async () => {
+    await ownerQuery(
+      `insert into app.workflows
+         (id, workspace_id, name, lifecycle_status, activation_status, created_by)
+       select gen_random_uuid(), $1,
+              case
+                when ordinal <= 20 then 'Common workflow ' || ordinal
+                when ordinal = 21 then 'Selective needle'
+                else 'Other workflow ' || ordinal
+              end,
+              'active', 'inactive', $2
+       from generate_series(1, 40) ordinal`,
+      [workspaceId, actorId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_versions
+         (id, workspace_id, workflow_id, version_number, schema_version,
+          graph_json, checksum, executable_schema_version, executable_json,
+          compatibility_release_epoch, published_by)
+       select gen_random_uuid(), $1, workflow.id, 1, 1,
+              '{"schemaVersion":1,"nodes":[],"edges":[],"settings":{}}'::jsonb,
+              'wf:v2:sha256:' || repeat('d', 64), 2,
+              '{"schemaVersion":2}'::jsonb, 1, $2
+       from app.workflows workflow
+       where workflow.workspace_id = $1
+         and workflow.name similar to '(Common|Selective|Other)%'`,
+      [workspaceId, actorId],
+    );
+    await apiQuery(
+      `insert into app.workflow_runs
+         (id, workspace_id, workflow_id, workflow_version_id,
+          trigger_type, status, created_at, updated_at)
+       select gen_random_uuid(), $1, workflow.id, version.id, 'manual',
+              case when run_number % 2 = 0 then 'failed' else 'succeeded' end,
+              '2026-09-01T00:00:00Z'::timestamptz
+                + ((row_number() over ())::text || ' milliseconds')::interval,
+              '2026-09-01T00:00:00Z'::timestamptz
+                + ((row_number() over ())::text || ' milliseconds')::interval
+       from app.workflows workflow
+       join app.workflow_versions version
+         on version.workspace_id = workflow.workspace_id
+        and version.workflow_id = workflow.id
+       cross join generate_series(1, 250) run_number
+       where workflow.workspace_id = $1
+         and workflow.name similar to '(Common|Selective|Other)%'`,
+      [workspaceId],
+    );
+    await ownerQuery('analyze app.workflows');
+    await ownerQuery('analyze app.workflow_runs');
+
+    const explain = async (
+      prefix: string | null,
+      status: string | null,
+      after: string | null,
+    ) =>
+      explainDocument(
+        await apiQuery(
+          `explain (analyze, buffers, settings, format json)
+           select run.id
+           from app.workflow_runs run
+           left join app.workflows workflow
+             on workflow.workspace_id = run.workspace_id
+            and workflow.id = run.workflow_id
+           where run.workspace_id = $1
+             and ($2::text is null
+               or lower(workflow.name) like lower($2::text) || '%' escape '\\')
+             and ($3::text is null or run.status = $3::text)
+             and ($4::timestamptz is null
+               or run.created_at < $4::timestamptz
+               or (run.created_at = $4::timestamptz and run.id < $5::uuid))
+           order by run.created_at desc, run.id desc
+           limit 50`,
+          [
+            workspaceId,
+            prefix,
+            status,
+            after,
+            after === null ? null : 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          ],
+        ),
+      );
+
+    const evidence = {
+      absent: await explain(null, null, null),
+      selective: await explain('Selective', null, null),
+      common: await explain('Common', null, null),
+      noMatch: await explain('Missing', null, null),
+      combined: await explain('Common', 'failed', null),
+      deep: await explain('Common', null, '2026-09-01T00:00:02.500000Z'),
+    };
+    expect(evidence.absent.Plan['Actual Rows']).toBe(50);
+    expect(evidence.selective.Plan['Actual Rows']).toBe(50);
+    expect(evidence.common.Plan['Actual Rows']).toBe(50);
+    expect(evidence.noMatch.Plan['Actual Rows']).toBe(0);
+    expect(evidence.combined.Plan['Actual Rows']).toBe(50);
+    expect(evidence.deep.Plan['Actual Rows']).toBe(50);
+    const measured = Object.fromEntries(
+      Object.entries(evidence).map(([scenario, plan]) => [
+        scenario,
+        {
+          ...explainWork(plan.Plan),
+          executionTimeMs: plan['Execution Time'],
+        },
+      ]),
+    );
+    for (const [scenario, plan] of Object.entries(evidence)) {
+      expect(plan.Settings?.enable_seqscan).not.toBe('off');
+      expect(measured[scenario]?.summedNodeRowWork).toBeGreaterThan(0);
+      expect(measured[scenario]?.rootSharedBufferTouches).toBeGreaterThan(0);
+      expect(measured[scenario]?.nodeTypes.length).toBeGreaterThan(0);
+    }
+    expect(measured.noMatch?.outputRowInstances).toBe(0);
+    expect(measured.noMatch?.rejectedRowInstances).toBeGreaterThan(0);
   });
 
   it('resolves an exact replay before checking the current compatibility release', async () => {

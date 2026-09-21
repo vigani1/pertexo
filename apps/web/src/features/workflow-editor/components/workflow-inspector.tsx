@@ -1,6 +1,9 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  workflowGraphSchema,
+  type WorkflowGraphContract,
+} from '@pertexo/contracts/schemas/workflow-authoring';
 import {
   useCallback,
   useEffect,
@@ -38,6 +41,20 @@ import {
   type NodeConfig,
   type SchemaFieldSpec,
 } from '../model/inspector-draft';
+import {
+  directPredecessorOptions,
+  inputKeySuggestions,
+  inputMappingKeyControlId,
+  inputMappingRowsFor,
+  inputMappingSourceErrors,
+  inputMappingSourceControlId,
+  newInputMappingRow,
+  nodeUsesRunInputDirectly,
+  validateInputMappingRows,
+  type InputMappingDraftRow,
+  type InputMappingRowErrors,
+} from '../model/input-mappings';
+import { InputMappingsSection } from './inspector/input-mappings/input-mappings-section';
 import { NodeInspectorHeader } from './inspector/node-inspector-header';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -64,6 +81,7 @@ export function WorkflowInspector({
   focusTarget?: Readonly<{
     nodeId: string;
     fieldKey?: string;
+    mappingKey?: string;
     requestId: number;
   }>;
 }>) {
@@ -130,6 +148,7 @@ function NodeInspectorForm({
   focusTarget?: Readonly<{
     nodeId: string;
     fieldKey?: string;
+    mappingKey?: string;
     requestId: number;
   }>;
 }>) {
@@ -148,6 +167,26 @@ function NodeInspectorForm({
   const fields = useMemo(
     () => schemaFields(definition?.configSchema),
     [definition?.configSchema],
+  );
+  const mappingSectionEnabled = !nodeUsesRunInputDirectly(node.definition);
+  const initialMappingRows = useMemo(
+    () => inputMappingRowsFor(node.inputMappings),
+    [node.inputMappings],
+  );
+  const [mappingRows, setMappingRows] = useState(initialMappingRows);
+  const [mappingErrors, setMappingErrors] = useState<
+    Readonly<Record<string, InputMappingRowErrors>>
+  >({});
+  const [mappingSectionError, setMappingSectionError] = useState<string>();
+  const mappingRowSequence = useRef(initialMappingRows.length);
+  const liveMappingErrors = inputMappingSourceErrors(
+    mappingRows,
+    graph,
+    node.id,
+  );
+  const displayedMappingErrors = mergeMappingErrors(
+    liveMappingErrors,
+    mappingErrors,
   );
   const parsedConfig = parseJson(json);
   const config = isJsonObject(parsedConfig) ? parsedConfig : node.config;
@@ -188,6 +227,8 @@ function NodeInspectorForm({
   const dirty =
     JSON.stringify({ label, config: parseJson(json), connectionRefs }) !==
       initial ||
+    (mappingSectionEnabled &&
+      JSON.stringify(mappingRows) !== JSON.stringify(initialMappingRows)) ||
     JSON.stringify(numericScratch) !== JSON.stringify(initialNumericScratch) ||
     JSON.stringify(ordinaryScratch) !== JSON.stringify(initialOrdinaryScratch);
 
@@ -200,12 +241,20 @@ function NodeInspectorForm({
 
   useEffect(() => {
     if (focusTarget?.nodeId !== node.id) return;
+    const mappingRow =
+      focusTarget.mappingKey === undefined
+        ? undefined
+        : initialMappingRows.find(
+            (row) => row.destinationKey === focusTarget.mappingKey,
+          );
     const targetId =
-      focusTarget.fieldKey === undefined
-        ? `node-label-${node.id}`
-        : `config-${node.id}-${focusTarget.fieldKey}`;
+      mappingRow !== undefined
+        ? inputMappingKeyControlId(node.id, mappingRow.id)
+        : focusTarget.fieldKey === undefined
+          ? `node-label-${node.id}`
+          : `config-${node.id}-${focusTarget.fieldKey}`;
     document.getElementById(targetId)?.focus();
-  }, [focusTarget, node.id]);
+  }, [focusTarget, initialMappingRows, node.id]);
 
   const apply = useCallback(() => {
     const parsed = parseJson(json);
@@ -235,15 +284,32 @@ function NodeInspectorForm({
           ?.focus();
       return false;
     }
-    transact(
-      updateWorkflowNode(graph, node.id, {
-        label: label.trim() === '' ? undefined : label.trim(),
-        config: numeric.config,
-        connectionRefs,
-      }),
-    );
+    const mappings = mappingSectionEnabled
+      ? validateInputMappingRows(mappingRows, graph, node.id)
+      : { inputMappings: node.inputMappings, errors: {} };
+    if (mappings.inputMappings === undefined) {
+      setMappingErrors(mappings.errors);
+      setMappingSectionError('Correct the input mappings before applying.');
+      focusFirstMappingError(node.id, mappingRows, mappings.errors, graph);
+      return false;
+    }
+    const nextGraph = updateWorkflowNode(graph, node.id, {
+      label: label.trim() === '' ? undefined : label.trim(),
+      config: numeric.config,
+      inputMappings: mappings.inputMappings,
+      connectionRefs,
+    });
+    if (!workflowGraphSchema.safeParse(nextGraph).success) {
+      setMappingSectionError(
+        'The updated node does not satisfy the workflow graph contract.',
+      );
+      return false;
+    }
+    transact(nextGraph);
     setError(undefined);
     setFieldErrors({});
+    setMappingErrors({});
+    setMappingSectionError(undefined);
     return true;
   }, [
     connectionRefs,
@@ -251,6 +317,9 @@ function NodeInspectorForm({
     graph,
     json,
     label,
+    mappingRows,
+    mappingSectionEnabled,
+    node.inputMappings,
     node.id,
     numericScratch,
     ordinaryScratch,
@@ -373,6 +442,13 @@ function NodeInspectorForm({
       targetHandle: targetPort,
     });
     if (next !== null) transact(next);
+  }
+
+  function updateMappingRows(rows: readonly InputMappingDraftRow[]) {
+    setMappingRows(rows);
+    setMappingSectionError(undefined);
+    if (Object.keys(mappingErrors).length === 0) return;
+    setMappingErrors(validateInputMappingRows(rows, graph, node.id).errors);
   }
 
   return (
@@ -504,6 +580,32 @@ function NodeInspectorForm({
             </FieldDescription>
             {error === undefined ? null : <FieldError>{error}</FieldError>}
           </Field>
+          {mappingSectionEnabled ? (
+            <InputMappingsSection
+              nodeId={node.id}
+              rows={mappingRows}
+              suggestions={inputKeySuggestions(definition?.inputSchema)}
+              predecessors={directPredecessorOptions(graph, node.id)}
+              errors={displayedMappingErrors}
+              {...(mappingSectionError === undefined
+                ? {}
+                : { sectionError: mappingSectionError })}
+              editable={editable && definition !== undefined}
+              onRowsChange={updateMappingRows}
+              onAdd={() => {
+                const row = newInputMappingRow(
+                  `new-${String(mappingRowSequence.current)}`,
+                );
+                mappingRowSequence.current += 1;
+                updateMappingRows([...mappingRows, row]);
+              }}
+            />
+          ) : (
+            <p className="rounded-lg border border-white/8 bg-card/35 p-3 text-sm text-muted-foreground">
+              This trigger receives the accepted run input directly. Input
+              mappings do not change its execution input.
+            </p>
+          )}
           {editable && graph.nodes.length > 1 ? (
             <FieldGroup className="rounded-lg border border-white/8 bg-black/15 p-3">
               <Field>
@@ -602,6 +704,7 @@ function NodeInspectorForm({
                   setLabel(node.label ?? '');
                   setJson(JSON.stringify(node.config, null, 2));
                   setConnectionRefs(node.connectionRefs);
+                  setMappingRows(initialMappingRows);
                   setNumericScratch(initialNumericScratch);
                   setOrdinaryScratch(initialOrdinaryScratch);
                   numericScratchOwners.current.clear();
@@ -609,6 +712,8 @@ function NodeInspectorForm({
                   latestValidJsonConfig.current = node.config;
                   setError(undefined);
                   setFieldErrors({});
+                  setMappingErrors({});
+                  setMappingSectionError(undefined);
                 }}
               >
                 Cancel changes
@@ -740,4 +845,41 @@ function SchemaField({
 
 function connectionRequirementLabel(requirement: string): string {
   return `${requirement.replaceAll('_', ' ')} connection`;
+}
+
+function focusFirstMappingError(
+  nodeId: string,
+  rows: readonly InputMappingDraftRow[],
+  errors: Readonly<Record<string, InputMappingRowErrors>>,
+  graph: WorkflowGraphContract,
+): void {
+  const row = rows.find((candidate) => errors[candidate.id] !== undefined);
+  if (row === undefined) return;
+  const rowErrors = errors[row.id];
+  const targetId =
+    rowErrors?.destinationKey !== undefined
+      ? inputMappingKeyControlId(nodeId, row.id)
+      : row.kind === 'node_output' &&
+          !directPredecessorOptions(graph, nodeId).some(
+            ({ nodeId: predecessorId }) => predecessorId === row.nodeId,
+          )
+        ? `${inputMappingSourceControlId(nodeId, row.id)}-node`
+        : inputMappingSourceControlId(nodeId, row.id);
+  document.getElementById(targetId)?.focus();
+}
+
+function mergeMappingErrors(
+  sourceErrors: Readonly<Record<string, InputMappingRowErrors>>,
+  submittedErrors: Readonly<Record<string, InputMappingRowErrors>>,
+): Readonly<Record<string, InputMappingRowErrors>> {
+  const rowIds = new Set([
+    ...Object.keys(sourceErrors),
+    ...Object.keys(submittedErrors),
+  ]);
+  return Object.fromEntries(
+    [...rowIds].map((rowId) => [
+      rowId,
+      { ...sourceErrors[rowId], ...submittedErrors[rowId] },
+    ]),
+  );
 }

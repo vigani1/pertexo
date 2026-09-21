@@ -16,6 +16,7 @@ import {
   workflowRunCreatedAtSchema,
   workflowRunCursorSchema,
   workflowRunListResponseSchema,
+  workflowRunListQuerySchema,
   workflowRunPageLimitSchema,
   workflowRunStatusSchema,
   workflowNodeRunSummarySchema,
@@ -28,6 +29,7 @@ import {
   workflowRunStartParamsSchema,
   workflowRunStartResponseSchema,
   workflowRunSummarySchema,
+  workflowRunReadSummarySchema,
 } from './http/workflow-runs.js';
 
 export * from './http/workflow-runs.js';
@@ -41,6 +43,7 @@ const schemas = Object.freeze({
     'output',
   ),
   WorkflowRunSummary: jsonSchema(workflowRunSummarySchema, 'output'),
+  WorkflowRunReadSummary: jsonSchema(workflowRunReadSummarySchema, 'output'),
   WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
   WorkflowNodeRunSummary: jsonSchema(workflowNodeRunSummarySchema, 'output'),
   WorkflowRunResponse: jsonSchema(workflowRunResponseSchema, 'output'),
@@ -105,6 +108,10 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           queryParameter(
             'workflowId',
             workflowRunStartParamsSchema.shape.workflowId,
+          ),
+          queryParameter(
+            'workflowNamePrefix',
+            workflowRunListQuerySchema.shape.workflowNamePrefix,
           ),
           queryParameter('status', workflowRunStatusSchema),
           queryParameter('createdAtFrom', workflowRunCreatedAtSchema),

@@ -15,6 +15,8 @@ export const workflowRunKeys = {
     ] as const,
   detail: (userId: string, workspaceId: string, runId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'detail', runId] as const,
+  recent: (userId: string, workspaceId: string, status: 'all' | 'failed') =>
+    [...workflowRunKeys.scope(userId, workspaceId), 'recent', status] as const,
 };
 
 export function workflowRunsInfiniteQueryOptions(
@@ -32,6 +34,26 @@ export function workflowRunsInfiniteQueryOptions(
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
+}
+
+export function recentWorkflowRunsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  status: 'all' | 'failed',
+) {
+  return queryOptions({
+    queryKey: workflowRunKeys.recent(userId, workspaceId, status),
+    queryFn: ({ signal }) =>
+      getWorkflowRunsPage(
+        apiClient,
+        workspaceId,
+        status === 'failed' ? { status: 'failed' } : {},
+        { limit: 5, signal },
+      ),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -119,6 +119,43 @@ describe('workflow draft persistence', () => {
     ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
     const workflows = await authoring.listWorkflows({ workspaceId, actorId });
     expect(workflows.items.some(({ id }) => id === workflowId)).toBe(true);
+    await expect(
+      authoring.getWorkflow(workspaceId, workflowId, actorId),
+    ).resolves.toMatchObject({ id: workflowId, name: 'First workflow' });
+    await expect(
+      authoring.getWorkflow(workspaceId, randomUUID(), actorId),
+    ).resolves.toBeNull();
+    const overflowWorkflows = await queryAsOwner<{ id: string }>(
+      `insert into app.workflows
+         (id, workspace_id, name, lifecycle_status, activation_status, created_by)
+       select gen_random_uuid(), $1, 'Exact lookup ' || ordinal,
+              'active', 'inactive', $2
+       from generate_series(1, 101) ordinal
+       returning id`,
+      [workspaceId, actorId],
+      workspaceId,
+    );
+    const firstHundred = await authoring.listWorkflows({
+      workspaceId,
+      actorId,
+      limit: 100,
+    });
+    const firstPageIds = new Set(firstHundred.items.map(({ id }) => id));
+    const beyondFirstPage = overflowWorkflows.find(
+      ({ id }) => !firstPageIds.has(id),
+    );
+    expect(beyondFirstPage).toBeDefined();
+    if (beyondFirstPage === undefined)
+      throw new Error('expected an exact lookup target beyond the first page');
+    const exactWorkflow = await authoring.getWorkflow(
+      workspaceId,
+      beyondFirstPage.id,
+      actorId,
+    );
+    if (exactWorkflow === null)
+      throw new Error('expected exact workflow metadata beyond the first page');
+    expect(exactWorkflow.id).toBe(beyondFirstPage.id);
+    expect(exactWorkflow.name).toMatch(/^Exact lookup /u);
 
     const concurrentInput = {
       ...createInput,
@@ -130,6 +167,37 @@ describe('workflow draft persistence', () => {
       authoring.createWorkflow(concurrentInput),
     ]);
     expect(concurrent[0].workflowId).toBe(concurrent[1].workflowId);
+    await queryAsOwner(
+      `update app.workflows
+       set updated_at = case id
+         when $1::uuid then '2099-09-20T10:00:00.000100Z'::timestamptz
+         when $2::uuid then '2099-09-20T10:00:00.000900Z'::timestamptz
+         else updated_at
+       end
+       where workspace_id = $3 and id in ($1::uuid, $2::uuid)`,
+      [workflowId, concurrent[0].workflowId, workspaceId],
+      workspaceId,
+    );
+    const recentFirstPage = await authoring.listWorkflows({
+      workspaceId,
+      actorId,
+      limit: 1,
+      order: 'updated_desc',
+    });
+    expect(recentFirstPage.items.map(({ id }) => id)).toEqual([
+      concurrent[0].workflowId,
+    ]);
+    expect(recentFirstPage.nextCursor).toBeDefined();
+    const recentCursor = recentFirstPage.nextCursor;
+    if (recentCursor === undefined) throw new Error('Missing recent cursor');
+    const recentSecondPage = await authoring.listWorkflows({
+      workspaceId,
+      actorId,
+      limit: 1,
+      order: 'updated_desc',
+      after: recentCursor,
+    });
+    expect(recentSecondPage.items.map(({ id }) => id)).toEqual([workflowId]);
     const listed = await authoring.listWorkflows({
       workspaceId,
       actorId,
@@ -172,7 +240,10 @@ describe('workflow draft persistence', () => {
     const secondPage = await authoring.listWorkflows({
       workspaceId,
       actorId,
-      after: { createdAt: firstWorkflow.createdAt, id: firstWorkflow.id },
+      after: {
+        positionAt: firstWorkflow.createdAt.toISOString(),
+        id: firstWorkflow.id,
+      },
       limit: 10,
     });
     expect(secondPage.items.map((workflow) => workflow.id)).not.toContain(

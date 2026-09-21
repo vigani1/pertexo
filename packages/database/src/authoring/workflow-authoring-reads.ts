@@ -23,7 +23,7 @@ import type { WorkflowDefinitionCatalogV1 } from '@pertexo/workflow-model/graph'
 
 type ReadStore = Pick<
   WorkflowAuthoringDatabase,
-  'getDraft' | 'getVersion' | 'listVersions' | 'listWorkflows'
+  'getDraft' | 'getVersion' | 'getWorkflow' | 'listVersions' | 'listWorkflows'
 >;
 
 export type WorkflowAuthoringReadContext = Readonly<{
@@ -48,6 +48,17 @@ export function createWorkflowAuthoringReadStore(
   context: WorkflowAuthoringReadContext,
 ): ReadStore {
   return Object.freeze({
+    getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
+      context.transact(workspaceId, actorId, async (client) => {
+        await context.requireReader(client, workspaceId, actorId);
+        const result = await client.query<Record<string, unknown>>(
+          'select * from app.workflows where workspace_id = $1 and id = $2',
+          [workspaceId, uuidSchema.parse(workflowId)],
+        );
+        return result.rows[0] === undefined
+          ? null
+          : mapWorkflow(result.rows[0]);
+      }),
     listWorkflows: (input: ListWorkflowsInput): Promise<WorkflowPage> =>
       context.transact(input.workspaceId, input.actorId, async (client) => {
         await context.requireReader(client, input.workspaceId, input.actorId);
@@ -57,24 +68,33 @@ export function createWorkflowAuthoringReadStore(
           .positive()
           .max(100)
           .parse(input.limit ?? 50);
-        const afterCreatedAt = input.after?.createdAt ?? null;
-        if (
-          afterCreatedAt !== null &&
-          (!(afterCreatedAt instanceof Date) ||
-            !Number.isFinite(afterCreatedAt.getTime()))
-        )
-          throw new Error('Invalid workflow list cursor time');
+        const order = input.order ?? 'created_asc';
+        const afterPositionAt =
+          input.after === undefined
+            ? null
+            : z.iso.datetime({ offset: true }).parse(input.after.positionAt);
         const afterId =
           input.after === undefined ? null : uuidSchema.parse(input.after.id);
         const result = await client.query<Record<string, unknown>>(
-          `select * from app.workflows where workspace_id = $1
-             and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
-           order by created_at, id limit $4`,
-          [input.workspaceId, afterCreatedAt, afterId, limit + 1],
+          order === 'updated_desc'
+            ? `select *, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+               from app.workflows where workspace_id = $1
+                 and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
+               order by updated_at desc, id desc limit $4`
+            : `select *, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
+               from app.workflows where workspace_id = $1
+                 and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
+               order by created_at, id limit $4`,
+          [input.workspaceId, afterPositionAt, afterId, limit + 1],
         );
         const hasMore = result.rows.length > limit;
+        const pageRows = result.rows.slice(0, limit);
         const items = Object.freeze(
-          result.rows.slice(0, limit).map((row) => mapWorkflow(row)),
+          pageRows.map((row) => {
+            const workflowRow = { ...row };
+            delete workflowRow.cursor_position_at;
+            return mapWorkflow(workflowRow);
+          }),
         );
         const last = items.at(-1);
         return Object.freeze({
@@ -82,7 +102,9 @@ export function createWorkflowAuthoringReadStore(
           ...(hasMore && last !== undefined
             ? {
                 nextCursor: Object.freeze({
-                  createdAt: last.createdAt,
+                  positionAt: z
+                    .string()
+                    .parse(pageRows.at(-1)?.cursor_position_at),
                   id: last.id,
                 }),
               }

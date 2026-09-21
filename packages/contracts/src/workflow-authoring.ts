@@ -14,6 +14,7 @@ import {
   workflowPublishResponseSchema,
   workflowRevisionConflictProblemSchema,
   workflowSummarySchema,
+  workflowSummaryResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
@@ -79,6 +80,11 @@ function contractSchemas(target: 'client' | 'openapi') {
     WorkflowSummary: project(
       'WorkflowSummary',
       workflowSummarySchema,
+      'output',
+    ),
+    WorkflowSummaryResponse: project(
+      'WorkflowSummaryResponse',
+      workflowSummaryResponseSchema,
       'output',
     ),
     WorkflowListResponse: project(
@@ -272,6 +278,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           ...pathParameters,
           queryParameter('limit', workflowListQuerySchema.shape.limit),
           queryParameter('after', workflowListQuerySchema.shape.after),
+          queryParameter('order', workflowListQuerySchema.shape.order),
         ],
         responses: {
           '200': jsonResponse('Workflows', 'WorkflowListResponse'),
@@ -296,6 +303,20 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}': {
+      get: {
+        operationId: 'getWorkflow',
+        security: [{ cookieSession: [] }],
+        parameters: workflowParameters,
+        responses: {
+          '200': jsonResponse('Workflow metadata', 'WorkflowSummaryResponse'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
           '500': responseReference('Unexpected'),
         },
       },
@@ -412,7 +433,7 @@ function jsonResponseWithHeaders(
 ) {
   return { ...jsonResponse(description, name), headers } as const;
 }
-function queryParameter(name: 'limit' | 'after', schema: z.ZodType) {
+function queryParameter(name: 'limit' | 'after' | 'order', schema: z.ZodType) {
   return {
     name,
     in: 'query',

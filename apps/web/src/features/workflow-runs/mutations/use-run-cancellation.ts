@@ -26,7 +26,7 @@ export function useRunCancellation({
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: workflowRunKeys.detail(userId, workspaceId, runId),
+        queryKey: workflowRunKeys.scope(userId, workspaceId),
       });
     },
   });

@@ -42,6 +42,9 @@ const runRowSchema = z
     cancel_requested_at: z.coerce.date().nullable(),
   })
   .strict();
+const runReadRowSchema = runRowSchema.extend({
+  workflow_name: z.string().min(1).max(128).nullable(),
+});
 
 export type WorkflowRunRecord = Readonly<{
   id: string;
@@ -57,6 +60,9 @@ export type WorkflowRunRecord = Readonly<{
   deadlineAt: Date | null;
   cancelRequestedAt: Date | null;
 }>;
+
+export type WorkflowRunReadRecord = WorkflowRunRecord &
+  Readonly<{ workflowName?: string | null }>;
 
 export async function readWorkflowRunRecord(
   transaction: WorkspaceTransaction,
@@ -82,6 +88,38 @@ export async function readWorkflowRunRecord(
   `);
   const row = result.rows[0];
   return row === undefined ? undefined : toWorkflowRunRecord(row);
+}
+
+export async function readWorkflowRunReadRecord(
+  transaction: WorkspaceTransaction,
+  runId: string,
+  includeWorkflowName: boolean,
+): Promise<WorkflowRunReadRecord | undefined> {
+  const result = includeWorkflowName
+    ? await transaction.db.execute(sql`
+        select
+          run.id, run.workspace_id, run.workflow_id, run.workflow_version_id,
+          run.status, run.trigger_type, run.created_at, run.updated_at,
+          run.started_at, run.completed_at, run.deadline_at,
+          run.cancel_requested_at, workflow.name as workflow_name
+        from app.workflow_runs run
+        left join app.workflows workflow
+          on workflow.workspace_id = run.workspace_id
+         and workflow.id = run.workflow_id
+        where run.workspace_id = ${transaction.workspaceId} and run.id = ${runId}
+        limit 1
+      `)
+    : await transaction.db.execute(sql`
+        select
+          id, workspace_id, workflow_id, workflow_version_id, status,
+          trigger_type, created_at, updated_at, started_at, completed_at,
+          deadline_at, cancel_requested_at, null::text as workflow_name
+        from app.workflow_runs
+        where workspace_id = ${transaction.workspaceId} and id = ${runId}
+        limit 1
+      `);
+  const row = result.rows[0];
+  return row === undefined ? undefined : toWorkflowRunReadRecord(row);
 }
 
 export async function requireWorkflowRunRecord(
@@ -141,7 +179,7 @@ export async function insertWorkflowRunAudit(
   `);
 }
 
-export function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
+function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
   const row = runRowSchema.parse(value);
   return Object.freeze({
     id: row.id,
@@ -156,5 +194,14 @@ export function toWorkflowRunRecord(value: unknown): WorkflowRunRecord {
     completedAt: row.completed_at,
     deadlineAt: row.deadline_at,
     cancelRequestedAt: row.cancel_requested_at,
+  });
+}
+
+export function toWorkflowRunReadRecord(value: unknown): WorkflowRunReadRecord {
+  const row = runReadRowSchema.parse(value);
+  const { workflow_name: workflowName, ...runRow } = row;
+  return Object.freeze({
+    ...toWorkflowRunRecord(runRow),
+    workflowName,
   });
 }

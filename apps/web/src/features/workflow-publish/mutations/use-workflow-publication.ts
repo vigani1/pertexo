@@ -29,6 +29,7 @@ export function useWorkflowPublication({
   workflowId,
   verifyIdentity,
   ensureSaved,
+  onPublicationAccepted,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
@@ -37,6 +38,7 @@ export function useWorkflowPublication({
   ensureSaved: () => Promise<
     Readonly<{ etag: string; generation: number; revision: number }>
   >;
+  onPublicationAccepted?: () => void;
 }>) {
   const [validation, setValidation] = useState<ValidationResult>();
   const [validationPending, setValidationPending] = useState(false);
@@ -131,6 +133,7 @@ export function useWorkflowPublication({
         generation: command.generation,
         revision: command.revision,
       });
+      onPublicationAccepted?.();
       return true;
     } catch (error) {
       if (owner.current !== publicationOwner) return false;

@@ -45,13 +45,15 @@ export const workflowNodeIdParamSchema = z
   .strict();
 export const workflowCursorSchema = z.string().min(1).max(512);
 export const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
+export const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
+export const workflowNameSchema = z.string().trim().min(1).max(128);
 
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };
 export type WorkflowGraphContract = WorkflowGraph;
 
 export const workflowCreateRequestSchema = z
-  .object({ name: z.string().trim().min(1).max(128) })
+  .object({ name: workflowNameSchema })
   .strict();
 
 export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
@@ -86,7 +88,7 @@ export const workflowSummarySchema = z
   .object({
     id: z.uuid(),
     workspaceId: z.uuid(),
-    name: z.string(),
+    name: workflowNameSchema,
     lifecycleStatus: workflowLifecycleStatusSchema,
     lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
@@ -95,6 +97,12 @@ export const workflowSummarySchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
+export const workflowSummaryResponseSchema = z
+  .object({ workflow: workflowSummarySchema })
+  .strict();
+export type WorkflowSummaryResponse = z.output<
+  typeof workflowSummaryResponseSchema
+>;
 
 export const workflowLifecycleRequestSchema = z
   .object({
@@ -160,9 +168,15 @@ export const workflowListQuerySchema = z
   .object({
     limit: workflowPageLimitSchema.optional(),
     after: workflowCursorSchema.optional(),
+    order: workflowListOrderSchema.optional(),
   })
   .strict();
-export const workflowVersionsQuerySchema = workflowListQuerySchema;
+export const workflowVersionsQuerySchema = z
+  .object({
+    limit: workflowPageLimitSchema.optional(),
+    after: workflowCursorSchema.optional(),
+  })
+  .strict();
 
 export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   status: z.literal(412),
@@ -184,6 +198,7 @@ export type WorkflowLifecycleConflictProblem = z.output<
 >;
 
 export type WorkflowSummary = z.output<typeof workflowSummarySchema>;
+export type WorkflowListQuery = z.output<typeof workflowListQuerySchema>;
 export type WorkflowListResponse = z.output<typeof workflowListResponseSchema>;
 export type WorkflowCreateResponse = z.output<
   typeof workflowCreateResponseSchema

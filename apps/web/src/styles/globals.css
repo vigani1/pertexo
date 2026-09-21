@@ -163,6 +163,15 @@
 }
 
 @layer components {
+  /* React Flow owns these child controls, so its focus ring needs a narrow
+     component selector rather than Tailwind classes on the wrapper. */
+  .workflow-canvas-controls .react-flow__controls-button:focus {
+    position: relative;
+    z-index: 10;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
   .app-stage,
   .auth-stage {
     background:

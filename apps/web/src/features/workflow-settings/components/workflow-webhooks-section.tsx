@@ -85,6 +85,7 @@ export function WorkflowWebhooksSection({
 
   return (
     <SettingsSection
+      id="workflow-webhooks"
       title="Webhooks"
       description="Provision and rotate published webhook endpoints. Newly issued credentials are shown once."
     >

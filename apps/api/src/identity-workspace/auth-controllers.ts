@@ -3,6 +3,7 @@ import {
   Get,
   HttpCode,
   Inject,
+  Optional,
   Post,
   Query,
   Req,
@@ -46,6 +47,7 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 import { OidcApplicationService } from './use-cases.js';
+import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 
 @Controller('v1/auth/oidc')
 export class OidcController {
@@ -61,8 +63,17 @@ export class OidcController {
     private readonly callbackLandingPath = '/',
     @Inject(IDENTITY_WORKSPACE_TELEMETRY)
     telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+    @Optional()
+    invitationAcceptance?: InvitationAcceptanceUseCase,
   ) {
-    this.application = new OidcApplicationService(oidc, sessions, telemetry);
+    this.application = new OidcApplicationService(
+      oidc,
+      sessions,
+      telemetry,
+      invitationAcceptance === undefined
+        ? undefined
+        : (result) => invitationAcceptance.recordProof(result),
+    );
   }
 
   @Get('start')
@@ -101,12 +112,17 @@ export class OidcController {
         this.csrf.issueToken(),
         clearedBinding,
       );
-      await this.application.complete(
+      const result = await this.application.complete(
         query,
         readCookie(request, OIDC_BROWSER_BINDING_COOKIE_NAME),
         cookies,
       );
-      response.header('location', this.callbackLandingPath);
+      response.header(
+        'location',
+        result.continuation?.kind === 'invitation_acceptance'
+          ? '/invitations/accept'
+          : this.callbackLandingPath,
+      );
     } catch (error: unknown) {
       try {
         response.header('set-cookie', clearedBinding);

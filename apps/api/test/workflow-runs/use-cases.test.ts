@@ -164,6 +164,7 @@ describe('workflow run application seams', () => {
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
+      workflowNamePrefix: 'Oper',
       status: 'queued',
       createdAtFrom: '2026-08-21T14:00:00+02:00',
       limit: 1,
@@ -175,6 +176,7 @@ describe('workflow run application seams', () => {
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
+      workflowNamePrefix: 'Oper',
       status: 'queued',
       createdAtFrom: '2026-08-21T12:00:00.000000Z',
       limit: 1,
@@ -182,6 +184,8 @@ describe('workflow run application seams', () => {
     });
     expect(fixture.list).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        workflowNamePrefix: 'Oper',
+        includeWorkflowName: true,
         createdAtFrom: '2026-08-21T12:00:00.000000Z',
         after: {
           createdAt: '2026-08-21T12:00:00.000123Z',
@@ -195,12 +199,112 @@ describe('workflow run application seams', () => {
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
+        workflowNamePrefix: 'Different',
         status: 'running',
         limit: 1,
         after: first.nextCursor,
       }),
     ).rejects.toThrow('workflow run cursor is invalid');
     expect(fixture.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('accepts a legacy no-prefix cursor only for another no-prefix request', async () => {
+    const fixture = persistence();
+    fixture.list
+      .mockResolvedValueOnce({
+        items: [run()],
+        nextCursor: {
+          createdAt: '2026-08-21T12:00:00.000123Z',
+          id: runId,
+        },
+      })
+      .mockResolvedValueOnce({ items: [] });
+    const useCase = new ListWorkflowRunsUseCase(fixture.store, authorization());
+    const first = await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      limit: 1,
+    });
+    if (first.nextCursor === null) throw new Error('expected a next cursor');
+    const payload = JSON.parse(
+      Buffer.from(first.nextCursor, 'base64url').toString('utf8'),
+    ) as { filters: Record<string, unknown> };
+    expect(payload.filters).not.toHaveProperty('workflowNamePrefix');
+
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        limit: 1,
+        after: first.nextCursor,
+      }),
+    ).resolves.toMatchObject({ items: [] });
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowNamePrefix: 'Oper',
+        limit: 1,
+        after: first.nextCursor,
+      }),
+    ).rejects.toThrow('workflow run cursor is invalid');
+    expect(fixture.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('omits workflow metadata and rejects name filtering at a run-only policy seam', async () => {
+    const fixture = persistence();
+    fixture.get.mockImplementation((input) =>
+      Promise.resolve({
+        run: {
+          ...run(),
+          workflowName: input.includeWorkflowName ? 'Operations' : null,
+        },
+        nodes: [],
+      }),
+    );
+    fixture.list.mockImplementation((input) =>
+      Promise.resolve({
+        items: [
+          {
+            ...run(),
+            workflowName: input.includeWorkflowName ? 'Operations' : null,
+          },
+        ],
+      }),
+    );
+    const runOnlyPolicy = (
+      _role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer',
+      capability: string,
+    ) => capability === 'run:read';
+    const access = authorization();
+    const detail = await new GetWorkflowRunUseCase(
+      fixture.store,
+      access,
+      runOnlyPolicy,
+    ).execute({ actor, routeWorkspaceId: workspaceId, runId });
+    expect(detail.run.workflowName).toBeNull();
+    expect(fixture.get).toHaveBeenCalledWith(
+      expect.objectContaining({ includeWorkflowName: false }),
+    );
+
+    const listUseCase = new ListWorkflowRunsUseCase(
+      fixture.store,
+      access,
+      runOnlyPolicy,
+    );
+    await expect(
+      listUseCase.execute({ actor, routeWorkspaceId: workspaceId }),
+    ).resolves.toMatchObject({
+      items: [expect.objectContaining({ workflowName: null })],
+    });
+    await expect(
+      listUseCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowNamePrefix: 'Oper',
+      }),
+    ).rejects.toBeInstanceOf(Error);
+    expect(fixture.list).toHaveBeenCalledTimes(1);
   });
 
   it('preserves fractional run-history boundaries through the use-case seam', async () => {
@@ -532,7 +636,11 @@ describe('workflow run application seams', () => {
 
     expect(result.run.id).toBe(runId);
     expect(result.nodes).toEqual([]);
-    expect(fixture.get).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(fixture.get).toHaveBeenCalledWith({
+      workspaceId,
+      runId,
+      includeWorkflowName: true,
+    });
   });
 
   it('authorizes cancellation and forwards canonical actor/request context', async () => {
@@ -751,7 +859,11 @@ describe('workflow run application seams', () => {
       signal,
     });
 
-    expect(fixture.get).toHaveBeenCalledWith({ workspaceId, runId });
+    expect(fixture.get).toHaveBeenCalledWith({
+      workspaceId,
+      runId,
+      includeWorkflowName: false,
+    });
     expect(streamer.stream).not.toHaveBeenCalled();
     const iterator = result[Symbol.asyncIterator]();
     try {

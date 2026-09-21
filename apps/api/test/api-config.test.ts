@@ -16,6 +16,9 @@ function validDeployedEnvironment(): Record<string, string> {
     OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
     OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
     OIDC_TRANSACTION_KEY_VERSION: 'v2',
+    INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+    INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
+    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',
     REDIS_URL: 'rediss://redis.example.test:6380/0',
@@ -272,6 +275,9 @@ describe('parseApiConfig', () => {
       OIDC_ALLOWED_ALGORITHMS: 'RS256,ES256',
       OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
       OIDC_TRANSACTION_KEY_VERSION: 'v2',
+      INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+      INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
+      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       OIDC_TRANSACTION_PREVIOUS_KEYS: JSON.stringify([
         { version: 'v1', key: Buffer.alloc(32, 6).toString('base64') },
       ]),
@@ -385,6 +391,8 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+        INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
       }),
     ).toThrow('HTTPS identity endpoints are required when deployed');
   });
@@ -431,6 +439,8 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+        INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
         CONNECTION_KMS_KEY_REFERENCE:
           'arn:aws:kms:eu-central-1:123456789012:key/example',
         CONNECTION_KMS_REGION: 'eu-central-1',
@@ -470,6 +480,8 @@ describe('parseApiConfig', () => {
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
         CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+        INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+        INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
         CONNECTION_KMS_REGION: 'eu-central-1',
         CONNECTION_KMS_ENDPOINT: 'http://kms.example.test',
         REDIS_URL: 'rediss://redis.example.test:6380/0',

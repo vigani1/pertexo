@@ -6,6 +6,8 @@ import type {
 import type { SessionRecord } from '../identity/index.js';
 import type {
   IdentityWorkspacePersistence,
+  InvitationAcceptanceIntentPersistenceRecord,
+  InvitationAcceptancePersistenceResult,
   UserProfilePersistenceRecord,
   WorkspaceMemberPersistenceRecord,
   WorkspaceAuthorizationReader,
@@ -51,6 +53,16 @@ export class DatabaseIdentityWorkspaceAdapter
     return mapWorkspace(result);
   }
 
+  public async renameWorkspace(
+    input: Parameters<IdentityWorkspaceDatabase['renameWorkspace']>[0],
+  ) {
+    const result = await this.database.renameWorkspace(input);
+    return Object.freeze({
+      ...result,
+      workspace: mapWorkspace(result.workspace),
+    });
+  }
+
   public async findAccess(query: {
     actorId: string;
     workspaceId: string;
@@ -86,6 +98,74 @@ export class DatabaseIdentityWorkspaceAdapter
     >[0],
   ) {
     return this.database.changeWorkspaceMemberRole(input);
+  }
+
+  public listWorkspaceInvitations(
+    ...input: Parameters<IdentityWorkspaceDatabase['listWorkspaceInvitations']>
+  ) {
+    return this.database.listWorkspaceInvitations(...input);
+  }
+
+  public createWorkspaceInvitation(
+    input: Parameters<
+      IdentityWorkspaceDatabase['createWorkspaceInvitation']
+    >[0],
+  ) {
+    return this.database.createWorkspaceInvitation(input);
+  }
+
+  public resendWorkspaceInvitation(
+    input: Parameters<
+      IdentityWorkspaceDatabase['resendWorkspaceInvitation']
+    >[0],
+  ) {
+    return this.database.resendWorkspaceInvitation(input);
+  }
+
+  public revokeWorkspaceInvitation(
+    input: Parameters<
+      IdentityWorkspaceDatabase['revokeWorkspaceInvitation']
+    >[0],
+  ) {
+    return this.database.revokeWorkspaceInvitation(input);
+  }
+
+  public resolveInvitationAcceptance(
+    input: Parameters<
+      IdentityWorkspaceDatabase['resolveInvitationAcceptance']
+    >[0],
+  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
+    return this.database.resolveInvitationAcceptance(input);
+  }
+
+  public readInvitationAcceptance(
+    ...input: Parameters<IdentityWorkspaceDatabase['readInvitationAcceptance']>
+  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
+    return this.database.readInvitationAcceptance(...input);
+  }
+
+  public recordInvitationAcceptanceProof(
+    input: Parameters<
+      IdentityWorkspaceDatabase['recordInvitationAcceptanceProof']
+    >[0],
+  ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
+    return this.database.recordInvitationAcceptanceProof(input);
+  }
+
+  public completeInvitationAcceptance(
+    input: Parameters<
+      IdentityWorkspaceDatabase['completeInvitationAcceptance']
+    >[0],
+  ): Promise<InvitationAcceptancePersistenceResult> {
+    return this.database.completeInvitationAcceptance(input);
+  }
+
+  public abandonInvitationAcceptance(
+    ...input: Parameters<
+      IdentityWorkspaceDatabase['abandonInvitationAcceptance']
+    >
+  ) {
+    return this.database.abandonInvitationAcceptance(...input);
   }
 
   public listAccessibleWorkspaces(
@@ -162,6 +242,7 @@ function mapWorkspace(
     name: string;
     slug: string;
     status: 'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted';
+    revision: number;
     createdAt: Date;
     updatedAt: Date;
   }>,
@@ -170,6 +251,7 @@ function mapWorkspace(
   name: string;
   slug: string;
   status: 'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted';
+  revision: number;
   createdAt: Date;
   updatedAt: Date;
 }> {
@@ -178,6 +260,7 @@ function mapWorkspace(
     name: record.name,
     slug: record.slug,
     status: record.status,
+    revision: record.revision,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   });

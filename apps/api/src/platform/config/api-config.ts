@@ -103,6 +103,9 @@ const apiEnvironmentSchema = z
     OIDC_TRANSACTION_KEY: z.string().optional(),
     OIDC_TRANSACTION_KEY_VERSION: z.string().optional(),
     OIDC_TRANSACTION_PREVIOUS_KEYS: z.string().optional(),
+    INVITATION_TOKEN_KEY: z.string().optional(),
+    INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
+    INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
     OIDC_TRANSACTION_TTL_MILLIS: z.coerce
       .number()
       .int()
@@ -110,6 +113,7 @@ const apiEnvironmentSchema = z
       .max(10 * 60_000)
       .default(5 * 60_000),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+    PUBLIC_WEB_ORIGIN: z.url().optional(),
     REDIS_URL: z
       .url()
       .refine((value) => {
@@ -156,6 +160,7 @@ const apiEnvironmentSchema = z
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiIdentityConfig = Readonly<{
+  publicWebOrigin?: string;
   oidc: Readonly<{
     issuer: string;
     authorizationEndpoint: string;
@@ -172,6 +177,10 @@ export type ApiIdentityConfig = Readonly<{
     allowInsecureHttpForTests: boolean;
   }>;
   secretEncryption: Readonly<{
+    current: Readonly<{ version: string; key: string }>;
+    previous: readonly Readonly<{ version: string; key: string }>[];
+  }>;
+  invitationTokenEncryption?: Readonly<{
     current: Readonly<{ version: string; key: string }>;
     previous: readonly Readonly<{ version: string; key: string }>[];
   }>;
@@ -350,6 +359,15 @@ function parseIdentityConfig(
   const encryptionKeyVersion = requiredIdentityValue(
     environment.OIDC_TRANSACTION_KEY_VERSION,
   );
+  const invitationKey = environment.INVITATION_TOKEN_KEY;
+  const invitationKeyVersion = environment.INVITATION_TOKEN_KEY_VERSION;
+  if (
+    deployed &&
+    (invitationKey === undefined || invitationKeyVersion === undefined)
+  )
+    throw new Error('Invitation token encryption configuration is incomplete');
+  if ((invitationKey === undefined) !== (invitationKeyVersion === undefined))
+    throw new Error('Invitation token encryption configuration is incomplete');
   if (
     deployed &&
     [issuer, authorizationEndpoint, tokenEndpoint, jwksUri, redirectUri].some(
@@ -358,6 +376,12 @@ function parseIdentityConfig(
   ) {
     throw new Error('HTTPS identity endpoints are required when deployed');
   }
+  const publicWebOrigin =
+    environment.PUBLIC_WEB_ORIGIN === undefined
+      ? new URL(redirectUri).origin
+      : normalizedOrigin(environment.PUBLIC_WEB_ORIGIN);
+  if (deployed && new URL(publicWebOrigin).protocol !== 'https:')
+    throw new Error('HTTPS public web origin is required when deployed');
   if (deployed && !environment.SESSION_COOKIE_SECURE) {
     throw new Error('Secure session cookies are required when deployed');
   }
@@ -385,6 +409,7 @@ function parseIdentityConfig(
       environment.OIDC_TRANSACTION_PREVIOUS_KEYS,
     );
     const identity = {
+      publicWebOrigin,
       oidc: Object.freeze({
         issuer,
         authorizationEndpoint,
@@ -409,6 +434,19 @@ function parseIdentityConfig(
         }),
         previous,
       }),
+      ...(invitationKey === undefined || invitationKeyVersion === undefined
+        ? {}
+        : {
+            invitationTokenEncryption: Object.freeze({
+              current: Object.freeze({
+                version: invitationKeyVersion,
+                key: invitationKey,
+              }),
+              previous: parsePreviousKeys(
+                environment.INVITATION_TOKEN_PREVIOUS_KEYS,
+              ),
+            }),
+          }),
       session: Object.freeze({
         ttlMillis: environment.SESSION_TTL_MILLIS,
         secureCookie: environment.SESSION_COOKIE_SECURE,
@@ -421,6 +459,18 @@ function parseIdentityConfig(
     // parses provider credentials and encryption keys.
     throw new Error('Identity configuration is invalid');
   }
+}
+
+function normalizedOrigin(value: string): string {
+  const parsed = new URL(value);
+  if (
+    parsed.origin === 'null' ||
+    parsed.pathname !== '/' ||
+    parsed.search !== '' ||
+    parsed.hash !== ''
+  )
+    throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
+  return parsed.origin;
 }
 
 function requiredIdentityValue(value: string | undefined): string {

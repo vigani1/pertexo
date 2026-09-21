@@ -51,6 +51,11 @@ export const workflows = appSchema.table(
       table.name,
       table.id,
     ),
+    index('workflows_workspace_updated_idx').on(
+      table.workspaceId,
+      table.updatedAt.desc(),
+      table.id.desc(),
+    ),
   ],
 );
 export const workflowDrafts = appSchema.table(

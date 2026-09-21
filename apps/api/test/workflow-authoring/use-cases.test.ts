@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   CreateWorkflowUseCase,
+  GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
   InvalidWorkflowCursorError,
   ListWorkflowVersionsUseCase,
@@ -128,6 +129,7 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
       draft: draft(),
     }),
     listWorkflows: vi.fn().mockResolvedValue({ items: [workflow()] }),
+    getWorkflow: vi.fn().mockResolvedValue(workflow()),
     getDraft: vi.fn().mockResolvedValue(draft()),
     listVersions: vi.fn().mockResolvedValue({ items: [version()] }),
     saveDraft: vi.fn().mockResolvedValue(draft({ revision: 2 })),
@@ -141,6 +143,23 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
 }
 
 describe('workflow authoring application seams', () => {
+  it('reads one workflow without relying on list pagination', async () => {
+    const store = persistence();
+    const result = await new GetWorkflowUseCase(store, authorization()).execute(
+      {
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+      },
+    );
+    expect(result.workflow.name).toBe('Operations');
+    expect(store.getWorkflow).toHaveBeenCalledWith(
+      workspaceId,
+      workflowId,
+      actorId,
+    );
+  });
+
   it('restores a version through one atomic command preserving the original tag', async () => {
     const store = persistence();
     const representationTag = createDraftRepresentationTag({
@@ -430,6 +449,7 @@ describe('workflow authoring application seams', () => {
       actor,
       routeWorkspaceId: workspaceId,
       limit: 10,
+      order: 'updated_desc',
     });
     await new CreateWorkflowUseCase(store, access).execute({
       actor,
@@ -466,7 +486,7 @@ describe('workflow authoring application seams', () => {
     });
 
     expect(store.listWorkflows).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 10 }),
+      expect.objectContaining({ limit: 10, order: 'updated_desc' }),
     );
     expect(store.createWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -909,7 +929,7 @@ describe('workflow authoring application seams', () => {
 
   it('round-trips the opaque workflow list cursor through the public use case', async () => {
     const cursor = {
-      createdAt: new Date('2026-08-20T12:00:00.000Z'),
+      positionAt: '2026-08-20T12:00:00.000Z',
       id: workflowId,
     };
     const listWorkflows = vi
@@ -937,6 +957,42 @@ describe('workflow authoring application seams', () => {
     expect(listWorkflows).toHaveBeenLastCalledWith(
       expect.objectContaining({ after: cursor }),
     );
+  });
+
+  it('keeps recently-updated cursors distinct from created-order cursors', async () => {
+    const cursor = {
+      positionAt: '2026-08-21T12:00:00.000900Z',
+      id: workflowId,
+    };
+    const listWorkflows = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [workflow()], nextCursor: cursor })
+      .mockResolvedValueOnce({ items: [] });
+    const useCase = new ListWorkflowsUseCase(
+      persistence({ listWorkflows }),
+      authorization(),
+    );
+    const first = await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      order: 'updated_desc',
+    });
+    await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      order: 'updated_desc',
+      after: first.nextCursor ?? '',
+    });
+    expect(listWorkflows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: cursor, order: 'updated_desc' }),
+    );
+    await expect(
+      useCase.execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        after: first.nextCursor ?? '',
+      }),
+    ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
   });
 
   it('rejects cursor payload fields outside the feature-private contract', async () => {

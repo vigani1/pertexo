@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workflowNameSchema } from './workflow-authoring.js';
 
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
@@ -119,11 +120,16 @@ export const workflowRunSummarySchema = z
   })
   .strict();
 
+export const workflowRunReadSummarySchema = workflowRunSummarySchema
+  .extend({ workflowName: workflowNameSchema.nullable().optional() })
+  .strict();
+
 export const workflowRunListQuerySchema = z
   .object({
     limit: workflowRunPageLimitSchema.optional(),
     after: workflowRunCursorSchema.optional(),
     workflowId: z.uuid().optional(),
+    workflowNamePrefix: workflowNameSchema.optional(),
     status: workflowRunStatusSchema.optional(),
     createdAtFrom: workflowRunCreatedAtSchema.optional(),
     createdAtBefore: workflowRunCreatedAtSchema.optional(),
@@ -145,7 +151,7 @@ export const workflowRunListQuerySchema = z
 
 export const workflowRunListResponseSchema = z
   .object({
-    items: z.array(workflowRunSummarySchema).max(100),
+    items: z.array(workflowRunReadSummarySchema).max(100),
     nextCursor: workflowRunCursorSchema.nullable(),
   })
   .strict();
@@ -169,7 +175,7 @@ export const workflowRunStartResponseSchema = z
   .strict();
 export const workflowRunResponseSchema = z
   .object({
-    run: workflowRunSummarySchema,
+    run: workflowRunReadSummarySchema,
     nodes: z.array(workflowNodeRunSummarySchema).max(1_000),
   })
   .strict();
@@ -231,6 +237,9 @@ export const lastRunEventIdHeaderSchema = z
   .regex(/^(?:0|[1-9][0-9]{0,14})$/u);
 
 export type WorkflowRunSummary = z.output<typeof workflowRunSummarySchema>;
+export type WorkflowRunReadSummary = z.output<
+  typeof workflowRunReadSummarySchema
+>;
 export type WorkflowRunListQuery = z.output<typeof workflowRunListQuerySchema>;
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema

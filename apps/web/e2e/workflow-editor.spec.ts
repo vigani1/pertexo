@@ -22,6 +22,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: [
     'workspace:read',
@@ -52,8 +53,16 @@ const definition = {
       count: { type: 'number', title: 'Count' },
     },
   },
-  inputSchema: {},
-  outputSchema: {},
+  inputSchema: {
+    type: 'object',
+    properties: {
+      customer: { type: 'string', title: 'Customer' },
+      requestedBy: { type: 'string', title: 'Requested by' },
+      active: { type: 'boolean', title: 'Active' },
+    },
+    additionalProperties: true,
+  },
+  outputSchema: { type: 'object', additionalProperties: true },
   ports: { inputs: ['in'], outputs: ['out'] },
   credentialRequirements: [],
   connectionRequirements: [],
@@ -63,6 +72,13 @@ const definition = {
   lifecycle: 'active',
   available: true,
   publishable: true,
+};
+const manualDefinition = {
+  ...definition,
+  definition: { key: 'core.manual', version: 1 },
+  family: 'trigger',
+  inputSchema: {},
+  ports: { inputs: [], outputs: ['out'] },
 };
 
 type Graph = Readonly<{
@@ -82,6 +98,7 @@ async function installEditorRoutes(
   page: Page,
   remote: RemoteDraft,
   accessibleWorkspace = workspace,
+  definitions: readonly unknown[] = [definition],
 ) {
   await page.route('**/v1/users/me', (route) => route.fulfill({ json: user }));
   await page.route('**/v1/workspaces?**', (route) =>
@@ -90,7 +107,7 @@ async function installEditorRoutes(
     }),
   );
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { schemaVersion: 1, release, items: [definition] } }),
+    route.fulfill({ json: { schemaVersion: 1, release, items: definitions } }),
   );
   await page.route('**/v1/integrations', (route) =>
     route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
@@ -100,6 +117,25 @@ async function installEditorRoutes(
   );
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) =>
+      route.fulfill({
+        json: {
+          workflow: {
+            id: workflowId,
+            workspaceId,
+            name: 'Customer onboarding',
+            lifecycleStatus: 'active',
+            lifecycleRevision: 1,
+            activationStatus: 'inactive',
+            publishedVersionId: null,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+          },
+        },
+      }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
@@ -152,6 +188,85 @@ async function installEditorRoutes(
     },
   );
 }
+
+test('edits typed input mappings, saves them and restores rendered controls after reload', async ({
+  context,
+  page,
+}) => {
+  const remote: RemoteDraft = {
+    graph: mappingGraph(),
+    revision: 1,
+    etagIndex: 0,
+  };
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote, workspace, [
+    manualDefinition,
+    definition,
+  ]);
+  await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
+  await expect(
+    page.getByRole('heading', { name: 'Customer onboarding' }),
+  ).toBeVisible();
+  await page.getByTestId('rf__node-target').click();
+  const inputs = page.getByRole('region', { name: 'Inputs' });
+  await inputs.getByRole('button', { name: 'Add input' }).click();
+  await inputs.getByRole('button', { name: 'Add input' }).click();
+  await inputs.getByRole('button', { name: 'Add input' }).click();
+  const rows = inputs.getByRole('listitem');
+
+  await rows.nth(0).getByLabel('Destination key').fill('customer');
+  await rows.nth(0).getByLabel('Source').selectOption('node_output');
+  await rows.nth(0).getByLabel('Source node').selectOption('manual');
+  await rows.nth(0).getByLabel('Output path').fill('$.customer');
+
+  await rows.nth(1).getByLabel('Destination key').fill('requestedBy');
+  await rows.nth(1).getByLabel('Source').selectOption('run_input');
+  await rows.nth(1).getByLabel('Run input path').fill('$.actor.name');
+
+  await rows.nth(2).getByLabel('Destination key').fill('payload');
+  await rows
+    .nth(2)
+    .getByLabel('JSON value')
+    .fill('{"__proto__":{"x":1},"normal":2,"nested":[{"__proto__":3}]}');
+  await page.getByRole('button', { name: 'Apply changes' }).click();
+  await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
+  await expect(page.getByText('Saved')).toBeVisible();
+  expect(remote.graph.nodes[1]).toMatchObject({
+    inputMappings: {
+      customer: {
+        kind: 'node_output',
+        nodeId: 'manual',
+        path: '$.customer',
+      },
+      requestedBy: { kind: 'run_input', path: '$.actor.name' },
+      payload: {
+        kind: 'literal',
+      },
+    },
+  });
+  expect(JSON.stringify(remote.graph)).toContain(
+    '"payload":{"kind":"literal","value":{"__proto__":{"x":1},"normal":2,"nested":[{"__proto__":3}]}}',
+  );
+
+  await page.reload();
+  await page.getByTestId('rf__node-target').click();
+  const restored = page.getByRole('region', { name: 'Inputs' });
+  await expect(restored.getByRole('listitem')).toHaveCount(3);
+  await expect(
+    restored.getByRole('listitem').nth(0).getByLabel('Destination key'),
+  ).toHaveValue('customer');
+  await expect(
+    restored.getByRole('listitem').nth(0).getByLabel('Output path'),
+  ).toHaveValue('$.customer');
+  const restoredLiteral = await restored
+    .getByRole('listitem')
+    .nth(2)
+    .getByLabel('JSON value')
+    .inputValue();
+  expect(JSON.parse(restoredLiteral)).toEqual(
+    JSON.parse('{"__proto__":{"x":1},"normal":2,"nested":[{"__proto__":3}]}'),
+  );
+});
 
 test('edits, autosaves, and preserves both drafts during a two-tab conflict', async ({
   context,
@@ -274,6 +389,67 @@ test('keeps keyboard placement usable and the narrow editor horizontally bounded
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('keeps workflow identity and metadata recovery available at 320 and 390 pixels', async ({
+  context,
+  page,
+}) => {
+  const remote: RemoteDraft = {
+    graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+    revision: 1,
+    etagIndex: 0,
+  };
+  let metadataAvailable = false;
+  const longName = 'W'.repeat(128);
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remote);
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) =>
+      metadataAvailable
+        ? route.fulfill({
+            json: {
+              workflow: {
+                id: workflowId,
+                workspaceId,
+                name: longName,
+                lifecycleStatus: 'active',
+                lifecycleRevision: 1,
+                activationStatus: 'inactive',
+                publishedVersionId: null,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+              },
+            },
+          })
+        : route.fulfill({ status: 500, json: {} }),
+  );
+
+  await page.setViewportSize({ width: 320, height: 760 });
+  await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
+  await expect(
+    page.getByRole('heading', { name: 'Workflow name unavailable' }),
+  ).toBeVisible();
+  await expect(page.getByText(workflowId, { exact: true })).toBeVisible();
+  const retry = page.getByRole('button', { name: 'Retry name' });
+  await expect(retry).toBeVisible();
+
+  metadataAvailable = true;
+  await retry.click();
+  await expect(page.getByRole('heading', { name: longName })).toBeVisible();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const identity = page.getByRole('heading', { name: longName });
+    const box = await identity.boundingBox();
+    expect(box).not.toBeNull();
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+    const canvas = page.getByRole('region', { name: 'Workflow canvas' });
+    await expect(canvas).toBeVisible();
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox?.width).toBeGreaterThan(width - 30);
+    expect(canvasBox?.height).toBeGreaterThan(400);
+  }
 });
 
 test('confirms dirty-editor logout before revoking the session', async ({
@@ -468,6 +644,25 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
         controlsBox?.y ?? Number.POSITIVE_INFINITY,
       ),
     );
+    if (width === 390) expect(minimapBox).toBeNull();
+    else await expect(canvas.locator('.react-flow__minimap')).toBeVisible();
+    const firstControl = canvas.locator('.react-flow__controls-button').first();
+    const controlColors = await firstControl.evaluate((element) => {
+      const buttonStyle = getComputedStyle(element);
+      const icon = element.querySelector('svg');
+      return {
+        background: buttonStyle.backgroundColor,
+        icon: icon === null ? '' : getComputedStyle(icon).fill,
+      };
+    });
+    expect(controlColors.background).not.toBe('rgb(254, 254, 254)');
+    expect(controlColors.icon).not.toBe(controlColors.background);
+    await firstControl.focus();
+    expect(
+      await firstControl.evaluate(
+        (element) => getComputedStyle(element).boxShadow,
+      ),
+    ).not.toBe('none');
     const inspector = page.getByRole('region', { name: 'Node inspector' });
     if (width >= 1280) {
       const inspectorBox = await inspector.boundingBox();
@@ -485,7 +680,14 @@ test('gives a read-only actor the flexible canvas column without moving the insp
   const remote: RemoteDraft = {
     graph: {
       schemaVersion: 1,
-      nodes: [editorNode('node-a', 'Read-only node', 'value', 80)],
+      nodes: [
+        {
+          ...editorNode('node-a', 'Read-only node', 'value', 80),
+          inputMappings: {
+            customer: { kind: 'literal', value: { retained: true } },
+          },
+        },
+      ],
       edges: [],
       settings: {},
     },
@@ -526,6 +728,13 @@ test('gives a read-only actor the flexible canvas column without moving the insp
     }
     await expect(page.locator('.react-flow__node')).toHaveCount(1);
   }
+  await page.getByTestId('rf__node-node-a').click();
+  const inputs = page.getByRole('region', { name: 'Inputs' });
+  await expect(inputs.getByRole('button', { name: 'Add input' })).toHaveCount(
+    0,
+  );
+  await expect(inputs.getByLabel('Destination key')).toBeDisabled();
+  await expect(inputs.getByLabel('JSON value')).toBeDisabled();
 });
 
 test('guards unapplied inspector fields and applies the supported schema controls', async ({
@@ -1008,6 +1217,42 @@ function editorNode(id: string, label: string, value: string, x: number) {
     config: { value },
     inputMappings: {},
     connectionRefs: {},
+  };
+}
+
+function mappingGraph(): Graph {
+  return {
+    schemaVersion: 1,
+    nodes: [
+      {
+        id: 'manual',
+        label: 'Manual input',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 80, y: 80 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'target',
+        label: 'Target',
+        definition: { key: 'core.set', version: 1 },
+        position: { x: 380, y: 80 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+    ],
+    edges: [
+      {
+        id: 'manual-target',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'target', port: 'in' },
+      },
+    ],
+    settings: {},
   };
 }
 

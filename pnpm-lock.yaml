@@ -215,6 +215,9 @@ importers:
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../../packages/workflow-model
       '@tanstack/react-query':
         specifier: 5.102.8
         version: 5.102.8(react@19.3.0)

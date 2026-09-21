@@ -4,6 +4,7 @@ export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   sessionLogout: 'session.logout',
   userProfileRead: 'user.profile_read',
   workspaceCreate: 'workspace.create',
+  workspaceRename: 'workspace.rename',
   accessibleWorkspacesList: 'workspace.accessible_list',
   workspaceMembersList: 'workspace.members_list',
   workspaceMemberRoleChange: 'workspace.member_role_change',

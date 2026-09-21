@@ -1,5 +1,6 @@
 import {
   bigint,
+  boolean,
   char,
   foreignKey,
   index,
@@ -102,6 +103,8 @@ export const oidcLoginTransactions = appSchema.table(
     nonceNonce: varchar('nonce_nonce', { length: 128 }).notNull(),
     nonceTag: varchar('nonce_tag', { length: 256 }).notNull(),
     nonceKeyVersion: varchar('nonce_key_version', { length: 64 }).notNull(),
+    continuationKind: varchar('continuation_kind', { length: 32 }),
+    continuationRef: jsonb('continuation_ref'),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -128,6 +131,7 @@ export const workspaces = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     slug: varchar('slug', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
+    revision: integer('revision').notNull().default(1),
     createdBy: uuid('created_by'),
     deletionRequestedAt: timestamp('deletion_requested_at', {
       withTimezone: true,
@@ -219,6 +223,282 @@ export const workspaceMemberRoleCommandReceipts = appSchema.table(
       table.id,
     ),
   ],
+);
+
+export const workspaceRenameCommandReceipts = appSchema.table(
+  'workspace_rename_command_receipts',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    keyHash: char('key_hash', { length: 64 }).notNull(),
+    requestHash: char('request_hash', { length: 64 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull(),
+    resultRef: jsonb('result_ref'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('workspace_rename_command_receipts_key_unique').on(
+      table.actorUserId,
+      table.workspaceId,
+      table.keyHash,
+    ),
+    index('workspace_rename_command_receipts_workspace_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export const workspaceInvitations = appSchema.table(
+  'workspace_invitations',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    recipientEmail: varchar('recipient_email', { length: 320 }).notNull(),
+    normalizedEmail: varchar('normalized_email', { length: 320 }).notNull(),
+    role: varchar('role', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull().default('pending'),
+    revision: integer('revision').notNull().default(1),
+    tokenDigest: char('token_digest', { length: 64 }).notNull(),
+    deliveryStatus: varchar('delivery_status', { length: 32 })
+      .notNull()
+      .default('queued'),
+    createdBy: uuid('created_by').notNull(),
+    acceptedBy: uuid('accepted_by'),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_invitations_pending_recipient_unique')
+      .on(table.workspaceId, table.normalizedEmail)
+      .where(sql`${table.status}='pending'`),
+    uniqueIndex('workspace_invitations_token_digest_unique').on(
+      table.workspaceId,
+      table.id,
+      table.tokenDigest,
+    ),
+    index('workspace_invitations_list_idx').on(
+      table.workspaceId,
+      table.createdAt.desc(),
+      table.id.desc(),
+    ),
+    index('workspace_invitations_expiry_idx')
+      .on(table.expiresAt, table.id)
+      .where(sql`${table.status}='pending'`),
+  ],
+);
+
+export const workspaceInvitationCommandReceipts = appSchema.table(
+  'workspace_invitation_command_receipts',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    operation: varchar('operation', { length: 32 }).notNull(),
+    keyHash: char('key_hash', { length: 64 }).notNull(),
+    requestHash: char('request_hash', { length: 64 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull(),
+    resultRef: jsonb('result_ref'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_invitation_receipts_key_unique').on(
+      table.actorUserId,
+      table.workspaceId,
+      table.operation,
+      table.keyHash,
+    ),
+    index('workspace_invitation_receipts_workspace_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export const workspaceInvitationDeliveryAttempts = appSchema.table(
+  'workspace_invitation_delivery_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    invitationId: uuid('invitation_id').notNull(),
+    invitationRevision: integer('invitation_revision').notNull(),
+    status: varchar('status', { length: 32 }).notNull().default('queued'),
+    tokenCiphertext: text('token_ciphertext'),
+    tokenNonce: varchar('token_nonce', { length: 128 }),
+    tokenTag: varchar('token_tag', { length: 256 }),
+    tokenKeyVersion: varchar('token_key_version', { length: 64 }),
+    providerReference: varchar('provider_reference', { length: 512 }),
+    failureCode: varchar('failure_code', { length: 128 }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_invitation_delivery_generation_unique').on(
+      table.invitationId,
+      table.invitationRevision,
+    ),
+    index('workspace_invitation_delivery_workspace_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export const workspaceInvitationAcceptanceIntents = appSchema.table(
+  'workspace_invitation_acceptance_intents',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    invitationId: uuid('invitation_id').notNull(),
+    invitationRevision: integer('invitation_revision').notNull(),
+    bindingDigest: char('binding_digest', { length: 64 }).notNull(),
+    csrfDigest: char('csrf_digest', { length: 64 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull().default('pending'),
+    verifiedUserId: uuid('verified_user_id'),
+    verifiedEmail: varchar('verified_email', { length: 320 }),
+    verifiedAt: timestamp('verified_at', { withTimezone: true, mode: 'date' }),
+    acceptedUserId: uuid('accepted_user_id'),
+    receipt: jsonb('receipt'),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    completedAt: timestamp('completed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    abandonedAt: timestamp('abandoned_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_invitation_intents_binding_unique').on(
+      table.workspaceId,
+      table.bindingDigest,
+    ),
+    index('workspace_invitation_intents_expiry_idx').on(
+      table.expiresAt,
+      table.id,
+    ),
+    index('workspace_invitation_intents_invitation_idx').on(
+      table.workspaceId,
+      table.invitationId,
+      table.invitationRevision,
+      table.id,
+    ),
+  ],
+);
+export const workspaceInvitationBindingReplacementClaims = appSchema.table(
+  'workspace_invitation_binding_replacement_claims',
+  {
+    priorWorkspaceId: uuid('prior_workspace_id').notNull(),
+    priorIntentId: uuid('prior_intent_id').notNull(),
+    priorBindingDigest: char('prior_binding_digest', { length: 64 }).notNull(),
+    successorWorkspaceId: uuid('successor_workspace_id').notNull(),
+    successorIntentId: uuid('successor_intent_id').notNull(),
+    successorInvitationId: uuid('successor_invitation_id').notNull(),
+    successorInvitationRevision: integer(
+      'successor_invitation_revision',
+    ).notNull(),
+    successorBindingDigest: char('successor_binding_digest', {
+      length: 64,
+    }).notNull(),
+    successorCsrfDigest: char('successor_csrf_digest', {
+      length: 64,
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [
+        table.priorWorkspaceId,
+        table.priorIntentId,
+        table.priorBindingDigest,
+      ],
+    }),
+    index('workspace_invitation_binding_replacement_successor_idx').on(
+      table.successorWorkspaceId,
+      table.successorIntentId,
+      table.successorBindingDigest,
+    ),
+    index('workspace_invitation_binding_replacement_cleanup_idx').on(
+      table.updatedAt,
+      table.priorWorkspaceId,
+      table.priorIntentId,
+    ),
+  ],
+);
+export const workspaceInvitationClaimCleanupCursors = appSchema.table(
+  'workspace_invitation_claim_cleanup_cursors',
+  {
+    scanKind: varchar('scan_kind', { length: 32 }).notNull(),
+    scanId: uuid('scan_id').notNull(),
+    workspaceId: uuid('workspace_id'),
+    purgeJobId: uuid('purge_job_id'),
+    cursorUpdatedAt: timestamp('cursor_updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    cursorPriorWorkspaceId: uuid('cursor_prior_workspace_id'),
+    cursorPriorIntentId: uuid('cursor_prior_intent_id'),
+    cursorPriorBindingDigest: char('cursor_prior_binding_digest', {
+      length: 64,
+    }),
+    highWaterUpdatedAt: timestamp('high_water_updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    highWaterPriorWorkspaceId: uuid('high_water_prior_workspace_id'),
+    highWaterPriorIntentId: uuid('high_water_prior_intent_id'),
+    highWaterPriorBindingDigest: char('high_water_prior_binding_digest', {
+      length: 64,
+    }),
+    cycleCompleted: boolean('cycle_completed').default(false).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.scanKind, table.scanId] })],
 );
 export const auditEvents = appSchema.table(
   'audit_events',

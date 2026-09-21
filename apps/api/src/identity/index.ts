@@ -1,6 +1,8 @@
 export { IdentityError, isIdentityError } from './errors.js';
 export {
   digestBase64Url,
+  digestSha256Hex,
+  encodeBase64Url,
   nodeIdentityCrypto,
   type IdentityCrypto,
 } from './crypto.js';

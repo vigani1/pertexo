@@ -8,7 +8,12 @@ import {
 } from '../src/errors/api-problem.js';
 import {
   idempotencyKeySchema,
+  invitationAcceptanceCompleteRequestSchema,
+  invitationAcceptanceJourneySchema,
+  invitationAcceptanceResolveRequestSchema,
   workspaceCreateRequestSchema,
+  workspaceRenameRequestSchema,
+  workspaceInvitationCreateRequestSchema,
   workspaceMemberRoleChangeRequestSchema,
 } from '../src/http/identity-workspace.js';
 import {
@@ -61,6 +66,19 @@ describe('identity and problem public contracts', () => {
     ).toBe(false);
     expect(idempotencyKeySchema.safeParse('one-two').success).toBe(true);
     expect(idempotencyKeySchema.safeParse('one,two').success).toBe(false);
+    expect(
+      workspaceRenameRequestSchema.parse({
+        name: 'Renamed operations',
+        expectedRevision: 3,
+      }),
+    ).toEqual({ name: 'Renamed operations', expectedRevision: 3 });
+    expect(
+      workspaceRenameRequestSchema.safeParse({
+        name: 'Renamed operations',
+        expectedRevision: 3,
+        slug: 'must-remain-stable',
+      }).success,
+    ).toBe(false);
     expect(
       workspaceMemberRoleChangeRequestSchema.parse({
         role: 'operator',
@@ -119,5 +137,61 @@ describe('identity and problem public contracts', () => {
         '200'
       ],
     ).toBeDefined();
+  });
+
+  it('keeps invitation commands strict and excludes owner assignment', () => {
+    expect(
+      workspaceInvitationCreateRequestSchema.parse({
+        email: ' Member@Example.com ',
+        role: 'builder',
+      }),
+    ).toEqual({ email: 'Member@Example.com', role: 'builder' });
+    expect(
+      workspaceInvitationCreateRequestSchema.safeParse({
+        email: 'member@example.com',
+        role: 'owner',
+      }).success,
+    ).toBe(false);
+    expect(
+      workspaceInvitationCreateRequestSchema.safeParse({
+        email: 'member@example.com',
+        role: 'viewer',
+        message: 'not part of the first slice',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('models browser-bound invitation acceptance without exposing secrets', () => {
+    expect(
+      invitationAcceptanceResolveRequestSchema.safeParse({ token: 'short' })
+        .success,
+    ).toBe(true);
+    expect(
+      invitationAcceptanceResolveRequestSchema.safeParse({ token: '' }).success,
+    ).toBe(false);
+    expect(
+      invitationAcceptanceCompleteRequestSchema.safeParse({
+        intentId: 'a31a3bd0-d607-4f13-85d6-00b1c4cd4bb7',
+        expectedRevision: 2,
+        token: 'must-not-be-accepted',
+      }).success,
+    ).toBe(false);
+    expect(
+      invitationAcceptanceJourneySchema.parse({ state: 'unavailable' }),
+    ).toEqual({ state: 'unavailable' });
+    expect(
+      invitationAcceptanceJourneySchema.safeParse({
+        state: 'sign_in_required',
+        intentId: 'a31a3bd0-d607-4f13-85d6-00b1c4cd4bb7',
+        expiresAt: '2026-09-19T15:00:00.000Z',
+        csrfToken: 'not-long-enough',
+        email: 'secret@example.com',
+      }).success,
+    ).toBe(false);
+    expect(
+      identityWorkspaceOpenApiDocument.paths[
+        '/v1/invitation-acceptance/complete'
+      ].post.security,
+    ).toEqual([{ cookieSession: [], invitationBinding: [] }]);
   });
 });

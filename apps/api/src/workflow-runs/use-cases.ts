@@ -15,9 +15,11 @@ import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 
 import {
   authorizeWorkspaceOperation,
+  hasCapability,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
   type WorkspaceStatus,
+  type AuthorizedWorkspaceContext,
 } from '../workspaces/index.js';
 import type {
   WorkflowRunApplicationInput,
@@ -82,6 +84,7 @@ export type ListWorkflowRunsInput = WorkflowRunApplicationInput &
     status?: WorkflowRunRecord['status'];
     createdAtFrom?: string;
     createdAtBefore?: string;
+    workflowNamePrefix?: string;
   }>;
 
 export type CancelWorkflowRunInput = GetWorkflowRunInput &
@@ -106,6 +109,11 @@ export type StreamRunEventsInput = GetWorkflowRunInput &
     abortStream(reason?: unknown): void;
     signal: AbortSignal;
   }>;
+
+type CapabilityPolicy = (
+  role: AuthorizedWorkspaceContext['role'],
+  capability: AuthorizationCapability,
+) => boolean;
 
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const SSE_REAUTHORIZATION_INTERVAL_MS = 5_000;
@@ -175,19 +183,25 @@ export class GetWorkflowRunUseCase {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
     private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly capabilityPolicy: CapabilityPolicy = hasCapability,
   ) {}
 
   public async execute(
     input: GetWorkflowRunInput,
   ): Promise<WorkflowRunResponse> {
-    await authorize(input, 'run:read', this.authorization, [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
+    const authorization = await authorize(
+      input,
+      'run:read',
+      this.authorization,
+      ['active', 'suspended', 'pending_deletion'],
+    );
     const result = await this.persistence.get({
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
+      includeWorkflowName: this.capabilityPolicy(
+        authorization.role,
+        'workflow:read',
+      ),
     });
     if (result === undefined) throw new WorkflowRunNotFoundError();
     return toRunResponse(result);
@@ -198,23 +212,36 @@ export class ListWorkflowRunsUseCase {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'list'>,
     private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly capabilityPolicy: CapabilityPolicy = hasCapability,
   ) {}
 
   public async execute(
     input: ListWorkflowRunsInput,
   ): Promise<WorkflowRunListResponse> {
-    await authorize(input, 'run:read', this.authorization, [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
+    const authorization = await authorize(
+      input,
+      'run:read',
+      this.authorization,
+      ['active', 'suspended', 'pending_deletion'],
+    );
     const context = normalizedCursorContext(input);
+    const includeWorkflowName = this.capabilityPolicy(
+      authorization.role,
+      'workflow:read',
+    );
+    if (context.workflowNamePrefix !== undefined && !includeWorkflowName) {
+      throw new WorkflowRunNotFoundError();
+    }
     const page = await this.persistence.list({
       workspaceId: input.routeWorkspaceId,
       limit: input.limit ?? 50,
+      includeWorkflowName,
       ...(context.workflowId === undefined
         ? {}
         : { workflowId: context.workflowId }),
+      ...(context.workflowNamePrefix === undefined
+        ? {}
+        : { workflowNamePrefix: context.workflowNamePrefix }),
       ...(context.status === undefined ? {} : { status: context.status }),
       ...(context.createdAtFrom === undefined
         ? {}
@@ -282,6 +309,7 @@ export class StreamRunEventsUseCase {
     const run = await this.persistence.get({
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,
+      includeWorkflowName: false,
     });
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return authorizedStreamFrames(
@@ -359,8 +387,8 @@ async function authorize(
   capability: AuthorizationCapability,
   access: WorkspaceAuthorizationSource,
   allowedWorkspaceStatuses: readonly WorkspaceStatus[],
-): Promise<void> {
-  await authorizeWorkspaceOperation({
+): Promise<AuthorizedWorkspaceContext> {
+  return authorizeWorkspaceOperation({
     actor: input.actor,
     routeWorkspaceId: input.routeWorkspaceId,
     capability,
@@ -452,6 +480,9 @@ function normalizedCursorContext(
   return {
     workspaceId: input.routeWorkspaceId,
     ...(input.workflowId === undefined ? {} : { workflowId: input.workflowId }),
+    ...(input.workflowNamePrefix === undefined
+      ? {}
+      : { workflowNamePrefix: input.workflowNamePrefix.trim() }),
     ...(input.status === undefined ? {} : { status: input.status }),
     ...(input.createdAtFrom === undefined
       ? {}
@@ -464,7 +495,9 @@ function normalizedCursorContext(
   };
 }
 
-function toRunSummary(run: WorkflowRunRecord) {
+function toRunSummary(
+  run: WorkflowRunRecord & Readonly<{ workflowName?: string | null }>,
+) {
   return {
     ...run,
     createdAt: run.createdAt.toISOString(),

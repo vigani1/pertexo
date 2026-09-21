@@ -161,6 +161,11 @@ describe('dispatch capability provider activation', () => {
         'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
       OUTBOX_DISPATCH_JOB_NAMES: ACTIVE_QUEUE_JOB_NAMES.join(','),
       REDIS_URL: 'redis://localhost:6379/0',
+      INVITATION_EMAIL_API_KEY: 're_test',
+      INVITATION_EMAIL_FROM: 'invites@example.test',
+      INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+      INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
+      PUBLIC_WEB_ORIGIN: 'http://localhost:5173',
     });
     const coordinatorConsumer = consumer() as QueueConsumer;
     const attemptConsumer = consumer() as QueueConsumer;

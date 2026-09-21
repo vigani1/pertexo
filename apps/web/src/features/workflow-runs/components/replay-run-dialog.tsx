@@ -24,12 +24,14 @@ import {
 
 export function ReplayRunDialog({
   apiClient,
+  userId,
   workspaceId,
   sourceRunId,
   workflowVersionId,
   onRunAccepted,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspaceId: string;
   sourceRunId: string;
   workflowVersionId: string;
@@ -46,6 +48,7 @@ export function ReplayRunDialog({
   const deadlineRef = useRef<HTMLInputElement>(null);
   const replay = useRunReplay({
     apiClient,
+    userId,
     workspaceId,
     sourceRunId,
     workflowVersionId,

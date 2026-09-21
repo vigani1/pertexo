@@ -134,3 +134,16 @@ export function canChangeWorkspaceMemberRole(
     delegatedRoles.includes(nextRole as (typeof delegatedRoles)[number])
   );
 }
+
+/** ADR 038 invitation policy. Current database state remains authoritative. */
+export function canInviteWorkspaceRole(
+  actorRole: Role,
+  invitedRole: Role,
+): boolean {
+  if (invitedRole === 'owner') return false;
+  if (actorRole === 'owner') return true;
+  return (
+    actorRole === 'admin' &&
+    delegatedRoles.includes(invitedRole as (typeof delegatedRoles)[number])
+  );
+}

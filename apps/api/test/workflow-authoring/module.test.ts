@@ -14,6 +14,7 @@ const dependencies = {
       Promise.reject(new Error('not exercised')),
     createWorkflow: () => Promise.reject(new Error('not exercised')),
     listWorkflows: () => Promise.resolve({ items: [] }),
+    getWorkflow: () => Promise.resolve(null),
     getDraft: () => Promise.resolve(null),
     listVersions: () => Promise.resolve({ items: [] }),
     saveDraft: () => Promise.reject(new Error('not exercised')),

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -29,6 +30,7 @@ import {
   ChangeWorkspaceMemberRoleUseCase,
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
+import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 import {
   accessibleWorkspacesQuerySchema,
   idempotencyKeySchema,
@@ -147,6 +149,7 @@ export class WorkspaceController {
   public constructor(
     private readonly createWorkspace: CreateWorkspaceUseCase,
     private readonly lifecycle: WorkspaceLifecycleUseCase,
+    private readonly renameWorkspace: RenameWorkspaceUseCase,
   ) {}
 
   @Post()
@@ -163,6 +166,31 @@ export class WorkspaceController {
       request: body,
       requestId: requestIdentifier(request),
       ...traceFields(traceIdentifier(request)),
+    });
+  }
+
+  @Patch(':workspaceId')
+  @HttpCode(200)
+  @RateLimit('ordinary_mutation')
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceManageGuard,
+  )
+  public async rename(
+    @Req() request: IdentityWorkspaceRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const { workspaceId } = workspaceIdParamSchema.parse(params);
+    const actor = lifecycleActorFrom(request, workspaceId);
+    return this.renameWorkspace.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      request: body,
+      idempotencyKey: requestIdempotencyKey(request),
+      requestId: actor.requestId,
+      ...traceFields(actor.traceId),
     });
   }
 
@@ -253,7 +281,9 @@ function lifecycleActorFrom(
   return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 
-function requestIdempotencyKey(request: IdentityWorkspaceRequest): string {
+export function requestIdempotencyKey(
+  request: IdentityWorkspaceRequest,
+): string {
   const entry = Object.entries(request.headers ?? {}).find(
     ([name]) => name.toLowerCase() === 'idempotency-key',
   );

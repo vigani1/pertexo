@@ -23,6 +23,10 @@ export {
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 export { DatabaseIdentityWorkspaceAdapter } from './database-adapter.js';
+export { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
+export { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
+export { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
+export { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 export { mapIdentityWorkspaceError } from './errors.js';
 export * from './ports.js';
 export * from './tokens.js';

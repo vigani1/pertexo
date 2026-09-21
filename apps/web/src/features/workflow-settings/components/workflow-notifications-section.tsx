@@ -1,12 +1,10 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
-import {
-  DestinationStatusButton,
-  type FailureNotificationDestinationList,
-} from '@/features/failure-notifications/public';
+import type { FailureNotificationDestinationList } from '@/features/failure-notifications/public';
 import type { ApiClient } from '@/lib/api/client';
 import { useFailureNotificationCommands } from '../mutations/use-notification-commands';
 import {
@@ -18,20 +16,19 @@ import { visibleSettingsData } from './settings-query';
 
 export function WorkflowNotificationsSection({
   apiClient,
-  userId,
   workspace,
   workflowId,
   query,
 }: Readonly<{
   apiClient: ApiClient;
-  userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
   query: SettingsQuery<FailureNotificationDestinationList>;
 }>) {
   const [selectedId, setSelectedId] = useState('');
   const canSetPolicy = workspace.capabilities.includes('workflow:update');
-  const canManage = workspace.capabilities.includes('connection:manage');
+  const canManageDestinations =
+    workspace.capabilities.includes('connection:manage');
   const commands = useFailureNotificationCommands({
     apiClient,
     workspaceId: workspace.id,
@@ -41,8 +38,9 @@ export function WorkflowNotificationsSection({
 
   return (
     <SettingsSection
+      id="workflow-notifications"
       title="Failure notifications"
-      description="Select an existing safe destination. The API does not expose a policy read, so this page reports only confirmed commands and does not pretend to know the current selection."
+      description="Choose where this workflow sends failure notifications. The current selection is unavailable, so Set and Clear report only changes confirmed in this session."
     >
       <SettingsQueryState query={query} />
       {data !== undefined && commands.error ? (
@@ -84,19 +82,19 @@ export function WorkflowNotificationsSection({
               >
                 {destination.status}
               </Badge>
-              {canManage ? (
-                <DestinationStatusButton
-                  apiClient={apiClient}
-                  userId={userId}
-                  workspaceId={workspace.id}
-                  destinationId={destination.id}
-                  currentStatus={destination.status}
-                />
-              ) : null}
             </div>
           </li>
         ))}
       </ul>
+      {canManageDestinations ? (
+        <Link
+          to="/w/$workspaceId/settings/notifications"
+          params={{ workspaceId: workspace.id }}
+          className="mt-4 inline-flex text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          Manage workspace destinations
+        </Link>
+      ) : null}
       {canSetPolicy && data && data.items.length > 0 ? (
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <Field className="min-w-64 flex-1">

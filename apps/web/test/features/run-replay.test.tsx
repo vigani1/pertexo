@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -27,6 +28,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'operator',
   capabilities: ['workspace:read', 'run:read', 'run:replay'],
   createdAt: timestamp,
@@ -164,6 +166,70 @@ describe('run replay', () => {
     });
   });
 
+  it('refreshes cached Overview runs immediately after replay acceptance', async () => {
+    let recentReads = 0;
+    installRunHandlers();
+    mockServer.use(
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/runs/${sourceRunId}/replay`,
+        () =>
+          HttpResponse.json(
+            { run: run(replayRunId, 'replay'), replayed: false },
+            { status: 202 },
+          ),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
+        ({ request }) => {
+          const failed =
+            new URL(request.url).searchParams.get('status') === 'failed';
+          if (!failed) recentReads += 1;
+          return HttpResponse.json({
+            items: [run(replayRunId, 'replay')],
+            nextCursor: null,
+          });
+        },
+      ),
+    );
+
+    const { queryClient, router } = renderApp(
+      `/w/${workspaceId}/runs/${sourceRunId}`,
+    );
+    queryClient.setQueryData(
+      workflowRunKeys.recent(userId, workspaceId, 'all'),
+      {
+        items: [run(sourceRunId)],
+        nextCursor: null,
+      },
+    );
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Replay run' }),
+    );
+    await event.click(
+      screen.getByRole('button', { name: 'Replay this version' }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/w/${workspaceId}/runs/${replayRunId}`,
+      );
+    });
+    await router.navigate({
+      to: '/w/$workspaceId/overview',
+      params: { workspaceId },
+    });
+    const refreshedLinks = await screen.findAllByRole('link', {
+      name: 'Workflow name unavailable',
+    });
+    expect(
+      refreshedLinks.every(
+        (link) =>
+          link.getAttribute('href') === `/w/${workspaceId}/runs/${replayRunId}`,
+      ),
+    ).toBe(true);
+    expect(recentReads).toBe(1);
+  });
+
   it('does not expose replay without its distinct capability', async () => {
     installRunHandlers({
       ...workspace,
@@ -171,7 +237,9 @@ describe('run replay', () => {
     });
     renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     expect(
-      await screen.findByRole('heading', { name: 'Workflow run' }),
+      await screen.findByRole('heading', {
+        name: 'Workflow name unavailable',
+      }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Replay run' }),

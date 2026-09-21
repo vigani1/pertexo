@@ -60,11 +60,13 @@
 
 @media (max-width: 40rem) {
   .workspace-entry {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: flex-start;
-    flex-wrap: wrap;
   }
 
   .workspace-entry-status {
-    margin-left: 3.75rem;
+    grid-column: 2;
+    width: fit-content;
   }
 }

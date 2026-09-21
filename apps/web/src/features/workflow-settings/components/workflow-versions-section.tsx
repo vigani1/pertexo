@@ -52,6 +52,7 @@ export function WorkflowVersionsSection({
 
   return (
     <SettingsSection
+      id="workflow-versions"
       title="Published versions"
       description="Immutable published graphs. Restoring one replaces the draft only; it does not republish."
     >

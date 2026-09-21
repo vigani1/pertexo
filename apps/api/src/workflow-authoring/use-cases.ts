@@ -45,6 +45,7 @@ import {
   serializeWorkflowCreate,
   serializeWorkflowDraft,
   serializeWorkflowList,
+  serializeWorkflowSummary,
   serializeWorkflowPublication,
   serializeWorkflowValidation,
   serializeWorkflowVersions,
@@ -54,7 +55,11 @@ import {
 import { createDraftRepresentationTag } from './etag.js';
 
 export type ListWorkflowsInput = WorkflowApplicationInput &
-  Readonly<{ limit?: number; after?: string }>;
+  Readonly<{
+    limit?: number;
+    after?: string;
+    order?: 'created_asc' | 'updated_desc';
+  }>;
 export type CreateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
     request: unknown;
@@ -107,12 +112,13 @@ export class ListWorkflowsUseCase {
           ...(input.limit === undefined ? {} : { limit: input.limit }),
           ...(input.after === undefined
             ? {}
-            : { after: decodeWorkflowCursor(input.after) }),
+            : { after: decodeWorkflowCursor(input.after, input.order) }),
+          ...(input.order === undefined ? {} : { order: input.order }),
         });
         const nextCursor =
           page.nextCursor === undefined
             ? null
-            : encodeWorkflowCursor(page.nextCursor);
+            : encodeWorkflowCursor(page.nextCursor, input.order);
         return serializeWorkflowList(page.items, nextCursor);
       },
     );
@@ -123,6 +129,31 @@ export type WorkflowListResult = Readonly<{
   items: readonly WorkflowSummary[];
   nextCursor: string | null;
 }>;
+
+export class GetWorkflowUseCase {
+  public constructor(
+    private readonly persistence: AuthoringPersistence<'getWorkflow'>,
+    private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+  ) {}
+
+  public execute(input: WorkflowResourceInput) {
+    return this.telemetry.measure(
+      WORKFLOW_AUTHORING_OPERATION.list,
+      async () => {
+        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        const workflow = await this.persistence.getWorkflow(
+          input.routeWorkspaceId,
+          input.workflowId,
+          input.actor.actorId,
+        );
+        if (workflow === null)
+          throw new WorkflowNotFoundError('Workflow is not visible');
+        return serializeWorkflowSummary(workflow);
+      },
+    );
+  }
+}
 
 export class CreateWorkflowUseCase {
   public constructor(

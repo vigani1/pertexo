@@ -4,6 +4,7 @@ import { z } from 'zod';
 const filterSchema = z
   .object({
     workflowId: z.uuid().nullable(),
+    workflowNamePrefix: z.string().min(1).max(128).nullable().optional(),
     status: workflowRunStatusSchema.nullable(),
     createdAtFrom: z.iso.datetime({ offset: true }).nullable(),
     createdAtBefore: z.iso.datetime({ offset: true }).nullable(),
@@ -24,6 +25,7 @@ const cursorPayloadSchema = z
 export type WorkflowRunCursorContext = Readonly<{
   workspaceId: string;
   workflowId?: string;
+  workflowNamePrefix?: string;
   status?: z.output<typeof workflowRunStatusSchema>;
   createdAtFrom?: string;
   createdAtBefore?: string;
@@ -65,7 +67,8 @@ export function decodeWorkflowRunCursor(
     );
     if (
       payload.workspaceId !== context.workspaceId ||
-      JSON.stringify(payload.filters) !== JSON.stringify(cursorFilters(context))
+      JSON.stringify(normalizeFilters(payload.filters)) !==
+        JSON.stringify(normalizeFilters(cursorFilters(context)))
     ) {
       throw new InvalidWorkflowRunCursorError();
     }
@@ -79,8 +82,21 @@ export function decodeWorkflowRunCursor(
 function cursorFilters(context: WorkflowRunCursorContext) {
   return filterSchema.parse({
     workflowId: context.workflowId ?? null,
+    ...(context.workflowNamePrefix === undefined
+      ? {}
+      : { workflowNamePrefix: context.workflowNamePrefix }),
     status: context.status ?? null,
     createdAtFrom: context.createdAtFrom ?? null,
     createdAtBefore: context.createdAtBefore ?? null,
   });
+}
+
+function normalizeFilters(filters: z.output<typeof filterSchema>) {
+  return {
+    workflowId: filters.workflowId,
+    workflowNamePrefix: filters.workflowNamePrefix ?? null,
+    status: filters.status,
+    createdAtFrom: filters.createdAtFrom,
+    createdAtBefore: filters.createdAtBefore,
+  };
 }

@@ -64,6 +64,11 @@ export {
   FailureNotificationStateError,
   createFailureNotificationStore,
 } from './execution/failure-notifications.js';
+export { createWorkspaceInvitationDeliveryStore } from './execution/workspace-invitation-delivery.js';
+export type {
+  WorkspaceInvitationDeliveryClaim,
+  WorkspaceInvitationDeliveryStore,
+} from './execution/workspace-invitation-delivery.js';
 export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,

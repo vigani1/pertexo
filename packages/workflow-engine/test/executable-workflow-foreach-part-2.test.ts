@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
+import { safeParseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 
 import * as productionEngine from '../src/index.js';
 import * as testingEngine from '../src/testing.js';
@@ -595,8 +596,8 @@ describe('For Each production operations', () => {
   );
 
   it.each(['__proto__', 'constructor', 'toString'])(
-    'rejects a reserved own mapping key instead of silently dropping it: %s',
-    (reservedKey) => {
+    'preserves a reserved own mapping key without changing prototypes: %s',
+    async (reservedKey) => {
       const graph = structuredClone(forEachGraph());
       const loop = graph.nodes.find(({ id }) => id === 'loop');
       if (loop === undefined || !('structured' in loop))
@@ -612,15 +613,81 @@ describe('For Each production operations', () => {
         path: '$',
       };
       sink.inputMappings = mappings as never;
+      expect(Object.hasOwn(sink.inputMappings, reservedKey)).toBe(true);
+      const parsedGraph = safeParseWorkflowGraphDraft(graph);
+      expect(parsedGraph.success).toBe(true);
+      if (!parsedGraph.success) throw parsedGraph.error;
+      const parsedSink = parsedGraph.data.nodes
+        .find(({ id }) => id === 'loop')
+        ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
+      expect(Object.keys(parsedSink?.inputMappings ?? {})).toContain(
+        reservedKey,
+      );
 
-      expect(() =>
-        buildWorkflowExecutableV2({
-          graph,
-          release: composeExecutableCompatibilityRelease(
-            nodeRelease({ forEach: true }),
-          ),
+      const executable = buildWorkflowExecutableV2({
+        graph,
+        release: composeExecutableCompatibilityRelease(
+          nodeRelease({ forEach: true }),
+        ),
+      });
+      const compiledSink = executable.envelope.graph.nodes
+        .find(({ id }) => id === 'loop')
+        ?.structured?.body.nodes.find(({ id }) => id === 'body-sink');
+      expect(
+        Object.hasOwn(compiledSink?.inputMappings ?? {}, reservedKey),
+      ).toBe(true);
+
+      const workflowVersionId = '00000000-0000-4000-8000-000000000001';
+      const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }] as const;
+      const collection = [{ mapped: true }] as const;
+      let received: unknown;
+      await executeNodeAttempt({
+        runId: 'run-reserved-key',
+        nodeRunId: 'node-run-reserved-key',
+        attemptId: 'attempt-reserved-key',
+        executable,
+        workflowVersionId,
+        invocationKey: invocationKey({
+          workflowVersionId,
+          nodeId: 'body-sink',
+          iterationPath,
         }),
-      ).toThrow(/reserved input mapping key is not supported/u);
+        nodeId: 'body-sink',
+        iterationPath,
+        structuredCollection: {
+          loopNodeId: 'loop',
+          ordinal: 0,
+          collection,
+          collectionSize: 1,
+          declaredCollectionChecksum: createHash('sha256')
+            .update(JSON.stringify(collection))
+            .digest('hex'),
+        },
+        runInput: {},
+        completedNodeOutputs: [
+          {
+            invocationKey: invocationKey({
+              workflowVersionId,
+              nodeId: 'body-first',
+              iterationPath,
+            }),
+            nodeId: 'body-first',
+            value: { safe: true },
+          },
+        ],
+        registry: {
+          execute: (request) => {
+            received = request.input;
+            return Promise.resolve({ kind: 'succeeded', output: {} });
+          },
+        },
+        signal: new AbortController().signal,
+      });
+      expect(Object.hasOwn(received as object, reservedKey)).toBe(true);
+      expect(Reflect.get(received as object, reservedKey)).toEqual({
+        safe: true,
+      });
+      expect(Reflect.get(Object.prototype, 'safe')).toBeUndefined();
     },
   );
 

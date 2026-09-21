@@ -94,10 +94,22 @@ function createTransientDataReapRecorder(
       data_class: 'workspace_creation_idempotency_record',
     });
     reaps.add(result.sessionsDeleted, { data_class: 'session' });
+    reaps.add(result.invitationAcceptanceIntentsDeleted, {
+      data_class: 'workspace_invitation_acceptance_intent',
+    });
+    reaps.add(result.invitationReplacementClaimsDeleted, {
+      data_class: 'workspace_invitation_replacement_claim',
+    });
+    reaps.add(result.invitationsExpired, {
+      data_class: 'workspace_invitation_expiry',
+    });
     duration.record(durationSeconds, {
       mode: 'transient_data_reap',
       outcome:
         result.idempotencyRecordsDeleted +
+          result.invitationAcceptanceIntentsDeleted +
+          result.invitationReplacementClaimsDeleted +
+          result.invitationsExpired +
           result.workspaceCreationRecordsDeleted +
           result.sessionsDeleted >
         0
