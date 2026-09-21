@@ -339,6 +339,8 @@ async function main() {
         'pertexo_worker',
         postgresPassword.worker,
       ),
+      INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+      INVITATION_TOKEN_KEY_VERSION: 'iwa02-invitation-v1',
       OIDC_AUTHORIZATION_ENDPOINT:
         'https://identity.example.test/oauth2/authorize',
       OIDC_CLIENT_ID: 'pertexo-api',
