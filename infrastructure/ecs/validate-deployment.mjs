@@ -13,7 +13,7 @@ import {
 
 const root = resolve(import.meta.dirname, '../..');
 const credentialPattern =
-  /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|ACCESS_KEY_ID)$/u;
+  /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|TOKEN_KEY|ACCESS_KEY_ID)$/u;
 const telemetryWorkloads = new Set([
   'api',
   'worker',

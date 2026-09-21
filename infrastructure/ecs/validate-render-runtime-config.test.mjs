@@ -105,6 +105,8 @@ function syntheticValue(name, cohort) {
       'postgresql://dispatcher:password@postgres.example.test:5432/pertexo',
     DATABASE_WORKER_URL:
       'postgresql://worker:password@postgres.example.test:5432/pertexo',
+    INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
+    INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
     OIDC_AUTHORIZATION_ENDPOINT:
       'https://identity.example.test/oauth2/authorize',
     OIDC_CALLBACK_LANDING_PATH: '/workspaces',
