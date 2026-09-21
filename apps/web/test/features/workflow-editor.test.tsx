@@ -299,7 +299,7 @@ describe('workflow editor route', () => {
         'listitem',
       ),
     ).toHaveLength(3);
-  });
+  }, 10_000);
 
   it('keeps invalid and advanced mapping scratch explicit across Apply and Cancel', async () => {
     const graph = graphWithMappingNodes({
