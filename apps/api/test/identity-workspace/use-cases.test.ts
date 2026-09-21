@@ -436,6 +436,51 @@ describe('identity/workspace application use cases', () => {
     );
   });
 
+  it('returns a verified invitation continuation after issuing the session', async () => {
+    const continuation = {
+      kind: 'invitation_acceptance' as const,
+      workspaceId,
+      intentId: '99999999-9999-4999-8999-999999999999',
+      bindingDigest: 'a'.repeat(64),
+    };
+    const oidc = {
+      startLogin: vi.fn(),
+      completeLogin: vi.fn().mockResolvedValue({
+        externalIdentity: {
+          issuer: 'https://issuer.example',
+          subject: 'sub-1',
+        },
+        internalIdentity: { userId: actorId },
+        verifiedProfile: {
+          email: 'person@example.test',
+          displayName: 'Person',
+        },
+        continuation,
+      }),
+    };
+    const sessions = {
+      issue: vi.fn().mockResolvedValue({
+        sessionId,
+        expiresAt: new Date('2026-08-20T20:00:00.000Z'),
+        cookieOptions: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax' as const,
+          path: '/',
+          maxAgeSeconds: 28_800,
+        },
+      }),
+    };
+
+    await expect(
+      new OidcApplicationService(oidc, sessions).complete(
+        { code: 'code', state: 'state-value-123456' },
+        'browser-binding-secret',
+        { writeSessionCookie: vi.fn() },
+      ),
+    ).resolves.toMatchObject({ continuation });
+  });
+
   it.each([
     [
       'repeated code',

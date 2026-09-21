@@ -160,6 +160,18 @@ describe('workflow authoring application seams', () => {
     );
   });
 
+  it('fails closed when an individually requested workflow is not visible', async () => {
+    const store = persistence({ getWorkflow: vi.fn().mockResolvedValue(null) });
+
+    await expect(
+      new GetWorkflowUseCase(store, authorization()).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+  });
+
   it('restores a version through one atomic command preserving the original tag', async () => {
     const store = persistence();
     const representationTag = createDraftRepresentationTag({

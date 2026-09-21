@@ -420,9 +420,9 @@
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 66,
+          "line": 67,
           "column": 2,
-          "sourceFingerprint": "sha256:bbacbbc5f2d15bb0853ec5656c34b73decb7e6501c77594ac996386291065725",
+          "sourceFingerprint": "sha256:e03931de997d389cd2eed31f483a23a56a9f8965c21fa673c4fb6bf5e4c160ec",
           "classification": "defensive",
           "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
         },
@@ -430,9 +430,9 @@
           "branchId": "1",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 69,
+          "line": 70,
           "column": 2,
-          "sourceFingerprint": "sha256:bbacbbc5f2d15bb0853ec5656c34b73decb7e6501c77594ac996386291065725",
+          "sourceFingerprint": "sha256:e03931de997d389cd2eed31f483a23a56a9f8965c21fa673c4fb6bf5e4c160ec",
           "classification": "defensive",
           "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
         },
@@ -440,11 +440,27 @@
           "branchId": "3",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 73,
+          "line": 74,
           "column": 37,
           "sourceFingerprint": "sha256:f7bc0c0b29881bd86b56707c4f53f8ebedebf31fd2f009ee6336f2ddff432e3a",
           "classification": "defensive",
           "justification": "This residual contract arm preserves fail-closed workflow-run cursor normalization."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/security/application-secret-envelope.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 41,
+          "column": 2,
+          "sourceFingerprint": "sha256:4e65dc58f1318030964afba6c169fbf33dfbf1a12f884fe4a5bf042895b22bdd",
+          "classification": "unreachable",
+          "justification": "The current key is inserted into the local map from the same version immediately before lookup, so it cannot be absent without a built-in Map contract violation."
         }
       ]
     },
@@ -3810,7 +3826,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:9f52e9c8e00d2498350c74b16c670773c3934e15ba56f4295f2ba1466620d346",
+          "sourceFingerprint": "sha256:98f1c9483c04724a85c1e04f03e9069b62d55282d5c4aad2ac201e498ea2b65d",
           "classification": "generated",
           "justification": "V8 reports this synthetic branch arm at line zero for transpiled control-flow bookkeeping; it has no distinct source location or independently callable source behavior."
         }
@@ -3821,64 +3837,34 @@
       "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
       "reviews": [
         {
-          "branchId": "11",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 113,
-          "column": 16,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
-          "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles optional configuration and malformed provider material while preserving deterministic authentication behavior."
-        },
-        {
-          "branchId": "16",
-          "locationIndex": 1,
-          "branchType": "switch",
-          "line": 204,
-          "column": 8,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
-          "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
-        },
-        {
-          "branchId": "16",
-          "locationIndex": 2,
-          "branchType": "switch",
-          "line": 205,
-          "column": 8,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
-          "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
-        },
-        {
-          "branchId": "18",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 222,
-          "column": 42,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
-          "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
-        },
-        {
-          "branchId": "19",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 223,
-          "column": 38,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
-          "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
-        },
-        {
           "branchId": "20",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 224,
-          "column": 34,
-          "sourceFingerprint": "sha256:94b01773c73c30d3e6bf77db165a75cba76a8c9db59d66367bfdfcffbd2a3738",
+          "line": 230,
+          "column": 42,
+          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
           "classification": "defensive",
-          "justification": "This fail-closed identity runtime arm handles impossible provider states without weakening authentication or session safety."
+          "justification": "IdentityWorkspaceModule.register always supplies its controller list; the empty-list fallback protects the dynamic-module seam against future contract drift."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 231,
+          "column": 38,
+          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
+          "classification": "defensive",
+          "justification": "IdentityWorkspaceModule.register always supplies its provider list; the empty-list fallback protects the dynamic-module seam against future contract drift."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 232,
+          "column": 34,
+          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
+          "classification": "defensive",
+          "justification": "IdentityWorkspaceModule.register always supplies its export list; the empty-list fallback protects the dynamic-module seam against future contract drift."
         }
       ]
     },
@@ -3973,44 +3959,44 @@
       "file": "apps/api/src/identity-infrastructure/oidc-adapter.ts",
       "reviews": [
         {
-          "branchId": "35",
+          "branchId": "36",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:1084e105a3027b56850c3bc53f37d61079b19457f4ed6e0c48b6a2a7212ad776",
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
           "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "45",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:1084e105a3027b56850c3bc53f37d61079b19457f4ed6e0c48b6a2a7212ad776",
-          "classification": "generated",
-          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
-        },
-        {
-          "branchId": "39",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 405,
-          "column": 6,
-          "sourceFingerprint": "sha256:1084e105a3027b56850c3bc53f37d61079b19457f4ed6e0c48b6a2a7212ad776",
-          "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent stream decisions are exercised through the provider boundary."
         },
         {
           "branchId": "46",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "generated",
+          "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent abort decisions are exercised through the provider boundary."
+        },
+        {
+          "branchId": "40",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 451,
-          "column": 2,
-          "sourceFingerprint": "sha256:1084e105a3027b56850c3bc53f37d61079b19457f4ed6e0c48b6a2a7212ad776",
+          "line": 407,
+          "column": 6,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
           "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+          "justification": "The platform ReadableStream reader returns the specified read-result shape; this branch rejects a malformed injected stream implementation before consuming provider bytes."
+        },
+        {
+          "branchId": "47",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 453,
+          "column": 2,
+          "sourceFingerprint": "sha256:32305ca8c1ed6ce4d077ba890209e949a83080fce2e2696f03dbbb4753713f17",
+          "classification": "defensive",
+          "justification": "The caller checks the same signal immediately before entering readChunk; this second check closes the narrow abort race before listener registration."
         }
       ]
     },
@@ -4101,14 +4087,14 @@
       "file": "apps/api/src/identity/oidc.ts",
       "reviews": [
         {
-          "branchId": "9",
+          "branchId": "11",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 171,
+          "line": 176,
           "column": 4,
-          "sourceFingerprint": "sha256:5bfc4e244385761911a5218df647a91081586c276a064fc051f1fd002fbd26b3",
+          "sourceFingerprint": "sha256:9dbda0757eedd1042b02b74055c64a08ca6325f80c176f10eb4d6b861d8f4dd7",
           "classification": "defensive",
-          "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
+          "justification": "The transaction-store contract returns a discriminated consume result rather than undefined; this check fails closed if an injected implementation violates that contract."
         }
       ]
     },

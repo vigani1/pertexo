@@ -214,4 +214,44 @@ describe('identity/workspace Nest module', () => {
       await context.close();
     }
   });
+
+  it('constructs every optional workspace persistence adapter when configured', async () => {
+    const notExercised = () => Promise.reject(new Error('not exercised'));
+    const context = await NestFactory.createApplicationContext(
+      {
+        ...IdentityWorkspaceModule.register({
+          ...dependencies,
+          persistence: {
+            ...dependencies.persistence,
+            renameWorkspace: notExercised,
+            listWorkspaceInvitations: notExercised,
+            createWorkspaceInvitation: notExercised,
+            resendWorkspaceInvitation: notExercised,
+            revokeWorkspaceInvitation: notExercised,
+            resolveInvitationAcceptance: notExercised,
+            readInvitationAcceptance: notExercised,
+            recordInvitationAcceptanceProof: notExercised,
+            completeInvitationAcceptance: notExercised,
+            abandonInvitationAcceptance: notExercised,
+          },
+        }),
+        imports: [HttpPlatformModule],
+      },
+      { logger: false, abortOnError: false },
+    );
+
+    try {
+      expect(context.get(RenameWorkspaceUseCase)).toBeInstanceOf(
+        RenameWorkspaceUseCase,
+      );
+      expect(context.get(WorkspaceInvitationManagementUseCase)).toBeInstanceOf(
+        WorkspaceInvitationManagementUseCase,
+      );
+      expect(context.get(InvitationAcceptanceUseCase)).toBeInstanceOf(
+        InvitationAcceptanceUseCase,
+      );
+    } finally {
+      await context.close();
+    }
+  });
 });
