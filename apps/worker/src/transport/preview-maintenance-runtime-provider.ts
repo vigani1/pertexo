@@ -1,9 +1,12 @@
 import type { Provider } from '@nestjs/common';
 import {
   createFailureNotificationStore,
+  createWorkspaceInvitationDeliveryStore,
   type FailureNotificationStore,
+  type WorkspaceInvitationDeliveryStore,
 } from '@pertexo/database/execution';
 import {
+  createApplicationSecretEnvelope,
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
   createResendClient,
@@ -15,6 +18,7 @@ import { JOB_NAME, type QueueConsumerObserver } from '@pertexo/queue';
 import type { WorkerConfig } from '../config/worker-config.js';
 import { boundedBackgroundTask } from '../runtime/background-task-deadline.js';
 import { createProviderFailureNotificationDelivery } from '../execution/failure-notification-delivery.js';
+import { createWorkspaceInvitationDeliveryHandler } from '../execution/workspace-invitation-delivery.js';
 import {
   createPreviewMaintenanceRuntime,
   type PreviewMaintenanceRuntime,
@@ -34,6 +38,13 @@ export type PreviewMaintenanceCompositionFactories = Readonly<{
     email: typeof createResendClient;
     create: typeof createProviderFailureNotificationDelivery;
   }>;
+  invitationDelivery: Readonly<{
+    store: typeof createWorkspaceInvitationDeliveryStore;
+    envelope: typeof createApplicationSecretEnvelope;
+    httpClient: typeof createNodeSecureHttpClient;
+    email: typeof createResendClient;
+    create: typeof createWorkspaceInvitationDeliveryHandler;
+  }>;
   runtime: typeof createPreviewMaintenanceRuntime;
 }>;
 
@@ -46,6 +57,13 @@ const productionFactories: PreviewMaintenanceCompositionFactories = {
     email: createResendClient,
     create: createProviderFailureNotificationDelivery,
   },
+  invitationDelivery: {
+    store: createWorkspaceInvitationDeliveryStore,
+    envelope: createApplicationSecretEnvelope,
+    httpClient: createNodeSecureHttpClient,
+    email: createResendClient,
+    create: createWorkspaceInvitationDeliveryHandler,
+  },
   runtime: createPreviewMaintenanceRuntime,
 };
 
@@ -54,6 +72,7 @@ type MaintenanceJobSelection = Readonly<{
   reconciliation: boolean;
   replay: boolean;
   unknownOutcome: boolean;
+  workspaceInvitation: boolean;
 }>;
 
 export function previewMaintenanceRuntimeProvider(
@@ -91,6 +110,7 @@ export async function createOwnedPreviewMaintenanceRuntime(
     );
 
   let notificationStore: FailureNotificationStore | undefined;
+  let invitationStore: WorkspaceInvitationDeliveryStore | undefined;
   let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
   const deliveryFactories = factories.notificationDelivery;
   try {
@@ -119,6 +139,30 @@ export async function createOwnedPreviewMaintenanceRuntime(
       throw new TypeError(
         'Failure notification dispatch composition is incomplete',
       );
+    let workspaceInvitationDelivery;
+    if (jobs.workspaceInvitation) {
+      const invitationConfig = config.invitationDelivery;
+      if (invitationConfig === undefined)
+        throw new TypeError(
+          'Workspace invitation dispatch requires system email configuration',
+        );
+      const invitationFactories = factories.invitationDelivery;
+      invitationStore = invitationFactories.store(
+        config.database,
+        dependencies.databaseRuntime,
+      );
+      workspaceInvitationDelivery = invitationFactories.create({
+        store: invitationStore,
+        envelope: invitationFactories.envelope(
+          invitationConfig.tokenEncryption,
+        ),
+        email: invitationFactories.email(invitationFactories.httpClient()),
+        apiKey: invitationConfig.apiKey,
+        fromEmail: invitationConfig.fromEmail,
+        webOrigin: invitationConfig.webOrigin,
+        timeoutMillis: invitationConfig.timeoutMillis,
+      });
+    }
     const runtime = await factories.runtime({
       database: config.database,
       ...(dependencies.databaseRuntime === undefined
@@ -133,17 +177,22 @@ export async function createOwnedPreviewMaintenanceRuntime(
       ...(failureNotificationDelivery === undefined
         ? {}
         : { failureNotificationDelivery }),
+      ...(workspaceInvitationDelivery === undefined
+        ? {}
+        : { workspaceInvitationDelivery }),
     });
     return wrapOwnedRuntime(
       runtime,
       notificationStore,
       encryptionRuntime,
+      invitationStore,
       config.outboxDispatcher.operationTimeoutMillis,
     );
   } catch (error: unknown) {
     const cleanup = await closeDeliveryDependencies(
       notificationStore,
       encryptionRuntime,
+      invitationStore,
       config.outboxDispatcher.operationTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -163,6 +212,7 @@ function selectMaintenanceJobs(
     notification: jobNames.includes(JOB_NAME.deliverRunFailureNotification),
     unknownOutcome: jobNames.includes(JOB_NAME.reconcileUnknownOutcome),
     replay: jobNames.includes(JOB_NAME.replayWorkflowRun),
+    workspaceInvitation: jobNames.includes(JOB_NAME.deliverWorkspaceInvitation),
   };
 }
 
@@ -171,7 +221,8 @@ function hasMaintenanceJobs(jobs: MaintenanceJobSelection): boolean {
     jobs.reconciliation ||
     jobs.notification ||
     jobs.unknownOutcome ||
-    jobs.replay
+    jobs.replay ||
+    jobs.workspaceInvitation
   );
 }
 
@@ -179,9 +230,14 @@ function wrapOwnedRuntime(
   runtime: PreviewMaintenanceRuntime,
   notificationStore: FailureNotificationStore | undefined,
   encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined,
+  invitationStore: WorkspaceInvitationDeliveryStore | undefined,
   timeoutMillis: number,
 ): PreviewMaintenanceRuntime {
-  if (notificationStore === undefined && encryptionRuntime === undefined)
+  if (
+    notificationStore === undefined &&
+    encryptionRuntime === undefined &&
+    invitationStore === undefined
+  )
     return runtime;
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
@@ -203,6 +259,7 @@ function wrapOwnedRuntime(
               closeDeliveryDependencies(
                 notificationStore,
                 encryptionRuntime,
+                invitationStore,
                 timeoutMillis,
               ),
             );
@@ -235,6 +292,7 @@ function wrapOwnedRuntime(
         const dependencyFailures = await closeDeliveryDependencies(
           notificationStore,
           encryptionRuntime,
+          invitationStore,
           timeoutMillis,
         );
         const failures = [...dependencyFailures];
@@ -252,11 +310,13 @@ function wrapOwnedRuntime(
 async function closeDeliveryDependencies(
   notificationStore: FailureNotificationStore | undefined,
   encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined,
+  invitationStore: WorkspaceInvitationDeliveryStore | undefined,
   timeoutMillis?: number,
 ): Promise<readonly unknown[]> {
   const operations = [
     Promise.resolve().then(() => notificationStore?.close()),
     Promise.resolve().then(() => encryptionRuntime?.close()),
+    Promise.resolve().then(() => invitationStore?.close()),
   ].map((operation) =>
     timeoutMillis === undefined
       ? operation

@@ -53,7 +53,7 @@ export function WorkspaceLifecycleSection({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {workspace.status === 'pending_deletion'
-                ? 'This workspace is pending deletion. Restore it during the server-owned recovery window if it should be retained.'
+                ? 'This workspace is pending deletion. Restore it during the available recovery window if it should be retained.'
                 : 'Requesting deletion moves this workspace into a recoverable pending state before the server-managed purge.'}
             </p>
             {workspace.status === 'pending_deletion' ? (

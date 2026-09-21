@@ -19,10 +19,14 @@ export function getWorkflowRunsPage(
   apiClient: ApiClient,
   workspaceId: string,
   filters: RunHistoryFilters,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+  input: Readonly<{
+    after?: string;
+    limit?: number;
+    signal?: AbortSignal;
+  }> = {},
 ): Promise<WorkflowRunListResponse> {
   const parsed = workflowRunListQuerySchema.parse({
-    limit: 50,
+    limit: input.limit ?? 50,
     ...filters,
     ...(input.after === undefined ? {} : { after: input.after }),
   });

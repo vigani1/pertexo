@@ -2,6 +2,7 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   GlassSection,
@@ -9,14 +10,19 @@ import {
   GlassSectionHeader,
   GlassSectionTitle,
 } from '@/components/patterns/glass-section';
+import type { ApiClient } from '@/lib/api/client';
+import { WorkspaceCreationDialog } from './components/creation/workspace-creation-dialog';
 import './workspace-selection.css';
 
 type WorkspaceSelectionPageProps = Readonly<{
+  apiClient: ApiClient;
   user: UserProfileResponse;
   workspaces: readonly AccessibleWorkspace[];
   logoutPending: boolean;
   logoutError?: string;
   onSelect: (workspace: AccessibleWorkspace) => void;
+  onCreated: (workspace: AccessibleWorkspace) => void;
+  onSessionInvalidated: () => void;
   onLogout: () => void;
 }>;
 
@@ -27,13 +33,17 @@ const workspaceStatusCopy = Object.freeze({
 });
 
 export function WorkspaceSelectionPage({
+  apiClient,
   user,
   workspaces,
   logoutPending,
   logoutError,
   onSelect,
+  onCreated,
+  onSessionInvalidated,
   onLogout,
 }: WorkspaceSelectionPageProps) {
+  const [creationOpen, setCreationOpen] = useState(false);
   return (
     <main id="main" className="app-stage min-h-svh px-5 py-8 sm:px-8 sm:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
@@ -50,7 +60,18 @@ export function WorkspaceSelectionPage({
               operational boundary.
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {workspaces.length === 0 ? null : (
+              <Button
+                type="button"
+                variant="solid"
+                onClick={() => {
+                  setCreationOpen(true);
+                }}
+              >
+                Create workspace
+              </Button>
+            )}
             <div className="min-w-0 text-right">
               <p className="truncate text-sm font-semibold">
                 {user.displayName}
@@ -84,10 +105,21 @@ export function WorkspaceSelectionPage({
                 No workspace access yet
               </GlassSectionTitle>
               <GlassSectionDescription>
-                Ask an organization owner to add you to a workspace. This page
-                will update after access is granted.
+                Create your first workspace to start building workflows, or ask
+                an owner to add you to an existing one.
               </GlassSectionDescription>
             </GlassSectionHeader>
+            <div className="px-6 pb-7 sm:px-8">
+              <Button
+                type="button"
+                variant="solid"
+                onClick={() => {
+                  setCreationOpen(true);
+                }}
+              >
+                Create your first workspace
+              </Button>
+            </div>
           </GlassSection>
         ) : (
           <section aria-label="Available workspaces" className="workspace-list">
@@ -110,13 +142,13 @@ export function WorkspaceSelectionPage({
                   <span className="workspace-entry-index" aria-hidden="true">
                     {workspace.name.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="min-w-0 flex-1 text-left">
-                    <span className="block truncate font-heading text-xl font-semibold">
+                  <span className="workspace-entry-identity min-w-0 flex-1 text-left">
+                    <span className="block [overflow-wrap:anywhere] font-heading text-xl font-semibold sm:truncate">
                       {workspace.name}
                     </span>
                     <span
                       id={`workspace-${workspace.id}-detail`}
-                      className="mt-1 block text-sm text-muted-foreground"
+                      className="mt-1 block [overflow-wrap:anywhere] text-sm text-muted-foreground sm:truncate"
                     >
                       {workspace.slug} / {workspace.role}
                     </span>
@@ -131,6 +163,18 @@ export function WorkspaceSelectionPage({
             })}
           </section>
         )}
+        <WorkspaceCreationDialog
+          key={user.id}
+          apiClient={apiClient}
+          userId={user.id}
+          open={creationOpen}
+          onOpenChange={setCreationOpen}
+          onCreated={onCreated}
+          onSessionInvalidated={() => {
+            setCreationOpen(false);
+            onSessionInvalidated();
+          }}
+        />
       </div>
     </main>
   );

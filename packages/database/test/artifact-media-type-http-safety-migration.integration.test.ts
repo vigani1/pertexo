@@ -126,6 +126,12 @@ describe('artifact media-type HTTP safety prior-head migration', () => {
         '0091_workspace_discovery_scope.sql',
         '0092_workflow_run_history_indexes.sql',
         '0093_workspace_member_role_management.sql',
+        '0094_workspace_invitations.sql',
+        '0095_workspace_invitation_lifecycle_safety.sql',
+        '0096_workspace_invitation_claim_cleanup_progress.sql',
+        '0097_workspace_invitation_claim_scan_restart.sql',
+        '0098_workspace_display_name.sql',
+        '0099_workflow_recent_list.sql',
       ]);
 
       await owner.query('begin');

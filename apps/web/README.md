@@ -3,9 +3,10 @@
 React 19 + TypeScript + Vite, in the existing pnpm workspace. Stages 1–6 are
 implemented: browser-safe contracts and transport, provider-only OIDC sign-in,
 session recovery/logout, workspace entry, workflow list/create and discovery,
-the bounded workflow editor with conflict-safe draft persistence, validation,
-node preview, exact-version publishing, run start, live run detail and
-contract-backed workflow settings/operations.
+workspace creation/display-name editing, bounded recent-activity Overview, the
+bounded workflow editor with conflict-safe draft persistence, validation, node
+preview, typed visual input mappings, exact-version publishing, run start, live
+run detail and contract-backed workflow settings/operations.
 
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
@@ -57,11 +58,12 @@ wiring remains deployment-owned.
 | `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                       |
 | `src/features/auth/`                  | OIDC start, current session, login presentation and logout cleanup.                         |
 | `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.      |
+| `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.              |
 | `src/features/workflows/`             | Workflow list/create transport, cache ownership, recovery and presentation.                 |
 | `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                              |
 | `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.         |
 | `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references. |
-| `src/features/workflow-editor/`       | Route-scoped graph editing, history, save coordination and conflict recovery.               |
+| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.     |
 | `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                            |
 | `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                          |
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                          |
@@ -111,8 +113,14 @@ artifacts are the current production callers.
 The staged frontend baseline, connection-management increments, explicit run
 replay, workspace run history, notification-destination management, authorized
 member list and workspace lifecycle settings slices in the architecture plan are
-complete. Remaining workspace administration—including invitations, role
-mutation and renaming—stays product/API gated. Add future surfaces only from
+complete. Existing-member role changes are implemented; invitations are
+implemented with remaining provider/full-stack and cross-browser verification
+gates recorded in the plan. Workspace creation UI, display-name editing, the
+bounded Overview and visual input mappings are implemented. The selected N1–N3
+and M1 slices now require their planned integrated review. Artifact input upload
+remains gated on a supported artifact-valued node/input contract and its browser
+proof; templates and non-billing usage remain optional decision-gated slices.
+Payments and billing are outside current scope. Add future surfaces only from
 concrete product demand and existing contracts, following the
 [delivery gates](ARCHITECTURE.md#14-delivery-sequence-and-acceptance-gates) and
 [coding patterns](ARCHITECTURE.md#2-folders-and-dependency-direction). Do not
@@ -153,11 +161,11 @@ states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
 switching, useful canvas dimensions and retained inspector scratch state. React
-Doctor's changed-scope scan reports 100/100. Its full scan still reports
-pre-existing diagnostics outside the completed frontend review fixes, so the
-score is treated as a triage aid rather than a delivery gate. Firefox/WebKit and
-a live-backend journey through the controlled OIDC provider remain pending; the
-mocked Chromium lane does not prove either integration.
+Doctor's changed-and-untracked scan reports 72/100 with 51 pre-existing or
+out-of-scope diagnostics; none names the workspace creation, rename or Overview
+source files. The score remains a triage aid rather than a delivery gate.
+Firefox/WebKit and a live-backend journey through the controlled OIDC provider
+remain pending; the mocked Chromium lane does not prove either integration.
 
 React Compiler was evaluated with the documented Babel/Vite integration and was
 not adopted: the controlled trial increased build work and emitted bundle size

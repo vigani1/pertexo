@@ -331,16 +331,6 @@ function inspectGraphFacts(
       )
         for (const key of Object.keys(mappings)) {
           const mappingPath = `${nodePath}.inputMappings.${key}`;
-          if (
-            key === '__proto__' ||
-            key === 'constructor' ||
-            key === 'toString'
-          )
-            return failure(
-              'invalid_json',
-              mappingPath,
-              'reserved input mapping key is not supported',
-            );
           const mapping = (mappings as Record<string, unknown>)[key];
           if (
             mapping !== null &&

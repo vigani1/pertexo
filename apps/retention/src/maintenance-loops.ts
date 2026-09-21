@@ -202,12 +202,20 @@ async function runTransientDataReapLoop(
       );
       recordOperationRecovery();
       const deletedCount =
+        result.invitationAcceptanceIntentsDeleted +
+        result.invitationReplacementClaimsDeleted +
+        result.invitationsExpired +
         result.idempotencyRecordsDeleted +
         result.workspaceCreationRecordsDeleted +
         result.sessionsDeleted;
       if (deletedCount > 0)
         resources.logger.info('retention.transient_data_reaped', {
           deletedCount,
+          invitationAcceptanceIntentsDeleted:
+            result.invitationAcceptanceIntentsDeleted,
+          invitationReplacementClaimsDeleted:
+            result.invitationReplacementClaimsDeleted,
+          invitationsExpired: result.invitationsExpired,
           idempotencyRecordsDeleted: result.idempotencyRecordsDeleted,
           sessionsDeleted: result.sessionsDeleted,
           workspaceCreationRecordsDeleted:

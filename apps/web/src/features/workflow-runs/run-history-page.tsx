@@ -18,14 +18,12 @@ export function RunHistoryPage({
   workspace,
   filters,
   onFiltersChange,
-  onOpenRun,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   filters: RunHistoryFilters;
   onFiltersChange: (filters: RunHistoryFilters) => void;
-  onOpenRun: (runId: string) => void;
 }>) {
   const canRead = workspace.capabilities.includes('run:read');
   const query = useInfiniteQuery({
@@ -80,6 +78,9 @@ export function RunHistoryPage({
       <RunHistoryFiltersForm
         key={JSON.stringify(filters)}
         filters={filters}
+        canFilterByWorkflowName={workspace.capabilities.includes(
+          'workflow:read',
+        )}
         onApply={onFiltersChange}
       />
 
@@ -136,7 +137,7 @@ export function RunHistoryPage({
         </Empty>
       ) : (
         <>
-          <RunHistoryTable runs={runs} onOpenRun={onOpenRun} />
+          <RunHistoryTable runs={runs} workspaceId={workspace.id} />
           {query.hasNextPage ? (
             <div className="mt-6 flex justify-center">
               <Button

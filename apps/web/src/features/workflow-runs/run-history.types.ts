@@ -6,12 +6,17 @@ import {
 export type RunHistoryFilters = Readonly<
   Pick<
     WorkflowRunListQuery,
-    'workflowId' | 'status' | 'createdAtFrom' | 'createdAtBefore'
+    | 'workflowId'
+    | 'workflowNamePrefix'
+    | 'status'
+    | 'createdAtFrom'
+    | 'createdAtBefore'
   >
 >;
 
 const filterNames = new Set([
   'workflowId',
+  'workflowNamePrefix',
   'status',
   'createdAtFrom',
   'createdAtBefore',
@@ -29,6 +34,9 @@ export const runHistorySearchSchema = Object.freeze({
       ...(parsed.workflowId === undefined
         ? {}
         : { workflowId: parsed.workflowId }),
+      ...(parsed.workflowNamePrefix === undefined
+        ? {}
+        : { workflowNamePrefix: parsed.workflowNamePrefix }),
       ...(parsed.status === undefined ? {} : { status: parsed.status }),
       ...(parsed.createdAtFrom === undefined
         ? {}

@@ -25,7 +25,22 @@ export type OidcLoginTransaction = Readonly<{
   codeVerifier: string;
   nonce: string;
   expiresAt: Date;
+  continuation?: Readonly<{
+    kind: 'invitation_acceptance';
+    workspaceId: string;
+    intentId: string;
+    bindingDigest: string;
+  }>;
 }>;
+
+const continuationSchema = z
+  .object({
+    kind: z.literal('invitation_acceptance'),
+    workspaceId: z.uuid(),
+    intentId: z.uuid(),
+    bindingDigest: sha256HexSchema,
+  })
+  .strict();
 
 export type SealedOidcSecret = Readonly<z.output<typeof sealMetadataSchema>>;
 
@@ -124,8 +139,8 @@ export function createOidcLoginTransactionStore(
              (state_digest, code_verifier_ciphertext, code_verifier_nonce,
               code_verifier_tag, code_verifier_key_version,
               nonce_ciphertext, nonce_nonce, nonce_tag, nonce_key_version,
-              browser_binding_digest, expires_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+              browser_binding_digest, expires_at,continuation_kind,continuation_ref)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,$12,$13::jsonb)`,
           [
             stateDigest,
             sealedCodeVerifier.ciphertext,
@@ -138,6 +153,12 @@ export function createOidcLoginTransactionStore(
             sealedNonce.keyVersion,
             browserBindingDigest,
             expiresAt,
+            transaction.continuation?.kind ?? null,
+            transaction.continuation === undefined
+              ? null
+              : JSON.stringify(
+                  continuationSchema.parse(transaction.continuation),
+                ),
           ],
         );
       } catch (error: unknown) {
@@ -174,7 +195,7 @@ export function createOidcLoginTransactionStore(
                   code_verifier_ciphertext, code_verifier_nonce,
                   code_verifier_tag, code_verifier_key_version,
                   nonce_ciphertext, nonce_nonce, nonce_tag, nonce_key_version,
-                  expires_at, consumed_at
+                  expires_at, consumed_at,continuation_kind,continuation_ref
            from app.oidc_login_transactions
            where state_digest = $1
            for update`,
@@ -231,6 +252,13 @@ export function createOidcLoginTransactionStore(
             codeVerifier,
             nonce,
             expiresAt: z.coerce.date().parse(consumedRow.expires_at),
+            ...(consumedRow.continuation_kind === null
+              ? {}
+              : {
+                  continuation: continuationSchema.parse(
+                    consumedRow.continuation_ref,
+                  ),
+                }),
           }),
         };
       } catch (error: unknown) {

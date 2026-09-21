@@ -16,6 +16,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: [
     'workspace:read',
@@ -188,6 +189,41 @@ test('signs in, selects a workspace, and signs out without runtime errors', asyn
   expect(errors).toEqual([]);
 });
 
+test('keeps similar workspace names distinguishable at 320 pixels', async ({
+  page,
+}) => {
+  const workspaces = [
+    {
+      ...workspace,
+      name: 'Control Operations Europe North',
+      slug: 'control-operations-europe-north-with-a-long-slug',
+    },
+    {
+      ...workspace,
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      name: 'Control Operations Europe South',
+      slug: 'control-operations-europe-south-with-a-long-slug',
+    },
+  ];
+  await page.setViewportSize({ width: 320, height: 640 });
+  await mockIdentity(page, { authenticated: true, workspaces });
+  await page.goto('/workspaces');
+
+  for (const item of workspaces) {
+    const name = page.getByText(item.name, { exact: true });
+    await expect(name).toBeVisible();
+    const card = page.getByRole('button', { name: new RegExp(item.name, 'u') });
+    const [nameBox, cardBox] = await Promise.all([
+      name.boundingBox(),
+      card.boundingBox(),
+    ]);
+    expect(nameBox?.x).toBeGreaterThanOrEqual(cardBox?.x ?? 0);
+    expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual(
+      (cardBox?.x ?? 0) + (cardBox?.width ?? 0) + 1,
+    );
+  }
+});
+
 test('restores an authorized workspace deep link', async ({ page }) => {
   await mockIdentity(page, { authenticated: true });
   await page.goto(`/w/${workspaceId}/workflows`);
@@ -276,6 +312,107 @@ test('creates a workflow from the empty index with the shared transport', async 
   await page.getByLabel('Workflow name').fill('Browser verified');
   await page.getByRole('button', { name: 'Create workflow' }).click();
   await expect(page.getByText('Browser verified')).toBeVisible();
+});
+
+test('creates the first workspace from the keyboard-accessible empty state', async ({
+  page,
+}) => {
+  const createdId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const createdWorkspace = {
+    ...workspace,
+    id: createdId,
+    name: 'Signal Operations',
+    slug: 'signal-operations',
+  };
+  let accessibleWorkspaces: unknown[] = [];
+  let creationRequest:
+    | Readonly<{ body: unknown; csrf?: string; idempotencyKey?: string }>
+    | undefined;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page
+    .context()
+    .addCookies([
+      { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
+    ]);
+  await mockIdentity(page, { authenticated: true, workspaces: [] });
+  await page.route('**/v1/workspaces?**', async (route) => {
+    await route.fulfill({
+      json: { items: accessibleWorkspaces, nextCursor: null },
+    });
+  });
+  await page.route('**/v1/workspaces', async (route) => {
+    const request = route.request();
+    creationRequest = {
+      body: request.postDataJSON(),
+      ...(request.headers()['x-csrf-token'] === undefined
+        ? {}
+        : { csrf: request.headers()['x-csrf-token'] }),
+      ...(request.headers()['idempotency-key'] === undefined
+        ? {}
+        : { idempotencyKey: request.headers()['idempotency-key'] }),
+    };
+    accessibleWorkspaces = [createdWorkspace];
+    await route.fulfill({
+      status: 201,
+      json: {
+        id: createdId,
+        name: createdWorkspace.name,
+        slug: createdWorkspace.slug,
+        status: 'active',
+        createdAt: createdWorkspace.createdAt,
+        updatedAt: createdWorkspace.updatedAt,
+      },
+    });
+  });
+  await page.route(
+    `**/v1/workspaces/${createdId}/workflows?**`,
+    async (route) => {
+      await route.fulfill({ json: { items: [], nextCursor: null } });
+    },
+  );
+  await page.route(
+    `**/v1/workspaces/${createdId}/connections?**`,
+    async (route) => {
+      await route.fulfill({ json: { items: [], nextCursor: null } });
+    },
+  );
+
+  await page.goto('/workspaces');
+  const trigger = page.getByRole('button', {
+    name: 'Create your first workspace',
+  });
+  await trigger.focus();
+  await trigger.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Create a workspace' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Workspace name')).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.press('Enter');
+  await dialog.getByLabel('Workspace name').fill('Signal Operations');
+  await expect(dialog.getByLabel('Workspace slug')).toHaveValue(
+    'signal-operations',
+  );
+  await dialog.getByRole('button', { name: 'Create workspace' }).click();
+
+  await expect(page).toHaveURL(`/w/${createdId}/workflows`);
+  await expect(
+    page.getByRole('heading', { name: 'Workflows', exact: true }),
+  ).toBeVisible();
+  expect(creationRequest).toEqual({
+    body: { name: 'Signal Operations', slug: 'signal-operations' },
+    csrf: csrfToken,
+    idempotencyKey: expect.any(String),
+  });
 });
 
 test('keeps an inaccessible workspace URL visible and offers recovery', async ({

@@ -78,6 +78,9 @@ function makeController() {
       representationTag: tag,
     }),
   };
+  const getWorkflow = {
+    execute: vi.fn().mockResolvedValue({ workflow }),
+  };
   const saveDraft = {
     execute: vi.fn().mockResolvedValue({ body, representationTag: tag }),
   };
@@ -101,6 +104,7 @@ function makeController() {
     controller: new WorkflowAuthoringController(
       listWorkflows as never,
       createWorkflow as never,
+      getWorkflow as never,
       getDraft as never,
       saveDraft as never,
       validateDraft as never,
@@ -125,7 +129,14 @@ describe('workflow authoring controller public seam', () => {
   it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
     const { controller, listWorkflows } = makeController();
     await expect(
-      controller.list(request(), { workspaceId }, { limit: '100' }),
+      controller.list(
+        request(),
+        { workspaceId },
+        {
+          limit: '100',
+          order: 'updated_desc',
+        },
+      ),
     ).resolves.toEqual({ items: [], nextCursor: null });
     expect(listWorkflows.execute).toHaveBeenCalledExactlyOnceWith({
       actor: {
@@ -138,6 +149,7 @@ describe('workflow authoring controller public seam', () => {
       requestId: 'request-42',
       routeWorkspaceId: workspaceId,
       limit: 100,
+      order: 'updated_desc',
     });
 
     for (const after of ['', 'x'.repeat(513)]) {

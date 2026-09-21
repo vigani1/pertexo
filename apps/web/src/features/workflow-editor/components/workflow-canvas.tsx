@@ -100,7 +100,7 @@ export function WorkflowCanvas({
           pannable
           zoomable
           position="bottom-left"
-          className="!m-4 !overflow-hidden !rounded-lg !border !border-primary/20 !bg-card/90 !shadow-[0_0_28px_rgb(0_218_243/10%)]"
+          className="!m-4 !hidden !overflow-hidden !rounded-lg !border !border-primary/20 !bg-card/90 !shadow-[0_0_28px_rgb(0_218_243/10%)] sm:!block"
           maskColor="rgb(0 0 0 / 28%)"
           bgColor="rgb(12 14 17 / 0.92)"
           nodeBorderRadius={4}
@@ -111,7 +111,7 @@ export function WorkflowCanvas({
         <Controls
           position="bottom-right"
           showInteractive={false}
-          className="!m-4 !overflow-hidden !rounded-lg !border !border-primary/20 !bg-card/90 !shadow-[0_0_22px_rgb(0_218_243/10%)]"
+          className="workflow-canvas-controls !m-4 !overflow-hidden !rounded-lg !border !border-primary/20 !bg-card/90 !shadow-[0_0_22px_rgb(0_218_243/10%)] [--xy-controls-button-background-color-hover:var(--accent)] [--xy-controls-button-background-color:var(--card)] [--xy-controls-button-border-color:var(--border)] [--xy-controls-button-color-hover:var(--accent-foreground)] [--xy-controls-button-color:var(--foreground)]"
         />
       </ReactFlow>
       {editable && selectedNodeId !== null ? (

@@ -1,8 +1,9 @@
 import { HttpResponse, http } from 'msw';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 
@@ -33,6 +34,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: [
     'workspace:read',
@@ -73,7 +75,28 @@ const definition = {
   lifecycle: 'active',
   available: true,
   publishable: true,
-};
+} satisfies NodeDefinitionCatalogItem;
+const manualDefinition = {
+  ...definition,
+  definition: { key: 'core.manual', version: 1 },
+  family: 'trigger',
+  inputSchema: {},
+  outputSchema: { type: 'object', additionalProperties: true },
+  ports: { inputs: [], outputs: ['out'] },
+} satisfies NodeDefinitionCatalogItem;
+const mappingDefinition = {
+  ...definition,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      customer: { type: 'string', title: 'Customer' },
+      requestedBy: { type: 'string', title: 'Requested by' },
+      active: { type: 'boolean', title: 'Active' },
+    },
+    additionalProperties: true,
+  },
+  outputSchema: { type: 'object', additionalProperties: true },
+} satisfies NodeDefinitionCatalogItem;
 const numericDefinition = {
   ...definition,
   configSchema: {
@@ -94,7 +117,7 @@ function editorHandlers(
   onSave: (request: Request, body: { graph: typeof emptyGraph }) => void,
   options: Readonly<{
     graph?: WorkflowGraphContract;
-    definitions?: readonly (typeof definition)[];
+    definitions?: readonly NodeDefinitionCatalogItem[];
   }> = {},
 ) {
   const initialGraph = options.graph ?? emptyGraph;
@@ -153,6 +176,263 @@ function editorHandlers(
 }
 
 describe('workflow editor route', () => {
+  it('creates typed input mappings through the inspector and saves them through the draft pipeline', async () => {
+    const graph = graphWithMappingNodes();
+    let savedGraph: WorkflowGraphContract | undefined;
+    mockServer.use(
+      ...editorHandlers(
+        (_request, body) => {
+          savedGraph = body.graph;
+        },
+        { graph, definitions: [manualDefinition, mappingDefinition] },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`, { strict: true });
+    const event = userEvent.setup();
+    fireEvent.click(
+      within(await screen.findByRole('application')).getByText('Target'),
+    );
+    const inputs = screen.getByRole('region', { name: 'Inputs' });
+    expect(within(inputs).getByText(/No input mappings/u)).toBeVisible();
+
+    await event.click(
+      within(inputs).getByRole('button', { name: 'Add input' }),
+    );
+    await event.click(
+      within(inputs).getByRole('button', { name: 'Add input' }),
+    );
+    await event.click(
+      within(inputs).getByRole('button', { name: 'Add input' }),
+    );
+    const rows = within(inputs).getAllByRole('listitem');
+    const customerRow = rows[0];
+    const requestedByRow = rows[1];
+    const activeRow = rows[2];
+    if (
+      customerRow === undefined ||
+      requestedByRow === undefined ||
+      activeRow === undefined
+    )
+      throw new Error('expected three mapping rows');
+
+    await event.type(
+      within(customerRow).getByLabelText('Destination key'),
+      'customer',
+    );
+    await event.selectOptions(
+      within(customerRow).getByLabelText('Source'),
+      'node_output',
+    );
+    await event.selectOptions(
+      within(customerRow).getByLabelText('Source node'),
+      'manual',
+    );
+    await event.clear(within(customerRow).getByLabelText('Output path'));
+    await event.type(
+      within(customerRow).getByLabelText('Output path'),
+      '$.customer',
+    );
+
+    await event.type(
+      within(requestedByRow).getByLabelText('Destination key'),
+      'requestedBy',
+    );
+    await event.selectOptions(
+      within(requestedByRow).getByLabelText('Source'),
+      'run_input',
+    );
+    await event.clear(within(requestedByRow).getByLabelText('Run input path'));
+    await event.type(
+      within(requestedByRow).getByLabelText('Run input path'),
+      '$.actor.name',
+    );
+
+    await event.type(
+      within(activeRow).getByLabelText('Destination key'),
+      'active',
+    );
+    fireEvent.change(within(activeRow).getByLabelText('JSON value'), {
+      target: { value: 'true' },
+    });
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeEnabled();
+    await event.click(screen.getByRole('button', { name: 'Apply changes' }));
+    await event.click(screen.getByRole('button', { name: 'Save now' }));
+    await waitFor(() => {
+      expect(savedGraph?.nodes[1]?.inputMappings).toEqual({
+        customer: {
+          kind: 'node_output',
+          nodeId: 'manual',
+          path: '$.customer',
+        },
+        requestedBy: { kind: 'run_input', path: '$.actor.name' },
+        active: { kind: 'literal', value: true },
+      });
+    });
+    expect(await screen.findByText('Saved')).toBeVisible();
+
+    await event.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(
+      within(screen.getByRole('region', { name: 'Inputs' })).getByText(
+        /No input mappings/u,
+      ),
+    ).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(
+      within(screen.getByRole('region', { name: 'Inputs' })).getAllByRole(
+        'listitem',
+      ),
+    ).toHaveLength(3);
+  });
+
+  it('keeps invalid and advanced mapping scratch explicit across Apply and Cancel', async () => {
+    const graph = graphWithMappingNodes({
+      expression: {
+        kind: 'expression',
+        language: 'jsonata',
+        expression: 'runInput.customer',
+        policyVersion: 1,
+      },
+    });
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph,
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    const event = userEvent.setup();
+    fireEvent.click(
+      within(await screen.findByRole('application')).getByText('Target'),
+    );
+    const inputs = screen.getByRole('region', { name: 'Inputs' });
+    expect(within(inputs).getByText(/JSONata expression/u)).toBeVisible();
+    const confirm = vi
+      .spyOn(window, 'confirm')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    await event.click(within(inputs).getByRole('button', { name: 'Remove' }));
+    expect(within(inputs).getByText(/JSONata expression/u)).toBeVisible();
+    await event.click(within(inputs).getByRole('button', { name: 'Remove' }));
+    expect(within(inputs).queryByText(/JSONata expression/u)).toBeNull();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    await event.click(screen.getByRole('button', { name: 'Cancel changes' }));
+    expect(within(inputs).getByText(/JSONata expression/u)).toBeVisible();
+    await event.click(
+      within(inputs).getByRole('button', { name: 'Add input' }),
+    );
+    const rows = within(inputs).getAllByRole('listitem');
+    const invalidRow = rows.at(-1);
+    if (invalidRow === undefined) throw new Error('expected an added row');
+    fireEvent.change(within(invalidRow).getByLabelText('JSON value'), {
+      target: { value: '{' },
+    });
+    await event.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(within(invalidRow).getByLabelText('Destination key')).toHaveFocus();
+    expect(
+      within(invalidRow).getByText('Destination key is required.'),
+    ).toBeVisible();
+    expect(
+      within(invalidRow).getByText('Literal value must be valid JSON.'),
+    ).toBeVisible();
+
+    await event.click(screen.getByRole('button', { name: 'Cancel changes' }));
+    expect(within(inputs).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(inputs).getByText(/JSONata expression/u)).toBeVisible();
+  });
+
+  it('keeps a disconnected node-output mapping visible and repairs it only when reconnected', async () => {
+    const graph = {
+      ...graphWithMappingNodes({
+        customer: {
+          kind: 'node_output',
+          nodeId: 'manual',
+          path: '$.customer',
+        },
+      }),
+      edges: [],
+    };
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph,
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    const event = userEvent.setup();
+    fireEvent.click(
+      within(await screen.findByRole('application')).getByText('Target'),
+    );
+    expect(
+      screen.getByText('The source must be a directly connected predecessor.'),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Source node')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByLabelText('Destination key')).toHaveValue('customer');
+
+    await event.selectOptions(
+      screen.getByLabelText('Connect from node'),
+      'manual',
+    );
+    await event.selectOptions(screen.getByLabelText('Source output'), 'out');
+    await event.selectOptions(screen.getByLabelText('Target input'), 'in');
+    await event.click(screen.getByRole('button', { name: 'Connect nodes' }));
+    expect(
+      screen.queryByText(
+        'The source must be a directly connected predecessor.',
+      ),
+    ).toBeNull();
+    expect(screen.getByLabelText('Source node')).toHaveAttribute(
+      'aria-invalid',
+      'false',
+    );
+    expect(screen.getByLabelText('Destination key')).toHaveValue('customer');
+  });
+
+  it('protects unapplied mapping scratch during in-page node selection', async () => {
+    const graph = graphWithMappingNodes();
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph,
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    const event = userEvent.setup();
+    const canvas = within(await screen.findByRole('application'));
+    fireEvent.click(canvas.getByText('Target'));
+    const inputs = screen.getByRole('region', { name: 'Inputs' });
+    await event.click(
+      within(inputs).getByRole('button', { name: 'Add input' }),
+    );
+    await event.type(
+      within(inputs).getByLabelText('Destination key'),
+      'scratch',
+    );
+
+    fireEvent.click(canvas.getByText('Manual input'));
+    expect(
+      await screen.findByRole('heading', { name: 'Resolve unapplied changes' }),
+    ).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'Stay' }));
+    expect(within(inputs).getByLabelText('Destination key')).toHaveValue(
+      'scratch',
+    );
+
+    fireEvent.click(canvas.getByText('Manual input'));
+    await event.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(
+      screen.getByText(/receives the accepted run input directly/u),
+    ).toBeVisible();
+    fireEvent.click(canvas.getByText('Target'));
+    expect(
+      within(screen.getByRole('region', { name: 'Inputs' })).getByText(
+        /No input mappings/u,
+      ),
+    ).toBeVisible();
+  });
+
   it('continues autosaving after the StrictMode effect lifecycle replay', async () => {
     let savedNodes = 0;
     mockServer.use(
@@ -1341,6 +1621,97 @@ describe('workflow editor route', () => {
     expect(screen.getByText('Unsupported')).toBeVisible();
   });
 
+  it('retries failed workflow metadata without replacing unapplied inspector scratch', async () => {
+    let metadataAvailable = false;
+    const graph = graphWithMappingNodes();
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph,
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+        () =>
+          metadataAvailable
+            ? HttpResponse.json({
+                workflow: {
+                  id: workflowId,
+                  workspaceId,
+                  name: 'Recovered workflow name',
+                  lifecycleStatus: 'active',
+                  lifecycleRevision: 1,
+                  activationStatus: 'inactive',
+                  publishedVersionId: null,
+                  createdAt: user.createdAt,
+                  updatedAt: user.updatedAt,
+                },
+              })
+            : HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    const event = userEvent.setup();
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Workflow name unavailable',
+      }),
+    ).toBeVisible();
+    fireEvent.click(
+      within(screen.getByRole('application')).getByText('Target'),
+    );
+    await event.clear(screen.getByLabelText('Label'));
+    await event.type(screen.getByLabelText('Label'), 'Unapplied scratch');
+
+    metadataAvailable = true;
+    await event.click(screen.getByRole('button', { name: 'Retry name' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Recovered workflow name' }),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Label')).toHaveValue('Unapplied scratch');
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeEnabled();
+  });
+
+  it('navigates authoritative mapping findings to the matching input row', async () => {
+    const graph = graphWithMappingNodes({
+      customer: {
+        kind: 'node_output',
+        nodeId: 'manual',
+        path: '$.customer',
+      },
+    });
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph,
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows/${workflowId}/validate`,
+        () =>
+          HttpResponse.json({
+            valid: false,
+            issues: [
+              {
+                path: '$.nodes.target.inputMappings.customer',
+                code: 'invalid_mapping',
+                message: 'Customer must come from a direct predecessor.',
+              },
+            ],
+            compatibility,
+          }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    const event = userEvent.setup();
+    await event.click(await screen.findByRole('button', { name: 'Validate' }));
+    await event.click(
+      await screen.findByRole('button', { name: 'Go to customer input' }),
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Destination key')).toHaveFocus();
+    });
+    expect(screen.getByLabelText('Destination key')).toHaveValue('customer');
+  });
+
   it('associates run-start validation with the input and focuses it', async () => {
     mockServer.use(...editorHandlers(() => undefined));
     renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
@@ -1531,6 +1902,44 @@ function graphWithNumericConfig(
       },
     ],
     edges: [],
+    settings: {},
+  };
+}
+
+function graphWithMappingNodes(
+  inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'] = {},
+): WorkflowGraphContract {
+  return {
+    schemaVersion: 1,
+    nodes: [
+      {
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 80, y: 80 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+        label: 'Manual input',
+      },
+      {
+        id: 'target',
+        definition: { key: 'core.set', version: 1 },
+        position: { x: 340, y: 80 },
+        configVersion: 1,
+        config: {},
+        inputMappings,
+        connectionRefs: {},
+        label: 'Target',
+      },
+    ],
+    edges: [
+      {
+        id: 'manual-target',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'target', port: 'in' },
+      },
+    ],
     settings: {},
   };
 }

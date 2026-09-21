@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import {
   IdentityNotFoundError,
   WorkspaceAccessDeniedError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceRenameCommandConflictError,
   OidcTransactionCapacityError,
   OidcTransactionSealingError,
   parseDatabaseConfig,
@@ -21,6 +22,7 @@ import {
   workspaceMemberships,
 } from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { createWorkspaceInvitationDeliveryStore } from '../src/execution.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
@@ -42,6 +44,7 @@ const fixture = createDisposableDatabaseFixture({
   databaseName,
   ownerRole: 'pertexo_owner',
 });
+const adminDatabaseUrl = fixture.databaseUrl(adminUrl);
 const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
 const apiUrl = fixture.databaseUrl(apiBaseUrl);
 const workerUrl = fixture.databaseUrl(workerBaseUrl);
@@ -315,6 +318,198 @@ describe('identity/workspace persistence', () => {
     } finally {
       await pool.end();
     }
+  });
+
+  it('renames conditionally, replays exact commands, and never reapplies an old result', async () => {
+    const target = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Rename target',
+      slug: `rename-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const firstKey = `rename-${randomUUID()}`;
+    const first = await identityDatabase.renameWorkspace({
+      workspaceId: target.id,
+      actorUserId: ownerUserId,
+      name: 'First authoritative name',
+      expectedRevision: 1,
+      idempotencyKey: firstKey,
+      requestId: 'rename-first',
+    });
+    expect(first).toMatchObject({
+      changed: true,
+      replayed: false,
+      workspace: { name: 'First authoritative name', revision: 2 },
+    });
+
+    const replay = await identityDatabase.renameWorkspace({
+      workspaceId: target.id,
+      actorUserId: ownerUserId,
+      name: 'First authoritative name',
+      expectedRevision: 1,
+      idempotencyKey: firstKey,
+      requestId: 'rename-first-retry',
+    });
+    expect(replay).toMatchObject({
+      changed: true,
+      replayed: true,
+      workspace: { name: 'First authoritative name', revision: 2 },
+    });
+
+    await identityDatabase.renameWorkspace({
+      workspaceId: target.id,
+      actorUserId: ownerUserId,
+      name: 'Newer tab name',
+      expectedRevision: 2,
+      idempotencyKey: `rename-${randomUUID()}`,
+    });
+    const historicalReplay = await identityDatabase.renameWorkspace({
+      workspaceId: target.id,
+      actorUserId: ownerUserId,
+      name: 'First authoritative name',
+      expectedRevision: 1,
+      idempotencyKey: firstKey,
+    });
+    expect(historicalReplay).toMatchObject({ replayed: true });
+
+    const discovered =
+      await identityDatabase.listAccessibleWorkspaces(ownerUserId);
+    expect(
+      discovered.items.find((item) => item.id === target.id),
+    ).toMatchObject({ name: 'Newer tab name', revision: 3 });
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: ownerUserId,
+        name: 'Stale overwrite',
+        expectedRevision: 2,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+    ).rejects.toMatchObject({ reason: 'revision_conflict' });
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: ownerUserId,
+        name: 'Changed body',
+        expectedRevision: 1,
+        idempotencyKey: firstKey,
+      }),
+    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+
+    const owner = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      const audit = await owner.query<{ count: string }>(
+        `select count(*)::text count from app.audit_events
+         where workspace_id=$1 and action='workspace.renamed'`,
+        [target.id],
+      );
+      expect(audit.rows[0]?.count).toBe('2');
+    } finally {
+      await owner.end();
+    }
+  });
+
+  it('serializes concurrent renames and authorizes against current database state', async () => {
+    const target = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Concurrent rename target',
+      slug: `rename-race-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const outcomes = await Promise.allSettled([
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: ownerUserId,
+        name: 'Concurrent left',
+        expectedRevision: 1,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: ownerUserId,
+        name: 'Concurrent right',
+        expectedRevision: 1,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+    ]);
+    expect(
+      outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    if (rejected?.status !== 'rejected')
+      throw new Error('Expected one rejected concurrent rename');
+    expect(rejected.reason).toBeInstanceOf(WorkspaceRenameCommandConflictError);
+    if (!(rejected.reason instanceof WorkspaceRenameCommandConflictError))
+      throw new Error('Expected a workspace rename conflict');
+    expect(rejected.reason.reason).toBe('revision_conflict');
+
+    const actor = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Current-state manager',
+    });
+    const owner = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      await owner.query(
+        `insert into app.workspace_memberships
+           (workspace_id,user_id,role,status)
+         values($1,$2,'admin','active')`,
+        [target.id, actor.id],
+      );
+    } finally {
+      await owner.end();
+    }
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: actor.id,
+        name: 'Admin-authorized name',
+        expectedRevision: 2,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+    ).resolves.toMatchObject({
+      workspace: { name: 'Admin-authorized name', revision: 3 },
+    });
+    const demoter = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      await demoter.query(
+        `update app.workspace_memberships set role='builder'
+         where workspace_id=$1 and user_id=$2`,
+        [target.id, actor.id],
+      );
+    } finally {
+      await demoter.end();
+    }
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: target.id,
+        actorUserId: actor.id,
+        name: 'Forbidden builder name',
+        expectedRevision: 3,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+    ).rejects.toBeInstanceOf(WorkspaceRenameCommandConflictError);
+
+    const inactive = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Inactive rename target',
+      slug: `inactive-rename-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const suspender = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      await suspender.query(
+        "update app.workspaces set status='suspended' where id=$1",
+        [inactive.id],
+      );
+    } finally {
+      await suspender.end();
+    }
+    await expect(
+      identityDatabase.renameWorkspace({
+        workspaceId: inactive.id,
+        actorUserId: ownerUserId,
+        name: 'Forbidden inactive name',
+        expectedRevision: 1,
+        idempotencyKey: `rename-${randomUUID()}`,
+      }),
+    ).rejects.toMatchObject({ reason: 'workspace_inactive' });
   });
 
   it('links identities idempotently and only resolves live session digests', async () => {
@@ -1886,4 +2081,1794 @@ describe('identity/workspace persistence', () => {
       await clearOidcTransactions();
     }
   });
+
+  it('creates one pending invitation, replays exactly, and arbitrates concurrent duplicates', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation creation',
+        slug: `invite-create-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const command = invitationCreateCommand(
+      invitationWorkspace.id,
+      ownerUserId,
+      `${randomUUID()}@example.test`,
+    );
+    const first = await identityDatabase.createWorkspaceInvitation(command);
+    await expect(
+      identityDatabase.createWorkspaceInvitation(command),
+    ).resolves.toMatchObject({
+      replayed: true,
+      invitation: { id: first.invitation.id },
+    });
+    await expect(
+      identityDatabase.createWorkspaceInvitation({
+        ...command,
+        role: 'builder',
+      }),
+    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+
+    const email = `${randomUUID()}@example.test`;
+    const results = await Promise.allSettled([
+      identityDatabase.createWorkspaceInvitation(
+        invitationCreateCommand(invitationWorkspace.id, ownerUserId, email),
+      ),
+      identityDatabase.createWorkspaceInvitation(
+        invitationCreateCommand(invitationWorkspace.id, ownerUserId, email),
+      ),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      results.filter((result) => result.status === 'rejected'),
+    ).toHaveLength(1);
+    const page = await identityDatabase.listWorkspaceInvitations(
+      invitationWorkspace.id,
+      ownerUserId,
+    );
+    expect(page.items.filter((item) => item.email === email)).toHaveLength(1);
+  });
+
+  it('authorizes invitations from current roles and keeps workspace rows isolated', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation authority',
+        slug: `invite-authority-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const otherWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Invitation isolation',
+      slug: `invite-isolation-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const admin = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Invitation admin',
+    });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.insert(workspaceMemberships).values({
+          workspaceId: invitationWorkspace.id,
+          userId: admin.id,
+          role: 'admin',
+          status: 'active',
+        });
+      },
+    );
+
+    await expect(
+      identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          invitationWorkspace.id,
+          admin.id,
+          `${randomUUID()}@example.test`,
+        ),
+        role: 'builder',
+      }),
+    ).resolves.toMatchObject({ invitation: { role: 'builder' } });
+    await expect(
+      identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          invitationWorkspace.id,
+          admin.id,
+          `${randomUUID()}@example.test`,
+        ),
+        role: 'admin',
+      }),
+    ).rejects.toMatchObject({ reason: 'role_forbidden' });
+
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db
+          .update(workspaceMemberships)
+          .set({ role: 'viewer' })
+          .where(eq(workspaceMemberships.userId, admin.id));
+      },
+    );
+    await expect(
+      identityDatabase.createWorkspaceInvitation(
+        invitationCreateCommand(
+          invitationWorkspace.id,
+          admin.id,
+          `${randomUUID()}@example.test`,
+        ),
+      ),
+    ).rejects.toMatchObject({ reason: 'actor_inactive' });
+    await expect(
+      identityDatabase.listWorkspaceInvitations(otherWorkspace.id, admin.id),
+    ).rejects.toMatchObject({ reason: 'actor_inactive' });
+  });
+
+  it('invalidates resolved intents on resend and preserves the new generation', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation generation',
+        slug: `invite-generation-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const created = await identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+    );
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        tokenDigest: invitationTokenDigest(created.invitation.id),
+        intentId,
+        bindingDigest,
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      }),
+    ).resolves.toBeNull();
+
+    const knownDigest = createHash('sha256')
+      .update('known-secret')
+      .digest('hex');
+    const known = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: knownDigest,
+    });
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: known.invitation.id,
+        tokenDigest: knownDigest,
+        intentId,
+        bindingDigest,
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      }),
+    ).resolves.toMatchObject({ status: 'pending', invitationRevision: 1 });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='failed',token_ciphertext=null,token_nonce=null,
+                 token_tag=null,token_key_version=null
+           where invitation_id=${known.invitation.id}::uuid
+             and invitation_revision=1
+        `);
+      },
+    );
+    await identityDatabase.resendWorkspaceInvitation({
+      workspaceId: invitationWorkspace.id,
+      actorUserId: ownerUserId,
+      invitationId: known.invitation.id,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+      tokenDigest: createHash('sha256').update('new-secret').digest('hex'),
+      sealedToken: testSealedToken(),
+      deliveryAttemptId: randomUUID(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+    });
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        invitationWorkspace.id,
+        bindingDigest,
+      ),
+    ).resolves.toMatchObject({ status: 'superseded', invitationRevision: 1 });
+  });
+
+  it('invalidates a replaced browser binding without revoking the invitation', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation binding replacement',
+        slug: `invite-binding-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Binding replacement recipient',
+    });
+    const tokenDigest = createHash('sha256')
+      .update('binding-secret')
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const oldIntentId = randomUUID();
+    const oldBinding = createHash('sha256').update(randomUUID()).digest('hex');
+    const newIntentId = randomUUID();
+    const newBinding = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId: oldIntentId,
+      bindingDigest: oldBinding,
+      csrfDigest: createHash('sha256')
+        .update(`csrf:${oldIntentId}`)
+        .digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId: newIntentId,
+      bindingDigest: newBinding,
+      csrfDigest: createHash('sha256')
+        .update(`csrf:${newIntentId}`)
+        .digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: invitationWorkspace.id,
+        intentId: oldIntentId,
+        bindingDigest: oldBinding,
+      },
+    });
+
+    await expect(
+      identityDatabase.recordInvitationAcceptanceProof({
+        workspaceId: invitationWorkspace.id,
+        intentId: oldIntentId,
+        bindingDigest: oldBinding,
+        userId: recipient.id,
+        verifiedEmail: recipient.email,
+        verifiedAt: new Date(),
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.recordInvitationAcceptanceProof({
+        workspaceId: invitationWorkspace.id,
+        intentId: newIntentId,
+        bindingDigest: newBinding,
+        userId: recipient.id,
+        verifiedEmail: recipient.email,
+        verifiedAt: new Date(),
+      }),
+    ).resolves.toMatchObject({ status: 'verified' });
+    const invitations = await identityDatabase.listWorkspaceInvitations(
+      invitationWorkspace.id,
+      ownerUserId,
+    );
+    expect(
+      invitations.items.find((item) => item.id === created.invitation.id),
+    ).toMatchObject({ status: 'pending' });
+  });
+
+  it('recovers the exact committed replacement while rejecting a competing journey', async () => {
+    const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Resolver recovery prior',
+      slug: `resolver-recovery-prior-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const targetWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Resolver recovery target',
+      slug: `resolver-recovery-target-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const priorTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const priorInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        priorWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: priorTokenDigest,
+    });
+    const priorIntentId = randomUUID();
+    const priorBindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: priorWorkspace.id,
+      invitationId: priorInvitation.invitation.id,
+      tokenDigest: priorTokenDigest,
+      intentId: priorIntentId,
+      bindingDigest: priorBindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    const targetTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const targetInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        targetWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: targetTokenDigest,
+    });
+    const competingTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const competingInvitation =
+      await identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          targetWorkspace.id,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+        tokenDigest: competingTokenDigest,
+      });
+    const replacement = {
+      workspaceId: targetWorkspace.id,
+      invitationId: targetInvitation.invitation.id,
+      tokenDigest: targetTokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: priorWorkspace.id,
+        intentId: priorIntentId,
+        bindingDigest: priorBindingDigest,
+      },
+    };
+    const committed =
+      await identityDatabase.resolveInvitationAcceptance(replacement);
+    expect(committed).toMatchObject({
+      id: replacement.intentId,
+      status: 'pending',
+    });
+
+    const competitor = {
+      ...replacement,
+      invitationId: competingInvitation.invitation.id,
+      tokenDigest: competingTokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+    };
+    const [recovered, rejectedCompetitor] = await Promise.all([
+      identityDatabase.resolveInvitationAcceptance(replacement),
+      identityDatabase.resolveInvitationAcceptance(competitor),
+    ]);
+    expect(recovered).toMatchObject({
+      id: replacement.intentId,
+      status: 'pending',
+    });
+    expect(rejectedCompetitor).toBeNull();
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        priorWorkspace.id,
+        priorBindingDigest,
+      ),
+    ).resolves.toMatchObject({ status: 'abandoned' });
+    await tenantDatabase.withWorkspace(targetWorkspace.id, async ({ db }) => {
+      const durable = await db.execute(sql<{ count: number; kind: string }>`
+          select 'membership' kind,count(*)::int count
+            from app.workspace_memberships
+           where workspace_id=${targetWorkspace.id}::uuid
+          union all
+          select 'acceptance_audit' kind,count(*)::int count
+            from app.audit_events
+           where workspace_id=${targetWorkspace.id}::uuid
+             and action='workspace.invitation_accepted'
+        `);
+      expect(durable.rows).toEqual(
+        expect.arrayContaining([
+          { kind: 'membership', count: 1 },
+          { kind: 'acceptance_audit', count: 0 },
+        ]),
+      );
+    });
+    await tenantDatabase.withWorkspace(targetWorkspace.id, async ({ db }) => {
+      await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='failed',token_ciphertext=null,token_nonce=null,
+                 token_tag=null,token_key_version=null
+           where invitation_id=${targetInvitation.invitation.id}::uuid
+             and invitation_revision=1
+        `);
+    });
+    const refreshedTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resendWorkspaceInvitation({
+      workspaceId: targetWorkspace.id,
+      actorUserId: ownerUserId,
+      invitationId: targetInvitation.invitation.id,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+      tokenDigest: refreshedTokenDigest,
+      sealedToken: testSealedToken(),
+      deliveryAttemptId: randomUUID(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+    });
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        ...replacement,
+        tokenDigest: refreshedTokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      }),
+    ).resolves.toMatchObject({
+      invitationId: targetInvitation.invitation.id,
+      invitationRevision: 2,
+      status: 'pending',
+    });
+  });
+
+  it('replaces a superseded resend journey with the valid new generation', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation resend replacement',
+        slug: `invite-resend-binding-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const oldTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: oldTokenDigest,
+    });
+    const oldIntentId = randomUUID();
+    const oldBinding = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest: oldTokenDigest,
+      intentId: oldIntentId,
+      bindingDigest: oldBinding,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='failed',token_ciphertext=null,token_nonce=null,
+                 token_tag=null,token_key_version=null
+           where invitation_id=${created.invitation.id}::uuid
+             and invitation_revision=1
+        `);
+      },
+    );
+    const newTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resendWorkspaceInvitation({
+      workspaceId: invitationWorkspace.id,
+      actorUserId: ownerUserId,
+      invitationId: created.invitation.id,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+      tokenDigest: newTokenDigest,
+      sealedToken: testSealedToken(),
+      deliveryAttemptId: randomUUID(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+    });
+
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        tokenDigest: newTokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        priorBinding: {
+          workspaceId: invitationWorkspace.id,
+          intentId: oldIntentId,
+          bindingDigest: oldBinding,
+        },
+      }),
+    ).resolves.toMatchObject({ status: 'pending', invitationRevision: 2 });
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        invitationWorkspace.id,
+        oldBinding,
+      ),
+    ).resolves.toMatchObject({ status: 'superseded' });
+  });
+
+  it('does not resurrect an abandoned replacement after its successor becomes current', async () => {
+    const makeJourney = async (label: string) => {
+      const workspace = await identityDatabase.createWorkspaceWithOwner({
+        name: `Replacement ${label}`,
+        slug: `replacement-${label.toLowerCase()}-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      });
+      const tokenDigest = createHash('sha256')
+        .update(randomUUID())
+        .digest('hex');
+      const invitation = await identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          workspace.id,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+        tokenDigest,
+      });
+      return { workspace, tokenDigest, invitation: invitation.invitation };
+    };
+    const a = await makeJourney('A');
+    const b = await makeJourney('B');
+    const c = await makeJourney('C');
+    const d = await makeJourney('D');
+    const e = await makeJourney('E');
+    const commandA = {
+      workspaceId: a.workspace.id,
+      invitationId: a.invitation.id,
+      tokenDigest: a.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    };
+    await identityDatabase.resolveInvitationAcceptance(commandA);
+    const commandB = {
+      workspaceId: b.workspace.id,
+      invitationId: b.invitation.id,
+      tokenDigest: b.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: a.workspace.id,
+        intentId: commandA.intentId,
+        bindingDigest: commandA.bindingDigest,
+      },
+    };
+    await expect(
+      identityDatabase.resolveInvitationAcceptance(commandB),
+    ).resolves.toMatchObject({ id: commandB.intentId, status: 'pending' });
+    const commandC = {
+      workspaceId: c.workspace.id,
+      invitationId: c.invitation.id,
+      tokenDigest: c.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: b.workspace.id,
+        intentId: commandB.intentId,
+        bindingDigest: commandB.bindingDigest,
+      },
+    };
+    await expect(
+      identityDatabase.resolveInvitationAcceptance(commandC),
+    ).resolves.toMatchObject({ id: commandC.intentId, status: 'pending' });
+
+    await expect(
+      identityDatabase.resolveInvitationAcceptance(commandB),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: d.workspace.id,
+        invitationId: d.invitation.id,
+        tokenDigest: d.tokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        priorBinding: commandB.priorBinding,
+      }),
+    ).resolves.toBeNull();
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(
+        'delete from app.workspace_invitation_acceptance_intents where id=$1',
+        [commandB.intentId],
+      );
+    } finally {
+      await owner.end();
+    }
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: e.workspace.id,
+        invitationId: e.invitation.id,
+        tokenDigest: e.tokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        priorBinding: commandB.priorBinding,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        c.workspace.id,
+        commandC.bindingDigest,
+      ),
+    ).resolves.toMatchObject({ id: commandC.intentId, status: 'pending' });
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        b.workspace.id,
+        commandB.bindingDigest,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('replaces a terminal successor across workspaces without exposing its tenant row', async () => {
+    const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Cross-workspace prior',
+      slug: `cross-prior-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const firstTarget = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Cross-workspace terminal target',
+      slug: `cross-terminal-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const finalTarget = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Cross-workspace fresh target',
+      slug: `cross-fresh-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const createInvitation = async (workspaceId: string) => {
+      const tokenDigest = createHash('sha256')
+        .update(randomUUID())
+        .digest('hex');
+      const created = await identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          workspaceId,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+        tokenDigest,
+      });
+      return { tokenDigest, invitationId: created.invitation.id };
+    };
+    const priorInvitation = await createInvitation(priorWorkspace.id);
+    const firstInvitation = await createInvitation(firstTarget.id);
+    const finalInvitation = await createInvitation(finalTarget.id);
+    const prior = {
+      workspaceId: priorWorkspace.id,
+      invitationId: priorInvitation.invitationId,
+      tokenDigest: priorInvitation.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    };
+    await identityDatabase.resolveInvitationAcceptance(prior);
+    const first = {
+      workspaceId: firstTarget.id,
+      invitationId: firstInvitation.invitationId,
+      tokenDigest: firstInvitation.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: priorWorkspace.id,
+        intentId: prior.intentId,
+        bindingDigest: prior.bindingDigest,
+      },
+    };
+    await identityDatabase.resolveInvitationAcceptance(first);
+    await tenantDatabase.withWorkspace(firstTarget.id, async ({ db }) => {
+      await db.execute(sql`
+        update app.workspace_invitation_acceptance_intents
+           set status='superseded',updated_at=clock_timestamp()
+         where id=${first.intentId}::uuid
+      `);
+    });
+    const final = {
+      workspaceId: finalTarget.id,
+      invitationId: finalInvitation.invitationId,
+      tokenDigest: finalInvitation.tokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: first.priorBinding,
+    };
+
+    const cleanupPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const cleanupClient = await cleanupPool.connect();
+    try {
+      await cleanupClient.query('set role pertexo_owner');
+      const [cleanup, resolution] = await Promise.allSettled([
+        cleanupClient.query(
+          'select * from app.reap_workspace_invitation_transients(100)',
+        ),
+        identityDatabase.resolveInvitationAcceptance(final),
+      ]);
+      expect(cleanup.status).toBe('fulfilled');
+      expect(resolution).toMatchObject({
+        status: 'fulfilled',
+        value: { id: final.intentId, status: 'pending' },
+      });
+    } finally {
+      cleanupClient.release();
+      await cleanupPool.end();
+    }
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        firstTarget.id,
+        first.bindingDigest,
+      ),
+    ).resolves.toMatchObject({ status: 'superseded' });
+  });
+
+  it('opens another invitation without mutating a completed receipt journey', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Completed invitation replacement',
+        slug: `invite-completed-binding-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Completed binding recipient',
+    });
+    const firstTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const first = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest: firstTokenDigest,
+    });
+    const completedIntentId = randomUUID();
+    const completedBinding = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: first.invitation.id,
+      tokenDigest: firstTokenDigest,
+      intentId: completedIntentId,
+      bindingDigest: completedBinding,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId: completedIntentId,
+      bindingDigest: completedBinding,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    const replacementSessionDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.completeInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      intentId: completedIntentId,
+      invitationRevision: 1,
+      actorUserId: recipient.id,
+      idempotencyKey: randomUUID(),
+      replacementSession: {
+        id: randomUUID(),
+        tokenDigest: replacementSessionDigest,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    const secondTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const second = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: secondTokenDigest,
+    });
+
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: second.invitation.id,
+        tokenDigest: secondTokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        priorBinding: {
+          workspaceId: invitationWorkspace.id,
+          intentId: completedIntentId,
+          bindingDigest: completedBinding,
+        },
+      }),
+    ).resolves.toMatchObject({
+      status: 'pending',
+      invitationId: second.invitation.id,
+    });
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        invitationWorkspace.id,
+        completedBinding,
+      ),
+    ).resolves.toMatchObject({
+      status: 'completed',
+      acceptedUserId: recipient.id,
+    });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(replacementSessionDigest),
+    ).resolves.toMatchObject({ userId: recipient.id });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const durable = await db.execute(sql<{ count: number; kind: string }>`
+          select 'membership' kind,count(*)::int count
+            from app.workspace_memberships where user_id=${recipient.id}::uuid
+          union all
+          select 'audit' kind,count(*)::int count
+            from app.audit_events
+           where action='workspace.invitation_accepted'
+             and actor_user_id=${recipient.id}::uuid
+        `);
+        expect(durable.rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'membership', count: 1 },
+            { kind: 'audit', count: 1 },
+          ]),
+        );
+      },
+    );
+  });
+
+  it('serializes replacement-claim cleanup with acceptance without duplicating durable effects', async () => {
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Claim cleanup acceptance recipient',
+    });
+    const priorWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Claim cleanup acceptance prior',
+      slug: `claim-cleanup-prior-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const targetWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Claim cleanup acceptance target',
+      slug: `claim-cleanup-target-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const priorTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const targetTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const priorInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        priorWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: priorTokenDigest,
+    });
+    const targetInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        targetWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest: targetTokenDigest,
+    });
+    const priorIntentId = randomUUID();
+    const priorBindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: priorWorkspace.id,
+      invitationId: priorInvitation.invitation.id,
+      tokenDigest: priorTokenDigest,
+      intentId: priorIntentId,
+      bindingDigest: priorBindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    const targetIntentId = randomUUID();
+    const targetBindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: targetWorkspace.id,
+      invitationId: targetInvitation.invitation.id,
+      tokenDigest: targetTokenDigest,
+      intentId: targetIntentId,
+      bindingDigest: targetBindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: priorWorkspace.id,
+        intentId: priorIntentId,
+        bindingDigest: priorBindingDigest,
+      },
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: targetWorkspace.id,
+      intentId: targetIntentId,
+      bindingDigest: targetBindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    const command = {
+      workspaceId: targetWorkspace.id,
+      intentId: targetIntentId,
+      invitationRevision: 1,
+      actorUserId: recipient.id,
+      idempotencyKey: randomUUID(),
+      replacementSession: {
+        id: randomUUID(),
+        tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    };
+    const cleanupPool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const cleanupClient = await cleanupPool.connect();
+    try {
+      await cleanupClient.query('set role pertexo_owner');
+      const [cleanup, accepted] = await Promise.allSettled([
+        cleanupClient.query(
+          'select * from app.reap_workspace_invitation_transients(100)',
+        ),
+        identityDatabase.completeInvitationAcceptance(command),
+      ]);
+      expect(cleanup.status).toBe('fulfilled');
+      expect(accepted).toMatchObject({
+        status: 'fulfilled',
+        value: { membershipCreated: true, replayed: false },
+      });
+    } finally {
+      cleanupClient.release();
+      await cleanupPool.end();
+    }
+    await expect(
+      identityDatabase.completeInvitationAcceptance(command),
+    ).resolves.toMatchObject({ membershipCreated: true, replayed: true });
+    await tenantDatabase.withWorkspace(targetWorkspace.id, async ({ db }) => {
+      const durable = await db.execute(sql<{ count: number; kind: string }>`
+        select 'membership' kind,count(*)::integer count
+          from app.workspace_memberships where user_id=${recipient.id}::uuid
+        union all
+        select 'audit' kind,count(*)::integer count from app.audit_events
+         where action='workspace.invitation_accepted'
+           and actor_user_id=${recipient.id}::uuid
+      `);
+      expect(durable.rows).toEqual(
+        expect.arrayContaining([
+          { kind: 'membership', count: 1 },
+          { kind: 'audit', count: 1 },
+        ]),
+      );
+    });
+  });
+
+  it('opens a valid invitation when the cookie references a pruned intent', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Pruned invitation replacement',
+        slug: `invite-pruned-binding-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const oldTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const oldInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: oldTokenDigest,
+    });
+    const oldIntentId = randomUUID();
+    const oldBinding = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: oldInvitation.invitation.id,
+      tokenDigest: oldTokenDigest,
+      intentId: oldIntentId,
+      bindingDigest: oldBinding,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(
+        'delete from app.workspace_invitation_acceptance_intents where id=$1',
+        [oldIntentId],
+      );
+    } finally {
+      await owner.end();
+    }
+    const validTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const validInvitation = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest: validTokenDigest,
+    });
+
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        invitationId: validInvitation.invitation.id,
+        tokenDigest: validTokenDigest,
+        intentId: randomUUID(),
+        bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        priorBinding: {
+          workspaceId: invitationWorkspace.id,
+          intentId: oldIntentId,
+          bindingDigest: oldBinding,
+        },
+      }),
+    ).resolves.toMatchObject({
+      status: 'pending',
+      invitationId: validInvitation.invitation.id,
+    });
+  });
+
+  it('allows only one concurrent replacement of the same browser binding and rolls back failed replacement', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation binding concurrency',
+        slug: `invite-binding-race-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+      tokenDigest,
+    });
+    const oldIntentId = randomUUID();
+    const oldBinding = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId: oldIntentId,
+      bindingDigest: oldBinding,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    const replacementWorkspace =
+      await identityDatabase.createWorkspaceWithOwner({
+        name: 'Invitation binding replacement target',
+        slug: `invite-binding-target-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      });
+    const replacementTokenDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const replacementInvitation =
+      await identityDatabase.createWorkspaceInvitation({
+        ...invitationCreateCommand(
+          replacementWorkspace.id,
+          ownerUserId,
+          `${randomUUID()}@example.test`,
+        ),
+        tokenDigest: replacementTokenDigest,
+      });
+    const replacement = () => ({
+      workspaceId: replacementWorkspace.id,
+      invitationId: replacementInvitation.invitation.id,
+      tokenDigest: replacementTokenDigest,
+      intentId: randomUUID(),
+      bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+      priorBinding: {
+        workspaceId: invitationWorkspace.id,
+        intentId: oldIntentId,
+        bindingDigest: oldBinding,
+      },
+    });
+    const replacementA = replacement();
+    const replacementB = replacement();
+    const outcomes = await Promise.all([
+      identityDatabase.resolveInvitationAcceptance(replacementA),
+      identityDatabase.resolveInvitationAcceptance(replacementB),
+    ]);
+    expect(outcomes.filter((outcome) => outcome !== null)).toHaveLength(1);
+    await tenantDatabase.withWorkspace(
+      replacementWorkspace.id,
+      async ({ db }) => {
+        const active = await db.execute(sql`
+          select count(*)::int count
+            from app.workspace_invitation_acceptance_intents
+           where invitation_id=${replacementInvitation.invitation.id}::uuid
+             and status in ('pending','verified','wrong_account')
+        `);
+        expect(active.rows[0]?.count).toBe(1);
+      },
+    );
+
+    const active = outcomes.find((outcome) => outcome !== null);
+    expect(active).not.toBeNull();
+    const activeBinding =
+      active?.id === replacementA.intentId
+        ? replacementA.bindingDigest
+        : replacementB.bindingDigest;
+    await expect(
+      identityDatabase.resolveInvitationAcceptance({
+        ...replacement(),
+        bindingDigest: activeBinding,
+        priorBinding: {
+          workspaceId: replacementWorkspace.id,
+          intentId: active?.id ?? oldIntentId,
+          bindingDigest: activeBinding,
+        },
+      }),
+    ).rejects.toBeDefined();
+    await expect(
+      identityDatabase.readInvitationAcceptance(
+        replacementWorkspace.id,
+        activeBinding,
+      ),
+    ).resolves.toMatchObject({ status: 'pending' });
+  });
+
+  it('does not rotate an invitation while delivery outcome is unknown', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation delivery recovery',
+        slug: `invite-delivery-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const created = await identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+    );
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.execute(sql`
+          update app.workspace_invitation_delivery_attempts
+             set status='unknown'
+           where invitation_id=${created.invitation.id}::uuid
+             and invitation_revision=1
+        `);
+      },
+    );
+
+    await expect(
+      identityDatabase.resendWorkspaceInvitation({
+        workspaceId: invitationWorkspace.id,
+        actorUserId: ownerUserId,
+        invitationId: created.invitation.id,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+        tokenDigest: createHash('sha256').update('new-secret').digest('hex'),
+        sealedToken: testSealedToken(),
+        deliveryAttemptId: randomUUID(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+      }),
+    ).rejects.toMatchObject({ reason: 'delivery_unresolved' });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const attempt = await db.execute(sql<{ id: string }>`
+          select status,token_ciphertext is not null sealed
+            from app.workspace_invitation_delivery_attempts
+           where invitation_id=${created.invitation.id}::uuid
+             and invitation_revision=1
+        `);
+        expect(attempt.rows[0]).toEqual({ status: 'unknown', sealed: true });
+      },
+    );
+  });
+
+  it('keeps delivery and invitation commands deadlock-free under concurrency', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation lock ordering',
+        slug: `invite-locks-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const created = await identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+    );
+    let deliveryAttemptId = '';
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        const attempt = await db.execute<{ id: string }>(sql`
+          select id from app.workspace_invitation_delivery_attempts
+           where invitation_id=${created.invitation.id}::uuid
+        `);
+        deliveryAttemptId = attempt.rows[0]?.id ?? '';
+      },
+    );
+    const delivery = createWorkspaceInvitationDeliveryStore(
+      parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+    );
+    try {
+      await delivery.markDispatching({
+        workspaceId: invitationWorkspace.id,
+        invitationId: created.invitation.id,
+        deliveryAttemptId,
+      });
+      const concurrent = Promise.allSettled([
+        delivery.complete({
+          workspaceId: invitationWorkspace.id,
+          invitationId: created.invitation.id,
+          deliveryAttemptId,
+          status: 'submitted',
+          providerReference: 'provider-lock-order-proof',
+        }),
+        identityDatabase.revokeWorkspaceInvitation({
+          workspaceId: invitationWorkspace.id,
+          actorUserId: ownerUserId,
+          invitationId: created.invitation.id,
+          expectedRevision: 1,
+          idempotencyKey: randomUUID(),
+        }),
+      ]);
+      const outcomes = await Promise.race([
+        concurrent,
+        new Promise<never>((_resolve, reject) => {
+          setTimeout(() => {
+            reject(new Error('invitation lock timeout'));
+          }, 5_000);
+        }),
+      ]);
+      expect(outcomes).toHaveLength(2);
+      expect(outcomes.every((outcome) => outcome.status === 'fulfilled')).toBe(
+        true,
+      );
+      const invitation = await identityDatabase.listWorkspaceInvitations(
+        invitationWorkspace.id,
+        ownerUserId,
+      );
+      expect(
+        invitation.items.find((item) => item.id === created.invitation.id),
+      ).toMatchObject({ status: 'revoked', deliveryStatus: 'canceled' });
+      await tenantDatabase.withWorkspace(
+        invitationWorkspace.id,
+        async ({ db }) => {
+          const attempt = await db.execute(sql<{
+            provider_reference: string | null;
+            status: string;
+          }>`
+            select provider_reference,status
+              from app.workspace_invitation_delivery_attempts
+             where id=${deliveryAttemptId}::uuid
+          `);
+          expect(attempt.rows[0]).toEqual({
+            provider_reference: 'provider-lock-order-proof',
+            status: 'submitted',
+          });
+        },
+      );
+    } finally {
+      await delivery.close();
+    }
+  });
+
+  it('expires sealed attempts before reinviting the same normalized recipient', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation reinvite',
+        slug: `invite-reinvite-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const email = `${randomUUID()}@example.test`;
+    const first = await identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(invitationWorkspace.id, ownerUserId, email),
+    );
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.execute(sql`
+        update app.workspace_invitations
+            set expires_at=clock_timestamp()-interval '1 second'
+          where id=${first.invitation.id}::uuid
+      `);
+      },
+    );
+
+    const replacement = await identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        email.toUpperCase(),
+      ),
+    );
+    expect(replacement.invitation.id).not.toBe(first.invitation.id);
+    const page = await identityDatabase.listWorkspaceInvitations(
+      invitationWorkspace.id,
+      ownerUserId,
+    );
+    expect(
+      page.items.find((item) => item.id === first.invitation.id),
+    ).toMatchObject({ status: 'expired', deliveryStatus: 'canceled' });
+    expect(
+      page.items.find((item) => item.id === replacement.invitation.id),
+    ).toMatchObject({ status: 'pending' });
+  });
+
+  it('accepts once, rotates sessions atomically, and replays the historical receipt', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation acceptance',
+        slug: `invite-accept-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Invited recipient',
+    });
+    const tokenDigest = createHash('sha256')
+      .update('accept-secret')
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    const oldDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: recipient.id,
+      tokenDigest: oldDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const replacementDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const key = randomUUID();
+    const command = {
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      invitationRevision: 1,
+      actorUserId: recipient.id,
+      idempotencyKey: key,
+      replacementSession: {
+        id: randomUUID(),
+        tokenDigest: replacementDigest,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    };
+    await expect(
+      identityDatabase.completeInvitationAcceptance(command),
+    ).resolves.toMatchObject({ membershipCreated: true, replayed: false });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(oldDigest),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.findActiveSessionByDigest(replacementDigest),
+    ).resolves.toMatchObject({ userId: recipient.id });
+    await expect(
+      identityDatabase.recordInvitationAcceptanceProof({
+        workspaceId: invitationWorkspace.id,
+        intentId,
+        bindingDigest,
+        userId: recipient.id,
+        verifiedEmail: recipient.email,
+        verifiedAt: new Date(),
+      }),
+    ).resolves.toMatchObject({
+      status: 'completed',
+      acceptedUserId: recipient.id,
+    });
+    await expect(
+      identityDatabase.completeInvitationAcceptance(command),
+    ).resolves.toMatchObject({ membershipCreated: true, replayed: true });
+    await expect(
+      identityDatabase.completeInvitationAcceptance({
+        ...command,
+        invitationRevision: 2,
+      }),
+    ).rejects.toMatchObject({ reason: 'idempotency_conflict' });
+    await expect(
+      identityDatabase.completeInvitationAcceptance({
+        ...command,
+        invitationRevision: 2,
+        idempotencyKey: randomUUID(),
+      }),
+    ).resolves.toMatchObject({ membershipCreated: true, replayed: true });
+    await expect(
+      identityDatabase.findWorkspaceAccess(
+        recipient.id,
+        invitationWorkspace.id,
+      ),
+    ).resolves.toMatchObject({ role: 'viewer', membershipStatus: 'active' });
+  });
+
+  it('rechecks active user status under the acceptance transaction lock', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Suspended invitation recipient',
+        slug: `invite-suspended-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Suspended recipient',
+    });
+    const tokenDigest = createHash('sha256')
+      .update('suspended-recipient-secret')
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const observer = new Pool({
+      connectionString: fixture.databaseUrl(adminUrl),
+      max: 1,
+    });
+    let completion: Promise<unknown> | undefined;
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(`update app.users set status='suspended' where id=$1`, [
+        recipient.id,
+      ]);
+      completion = identityDatabase.completeInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        intentId,
+        invitationRevision: 1,
+        actorUserId: recipient.id,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          id: randomUUID(),
+          tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+      void completion.catch(() => undefined);
+      await expect
+        .poll(
+          async () => {
+            const blocked = await observer.query<{ blocked: boolean }>(
+              `select exists(
+                 select 1 from pg_stat_activity
+                  where datname=current_database()
+                    and usename=$1 and wait_event_type='Lock'
+                    and query like '%select status from app.users%'
+               ) blocked`,
+              [new URL(apiUrl).username],
+            );
+            return blocked.rows[0]?.blocked;
+          },
+          { timeout: 5_000 },
+        )
+        .toBe(true);
+      await owner.query('commit');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await Promise.all([owner.end(), observer.end()]);
+    }
+
+    await expect(completion).rejects.toMatchObject({
+      reason: 'member_inactive',
+    });
+    await expect(
+      identityDatabase.findWorkspaceAccess(
+        recipient.id,
+        invitationWorkspace.id,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('accepts an active existing member as a no-op without changing role or sessions', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Existing member invitation',
+        slug: `invite-member-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Existing invitation member',
+    });
+    await tenantDatabase.withWorkspace(
+      invitationWorkspace.id,
+      async ({ db }) => {
+        await db.insert(workspaceMemberships).values({
+          workspaceId: invitationWorkspace.id,
+          userId: recipient.id,
+          role: 'operator',
+          status: 'active',
+        });
+      },
+    );
+    const sessionDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.createSession({
+      userId: recipient.id,
+      tokenDigest: sessionDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const tokenDigest = createHash('sha256')
+      .update('existing-member-secret')
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    await expect(
+      identityDatabase.completeInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        intentId,
+        invitationRevision: 1,
+        actorUserId: recipient.id,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          id: randomUUID(),
+          tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      }),
+    ).resolves.toMatchObject({
+      membershipCreated: false,
+      role: 'operator',
+      replacementSessionCreated: false,
+    });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(sessionDigest),
+    ).resolves.toMatchObject({ userId: recipient.id });
+  });
+
+  it('serializes acceptance against revocation so exactly one lifecycle command wins', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Invitation lifecycle race',
+        slug: `invite-race-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Invitation race recipient',
+    });
+    const tokenDigest = createHash('sha256')
+      .update('race-secret')
+      .digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+
+    const outcomes = await Promise.allSettled([
+      identityDatabase.completeInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        intentId,
+        invitationRevision: 1,
+        actorUserId: recipient.id,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          id: randomUUID(),
+          tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+          expiresAt: new Date(Date.now() + 60_000),
+        },
+      }),
+      identityDatabase.revokeWorkspaceInvitation({
+        workspaceId: invitationWorkspace.id,
+        actorUserId: ownerUserId,
+        invitationId: created.invitation.id,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+      }),
+    ]);
+    expect(
+      outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const access = await identityDatabase.findWorkspaceAccess(
+      recipient.id,
+      invitationWorkspace.id,
+    );
+    const page = await identityDatabase.listWorkspaceInvitations(
+      invitationWorkspace.id,
+      ownerUserId,
+    );
+    const invitation = page.items.find(
+      (item) => item.id === created.invitation.id,
+    );
+    expect(
+      (access === null && invitation?.status === 'revoked') ||
+        (access?.membershipStatus === 'active' &&
+          invitation?.status === 'accepted'),
+    ).toBe(true);
+  });
 });
+
+function testSealedToken() {
+  return {
+    ciphertext: 'sealed-token',
+    nonce: 'nonce',
+    tag: 'tag',
+    keyVersion: 'test-v1',
+  };
+}
+
+function invitationTokenDigest(invitationId: string) {
+  return createHash('sha256').update(invitationId).digest('hex');
+}
+
+function invitationCreateCommand(
+  commandWorkspaceId: string,
+  actorUserId: string,
+  email: string,
+) {
+  return {
+    workspaceId: commandWorkspaceId,
+    actorUserId,
+    email,
+    role: 'viewer' as const,
+    idempotencyKey: randomUUID(),
+    tokenDigest: invitationTokenDigest(randomUUID()),
+    sealedToken: testSealedToken(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
+  };
+}

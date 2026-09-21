@@ -37,6 +37,14 @@ export type OidcLoginTransaction = Readonly<{
   codeVerifier: string;
   nonce: string;
   expiresAt: Date;
+  continuation?: OidcLoginContinuation;
+}>;
+
+export type OidcLoginContinuation = Readonly<{
+  kind: 'invitation_acceptance';
+  workspaceId: string;
+  intentId: string;
+  bindingDigest: string;
 }>;
 
 export type ExternalIdentity = Readonly<{

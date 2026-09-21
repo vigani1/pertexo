@@ -4,6 +4,7 @@ import type {
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
@@ -26,7 +27,6 @@ type WorkflowListPageProps = Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  onOpenWorkflow?: (workflowId: string) => void;
 }>;
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -44,7 +44,6 @@ export function WorkflowListPage({
   apiClient,
   user,
   workspace,
-  onOpenWorkflow,
 }: WorkflowListPageProps) {
   const workflows = useInfiniteQuery(
     workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
@@ -154,20 +153,16 @@ export function WorkflowListPage({
               {items.map((workflow) => (
                 <TableRow key={workflow.id}>
                   <TableCell className="font-medium">
-                    {onOpenWorkflow === undefined ? (
-                      workflow.name
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto justify-start p-0 text-left"
-                        onClick={() => {
-                          onOpenWorkflow(workflow.id);
-                        }}
-                      >
-                        {workflow.name}
-                      </Button>
-                    )}
+                    <Link
+                      to="/w/$workspaceId/workflows/$workflowId"
+                      params={{
+                        workspaceId: workspace.id,
+                        workflowId: workflow.id,
+                      }}
+                      className="font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      {workflow.name}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <Badge variant={lifecycleVariant(workflow.lifecycleStatus)}>

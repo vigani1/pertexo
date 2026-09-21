@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { hasBoundedGraphAggregateUnsafe } from './graph/aggregate.js';
 import { inspectWorkflowGraphAdmission } from './graph/admission.js';
+import {
+  escapeDroppedInputMappingKeys,
+  restoreDroppedInputMappingKeys,
+} from './graph/input-mapping-keys.js';
 
 export type JsonValue =
   | null
@@ -225,8 +229,10 @@ const workflowGraphPreflightSchema = z.unknown().transform((input, context) => {
     });
     return z.NEVER;
   }
-  return admitted.snapshot;
+  return escapeDroppedInputMappingKeys(admitted.snapshot);
 });
 
 export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
-  workflowGraphPreflightSchema.pipe(workflowGraphStructuralSchemaV1);
+  workflowGraphPreflightSchema
+    .pipe(workflowGraphStructuralSchemaV1)
+    .transform(restoreDroppedInputMappingKeys);

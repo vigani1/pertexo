@@ -59,6 +59,7 @@ const dependencies: IdentityWorkspaceDependencies = {
         name: 'Workspace',
         slug: 'workspace',
         status: 'active' as const,
+        revision: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),

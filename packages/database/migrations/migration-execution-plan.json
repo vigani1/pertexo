@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0093_workspace_member_role_management.sql",
+  "transactionalThrough": "0099_workflow_recent_list.sql",
   "migrations": {}
 }

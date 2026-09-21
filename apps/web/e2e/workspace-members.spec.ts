@@ -41,6 +41,7 @@ async function installRoutes(page: Page) {
             name: 'Control Operations',
             slug: 'control-operations',
             status: 'active',
+            revision: 1,
             role: 'viewer',
             capabilities: ['workspace:read', 'member:read'],
             createdAt: timestamp,
@@ -114,6 +115,17 @@ test('keeps the member directory reachable and bounded on mobile', async ({
     page.getByRole('button', { name: 'Open navigation' }),
   ).toBeVisible();
   await expect(page.getByText('Ada Operator')).toBeVisible();
+  const tableRegion = page.getByRole('region', {
+    name: 'Scrollable data table',
+  });
+  await expect(
+    page.getByText('Scroll horizontally to view all columns and actions.'),
+  ).toBeVisible();
+  await tableRegion.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(() => tableRegion.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -142,6 +154,7 @@ test('confirms a role change and sends its exact revision and command key', asyn
             name: 'Control Operations',
             slug: 'control-operations',
             status: 'active',
+            revision: 1,
             role: 'owner',
             capabilities: ['workspace:read', 'member:read', 'member:manage'],
             createdAt: timestamp,
@@ -197,4 +210,82 @@ test('confirms a role change and sends its exact revision and command key', asyn
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const memberRow = page.getByRole('row').filter({ hasText: 'Ada Operator' });
   await expect(memberRow.getByText('operator', { exact: true })).toBeVisible();
+});
+
+test('creates an invitation and refreshes the authoritative pending list', async ({
+  page,
+}) => {
+  const csrfToken = 'invitation-browser-csrf-token-123456';
+  const invitationId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  let invitations: object[] = [];
+  await page
+    .context()
+    .addCookies([
+      { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
+    ]);
+  await installRoutes(page);
+  await page.route('**/v1/workspaces?**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: workspaceId,
+            name: 'Control Operations',
+            slug: 'control-operations',
+            status: 'active',
+            revision: 1,
+            role: 'owner',
+            capabilities: ['workspace:read', 'member:read', 'member:manage'],
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/invitations**`,
+    async (route) => {
+      const request = route.request();
+      if (request.method() === 'GET') {
+        await route.fulfill({ json: { items: invitations, nextCursor: null } });
+        return;
+      }
+      expect(request.headers()['x-csrf-token']).toBe(csrfToken);
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      expect(request.postDataJSON()).toEqual({
+        email: 'new.builder@example.test',
+        role: 'builder',
+      });
+      const invitation = {
+        id: invitationId,
+        email: 'new.builder@example.test',
+        role: 'builder',
+        status: 'pending',
+        revision: 1,
+        deliveryStatus: 'queued',
+        expiresAt: '2026-09-22T10:00:00.000Z',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      invitations = [invitation];
+      await route.fulfill({
+        status: 202,
+        json: { invitation, replayed: false },
+      });
+    },
+  );
+
+  await page.goto(`/w/${workspaceId}/settings/members`);
+  await page.getByRole('button', { name: 'Invite member' }).click();
+  await page.getByLabel('Recipient email').fill('new.builder@example.test');
+  await page.getByLabel('Workspace role').selectOption('builder');
+  await page.getByRole('button', { name: 'Send invitation' }).click();
+
+  const row = page
+    .getByRole('row')
+    .filter({ hasText: 'new.builder@example.test' });
+  await expect(row.getByText('builder', { exact: true })).toBeVisible();
+  await expect(row.getByText('queued', { exact: true })).toBeVisible();
 });

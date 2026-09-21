@@ -4,6 +4,9 @@ import {
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceRenameCommandConflictError,
+  WorkspaceInvitationCommandConflictError,
+  InvitationAcceptanceConflictError,
 } from '@pertexo/database/api';
 import {
   applicationError,
@@ -65,6 +68,69 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       });
     return applicationError('auth.forbidden', {
       safeDetail: 'This member role transition is not allowed.',
+    });
+  }
+  if (error instanceof WorkspaceRenameCommandConflictError) {
+    if (error.reason === 'revision_conflict')
+      return applicationError('workspace.revision_conflict', {
+        safeDetail: 'The workspace changed since it was loaded.',
+      });
+    if (error.reason === 'idempotency_conflict')
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+    if (error.reason === 'workspace_inactive')
+      return applicationError('workspace.conflict', {
+        safeDetail: 'Only an active workspace can be renamed.',
+      });
+    return applicationError('auth.forbidden', {
+      safeDetail: 'The workspace cannot be renamed by this actor.',
+    });
+  }
+  if (error instanceof WorkspaceInvitationCommandConflictError) {
+    if (error.reason === 'invitation_missing')
+      return applicationError('workspace.invitation_unavailable');
+    if (error.reason === 'revision_conflict')
+      return applicationError('workspace.invitation_revision_conflict', {
+        safeDetail: 'The invitation changed since it was loaded.',
+      });
+    if (error.reason === 'idempotency_conflict')
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+    if (error.reason === 'delivery_unresolved')
+      return applicationError('workspace.invitation_delivery_unavailable', {
+        safeDetail:
+          'The prior delivery outcome must be reconciled before resending.',
+      });
+    if (
+      error.reason === 'duplicate_pending' ||
+      error.reason === 'invitation_inactive'
+    )
+      return applicationError('workspace.invitation_conflict', {
+        safeDetail: error.message,
+      });
+    return applicationError('auth.forbidden', {
+      safeDetail: 'This invitation command is not allowed.',
+    });
+  }
+  if (error instanceof InvitationAcceptanceConflictError) {
+    if (error.reason === 'unavailable')
+      return applicationError('workspace.invitation_unavailable');
+    if (error.reason === 'recipient_mismatch')
+      return applicationError('workspace.invitation_recipient_mismatch', {
+        safeDetail: 'Sign in with the address that received the invitation.',
+      });
+    if (error.reason === 'idempotency_conflict')
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: 'The idempotency key was already used for another request.',
+      });
+    if (error.reason === 'proof_expired')
+      return applicationError('workspace.invitation_proof_expired', {
+        safeDetail: 'Verify the invited account again before accepting.',
+      });
+    return applicationError('workspace.invitation_conflict', {
+      safeDetail: error.message,
     });
   }
   if (error instanceof IdentityConflictError) {

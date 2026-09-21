@@ -4,6 +4,7 @@ import {
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceRenameCommandConflictError,
 } from '@pertexo/database/testing';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -13,6 +14,20 @@ import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace conflict mapping', () => {
+  it.each([
+    ['revision_conflict', 'workspace.revision_conflict', 412],
+    ['workspace_inactive', 'workspace.conflict', 409],
+    ['actor_inactive', 'auth.forbidden', 403],
+    ['idempotency_conflict', 'request.idempotency_conflict', 409],
+  ] as const)('maps workspace-rename %s to %s', (reason, code, status) => {
+    const error = mapIdentityWorkspaceError(
+      new WorkspaceRenameCommandConflictError(reason, 'unsafe detail'),
+    );
+    expect(error.code).toBe(code);
+    expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(status);
+    expect(JSON.stringify(error)).not.toContain('unsafe');
+  });
+
   it.each([
     ['revision_conflict', 'workspace.member_role_revision_conflict', 409],
     ['target_inactive', 'workspace.member_role_transition_conflict', 409],

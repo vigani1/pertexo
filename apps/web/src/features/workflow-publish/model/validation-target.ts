@@ -11,6 +11,7 @@ export type WorkflowCompatibilityIssue =
 export type WorkflowValidationTarget = Readonly<{
   nodeId: string;
   fieldKey?: string;
+  mappingKey?: string;
 }>;
 
 export function resolveWorkflowValidationTarget(
@@ -53,7 +54,7 @@ function targetForRemainder(
   remainder: string | undefined,
 ): WorkflowValidationTarget {
   const configField = /^config\.([^.[]+)/u.exec(remainder ?? '')?.[1];
-  return configField === undefined
-    ? { nodeId }
-    : { nodeId, fieldKey: configField };
+  if (configField !== undefined) return { nodeId, fieldKey: configField };
+  const mappingKey = /^inputMappings\.(.+)$/u.exec(remainder ?? '')?.[1];
+  return mappingKey === undefined ? { nodeId } : { nodeId, mappingKey };
 }

@@ -136,6 +136,7 @@ function workflowAuthoringDatabase(
     readPreview: () => Promise.resolve(null),
     createWorkflow: () => Promise.reject(new Error('not used')),
     listWorkflows: () => Promise.resolve({ items: [] }),
+    getWorkflow: () => Promise.resolve(null),
     getDraft: () => Promise.resolve(null),
     getVersion: () => Promise.resolve(null),
     listVersions: () => Promise.resolve({ items: [] }),

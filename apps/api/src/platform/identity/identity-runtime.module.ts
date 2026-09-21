@@ -9,6 +9,7 @@ import {
   type IdentityWorkspaceDatabase,
   type OidcLoginTransactionStore as DatabaseOidcLoginTransactionStore,
 } from '@pertexo/database/api';
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 import {
   GenericOidcProviderAdapter,
@@ -77,6 +78,9 @@ export async function createApiIdentityRuntime(
       allowInsecureHttpForTests: config.oidc.allowInsecureHttpForTests,
     });
   const encryption = createOidcSecretEncryptionAdapter(config.secretEncryption);
+  const invitationEncryption = createApplicationSecretEnvelope(
+    config.invitationTokenEncryption ?? config.secretEncryption,
+  );
   let identityDatabase: IdentityWorkspaceDatabase | undefined;
   let transactionDatabase: DatabaseOidcLoginTransactionStore | undefined;
   try {
@@ -104,6 +108,9 @@ export async function createApiIdentityRuntime(
     return Object.freeze({
       dependencies: Object.freeze({
         config: Object.freeze({
+          ...(config.publicWebOrigin === undefined
+            ? {}
+            : { publicWebOrigin: config.publicWebOrigin }),
           oidc: Object.freeze({
             issuer: config.oidc.issuer,
             authorizationEndpoint: config.oidc.authorizationEndpoint,
@@ -121,6 +128,7 @@ export async function createApiIdentityRuntime(
         transactions,
         persistence,
         authorization: persistence,
+        invitationTokens: invitationEncryption,
         ...(overrides.clock === undefined ? {} : { clock: overrides.clock }),
         telemetry,
       }),

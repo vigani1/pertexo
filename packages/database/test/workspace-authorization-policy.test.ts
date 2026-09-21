@@ -5,6 +5,7 @@ import {
   ROLES,
   capabilitiesForRole,
   canChangeWorkspaceMemberRole,
+  canInviteWorkspaceRole,
   hasCapability,
   rolesForCapability,
   type AuthorizationCapability,
@@ -112,6 +113,21 @@ describe('workspace authorization policy', () => {
             `${actor}: ${current} -> ${next}`,
           ).toBe(expected);
         }
+      }
+    }
+  });
+
+  it('encodes the complete approved invitation role matrix', () => {
+    const delegated = new Set<Role>(['builder', 'operator', 'viewer']);
+    for (const actor of ROLES) {
+      for (const invited of ROLES) {
+        const expected =
+          invited !== 'owner' &&
+          (actor === 'owner' || (actor === 'admin' && delegated.has(invited)));
+        expect(
+          canInviteWorkspaceRole(actor, invited),
+          `${actor} invites ${invited}`,
+        ).toBe(expected);
       }
     }
   });

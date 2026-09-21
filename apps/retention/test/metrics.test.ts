@@ -231,7 +231,11 @@ describe('retention metrics', () => {
     const { instruments, metrics } = setupMetrics();
     metrics.recordTransientDataReap(
       {
+        invitationAcceptanceIntentsDeleted: 0,
+        invitationReplacementClaimsDeleted: 0,
+        invitationsExpired: 0,
         idempotencyRecordsDeleted: 0,
+        invitationPiiMinimized: 0,
         sessionsDeleted: 0,
         workspaceCreationRecordsDeleted: 0,
       },
@@ -239,7 +243,11 @@ describe('retention metrics', () => {
     );
     metrics.recordTransientDataReap(
       {
+        invitationAcceptanceIntentsDeleted: 4,
+        invitationReplacementClaimsDeleted: 6,
+        invitationsExpired: 1,
         idempotencyRecordsDeleted: 2,
+        invitationPiiMinimized: 0,
         sessionsDeleted: 3,
         workspaceCreationRecordsDeleted: 5,
       },
@@ -255,9 +263,15 @@ describe('retention metrics', () => {
       [0, { data_class: 'idempotency_record' }],
       [0, { data_class: 'workspace_creation_idempotency_record' }],
       [0, { data_class: 'session' }],
+      [0, { data_class: 'workspace_invitation_acceptance_intent' }],
+      [0, { data_class: 'workspace_invitation_replacement_claim' }],
+      [0, { data_class: 'workspace_invitation_expiry' }],
       [2, { data_class: 'idempotency_record' }],
       [5, { data_class: 'workspace_creation_idempotency_record' }],
       [3, { data_class: 'session' }],
+      [4, { data_class: 'workspace_invitation_acceptance_intent' }],
+      [6, { data_class: 'workspace_invitation_replacement_claim' }],
+      [1, { data_class: 'workspace_invitation_expiry' }],
     ]);
     expect(
       callsFor(instruments, RETENTION_METRIC_NAME.batchDuration, 'record'),

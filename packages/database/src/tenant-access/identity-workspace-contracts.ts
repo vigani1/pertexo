@@ -57,6 +57,7 @@ export type WorkspaceRecord = Readonly<{
   name: string;
   slug: string;
   status: WorkspaceStatus;
+  revision: number;
   createdBy: string;
   deletionRequestedAt: Date | null;
   deletionRequestedBy: string | null;
@@ -126,11 +127,134 @@ export type WorkspaceMembersPage = Readonly<{
   items: readonly WorkspaceMemberRecord[];
   nextCursor?: Readonly<{ createdAt: string; userId: string }>;
 }>;
+export type DelegatedMembershipRole = Exclude<MembershipRole, 'owner'>;
+export type WorkspaceInvitationStatus =
+  'pending' | 'accepted' | 'revoked' | 'expired';
+export type WorkspaceInvitationDeliveryStatus =
+  'queued' | 'submitted' | 'failed' | 'canceled';
+export type WorkspaceInvitationRecord = Readonly<{
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: DelegatedMembershipRole;
+  status: WorkspaceInvitationStatus;
+  revision: number;
+  deliveryStatus: WorkspaceInvitationDeliveryStatus;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+export type SealedInvitationToken = Readonly<{
+  ciphertext: string;
+  nonce: string;
+  tag: string;
+  keyVersion: string;
+}>;
+type WorkspaceInvitationCommandInput = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+export type CreateWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
+  Readonly<{
+    invitationId?: string;
+    deliveryAttemptId?: string;
+    email: string;
+    role: DelegatedMembershipRole;
+    tokenDigest: string;
+    sealedToken: SealedInvitationToken;
+    expiresAt: Date;
+  }>;
+export type ChangeWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
+  Readonly<{
+    invitationId: string;
+    expectedRevision: number;
+    tokenDigest?: string;
+    sealedToken?: SealedInvitationToken;
+    deliveryAttemptId?: string;
+    expiresAt?: Date;
+  }>;
+export type WorkspaceInvitationCommandResult = Readonly<{
+  invitation: WorkspaceInvitationRecord;
+  replayed: boolean;
+}>;
+export type WorkspaceInvitationsPage = Readonly<{
+  items: readonly WorkspaceInvitationRecord[];
+  nextCursor?: Readonly<{ createdAt: string; invitationId: string }>;
+}>;
+export type InvitationAcceptanceIntentRecord = Readonly<{
+  id: string;
+  workspaceId: string;
+  invitationId: string;
+  invitationRevision: number;
+  status:
+    | 'pending'
+    | 'verified'
+    | 'wrong_account'
+    | 'completed'
+    | 'abandoned'
+    | 'superseded';
+  expiresAt: Date;
+  verifiedUserId: string | null;
+  verifiedEmail: string | null;
+  verifiedAt: Date | null;
+  workspaceName: string | null;
+  invitationRole: DelegatedMembershipRole | null;
+  invitationStatus: WorkspaceInvitationStatus | null;
+  acceptedUserId: string | null;
+  receipt: Readonly<{
+    intentId: string;
+    workspaceId: string;
+    role: MembershipRole;
+    membershipCreated: boolean;
+  }> | null;
+}>;
+export type ResolveInvitationAcceptanceInput = Readonly<{
+  workspaceId: string;
+  invitationId: string;
+  tokenDigest: string;
+  intentId: string;
+  bindingDigest: string;
+  csrfDigest: string;
+  expiresAt: Date;
+  priorBinding?: Readonly<{
+    workspaceId: string;
+    intentId: string;
+    bindingDigest: string;
+  }>;
+}>;
+export type CompleteInvitationAcceptanceInput = Readonly<{
+  workspaceId: string;
+  intentId: string;
+  invitationRevision: number;
+  actorUserId: string;
+  idempotencyKey: string;
+  replacementSession: Readonly<{
+    id: string;
+    tokenDigest: string;
+    expiresAt: Date;
+    userAgent?: string | null;
+    ipAddress?: string | null;
+  }>;
+  requestId?: string;
+  traceId?: string;
+}>;
+export type InvitationAcceptanceResult = Readonly<{
+  intentId: string;
+  workspaceId: string;
+  role: MembershipRole;
+  membershipCreated: boolean;
+  replayed: boolean;
+  replacementSessionCreated: boolean;
+}>;
 export type AccessibleWorkspaceRecord = Readonly<{
   id: string;
   name: string;
   slug: string;
   status: Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>;
+  revision: number;
   role: MembershipRole;
   createdAt: Date;
   updatedAt: Date;
@@ -160,6 +284,20 @@ export type WorkspaceWithOwnerInput = Readonly<{
 export type WorkspaceCreationResult = Readonly<{
   workspace: WorkspaceRecord;
   revokedSessionCount: number;
+}>;
+export type RenameWorkspaceInput = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  name: string;
+  expectedRevision: number;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+export type WorkspaceRenameResult = Readonly<{
+  workspace: WorkspaceRecord;
+  changed: boolean;
+  replayed: boolean;
 }>;
 export type WorkspaceLifecycleOperation = Readonly<{
   id: string;
@@ -202,6 +340,48 @@ export type IdentityWorkspaceDatabase = Readonly<{
   changeWorkspaceMemberRole(
     input: ChangeWorkspaceMemberRoleInput,
   ): Promise<WorkspaceMemberRoleChangeResult>;
+  listWorkspaceInvitations(
+    workspaceId: string,
+    actorId: string,
+    input?: Readonly<{
+      limit?: number;
+      after?: Readonly<{ createdAt: string; invitationId: string }>;
+    }>,
+  ): Promise<WorkspaceInvitationsPage>;
+  createWorkspaceInvitation(
+    input: CreateWorkspaceInvitationInput,
+  ): Promise<WorkspaceInvitationCommandResult>;
+  resendWorkspaceInvitation(
+    input: ChangeWorkspaceInvitationInput,
+  ): Promise<WorkspaceInvitationCommandResult>;
+  revokeWorkspaceInvitation(
+    input: ChangeWorkspaceInvitationInput,
+  ): Promise<WorkspaceInvitationCommandResult>;
+  resolveInvitationAcceptance(
+    input: ResolveInvitationAcceptanceInput,
+  ): Promise<InvitationAcceptanceIntentRecord | null>;
+  readInvitationAcceptance(
+    workspaceId: string,
+    bindingDigest: string,
+  ): Promise<InvitationAcceptanceIntentRecord | null>;
+  recordInvitationAcceptanceProof(
+    input: Readonly<{
+      workspaceId: string;
+      intentId: string;
+      bindingDigest: string;
+      userId: string;
+      verifiedEmail: string;
+      verifiedAt: Date;
+    }>,
+  ): Promise<InvitationAcceptanceIntentRecord | null>;
+  completeInvitationAcceptance(
+    input: CompleteInvitationAcceptanceInput,
+  ): Promise<InvitationAcceptanceResult>;
+  abandonInvitationAcceptance(
+    workspaceId: string,
+    intentId: string,
+    bindingDigest: string,
+  ): Promise<boolean>;
   listAccessibleWorkspaces(
     actorId: string,
     input?: Readonly<{ limit?: number; after?: string }>,
@@ -220,6 +400,7 @@ export type IdentityWorkspaceDatabase = Readonly<{
   createWorkspaceWithOwner(
     input: WorkspaceWithOwnerInput,
   ): Promise<WorkspaceRecord>;
+  renameWorkspace(input: RenameWorkspaceInput): Promise<WorkspaceRenameResult>;
   requestWorkspaceLifecycleOperation(
     input: RequestWorkspaceLifecycleOperationInput,
   ): Promise<WorkspaceLifecycleOperation>;

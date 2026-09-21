@@ -4,6 +4,7 @@ import {
   workflowRunCancelRequestSchema,
   workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
+  workflowRunListResponseSchema,
   workflowRunStartRequestSchema,
 } from '../src/http/workflow-runs.js';
 import {
@@ -85,6 +86,9 @@ describe('workflow-run public contracts', () => {
     });
     expect(parsed.limit).toBe(100);
     expect(parsed.createdAtFrom).toBe('2026-08-20T00:00:00.000000Z');
+    expect(
+      workflowRunListQuerySchema.parse({ workflowNamePrefix: '  Ops  ' }),
+    ).toEqual({ workflowNamePrefix: 'Ops' });
     expect(workflowRunListQuerySchema.safeParse({ limit: 101 }).success).toBe(
       false,
     );
@@ -111,5 +115,29 @@ describe('workflow-run public contracts', () => {
         createdAtFrom: '2026-08-21T00:00:00.0000001Z',
       }).success,
     ).toBe(false);
+  });
+
+  it('exposes current workflow names on read projections', () => {
+    const summary = {
+      id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      workflowName: null,
+      status: 'succeeded',
+      triggerType: 'manual',
+      createdAt: '2026-09-15T10:00:00.000Z',
+      updatedAt: '2026-09-15T10:00:00.000Z',
+      startedAt: null,
+      completedAt: null,
+      deadlineAt: null,
+      cancelRequestedAt: null,
+    };
+    expect(
+      workflowRunListResponseSchema.parse({
+        items: [summary],
+        nextCursor: null,
+      }).items[0]?.workflowName,
+    ).toBeNull();
   });
 });

@@ -22,6 +22,24 @@ export class WorkspaceAccessDeniedError extends Error {
   public override readonly name = 'WorkspaceAccessDeniedError';
 }
 
+export type WorkspaceRenameCommandConflictReason =
+  | 'actor_inactive'
+  | 'workspace_inactive'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class WorkspaceRenameCommandConflictError extends Error {
+  public override readonly name = 'WorkspaceRenameCommandConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceRenameCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export type WorkspaceMemberRoleCommandConflictReason =
   | 'actor_inactive'
   | 'target_missing'
@@ -37,6 +55,52 @@ export class WorkspaceMemberRoleCommandConflictError extends Error {
 
   public constructor(
     public readonly reason: WorkspaceMemberRoleCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
+export type WorkspaceInvitationCommandConflictReason =
+  | 'actor_inactive'
+  | 'role_forbidden'
+  | 'duplicate_pending'
+  | 'invitation_missing'
+  | 'invitation_inactive'
+  | 'delivery_unresolved'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class WorkspaceInvitationCommandConflictError extends Error {
+  public override readonly name = 'WorkspaceInvitationCommandConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceInvitationCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
+export type InvitationAcceptanceConflictReason =
+  | 'unavailable'
+  | 'binding_mismatch'
+  | 'expired'
+  | 'superseded'
+  | 'recipient_mismatch'
+  | 'proof_expired'
+  | 'workspace_inactive'
+  | 'member_inactive'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class InvitationAcceptanceConflictError extends Error {
+  public override readonly name = 'InvitationAcceptanceConflictError';
+
+  public constructor(
+    public readonly reason: InvitationAcceptanceConflictReason,
     message: string,
     options?: ErrorOptions,
   ) {

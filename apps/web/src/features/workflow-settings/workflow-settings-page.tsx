@@ -75,15 +75,28 @@ function WorkflowSettingsSession({
           Published triggers, immutable versions, failure notifications and
           lifecycle operations for this workflow.
         </p>
+        <nav
+          aria-label="Workflow settings sections"
+          className="mt-5 flex gap-2 overflow-x-auto pb-1 text-sm"
+        >
+          {[
+            ['Versions', '#workflow-versions'],
+            ['Schedules', '#workflow-schedules'],
+            ['Webhooks', '#workflow-webhooks'],
+            ['Notifications', '#workflow-notifications'],
+            ['Lifecycle', '#workflow-lifecycle'],
+          ].map(([label, href]) => (
+            <a
+              key={href}
+              href={href}
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-muted-foreground hover:bg-white/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
       </header>
 
-      <WorkflowLifecycleSection
-        apiClient={apiClient}
-        userId={user.id}
-        workspace={workspace}
-        workflowId={workflowId}
-        query={summary}
-      />
       <WorkflowVersionsSection
         apiClient={apiClient}
         userId={user.id}
@@ -107,11 +120,19 @@ function WorkflowSettingsSession({
       />
       <WorkflowNotificationsSection
         apiClient={apiClient}
-        userId={user.id}
         workspace={workspace}
         workflowId={workflowId}
         query={destinations}
       />
+      <div className="mt-2 border-t border-destructive/20 pt-6">
+        <WorkflowLifecycleSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflowId={workflowId}
+          query={summary}
+        />
+      </div>
     </div>
   );
 }

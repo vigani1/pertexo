@@ -1,681 +1,532 @@
-# Frontend audit and cleanup plan
-
-Date: 2026-09-15. Status: scoped implementation complete; React Compiler
-evaluated and not adopted.
-
-## 1. Scope and verdict
-
-This audit covers the current working-tree React application, including
-untracked files, not only the committed diff. Baseline HEAD:
-`9b1e28e300f44b643e40f4c59c25655dffbcce01`. The repository contains substantial
-uncommitted frontend and supporting backend changes. Findings apply to this
-snapshot and must be rechecked against subsequent edits.
-
-The preceding source review covered all 101 files in `src/`: routes, app setup,
-shared UI/patterns, transport, styles and every feature. This document adds
-compiler research, page inventory, delivery-risk assessment and implementation
-acceptance criteria. Tests and configuration were inspected selectively; this is
-not a new exhaustive backend/security audit or a live production verification.
-
-**Verdict:** keep the React/Vite architecture and feature ownership. Fix
-concrete state-lifecycle issues, remove demonstrated redundancy and standardize
-existing seams before expanding features. Neither a rewrite nor a generic
-application framework is justified. More files, hooks or state fields do not
-inherently mean bad code. Complexity must correspond to behavior the application
-actually needs.
-
-This is a temporary action register, not a second architecture specification.
-[ARCHITECTURE.md](ARCHITECTURE.md) remains the implementation plan and
-[AGENTS.md](AGENTS.md) the agent instructions. Resolve findings with evidence,
-update lasting guidance where necessary, then retire this audit rather than
-accumulating overlapping review documents.
-
-### Evidence and limitations
-
-- Preceding source-review run: 64 tests passed across 15 test files; web
-  typecheck, lint and `git diff --check` passed.
-- React Doctor full scan: 22 warnings, 67/100. This is a heuristic diagnostic,
-  not an unbiased quality score. Label warnings included false positives for
-  `FieldLabel` composition; login does not need cache invalidation merely
-  because it starts OIDC navigation.
-- Eleven Chromium test cases are defined in `e2e/`. They use controlled API
-  boundaries. Their existence is not proof of a live IdP/API/worker deployment.
-- No new browser, cross-browser, production-load or compiler-on benchmark was
-  run for this document. Prior passing checks do not cover every finding below.
-- Code/configuration review is evidence of implementation, not a guarantee that
-  every shipped behavior is correct. No numerical overall quality score is used.
-
-## 2. What is implemented
-
-“Implemented” below means reachable source exists, not that all acceptance and
-release gates have passed. Paths are defined in
-[route-tree.ts](src/routes/route-tree.ts).
-
-| Surface                                          | Current contents                                                                                                                                                   | Status / limits                                                                                                       |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `/`                                              | Session lookup and redirect                                                                                                                                        | Implemented entry route, not a dashboard                                                                              |
-| `/login`                                         | Provider-only OIDC start, pending/error feedback                                                                                                                   | Implemented; no local password/signup UI; live-provider journey remains a release gate                                |
-| `/workspaces`                                    | Accessible workspace selection, empty/recovery states, logout                                                                                                      | Implemented selection, not workspace administration/onboarding CRUD                                                   |
-| `/w/$workspaceId/workflows`                      | Paged workflow list, create dialog, catalog/connection discovery, workspace shell                                                                                  | Implemented baseline; creation pending-state issue F02                                                                |
-| `/w/$workspaceId/workflows/$workflowId`          | Palette, canvas, inspector, schema controls plus JSON, connections, history, autosave, conflict comparison, leave protection                                       | Implemented bounded editor, not a complete visual programming IDE; F01/F04/F06/F08 apply                              |
-| Editor actions/dialogs                           | Validate, publish, node preview, start run, uncertain-outcome retry                                                                                                | Implemented, not separate pages; preserve revision/ETag/intent semantics                                              |
-| `/w/$workspaceId/runs/$runId`                    | Exact-version run detail, node invocation list, execution graph, bounded event timeline, cancellation                                                              | Implemented; no general run-history/search/replay UI                                                                  |
-| `/w/$workspaceId/workflows/$workflowId/settings` | Published version list/restore, lifecycle archive/restore, schedule enable/disable, webhook provisioning/rotation, notification destination status/policy commands | Implemented operations subset, not complete creation/editing of every resource; identity and credential issues remain |
-| Artifact output panel                            | Metadata check and expiring download preparation                                                                                                                   | Implemented embedded panel; no upload/file-drop/asset-management page                                                 |
-| Pending/error/not-found/unavailable screens      | Root loading and recovery routes                                                                                                                                   | Implemented; recovery and small-viewport testing gaps remain                                                          |
-
-Not currently separate delivered pages: dashboard, connections management,
-workspace/member/role administration, general run history, dedicated trigger
-management, notification-destination creation, account settings, artifact
-upload, or operator/admin tooling. These are product backlog choices, not
-automatically defects. Do not create empty routes or folders to make the
-inventory look complete. Catalog and connections currently provide discovery
-data, not full management UI.
-
-## 3. Findings: correctness and lifecycle
-
-Priorities: **P1** = fix before broader feature work/release; **P2** = bounded
-correctness or maintainability work; **P3** = measured/optional cleanup. The
-original findings are retained below as the review record. Their verified
-resolution and evidence are recorded in section 9. “Verification needed” entries
-remain questions unless section 9 records a reproduction.
-
-### F01 — P1: scope local state to identity
-
-Evidence:
-[workflow-editor.tsx](src/features/workflow-editor/workflow-editor.tsx),
-[editor-provider.tsx](src/features/workflow-editor/model/editor-provider.tsx),
-[workflow-actions.tsx](src/features/workflow-publish/workflow-actions.tsx),
-[workflow-settings-page.tsx](src/features/workflow-settings/workflow-settings-page.tsx).
-
-The provider initializes its Zustand store once and is not keyed by identity.
-The router has no `remountDeps` configuration. Param-only navigation can reuse
-the editor with a different workflow while retaining its old graph, history,
-selection and save metadata. Publish/run attempt refs and settings form state
-also have no independent identity reset. Query keys alone do not reset local
-state.
-
-Action: key the appropriate feature/session owner by user, workspace and
-workflow; fence asynchronous completions to that owner. Do not key by
-revision/generation, which would discard scratch edits during ordinary saves.
-Preserve explicit navigation protection before abandoning dirty work.
-
-Acceptance: same-route A→B navigation, including cached data, cannot
-display/save A's graph under B or retry A's command against B. Test settings
-credentials, pending commands and account/workspace changes, including late
-responses.
-
-### F02 — P1: create mutation can be reset during submission
-
-Evidence:
-[create-workflow-dialog.tsx](src/features/workflows/create-workflow-dialog.tsx).
-The name input stays editable and its change handler calls `mutation.reset()`.
-TanStack resets observation/pending UI; it does not cancel the network request.
-Another submission can become possible and an earlier success can clear new
-input.
-
-Action: freeze submitted fields while pending, or maintain explicit submitted
-intent ownership without resetting an active mutation. Preserve idempotency
-rules. Acceptance: delayed submit plus typing/retry/dismissal produces one
-intended creation and no overwritten newer form state.
-
-### F03 — P2: prepared artifact link is not identity-scoped
-
-Evidence: [artifact-download.tsx](src/features/artifacts/artifact-download.tsx),
-[node-preview-dialog.tsx](src/features/workflow-publish/components/node-preview-dialog.tsx).
-`download` persists if the mounted panel receives a different artifact ID; the
-preview caller supplies no artifact identity key. The panel can then label an
-old link with a new artifact ID. Late preparation responses have no scope fence.
-
-Action: key the panel or explicitly scope its state/result; abort or ignore
-stale responses. Acceptance: prepare A, switch to B, resolve A late; B must not
-expose A's URL.
-
-### F04 — P2: keyboard delete bypasses scratch-edit protection
-
-Evidence:
-[workflow-editor.tsx](src/features/workflow-editor/workflow-editor.tsx), global
-key handler. Delete/Backspace removes a node directly, unlike guarded
-selection/history actions. Focus on body or a button is enough to trigger it.
-
-Action: scope deletion to editor/canvas intent and consistently resolve
-unapplied edits. Preserve a usable keyboard deletion path and undo. Acceptance:
-dirty inspector plus canvas/button focus does not silently bypass the chosen
-protection.
-
-### F05 — P2: webhook secret lifecycle and duplicated dialog state
-
-Evidence:
-[workflow-webhooks-section.tsx](src/features/workflow-settings/components/workflow-webhooks-section.tsx),
-[use-trigger-commands.ts](src/features/workflow-settings/mutations/use-trigger-commands.ts).
-Entered endpoint credentials are retained in a map and displayed in an ordinary
-text input. `credentialsOpen` is separately synchronized with issued
-credentials, and opens only after the command's cache refresh completes.
-
-Action: mask secret entry, clear successfully submitted secrets promptly, keep
-issued values only until acknowledgement/unmount, and derive dialog openness
-from the issued-credential state. Preserve same-command retry semantics without
-persisting plaintext secrets or displaying stale credentials across scopes.
-Acceptance: successful issuance is visible even if refresh fails;
-acknowledgement clears values/unlocks commands; identity changes clear all
-sensitive UI state.
-
-### F06 — P2: render-time external-store reads lack subscriptions
-
-Evidence:
-[workflow-actions.tsx](src/features/workflow-publish/workflow-actions.tsx). It
-reads selection/generation/revision using `store.getState()` during render,
-relying on its parent's subscriptions to cause updates. The parent does not
-subscribe to revision. This is a brittle source of stale derived status and is
-particularly important before adding compiler memoization.
-
-Action: select the values needed for rendering through the store hook. Keep
-`getState()` for event-time latest-state reads. Acceptance: store-only revision
-updates refresh validation/publication status without unrelated parent renders.
-
-### F07 — P2: query cancellation and reconnect cleanup are inconsistent
-
-Evidence:
-[workflow-settings.queries.ts](src/features/workflow-settings/workflow-settings.queries.ts),
-[workflow-settings.api.ts](src/features/workflow-settings/workflow-settings.api.ts),
-[use-run-events.ts](src/features/workflow-runs/use-run-events.ts). Four settings
-queries omit the query abort signal while summary consumes it. The SSE delay
-adds an abort listener per retry but does not remove it after a normal timeout
-or check an already-aborted signal first.
-
-Action: forward signals through query and API layers; make delay cleanup
-symmetric. Acceptance: navigation/logout cancellation reaches transport;
-repeated reconnects do not accumulate listeners and cleanup leaves no pending
-backoff timer.
-
-## 4. State, effects and actual redundancy
-
-Inventory at review: 64 `useState`, 17 `useRef`, 6 `useEffect`, 5 `useMemo`, 10
-`useCallback`, one `useImperativeHandle`; no `useReducer` calls. These counts
-are descriptive, not targets to reduce.
-
-### F08 — P2: remove dead `savedGraph`
-
-[editor.store.ts](src/features/workflow-editor/model/editor.store.ts) writes a
-saved graph field that production code never reads. The save coordinator uses
-its submitted snapshot and revision/ETag/generation instead. Remove the field,
-assignments and unused parameter plumbing, retaining behavioral save/conflict
-tests. Do not remove the actual graph, history, conflict snapshots or
-idempotency attempts.
-
-### F09 — P2 cleanup: simplify inspector ownership without losing scratch edits
-
-[workflow-inspector.tsx](src/features/workflow-editor/components/workflow-inspector.tsx)
-calculates dirty state, reports it through an effect and stores a copy in the
-parent. The coordination has a real purpose; it is not a useless effect to
-delete in isolation. A local inspector controller shared by its form and guard
-can make the ownership explicit. Keep the UI-only scratch draft separate from
-committed graph changes and preserve Apply/Discard/Stay behavior.
-
-Extract meaningful inspector sections (configuration, connection selection,
-mapping) and pure schema helpers as warranted by responsibility. Likewise,
-preview orchestration can move into a feature-local hook/model while dialog
-presentation remains in its component. Do not split solely to satisfy line
-limits. Parse the same JSON once per render where possible; share the identical
-persisted node comparison shape instead of rebuilding it in multiple helpers.
-
-### F10 — P3: preserve useful memoization, remove ceremony selectively
-
-- Keep graph projection memos; both canvases currently create fresh array props
-  by spreading those projections in JSX. Return/retain React Flow-compatible
-  arrays once per projection rather than copying on unrelated renders.
-- Keep stable save transport and coordinator lifecycle behavior until
-  deliberately refactored and regression-tested. Memoization must not be the
-  sole correctness guarantee for persistence.
-- `addNode`'s callback wrapper has no current memoized consumer or subscription
-  requiring its identity. It can be an ordinary event handler.
-- Inspector schema/baseline memos are not demonstrated performance problems; do
-  not manufacture changes merely to remove all memos.
-- Keyboard effect, save subscription, preview abort cleanup, SSE and canvas
-  animation are legitimate external-system lifecycles. Keep their cleanup.
-- A ref used as a synchronous command lock and state used for visible pending
-  feedback serve different purposes. Do not remove locks merely because they
-  resemble state. Conversely, do not add locks everywhere without a call-path
-  need.
-- Do not replace all local fields with one giant state object. Use a
-  discriminated operation state only where several flags genuinely permit
-  invalid combinations.
-
-## 5. Uniform structure and API patterns
-
-### F11 — P2: finish the existing feature conventions
-
-Evidence: [workflows.queries.ts](src/features/workflows/workflows.queries.ts)
-mixes read and mutation options;
-[run-detail-page.tsx](src/features/workflow-runs/run-detail-page.tsx) owns
-cancellation orchestration; routes and sibling features import private
-editor/run files despite partial `public.ts` interfaces.
-
-Adopt the following consistently, without creating empty directories:
-
-```text
-features/<feature>/
-  public.ts                  deliberate consumer exports only
-  <feature>-page.tsx         composition and page-level query state
-  <feature>.api.ts           paths, contracts, headers, transport calls
-  <feature>.queries.ts       keys and read options
-  <feature>.mutations.ts     ordinary command hooks/options when small
-  components/<area>/         feature-owned presentation when subdivision helps
-  model/                     pure logic and genuinely shared local state behavior
-  mutations/                 use instead of one large mutation file when needed
-```
-
-- Small features may stay flat. Uniform ownership matters more than identical
-  trees.
-- Routes own navigation/entry; extract repeated workspace/session resolution
-  into a focused helper if it removes real duplication, not a generic route
-  factory.
-- Ordinary server commands use TanStack mutation status/error ownership and
-  targeted invalidation. Keep special serialized save and uncertain-retry
-  protocols explicit.
-- Transport remains `lib/api`; domain calls remain feature-owned. No backend
-  imports.
-- Shared request/response schemas/types come from reviewed contract exports.
-  UI-only form types, React Flow projections and operation state stay in the
-  feature.
-- Validate incoming responses and outgoing inputs at the API seam; field-level
-  validation serves UX and does not replace backend validation/authorization.
-- One visible error owner. Distinguish command rejection, uncertain outcome and
-  successful command followed by failed refresh. Never automatically replay
-  non-idempotent commands just to standardize retries.
-- Reuse the run model's terminal-status predicate in the execution graph. Hoist
-  date formatters as already done in the workflow list; no formatter hook is
-  needed.
-- Keep semantic global tokens/base styles/shared effects. Move
-  workspace-specific layout CSS into its feature or Tailwind classes; do not
-  eliminate CSS altogether.
-- Extend existing import enforcement to deliberate feature public interfaces. Do
-  not create wrappers whose only purpose is to pass through the same arguments.
-
-## 5A. Follow-up: actual TypeScript and module-interface review
-
-This section records the additional requested code inspection, not merely rules
-for future work. It includes a syntax-tree scan of all 100 TS/TSX source files
-(the 101st source file is CSS), import-direction inspection, strict compiler
-configuration and manual tracing of API adapters, query consumers, command
-interfaces and relevant UI state. It does not claim formal verification of every
-possible runtime input or an exhaustive audit of shared contract internals.
-
-### Verified strengths: retain these
-
-- No explicit TypeScript `any` annotations, non-null assertion expressions or
-  `@ts-ignore` / `@ts-nocheck` / `@ts-expect-error` comments in application
-  source.
-- All 26 assertion expressions are `as const` or `as unknown`; no
-  response-to-DTO assertion bypass was found. `JSON.parse(...) as unknown`
-  deliberately requires subsequent narrowing rather than trusting parsed data.
-- Root strictness includes `strict`, `noUncheckedIndexedAccess`,
-  `exactOptionalPropertyTypes`, unknown catch variables and no implicit returns.
-- API responses are generally decoded using imported runtime contract schemas;
-  response DTOs are not broadly copied into independently maintained UI
-  interfaces.
-- `Awaited<ReturnType<...>>`, indexed-access node/config types and ordinary
-  generic API decoders are reasonable here. They are not evidence of
-  overengineering.
-- React Flow-specific data types belong in the frontend.
-  `Record<string, unknown>` satisfies the library's data shape and is not
-  equivalent to using `any`.
-- `SettingsQuery<Value>` is a small presentation-facing projection, not a clone
-  of TanStack's entire result type. Its currently unused `error` member is an
-  optional cleanup, not a reason to pass more Query internals into components.
-- Distinct validation reports, publication receipts and uncertain command
-  attempts represent different facts. Do not merge them just because fields
-  overlap.
-- Do not introduce a global `types.ts`, generic repository/service layer or
-  branded type for every string. Share a type only when it represents one
-  genuinely shared concept; retain runtime validation for external IDs and
-  opaque ETags.
-
-### F12 — P2: publishing's interface exposes too much editor implementation
-
-Evidence:
-[workflow-actions.tsx](src/features/workflow-publish/workflow-actions.tsx),
-[use-workflow-save-barrier.ts](src/features/workflow-publish/mutations/use-workflow-save-barrier.ts),
-[node-preview-dialog.tsx](src/features/workflow-publish/components/node-preview-dialog.tsx).
-
-Editor imports publishing at runtime; publishing imports the full `EditorStore`
-type and knows its save status, graph revision and internal methods. The save
-barrier returns the complete store state/actions even though callers need only
-saved revision/ETag/generation. Preview separately repeats the flush/clean/dirty
-precondition logic. This is a conceptual two-way dependency, **not a
-demonstrated runtime circular-import crash**: the reverse imports are type-only.
-
-Action: let the editor own the save precondition and expose a small operation
-such as `ensureSaved(): Promise<SavedDraftIdentity>`. Pass explicit reactive
-selection and status values needed by presentation. Keep implementation-specific
-store access within its owner; use the same precondition for preview, validate,
-publish and run. Do not add a service class or adapter framework to accomplish
-this.
-
-Acceptance: publishing cannot access history, mutate graph state or depend on
-the store constructor type; all commands retain unapplied/conflict/uncertain
-guards. Validate the small operation through behavior, including pending
-autosaves.
-
-### F13 — P2 cleanup: duplicate draft-result shape
-
-Evidence: `WorkflowDraftSnapshot` in
-[workflow-editor.api.ts](src/features/workflow-editor/workflow-editor.api.ts)
-and `RestoredDraft` in
-[workflow-settings.api.ts](src/features/workflow-settings/workflow-settings.api.ts)
-both represent `{ draft: WorkflowDraftResponse; etag: string }` and
-independently decode the same body/header pair.
-
-Action: reuse one browser-owned snapshot type at the deliberate workflow draft
-interface; consider one decoder if it removes actual repetition without awkward
-dependencies. Do not add transport metadata to the shared backend DTO or create
-a new workspace package for two consumers. Keep `CreatedWorkflow` separate: its
-response/body semantics differ despite also containing an ETag.
-
-Acceptance: get/save/restore agree on the same snapshot contract and reject a
-missing or malformed strong ETag. No broad cast should be needed by callers.
-
-### F14 — P2: encode webhook command requirements in the input type
-
-Evidence: `commandWebhook` in
-[workflow-settings.api.ts](src/features/workflow-settings/workflow-settings.api.ts)
-accepts an independent command union and optional `endpointKey`. TypeScript
-therefore accepts `rotate-secret` with no key. Runtime schema parsing rejects
-it, so this is a compile-time interface weakness, not a validation bypass.
-
-Action: use a small discriminated union: secret rotation requires `endpointKey`;
-provision/endpoint rotation do not. Construct the right variant after validating
-the form. Keep runtime schema validation because strings can still be malformed.
-
-Acceptance: a missing key for secret rotation is a type error, valid variants
-compile, and malformed external/form values still produce useful validation. No
-advanced conditional/generic type machinery is needed.
-
-### F15 — P2: duplicate ownership of workflow-version reads
-
-Evidence:
-[workflow-settings.api.ts](src/features/workflow-settings/workflow-settings.api.ts)
-implements paged version reads;
-[workflow-runs.api.ts](src/features/workflow-runs/workflow-runs.api.ts)
-reconstructs the same path, query and response decoding while searching for an
-accepted version. `findWorkflowSummary` also reconstructs workflow-list
-transport already available in
-[workflows.api.ts](src/features/workflows/workflows.api.ts).
-
-Action: reuse owner-exported page readers, leaving caller-specific search and
-bounds explicit. Choose ownership based on the workflow resource, not whichever
-page first needed it. This complements F11; do not create one universal
-paginator with callbacks/configuration more complicated than these operations.
-
-Acceptance: page transport and cancellation are fixed once; exact-version lookup
-still cannot silently substitute the newest published version. Bounded-search
-failure must not be mislabeled as proof the resource does not exist.
-
-### F16 — P2: paginated data is treated as complete in two consumers
-
-Evidence:
-[connections.queries.ts](src/features/connections/connections.queries.ts)
-requests one 100-item page, while
-[workflow-editor.tsx](src/features/workflow-editor/workflow-editor.tsx) passes
-only `connections.data.items` to the inspector. The inspector has no next-page
-action.
-[workflow-settings.queries.ts](src/features/workflow-settings/workflow-settings.queries.ts)
-requests one 25-item version page and
-[workflow-versions-section.tsx](src/features/workflow-settings/components/workflow-versions-section.tsx)
-does not expose `nextCursor` or a load-more action.
-
-Consequences: a matching connection beyond page one cannot be selected and can
-produce a misleading “no active matching connection” message. Older published
-versions beyond page one cannot be selected for restore. This is not fixed by
-having correctly inferred response types: the consumer discarded pagination.
-
-Action: provide deliberate paged discovery/load-more, or bounded complete
-discovery with explicit incomplete/error states. Do not fetch unbounded data
-just to make the UI look complete. The workflow-list connection count's `+`
-already acknowledges truncation; the editor picker needs its own usable
-behavior.
-
-Acceptance: a >100-connection fixture permits selecting a matching item on the
-next page; a >25-version fixture permits selecting an older version. Existing
-selected connections remain intelligible even when absent from the loaded page.
-
-### F17 — P3: graph no-ops generate unnecessary state/history work
-
-Evidence: `moveWorkflowNode`, `updateWorkflowNode`, `removeWorkflowNode` in
-[graph-adapter.ts](src/features/workflow-editor/model/graph-adapter.ts) always
-allocate a new graph even when the target is absent or the requested position is
-unchanged. `transact` suppresses only reference-identical graph inputs.
-
-Action: preserve the existing reference for cheaply detectable no-ops. Do not
-add expensive whole-graph equality checks on every pointer event. Keep
-meaningful edits immutable and retain semantically important configuration
-changes.
-
-Acceptance: moving to the existing coordinates or deleting an absent ID adds no
-history entry, generation increment or save; real edits still record history.
-
-### Type/structure closure additions
-
-- [x] F12: small editor-owned saved-draft operation; no full-store leakage.
-- [x] F13–F14: shared snapshot shape and valid command input variants.
-- [x] F15–F16: single resource-read ownership and usable pagination consumers.
-- [x] F17: cheap no-op graph transitions preserve identity.
-- [x] Keep typecheck and regression tests passing without casts/suppressions.
-- [x] Review `public.ts` exports as intentional interfaces, not
-      export-everything barrels.
-
-## 6. Additional senior-review checks
-
-These are bounded follow-ups, not all proven defects. Do not silently promote
-verification questions into implementation requirements.
-
-### UI and interaction findings
-
-- `src/components/ui/dialog.tsx:20` — fixed centered viewport/popup has no
-  explicit vertical scroll constraint. Verify long preview/credential content at
-  short viewport heights and 200% zoom; ensure all actions remain reachable.
-- `src/features/workflow-editor/components/editor-dialogs.tsx:133` — controlled
-  leave dialog has no close-state handler; Escape cannot invoke Stay. Check
-  unapplied/conflict dialogs too. Define deliberate Escape/outside-click
-  behavior rather than silently ignoring close requests or discarding edits.
-- `src/routes/route-components.tsx:76` — workspace/workflow navigation is
-  expressed as callbacks/buttons; use links for ordinary navigation so browser
-  open-in-new-tab and copy-link behavior work. Guarded editor exits still need
-  dirty protection.
-- `src/features/workflow-editor/workflow-editor.tsx:273` — Apply resolves a
-  pending selection but does not execute pending Undo/Redo. Decide whether Apply
-  means “apply and stay” or “apply then continue”; immediately undoing an apply
-  can itself surprise users. Align copy and add a test before changing this
-  semantic.
-
-These checks use the
+# Integrated frontend/backend audit — N1–N3 and M1
+
+Date: 2026-09-21. Status: corrective pass complete for the bounded findings; the
+disposable database/API qualification gate is green. The original findings and
+their evidence remain below, followed by the closure ledger.
+
+## Scope and baseline
+
+Baseline: `2a2e2b42`; branch: `feat/web-foundation-and-overview`. Includes
+tracked and untracked implementation of workspace creation (N1), display-name
+editing (N2), bounded Overview (N3), visual input mapping (M1), and the shared
+contracts/routes/query/save/model/API/database seams they changed. Source of
+truth: [ARCHITECTURE.md](ARCHITECTURE.md), root/web agent rules, existing
+contracts and applicable ADRs.
+
+The earlier invitation implementation is not claimed as fully re-audited here.
+Its current cross-cutting qualification failure is nevertheless reported. This
+is not a whole-repository security certification or production signoff.
+
+## Corrective-pass closure ledger
+
+### Independent rerun of the corrective pass — 2026-09-21
+
+The reviewing task independently reran the following, rather than relying only
+on the implementing task's results:
+
+- Web: 220 tests; lint, typecheck and production build passed.
+- Shared workflow model: 112 tests; workflow engine: 376 tests passed.
+- Browser: all 38 Chromium journeys plus four focused cases in each of Firefox
+  and WebKit passed (46 total). The focused cases cover narrow workspace choice,
+  long-name bounds, table keyboard scrolling and responsive editor controls.
+  Rendered screenshots were inspected, including the corrected zoom buttons,
+  fully readable workspace names and the focused/scrolled mobile member table.
+- Disposable quality lane: 563 PostgreSQL integration tests, 768 database unit
+  tests, and 66 real API integration tests passed. The previously failing unit
+  gate now reports functions 100% and branches 99.04%; thresholds were not
+  lowered.
+- Architecture/import, typed-schema ownership, contract generation/OpenAPI,
+  documentation and diff checks passed. The existing OpenAPI warning remains.
+
+Independent machine evidence:
+`coverage/local-quality/pertexo-local-quality-2026-09-21t18-56-56-329z-47729-f6468f84/`;
+screenshots: `/tmp/pertexo-independent-closure-browser/`. The owned Compose
+containers/volumes were confirmed removed. Temporary browser configuration was
+removed. No application code, commit or push was made by this verification.
+These browser tests use HTTP fixtures; API integration uses the real disposable
+services, not a newly executed browser-to-live-provider journey.
+
+Independent frontend source review found no new S1/S2/U3 regression and accepted
+the S3/S4 no-extraction rationale. U5's bounded authorized contract has since
+been implemented: run read summaries carry the current workflow name when
+authorized, the editor uses an exact metadata query, and PostgreSQL applies a
+literal name-prefix predicate before keyset pagination without per-row requests.
+
+Independent shared-model/database review also validated B1, B3, B4 and V1. The
+reported nested JSON wire-value loss is fixed; browser save/reload and engine
+tests pass. An extra own named property attached to a JavaScript array is
+outside JSON wire representation and is not preserved by array admission; that
+existing in-process boundary was not treated as a regression or as a failure of
+the reported JSON-literal fix. No new blocking defect was confirmed in this
+corrective-pass verification. U5 implementation and its required local delivery
+gates are now complete: the extended disposable real-HTTP API lane passed, and
+focused Firefox/WebKit runs were executed through a temporary local Playwright
+configuration.
+
+| Item       | Resolution and regression evidence                                                                                                                                                                                                                                                                                                                                           |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1         | Fixed. Rename attempts are canonicalized before capture, retain the accepted receipt and reconcile discovery by workspace identity plus a revision at least as new as the receipt. Component coverage includes whitespace canonicalization, exact uncertain retry and a newer concurrent rename.                                                                             |
+| S2         | Fixed. Replay invalidates the identity/workspace run scope after acceptance; archive/restore invalidates both settings and workflow-list scopes. Routed tests require fresh Overview requests after replay and lifecycle changes.                                                                                                                                            |
+| S3         | No structural change. The inspector remains the atomic owner of configuration, mapping scratch, dirty state and Apply. Its mapping UI and pure conversion seams are already extracted; another hook would split one form authority without removing behavior or dependencies.                                                                                                |
+| S4         | No generic extraction. Creation and rename share transport conventions but have materially different accepted/reconciliation outcomes. Their separate, feature-owned hooks remain the smaller interface.                                                                                                                                                                     |
+| B1         | Fixed in the shared workflow-model admission boundary. Own `__proto__` keys and escape-prefix collisions survive nested config and literal JSON, arrays, save/reload and engine execution without prototype pollution. Model, engine and Chromium regressions cover the wire value.                                                                                          |
+| B2         | Fixed. Unbroken 128-character names wrap within both the editable name card and read-only identity card; workspace-picker names/slugs reflow at 320px. Bounds are asserted in Chromium, Firefox and WebKit.                                                                                                                                                                  |
+| B3         | Resolved as metadata-only semantics. Overview now says “Recently managed workflows” and explicitly excludes draft-only edits; the architecture contract records lifecycle/publication metadata ordering rather than implying every draft save.                                                                                                                               |
+| B4         | Fixed. The typed Drizzle schema now declares `workflows_workspace_updated_idx`, matching migration `0099` and readiness ownership. Schema checks report 76 migration tables: 57 typed and 19 raw SQL.                                                                                                                                                                        |
+| V1         | Fixed. `canInviteWorkspaceRole` has the exhaustive actor/target-role matrix required by ADR 038. Database unit coverage now passes; the disposable qualification run passed 563 PostgreSQL tests, 768 database unit tests and 66 real API integration tests.                                                                                                                 |
+| U1         | Fixed. React Flow child controls use the app surface/foreground variables and an explicit cross-browser focus ring. Responsive browser checks assert computed contrast and focus behavior.                                                                                                                                                                                   |
+| U2         | Fixed. Mobile workspace choices show full distinguishing names and slugs with bounded wrapping; two similar long names are covered at 320px.                                                                                                                                                                                                                                 |
+| U3         | Fixed. Workflow settings no longer exposes workspace-wide destination enable/disable commands. Authorized managers get a link to workspace destination management; workflow-local Set/Clear remains distinct.                                                                                                                                                                |
+| U4         | Fixed with a visible mobile scroll hint, labelled focusable region and explicit Arrow/Home/End horizontal scrolling. Chromium, Firefox and WebKit exercise the member table.                                                                                                                                                                                                 |
+| U5         | Fixed with an authorized read projection. History, detail, Overview and editor show the current workflow name with IDs secondary; run history owns a URL-backed literal prefix filter while exact ID filtering remains available. Command receipts remain unchanged. Contracts/API/database/web regressions, disposable real HTTP, Chromium and focused Firefox/WebKit pass. |
+| U6         | Fixed in the touched settings/workspace copy. User-facing text describes available behavior and consequences rather than API, revision or ownership implementation details.                                                                                                                                                                                                  |
+| U7         | Fixed as a bounded refinement. The mobile editor has compact chrome and hides the minimap, while workflow settings provides section navigation and places lifecycle last in a separated destructive area. Responsive editor bounds remain covered at 390, 1024, 1280 and 1440px.                                                                                             |
+| Navigation | Fixed. Workflow and run destinations use TanStack Router links, preserving native new-tab/link behavior. Component and Chromium journeys follow those links.                                                                                                                                                                                                                 |
+
+Final executed evidence: web 25 files / 221 tests, production build/typecheck
+and lint; workflow-model 9 / 112; workflow-engine 32 / 376; database unit 113 /
+768; disposable PostgreSQL 172 files / 565 tests; real API integration 16 / 66;
+full mocked-boundary Chromium 40 / 40; focused U5 Firefox 15 / 15 and WebKit 15
+/ 15; contracts, OpenAPI generation, schema, architecture, documentation and
+diff checks passed. The existing identity-workspace OpenAPI operation retains
+one warning.
+
+U5 additionally passed 2 focused disposable PostgreSQL files / 23 tests. The
+normal planner was exercised over 10,000 run rows for absent, selective, common,
+no-match and combined prefixes plus a deep cursor. Evidence records emitted and
+rejected row instances, summed plan-node work and root shared-buffer touches;
+the no-match case emits zero rows but records 42 rejected rows and one shared
+buffer touch rather than being misreported as zero work. On this fixture the
+normal planner used a sequential run scan without a prefix and nested-loop plus
+bitmap scans for prefix cases; this scoped evidence did not justify adding an
+index and is not a production-wide performance guarantee. The final disposable
+real-HTTP lane passed 16 suites / 66 tests against PostgreSQL and Redis,
+including current-name projection, archived exact metadata and literal-prefix
+filtering.
+
+React Doctor scanned 231 changed and untracked files with scoring, telemetry and
+supply-chain uploads disabled. Its 70 advisory warnings were triaged as existing
+complexity/lifecycle heuristics, test-only secret literals, or label false
+positives where rendered controls have matching labels. No warning established a
+new defect in this pass; no rule was suppressed to change a score.
+
+Visual inspection used rendered screenshots at 320, 390, 1024 and 1440 CSS
+pixels in addition to bounds assertions. Browser journeys use controlled HTTP
+mocks. The qualification API tests use disposable PostgreSQL/Redis and
+controlled OIDC through Fastify injection; no deployed provider/worker or
+physical-device claim is made.
+
+This file replaces the completed 2026-09-15 audit at the same tracked path. The
+historical report, including its React Compiler experiment, is recoverable from
+Git. Old scores/test counts are not current evidence. No ADR, active plan,
+application code, commit or branch history was removed or rewritten.
+
+## Standards
+
+### S1 — P2: successful rename can get stuck in refresh recovery
+
+Locations:
+
+- `src/features/workspaces/components/settings/workspace-name-section.tsx:64`
+- `src/features/workspaces/workspaces.api.ts:62`
+- `src/features/workspaces/mutations/use-workspace-rename.ts:120`
+
+The form retains the raw name, transport validation trims it, and refresh then
+requires discovered name equality with the raw attempt. Entering
+`  Incident Operations  ` sends a valid trimmed PATCH; the server accepts it,
+but the editor stays in accepted/error recovery. Repeated refresh cannot match.
+The same equality rejects a legitimate newer name after a concurrent rename.
+
+Evidence: independently reproduced through the rendered Chromium form and
+contract-shaped PATCH/discovery mocks, including assertion of the trimmed
+outgoing body. Source confirms the successful command result is discarded.
+Reload is a workaround; this is P2, not an app-wide P1 outage.
+
+Fix: canonicalize before capturing the attempt. Retain the authoritative receipt
+and reconcile authorized discovery by workspace identity/revision, allowing
+newer revisions rather than requiring an older name forever. Regression cases:
+whitespace, exact uncertain retry, a subsequent concurrent rename, and refresh
+recovery without issuing another PATCH.
+
+### S2 — P2: Overview cache misses existing mutation completion paths
+
+Locations:
+
+- `src/features/workflow-runs/mutations/use-run-replay.ts:67`
+- `src/routes/run-detail-route.tsx:35`
+- `src/features/workflow-settings/mutations/use-workflow-settings-commands.ts:58`
+
+Replay success only navigates; it does not invalidate the run scope used by
+recent cards. Archive/restore invalidates its settings summary, not the
+workflow-list scope. Visiting Overview, performing either command, then
+returning within the 30-second fresh window can display the old list/badge.
+
+Evidence: traced successful callbacks, distinct Query prefixes, 30-second stale
+times and loader cache reuse. This is source-confirmed missing invalidation, not
+an independently reproduced cross-page browser failure. Publication and initial
+run submission already implement the relevant scope invalidation.
+
+Fix: use the owning feature's public query-scope interface for all affected
+command completions. Add Overview → replay/archive/restore → immediate return
+tests. Do not clear the whole cache or add polling as a workaround.
+
+### S3 — maintainability observation: inspector remains concentrated
+
+`workflow-inspector.tsx` is 885 lines: 154 added/12 removed versus baseline.
+Mapping presentation and pure conversion were extracted, but configuration,
+mapping scratch, connections, focus, validation, graph updates and dirty
+notification remain coordinated in one large form.
+
+This is a change-locality judgement, not a line-count violation. Consider a
+small mapping-local behavioral seam after correctness fixes, preserving atomic
+Apply and the single draft/history/save authority. Do not split files or invent
+hooks just to lower a diagnostic score.
+
+### S4 — maintainability observation: repeated command recovery logic
+
+Creation and rename hooks separately implement identity fencing, exact uncertain
+attempts, discovery recovery and cache cleanup. Their outcomes differ, so a
+generic command framework is not justified. Compare both during S1's fix;
+extract only demonstrably identical behavior and retain separate domain states.
+
+## Spec and behavior
+
+### B1 — P2: literal JSON silently loses a property during save
+
+Locations:
+
+- `packages/workflow-model/src/graph-contract.ts:92`
+- `packages/workflow-model/src/graph/input-mapping-keys.ts:72`
+- `apps/web/src/features/workflow-editor/workflow-editor.api.ts:49`
+
+M1 accepts JSON literals and promises faithful save/reload. A value such as
+`{"__proto__":{"x":1},"normal":2}` passes Apply, but structural parsing via
+`z.json()` removes its own `__proto__` property. The outgoing saved graph
+contains only `{"normal":2}` and the UI reports Saved. The new escape shim
+protects destination mapping keys, not nested literal data.
+
+Evidence: direct execution of the built shared schema AND rendered-browser
+entry/save with an assertion on the outgoing graph. Both lose the same property.
+This is an inherited codec limitation exposed by the new M1 UI, not a confirmed
+prototype-pollution exploit.
+
+Fix: safely preserve admitted own JSON data, or explicitly reject unsupported
+values before Apply. Never silently sanitize a successful save. Cover objects,
+arrays of objects, escape-prefix collisions, prototype safety, draft/compiled
+parsing and actual save/reload without relaxing admission limits.
+
+### B2 — P2: valid long workspace names are clipped on mobile
+
+Location:
+`apps/web/src/features/workspaces/components/settings/workspace-name-section.tsx:218`.
+
+The flex child has `break-words` but no effective min-content constraint. A
+valid 128-character unbroken name extends beyond the card/screen and is clipped.
+Outer overflow hiding means the document-width check still passes.
+
+Evidence: real Chromium rename at 320×640 with 128 `A` characters. Inspected
+screenshot visibly clips the name; its element's right edge measured 1341.28125
+CSS pixels in a 320-pixel viewport.
+
+Fix: constrain the flex child and use wrapping that affects intrinsic sizing.
+Assert content bounds inside the card, not just absence of scrollbars. Test
+long/unbroken and normal names across widths.
+
+### B3 — product semantics clarification: what counts as “updated”?
+
+The Overview says “The five workflows changed most recently,” but its query
+sorts `workflows.updated_at`. Ordinary draft saves update
+`workflow_drafts.updated_at`, not that parent timestamp
+(`packages/database/src/authoring/workflow-authoring-drafts.ts:180`). The
+recent-order test manually updates the parent timestamp.
+
+This is not a proven query bug: the metadata ordering implementation works.
+Decide whether the card means publication/lifecycle metadata changes or all
+authoring changes. Narrow the copy/plan if metadata-only is intentional;
+otherwise explicitly design atomic timestamp maintenance and invalidation. Do
+not silently change backend write semantics during a UI cleanup.
+
+### B4 — schema representation observation
+
+Migration `0099_workflow_recent_list.sql` creates
+`workflows_workspace_updated_idx` and readiness checks require it, but
+`packages/database/src/schema/authoring.ts:39` does not declare that index.
+
+The actual database index exists and runtime verification passed. This is
+schema-description drift, not evidence of a missing production index. Align the
+typed representation or document the migration-only ownership decision.
+
+## Qualification and tests
+
+### V1 — P2 release gate: database unit coverage fails
+
+Command: `pnpm quality:local -- --partial integration-api,integration-database`.
+
+The runner provisioned and cleaned its own uniquely named disposable Compose
+project. It did not reuse or modify the normal development stack. All 563 real
+PostgreSQL tests and all 767 database unit tests passed. The subsequent unit
+coverage gate FAILED:
+
+- Functions: 96.29%, required 100%.
+- Branches: 93.33%, required 95.3%.
+- The uncovered `canInviteWorkspaceRole` function is at
+  `packages/database/src/tenant-access/workspace-policy.ts:139`.
+
+That function belongs to the earlier invitation changes, but blocks current-tree
+qualification. The combined command stopped before API integration/coverage
+merge and must not be called green. Add role-policy matrix tests; do not lower
+thresholds. This is a verification failure, not proof the policy is incorrect.
+
+### Independently executed checks
+
+| Check                                   | Result and boundary                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Web unit/component/routed               | 25 files, 218 passed                                                                                              |
+| Web typecheck/lint/production build     | Passed                                                                                                            |
+| Contracts unit                          | 16 files, 73 passed                                                                                               |
+| Contract generation/OpenAPI lint        | Passed; one existing invitation 2xx-response warning                                                              |
+| API unit/integration-shaped             | 99 files, 1,321 passed; not live network evidence                                                                 |
+| Workflow model                          | 9 files, 112 passed                                                                                               |
+| Workflow engine                         | 32 files, 376 passed; actual mapping resolution, not deployed workers                                             |
+| Database unit                           | 113 files, 767 passed                                                                                             |
+| Disposable PostgreSQL                   | 563 passed; later coverage gate failed (V1)                                                                       |
+| Existing real API integration           | 66 passed with disposable PostgreSQL/Redis                                                                        |
+| Additional listening-browser experiment | N1/N2 and N3 list requests succeeded; aggregate test failed on an unconfigured connections route (boundary below) |
+| Architecture/import/schema ownership    | Passed; 76 migration-owned tables                                                                                 |
+| Existing Chromium suite                 | 36 passed; intercepted HTTP                                                                                       |
+| Adaptive Chromium audit                 | 16 passed: N1/N2/N3/M1 at 1440×900, 768×1024, 390×844, 320×640                                                    |
+| Focused Firefox/WebKit                  | 8 passed: four flows at Firefox 1440×900 and WebKit 390×844                                                       |
+| Negative reproductions                  | S1, B1, B2 independently reproduced                                                                               |
+| React Doctor                            | 75 changed/untracked files scanned, 44 warnings; scoring/uploads disabled                                         |
+
+React Doctor warnings were treated as hypotheses. Matching label/control IDs and
+successful rendered `getByLabel` interactions refute the new native-select label
+warnings. Test secret literals are not production credentials. Identity fences,
+scratch state and dirty notification effects are not redundant simply because a
+static heuristic flags them. The concentrated inspector is a valid
+maintainability concern. No numerical codebase score is inferred.
+
+## Actual browser/UI verification
+
+Rendered forms were submitted, mappings applied/saved/reloaded, navigation and
+narrow Inspector panels opened, and screenshots inspected. This was not only a
+static screenshot resize. Ordinary content fits tested widths. The 320×640
+editor leaves a small input viewport because of its command/header stack: usable
+in the tests, but a future compact toolbar could improve it.
+
+Three original test assumptions required audit-only adaptations:
+
+- Mapping tests needed to open the narrow Inspector tab.
+- Rename assertions selected a hidden desktop-sidebar label.
+- Overview expected a mobile navigation button even on desktop.
+
+Those are test-harness limitations, not product bugs. Adapted copies retained
+original HTTP mocks and assertions and added content measurements/screenshots.
+B2 demonstrates why document scroll width alone is insufficient.
+
+Keyboard validation/focus, mobile navigation and reduced-motion paths were
+exercised. This is not full screen-reader/WCAG certification, physical-device
+testing, every Safari/iOS version, or a CPU/interaction performance benchmark.
+Diagnostics live under `/tmp/pertexo-audit-*` and contain controlled test data.
+Temporary audit test copies/configs are removed after verification.
+
+Evidence directories on this audit machine:
+
+- `/tmp/pertexo-audit-adaptive-browser/`: successful four-width runs.
+- `/tmp/pertexo-audit-crossbrowser/`: Firefox/WebKit runs.
+- `/tmp/pertexo-audit-rename-repro/`: S1 failing regression and trace.
+- `/tmp/pertexo-audit-mapping-repro/`: B1 outgoing JSON assertion and trace.
+- `/tmp/pertexo-audit-long-name-confirmed/`: B2 screenshot/bounds assertion.
+- `/tmp/pertexo-audit-doctor/`: static diagnostics, manually triaged above.
+
+These are local, temporary evidence, not committed CI artifacts. Reproductions
+and regression expectations are described above so fixes need not depend on the
+continued availability of `/tmp`.
+
+## Live integration boundary
+
+All 66 existing real API integration tests passed using Fastify injection with
+disposable PostgreSQL/Redis and controlled OIDC.
+
+An additional temporary Chromium experiment used the built web app, a Vite proxy
+and a listening API backed by that disposable database. No `/v1` requests were
+intercepted. It reached these assertions successfully:
+
+- Browser SSO callback/session via a controlled test identity provider.
+- Workspace creation through the form: POST returned 201 and an actual ID.
+- Workspace rename through the form: PATCH returned 200 and the updated name was
+  found in the rendered page.
+- Overview's recent workflows, recent runs and failed runs: GETs returned 200
+  with empty `items` lists for this newly created workspace.
+
+The aggregate experiment FAILED its final all-workspace-GETs assertion: the
+minimal API configuration omitted `connections`, so
+`/v1/workspaces/:id/connections?limit=100` returned 404. Connection routes are
+conditionally registered (`apps/api/src/app.ts:237` and
+`apps/api/src/app.module.ts:226`). This is an identified harness configuration
+gap, not a demonstrated regression in the configured connection feature. It does
+mean the experiment must not be described as an all-green E2E suite. Its first
+attempt also failed during test OIDC setup; the retry corrected the test email
+and same-origin callback routing, without production code changes.
+
+Live-run evidence is recorded in
+`coverage/local-quality/pertexo-local-quality-2026-09-21t17-16-31-027z-24248-d373e7c6/reports/integration-api.json`.
+The earlier database gate report is under
+`coverage/local-quality/pertexo-local-quality-2026-09-21t17-00-03-471z-21636-0d5d8de0/`.
+Both owned disposable stacks were cleaned. No normal development stack was
+modified. No production auth bypass, external email or real user identity was
+part of this audit.
+
+Remaining integration limits: no live populated Overview ordering walkthrough,
+no browser-to-deployed-worker M1 execution, and no full configured production
+OIDC/connections deployment. Engine mapping tests and injected API/database
+tests provide separate evidence; they do not erase those boundaries.
+
+## Fix and closure order
+
+The subsequent app-wide UI review below adds U1–U3 to the correctness/usability
+fix list; U4–U7 are design improvements, not newly discovered backend failures.
+
+1. Fix S1 reconciliation and B1 silent JSON loss with regressions.
+2. Complete S2 scoped invalidation and B2 intrinsic-width handling.
+3. Restore V1 policy coverage without reducing thresholds.
+4. Resolve B3 semantics; align/document B4's schema representation.
+5. Address S3/S4 only with small behavior-preserving seams where useful.
+6. Rerun affected tests, targeted reproductions and the qualification gate.
+   Distinguish intercepted browsers, injected API, network API and live workers.
+7. Request commit/merge authority separately. Audit completion does not
+   authorize committing, pushing, merging, or claiming production readiness.
+
+## Follow-up: app-wide visual design and usability review
+
+This extends the original new-slice scope to the existing frontend's rendered
+pages. It does not retroactively claim a full backend audit of older features.
+Used web-design-guidelines and webapp-testing, with a read-only source review
+delegated through delegate-native-work. Guidelines reference:
 [Web Interface Guidelines](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md).
-No new rendered accessibility audit was performed; automated label warnings do
-not override correctly wired native labels.
 
-### Recovery, security and operational gates
+### Coverage and evidence
 
-| Area                          | What must be established                                                                                       | Evidence / status                                                                                                                                                              |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Session expiry                | No login redirect loop; no stale privileged data; dirty editor can recover safely                              | Route loaders have inconsistent current-user removal on 401; test expired cached session plus workspace/run failure before prescribing a fix                                   |
-| Error boundary retry          | Failed suspense query can recover after API recovery                                                           | Root retry invalidates router then resets; verify Query error reset semantics with a component/browser test                                                                    |
-| SSE recovery                  | Distinguish transient disconnect, malformed event/sequence, authorization failure and terminal refresh failure | Catch-all reconnect exists; verify bounded recovery and visible diagnosis, not endless opaque retries                                                                          |
-| Command concurrency           | Rapid/programmatic duplicate invocation preserves one intended operation                                       | Some hooks use refs, others only render pending; test actual call paths, especially non-idempotent restore                                                                     |
-| Cache coherence               | Archive/restore/publish updates every affected read, without clearing unrelated scopes                         | Review mutation-to-query invalidation matrix; list and settings summary use different keys                                                                                     |
-| Pagination/scale              | Large workspace/catalog/version lists and graphs stay usable and bounded                                       | Test realistic data sizes before adding virtualization, indices or memo layers; repeated-cursor defense is useful hardening, not proof the backend currently emits bad cursors |
-| Browser contract isolation    | Built app includes schema code, not server/worker/runtime clients                                              | Existing import rules and bundle test are good; preserve and rerun after changes                                                                                               |
-| Sensitive data                | No credentials in persisted cache, URLs, telemetry or diagnostic text                                          | Preserve cookie/CSRF design; address F05; inspect failure paths and signature retention                                                                                        |
-| Deployment                    | Same-origin `/v1`, SPA deep links, SSE streaming, headers, TLS and cookie behavior hold through real ingress   | Nginx template exists; deployment wiring remains external. Verify forwarded scheme behind TLS termination and effective security headers per location                          |
-| Release/update UX             | Stale chunks recover without silently discarding editor work                                                   | Not established by build success; simulate deployment while an editor is open                                                                                                  |
-| Accessibility/browser support | Keyboard-only, focus return, reduced motion, zoom, short screens, Firefox/WebKit                               | Chromium tests are not cross-browser proof; Base UI helps but does not validate composition automatically                                                                      |
-| Observability                 | Safe request identifiers and actionable browser failures, no secret payload capture                            | Transport captures bounded metadata; production frontend reporting/ownership needs explicit release evidence                                                                   |
+Executed copies of all 36 existing Chromium browser journeys, capturing entry
+views and final layouts at 1440, 768, 390 and 320 CSS pixels. The first run was
+35/36: the copied SSO test still pointed to the original preview port.
+Correcting only that diagnostic fixture and rerunning its seven auth journeys
+passed all seven. A separate populated workflow-settings browser inspection also
+passed. Three further measurement runs passed for editor controls, member tables
+and workflow settings. This is 36 existing journeys passing across runs plus one
+additional settings inspection, not 36 independently executed flows at every
+width. Resizing final states proves less than replaying every interaction there.
 
-Do not add analytics, an error-reporting vendor, new APIs or deployment changes
-without a scoped implementation decision. Report missing release evidence
-honestly.
+Rendered views inspected: login; workspace selection/creation; workflow index
+and create; Overview; editable/read-only editor and input mappings; run history,
+replay and detail; connections; workspace general/lifecycle; members/roles and
+invitations; invitation acceptance/recovery; notification destinations; workflow
+settings with lifecycle, versions, schedules, webhooks and notifications.
+Covered normal, empty, denied/recovery and selected failure states—not every
+possible server error, role combination or dataset size. Existing fixtures
+control HTTP. An invitation-list error in the role test comes from its missing
+mock, not a claim that production invitations fail.
 
-## 7. React Compiler recommendation
+Screenshots are under `/tmp/pertexo-ux-audit/`, `/tmp/pertexo-ux-audit-extra/`,
+and `/tmp/pertexo-ux-audit-measured/`. The extra settings walkthrough verified
+rendering, not every settings mutation. No fresh live backend or physical-device
+claim is made for this follow-up.
 
-**Recommend adoption after F01/F02/F06 and lifecycle fixes, as a separate
-verified change. It is a good fit to evaluate now, not a cure for structural or
-logic bugs.**
+### Overall design judgement
 
-Installed: React 19.3.0, Vite 8.3.0, `@vitejs/plugin-react` 6.1.1. Current
-config uses `react()` with no compiler integration. React Compiler is opt-in
-build tooling, not automatically enabled by React 19. The documented Vite 6+
-plugin integration uses `reactCompilerPreset` with `@rolldown/plugin-babel`.
-[React installation](https://react.dev/learn/react-compiler/installation).
+The visual identity is coherent: dark surfaces, cyan primary actions, consistent
+type, restrained glow, clear sidebar active state and repeated section patterns.
+Login and first-workflow empty states provide clear actions. Member/settings
+navigation is logically grouped. Forms and recovery feedback are generally
+readable. There is no evidence that a visual rewrite or another UI framework is
+needed. The principal weaknesses are identification, mobile information density,
+action scope and implementation-oriented copy. This is an expert inspection, not
+evidence from novice-user research or full WCAG certification.
 
-The installed plugin's README and type declaration also expose
-`react({ compiler: true })`, but explicitly mark that native
-`oxc-transform-react` path experimental. Prefer the documented Babel route for
-this cleanup. It needs compatible pinned `@rolldown/plugin-babel`, `@babel/core`
-and `babel-plugin-react-compiler` development dependencies; Babel 7 TypeScript
-setup also documents `@types/babel__core`. Recheck peer versions when
-implementing. See installed `node_modules/@vitejs/plugin-react/README.md`, React
-Compiler section.
+### U1 — P2: editor zoom-control icons lack contrast
 
-Proposed configuration shape only; not applied:
+`apps/web/src/features/workflow-editor/components/workflow-canvas.tsx:111` —
+Controls styles affect the wrapper, but child buttons retain a nearly white
+background while inheriting the app's light icon color. Browser computed values
+at all four widths: icon/fill `rgb(226,226,230)`, background `rgb(254,254,254)`.
+Screenshots show the plus/minus/fit icons barely visible. Set the React Flow
+control theme/variables coherently, including hover and keyboard focus states;
+verify the actual child buttons, not just the wrapper.
 
-```ts
-import react, { reactCompilerPreset } from '@vitejs/plugin-react';
-import babel from '@rolldown/plugin-babel';
+### U2 — P2: mobile workspace picker hides ordinary workspace names
 
-// Preserve existing aliases, API proxy, Tailwind and build settings.
-plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()];
-```
+`apps/web/src/features/workspaces/workspace-selection-page.tsx:146` — the fixed
+avatar/status alongside a truncating name squeezes “Control Operations” to “Co…”
+at 320px. This is the identity the user must choose, not incidental metadata.
+Reflow status/avatar or allow name wrapping on narrow cards. Test multiple
+similar names and long slugs; do not rely on a hover-only tooltip.
 
-Expected advantage: automatic memoization can reduce manual optimization work.
-Actual benefit for Pertexo remains unmeasured; compiler output may increase
-build work and does not fix subscriptions, network latency, state identity or
-algorithms. Start with a bounded component/feature trial if whole-app
-diagnostics are noisy; React documents directory- or annotation-based
-incremental adoption.
-[Incremental adoption](https://react.dev/learn/react-compiler/incremental-adoption).
+### U3 — P2: workflow settings exposes a workspace-wide Disable action
 
-Adoption gates:
+`apps/web/src/features/workflow-settings/components/workflow-notifications-section.tsx:96`
+and
+`apps/web/src/features/failure-notifications/components/destination-status-button.tsx:58`
+— a plain “Disable” beside a destination inside one workflow's settings changes
+the shared workspace destination, not just this workflow's notification policy.
+The command's workspace-wide endpoint is confirmed in
+`apps/web/src/features/failure-notifications/failure-notifications.api.ts:89`.
+The rendered page does not explain this broader effect, and the button submits
+immediately. Move shared destination management to workspace settings or label
+and confirm the workspace-wide impact. Keep workflow policy removal distinct.
+This is action-scope ambiguity, not an authorization bypass.
 
-1. Fix implicit external-store rendering and mutation/lifecycle bugs first.
-2. Inspect the installed hooks ESLint recommended rules and compiler
-   diagnostics; do not assume the preset lacks compiler checks or blindly
-   replace it.
-3. Verify compiled output or DevTools compiler markers. A successful build alone
-   does not prove the relevant components were compiled.
-4. Run the same unit/browser behavior suite with and without compilation,
-   particularly save subscriptions, StrictMode, identity switches and React
-   Flow.
-5. Measure editor typing/selection/dragging, large graph rendering, live-run
-   updates, build time and initial/lazy bundle sizes. Record environment and
-   graph size.
-6. Keep existing manual memos during initial adoption. Remove proven unnecessary
-   ones separately; confirm persistence lifecycles do not depend on cache
-   retention.
-7. Use narrowly documented opt-outs only if required; do not suppress Rules of
-   React violations to obtain a green report. Keep rollback to the prior build
-   config easy.
+### U4 — usability: mobile tables conceal important information
 
-Do not add Next.js, RSC, React Actions, `useOptimistic`, Motion or a new global
-store solely because the compiler is adopted. Existing Query/Zustand roles
-remain valid.
+`apps/web/src/components/ui/table.tsx:7` — shared 704px minimum width is
+retained inside 280px/350px viewports. Connections initially shows name/provider
+but not status/actions; members initially shows names but not roles. Horizontal
+scrolling exists, so these controls are not proven unreachable. Provide an
+obvious scroll affordance and keyboard-accessible region, or responsive rows
+keeping key status and actions visible. Verify scrolling/focus in Firefox/WebKit
+before claiming keyboard parity; no full cross-browser table interaction was run
+here.
 
-## 8. Ordered implementation and closure
+### U5 — usability: IDs dominate identification and filtering
 
-### A. Correctness before cleanup
+Resolved. Run history, run detail and Overview consume the authorized current
+name from the run read projection, while the editor uses an exact workflow
+metadata endpoint. IDs and immutable version identity remain visible. The
+URL-owned “Workflow name starts with” filter runs before the page limit with
+literal wildcard escaping and cursor binding; command response schemas were not
+widened.
 
-- [x] F01: identity-scoped sessions and late-response tests.
-- [x] F02: active create mutation cannot reset/re-submit accidentally.
-- [x] F03–F05: artifact identity, guarded delete and credential lifecycle.
-- [x] F06–F07: explicit subscriptions and cancellation cleanup.
-- [x] Resolve the concrete recovery/interaction questions in section 6; record
-      whether each reproduced, was already correct or requires a product
-      decision.
+### U6 — usability: frontend copy exposes implementation internals
 
-### B. Small coherent structural cleanup
+`apps/web/src/features/workflow-settings/components/workflow-notifications-section.tsx:45`
+— “The API does not expose a policy read” and “does not pretend to know”
+describe implementation constraints rather than helping the user. Clearly label
+the current policy as unavailable and explain what Set/Clear changes; keep the
+contract limitation in documentation. Similar terms such as “authoritative”,
+“recipient-bound”, and “immutable” should be reserved for details/help unless
+essential to the user's next action. Preserve warnings about real limitations.
 
-- [x] Remove dead saved graph state; preserve save/history/conflict semantics.
-- [x] Simplify inspector ownership and separate meaningful form/preview
-      sections.
-- [x] Make mutation/query/public-interface conventions consistent.
-- [x] Deduplicate terminal predicates/comparison helpers; fix canvas array
-      churn.
-- [x] Keep global CSS purposeful; localize feature styling; fix confirmed dialog
-      UX.
-- [x] Add mechanical checks for the agreed import conventions, not more prose
-      alone.
+### U7 — design refinement: prioritize work over chrome
 
-### C. Compiler and measured optimization
+The mobile editor's repeated page identity, command rows and settings icon use
+substantial vertical space; its minimap further overlaps the small canvas. Keep
+save/state feedback prominent but group secondary commands and consider a
+collapsible minimap. Workflow settings puts Archive near the top before routine
+schedule/notification tasks; consider a clearly separated lifecycle/danger area
+and section navigation for the long mobile page. These are prioritization
+recommendations, not evidence that the tested actions fail.
 
-- [x] Perform compiler trial using section 7; record diagnostics and benchmark
-      results.
-- [x] Adopt only with equivalent behavior and acceptable build/runtime
-      tradeoffs.
-- [x] Remove unnecessary memoization selectively after the trial, not in bulk.
+### Follow-up boundaries
 
-### D. Handoff criteria
+Additional navigation consistency finding:
+`apps/web/src/features/workflows/workflow-list-page.tsx:160` and
+`apps/web/src/features/workflow-runs/components/run-history-table.tsx:79` use
+buttons for opening route destinations. Normal activation works, but users lose
+native link actions such as opening a workflow/run in a new tab. Prefer Router
+Links for direct navigation; preserve unsaved-change guards where relevant. This
+was source-confirmed, not a separately executed modifier-click test.
 
-- [x] `pnpm --filter @pertexo/web build`
-- [x] `pnpm --filter @pertexo/web lint`
-- [x] `pnpm --filter @pertexo/web test`
-- [x] `pnpm --filter @pertexo/web test:e2e`
-- [x] Relevant import/bundle checks and `git diff --check`.
-- [x] Real-browser inspection for affected keyboard, dialog and editor behavior.
-- [x] Explicit list of remaining live-provider, deployment, scale and
-      cross-browser gates.
-- [x] Correct stale README claims (future editor wording, lazy-route guidance,
-      scan scores and completion language) against verified current
-      implementation.
-- [x] Update architecture/agent guidance only where decisions actually changed.
-
-For each resolved finding record the changed files, behavioral regression test,
-verification result and any deliberate limitation here. Do not mark a phase
-complete based only on file presence or a static diagnostic score. No commits,
-pushes, dependency changes or implementation work are authorized by this
-document itself; follow the user's subsequent scope and root Git discipline.
-
-## 9. Resolution and verification evidence
-
-Implementation date: 2026-09-15.
-
-| Finding | Resolution and evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F01     | Confirmed. Editor and settings local state remount by authenticated user, workspace and workflow. Preview state is additionally keyed by selected node and graph intent. Run submission uses a StrictMode-safe owner token scoped to API client, workspace and workflow: disposal or identity change fences late navigation, and ownership is rechecked after the save barrier before dispatch. The editor revalidates its opening user before every save barrier/write and before every publish/run dispatch, including exact uncertain retries; changed or unverifiable identity blocks dispatch without replacing the original body, precondition, revision or idempotency key. Unresolved run/publish attempts are owned by the authenticated editor session, survive only a temporary pause that hides their UI, and require original-user verification plus an explicit retry; actual editor scope disposal clears them. It observes current-user refreshes, freezes on an identity failure and aborts in-flight draft transport on disposal. The hidden in-memory draft resumes only after an explicit check confirms the original account. Routed regressions cover pre-dispatch autosave/manual/queued-command fencing, publish/run retry rejection for changed and unverifiable identities, preservation across the pause UI unmount, byte-equivalent same-user exact retries, scope disposal, explicit same-user recovery, and an in-flight save aborted after a user switch. This client fence reduces cross-session mistakes but cannot make identity verification and the subsequent write atomic; backend authorization remains authoritative. |
-| F02     | Confirmed. The create form freezes its submitted name and cannot reset the active mutation. A delayed-request component test verifies one request and unchanged input.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| F03     | Confirmed. Artifact preparation is keyed by workspace/artifact and aborts on scope disposal. A late-response regression verifies that artifact B never exposes artifact A's link.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| F04     | Confirmed. Delete/Backspace now requires canvas focus and passes through the same Apply/Discard/Stay guard as selection/history. A Chromium journey verifies button focus, Stay and Discard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| F05     | Confirmed. Endpoint-key entry is masked and cleared after successful submission. Credential-dialog openness derives from the transient credential result; issuance remains visible if cache refresh fails and acknowledgement clears/unlocks it. Existing overlapping-command coverage remains green.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| F06     | Confirmed. Publishing presentation receives reactive selection, generation and revision values; editor internals remain owned by the editor.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| F07     | Confirmed. Every settings query forwards Query's abort signal. Preview/run backoff removes listeners after normal completion and handles an already-aborted signal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| F08     | Confirmed. Dead `savedGraph` state and save-accept plumbing were removed; save/conflict/StrictMode regressions remain green.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| F09–F10 | Recheck found the inspector dirty notification is necessary coordination, not redundant mirrored authority, so it remains. Pure JSON/schema/persisted-comparison logic moved to `model/inspector-draft.ts`; repeated parsing and canvas projection copies were removed, while lifecycle-critical and projection memos remain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| F11     | Confirmed. Create and run-cancel mutations have focused owners, terminal run status is shared, resource reads use deliberate public interfaces, and the import checker now rejects private cross-feature imports. Public query/command interfaces are split from lazy page exports so enforcement does not collapse route chunks.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| F12     | Confirmed. The editor now exposes one small `ensureSaved` operation. Publishing and preview no longer receive the editor store or know its actions/history/save implementation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| F13–F14 | Confirmed. Draft body/ETag decoding has one browser-owned snapshot interface. Webhook input is a discriminated union in which secret rotation requires an endpoint key; runtime schema validation remains.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| F15–F16 | Confirmed. Workflow summaries and immutable versions have single page-read owners. Connections and settings versions use bounded, repeated-cursor-defended complete discovery; two-page regressions cover records beyond the former first-page limits.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| F17     | Confirmed. Missing-node and unchanged-position transitions preserve graph identity; a model regression verifies no-op identity.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-
-Section 6 recheck: short dialogs were a confirmed layout risk and now have a
-viewport-relative maximum height plus internal scrolling. Escape maps to Stay
-for leave and unapplied-edit dialogs. The existing “Apply” behavior for a
-pending Undo/Redo remains “apply and stay”; changing it to immediately undo the
-applied edit is a product-copy/interaction decision, not a correctness fix.
-Ordinary navigation link semantics, live session-expiry recovery, production
-ingress, deployment replacement, cross-browser coverage and production
-observability remain release/product verification work; no new routes, vendors
-or deployment contracts were introduced by this cleanup.
-
-React Compiler trial: the documented Babel preset compiled successfully and the
-output contained compiler memo-cache markers. On the same checkout, Vite's build
-step increased from 158 ms to 985 ms; emitted JavaScript increased from 835,633
-bytes to 881,161 bytes (gzip totals approximately 261.89 kB to 280.15 kB). No
-repeatable editor interaction improvement was established. The acceptable
-tradeoff/performance gate therefore did not pass, so the trial dependencies and
-configuration were removed. Existing purposeful memos remain.
-
-Final command evidence: web build/typecheck passed (696 modules; editor,
-settings and run remained separate chunks); ESLint passed with zero warnings;
-Vitest passed 70 tests in 16 files; Playwright passed 12 Chromium journeys,
-including the new guarded keyboard-delete path; React Doctor changed-scope
-passed 100/100 with no diagnostics; 13 focused import-check tests and the
-repository import scan passed; the wider architecture check passed 19 tests;
-built-export checks passed 9 tests and 35 consumer cases; `git diff --check`
-passed. No live IdP, production ingress, Firefox or WebKit run was performed.
+Temporary instrumentation and copied tests were removed. Only this report was
+changed permanently. Existing code and uncommitted work were preserved; no
+commit, push or application redesign was performed. Address concrete U1–U3
+alongside S1/S2/B1/B2/V1, then make a bounded UX pass for U4–U7 instead of
+opening another whole-app rewrite.

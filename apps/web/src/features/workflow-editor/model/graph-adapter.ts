@@ -123,6 +123,7 @@ export function updateWorkflowNode(
   update: Readonly<{
     label?: string | undefined;
     config?: WorkflowNode['config'];
+    inputMappings?: WorkflowNode['inputMappings'];
     connectionRefs?: WorkflowNode['connectionRefs'];
   }>,
 ): WorkflowGraphContract {

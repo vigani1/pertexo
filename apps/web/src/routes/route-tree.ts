@@ -26,8 +26,10 @@ import {
 } from '@/features/connections/public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/public';
+import { recentWorkflowsQueryOptions } from '@/features/workflows/public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
 import {
+  recentWorkflowRunsQueryOptions,
   runHistorySearchSchema,
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
@@ -135,6 +137,15 @@ const logoutRoute = createRoute({
   component: LogoutRoute,
 });
 
+const invitationAcceptanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invitations/accept',
+  component: lazyRouteComponent(
+    () => import('./invitation-acceptance-route'),
+    'InvitationAcceptanceRoute',
+  ),
+});
+
 const workspacesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workspaces',
@@ -188,6 +199,61 @@ const workspaceRoute = createRoute({
     return { user, workspace };
   },
   component: WorkspaceRoute,
+});
+
+const overviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/w/$workspaceId/overview',
+  loader: async ({ context, params }) => {
+    const user = await loadCurrentUser(context);
+    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
+    if (workspace !== null) {
+      const reads: Promise<unknown>[] = [];
+      if (workspace.capabilities.includes('workflow:read'))
+        reads.push(
+          context.queryClient.query(
+            recentWorkflowsQueryOptions(
+              context.apiClient,
+              user.id,
+              workspace.id,
+            ),
+          ),
+        );
+      if (workspace.capabilities.includes('run:read'))
+        reads.push(
+          context.queryClient.query(
+            recentWorkflowRunsQueryOptions(
+              context.apiClient,
+              user.id,
+              workspace.id,
+              'all',
+            ),
+          ),
+          context.queryClient.query(
+            recentWorkflowRunsQueryOptions(
+              context.apiClient,
+              user.id,
+              workspace.id,
+              'failed',
+            ),
+          ),
+        );
+      const results = await Promise.allSettled(reads);
+      if (
+        results.some(
+          (result) =>
+            result.status === 'rejected' &&
+            isUnauthenticated(result.reason as unknown),
+        )
+      )
+        redirect({ to: '/login', throw: true });
+    }
+    return { user, workspace };
+  },
+  component: lazyRouteComponent(
+    () => import('./overview-route'),
+    'OverviewRoute',
+  ),
 });
 
 const connectionsRoute = createRoute({
@@ -463,8 +529,10 @@ export const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   logoutRoute,
+  invitationAcceptanceRoute,
   workspacesRoute,
   workspaceRoute,
+  overviewRoute,
   connectionsRoute,
   workflowEditorRoute,
   runHistoryRoute,

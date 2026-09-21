@@ -23,6 +23,7 @@ export function useWorkflowRunSubmission({
   isSessionPaused,
   ensureSaved,
   onRunAccepted,
+  onRunCommandAccepted,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
@@ -31,6 +32,7 @@ export function useWorkflowRunSubmission({
   isSessionPaused: () => boolean;
   ensureSaved: () => Promise<unknown>;
   onRunAccepted: (runId: string) => void;
+  onRunCommandAccepted?: () => void;
 }>) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -123,6 +125,7 @@ export function useWorkflowRunSubmission({
       if (owner.current !== submissionOwner) return false;
       attempt.current = undefined;
       setRetryAvailable(false);
+      onRunCommandAccepted?.();
       if (isSessionPaused()) setAcceptedRunId(response.run.id);
       else onRunAccepted(response.run.id);
       return true;

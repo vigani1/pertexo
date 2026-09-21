@@ -9,6 +9,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
 import { canonicalizeJson } from '@/lib/canonical-json';
 import { isApiError } from '@/lib/api/api-error';
+import { workflowKeys } from '@/features/workflows/public';
 import { transitionWorkflowLifecycle } from '../workflow-settings.api';
 import { workflowSettingsKeys } from '../workflow-settings.queries';
 import { settingsCommandError } from './settings-command';
@@ -57,9 +58,18 @@ export function useWorkflowLifecycleCommand({
         exactCommand,
       );
       commandRef.current = undefined;
-      await queryClient.invalidateQueries({
-        queryKey: workflowSettingsKeys.summary(userId, workspaceId, workflowId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workflowSettingsKeys.summary(
+            userId,
+            workspaceId,
+            workflowId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]);
       return true;
     } catch (cause) {
       setError(

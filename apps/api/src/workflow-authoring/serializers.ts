@@ -8,6 +8,7 @@ import {
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
   workflowListResponseSchema,
+  workflowSummaryResponseSchema,
   workflowPublishResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
@@ -42,6 +43,12 @@ export function serializeWorkflowList(
   return workflowListResponseSchema.parse({
     items: items.map(workflowSummary),
     nextCursor,
+  });
+}
+
+export function serializeWorkflowSummary(workflow: WorkflowRecord) {
+  return workflowSummaryResponseSchema.parse({
+    workflow: workflowSummary(workflow),
   });
 }
 

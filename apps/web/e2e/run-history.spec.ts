@@ -10,12 +10,17 @@ const replayRunId = '11111111-1111-4111-8111-111111111111';
 const csrfToken = 'csrf-token-for-run-replay-tests-123456789012345678';
 const timestamp = '2026-09-15T10:00:00.000Z';
 
-function run(id: string, status: 'failed' | 'succeeded') {
+function run(
+  id: string,
+  status: 'failed' | 'succeeded',
+  workflowName = 'Customer onboarding',
+) {
   return {
     id,
     workspaceId,
     workflowId,
     workflowVersionId,
+    workflowName,
     status,
     triggerType: 'manual',
     createdAt: timestamp,
@@ -27,7 +32,7 @@ function run(id: string, status: 'failed' | 'succeeded') {
   };
 }
 
-async function installRoutes(page: Page) {
+async function installRoutes(page: Page, workflowName?: string) {
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
       json: {
@@ -49,8 +54,14 @@ async function installRoutes(page: Page) {
             name: 'Control Operations',
             slug: 'control-operations',
             status: 'active',
+            revision: 1,
             role: 'viewer',
-            capabilities: ['workspace:read', 'run:read', 'run:replay'],
+            capabilities: [
+              'workspace:read',
+              'workflow:read',
+              'run:read',
+              'run:replay',
+            ],
             createdAt: timestamp,
             updatedAt: timestamp,
           },
@@ -65,17 +76,29 @@ async function installRoutes(page: Page) {
     const after = query.get('after');
     return route.fulfill({
       json: filtered
-        ? { items: [run(firstRunId, 'succeeded')], nextCursor: null }
+        ? {
+            items: [run(firstRunId, 'succeeded', workflowName)],
+            nextCursor: null,
+          }
         : after === null
-          ? { items: [run(firstRunId, 'succeeded')], nextCursor: 'next' }
-          : { items: [run(secondRunId, 'failed')], nextCursor: null },
+          ? {
+              items: [run(firstRunId, 'succeeded', workflowName)],
+              nextCursor: 'next',
+            }
+          : {
+              items: [run(secondRunId, 'failed', workflowName)],
+              nextCursor: null,
+            },
     });
   });
   await page.route(
     `**/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
     (route) =>
       route.fulfill({
-        json: { run: run(firstRunId, 'succeeded'), nodes: [] },
+        json: {
+          run: run(firstRunId, 'succeeded', workflowName),
+          nodes: [],
+        },
       }),
   );
   await page.route(
@@ -108,6 +131,27 @@ async function installRoutes(page: Page) {
       }),
   );
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
+    (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: workflowVersionId,
+              workflowId,
+              versionNumber: 1,
+              schemaVersion: 1,
+              graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+              checksum:
+                'wf:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+              publishedAt: timestamp,
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/runs/${firstRunId}/replay`,
     async (route) => {
       expect(route.request().headers()['x-csrf-token']).toBe(csrfToken);
@@ -116,11 +160,13 @@ async function installRoutes(page: Page) {
         workflowVersionId,
         input: { incident: 'INC-42' },
       });
+      const { workflowName, ...acceptedRun } = run(replayRunId, 'failed');
+      void workflowName;
       await route.fulfill({
         status: 202,
         json: {
           run: {
-            ...run(replayRunId, 'failed'),
+            ...acceptedRun,
             triggerType: 'replay',
           },
           replayed: false,
@@ -145,17 +191,19 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await expect(page.getByText(secondRunId)).toBeVisible();
 
   await page.getByLabel('Status').selectOption('succeeded');
+  await page.getByLabel('Workflow name starts with').fill('Customer');
   await page.getByLabel('Created from').fill('2026-09-14');
   await page.getByLabel('Created before').fill('2026-09-16');
   await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page).toHaveURL(/status=succeeded/u);
+  await expect(page).toHaveURL(/workflowNamePrefix=Customer/u);
   await expect(page).toHaveURL(/createdAtFrom=2026-09-14/u);
   await expect(page.getByText(secondRunId)).not.toBeVisible();
 
-  await page.getByRole('button', { name: `Open run ${firstRunId}` }).click();
+  await page.getByRole('link', { name: `Open run ${firstRunId}` }).click();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
   await expect(
-    page.getByRole('heading', { name: 'Workflow run' }),
+    page.getByRole('heading', { name: 'Customer onboarding' }),
   ).toBeVisible();
   await expect(page.getByText(workflowVersionId)).toBeVisible();
 });
@@ -181,4 +229,26 @@ test('replays the exact displayed version with explicit input', async ({
 
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
   await expect(page.getByText(replayRunId)).toBeVisible();
+});
+
+test('keeps a maximum-length workflow identity accessible and contained on mobile', async ({
+  page,
+}) => {
+  const workflowName = 'W'.repeat(128);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installRoutes(page, workflowName);
+  await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+
+  const heading = page.getByRole('heading', { name: workflowName });
+  await expect(heading).toBeVisible();
+  const box = await heading.boundingBox();
+  expect(box).not.toBeNull();
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
+  await expect(page.getByText(firstRunId, { exact: false })).toBeVisible();
+  await expect(page.getByText(workflowId, { exact: false })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

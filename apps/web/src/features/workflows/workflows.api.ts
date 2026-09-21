@@ -3,8 +3,10 @@ import {
   workflowCreateRequestSchema,
   workflowCreateResponseSchema,
   workflowListResponseSchema,
+  workflowSummaryResponseSchema,
   type WorkflowCreateResponse,
   type WorkflowListResponse,
+  type WorkflowListQuery,
   type WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ApiClient } from '@/lib/api/client';
@@ -12,10 +14,15 @@ import type { ApiClient } from '@/lib/api/client';
 export function getWorkflowsPage(
   apiClient: ApiClient,
   workspaceId: string,
-  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+  input: Readonly<
+    Pick<WorkflowListQuery, 'after' | 'limit' | 'order'> & {
+      signal?: AbortSignal;
+    }
+  > = {},
 ): Promise<WorkflowListResponse> {
-  const query = new URLSearchParams({ limit: '25' });
+  const query = new URLSearchParams({ limit: String(input.limit ?? 25) });
   if (input.after !== undefined) query.set('after', input.after);
+  if (input.order !== undefined) query.set('order', input.order);
   return apiClient.request({
     path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows?${query.toString()}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -48,6 +55,23 @@ export async function findWorkflowSummary(
     after = response.nextCursor;
   }
   throw new Error('Workflow lookup exceeded its bounded page limit.');
+}
+
+export async function getWorkflowSummary(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowSummary> {
+  const response = await apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowSummaryResponseSchema.parse(value),
+    },
+  });
+  return response.workflow;
 }
 
 export type CreatedWorkflow = Readonly<{

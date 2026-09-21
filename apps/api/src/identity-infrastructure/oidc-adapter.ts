@@ -146,6 +146,8 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
     url.searchParams.set('nonce', request.nonce);
     url.searchParams.set('code_challenge', request.codeChallenge);
     url.searchParams.set('code_challenge_method', 'S256');
+    if (request.prompt !== undefined)
+      url.searchParams.set('prompt', request.prompt);
     if (url.toString().length > MAXIMUM_AUTHORIZATION_URL_LENGTH)
       invalidAuthorizationRequest();
     return url.toString();

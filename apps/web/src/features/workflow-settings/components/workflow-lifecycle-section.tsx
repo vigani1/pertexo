@@ -41,8 +41,9 @@ export function WorkflowLifecycleSection({
 
   return (
     <SettingsSection
+      id="workflow-lifecycle"
       title="Lifecycle"
-      description="Archive or restore using the latest server-owned lifecycle revision."
+      description="Archive or restore this workflow. Changes from another session are detected before the command is accepted."
     >
       <SettingsQueryState query={query} />
       {!query.isPending && !query.isError && workflow === null ? (
@@ -136,9 +137,9 @@ function WorkflowLifecycleContent({
               : 'Restore workflow?'}
           </DialogTitle>
           <DialogDescription>
-            This command is conditional on lifecycle revision{' '}
-            {String(intent?.expectedLifecycleRevision ?? '')} and will fail
-            safely if another actor changed it.
+            This command proceeds only if the workflow has not changed since you
+            opened this confirmation. Otherwise, refresh and review the latest
+            state.
           </DialogDescription>
           {lifecycle.error ? (
             <p role="alert" className="mt-4 text-sm text-destructive">

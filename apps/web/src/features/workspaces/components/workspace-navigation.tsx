@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import {
   HistoryIcon,
+  LayoutDashboardIcon,
   PlugZapIcon,
   SettingsIcon,
   WorkflowIcon,
@@ -12,6 +13,7 @@ const navigationItemClass =
 
 export function WorkspaceNavigation({
   workspaceId,
+  canReadOverview,
   canReadConnections,
   canReadMembers,
   canReadRuns,
@@ -19,6 +21,7 @@ export function WorkspaceNavigation({
   canReadNotifications,
 }: Readonly<{
   workspaceId: string;
+  canReadOverview: boolean;
   canReadConnections: boolean;
   canReadMembers: boolean;
   canReadRuns: boolean;
@@ -34,6 +37,23 @@ export function WorkspaceNavigation({
       aria-label="Workspace navigation"
       className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto py-2"
     >
+      {canReadOverview ? (
+        <Link
+          to="/w/$workspaceId/overview"
+          params={{ workspaceId }}
+          className={navigationItemClass}
+          activeProps={{
+            'aria-current': 'page',
+            className: cn(
+              navigationItemClass,
+              'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-primary before:shadow-glow-primary-strong',
+            ),
+          }}
+        >
+          <LayoutDashboardIcon aria-hidden="true" />
+          <span className="truncate">Overview</span>
+        </Link>
+      ) : null}
       <Link
         to="/w/$workspaceId/workflows"
         params={{ workspaceId }}

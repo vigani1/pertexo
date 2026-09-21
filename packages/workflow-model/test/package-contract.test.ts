@@ -268,7 +268,7 @@ describe('workflow-model package contract', () => {
     expect(serverNodeDescriptorReads).toBe(2);
   });
 
-  it('applies config, literal, and reserved-key admission facts in both entrypoints', () => {
+  it('applies config and literal admission facts while preserving own mapping keys in both entrypoints', () => {
     const nested = (depth: number): unknown => {
       let value: unknown = null;
       for (let index = 1; index < depth; index += 1) value = { child: value };
@@ -289,18 +289,77 @@ describe('workflow-model package contract', () => {
       edges: [],
       settings: {},
     });
-    const candidates = [
+    const acceptedDepthCandidates = [
       graph(node(nested(64), {})),
       graph(node({}, { value: { kind: 'literal', value: nested(64) } })),
     ];
-    for (const candidate of candidates) {
+    for (const candidate of acceptedDepthCandidates) {
       expect(workflowGraphSchema.safeParse(candidate).success).toBe(true);
       expect(safeParseWorkflowGraphDraft(candidate).success).toBe(true);
     }
+    for (const key of [
+      '__proto__',
+      'constructor',
+      'toString',
+      '\u0000pertexo.input-mapping.proto',
+    ]) {
+      const candidate = graph(
+        node({}, { [key]: { kind: 'run_input', path: '$' } }),
+      );
+      const browser = workflowGraphSchema.safeParse(candidate);
+      expect(browser.success).toBe(true);
+      if (!browser.success) throw browser.error;
+      expect(
+        Object.hasOwn(browser.data.nodes[0]?.inputMappings ?? {}, key),
+      ).toBe(true);
+
+      const server = safeParseWorkflowGraphDraft(candidate);
+      expect(server.success).toBe(true);
+      if (!server.success) throw server.error;
+      expect(
+        Object.hasOwn(server.data.nodes[0]?.inputMappings ?? {}, key),
+      ).toBe(true);
+    }
+    const protoValue = Object.create(null) as Record<string, unknown>;
+    Object.defineProperty(protoValue, '__proto__', {
+      enumerable: true,
+      value: { nested: true },
+    });
+    protoValue.normal = 2;
+    const collisionKey = '\u0000pertexo.input-mapping.proto';
+    protoValue[collisionKey] = [{ safe: true }];
+    const specialJson = graph(
+      node(
+        { payload: [protoValue] },
+        { literal: { kind: 'literal', value: protoValue } },
+      ),
+    );
+    for (const parsed of [
+      workflowGraphSchema.safeParse(specialJson),
+      safeParseWorkflowGraphDraft(specialJson),
+    ]) {
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) throw parsed.error;
+      const parsedNode = parsed.data.nodes[0];
+      const configValue = (
+        parsedNode?.config.payload as readonly Record<string, unknown>[]
+      )[0];
+      const literal = parsedNode?.inputMappings.literal;
+      const literalValue =
+        literal?.kind === 'literal'
+          ? (literal.value as Readonly<Record<string, unknown>>)
+          : undefined;
+      for (const value of [configValue, literalValue]) {
+        expect(Object.hasOwn(value ?? {}, '__proto__')).toBe(true);
+        expect(Object.hasOwn(value ?? {}, collisionKey)).toBe(true);
+        expect(Reflect.get(value ?? {}, '__proto__')).toEqual({ nested: true });
+        expect(Object.getPrototypeOf(value)).toBeNull();
+      }
+    }
+    expect(Object.prototype).not.toHaveProperty('nested');
     const rejected = [
       graph(node(nested(65), {})),
       graph(node({}, { value: { kind: 'literal', value: nested(65) } })),
-      graph(node({}, { ['constructor']: { kind: 'run_input', path: '$' } })),
     ];
     for (const candidate of rejected) {
       expect(workflowGraphSchema.safeParse(candidate).success).toBe(false);

@@ -28,6 +28,7 @@ test('creates, versions and disables a notification destination', async ({
     name: 'Control Operations',
     slug: 'control-operations',
     status: 'active',
+    revision: 1,
     role: 'owner',
     capabilities: [
       'workspace:read',

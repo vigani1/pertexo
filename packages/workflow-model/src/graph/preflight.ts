@@ -7,6 +7,10 @@ import {
 import { inspectWorkflowGraphAdmission } from './admission.js';
 import { hasBoundedGraphAggregateUnsafe } from './aggregate.js';
 import {
+  escapeDroppedInputMappingKeys,
+  restoreDroppedInputMappingKeys,
+} from './input-mapping-keys.js';
+import {
   WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
 } from './validation-contract.js';
@@ -33,7 +37,11 @@ export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
       admitted.message,
     );
   workflowGraphAggregateAdmissionSchema.parse(admitted.snapshot);
-  return workflowGraphStructuralSchemaV1.parse(admitted.snapshot);
+  return restoreDroppedInputMappingKeys(
+    workflowGraphStructuralSchemaV1.parse(
+      escapeDroppedInputMappingKeys(admitted.snapshot),
+    ),
+  );
 }
 
 export type WorkflowGraphDraftParseResult =

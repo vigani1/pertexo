@@ -33,6 +33,7 @@ export type OidcAuthorizationRequest = Readonly<{
   redirectUri: string;
   clientId: string;
   scopes: readonly string[];
+  prompt?: 'select_account';
 }>;
 
 export type OidcTokenResponse = Readonly<{

@@ -54,7 +54,11 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     ),
     reapTransientData: vi.fn(() =>
       Promise.resolve({
+        invitationAcceptanceIntentsDeleted: 0,
+        invitationReplacementClaimsDeleted: 0,
+        invitationsExpired: 0,
         idempotencyRecordsDeleted: 0,
+        invitationPiiMinimized: 0,
         sessionsDeleted: 0,
         workspaceCreationRecordsDeleted: 0,
       }),
@@ -265,7 +269,11 @@ const maintenanceLoopCases: readonly MaintenanceLoopCase[] = [
     name: 'transient-data reaping polls when no rows are deleted',
     operation: 'transient_data_reap',
     result: {
+      invitationAcceptanceIntentsDeleted: 0,
+      invitationReplacementClaimsDeleted: 0,
+      invitationsExpired: 0,
       idempotencyRecordsDeleted: 0,
+      invitationPiiMinimized: 0,
       sessionsDeleted: 0,
       workspaceCreationRecordsDeleted: 0,
     },
@@ -275,7 +283,11 @@ const maintenanceLoopCases: readonly MaintenanceLoopCase[] = [
     name: 'transient-data reaping immediately continues after deletion',
     operation: 'transient_data_reap',
     result: {
+      invitationAcceptanceIntentsDeleted: 1,
+      invitationReplacementClaimsDeleted: 1,
+      invitationsExpired: 1,
       idempotencyRecordsDeleted: 1,
+      invitationPiiMinimized: 0,
       sessionsDeleted: 2,
       workspaceCreationRecordsDeleted: 3,
     },
@@ -504,7 +516,11 @@ const durationCases = [
       input.metrics.recordTransientDataReap.mock.calls[0]?.[1],
     operation: 'transient_data_reap',
     result: {
+      invitationAcceptanceIntentsDeleted: 0,
+      invitationReplacementClaimsDeleted: 0,
+      invitationsExpired: 0,
       idempotencyRecordsDeleted: 0,
+      invitationPiiMinimized: 0,
       sessionsDeleted: 0,
       workspaceCreationRecordsDeleted: 0,
     },

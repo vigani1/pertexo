@@ -3,6 +3,7 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 
 import {
   CreateWorkflowUseCase,
+  GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
   ListWorkflowVersionsUseCase,
   ListWorkflowsUseCase,
@@ -67,6 +68,14 @@ export class WorkflowAuthoringModule {
         ),
       },
       {
+        provide: GetWorkflowUseCase,
+        useValue: new GetWorkflowUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          telemetry,
+        ),
+      },
+      {
         provide: CreateWorkflowUseCase,
         useValue: new CreateWorkflowUseCase(
           dependencies.persistence,
@@ -125,6 +134,7 @@ export class WorkflowAuthoringModule {
         TransitionWorkflowLifecycleUseCase,
         ListWorkflowsUseCase,
         CreateWorkflowUseCase,
+        GetWorkflowUseCase,
         GetWorkflowDraftUseCase,
         SaveWorkflowDraftUseCase,
         ValidateWorkflowDraftUseCase,

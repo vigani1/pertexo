@@ -22,6 +22,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: ['workspace:read', 'workspace:manage', 'member:read'],
   createdAt: timestamp,
@@ -56,7 +57,325 @@ function operation(
   };
 }
 
+function problem(status: number, code: string, title: string) {
+  return HttpResponse.json(
+    {
+      type: `https://pertexo.test/problems/${code}`,
+      title,
+      status,
+      code,
+      requestId: 'workspace-rename-test',
+    },
+    { status, headers: { 'content-type': 'application/problem+json' } },
+  );
+}
+
+function renameResponse(current: typeof workspace, replayed: boolean) {
+  return {
+    workspace: {
+      id: current.id,
+      name: current.name,
+      slug: current.slug,
+      status: current.status,
+      revision: current.revision,
+      createdAt: current.createdAt,
+      updatedAt: current.updatedAt,
+    },
+    changed: true,
+    replayed,
+  };
+}
+
 describe('workspace general settings', () => {
+  it('renames from General and refreshes the authoritative shell in StrictMode', async () => {
+    let authoritative = workspace;
+    const commands: {
+      body: unknown;
+      csrf: string | null;
+      key: string | null;
+    }[] = [];
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [authoritative], nextCursor: null }),
+      ),
+      http.patch(
+        `http://pertexo.test/v1/workspaces/${workspaceId}`,
+        async ({ request }) => {
+          commands.push({
+            body: await request.json(),
+            csrf: request.headers.get('x-csrf-token'),
+            key: request.headers.get('idempotency-key'),
+          });
+          authoritative = {
+            ...workspace,
+            name: 'Incident Operations',
+            revision: 2,
+          };
+          return HttpResponse.json(renameResponse(authoritative, false));
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`, { strict: true });
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, '{Enter}');
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(commands).toHaveLength(0);
+    await actor.type(input, '  Incident Operations  ');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+
+    expect(
+      (await screen.findAllByText('Incident Operations')).length,
+    ).toBeGreaterThan(0);
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.body).toEqual({
+      name: 'Incident Operations',
+      expectedRevision: 1,
+    });
+    expect(commands[0]?.csrf).toBe(
+      'csrf-token-for-component-tests-12345678901234567890',
+    );
+    expect(commands[0]?.key).toBeTruthy();
+  });
+
+  it('preserves the exact uncertain rename command for an explicit retry', async () => {
+    let authoritative = workspace;
+    const commands: { body: unknown; key: string | null }[] = [];
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [authoritative], nextCursor: null }),
+      ),
+      http.patch(
+        `http://pertexo.test/v1/workspaces/${workspaceId}`,
+        async ({ request }) => {
+          commands.push({
+            body: await request.json(),
+            key: request.headers.get('idempotency-key'),
+          });
+          if (commands.length === 1) return HttpResponse.error();
+          authoritative = { ...workspace, name: 'Recovered name', revision: 2 };
+          return HttpResponse.json(renameResponse(authoritative, true));
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, 'Recovered name');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The rename result is uncertain',
+    );
+    expect(input).toBeDisabled();
+    await actor.click(
+      screen.getByRole('button', { name: 'Retry exact rename' }),
+    );
+    expect(
+      (await screen.findAllByText('Recovered name')).length,
+    ).toBeGreaterThan(0);
+    expect(commands).toHaveLength(2);
+    expect(commands[0]).toEqual(commands[1]);
+  });
+
+  it('refreshes a revision conflict and requires explicit reapplication with a new key', async () => {
+    let authoritative = workspace;
+    const commands: { body: unknown; key: string | null }[] = [];
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [authoritative], nextCursor: null }),
+      ),
+      http.patch(
+        `http://pertexo.test/v1/workspaces/${workspaceId}`,
+        async ({ request }) => {
+          commands.push({
+            body: await request.json(),
+            key: request.headers.get('idempotency-key'),
+          });
+          if (commands.length === 1) {
+            authoritative = {
+              ...workspace,
+              name: 'Other tab name',
+              revision: 2,
+            };
+            return problem(
+              412,
+              'workspace.revision_conflict',
+              'Revision conflict',
+            );
+          }
+          authoritative = {
+            ...workspace,
+            name: 'Reviewed local name',
+            revision: 3,
+          };
+          return HttpResponse.json(renameResponse(authoritative, false));
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, 'Reviewed local name');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    expect(await screen.findByText(/workspace changed since/u)).toBeVisible();
+    await actor.click(
+      screen.getByRole('button', { name: 'Refresh workspace' }),
+    );
+    expect(
+      (await screen.findAllByText(/Other tab name/u)).length,
+    ).toBeGreaterThan(0);
+    await actor.click(
+      screen.getByRole('button', { name: 'Reapply against latest' }),
+    );
+    expect(
+      (await screen.findAllByText('Reviewed local name')).length,
+    ).toBeGreaterThan(0);
+    expect(commands.map((command) => command.body)).toEqual([
+      { name: 'Reviewed local name', expectedRevision: 1 },
+      { name: 'Reviewed local name', expectedRevision: 2 },
+    ]);
+    expect(commands[0]?.key).not.toBe(commands[1]?.key);
+  });
+
+  it('recovers discovery after an accepted rename without issuing the command again', async () => {
+    let authoritative = workspace;
+    let discoveryUnavailable = false;
+    let patchCount = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        discoveryUnavailable
+          ? problem(503, 'service.unavailable', 'Discovery unavailable')
+          : HttpResponse.json({ items: [authoritative], nextCursor: null }),
+      ),
+      http.patch(`http://pertexo.test/v1/workspaces/${workspaceId}`, () => {
+        patchCount += 1;
+        discoveryUnavailable = true;
+        return HttpResponse.json(
+          renameResponse(
+            { ...workspace, name: 'Durable rename', revision: 2 },
+            false,
+          ),
+        );
+      }),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, 'Durable rename');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'workspace access could not be refreshed',
+    );
+
+    authoritative = { ...workspace, name: 'Newer tab name', revision: 3 };
+    discoveryUnavailable = false;
+    await actor.click(
+      screen.getByRole('button', { name: 'Refresh workspace access' }),
+    );
+    expect(
+      (await screen.findAllByText('Newer tab name')).length,
+    ).toBeGreaterThan(0);
+    expect(patchCount).toBe(1);
+  });
+
+  it('blocks dispatch after an identity change and removes the prior workspace session', async () => {
+    let userReads = 0;
+    let patchCount = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () => {
+        userReads += 1;
+        return userReads === 1
+          ? HttpResponse.json(user)
+          : problem(401, 'auth.unauthenticated', 'Session changed');
+      }),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [workspace], nextCursor: null }),
+      ),
+      http.patch(`http://pertexo.test/v1/workspaces/${workspaceId}`, () => {
+        patchCount += 1;
+        return HttpResponse.json(renameResponse(workspace, false));
+      }),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, 'Must not dispatch');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in to continue' }),
+    ).toBeVisible();
+    expect(patchCount).toBe(0);
+  });
+
+  it('removes rename actions after authoritative permission loss', async () => {
+    let authorized = true;
+    let patchCount = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [
+            authorized
+              ? workspace
+              : {
+                  ...workspace,
+                  role: 'viewer',
+                  capabilities: ['workspace:read'],
+                },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.patch(`http://pertexo.test/v1/workspaces/${workspaceId}`, () => {
+        patchCount += 1;
+        authorized = false;
+        return problem(403, 'auth.forbidden', 'Access denied');
+      }),
+    );
+    renderApp(`/w/${workspaceId}/settings/general`);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
+    const input = screen.getByLabelText('Display name');
+    await actor.clear(input);
+    await actor.type(input, 'Denied rename');
+    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'Edit name' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Request deletion' }),
+    ).not.toBeInTheDocument();
+    expect(patchCount).toBe(1);
+  });
   it('retries an uncertain deletion with the exact reason and key in StrictMode', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
     let attempts = 0;
@@ -215,7 +534,7 @@ describe('workspace general settings', () => {
     expect(deletes).toBe(1);
   });
 
-  it('does not advertise or request lifecycle commands without manage capability', async () => {
+  it('shows read-only identity without management commands when capability is absent', async () => {
     let requests = 0;
     mockServer.use(
       ...identityHandlers({ ...workspace, capabilities: ['workspace:read'] }),
@@ -229,16 +548,19 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings/general`);
     expect(
-      await screen.findByRole('heading', {
-        name: 'Workspace settings are unavailable',
-      }),
+      await screen.findByRole('heading', { name: 'General' }),
     ).toBeVisible();
+    expect(screen.getAllByText('Control Operations').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('button', { name: 'Edit name' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Request deletion' }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: 'Workspace settings' }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(requests).toBe(0);
   });
 });

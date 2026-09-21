@@ -69,7 +69,7 @@ type WorkspaceLifecyclePersistence = Pick<
 >;
 
 export interface OidcLoginPort {
-  startLogin(): Promise<
+  startLogin(continuation?: OidcLoginResult['continuation']): Promise<
     Readonly<{
       authorizationUrl: string;
       expiresAt: Date;
@@ -143,6 +143,7 @@ export class ListAccessibleWorkspacesUseCase {
             name: workspace.name,
             slug: workspace.slug,
             status: workspace.status,
+            revision: workspace.revision,
             role: workspace.role,
             capabilities: capabilitiesForRole(workspace.role),
             createdAt: workspace.createdAt.toISOString(),
@@ -233,6 +234,9 @@ export class OidcApplicationService {
     private readonly oidc: OidcLoginPort,
     private readonly sessions: SessionIssuePort,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+    private readonly onVerifiedLogin?: (
+      result: OidcLoginResult,
+    ) => Promise<void>,
   ) {}
 
   public start(): Promise<
@@ -252,12 +256,19 @@ export class OidcApplicationService {
     input: unknown,
     browserBinding: string | undefined,
     cookieBoundary: SessionCookieBoundary,
-  ): Promise<SessionIssueResult & Readonly<{ userId: string }>> {
+  ): Promise<
+    SessionIssueResult &
+      Readonly<{
+        userId: string;
+        continuation?: OidcLoginResult['continuation'];
+      }>
+  > {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.oidcCallback,
       async () => {
         const callback = oidcCallbackInputSchema.parse(input);
         const result = await this.oidc.completeLogin(callback, browserBinding);
+        await this.onVerifiedLogin?.(result);
         const session = await this.sessions.issue(
           { userId: result.internalIdentity.userId },
           cookieBoundary,
@@ -265,6 +276,9 @@ export class OidcApplicationService {
         return Object.freeze({
           ...session,
           userId: result.internalIdentity.userId,
+          ...(result.continuation === undefined
+            ? {}
+            : { continuation: result.continuation }),
         });
       },
     );

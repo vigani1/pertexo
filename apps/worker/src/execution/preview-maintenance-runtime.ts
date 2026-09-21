@@ -44,6 +44,7 @@ import {
   createPreviewMaintenanceLifecycle,
   type PreviewMaintenanceComposition,
 } from './preview-maintenance-lifecycle.js';
+import type { WorkspaceInvitationDeliveryHandler } from './workspace-invitation-delivery.js';
 
 export interface PreviewMaintenanceRuntime {
   readonly consumer: QueueConsumer;
@@ -105,6 +106,7 @@ type PreviewMaintenanceOptions = Readonly<{
   failureNotificationDeliveryTimeoutMillis?: number;
   failureNotificationMaxAttempts?: number;
   failureNotificationRetryDelaySeconds?: number;
+  workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
   unknownOutcomeReconciliation?: boolean;
   runReplay?: boolean;
   releaseCohort?: PlatformReleaseCohort;
@@ -135,6 +137,7 @@ type MaintenanceHandlers = Readonly<{
   reconciliation?: ReturnType<typeof createPreviewReconciliationHandler>;
   replay?: ReturnType<typeof createOperatorRunReplayHandler>;
   unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
+  workspaceInvitation?: WorkspaceInvitationDeliveryHandler;
 }>;
 
 export async function createPreviewMaintenanceRuntime(
@@ -269,6 +272,9 @@ async function composeMaintenanceRuntime(
         ? {}
         : { replay: factories.replay.handler(runReplayStore) }),
       ...(failureNotification === undefined ? {} : { failureNotification }),
+      ...(options.workspaceInvitationDelivery === undefined
+        ? {}
+        : { workspaceInvitation: options.workspaceInvitationDelivery }),
     };
     consumer = (dependencies.consumerFactory ?? factories.consumer)({
       queueName: QUEUE_NAME.maintenance,
@@ -347,6 +353,13 @@ function maintenanceDeliveryHandler(
             'Failure notification delivery is not enabled',
           );
         await handlers.failureNotification.handle(delivery, context);
+        return;
+      case JOB_NAME.deliverWorkspaceInvitation:
+        if (handlers.workspaceInvitation === undefined)
+          throw new InvalidQueueDeliveryError(
+            'Workspace invitation delivery is not enabled',
+          );
+        await handlers.workspaceInvitation.handle(delivery, context);
         return;
       default:
         throw new InvalidQueueDeliveryError(

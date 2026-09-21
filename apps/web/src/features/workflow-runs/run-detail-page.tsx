@@ -85,11 +85,11 @@ export function RunDetailPage({
             >
               Back to workflow
             </Button>
-            <h1 className="mt-3 font-heading text-2xl font-semibold">
-              Workflow run
+            <h1 className="mt-3 break-all font-heading text-2xl font-semibold">
+              {snapshot.run.workflowName ?? 'Workflow name unavailable'}
             </h1>
             <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
-              {snapshot.run.id}
+              Run {snapshot.run.id} · Workflow {snapshot.run.workflowId}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -119,6 +119,7 @@ export function RunDetailPage({
               <ReplayRunDialog
                 key={`${user.id}:${workspace.id}:${snapshot.run.id}`}
                 apiClient={apiClient}
+                userId={user.id}
                 workspaceId={workspace.id}
                 sourceRunId={snapshot.run.id}
                 workflowVersionId={snapshot.run.workflowVersionId}

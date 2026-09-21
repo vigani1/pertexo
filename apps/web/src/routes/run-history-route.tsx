@@ -34,12 +34,6 @@ export function RunHistoryRoute() {
             search,
           });
         }}
-        onOpenRun={(runId) => {
-          void navigate({
-            to: '/w/$workspaceId/runs/$runId',
-            params: { workspaceId: workspace.id, runId },
-          });
-        }}
       />
     </WorkspaceRouteShell>
   );

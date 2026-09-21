@@ -14,9 +14,13 @@ export {
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceRenameCommandConflictError,
+  WorkspaceInvitationCommandConflictError,
+  InvitationAcceptanceConflictError,
   type IdentityConflictReason,
   type WorkspaceLifecycleConflictReason,
   type WorkspaceMemberRoleCommandConflictReason,
+  type WorkspaceRenameCommandConflictReason,
 } from './identity-workspace-errors.js';
 import {
   IDEMPOTENCY_STATUS,
@@ -39,6 +43,9 @@ import {
 import { withTenantScopedClient } from './workspace.js';
 import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
 import { createIdentityWorkspaceRoleCommandStore } from './identity-workspace-role-command.js';
+import { createIdentityWorkspaceRenameStore } from './identity-workspace-rename-store.js';
+import { createIdentityWorkspaceInvitationStore } from './identity-workspace-invitation-store.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './identity-workspace-invitation-acceptance-store.js';
 
 const idempotencyKeySchema = z
   .string()
@@ -79,10 +86,23 @@ export {
   type WorkspaceLifecycleOperation,
   type WorkspaceMemberRecord,
   type WorkspaceMemberRoleChangeResult,
+  type ChangeWorkspaceInvitationInput,
+  type CreateWorkspaceInvitationInput,
+  type DelegatedMembershipRole,
+  type SealedInvitationToken,
+  type WorkspaceInvitationCommandResult,
+  type WorkspaceInvitationRecord,
+  type WorkspaceInvitationsPage,
+  type CompleteInvitationAcceptanceInput,
+  type InvitationAcceptanceIntentRecord,
+  type InvitationAcceptanceResult,
+  type ResolveInvitationAcceptanceInput,
   type WorkspaceMembersPage,
   type WorkspaceRecord,
   type WorkspaceStatus,
   type WorkspaceWithOwnerInput,
+  type RenameWorkspaceInput,
+  type WorkspaceRenameResult,
 } from './identity-workspace-contracts.js';
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;
@@ -109,6 +129,7 @@ const durableWorkspaceResultSchema = z
         deletionRequestedBy: z.uuid().nullable(),
         deletionReason: z.string().nullable(),
         purgeAfter: z.iso.datetime().nullable(),
+        revision: z.number().int().positive().default(1),
         createdAt: z.iso.datetime(),
         updatedAt: z.iso.datetime(),
       })
@@ -126,6 +147,7 @@ function durableWorkspaceResult(
       ...workspace,
       deletionRequestedAt: workspace.deletionRequestedAt?.toISOString() ?? null,
       purgeAfter: workspace.purgeAfter?.toISOString() ?? null,
+      revision: workspace.revision,
       createdAt: workspace.createdAt.toISOString(),
       updatedAt: workspace.updatedAt.toISOString(),
     },
@@ -257,6 +279,9 @@ export function createIdentityWorkspaceDatabase(
     ...createIdentityWorkspaceIdentityStore(pool),
     ...createIdentityWorkspaceMemberStore(pool),
     ...createIdentityWorkspaceRoleCommandStore(pool),
+    ...createIdentityWorkspaceRenameStore(pool),
+    ...createIdentityWorkspaceInvitationStore(pool),
+    ...createIdentityWorkspaceInvitationAcceptanceStore(pool),
 
     ...createIdentityWorkspaceSessionStore(pool),
 
@@ -297,7 +322,7 @@ export function createIdentityWorkspaceDatabase(
             const workspaceResult = await client.query(
               `insert into app.workspaces (id, name, slug, status, created_by)
              values ($1, $2, $3, 'active', $4)
-             returning id, name, slug, status, created_by,
+             returning id, name, slug, status, revision, created_by,
                        deletion_requested_at, deletion_requested_by, deletion_reason,
                        purge_after,
                        created_at, updated_at`,

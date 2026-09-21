@@ -46,10 +46,11 @@ async function listAccessibleWorkspaces(
         'active' | 'suspended' | 'pending_deletion'
       >;
       role: MembershipRole;
+      revision: number;
       created_at: Date;
       updated_at: Date;
     }>(
-      `select w.id, w.name, w.slug, w.status, m.role,
+      `select w.id, w.name, w.slug, w.status, w.revision, m.role,
               w.created_at, w.updated_at
        from app.workspace_memberships m
        join app.workspaces w on w.id = m.workspace_id
@@ -70,6 +71,7 @@ async function listAccessibleWorkspaces(
           name: row.name,
           slug: row.slug,
           status: row.status,
+          revision: row.revision,
           role: row.role,
           createdAt: row.created_at,
           updatedAt: row.updated_at,

@@ -25,8 +25,9 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'viewer',
-  capabilities: ['workspace:read', 'run:read'],
+  capabilities: ['workspace:read', 'run:read', 'workflow:read'],
   createdAt: timestamp,
   updatedAt: timestamp,
 };
@@ -37,6 +38,7 @@ function run(id: string, status: 'failed' | 'succeeded') {
     workspaceId,
     workflowId,
     workflowVersionId,
+    workflowName: 'Customer onboarding',
     status,
     triggerType: 'manual',
     createdAt: timestamp,
@@ -107,7 +109,7 @@ describe('workspace run history', () => {
     expect(await screen.findByText(secondRunId)).toBeVisible();
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: `Open run ${firstRunId}` }));
+      .click(screen.getByRole('link', { name: `Open run ${firstRunId}` }));
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
         `/w/${workspaceId}/runs/${firstRunId}`,
@@ -117,19 +119,38 @@ describe('workspace run history', () => {
 
   it('owns applied filters in the URL and sends their UTC boundaries', async () => {
     let requested = new URLSearchParams();
+    const requests: URLSearchParams[] = [];
     mockServer.use(
       ...identityHandlers(),
       http.get(
         `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
         ({ request }) => {
           requested = new URL(request.url).searchParams;
-          return HttpResponse.json({ items: [], nextCursor: null });
+          requests.push(requested);
+          return HttpResponse.json({
+            items: [
+              requested.get('after') === null
+                ? run(firstRunId, 'succeeded')
+                : run(secondRunId, 'failed'),
+            ],
+            nextCursor: requested.get('after') === null ? 'next' : null,
+          });
         },
       ),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
     await screen.findByRole('heading', { name: 'Run history' });
+    await event.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => {
+      expect(requests.some((request) => request.get('after') === 'next')).toBe(
+        true,
+      );
+    });
+    await event.type(
+      screen.getByLabelText('Workflow name starts with'),
+      'Customer',
+    );
     await event.type(screen.getByLabelText('Workflow ID'), workflowId);
     await event.selectOptions(screen.getByLabelText('Status'), 'succeeded');
     await event.type(screen.getByLabelText('Created from'), '2026-09-14');
@@ -138,6 +159,7 @@ describe('workspace run history', () => {
 
     await waitFor(() => {
       expect(requested.get('workflowId')).toBe(workflowId);
+      expect(requested.get('workflowNamePrefix')).toBe('Customer');
       expect(requested.get('status')).toBe('succeeded');
       expect(requested.get('createdAtFrom')).toBe(
         '2026-09-14T00:00:00.000000Z',
@@ -145,6 +167,7 @@ describe('workspace run history', () => {
       expect(requested.get('createdAtBefore')).toBe(
         '2026-09-16T00:00:00.000000Z',
       );
+      expect(requested.get('after')).toBeNull();
     });
     expect(router.state.location.search).toMatchObject({
       workflowId,
@@ -159,7 +182,18 @@ describe('workspace run history', () => {
     router.history.back();
     await waitFor(() => {
       expect(screen.getByLabelText('Workflow ID')).toHaveValue(workflowId);
+      expect(screen.getByLabelText('Workflow name starts with')).toHaveValue(
+        'Customer',
+      );
       expect(screen.getByLabelText('Status')).toHaveValue('succeeded');
+    });
+    router.history.forward();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
+      expect(screen.getByLabelText('Workflow name starts with')).toHaveValue(
+        '',
+      );
+      expect(screen.getByLabelText('Status')).toHaveValue('');
     });
   });
 

@@ -14,6 +14,7 @@ import { WorkspaceMembersTable } from './components/members/workspace-members-ta
 import { MemberRoleDialog } from './components/members/member-role-dialog';
 import { useMemberRoleCommand } from './mutations/use-member-role-command';
 import { WorkspaceSettingsNavigation } from './components/settings/workspace-settings-navigation';
+import { WorkspaceInvitationsSection } from './components/invitations/workspace-invitations-section';
 import { workspaceMembersInfiniteQueryOptions } from './workspaces.queries';
 
 export function WorkspaceMembersPage({
@@ -165,6 +166,14 @@ export function WorkspaceMembersPage({
           ) : null}
         </>
       )}
+      {workspace.capabilities.includes('member:manage') ? (
+        <WorkspaceInvitationsSection
+          apiClient={apiClient}
+          user={user}
+          workspace={workspace}
+          onAccessLost={setCommandAccessLoss}
+        />
+      ) : null}
     </div>
   );
 }

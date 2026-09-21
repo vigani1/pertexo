@@ -1,7 +1,7 @@
-import type { WorkflowRunSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import { Link } from '@tanstack/react-router';
 import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -18,10 +18,10 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 
 export function RunHistoryTable({
   runs,
-  onOpenRun,
+  workspaceId,
 }: Readonly<{
-  runs: readonly WorkflowRunSummary[];
-  onOpenRun: (runId: string) => void;
+  runs: readonly WorkflowRunReadSummary[];
+  workspaceId: string;
 }>) {
   return (
     <Table>
@@ -41,16 +41,17 @@ export function RunHistoryTable({
           <TableRow key={run.id}>
             <TableCell>
               <span
-                className="block max-w-48 truncate font-mono text-xs"
-                title={run.id}
+                className="block max-w-64 truncate font-medium"
+                title={run.workflowName ?? 'Workflow name unavailable'}
               >
-                {run.id}
+                {run.workflowName ?? 'Workflow name unavailable'}
               </span>
+              <span className="sr-only">{run.id}</span>
               <span
                 className="mt-1 block max-w-48 truncate font-mono text-[0.68rem] text-muted-foreground"
-                title={run.workflowId}
+                title={`Run ${run.id}; workflow ${run.workflowId}`}
               >
-                Workflow {run.workflowId}
+                Run {shortId(run.id)} · Workflow {shortId(run.workflowId)}
               </span>
             </TableCell>
             <TableCell>
@@ -76,18 +77,15 @@ export function RunHistoryTable({
               {duration(run)}
             </TableCell>
             <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+              <Link
+                to="/w/$workspaceId/runs/$runId"
+                params={{ workspaceId, runId: run.id }}
                 aria-label={`Open run ${run.id}`}
-                onClick={() => {
-                  onOpenRun(run.id);
-                }}
+                className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-white/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 Open
                 <ArrowRightIcon aria-hidden="true" />
-              </Button>
+              </Link>
             </TableCell>
           </TableRow>
         ))}
@@ -96,8 +94,12 @@ export function RunHistoryTable({
   );
 }
 
+function shortId(id: string): string {
+  return `${id.slice(0, 8)}…`;
+}
+
 function statusVariant(
-  status: WorkflowRunSummary['status'],
+  status: WorkflowRunReadSummary['status'],
 ): 'default' | 'secondary' | 'muted' | 'destructive' {
   if (status === 'succeeded') return 'default';
   if (status === 'failed' || status === 'timed_out') return 'destructive';
@@ -105,7 +107,7 @@ function statusVariant(
   return 'muted';
 }
 
-function duration(run: WorkflowRunSummary): string {
+function duration(run: WorkflowRunReadSummary): string {
   if (run.startedAt === null || run.completedAt === null) return '—';
   const milliseconds = Date.parse(run.completedAt) - Date.parse(run.startedAt);
   if (milliseconds < 1_000) return `${String(milliseconds)} ms`;

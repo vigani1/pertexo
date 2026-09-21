@@ -198,6 +198,9 @@ export class WorkflowRunsController {
       ...(input.workflowId === undefined
         ? {}
         : { workflowId: input.workflowId }),
+      ...(input.workflowNamePrefix === undefined
+        ? {}
+        : { workflowNamePrefix: input.workflowNamePrefix }),
       ...(input.status === undefined ? {} : { status: input.status }),
       ...(input.createdAtFrom === undefined
         ? {}

@@ -3,12 +3,40 @@ import { cn } from '@/lib/utils';
 
 export function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
-    <div data-slot="table-container" className="w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn('w-full min-w-176 caption-bottom text-sm', className)}
-        {...props}
-      />
+    <div className="w-full">
+      <p className="mb-2 text-xs text-muted-foreground md:hidden">
+        Scroll horizontally to view all columns and actions.
+      </p>
+      <div
+        data-slot="table-container"
+        className="w-full overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        role="region"
+        aria-label="Scrollable data table"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          const region = event.currentTarget;
+          const step = Math.max(80, Math.floor(region.clientWidth * 0.8));
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            region.scrollLeft += step;
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            region.scrollLeft -= step;
+          } else if (event.key === 'Home') {
+            event.preventDefault();
+            region.scrollLeft = 0;
+          } else if (event.key === 'End') {
+            event.preventDefault();
+            region.scrollLeft = region.scrollWidth;
+          }
+        }}
+      >
+        <table
+          data-slot="table"
+          className={cn('w-full min-w-176 caption-bottom text-sm', className)}
+          {...props}
+        />
+      </div>
     </div>
   );
 }

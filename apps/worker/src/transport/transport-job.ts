@@ -43,6 +43,10 @@ const TRANSPORT_JOB_BY_NAME = Object.freeze({
     jobName: JOB_NAME.deliverRunFailureNotification,
     queueName: QUEUE_FOR_JOB[JOB_NAME.deliverRunFailureNotification],
   },
+  [JOB_NAME.deliverWorkspaceInvitation]: {
+    jobName: JOB_NAME.deliverWorkspaceInvitation,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.deliverWorkspaceInvitation],
+  },
 } as const satisfies Record<JobName, TransportJob>);
 
 export function transportJobForName(jobName: JobName): TransportJob {

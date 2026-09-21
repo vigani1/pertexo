@@ -53,6 +53,7 @@ export type OidcLoginResult = Readonly<{
     authenticationIdentityId?: string;
   }>;
   verifiedProfile: VerifiedOidcProfile;
+  continuation?: OidcLoginTransaction['continuation'];
 }>;
 
 const systemClock: IdentityClock = { now: () => new Date() };
@@ -79,7 +80,9 @@ export class OidcLoginService {
     this.clock = options.clock ?? systemClock;
   }
 
-  async startLogin(): Promise<OidcLoginStart> {
+  async startLogin(
+    continuation?: OidcLoginTransaction['continuation'],
+  ): Promise<OidcLoginStart> {
     const now = this.clock.now();
     const state = encodeBase64Url(this.crypto.randomBytes(32));
     const browserBinding = encodeBase64Url(this.crypto.randomBytes(32));
@@ -97,6 +100,7 @@ export class OidcLoginService {
           codeVerifier,
           nonce,
           expiresAt,
+          ...(continuation === undefined ? {} : { continuation }),
         }),
       );
     } catch {
@@ -111,6 +115,7 @@ export class OidcLoginService {
       redirectUri: this.configuration.redirectUri,
       clientId: this.configuration.clientId,
       scopes: this.configuration.scopes,
+      ...(continuation === undefined ? {} : { prompt: 'select_account' }),
     });
 
     let authorizationUrl: string;
@@ -274,6 +279,9 @@ export class OidcLoginService {
       externalIdentity,
       internalIdentity: normalizedInternalIdentity,
       verifiedProfile,
+      ...(transaction.continuation === undefined
+        ? {}
+        : { continuation: transaction.continuation }),
     });
   }
 }

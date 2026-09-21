@@ -10,13 +10,18 @@ import type { RunHistoryFilters } from '../run-history.types';
 
 export function RunHistoryFiltersForm({
   filters,
+  canFilterByWorkflowName,
   onApply,
 }: Readonly<{
   filters: RunHistoryFilters;
+  canFilterByWorkflowName: boolean;
   onApply: (filters: RunHistoryFilters) => void;
 }>) {
   const [error, setError] = useState<string>();
   const [workflowId, setWorkflowId] = useState(filters.workflowId ?? '');
+  const [workflowNamePrefix, setWorkflowNamePrefix] = useState(
+    filters.workflowNamePrefix ?? '',
+  );
   const [status, setStatus] = useState(filters.status ?? '');
   const [createdAtFrom, setCreatedAtFrom] = useState(() =>
     dateValue(filters.createdAtFrom),
@@ -29,11 +34,13 @@ export function RunHistoryFiltersForm({
     event.preventDefault();
     const values = new FormData(event.currentTarget);
     const workflowId = formText(values, 'workflowId').trim();
+    const workflowNamePrefix = formText(values, 'workflowNamePrefix').trim();
     const status = formText(values, 'status');
     const createdAtFrom = dateStart(formText(values, 'createdAtFrom'));
     const createdAtBefore = dateStart(formText(values, 'createdAtBefore'));
     const parsed = workflowRunListQuerySchema.safeParse({
       ...(workflowId === '' ? {} : { workflowId }),
+      ...(workflowNamePrefix === '' ? {} : { workflowNamePrefix }),
       ...(status === '' ? {} : { status }),
       ...(createdAtFrom === undefined ? {} : { createdAtFrom }),
       ...(createdAtBefore === undefined ? {} : { createdAtBefore }),
@@ -53,6 +60,9 @@ export function RunHistoryFiltersForm({
       ...(parsed.data.workflowId === undefined
         ? {}
         : { workflowId: parsed.data.workflowId }),
+      ...(parsed.data.workflowNamePrefix === undefined
+        ? {}
+        : { workflowNamePrefix: parsed.data.workflowNamePrefix }),
       ...(parsed.data.status === undefined
         ? {}
         : { status: parsed.data.status }),
@@ -67,9 +77,26 @@ export function RunHistoryFiltersForm({
 
   return (
     <form
-      className="glass-panel mt-8 grid gap-4 rounded-xl p-4 lg:grid-cols-[minmax(15rem,1.5fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_auto] lg:items-end"
+      className="glass-panel mt-8 grid gap-4 rounded-xl p-4 lg:grid-cols-2 lg:items-end xl:grid-cols-3"
       onSubmit={submit}
     >
+      {canFilterByWorkflowName ? (
+        <Field>
+          <FieldLabel htmlFor="run-workflow-name">
+            Workflow name starts with
+          </FieldLabel>
+          <Input
+            id="run-workflow-name"
+            name="workflowNamePrefix"
+            value={workflowNamePrefix}
+            onChange={(event) => {
+              setWorkflowNamePrefix(event.currentTarget.value);
+            }}
+            placeholder="e.g. Customer"
+            autoComplete="off"
+          />
+        </Field>
+      ) : null}
       <Field>
         <FieldLabel htmlFor="run-workflow-id">Workflow ID</FieldLabel>
         <Input
@@ -135,6 +162,7 @@ export function RunHistoryFiltersForm({
           variant="ghost"
           onClick={() => {
             setWorkflowId('');
+            setWorkflowNamePrefix('');
             setStatus('');
             setCreatedAtFrom('');
             setCreatedAtBefore('');
@@ -146,7 +174,10 @@ export function RunHistoryFiltersForm({
         </Button>
       </div>
       {error === undefined ? null : (
-        <p role="alert" className="text-sm text-destructive lg:col-span-5">
+        <p
+          role="alert"
+          className="text-sm text-destructive lg:col-span-2 xl:col-span-3"
+        >
           {error}
         </p>
       )}

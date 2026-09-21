@@ -22,6 +22,7 @@ export function persistedNodeState(node: WorkflowNode): string {
   return JSON.stringify({
     label: node.label ?? '',
     config: node.config,
+    inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
   });
 }

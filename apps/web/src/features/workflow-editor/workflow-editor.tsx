@@ -32,6 +32,11 @@ import {
   WorkflowActions,
 } from '@/features/workflow-publish/public';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
+import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
+import {
+  workflowKeys,
+  workflowSummaryQueryOptions,
+} from '@/features/workflows/public';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { cn } from '@/lib/utils';
@@ -85,6 +90,9 @@ export function WorkflowEditorPage({
   const connections = useSuspenseQuery(
     connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
   );
+  const workflow = useQuery(
+    workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
+  );
   return (
     <EditorProvider
       key={`${user.id}:${workspace.id}:${workflowId}`}
@@ -99,6 +107,9 @@ export function WorkflowEditorPage({
         userId={user.id}
         workspace={workspace}
         workflowId={workflowId}
+        workflowName={workflow.data?.name}
+        workflowNameUnavailable={workflow.isError}
+        onRetryWorkflowName={() => void workflow.refetch()}
         definitions={catalog.data.definitions.items}
         connections={connections.data.items}
         onBack={onBack}
@@ -114,6 +125,9 @@ function WorkflowEditorSession({
   userId,
   workspace,
   workflowId,
+  workflowName,
+  workflowNameUnavailable,
+  onRetryWorkflowName,
   definitions,
   connections,
   onBack,
@@ -124,6 +138,9 @@ function WorkflowEditorSession({
   userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
+  workflowName: string | undefined;
+  workflowNameUnavailable: boolean;
+  onRetryWorkflowName: () => void;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   onBack: () => void;
@@ -324,6 +341,16 @@ function WorkflowEditorSession({
     isSessionPaused: () => sessionLifecycle.current.paused,
     ensureSaved,
     onRunAccepted,
+    onRunCommandAccepted: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workflowRunKeys.scope(userId, workspace.id),
+      });
+    },
+    onPublicationAccepted: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workflowKeys.scope(userId, workspace.id),
+      });
+    },
   });
 
   const performEditorAction = useCallback(
@@ -436,6 +463,9 @@ function WorkflowEditorSession({
     <div className="flex h-full min-h-0 flex-col bg-background">
       <EditorCommandBar
         workflowId={workflowId}
+        workflowName={workflowName}
+        workflowNameUnavailable={workflowNameUnavailable}
+        onRetryWorkflowName={onRetryWorkflowName}
         canUpdate={canUpdate}
         onBack={onBack}
         onSave={() => void flushSave()}

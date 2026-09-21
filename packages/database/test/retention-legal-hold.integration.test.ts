@@ -157,6 +157,51 @@ describe('retention legal hold fencing', () => {
     } finally {
       await maintenance.end();
     }
+    const heldClaimIntentId = randomUUID();
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        `insert into app.workspace_invitation_binding_replacement_claims
+          (prior_workspace_id,prior_intent_id,prior_binding_digest,
+           successor_workspace_id,successor_intent_id,successor_invitation_id,
+           successor_invitation_revision,successor_binding_digest,
+           successor_csrf_digest)
+         values($1,$2,$3,$1,$4,$5,1,$6,$7)`,
+        [
+          workspaceId,
+          heldClaimIntentId,
+          '1'.repeat(64),
+          randomUUID(),
+          randomUUID(),
+          '2'.repeat(64),
+          '3'.repeat(64),
+        ],
+      );
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback').catch(() => undefined);
+      throw error;
+    }
+    await expect(retention.reapTransientData()).resolves.toMatchObject({
+      invitationReplacementClaimsDeleted: 0,
+    });
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await expect(
+        owner.query(
+          `select count(*)::integer count
+             from app.workspace_invitation_binding_replacement_claims
+            where prior_workspace_id=$1 and prior_intent_id=$2`,
+          [workspaceId, heldClaimIntentId],
+        ),
+      ).resolves.toMatchObject({ rows: [{ count: 1 }] });
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback').catch(() => undefined);
+      throw error;
+    }
     const heldLedger = {
       append: vi.fn(),
       reconcile: vi.fn(() =>

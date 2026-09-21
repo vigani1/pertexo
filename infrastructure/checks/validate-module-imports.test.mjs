@@ -113,6 +113,8 @@ test('web source allows only reviewed workspace package subpaths', () => {
       "import { scheduleTriggerListResponseSchema } from '@pertexo/contracts/schemas/schedules';",
     'apps/web/src/features/settings/webhooks.api.ts':
       "import { webhookTriggerListResponseSchema } from '@pertexo/contracts/schemas/webhooks';",
+    'apps/web/src/features/workflow-editor/model/input-mappings.ts':
+      "import { parseJsonPath } from '@pertexo/workflow-model/json-path';",
   };
   assert.deepEqual(validateModuleImports(allowed), []);
 
@@ -120,6 +122,7 @@ test('web source allows only reviewed workspace package subpaths', () => {
     '@pertexo/contracts',
     '@pertexo/contracts/errors',
     '@pertexo/contracts/schemas/transport-internals',
+    '@pertexo/workflow-model',
     '@pertexo/database/api',
   ])
     assert.match(

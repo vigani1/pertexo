@@ -8,16 +8,18 @@ import {
 export type { SettingsQuery } from './settings-query';
 
 export function SettingsSection({
+  id,
   title,
   description,
   children,
 }: Readonly<{
+  id?: string;
   title: string;
   description: string;
   children: ReactNode;
 }>) {
   return (
-    <section className="glass-panel rounded-xl p-5 sm:p-6">
+    <section id={id} className="glass-panel scroll-mt-4 rounded-xl p-5 sm:p-6">
       <h2 className="font-heading text-xl font-semibold">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       <div className="mt-5">{children}</div>

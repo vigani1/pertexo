@@ -19,6 +19,7 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/contracts/schemas/workflow-runs',
   '@pertexo/contracts/schemas/webhooks',
   '@pertexo/contracts/schemas/transport',
+  '@pertexo/workflow-model/json-path',
 ]);
 const webRawFetchOwners = new Set(['apps/web/src/lib/api/client.ts']);
 

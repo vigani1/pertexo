@@ -33,9 +33,13 @@ import {
 import {
   acceptWorkflowRunWithAudit,
   insertWorkflowRunAudit,
+  readWorkflowRunReadRecord,
   readWorkflowRunRecord,
 } from './workflow-run-persistence-support.js';
-import type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
+import type {
+  WorkflowRunReadRecord,
+  WorkflowRunRecord,
+} from './workflow-run-persistence-support.js';
 import { replayWorkflowRunInTransaction } from './workflow-run-replay.js';
 import {
   listWorkflowRunsInTransaction,
@@ -107,6 +111,7 @@ const getInputSchema = z
   .object({
     workspaceId: z.uuid(),
     runId: z.uuid(),
+    includeWorkflowName: z.boolean().default(false),
     signal: z.instanceof(AbortSignal).optional(),
   })
   .strict();
@@ -162,7 +167,7 @@ export type WorkflowNodeRunRecord = Readonly<{
 }>;
 
 export type WorkflowRunReadModel = Readonly<{
-  run: WorkflowRunRecord;
+  run: WorkflowRunReadRecord;
   nodes: readonly WorkflowNodeRunRecord[];
 }>;
 
@@ -249,7 +254,8 @@ export function createWorkflowRunDatabase(
       return withWorkspaceReadTransaction(
         pool,
         parsed.workspaceId,
-        async (transaction) => readRunModel(transaction, parsed.runId),
+        async (transaction) =>
+          readRunModel(transaction, parsed.runId, parsed.includeWorkflowName),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
@@ -264,6 +270,10 @@ export function createWorkflowRunDatabase(
             ...(parsed.workflowId === undefined
               ? {}
               : { workflowId: parsed.workflowId }),
+            ...(parsed.workflowNamePrefix === undefined
+              ? {}
+              : { workflowNamePrefix: parsed.workflowNamePrefix }),
+            includeWorkflowName: parsed.includeWorkflowName,
             ...(parsed.status === undefined ? {} : { status: parsed.status }),
             ...(parsed.createdAtFrom === undefined
               ? {}
@@ -439,8 +449,13 @@ async function cancelInTransaction(
 async function readRunModel(
   transaction: WorkspaceTransaction,
   runId: string,
+  includeWorkflowName: boolean,
 ): Promise<WorkflowRunReadModel | undefined> {
-  const run = await readWorkflowRunRecord(transaction, runId);
+  const run = await readWorkflowRunReadRecord(
+    transaction,
+    runId,
+    includeWorkflowName,
+  );
   if (run === undefined) return undefined;
   const nodes = await transaction.db.execute(sql`
     select

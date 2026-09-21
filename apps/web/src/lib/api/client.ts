@@ -26,6 +26,7 @@ type ApiRequestBase = Readonly<{
   headers?: Readonly<Record<string, string>>;
   signal?: AbortSignal;
   timeoutMs?: number;
+  csrf?: 'session' | 'external';
   decodeProblem?: ApiResponseDecoder<unknown>;
 }>;
 
@@ -291,7 +292,7 @@ function createHeaders(
   if (request.body !== undefined)
     headers.set('content-type', 'application/json');
 
-  if (MUTATING_METHODS.has(method)) {
+  if (MUTATING_METHODS.has(method) && request.csrf !== 'external') {
     let token: string | undefined;
     try {
       token = readCsrfToken();

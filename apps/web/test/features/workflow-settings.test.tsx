@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import { workflowKeys } from '@/features/workflows/public';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -31,6 +32,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: [
     'workspace:read',
@@ -145,6 +147,67 @@ function installQueries() {
 }
 
 describe('workflow settings route', () => {
+  it('refreshes cached Overview workflows immediately after an archive', async () => {
+    let currentSummary = summary;
+    let recentReads = 0;
+    installQueries();
+    mockServer.use(
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows`,
+        ({ request }) => {
+          if (new URL(request.url).searchParams.get('order') === 'updated_desc')
+            recentReads += 1;
+          return HttpResponse.json({
+            items: [currentSummary],
+            nextCursor: null,
+          });
+        },
+      ),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows/${workflowId}/archive`,
+        () => {
+          currentSummary = {
+            ...summary,
+            lifecycleStatus: 'archived',
+            lifecycleRevision: 8,
+          };
+          return HttpResponse.json({
+            workflow: currentSummary,
+            replayed: false,
+          });
+        },
+      ),
+    );
+    const { queryClient, router } = renderApp(
+      `/w/${workspaceId}/workflows/${workflowId}/settings`,
+    );
+    queryClient.setQueryData(workflowKeys.recent(userId, workspaceId), {
+      items: [summary],
+      nextCursor: null,
+    });
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Archive workflow' }),
+    );
+    await event.click(screen.getByRole('button', { name: /^Archive$/u }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Archive workflow?' }),
+      ).not.toBeInTheDocument();
+    });
+    await router.navigate({
+      to: '/w/$workspaceId/overview',
+      params: { workspaceId },
+    });
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Recently managed workflows',
+      }),
+    ).toBeVisible();
+    expect(screen.getByText('archived')).toBeVisible();
+    expect(recentReads).toBe(1);
+  });
+
   it('keeps exact lifecycle, trigger, secret and notification command contracts', async () => {
     const keys: string[] = [];
     installQueries();
@@ -206,6 +269,33 @@ describe('workflow settings route', () => {
     expect(
       await screen.findByRole('heading', { name: 'Workflow settings' }),
     ).toBeVisible();
+
+    const settingsNavigation = screen.getByRole('navigation', {
+      name: 'Workflow settings sections',
+    });
+    expect(
+      within(settingsNavigation).getByRole('link', { name: 'Lifecycle' }),
+    ).toHaveAttribute('href', '#workflow-lifecycle');
+    const notificationsSection = screen
+      .getByRole('heading', { name: 'Failure notifications' })
+      .closest('section');
+    const lifecycleSection = screen
+      .getByRole('heading', { name: 'Lifecycle' })
+      .closest('section');
+    if (notificationsSection === null || lifecycleSection === null)
+      throw new Error('Expected workflow settings sections');
+    expect(
+      notificationsSection.compareDocumentPosition(lifecycleSection) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(
+      within(notificationsSection).queryByRole('button', { name: 'Disable' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(notificationsSection).getByRole('link', {
+        name: 'Manage workspace destinations',
+      }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/settings/notifications`);
 
     await event.click(
       await screen.findByRole('button', { name: 'Archive workflow' }),

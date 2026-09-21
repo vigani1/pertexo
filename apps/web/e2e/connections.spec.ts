@@ -21,6 +21,7 @@ const workspace = {
   name: 'Control Operations',
   slug: 'control-operations',
   status: 'active',
+  revision: 1,
   role: 'owner',
   capabilities: [
     'workspace:read',
@@ -186,7 +187,7 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   await expect(page.getByText(botToken)).toHaveCount(0);
 
   await navigation.getByRole('link', { name: 'Workflows' }).click();
-  await page.getByRole('button', { name: 'Slack incident alert' }).click();
+  await page.getByRole('link', { name: 'Slack incident alert' }).click();
   await page.getByTestId('rf__node-slack-node').click();
   await expect(page.getByLabel('Slack bot token')).toHaveValue('');
   await expect(
