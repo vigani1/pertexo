@@ -4,10 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateWorkspaceUseCase,
   IdentityWorkspaceModule,
+  InvitationAcceptanceUseCase,
   OidcController,
+  RenameWorkspaceUseCase,
   SessionController,
   UserController,
   WorkspaceManageGuard,
+  WorkspaceInvitationManagementUseCase,
   type IdentityWorkspaceDependencies,
 } from '../../src/identity-workspace/index.js';
 import {
@@ -118,6 +121,95 @@ describe('identity/workspace Nest module', () => {
       expect(context.get(WorkspaceManageGuard)).toBeInstanceOf(
         WorkspaceManageGuard,
       );
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('fails closed through public use cases when optional workspace persistence is not configured', async () => {
+    const context = await NestFactory.createApplicationContext(
+      {
+        ...IdentityWorkspaceModule.register({
+          ...dependencies,
+          invitationTokens: {
+            seal: () => ({
+              ciphertext: 'ciphertext',
+              nonce: 'nonce',
+              tag: 'tag',
+              keyVersion: 'invite-v1',
+            }),
+          },
+        }),
+        imports: [HttpPlatformModule],
+      },
+      { logger: false, abortOnError: false },
+    );
+    const actor = {
+      actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      kind: 'user' as const,
+      workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      sessionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      requestId: 'request-module-fallbacks',
+    };
+    const invitationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const intentId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    const binding = `wb1.${actor.workspaceId}.${intentId}.${'a'.repeat(43)}.${'b'.repeat(43)}`;
+
+    try {
+      const invitations = context.get(WorkspaceInvitationManagementUseCase);
+      const acceptance = context.get(InvitationAcceptanceUseCase);
+      const rename = context.get(RenameWorkspaceUseCase);
+
+      await expect(
+        invitations.list({ actor, routeWorkspaceId: actor.workspaceId }),
+      ).rejects.toThrow('Invitation persistence is not configured');
+      await expect(
+        invitations.create({
+          actor,
+          routeWorkspaceId: actor.workspaceId,
+          idempotencyKey: 'invite-create-fallback',
+          request: { email: 'recipient@example.test', role: 'viewer' },
+        }),
+      ).rejects.toThrow('Invitation persistence is not configured');
+      await expect(
+        invitations.resend({
+          actor,
+          routeWorkspaceId: actor.workspaceId,
+          invitationId,
+          idempotencyKey: 'invite-resend-fallback',
+          request: { expectedRevision: 1 },
+        }),
+      ).rejects.toThrow('Invitation persistence is not configured');
+      await expect(
+        invitations.revoke({
+          actor,
+          routeWorkspaceId: actor.workspaceId,
+          invitationId,
+          idempotencyKey: 'invite-revoke-fallback',
+          request: { expectedRevision: 1 },
+        }),
+      ).rejects.toThrow('Invitation persistence is not configured');
+
+      await expect(
+        acceptance.resolve({
+          token: `wi1.${actor.workspaceId}.${invitationId}.${'c'.repeat(43)}`,
+        }),
+      ).rejects.toThrow('Invitation acceptance persistence is not configured');
+      await expect(acceptance.read(binding)).rejects.toThrow(
+        'Invitation acceptance persistence is not configured',
+      );
+      await expect(acceptance.abandon(binding, 'b'.repeat(43))).rejects.toThrow(
+        'Invitation acceptance persistence is not configured',
+      );
+
+      await expect(
+        rename.execute({
+          actor,
+          routeWorkspaceId: actor.workspaceId,
+          idempotencyKey: 'workspace-rename-fallback',
+          request: { name: 'Renamed workspace', expectedRevision: 1 },
+        }),
+      ).rejects.toThrow('Workspace rename persistence is not configured');
     } finally {
       await context.close();
     }
