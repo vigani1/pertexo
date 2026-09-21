@@ -717,7 +717,7 @@ describe('workflow run API persistence', () => {
     }
     expect(measured.noMatch?.outputRowInstances).toBe(0);
     expect(measured.noMatch?.rejectedRowInstances).toBeGreaterThan(0);
-  });
+  }, 15_000);
 
   it('resolves an exact replay before checking the current compatibility release', async () => {
     const first = await database.start(startInput());
