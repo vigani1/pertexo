@@ -11,7 +11,10 @@ import {
 } from './components/inbox/inbox-lens';
 import { AuthLensFooter } from './components/stage/auth-lens';
 import { AuthStage } from './components/stage/auth-stage';
-import { LensLoading, LensUnavailable } from './components/stage/lens-states';
+import {
+  LensLoading,
+  PasswordUnavailableLens,
+} from './components/stage/lens-states';
 import { recoveryFailure } from './model/auth-failure';
 import { requestPasswordReset } from './native-auth.api';
 import { useCountdown } from './use-countdown';
@@ -39,17 +42,13 @@ export function PasswordRecoveryPage({
           label="Checking password recovery…"
         />
       ) : capabilities.isError || !capabilities.data.password.enabled ? (
-        <LensUnavailable
+        <PasswordUnavailableLens
           id="recovery-unavailable"
           title="Reset your password"
-          retrying={capabilities.isFetching}
-          {...(capabilities.isError
-            ? { onRetry: () => void capabilities.refetch() }
-            : {})}
-          footer={backToSignIn}
+          capabilities={capabilities}
         >
           Password recovery is not available right now.
-        </LensUnavailable>
+        </PasswordUnavailableLens>
       ) : sentTo === undefined ? (
         <EmailRequestLens
           id="recovery"

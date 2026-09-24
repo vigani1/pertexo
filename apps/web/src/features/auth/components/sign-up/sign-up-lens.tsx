@@ -1,15 +1,14 @@
 import { Link } from '@tanstack/react-router';
-import { useState, type SyntheticEvent } from 'react';
+import type { SyntheticEvent } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '../../forms/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
-import { rateLimitSeconds, signUpFailure } from '../../model/auth-failure';
+import { signUpFailure } from '../../model/auth-failure';
 import { signUpWithEmail } from '../../native-auth.api';
-import { useCountdown } from '../../use-countdown';
-import { useLatestRequest } from '../../use-latest-request';
+import { useAuthRequest } from '../../use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,
@@ -42,10 +41,8 @@ export function SignUpLens({
     },
     { name: '', email: '', password: '' },
   );
-  const requests = useLatestRequest();
-  const rateLimit = useCountdown();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<string>();
+  const request = useAuthRequest(signUpFailure);
+  const { pending, failure } = request;
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,30 +50,22 @@ export function SignUpLens({
     const values = fields.validateAll();
     if (values === undefined) return;
     const email = values.email.trim();
-    const request = requests.begin();
-    setPending(true);
-    setFailure(undefined);
-    try {
-      await signUpWithEmail(
-        apiClient,
-        {
-          displayName: values.name.trim(),
-          email,
-          password: values.password,
-        },
-        request.signal,
-      );
-      if (!request.isCurrent()) return;
-      fields.reset({ ...values, password: '' });
-      onCreated(email);
-    } catch (error) {
-      if (!request.isCurrent()) return;
-      const seconds = rateLimitSeconds(error);
-      if (seconds !== undefined) rateLimit.startSeconds(seconds);
-      setFailure(signUpFailure(error));
-    } finally {
-      if (request.finish()) setPending(false);
-    }
+    await request.run(
+      (signal) =>
+        signUpWithEmail(
+          apiClient,
+          {
+            displayName: values.name.trim(),
+            email,
+            password: values.password,
+          },
+          signal,
+        ),
+      () => {
+        fields.reset({ ...values, password: '' });
+        onCreated(email);
+      },
+    );
   }
 
   return (
@@ -131,7 +120,7 @@ export function SignUpLens({
           className="mt-1 w-full"
           pending={pending}
           pendingLabel="Creating account…"
-          waitSeconds={rateLimit.remainingSeconds}
+          waitSeconds={request.waitSeconds}
         >
           Create account
         </ProgressButton>

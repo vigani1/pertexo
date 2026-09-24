@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { useState, type SyntheticEvent } from 'react';
+import type { SyntheticEvent } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import {
   confirmationProblem,
@@ -8,10 +8,9 @@ import {
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '../../forms/progress-button';
 import { useValidatedFields } from '../../forms/use-validated-fields';
-import { rateLimitSeconds, resetFailure } from '../../model/auth-failure';
+import { resetFailure } from '../../model/auth-failure';
 import { resetPassword } from '../../native-auth.api';
-import { useCountdown } from '../../use-countdown';
-import { useLatestRequest } from '../../use-latest-request';
+import { useAuthRequest } from '../../use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,
@@ -40,36 +39,22 @@ export function ResetPasswordLens({
     },
     { password: '', confirmation: '' },
   );
-  const requests = useLatestRequest();
-  const rateLimit = useCountdown();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<string>();
+  const request = useAuthRequest(resetFailure);
+  const { pending, failure } = request;
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     const values = fields.validateAll();
     if (values === undefined) return;
-    const request = requests.begin();
-    setPending(true);
-    setFailure(undefined);
-    try {
-      await resetPassword(
-        apiClient,
-        { token, password: values.password },
-        request.signal,
-      );
-      if (!request.isCurrent()) return;
-      fields.reset();
-      onReset();
-    } catch (error) {
-      if (!request.isCurrent()) return;
-      const seconds = rateLimitSeconds(error);
-      if (seconds !== undefined) rateLimit.startSeconds(seconds);
-      setFailure(resetFailure(error));
-    } finally {
-      if (request.finish()) setPending(false);
-    }
+    await request.run(
+      (signal) =>
+        resetPassword(apiClient, { token, password: values.password }, signal),
+      () => {
+        fields.reset();
+        onReset();
+      },
+    );
   }
 
   return (
@@ -112,7 +97,7 @@ export function ResetPasswordLens({
           className="mt-1 w-full"
           pending={pending}
           pendingLabel="Saving…"
-          waitSeconds={rateLimit.remainingSeconds}
+          waitSeconds={request.waitSeconds}
         >
           Reset password
         </ProgressButton>
