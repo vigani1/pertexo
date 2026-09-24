@@ -63,13 +63,18 @@ export class OidcLoginService {
   private readonly configuration: OidcConfiguration;
   private readonly crypto: IdentityCrypto;
   private readonly clock: IdentityClock;
+  private readonly allowGenericLogin: boolean;
 
   constructor(
     configuration: OidcConfiguration,
     private readonly transactions: OidcLoginTransactionStore,
     private readonly provider: OidcProviderPort,
     private readonly identityMapper: InternalIdentityMapperPort,
-    options: Readonly<{ crypto?: IdentityCrypto; clock?: IdentityClock }> = {},
+    options: Readonly<{
+      crypto?: IdentityCrypto;
+      clock?: IdentityClock;
+      allowGenericLogin?: boolean;
+    }> = {},
   ) {
     try {
       this.configuration = oidcConfigurationSchema.parse(configuration);
@@ -78,11 +83,15 @@ export class OidcLoginService {
     }
     this.crypto = options.crypto ?? nodeIdentityCrypto;
     this.clock = options.clock ?? systemClock;
+    this.allowGenericLogin = options.allowGenericLogin !== false;
   }
 
   async startLogin(
     continuation?: OidcLoginTransaction['continuation'],
   ): Promise<OidcLoginStart> {
+    if (!this.allowGenericLogin && continuation === undefined) {
+      throw new IdentityError('identity.callback_rejected');
+    }
     const now = this.clock.now();
     const state = encodeBase64Url(this.crypto.randomBytes(32));
     const browserBinding = encodeBase64Url(this.crypto.randomBytes(32));
@@ -196,6 +205,9 @@ export class OidcLoginService {
     }
     if (now.getTime() >= transaction.expiresAt.getTime()) {
       throw new IdentityError('identity.transaction_expired');
+    }
+    if (!this.allowGenericLogin && transaction.continuation === undefined) {
+      throw new IdentityError('identity.callback_rejected');
     }
 
     let tokenResponse: unknown;

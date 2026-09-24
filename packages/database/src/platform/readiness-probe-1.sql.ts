@@ -70,12 +70,21 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
       (
         to_regclass('app.users') is not null
         and to_regclass('app.auth_identities') is not null
+        and to_regclass('app.auth_accounts') is not null
+        and to_regclass('app.auth_sessions') is not null
+        and to_regclass('app.auth_verifications') is not null
         and to_regclass('app.sessions') is not null
         and to_regclass('app.workspaces') is not null
         and to_regclass('app.workspace_memberships') is not null
         and to_regclass('app.workspace_member_role_command_receipts') is not null
         and to_regclass('app.workspace_rename_command_receipts') is not null
         and to_regclass('app.audit_events') is not null
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.users')
+            and a.attname = 'email_verified' and a.attnotnull
+            and a.atttypid = 'bool'::regtype and not a.attisdropped
+        )
         and exists (
           select 1 from pg_attribute a
           where a.attrelid = to_regclass('app.workspace_memberships')
@@ -182,6 +191,9 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
       (
         case when has_function_privilege(current_user, 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE') then
         has_table_privilege(current_user, 'app.users', 'SELECT')
+        and has_table_privilege(current_user, 'app.auth_accounts', 'SELECT,INSERT,UPDATE,DELETE')
+        and has_table_privilege(current_user, 'app.auth_sessions', 'SELECT,INSERT,UPDATE,DELETE')
+        and has_table_privilege(current_user, 'app.auth_verifications', 'SELECT,INSERT,UPDATE,DELETE')
         and has_table_privilege(current_user, 'app.sessions', 'SELECT')
         and has_table_privilege(current_user, 'app.workspaces', 'SELECT')
         and has_table_privilege(current_user, 'app.workspace_memberships', 'SELECT')
@@ -210,6 +222,9 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not has_table_privilege(current_user, 'app.workspace_rename_command_receipts', 'DELETE')
         else
           not has_table_privilege(current_user, 'app.users', 'SELECT')
+          and not has_table_privilege(current_user, 'app.auth_accounts', 'SELECT')
+          and not has_table_privilege(current_user, 'app.auth_sessions', 'SELECT')
+          and not has_table_privilege(current_user, 'app.auth_verifications', 'SELECT')
           and not has_table_privilege(current_user, 'app.sessions', 'SELECT')
           and not has_table_privilege(current_user, 'app.auth_identities', 'SELECT')
         end

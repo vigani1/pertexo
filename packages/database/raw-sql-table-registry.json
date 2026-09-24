@@ -1,5 +1,40 @@
 [
   {
+    "name": "auth_legacy_method_migration_attempts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "maintenance_role"],
+    "rls": "not_applicable",
+    "reason": "Browser-bound, single-use legacy issuer proof attempts are owned by the authentication runtime and bounded retention."
+  },
+  {
+    "name": "auth_method_link_attempts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "maintenance_role"],
+    "rls": "not_applicable",
+    "reason": "Identity-scoped browser/session-bound OAuth link attempts are mutated by the authentication runtime and pruned through owner-controlled maintenance."
+  },
+  {
+    "name": "auth_email_proofs",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "maintenance_role"],
+    "rls": "not_applicable",
+    "reason": "Identity-scoped one-time email proof digests are accessed only through narrow security-definer functions."
+  },
+  {
+    "name": "authentication_mail_deliveries",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role", "maintenance_role"],
+    "rls": "not_applicable",
+    "reason": "Identity scoped encrypted authentication mail is accessible only through narrow security definer functions."
+  },
+  {
+    "name": "identity_security_audit_facts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "maintenance_role"],
+    "rls": "not_applicable",
+    "reason": "Append-only identity security facts are written and retained through owner-controlled functions."
+  },
+  {
     "name": "failure_notification_destination_versions",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "worker_runtime_role"],

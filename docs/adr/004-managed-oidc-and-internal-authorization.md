@@ -4,6 +4,13 @@
 - **Date:** 2026-08-20
 - **Amended:** 2026-09-09 (bounded authorization lifetime for long-lived SSE)
 
+> ADR 039, accepted on 2026-09-22, supersedes this record's managed-provider and
+> authentication-method choice, custom session ownership and digest-only session
+> storage rule with Better Auth's standard database-session lifecycle. The rest
+> of this record remains authoritative, including internal authorization, CSRF,
+> revocation and SSE authorization deadlines. The original decision below is
+> retained as history; acceptance does not claim the migration is implemented.
+
 ## Context
 
 The platform needs browser authentication, internal users, workspace

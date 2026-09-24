@@ -12,6 +12,45 @@ const requiredEnvironment = {
 } as const;
 
 describe('parseWorkerConfig', () => {
+  it('parses the dedicated authentication-mail worker configuration', () => {
+    expect(
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        WORKER_INSTANCE_ID: 'mail-worker-1',
+        AUTH_MAIL_DELIVERY_ENABLED: 'true',
+        AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
+        AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
+        AUTH_MAIL_KEY_VERSION: 'mail-v1',
+      }).authenticationMailDelivery,
+    ).toMatchObject({
+      apiKey: 'provider-key',
+      timeoutMillis: 5_000,
+      pollIntervalMillis: 1_000,
+      workerId: 'auth-mail:mail-worker-1',
+      encryption: { current: { version: 'mail-v1' } },
+    });
+  });
+
+  it('fails closed when authentication-mail delivery is partially configured', () => {
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        AUTH_MAIL_DELIVERY_ENABLED: 'true',
+        AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
+  it('requires authentication-mail delivery in a deployed worker', () => {
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        NODE_ENV: 'production',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
   it('applies safe defaults when optional environment values are absent', () => {
     expect(
       parseWorkerConfig({
@@ -270,6 +309,10 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
       NODE_ENV: 'production',
       OTEL_EXPORTER_OTLP_ENDPOINT: 'https://telemetry.example.test/v1',
+      AUTH_MAIL_DELIVERY_ENABLED: 'true',
+      AUTH_MAIL_EMAIL_API_KEY: 'provider-key',
+      AUTH_MAIL_KEY: Buffer.alloc(32, 4).toString('base64'),
+      AUTH_MAIL_KEY_VERSION: 'mail-v1',
     });
 
     expect(selected.artifactStore?.primary.endpoint).toBe(

@@ -145,6 +145,14 @@ describe('selected published migration repair upgrade', () => {
       '0097_workspace_invitation_claim_scan_restart.sql',
       '0098_workspace_display_name.sql',
       '0099_workflow_recent_list.sql',
+      '0100_workspace_invitation_delivery_snapshot.sql',
+      '0101_better_auth_foundation.sql',
+      '0102_better_auth_session_lifecycle.sql',
+      '0103_durable_authentication_mail.sql',
+      '0104_auth_email_change_session_revocation.sql',
+      '0105_owned_auth_email_proofs.sql',
+      '0106_auth_method_link_attempts.sql',
+      '0107_legacy_method_migration_attempts.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

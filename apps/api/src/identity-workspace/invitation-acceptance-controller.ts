@@ -30,7 +30,10 @@ import {
   readHeader,
 } from './guards.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
-import type { SessionCookiePolicy } from './ports.js';
+import type {
+  IdentitySessionAuthority,
+  SessionCookiePolicy,
+} from './ports.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
 import { INVITATION_ALLOWED_ORIGIN, SESSION_COOKIE_POLICY } from './tokens.js';
 import type { CookieResponse, IdentityWorkspaceRequest } from './types.js';
@@ -43,7 +46,8 @@ const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 export class InvitationAcceptanceController {
   public constructor(
     private readonly acceptance: InvitationAcceptanceUseCase,
-    private readonly sessions: OpaqueSessionService,
+    @Inject(OpaqueSessionService)
+    private readonly sessions: IdentitySessionAuthority,
     private readonly csrf: DoubleSubmitCsrfPolicy,
     @Inject(SESSION_COOKIE_POLICY)
     private readonly cookiePolicy: SessionCookiePolicy,
@@ -145,14 +149,25 @@ export class InvitationAcceptanceController {
       result.replacementExpiresAt !== undefined
     ) {
       const csrfToken = this.csrf.issueToken();
+      if (this.sessions.deliver === undefined) {
+        cookies.push(
+          serializeSessionCookie(
+            SESSION_COOKIE_NAME,
+            result.replacementToken,
+            result.replacementExpiresAt,
+            true,
+            this.cookiePolicy,
+          ),
+        );
+      } else {
+        await this.sessions.deliver(result.replacementToken, {
+          writeSessionCookie: () => undefined,
+          writeSessionCookieHeaders: (setCookies) => {
+            cookies.push(...setCookies);
+          },
+        });
+      }
       cookies.push(
-        serializeSessionCookie(
-          SESSION_COOKIE_NAME,
-          result.replacementToken,
-          result.replacementExpiresAt,
-          true,
-          this.cookiePolicy,
-        ),
         serializeSessionCookie(
           CSRF_COOKIE_NAME,
           csrfToken,
@@ -184,7 +199,7 @@ export class InvitationAcceptanceController {
 
 async function optionalUserId(
   request: IdentityWorkspaceRequest,
-  sessions: OpaqueSessionService,
+  sessions: IdentitySessionAuthority,
 ): Promise<string | undefined> {
   const raw = readCookie(request, SESSION_COOKIE_NAME);
   if (raw === undefined) return undefined;

@@ -24,6 +24,8 @@ export const users = appSchema.table(
     id: uuid('id').primaryKey(),
     email: varchar('email', { length: 320 }).notNull(),
     displayName: varchar('display_name', { length: 256 }).notNull(),
+    emailVerified: boolean('email_verified').default(false).notNull(),
+    image: text('image'),
     status: varchar('status', { length: 32 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -34,6 +36,92 @@ export const users = appSchema.table(
   },
   () => [],
 );
+export const authAccounts = appSchema.table(
+  'auth_accounts',
+  {
+    id: uuid('id').primaryKey(),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('auth_accounts_provider_identity_unique').on(
+      table.providerId,
+      table.accountId,
+    ),
+    index('auth_accounts_user_idx').on(table.userId, table.id),
+  ],
+);
+export const authSessions = appSchema.table(
+  'auth_sessions',
+  {
+    id: uuid('id').primaryKey(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    token: text('token').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    userId: uuid('user_id').notNull(),
+  },
+  (table) => [
+    uniqueIndex('auth_sessions_token_unique').on(table.token),
+    index('auth_sessions_user_expiry_idx').on(
+      table.userId,
+      table.expiresAt,
+      table.id,
+    ),
+    index('auth_sessions_expiry_idx').on(table.expiresAt, table.id),
+  ],
+);
+export const authVerifications = appSchema.table(
+  'auth_verifications',
+  {
+    id: uuid('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('auth_verifications_identifier_idx').on(table.identifier, table.id),
+    index('auth_verifications_expiry_idx').on(table.expiresAt, table.id),
+  ],
+);
 export const authIdentities = appSchema.table(
   'auth_identities',
   {
@@ -41,6 +129,10 @@ export const authIdentities = appSchema.table(
     userId: uuid('user_id').notNull(),
     issuer: varchar('issuer', { length: 2048 }).notNull(),
     providerSubject: varchar('provider_subject', { length: 255 }).notNull(),
+    nativeMethodVerifiedAt: timestamp('native_method_verified_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     profileMetadata: jsonb('profile_metadata').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -350,6 +442,7 @@ export const workspaceInvitationDeliveryAttempts = appSchema.table(
     tokenNonce: varchar('token_nonce', { length: 128 }),
     tokenTag: varchar('token_tag', { length: 256 }),
     tokenKeyVersion: varchar('token_key_version', { length: 64 }),
+    workspaceName: varchar('workspace_name', { length: 256 }).notNull(),
     providerReference: varchar('provider_reference', { length: 512 }),
     failureCode: varchar('failure_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

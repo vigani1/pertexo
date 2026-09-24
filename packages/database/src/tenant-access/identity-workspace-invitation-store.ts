@@ -254,8 +254,9 @@ async function insertDelivery(
   await client.query(
     `insert into app.workspace_invitation_delivery_attempts
        (id,workspace_id,invitation_id,invitation_revision,status,
-        token_ciphertext,token_nonce,token_tag,token_key_version)
-     values($1,$2,$3,$4,'queued',$5,$6,$7,$8)`,
+        token_ciphertext,token_nonce,token_tag,token_key_version,workspace_name)
+     select $1,$2,$3,$4,'queued',$5,$6,$7,$8,workspace.name
+       from app.workspaces workspace where workspace.id=$2`,
     [
       input.deliveryAttemptId,
       input.workspaceId,

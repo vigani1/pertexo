@@ -13,12 +13,15 @@
       "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
       "command": ["node", "apps/api/dist/main.js"],
       "environment": {
+        "AUTH_MAIL_MODE": "durable",
         "DATABASE_POOL_MAX": "5",
         "HOST": "0.0.0.0",
         "NODE_ENV": "production",
-        "PORT": "3000"
+        "PORT": "3000",
+        "SESSION_COOKIE_SECURE": "true"
       },
       "configuration": [
+        "AUTH_MAIL_FROM",
         "ARTIFACT_STORE_BUCKET",
         "ARTIFACT_STORE_ENDPOINT",
         "ARTIFACT_STORE_FORCE_PATH_STYLE",
@@ -40,6 +43,7 @@
         "OIDC_TOKEN_ENDPOINT",
         "OIDC_TRANSACTION_KEY_VERSION",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "PUBLIC_WEB_ORIGIN",
         "SERVICE_VERSION",
         "TRUST_PROXY_CIDRS"
       ],
@@ -49,11 +53,14 @@
         "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
         "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY",
         "DATABASE_API_URL",
+        "BETTER_AUTH_SECRET",
         "INVITATION_TOKEN_KEY",
         "REDIS_URL",
         "OIDC_CLIENT_SECRET",
         "OIDC_TRANSACTION_KEY"
       ],
+      "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
+      "sharedSecrets": ["AUTH_MAIL_KEY"],
       "port": 3000,
       "healthCheck": [
         "CMD-SHELL",
@@ -69,6 +76,7 @@
         "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
       ],
       "environment": {
+        "AUTH_MAIL_DELIVERY_ENABLED": "true",
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
         "FAILURE_NOTIFICATION_RUN_TIMEOUT_CONTEXT_ENABLED": "false",
@@ -95,6 +103,7 @@
         "SERVICE_VERSION"
       ],
       "secrets": [
+        "AUTH_MAIL_EMAIL_API_KEY",
         "DATABASE_WORKER_URL",
         "DATABASE_DISPATCHER_URL",
         "REDIS_URL",
@@ -103,6 +112,8 @@
         "ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID",
         "ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY"
       ],
+      "sharedConfiguration": ["AUTH_MAIL_KEY_VERSION"],
+      "sharedSecrets": ["AUTH_MAIL_KEY"],
       "healthCheck": [
         "CMD-SHELL",
         "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"

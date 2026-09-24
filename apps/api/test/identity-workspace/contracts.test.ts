@@ -4,8 +4,24 @@ import { apiProblemSchema } from '@pertexo/contracts/errors';
 
 import {
   accessibleWorkspacesResponseSchema,
+  accountSecurityLinkStartRequestSchema,
+  accountSecurityLinkStartResponseSchema,
+  accountSecurityMethodUnlinkRequestSchema,
+  accountSecurityMethodUnlinkResponseSchema,
+  accountSecurityPasswordChangeRequestSchema,
+  accountSecurityPasswordChangeResponseSchema,
+  accountSecurityPasswordSetupRequestSchema,
+  accountSecurityPasswordSetupResponseSchema,
+  accountSecurityResponseSchema,
+  accountSecurityRevokeOthersResponseSchema,
+  accountSecuritySessionRevokeRequestSchema,
+  accountSecuritySessionRevokeResponseSchema,
+  accountSecuritySessionsResponseSchema,
+  authenticationCapabilitiesResponseSchema,
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
+  legacyMethodMigrationStartRequestSchema,
+  legacyMethodMigrationStartResponseSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
   workspaceCreateRequestSchema,
@@ -38,7 +54,71 @@ describe('identity/workspace generated contracts', () => {
           accessibleWorkspacesResponseSchema,
           'output',
         ),
+        AccountSecurityLinkStartRequest: generated(
+          accountSecurityLinkStartRequestSchema,
+          'input',
+        ),
+        AccountSecurityLinkStartResponse: generated(
+          accountSecurityLinkStartResponseSchema,
+          'output',
+        ),
+        AccountSecurityMethodUnlinkRequest: generated(
+          accountSecurityMethodUnlinkRequestSchema,
+          'input',
+        ),
+        AccountSecurityMethodUnlinkResponse: generated(
+          accountSecurityMethodUnlinkResponseSchema,
+          'output',
+        ),
+        AccountSecurityPasswordChangeRequest: generated(
+          accountSecurityPasswordChangeRequestSchema,
+          'input',
+        ),
+        AccountSecurityPasswordChangeResponse: generated(
+          accountSecurityPasswordChangeResponseSchema,
+          'output',
+        ),
+        AccountSecurityPasswordSetupRequest: generated(
+          accountSecurityPasswordSetupRequestSchema,
+          'input',
+        ),
+        AccountSecurityPasswordSetupResponse: generated(
+          accountSecurityPasswordSetupResponseSchema,
+          'output',
+        ),
+        AccountSecurityResponse: generated(
+          accountSecurityResponseSchema,
+          'output',
+        ),
+        AccountSecurityRevokeOthersResponse: generated(
+          accountSecurityRevokeOthersResponseSchema,
+          'output',
+        ),
+        AccountSecuritySessionRevokeRequest: generated(
+          accountSecuritySessionRevokeRequestSchema,
+          'input',
+        ),
+        AccountSecuritySessionRevokeResponse: generated(
+          accountSecuritySessionRevokeResponseSchema,
+          'output',
+        ),
+        AccountSecuritySessionsResponse: generated(
+          accountSecuritySessionsResponseSchema,
+          'output',
+        ),
         ApiProblem: generated(apiProblemSchema, 'output'),
+        AuthenticationCapabilitiesResponse: generated(
+          authenticationCapabilitiesResponseSchema,
+          'output',
+        ),
+        LegacyMethodMigrationStartRequest: generated(
+          legacyMethodMigrationStartRequestSchema,
+          'input',
+        ),
+        LegacyMethodMigrationStartResponse: generated(
+          legacyMethodMigrationStartResponseSchema,
+          'output',
+        ),
         OidcCallbackRequest: generated(oidcCallbackRequestSchema, 'input'),
         OidcStartResponse: generated(oidcStartResponseSchema, 'output'),
         WorkspaceCreateRequest: generated(
@@ -118,7 +198,17 @@ describe('identity/workspace generated contracts', () => {
   it('documents all public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
+      '/v1/auth/capabilities',
       '/v1/users/me',
+      '/v1/auth/account-security/sessions',
+      '/v1/auth/account-security',
+      '/v1/auth/account-security/password/change',
+      '/v1/auth/account-security/password/setup',
+      '/v1/auth/account-security/methods/unlink',
+      '/v1/auth/account-security/methods/link/start',
+      '/v1/auth/legacy-migration/start',
+      '/v1/auth/account-security/sessions/revoke',
+      '/v1/auth/account-security/sessions/revoke-others',
       '/v1/auth/oidc/start',
       '/v1/auth/oidc/callback',
       '/v1/auth/logout',

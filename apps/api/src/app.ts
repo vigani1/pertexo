@@ -43,11 +43,16 @@ import {
   type ApiScheduleRuntime,
 } from './platform/schedules/schedule-runtime.module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
+import { RATE_LIMIT_CONSUMER } from './platform/rate-limit/rate-limit.module.js';
 import {
   createApiArtifactRuntime,
   type ApiArtifactRuntime,
   type ApiArtifactRuntimeOverrides,
 } from './platform/artifacts/artifact-runtime.module.js';
+import {
+  registerAuthenticationCapabilities,
+  registerBetterAuthHandler,
+} from './identity-infrastructure/better-auth-fastify.js';
 
 type ApiApplicationDependencyCore = Readonly<{
   database?: WorkspaceDatabase;
@@ -175,6 +180,38 @@ export async function createApiApplication(
   try {
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
     registerApiMetrics(fastifyInstance);
+    registerAuthenticationCapabilities(fastifyInstance, {
+      password: {
+        enabled: identityRuntime?.betterAuth !== undefined,
+        minimumLength: 12,
+        verificationRequired: true,
+      },
+      socialProviders: Object.keys(
+        config.identity?.betterAuth?.providers ?? {},
+      ) as ('google' | 'microsoft' | 'github' | 'apple')[],
+      legacyMigrationAvailable:
+        identityRuntime?.betterAuth !== undefined &&
+        config.identity?.oidc !== undefined,
+    });
+    if (identityRuntime?.betterAuth !== undefined && config.identity !== undefined) {
+      const publicOrigin =
+        config.identity.publicWebOrigin ??
+        (config.identity.oidc === undefined
+          ? undefined
+          : new URL(config.identity.oidc.redirectUri).origin);
+      if (publicOrigin === undefined)
+        throw new TypeError('Identity public web origin is not configured');
+      registerBetterAuthHandler(fastifyInstance, {
+        handler: identityRuntime.betterAuth.auth.handler,
+        rateLimitConsumer: application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        publicOrigin,
+        sessionCookie: {
+          secure: config.identity.session.secureCookie,
+          sameSite: config.identity.session.sameSite,
+          maxAgeSeconds: Math.floor(config.identity.session.ttlMillis / 1_000),
+        },
+      });
+    }
     await application.init();
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);

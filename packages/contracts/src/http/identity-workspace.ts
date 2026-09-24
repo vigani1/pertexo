@@ -11,6 +11,102 @@ export const oidcCallbackRequestSchema = z
 export const oidcStartResponseSchema = z
   .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
   .strict();
+export const authenticationProviderSchema = z.enum([
+  'google',
+  'microsoft',
+  'github',
+  'apple',
+]);
+export const authenticationCapabilitiesResponseSchema = z
+  .object({
+    password: z
+      .object({
+        enabled: z.boolean(),
+        minimumLength: z.number().int().min(8).max(128),
+        verificationRequired: z.boolean(),
+      })
+      .strict(),
+    socialProviders: z.array(authenticationProviderSchema).max(4),
+    legacyMigrationAvailable: z.boolean().default(false),
+  })
+  .strict();
+export const accountSecuritySessionSchema = z
+  .object({
+    id: z.uuid(),
+    current: z.boolean(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime(),
+    ipAddress: z.string().nullable(),
+    userAgent: z.string().nullable(),
+  })
+  .strict();
+export const accountSecuritySessionsResponseSchema = z
+  .object({ items: z.array(accountSecuritySessionSchema).max(100) })
+  .strict();
+export const accountSecuritySessionRevokeRequestSchema = z
+  .object({ sessionId: z.uuid() })
+  .strict();
+export const accountSecuritySessionRevokeResponseSchema = z
+  .object({ revoked: z.boolean() })
+  .strict();
+export const accountSecurityRevokeOthersResponseSchema = z
+  .object({ revokedCount: z.number().int().nonnegative() })
+  .strict();
+export const accountSecurityMethodSchema = z
+  .object({
+    id: z.uuid(),
+    kind: z.enum(['password', 'social']),
+    provider: z.string().min(1).max(64).nullable(),
+  })
+  .strict();
+export const accountSecurityResponseSchema = z
+  .object({
+    email: z.email().max(320),
+    emailVerified: z.boolean(),
+    availableProviders: z.array(authenticationProviderSchema).max(4),
+    methods: z.array(accountSecurityMethodSchema).max(16),
+  })
+  .strict();
+export const accountSecurityMethodUnlinkRequestSchema = z
+  .object({ methodId: z.uuid() })
+  .strict();
+export const accountSecurityMethodUnlinkResponseSchema = z
+  .object({ unlinked: z.literal(true) })
+  .strict();
+export const accountSecurityLinkStartRequestSchema = z
+  .object({
+    provider: authenticationProviderSchema,
+    existingMethod: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('password'), password: z.string().min(1).max(128) }).strict(),
+      z.object({ kind: z.literal('social'), provider: authenticationProviderSchema }).strict(),
+    ]),
+  })
+  .strict();
+export const accountSecurityLinkStartResponseSchema = z
+  .object({ authorizationUrl: z.url() })
+  .strict();
+export const legacyMethodMigrationStartRequestSchema = z
+  .object({ provider: authenticationProviderSchema })
+  .strict();
+export const legacyMethodMigrationStartResponseSchema = z
+  .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
+  .strict();
+export const accountSecurityPasswordChangeRequestSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: z.string().min(12).max(128),
+  })
+  .strict();
+export const accountSecurityPasswordSetupRequestSchema = z
+  .object({ newPassword: z.string().min(12).max(128) })
+  .strict();
+export const accountSecurityPasswordChangeResponseSchema = z
+  .object({ changed: z.literal(true) })
+  .strict();
+export const accountSecurityPasswordSetupResponseSchema = z
+  .object({ configured: z.literal(true) })
+  .strict();
 export const workspaceCreateRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(128),
@@ -329,6 +425,24 @@ export const workspaceLifecycleOperationResponseSchema = z
   .strict();
 
 export type WorkspaceResponse = z.output<typeof workspaceResponseSchema>;
+export type AuthenticationCapabilitiesResponse = z.output<
+  typeof authenticationCapabilitiesResponseSchema
+>;
+export type AccountSecuritySession = z.output<
+  typeof accountSecuritySessionSchema
+>;
+export type AccountSecuritySessionsResponse = z.output<
+  typeof accountSecuritySessionsResponseSchema
+>;
+export type AccountSecuritySessionRevokeRequest = z.input<
+  typeof accountSecuritySessionRevokeRequestSchema
+>;
+export type AccountSecurityResponse = z.output<
+  typeof accountSecurityResponseSchema
+>;
+export type AccountSecurityLinkStartRequest = z.input<
+  typeof accountSecurityLinkStartRequestSchema
+>;
 export type WorkspaceCreateRequest = z.output<
   typeof workspaceCreateRequestSchema
 >;

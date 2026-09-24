@@ -217,6 +217,10 @@ export function createIdentityWorkspaceRoleCommandStore(
               [targetUserId],
             );
             await client.query(
+              `delete from app.auth_sessions where user_id=$1`,
+              [targetUserId],
+            );
+            await client.query(
               `insert into app.audit_events
                  (id,workspace_id,actor_user_id,action,target_type,target_id,
                   request_id,trace_id,metadata)

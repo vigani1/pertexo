@@ -121,6 +121,44 @@ function service(
 }
 
 describe('managed OIDC application service', () => {
+  it('rejects generic callbacks before provider exchange or identity mapping after cutover', async () => {
+    const clock = new FakeClock();
+    const transactions = new FakeTransactions();
+    const provider = new FakeProvider();
+    const mapExternalIdentity = vi.fn(() => Promise.resolve({ userId }));
+    const original = new OidcLoginService(
+      configuration,
+      transactions,
+      provider,
+      { mapExternalIdentity },
+      { clock },
+    );
+    const start = await original.startLogin();
+    const afterCutover = new OidcLoginService(
+      configuration,
+      transactions,
+      provider,
+      { mapExternalIdentity },
+      { clock, allowGenericLogin: false },
+    );
+    const exchangeCode = vi.spyOn(provider, 'exchangeCode');
+
+    await expect(afterCutover.startLogin()).rejects.toMatchObject({
+      code: 'identity.callback_rejected',
+    });
+    await expect(
+      afterCutover.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(provider.request).state,
+        },
+        start.browserBinding,
+      ),
+    ).rejects.toMatchObject({ code: 'identity.callback_rejected' });
+    expect(exchangeCode).not.toHaveBeenCalled();
+    expect(mapExternalIdentity).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['non-string', 42],
     ['oversized', `https://issuer.example.test/${'x'.repeat(8_193)}`],

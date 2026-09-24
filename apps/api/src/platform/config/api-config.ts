@@ -106,6 +106,23 @@ const apiEnvironmentSchema = z
     INVITATION_TOKEN_KEY: z.string().optional(),
     INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
     INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
+    BETTER_AUTH_SECRET: z.string().min(32).max(512).optional(),
+    AUTH_MAIL_MODE: z
+      .enum(['local', 'durable', 'disabled'])
+      .default('disabled'),
+    AUTH_MAIL_FROM: z.email().max(320).optional(),
+    AUTH_MAIL_KEY: z.string().optional(),
+    AUTH_MAIL_KEY_VERSION: z.string().optional(),
+    AUTH_MAIL_PREVIOUS_KEYS: z.string().optional(),
+    AUTH_GOOGLE_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
+    AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
+    AUTH_GITHUB_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
+    AUTH_GITHUB_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
+    AUTH_MICROSOFT_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
+    AUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
+    AUTH_MICROSOFT_TENANT_ID: z.string().trim().min(1).max(512).optional(),
+    AUTH_APPLE_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
+    AUTH_APPLE_CLIENT_SECRET: z.string().min(1).max(4096).optional(),
     OIDC_TRANSACTION_TTL_MILLIS: z.coerce
       .number()
       .int()
@@ -128,7 +145,7 @@ const apiEnvironmentSchema = z
     SESSION_COOKIE_SECURE: z
       .enum(['true', 'false'])
       .transform((value) => value === 'true')
-      .default(true),
+      .optional(),
     SESSION_TTL_MILLIS: z.coerce
       .number()
       .int()
@@ -161,7 +178,7 @@ export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiIdentityConfig = Readonly<{
   publicWebOrigin?: string;
-  oidc: Readonly<{
+  oidc?: Readonly<{
     issuer: string;
     authorizationEndpoint: string;
     tokenEndpoint: string;
@@ -176,7 +193,7 @@ export type ApiIdentityConfig = Readonly<{
     transactionTtlMillis: number;
     allowInsecureHttpForTests: boolean;
   }>;
-  secretEncryption: Readonly<{
+  secretEncryption?: Readonly<{
     current: Readonly<{ version: string; key: string }>;
     previous: readonly Readonly<{ version: string; key: string }>[];
   }>;
@@ -188,6 +205,27 @@ export type ApiIdentityConfig = Readonly<{
     ttlMillis: number;
     secureCookie: boolean;
     sameSite: 'lax' | 'strict' | 'none';
+  }>;
+  betterAuth?: Readonly<{
+    secret: string;
+    mailMode: 'local' | 'durable' | 'disabled';
+    durableMail?: Readonly<{
+      fromEmail: string;
+      encryption: Readonly<{
+        current: Readonly<{ version: string; key: string }>;
+        previous: readonly Readonly<{ version: string; key: string }>[];
+      }>;
+    }>;
+    providers: Readonly<{
+      google?: Readonly<{ clientId: string; clientSecret: string }>;
+      github?: Readonly<{ clientId: string; clientSecret: string }>;
+      microsoft?: Readonly<{
+        clientId: string;
+        clientSecret: string;
+        tenantId?: string;
+      }>;
+      apple?: Readonly<{ clientId: string; clientSecret: string }>;
+    }>;
   }>;
 }>;
 
@@ -326,7 +364,7 @@ function parseIdentityConfig(
   environment: ParsedApiEnvironment,
   rawEnvironment: Record<string, string | undefined>,
 ): ApiIdentityConfig | undefined {
-  const required = [
+  const oidcValues = [
     environment.OIDC_ISSUER,
     environment.OIDC_AUTHORIZATION_ENDPOINT,
     environment.OIDC_TOKEN_ENDPOINT,
@@ -336,29 +374,27 @@ function parseIdentityConfig(
     environment.OIDC_TRANSACTION_KEY,
     environment.OIDC_TRANSACTION_KEY_VERSION,
   ];
+  const oidcConfigured = Object.entries(rawEnvironment).some(
+    ([name, value]) => value !== undefined && name.startsWith('OIDC_'),
+  );
   const configured = Object.entries(rawEnvironment).some(
     ([name, value]) =>
       value !== undefined &&
-      (name.startsWith('OIDC_') || name.startsWith('SESSION_')),
+      (name.startsWith('OIDC_') ||
+        name.startsWith('SESSION_') ||
+        name.startsWith('AUTH_') ||
+        name === 'BETTER_AUTH_SECRET' ||
+        name === 'PUBLIC_WEB_ORIGIN' ||
+        name.startsWith('INVITATION_TOKEN_')),
   );
   const deployed =
     environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production';
   if (!configured && !deployed) return undefined;
-  if (required.some((value) => value === undefined)) {
+  if (oidcConfigured && oidcValues.some((value) => value === undefined)) {
     throw new Error('Identity configuration is incomplete');
   }
-  const issuer = requiredIdentityValue(environment.OIDC_ISSUER);
-  const authorizationEndpoint = requiredIdentityValue(
-    environment.OIDC_AUTHORIZATION_ENDPOINT,
-  );
-  const tokenEndpoint = requiredIdentityValue(environment.OIDC_TOKEN_ENDPOINT);
-  const jwksUri = requiredIdentityValue(environment.OIDC_JWKS_URI);
-  const clientId = requiredIdentityValue(environment.OIDC_CLIENT_ID);
-  const redirectUri = requiredIdentityValue(environment.OIDC_REDIRECT_URI);
-  const encryptionKey = requiredIdentityValue(environment.OIDC_TRANSACTION_KEY);
-  const encryptionKeyVersion = requiredIdentityValue(
-    environment.OIDC_TRANSACTION_KEY_VERSION,
-  );
+  if (!oidcConfigured && environment.BETTER_AUTH_SECRET === undefined)
+    throw new Error('Better Auth configuration is incomplete');
   const invitationKey = environment.INVITATION_TOKEN_KEY;
   const invitationKeyVersion = environment.INVITATION_TOKEN_KEY_VERSION;
   if (
@@ -368,72 +404,64 @@ function parseIdentityConfig(
     throw new Error('Invitation token encryption configuration is incomplete');
   if ((invitationKey === undefined) !== (invitationKeyVersion === undefined))
     throw new Error('Invitation token encryption configuration is incomplete');
-  if (
-    deployed &&
-    [issuer, authorizationEndpoint, tokenEndpoint, jwksUri, redirectUri].some(
-      (value) => new URL(value).protocol !== 'https:',
+  let oidc: ReturnType<typeof parseOidcConfig> | undefined;
+  try {
+    oidc = oidcConfigured ? parseOidcConfig(environment, deployed) : undefined;
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === 'HTTPS identity endpoints are required when deployed'
     )
-  ) {
-    throw new Error('HTTPS identity endpoints are required when deployed');
+      throw error;
+    throw new Error('Identity configuration is invalid');
   }
   const publicWebOrigin =
     environment.PUBLIC_WEB_ORIGIN === undefined
-      ? new URL(redirectUri).origin
+      ? oidc === undefined
+        ? undefined
+        : new URL(oidc.oidc.redirectUri).origin
       : normalizedOrigin(environment.PUBLIC_WEB_ORIGIN);
-  if (deployed && new URL(publicWebOrigin).protocol !== 'https:')
+  if (
+    environment.BETTER_AUTH_SECRET !== undefined &&
+    publicWebOrigin === undefined
+  )
+    throw new Error('PUBLIC_WEB_ORIGIN is required for Better Auth');
+  if (deployed && publicWebOrigin === undefined)
+    throw new Error('PUBLIC_WEB_ORIGIN is required when deployed');
+  const publicWebProtocol =
+    publicWebOrigin === undefined
+      ? undefined
+      : new URL(publicWebOrigin).protocol;
+  const secureCookie =
+    environment.SESSION_COOKIE_SECURE ?? publicWebProtocol === 'https:';
+  if (
+    deployed &&
+    publicWebOrigin !== undefined &&
+    publicWebProtocol !== 'https:'
+  )
     throw new Error('HTTPS public web origin is required when deployed');
-  if (deployed && !environment.SESSION_COOKIE_SECURE) {
+  if (publicWebProtocol === 'http:' && secureCookie) {
+    throw new Error(
+      'Secure session cookies require an HTTPS public web origin',
+    );
+  }
+  if (deployed && !secureCookie) {
     throw new Error('Secure session cookies are required when deployed');
   }
-  if (
-    environment.SESSION_COOKIE_SAME_SITE === 'none' &&
-    !environment.SESSION_COOKIE_SECURE
-  ) {
+  if (deployed && environment.BETTER_AUTH_SECRET === undefined)
+    throw new Error('Better Auth configuration is incomplete');
+  if (deployed && environment.AUTH_MAIL_MODE !== 'durable')
+    throw new Error('Durable authentication mail is required when deployed');
+  if (environment.SESSION_COOKIE_SAME_SITE === 'none' && !secureCookie) {
     throw new Error('SameSite=None requires secure session cookies');
   }
 
   try {
-    const scopes = parseDelimitedValues(
-      environment.OIDC_SCOPES ?? 'openid profile email',
-      /\s+/u,
-      z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/u),
-      16,
-    );
-    const allowedAlgorithms = parseDelimitedValues(
-      environment.OIDC_ALLOWED_ALGORITHMS ?? 'RS256',
-      /,/u,
-      z.enum(OIDC_SIGNING_ALGORITHMS),
-      OIDC_SIGNING_ALGORITHMS.length,
-    );
-    const previous = parsePreviousKeys(
-      environment.OIDC_TRANSACTION_PREVIOUS_KEYS,
-    );
+    const providers = parseAuthenticationProviders(environment);
+    const durableMail = parseDurableAuthenticationMail(environment);
     const identity = {
-      publicWebOrigin,
-      oidc: Object.freeze({
-        issuer,
-        authorizationEndpoint,
-        tokenEndpoint,
-        jwksUri,
-        clientId,
-        callbackLandingPath: environment.OIDC_CALLBACK_LANDING_PATH,
-        ...(environment.OIDC_CLIENT_SECRET === undefined
-          ? {}
-          : { clientSecret: environment.OIDC_CLIENT_SECRET }),
-        redirectUri,
-        scopes,
-        allowedAlgorithms,
-        timeoutMillis: environment.OIDC_TIMEOUT_MILLIS,
-        transactionTtlMillis: environment.OIDC_TRANSACTION_TTL_MILLIS,
-        allowInsecureHttpForTests: environment.NODE_ENV === 'test',
-      }),
-      secretEncryption: Object.freeze({
-        current: Object.freeze({
-          version: encryptionKeyVersion,
-          key: encryptionKey,
-        }),
-        previous,
-      }),
+      ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
+      ...(oidc ?? {}),
       ...(invitationKey === undefined || invitationKeyVersion === undefined
         ? {}
         : {
@@ -449,9 +477,19 @@ function parseIdentityConfig(
           }),
       session: Object.freeze({
         ttlMillis: environment.SESSION_TTL_MILLIS,
-        secureCookie: environment.SESSION_COOKIE_SECURE,
+        secureCookie,
         sameSite: environment.SESSION_COOKIE_SAME_SITE,
       }),
+      ...(environment.BETTER_AUTH_SECRET === undefined
+        ? {}
+        : {
+            betterAuth: Object.freeze({
+              secret: environment.BETTER_AUTH_SECRET,
+              mailMode: environment.AUTH_MAIL_MODE,
+              ...(durableMail === undefined ? {} : { durableMail }),
+              providers,
+            }),
+          }),
     } satisfies ApiIdentityConfig;
     return Object.freeze(identity);
   } catch {
@@ -459,6 +497,148 @@ function parseIdentityConfig(
     // parses provider credentials and encryption keys.
     throw new Error('Identity configuration is invalid');
   }
+}
+
+function parseDurableAuthenticationMail(
+  environment: ParsedApiEnvironment,
+): NonNullable<ApiIdentityConfig['betterAuth']>['durableMail'] {
+  const values = [
+    environment.AUTH_MAIL_FROM,
+    environment.AUTH_MAIL_KEY,
+    environment.AUTH_MAIL_KEY_VERSION,
+  ];
+  if (environment.AUTH_MAIL_MODE !== 'durable') {
+    if (values.some((value) => value !== undefined))
+      throw new Error('Durable authentication mail configuration is inactive');
+    return undefined;
+  }
+  if (values.some((value) => value === undefined))
+    throw new Error('Durable authentication mail configuration is incomplete');
+  return Object.freeze({
+    fromEmail: requiredIdentityValue(environment.AUTH_MAIL_FROM),
+    encryption: Object.freeze({
+      current: Object.freeze({
+        key: requiredIdentityValue(environment.AUTH_MAIL_KEY),
+        version: requiredIdentityValue(environment.AUTH_MAIL_KEY_VERSION),
+      }),
+      previous: parsePreviousKeys(environment.AUTH_MAIL_PREVIOUS_KEYS),
+    }),
+  });
+}
+
+function parseOidcConfig(
+  environment: ParsedApiEnvironment,
+  deployed: boolean,
+): Readonly<{
+  oidc: NonNullable<ApiIdentityConfig['oidc']>;
+  secretEncryption: NonNullable<ApiIdentityConfig['secretEncryption']>;
+}> {
+  const issuer = requiredIdentityValue(environment.OIDC_ISSUER);
+  const authorizationEndpoint = requiredIdentityValue(
+    environment.OIDC_AUTHORIZATION_ENDPOINT,
+  );
+  const tokenEndpoint = requiredIdentityValue(environment.OIDC_TOKEN_ENDPOINT);
+  const jwksUri = requiredIdentityValue(environment.OIDC_JWKS_URI);
+  const clientId = requiredIdentityValue(environment.OIDC_CLIENT_ID);
+  const redirectUri = requiredIdentityValue(environment.OIDC_REDIRECT_URI);
+  const encryptionKey = requiredIdentityValue(environment.OIDC_TRANSACTION_KEY);
+  const encryptionKeyVersion = requiredIdentityValue(
+    environment.OIDC_TRANSACTION_KEY_VERSION,
+  );
+  if (
+    deployed &&
+    [issuer, authorizationEndpoint, tokenEndpoint, jwksUri, redirectUri].some(
+      (value) => new URL(value).protocol !== 'https:',
+    )
+  )
+    throw new Error('HTTPS identity endpoints are required when deployed');
+  return Object.freeze({
+    oidc: Object.freeze({
+      issuer,
+      authorizationEndpoint,
+      tokenEndpoint,
+      jwksUri,
+      clientId,
+      callbackLandingPath: environment.OIDC_CALLBACK_LANDING_PATH,
+      ...(environment.OIDC_CLIENT_SECRET === undefined
+        ? {}
+        : { clientSecret: environment.OIDC_CLIENT_SECRET }),
+      redirectUri,
+      scopes: parseDelimitedValues(
+        environment.OIDC_SCOPES ?? 'openid profile email',
+        /\s+/u,
+        z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/u),
+        16,
+      ),
+      allowedAlgorithms: parseDelimitedValues(
+        environment.OIDC_ALLOWED_ALGORITHMS ?? 'RS256',
+        /,/u,
+        z.enum(OIDC_SIGNING_ALGORITHMS),
+        OIDC_SIGNING_ALGORITHMS.length,
+      ),
+      timeoutMillis: environment.OIDC_TIMEOUT_MILLIS,
+      transactionTtlMillis: environment.OIDC_TRANSACTION_TTL_MILLIS,
+      allowInsecureHttpForTests: environment.NODE_ENV === 'test',
+    }),
+    secretEncryption: Object.freeze({
+      current: Object.freeze({
+        version: encryptionKeyVersion,
+        key: encryptionKey,
+      }),
+      previous: parsePreviousKeys(environment.OIDC_TRANSACTION_PREVIOUS_KEYS),
+    }),
+  });
+}
+
+function parseAuthenticationProviders(
+  environment: ParsedApiEnvironment,
+): NonNullable<ApiIdentityConfig['betterAuth']>['providers'] {
+  const google = authenticationProviderPair(
+    'Google',
+    environment.AUTH_GOOGLE_CLIENT_ID,
+    environment.AUTH_GOOGLE_CLIENT_SECRET,
+  );
+  const github = authenticationProviderPair(
+    'GitHub',
+    environment.AUTH_GITHUB_CLIENT_ID,
+    environment.AUTH_GITHUB_CLIENT_SECRET,
+  );
+  const microsoft = authenticationProviderPair(
+    'Microsoft',
+    environment.AUTH_MICROSOFT_CLIENT_ID,
+    environment.AUTH_MICROSOFT_CLIENT_SECRET,
+  );
+  const apple = authenticationProviderPair(
+    'Apple',
+    environment.AUTH_APPLE_CLIENT_ID,
+    environment.AUTH_APPLE_CLIENT_SECRET,
+  );
+  return Object.freeze({
+    ...(google === undefined ? {} : { google }),
+    ...(github === undefined ? {} : { github }),
+    ...(microsoft === undefined
+      ? {}
+      : {
+          microsoft: Object.freeze({
+            ...microsoft,
+            ...(environment.AUTH_MICROSOFT_TENANT_ID === undefined
+              ? {}
+              : { tenantId: environment.AUTH_MICROSOFT_TENANT_ID }),
+          }),
+        }),
+    ...(apple === undefined ? {} : { apple }),
+  });
+}
+
+function authenticationProviderPair(
+  provider: string,
+  clientId: string | undefined,
+  clientSecret: string | undefined,
+): Readonly<{ clientId: string; clientSecret: string }> | undefined {
+  if (clientId === undefined && clientSecret === undefined) return undefined;
+  if (clientId === undefined || clientSecret === undefined)
+    throw new Error(`${provider} authentication configuration is incomplete`);
+  return Object.freeze({ clientId, clientSecret });
 }
 
 function normalizedOrigin(value: string): string {
