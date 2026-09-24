@@ -1,10 +1,14 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
   createAuthenticationMailEnqueueStore,
+  createIdentityWorkspaceDatabase,
   createOidcLoginTransactionStore,
 } from '@pertexo/database/api';
-import { migrateDatabase } from '@pertexo/database/testing';
+import {
+  migrateDatabase,
+  parseDatabaseConfig,
+} from '@pertexo/database/testing';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import Fastify from 'fastify';
 import { Pool } from 'pg';
@@ -26,6 +30,7 @@ import {
   authenticationMailAssociatedData,
 } from '../src/identity-infrastructure/authentication-mail.js';
 import { registerBetterAuthHandler } from '../src/identity-infrastructure/better-auth-fastify.js';
+import { BetterAuthSessionService } from '../src/identity-infrastructure/better-auth-session.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -1826,29 +1831,138 @@ describe('Better Auth PostgreSQL cutover', () => {
     }
   });
 
+  it('lands an accepted invitation on one delivered Better Auth replacement session', async () => {
+    const email = 'invitation-recipient@example.test';
+    const { cookie, authenticated } = await signInVerifiedUser(
+      email,
+      'Invitation Recipient',
+    );
+    const recipientId = authenticated?.userId ?? '';
+    const identity = createIdentityWorkspaceDatabase(
+      parseDatabaseConfig({
+        connectionString: apiUrl,
+        connectionTimeoutMillis: 5_000,
+        idleTimeoutMillis: 5_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+      }),
+    );
+    try {
+      const owner = await identity.createUser({
+        email: 'invitation-owner@example.test',
+        displayName: 'Invitation Owner',
+      });
+      const workspace = await identity.createWorkspaceWithOwner({
+        name: 'Better Auth invitation',
+        slug: `better-auth-invite-${randomUUID().slice(0, 8)}`,
+        ownerUserId: owner.id,
+      });
+      const tokenDigest = sha256Hex(randomUUID());
+      const created = await identity.createWorkspaceInvitation({
+        workspaceId: workspace.id,
+        actorUserId: owner.id,
+        email,
+        role: 'viewer',
+        idempotencyKey: randomUUID(),
+        tokenDigest,
+        sealedToken: {
+          ciphertext: 'sealed-token',
+          nonce: 'nonce',
+          tag: 'tag',
+          keyVersion: 'test-v1',
+        },
+        expiresAt: new Date(Date.now() + 60 * 60_000),
+      });
+      const intentId = randomUUID();
+      const bindingDigest = sha256Hex(randomUUID());
+      await identity.resolveInvitationAcceptance({
+        workspaceId: workspace.id,
+        invitationId: created.invitation.id,
+        tokenDigest,
+        intentId,
+        bindingDigest,
+        csrfDigest: sha256Hex(randomUUID()),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+      });
+      await identity.recordInvitationAcceptanceProof({
+        workspaceId: workspace.id,
+        intentId,
+        bindingDigest,
+        userId: recipientId,
+        verifiedEmail: email,
+        verifiedAt: new Date(),
+      });
+      const sessions = new BetterAuthSessionService(runtime, {
+        secure: false,
+        sameSite: 'lax',
+        ttlSeconds: 3_600,
+      });
+      const replacementToken = randomBytes(32).toString('base64url');
+      const command = {
+        workspaceId: workspace.id,
+        intentId,
+        invitationRevision: 1,
+        actorUserId: recipientId,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          id: randomUUID(),
+          ...sessions.replacementCredential(replacementToken),
+          expiresAt: new Date(Date.now() + 60 * 60_000),
+        },
+      };
+
+      await expect(
+        identity.completeInvitationAcceptance(command),
+      ).resolves.toMatchObject({
+        membershipCreated: true,
+        replacementSessionCreated: true,
+      });
+      await expect(
+        runtime.sessions.authenticate(cookie ?? ''),
+      ).resolves.toBeUndefined();
+      const delivered: string[] = [];
+      await sessions.deliver(replacementToken, {
+        writeSessionCookie: () => undefined,
+        writeSessionCookieHeaders: (setCookies) => {
+          delivered.push(...setCookies);
+        },
+      });
+      const replacementCookie = cookieValue(delivered) ?? '';
+      await expect(
+        sessions.authenticate(decodeURIComponent(replacementCookie)),
+      ).resolves.toMatchObject({ userId: recipientId });
+      await expect(
+        identity.completeInvitationAcceptance(command),
+      ).resolves.toMatchObject({
+        replayed: true,
+        replacementSessionCreated: false,
+      });
+      await expect(
+        sessions.authenticate(decodeURIComponent(replacementCookie)),
+      ).resolves.toMatchObject({ userId: recipientId });
+      const admin = new Pool({
+        connectionString: databaseUrl(adminUrl),
+        max: 1,
+      });
+      try {
+        const sessionRows = await admin.query<{ count: number }>(
+          'select count(*)::int count from app.auth_sessions where user_id=$1',
+          [recipientId],
+        );
+        expect(sessionRows.rows).toEqual([{ count: 1 }]);
+      } finally {
+        await admin.end();
+      }
+    } finally {
+      await identity.close();
+    }
+  });
+
   it('revokes the same browser authority when an owned workspace becomes unavailable', async () => {
-    const email = 'workspace-owner@example.test';
-    const signUp = await authRequest('/v1/auth/sign-up/email', {
-      name: 'Workspace Owner',
-      email,
-      password: 'workspace owner secure password',
-      callbackURL: '/login',
-    });
-    expect(signUp.status).toBe(200);
-    const verification = mail
-      .readForTesting(email)
-      .find((message) => message.purpose === 'verification');
-    expect(verification).toBeDefined();
-    await followMailLink(verification?.url ?? 'http://invalid', '');
-    const signIn = await authRequest('/v1/auth/sign-in/email', {
-      email,
-      password: 'workspace owner secure password',
-      callbackURL: '/workspaces',
-    });
-    expect(signIn.status).toBe(200);
-    const cookie = cookieValue(signIn.headers.getSetCookie());
-    const authenticated = await runtime.sessions.authenticate(cookie ?? '');
-    expect(authenticated).toBeDefined();
+    const { cookie, authenticated } = await signInVerifiedUser(
+      'workspace-owner@example.test',
+      'Workspace Owner',
+    );
 
     const workspaceId = randomUUID();
     const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
@@ -1932,6 +2046,33 @@ describe('Better Auth PostgreSQL cutover', () => {
   });
 });
 
+/** Signs up, verifies and signs in a password user through Better Auth. */
+async function signInVerifiedUser(email: string, name: string) {
+  const password = `${name} secure password`;
+  const signUp = await authRequest('/v1/auth/sign-up/email', {
+    name,
+    email,
+    password,
+    callbackURL: '/login',
+  });
+  expect(signUp.status).toBe(200);
+  const verification = mail
+    .readForTesting(email)
+    .find((message) => message.purpose === 'verification');
+  expect(verification).toBeDefined();
+  await followMailLink(verification?.url ?? 'http://invalid', '');
+  const signIn = await authRequest('/v1/auth/sign-in/email', {
+    email,
+    password,
+    callbackURL: '/workspaces',
+  });
+  expect(signIn.status).toBe(200);
+  const cookie = cookieValue(signIn.headers.getSetCookie());
+  const authenticated = await runtime.sessions.authenticate(cookie ?? '');
+  expect(authenticated).toBeDefined();
+  return { cookie, authenticated };
+}
+
 function authRequest(path: string, body: object): Promise<Response> {
   return runtime.auth.handler(
     new Request(`http://pertexo.test${path}`, {
@@ -1950,6 +2091,10 @@ function cookieValue(cookies: readonly string[]): string | undefined {
   const prefix = 'pertexo_session=';
   const cookie = cookies.find((value) => value.startsWith(prefix));
   return cookie?.slice(prefix.length).split(';', 1)[0];
+}
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function cookieName(cookie: string): string {

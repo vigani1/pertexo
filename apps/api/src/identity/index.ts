@@ -26,5 +26,6 @@ export type {
   SessionIssueInput,
   SessionIssueResult,
   AuthenticatedSession,
+  ReplacementSessionCredential,
   SessionStorePort,
 } from './ports.js';

@@ -11,6 +11,7 @@ import { IdentityError } from './errors.js';
 import type {
   IdentityClock,
   AuthenticatedSession,
+  ReplacementSessionCredential,
   SessionCookieBoundary,
   SessionIssueInput,
   SessionIssueResult,
@@ -134,6 +135,14 @@ export class OpaqueSessionService {
       sessionId: record.sessionId,
       expiresAt,
       cookieOptions,
+    });
+  }
+
+  /** A replacement installed by another transaction is stored as a digest. */
+  replacementCredential(rawToken: string): ReplacementSessionCredential {
+    return Object.freeze({
+      authority: 'opaque' as const,
+      tokenDigest: this.parseTokenDigest(rawToken),
     });
   }
 

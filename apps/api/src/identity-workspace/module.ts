@@ -336,6 +336,7 @@ function oidcProviders(
         login: OidcLoginService,
         identityCrypto: IdentityCrypto,
         identityClock: IdentityClock,
+        sessions: IdentitySessionAuthority,
       ) =>
         new InvitationAcceptanceUseCase(
           acceptancePersistence(persistence),
@@ -343,12 +344,14 @@ function oidcProviders(
           identityCrypto,
           identityClock,
           dependencies.config,
+          sessions,
         ),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         OidcLoginService,
         IDENTITY_CRYPTO,
         IDENTITY_CLOCK,
+        OpaqueSessionService,
       ],
     },
   ];
