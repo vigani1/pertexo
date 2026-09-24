@@ -30,7 +30,7 @@ import type {
 } from '../identity/ports.js';
 import type { OidcConfiguration } from '../identity/types.js';
 
-export const BETTER_AUTH_COOKIE_PREFIX = 'pertexo-auth';
+const BETTER_AUTH_COOKIE_PREFIX = 'pertexo-auth';
 
 export type PreparedAuthenticationProofMail = Readonly<{
   id: string;
@@ -116,7 +116,7 @@ export type BetterAuthTrustedSessions = Readonly<{
   revokeToken(token: string): Promise<void>;
 }>;
 
-export type BetterAuthAuthenticatedSession = Readonly<{
+type BetterAuthAuthenticatedSession = Readonly<{
   userId: string;
   sessionId: string;
   expiresAt: Date;

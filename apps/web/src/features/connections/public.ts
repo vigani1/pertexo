@@ -1,5 +1,2 @@
 export { ConnectionsPage } from './connections-page';
-export {
-  connectionDiscoveryQueryOptions,
-  connectionsInfiniteQueryOptions,
-} from './connections.queries';
+export { connectionDiscoveryQueryOptions } from './connections.queries';
