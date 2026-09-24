@@ -21,6 +21,10 @@ import {
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
 import {
+  WORKFLOW_ORDER_BY_SORT,
+  parseWorkflowListSearch,
+} from '@/features/workflows/list-search.public';
+import {
   recentWorkflowsQueryOptions,
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/queries.public';
@@ -114,11 +118,20 @@ export const workflowsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'workflows',
   staticData: { crumb: 'Workflows' },
-  loader: async ({ context }) => {
+  // `create` opens the New workflow lens; `view` and `sort` keep the list's
+  // filters shareable. Unknown values fall back to the defaults.
+  validateSearch: (search) => parseWorkflowListSearch(search),
+  loaderDeps: ({ search }) => ({ sort: search.sort }),
+  loader: async ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
     await settlePrefetches(context, [
       queryClient.infiniteQuery(
-        workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+        workflowsInfiniteQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          WORKFLOW_ORDER_BY_SORT[deps.sort ?? 'updated'],
+        ),
       ),
       queryClient.query(authoringCatalogQueryOptions(apiClient, user.id)),
       queryClient.query(

@@ -1,29 +1,41 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { getWorkflowSummary, getWorkflowsPage } from './workflows.api';
+import type { WorkflowListOrder } from './model/workflow-list-view';
+import {
+  getWorkflowShapeGraph,
+  getWorkflowSummary,
+  getWorkflowsPage,
+} from './workflows.api';
 
 export const workflowKeys = {
   scope: (userId: string, workspaceId: string) =>
     ['identity', userId, 'workspace', workspaceId, 'workflows'] as const,
-  list: (userId: string, workspaceId: string) =>
+  lists: (userId: string, workspaceId: string) =>
     [...workflowKeys.scope(userId, workspaceId), 'list'] as const,
+  list: (userId: string, workspaceId: string, order: WorkflowListOrder) =>
+    [...workflowKeys.lists(userId, workspaceId), order] as const,
   recent: (userId: string, workspaceId: string) =>
     [...workflowKeys.scope(userId, workspaceId), 'recent'] as const,
   detail: (userId: string, workspaceId: string, workflowId: string) =>
     [...workflowKeys.scope(userId, workspaceId), 'detail', workflowId] as const,
+  shape: (userId: string, workspaceId: string, workflowId: string) =>
+    [...workflowKeys.scope(userId, workspaceId), 'shape', workflowId] as const,
 };
 
 const initialWorkflowPageParam: string | null = null;
 
+/** Workflow pages, newest activity first unless the list asks otherwise. */
 export function workflowsInfiniteQueryOptions(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
+  order: WorkflowListOrder = 'updated_desc',
 ) {
   return infiniteQueryOptions({
-    queryKey: workflowKeys.list(userId, workspaceId),
+    queryKey: workflowKeys.list(userId, workspaceId, order),
     queryFn: ({ pageParam, signal }) =>
       getWorkflowsPage(apiClient, workspaceId, {
+        order,
         ...(pageParam === null ? {} : { after: pageParam }),
         signal,
       }),
@@ -43,6 +55,26 @@ export function workflowSummaryQueryOptions(
     queryFn: ({ signal }) =>
       getWorkflowSummary(apiClient, workspaceId, workflowId, signal),
     staleTime: 30_000,
+  });
+}
+
+/**
+ * A workflow's draft graph for its pattern glyph, path sentence and trigger
+ * icons. Shapes change rarely compared with how often lists render, so rows
+ * reuse a cached shape for minutes instead of re-reading every draft.
+ */
+export function workflowShapeQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return queryOptions({
+    queryKey: workflowKeys.shape(userId, workspaceId, workflowId),
+    queryFn: ({ signal }) =>
+      getWorkflowShapeGraph(apiClient, workspaceId, workflowId, signal),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   });
 }
 
