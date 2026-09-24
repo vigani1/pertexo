@@ -14,7 +14,7 @@ import {
   type LoomRun,
 } from '../../model/loom';
 import { describeRunStatus } from '../../model/run-status';
-import { useNow } from '../../use-now';
+import { useNow } from '@/lib/use-now';
 import { LoomRunList } from './loom-run-list';
 import { LoomRenderer } from './loom-renderer';
 

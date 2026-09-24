@@ -6,7 +6,7 @@ import {
   resendFailure,
 } from '../../model/auth-failure';
 import { ProgressButton } from '../../forms/progress-button';
-import type { Countdown } from '../../use-countdown';
+import type { Countdown } from '@/lib/use-countdown';
 import { useLatestRequest } from '../../use-latest-request';
 import {
   AuthLens,

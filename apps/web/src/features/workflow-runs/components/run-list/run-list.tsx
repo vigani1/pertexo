@@ -7,7 +7,7 @@ import {
   threadBarScale,
 } from '../../model/run-list';
 import { isActiveRunStatus } from '../../model/run-status';
-import { useNow } from '../../use-now';
+import { useNow } from '@/lib/use-now';
 import { RunRow, type RunListVariant } from './run-row';
 
 /**

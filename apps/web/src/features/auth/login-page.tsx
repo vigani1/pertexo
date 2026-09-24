@@ -15,7 +15,7 @@ import { LensLoading, LensUnavailable } from './components/stage/lens-states';
 import { resendFailure } from './model/auth-failure';
 import type { LoginNotice } from './model/login-notice';
 import { resendVerificationEmail } from './native-auth.api';
-import { useCountdown } from './use-countdown';
+import { useCountdown } from '@/lib/use-countdown';
 
 type LoginView =
   | Readonly<{ kind: 'sign-in' }>

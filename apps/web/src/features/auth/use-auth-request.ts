@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { rateLimitSeconds } from './model/auth-failure';
-import { useCountdown } from './use-countdown';
+import { useCountdown } from '@/lib/use-countdown';
 import { useLatestRequest } from './use-latest-request';
 
 /**

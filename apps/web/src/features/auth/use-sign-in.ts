@@ -11,7 +11,7 @@ import {
   signInFailure,
 } from './model/auth-failure';
 import { signInWithEmail, startSocialAuthentication } from './native-auth.api';
-import { useCountdown } from './use-countdown';
+import { useCountdown } from '@/lib/use-countdown';
 import { useLatestRequest } from './use-latest-request';
 
 /**

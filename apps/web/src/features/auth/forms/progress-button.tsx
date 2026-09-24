@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { formatCountdown } from '../use-countdown';
+import { formatCountdown } from '@/lib/format-time';
 
 type ProgressButtonProps = Omit<ComponentProps<typeof Button>, 'children'> &
   Readonly<{

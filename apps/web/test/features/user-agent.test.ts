@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { describeUserAgent } from '@/features/auth/model/user-agent';
-import { formatCountdown } from '@/features/auth/use-countdown';
 
 describe('session descriptions', () => {
   it.each([
@@ -28,11 +27,5 @@ describe('session descriptions', () => {
     [null, 'Unknown browser'],
   ])('describes %s as %s', (userAgent, expected) => {
     expect(describeUserAgent(userAgent)).toBe(expected);
-  });
-
-  it('formats countdowns as minutes and seconds', () => {
-    expect(formatCountdown(24)).toBe('0:24');
-    expect(formatCountdown(299.2)).toBe('5:00');
-    expect(formatCountdown(0)).toBe('0:00');
   });
 });
