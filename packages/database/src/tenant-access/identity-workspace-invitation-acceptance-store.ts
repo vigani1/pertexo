@@ -769,10 +769,9 @@ async function completeAcceptance(
             where user_id=$1 and revoked_at is null`,
           [actorUserId],
         );
-        await client.query(
-          `delete from app.auth_sessions where user_id=$1`,
-          [actorUserId],
-        );
+        await client.query(`delete from app.auth_sessions where user_id=$1`, [
+          actorUserId,
+        ]);
         await client.query(
           `insert into app.auth_sessions
              (id,user_id,token,expires_at,user_agent,ip_address,created_at,updated_at)

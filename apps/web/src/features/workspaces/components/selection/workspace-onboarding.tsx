@@ -45,7 +45,10 @@ export function WorkspaceOnboarding({
               </span>
               <span>{label}</span>
               {index === workspaceContents.length - 1 ? null : (
-                <span className="workspace-boundary-connector" aria-hidden="true" />
+                <span
+                  className="workspace-boundary-connector"
+                  aria-hidden="true"
+                />
               )}
             </div>
           ))}

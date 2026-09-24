@@ -34,5 +34,5 @@ Pertexo account; it grants no workflow-service access by itself. _Avoid_:
 Workflow connection
 
 **Account linking**: Adding a proven sign-in method to one existing Pertexo
-account without transferring workspace memberships or combining users.
-_Avoid_: Account merging
+account without transferring workspace memberships or combining users. _Avoid_:
+Account merging

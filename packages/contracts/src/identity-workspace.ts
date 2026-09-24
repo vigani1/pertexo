@@ -328,7 +328,10 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         parameters: [csrfHeaderParameter()],
         requestBody: jsonRequest('AccountSecurityLinkStartRequest'),
         responses: {
-          '200': jsonResponse('Provider authorization started', 'AccountSecurityLinkStartResponse'),
+          '200': jsonResponse(
+            'Provider authorization started',
+            'AccountSecurityLinkStartResponse',
+          ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
@@ -343,7 +346,10 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         operationId: 'startLegacyMethodMigration',
         requestBody: jsonRequest('LegacyMethodMigrationStartRequest'),
         responses: {
-          '200': jsonResponse('Legacy method proof started', 'LegacyMethodMigrationStartResponse'),
+          '200': jsonResponse(
+            'Legacy method proof started',
+            'LegacyMethodMigrationStartResponse',
+          ),
           '400': responseReference('BadRequest'),
           '404': responseReference('Forbidden'),
           '503': responseReference('ServiceUnavailable'),

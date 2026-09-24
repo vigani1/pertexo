@@ -48,7 +48,10 @@ export function WorkspaceSelectionPage({
         />
 
         {logoutError ? (
-          <p role="alert" className="workspace-logout-error text-sm text-destructive">
+          <p
+            role="alert"
+            className="workspace-logout-error text-sm text-destructive"
+          >
             {logoutError}
           </p>
         ) : null}

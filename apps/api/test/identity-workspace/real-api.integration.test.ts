@@ -1169,7 +1169,9 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         identityConfig.secretEncryption;
       if (invitationEncryption === undefined)
         throw new Error('Invitation token encryption is missing');
-      invitationToken = createApplicationSecretEnvelope(invitationEncryption).open(
+      invitationToken = createApplicationSecretEnvelope(
+        invitationEncryption,
+      ).open(
         {
           ciphertext: row.token_ciphertext,
           nonce: row.token_nonce,

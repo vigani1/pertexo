@@ -537,8 +537,18 @@ function authenticationMailDeliveryConfig(
       key: z.string().min(1),
       version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
       previous: z.string().optional(),
-      timeoutMillis: z.coerce.number().int().min(100).max(30_000).default(5_000),
-      pollIntervalMillis: z.coerce.number().int().min(100).max(60_000).default(1_000),
+      timeoutMillis: z.coerce
+        .number()
+        .int()
+        .min(100)
+        .max(30_000)
+        .default(5_000),
+      pollIntervalMillis: z.coerce
+        .number()
+        .int()
+        .min(100)
+        .max(60_000)
+        .default(1_000),
       workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
     })
     .strict()
