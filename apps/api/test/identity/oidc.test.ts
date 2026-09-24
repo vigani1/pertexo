@@ -440,6 +440,30 @@ describe('managed OIDC application service', () => {
     },
   );
 
+  it('fails closed when a transaction store returns no consume result', async () => {
+    const provider = new FakeProvider();
+    const exchange = vi.spyOn(provider, 'exchangeCode');
+    const transactions = {
+      create: () => Promise.resolve(),
+      consume: () => Promise.resolve(undefined),
+    } as unknown as OidcLoginTransactionStore;
+    const app = new OidcLoginService(
+      configuration,
+      transactions,
+      provider,
+      { mapExternalIdentity: () => Promise.resolve({ userId }) },
+      { clock: new FakeClock() },
+    );
+
+    await expect(
+      app.completeLogin(
+        { code: 'one-time-code', state: 'state-value-that-is-long-enough' },
+        'browser-binding-that-is-long-enough',
+      ),
+    ).rejects.toMatchObject({ code: 'identity.transaction_missing' });
+    expect(exchange).not.toHaveBeenCalled();
+  });
+
   it('rejects a different browser binding without consuming the transaction', async () => {
     const setup = service(new FakeClock());
     const start = await setup.app.startLogin();

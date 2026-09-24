@@ -3837,32 +3837,32 @@
       "file": "apps/api/src/platform/identity/identity-runtime.module.ts",
       "reviews": [
         {
-          "branchId": "20",
+          "branchId": "32",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 230,
+          "line": 284,
           "column": 42,
-          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
           "classification": "defensive",
           "justification": "IdentityWorkspaceModule.register always supplies its controller list; the empty-list fallback protects the dynamic-module seam against future contract drift."
         },
         {
-          "branchId": "21",
+          "branchId": "33",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 231,
+          "line": 285,
           "column": 38,
-          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
           "classification": "defensive",
           "justification": "IdentityWorkspaceModule.register always supplies its provider list; the empty-list fallback protects the dynamic-module seam against future contract drift."
         },
         {
-          "branchId": "22",
+          "branchId": "34",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 232,
+          "line": 286,
           "column": 34,
-          "sourceFingerprint": "sha256:7c48558ccdf71d5fb19d8149c21f890a42fabd3b3c0623d9830bd1d3b93eb4d9",
+          "sourceFingerprint": "sha256:cf1c8ba011a2e3d33015af5461b14526adfdf687a528ef508b5a7da88b700967",
           "classification": "defensive",
           "justification": "IdentityWorkspaceModule.register always supplies its export list; the empty-list fallback protects the dynamic-module seam against future contract drift."
         }
@@ -3876,9 +3876,9 @@
           "branchId": "2",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 137,
+          "line": 142,
           "column": 49,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "When the bootstrap owns or receives a database runtime, it forwards that optional runtime into the dynamic module; omission remains valid for an injected workspace database."
         },
@@ -3886,9 +3886,9 @@
           "branchId": "3",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 139,
+          "line": 144,
           "column": 12,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "The workspace database dependency is optional because production bootstrap can own its database runtime; this arm preserves omission when no database adapter is injected."
         },
@@ -3896,59 +3896,59 @@
           "branchId": "4",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 142,
+          "line": 147,
           "column": 12,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "The rate-limit consumer is an optional test/composition override, and this arm preserves omission so the module can construct its configured consumer."
         },
         {
-          "branchId": "13",
+          "branchId": "20",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 212,
+          "line": 253,
           "column": 4,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "The public bootstrap permits either an injected workspace database or an owned database runtime; this arm creates the owned runtime only when neither injected source supplies that responsibility."
         },
         {
-          "branchId": "21",
+          "branchId": "28",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 252,
+          "line": 293,
           "column": 4,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "Webhook ingress is composed only when both identity and webhook configuration are available; the arm is reachable through the supported production bootstrap configuration."
         },
         {
-          "branchId": "23",
+          "branchId": "30",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 266,
+          "line": 307,
           "column": 4,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "The scheduler is owned by the API only with an identity runtime and the production database source; the arm is a reachable bootstrap ownership choice."
         },
         {
-          "branchId": "25",
+          "branchId": "32",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 278,
+          "line": 319,
           "column": 4,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "Artifact handling is composed only when identity and artifact configuration are both available; the arm is a reachable optional-feature wiring choice."
         },
         {
-          "branchId": "30",
+          "branchId": "37",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 355,
+          "line": 396,
           "column": 8,
-          "sourceFingerprint": "sha256:6d7d67a720b3d877699fb3d2c14fedb889c18376ee4306bf4bc38f39bd233767",
+          "sourceFingerprint": "sha256:835726ed400b0e8e20d89a9ba032a7ebabe412f35e396d8993b7a67d45caa78b",
           "classification": "defensive",
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         }
@@ -4079,22 +4079,6 @@
           "sourceFingerprint": "sha256:0fdb2db1c91c4509516c66ad7cf5a1bf3c108a11ee00cac3d84163cbd0ac91c8",
           "classification": "defensive",
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
-        }
-      ]
-    },
-    {
-      "cohort": "api-priority",
-      "file": "apps/api/src/identity/oidc.ts",
-      "reviews": [
-        {
-          "branchId": "11",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 176,
-          "column": 4,
-          "sourceFingerprint": "sha256:9dbda0757eedd1042b02b74055c64a08ca6325f80c176f10eb4d6b861d8f4dd7",
-          "classification": "defensive",
-          "justification": "The transaction-store contract returns a discriminated consume result rather than undefined; this check fails closed if an injected implementation violates that contract."
         }
       ]
     },

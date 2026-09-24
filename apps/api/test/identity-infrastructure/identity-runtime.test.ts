@@ -136,6 +136,54 @@ describe('identity runtime composition', () => {
     }
   });
 
+  it('rejects OIDC composition seams without complete OIDC configuration', async () => {
+    const withoutEncryption: ApiIdentityConfig = {
+      oidc: identityConfig.oidc,
+      session: identityConfig.session,
+    };
+    const standalone = {
+      publicWebOrigin: 'https://app.example.test',
+      session: identityConfig.session,
+      betterAuth: {
+        secret: 'standalone-runtime-secret-at-least-32-characters',
+        mailMode: 'local' as const,
+        providers: {},
+      },
+    };
+    const provider = {
+      authorizationUrl: () => 'https://identity.example.test/authorize',
+      exchangeCode: () => Promise.reject(new Error('not used')),
+    };
+
+    await expect(
+      createApiIdentityRuntime(withoutEncryption, databaseConfig, {
+        persistence: { database: identityDatabase() },
+      }),
+    ).rejects.toThrow(
+      'OIDC configuration and transaction encryption must be supplied together',
+    );
+    await expect(
+      createApiIdentityRuntime(standalone, databaseConfig, {
+        provider,
+        persistence: { database: identityDatabase() },
+      }),
+    ).rejects.toThrow('An OIDC provider requires OIDC configuration');
+
+    const databaseClose = vi.fn().mockResolvedValue(undefined);
+    const transactionClose = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      createApiIdentityRuntime(standalone, databaseConfig, {
+        legacyOnlyUserCount: () => Promise.resolve(0),
+        persistence: {
+          database: identityDatabase(databaseClose),
+          transactions: transactionStore(transactionClose),
+        },
+      }),
+    ).rejects.toThrow('An OIDC transaction store requires OIDC configuration');
+    expect(databaseClose).toHaveBeenCalledOnce();
+    expect(transactionClose).not.toHaveBeenCalled();
+  });
+
   it('blocks standalone cutover when active legacy-only users remain', async () => {
     await expect(
       createApiIdentityRuntime(
