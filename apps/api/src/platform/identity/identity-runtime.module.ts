@@ -136,7 +136,9 @@ export async function createApiIdentityRuntime(
           createOidcLoginTransactionStore
         )(databaseConfig, encryption, runtime);
     } else if (persistenceOverrides.transactions !== undefined) {
-      throw new TypeError('An OIDC transaction store requires OIDC configuration');
+      throw new TypeError(
+        'An OIDC transaction store requires OIDC configuration',
+      );
     }
     const transactions =
       transactionDatabase === undefined
@@ -191,23 +193,26 @@ export async function createApiIdentityRuntime(
                   transactionTtlMillis: config.oidc.transactionTtlMillis,
                 },
                 transactions,
-                provider: overrides.provider ?? new GenericOidcProviderAdapter({
-                  issuer: config.oidc.issuer,
-                  authorizationEndpoint: config.oidc.authorizationEndpoint,
-                  tokenEndpoint: config.oidc.tokenEndpoint,
-                  jwksUri: config.oidc.jwksUri,
-                  redirectUri: new URL(
-                    '/v1/auth/legacy-migration/oidc/callback',
-                    publicOrigin,
-                  ).toString(),
-                  clientId: config.oidc.clientId,
-                  ...(config.oidc.clientSecret === undefined
-                    ? {}
-                    : { clientSecret: config.oidc.clientSecret }),
-                  allowedAlgorithms: [...config.oidc.allowedAlgorithms],
-                  timeoutMillis: config.oidc.timeoutMillis,
-                  allowInsecureHttpForTests: config.oidc.allowInsecureHttpForTests,
-                }),
+                provider:
+                  overrides.provider ??
+                  new GenericOidcProviderAdapter({
+                    issuer: config.oidc.issuer,
+                    authorizationEndpoint: config.oidc.authorizationEndpoint,
+                    tokenEndpoint: config.oidc.tokenEndpoint,
+                    jwksUri: config.oidc.jwksUri,
+                    redirectUri: new URL(
+                      '/v1/auth/legacy-migration/oidc/callback',
+                      publicOrigin,
+                    ).toString(),
+                    clientId: config.oidc.clientId,
+                    ...(config.oidc.clientSecret === undefined
+                      ? {}
+                      : { clientSecret: config.oidc.clientSecret }),
+                    allowedAlgorithms: [...config.oidc.allowedAlgorithms],
+                    timeoutMillis: config.oidc.timeoutMillis,
+                    allowInsecureHttpForTests:
+                      config.oidc.allowInsecureHttpForTests,
+                  }),
               },
             }),
       });
@@ -259,7 +264,9 @@ export async function createApiIdentityRuntime(
               }),
             }),
       }),
-      ...(betterAuthRuntime === undefined ? {} : { betterAuth: betterAuthRuntime }),
+      ...(betterAuthRuntime === undefined
+        ? {}
+        : { betterAuth: betterAuthRuntime }),
       close: (): Promise<void> => {
         closePromise ??= closeIdentityResources(
           acquiredIdentityDatabase,

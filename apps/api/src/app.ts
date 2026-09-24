@@ -193,7 +193,10 @@ export async function createApiApplication(
         identityRuntime?.betterAuth !== undefined &&
         config.identity?.oidc !== undefined,
     });
-    if (identityRuntime?.betterAuth !== undefined && config.identity !== undefined) {
+    if (
+      identityRuntime?.betterAuth !== undefined &&
+      config.identity !== undefined
+    ) {
       const publicOrigin =
         config.identity.publicWebOrigin ??
         (config.identity.oidc === undefined
@@ -203,7 +206,8 @@ export async function createApiApplication(
         throw new TypeError('Identity public web origin is not configured');
       registerBetterAuthHandler(fastifyInstance, {
         handler: identityRuntime.betterAuth.auth.handler,
-        rateLimitConsumer: application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        rateLimitConsumer:
+          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
         publicOrigin,
         sessionCookie: {
           secure: config.identity.session.secureCookie,

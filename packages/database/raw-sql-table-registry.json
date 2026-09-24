@@ -23,7 +23,11 @@
   {
     "name": "authentication_mail_deliveries",
     "owner": "owner_role",
-    "accessRoles": ["api_runtime_role", "worker_runtime_role", "maintenance_role"],
+    "accessRoles": [
+      "api_runtime_role",
+      "worker_runtime_role",
+      "maintenance_role"
+    ],
     "rls": "not_applicable",
     "reason": "Identity scoped encrypted authentication mail is accessible only through narrow security definer functions."
   },

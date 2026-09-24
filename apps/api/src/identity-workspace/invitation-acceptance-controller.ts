@@ -30,10 +30,7 @@ import {
   readHeader,
 } from './guards.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
-import type {
-  IdentitySessionAuthority,
-  SessionCookiePolicy,
-} from './ports.js';
+import type { IdentitySessionAuthority, SessionCookiePolicy } from './ports.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
 import { INVITATION_ALLOWED_ORIGIN, SESSION_COOKIE_POLICY } from './tokens.js';
 import type { CookieResponse, IdentityWorkspaceRequest } from './types.js';

@@ -130,7 +130,11 @@ describe('transient data retention', () => {
          values($1,decode($2,'hex'),decode($3,'hex'),'google',
                 clock_timestamp()-interval '39 days',
                 clock_timestamp()-interval '40 days')`,
-        [id, digest(`legacy-browser-${String(index)}`), digest(`legacy-state-${String(index)}`)],
+        [
+          id,
+          digest(`legacy-browser-${String(index)}`),
+          digest(`legacy-state-${String(index)}`),
+        ],
       );
     const first = await retention.reapTransientData();
     expect(first.authenticationLegacyAttemptsDeleted).toBe(2);

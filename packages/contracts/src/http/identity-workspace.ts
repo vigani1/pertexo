@@ -78,8 +78,18 @@ export const accountSecurityLinkStartRequestSchema = z
   .object({
     provider: authenticationProviderSchema,
     existingMethod: z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('password'), password: z.string().min(1).max(128) }).strict(),
-      z.object({ kind: z.literal('social'), provider: authenticationProviderSchema }).strict(),
+      z
+        .object({
+          kind: z.literal('password'),
+          password: z.string().min(1).max(128),
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal('social'),
+          provider: authenticationProviderSchema,
+        })
+        .strict(),
     ]),
   })
   .strict();

@@ -164,7 +164,9 @@ export class WorkerModule {
               store,
               mail.pollIntervalMillis,
               () => {
-                dependencies.logger.error('authentication_mail.delivery_cycle_failed');
+                dependencies.logger.error(
+                  'authentication_mail.delivery_cycle_failed',
+                );
               },
             );
           },

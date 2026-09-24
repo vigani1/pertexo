@@ -17,9 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe(
-      '0107_legacy_method_migration_attempts.sql',
-    );
+    expect(expected.at(-1)).toBe('0107_legacy_method_migration_attempts.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
