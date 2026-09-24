@@ -1,7 +1,7 @@
 // Input feedback rules shared by the sign-in family and account forms. Each
 // names the field, says what's wrong and how to fix it.
 
-export const MAXIMUM_PASSWORD_LENGTH = 128;
+const MAXIMUM_PASSWORD_LENGTH = 128;
 /** Used until the server's capabilities say otherwise. */
 export const DEFAULT_MINIMUM_PASSWORD_LENGTH = 12;
 

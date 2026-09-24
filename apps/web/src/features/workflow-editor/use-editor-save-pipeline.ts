@@ -85,7 +85,7 @@ export function useEditorSavePipeline({
   return { flushSave, ensureSaved } as const;
 }
 
-export function editorSaveErrorMessage(error: unknown): string {
+function editorSaveErrorMessage(error: unknown): string {
   if (!isApiError(error)) return 'Your changes couldn’t be saved.';
   if (error.kind === 'network' || error.kind === 'timeout')
     return 'We couldn’t confirm the save. Your changes are still here.';

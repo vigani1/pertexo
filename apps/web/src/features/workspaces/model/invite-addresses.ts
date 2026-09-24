@@ -1,6 +1,6 @@
 import { workspaceInvitationCreateRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 
-export const MAX_INVITES_AT_ONCE = 20;
+const MAX_INVITES_AT_ONCE = 20;
 
 export type AbsorbedAddresses = Readonly<{
   emails: readonly string[];

@@ -8,9 +8,5 @@ export {
   type WorkflowIssuesView,
 } from './model/issues-state';
 export type { WorkflowValidationTarget } from './model/validation-target';
-export type { PublicationReceipt } from './mutations/use-workflow-publication';
 export { useAutoValidation } from './use-auto-validation';
-export {
-  useWorkflowCommandSession,
-  type WorkflowCommandSession,
-} from './use-workflow-command-session';
+export { useWorkflowCommandSession } from './use-workflow-command-session';

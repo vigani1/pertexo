@@ -2,7 +2,7 @@ import { formatDate, formatDateTime } from '@/lib/format-time';
 import type { RunPresetRange, RunSearch } from './run-search';
 import { describeRunStatus, describeTrigger } from './run-status';
 
-export type RunFilterChipKey =
+type RunFilterChipKey =
   'workflowId' | 'workflowNamePrefix' | 'status' | 'time' | 'trigger';
 
 export type RunFilterChip = Readonly<{ key: RunFilterChipKey; label: string }>;

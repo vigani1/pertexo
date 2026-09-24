@@ -27,7 +27,7 @@ export type Notifications = Readonly<{
   dismiss(id: string): void;
 }>;
 
-export type NotificationAction = Readonly<{
+type NotificationAction = Readonly<{
   label: string;
   onClick: () => void;
 }>;

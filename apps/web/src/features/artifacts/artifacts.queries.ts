@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getArtifactMetadata } from './artifacts.api';
 
-export const artifactKeys = {
+const artifactKeys = {
   metadata: (userId: string, workspaceId: string, artifactId: string) =>
     [
       'identity',

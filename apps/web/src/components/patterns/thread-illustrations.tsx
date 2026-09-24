@@ -87,36 +87,3 @@ export function BarredThread({ className }: IllustrationProps) {
     </svg>
   );
 }
-
-/** A thread with a pulsing gap: the connection is interrupted. */
-export function GappedThread({ className }: IllustrationProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 210 90"
-      className={cn(frame, className)}
-    >
-      <path
-        d="M20 45h66"
-        stroke="var(--muted-foreground)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M92 45h26"
-        stroke="var(--warning)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeDasharray="1 5"
-        className="motion-safe:animate-blink"
-      />
-      <path
-        d="M124 45h66"
-        stroke="var(--muted-foreground)"
-        strokeOpacity="0.5"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}

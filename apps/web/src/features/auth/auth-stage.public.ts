@@ -3,7 +3,6 @@
 export {
   AuthLens,
   AuthLensDescription,
-  AuthLensFooter,
   AuthLensTitle,
 } from './components/stage/auth-lens';
 export { AuthStage } from './components/stage/auth-stage';

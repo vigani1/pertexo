@@ -35,7 +35,7 @@ export const workflowRunKeys = {
 const COUNT_PAGE_SIZE = 100;
 const STATUS_COUNT_REFRESH_MS = 15_000;
 const DAY_MS = 86_400_000;
-export const LOOM_RUN_CAP = 300;
+const LOOM_RUN_CAP = 300;
 
 export type StatusSample = Readonly<{
   count: number;

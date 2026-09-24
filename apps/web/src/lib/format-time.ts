@@ -98,15 +98,3 @@ export function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes)}:${String(seconds % 60).padStart(2, '0')}`;
 }
-
-/** Duration between two instants; `end` defaults to now for live work. */
-export function elapsedMs(
-  start: string | null | undefined,
-  end: string | null | undefined,
-  now = Date.now(),
-): number | undefined {
-  const startDate = toDate(start);
-  if (startDate === undefined) return undefined;
-  const endDate = toDate(end);
-  return (endDate?.getTime() ?? now) - startDate.getTime();
-}

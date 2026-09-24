@@ -8,7 +8,7 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { cn } from '@/lib/utils';
 
 /** How long the canvas weave-in takes before the stamp presses in. */
-export const WEAVE_IN_MS = 1_450;
+const WEAVE_IN_MS = 1_450;
 
 /**
  * "v8 is live", pressed in once the canvas has woven the new version, with

@@ -5,9 +5,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-
  * every other step is one more than its deepest predecessor. Cycles (which
  * validation rejects anyway) are cut rather than looping forever.
  */
-export function stepDepths(
-  graph: WorkflowGraphContract,
-): ReadonlyMap<string, number> {
+function stepDepths(graph: WorkflowGraphContract): ReadonlyMap<string, number> {
   const incoming = new Map<string, string[]>();
   for (const edge of graph.edges) {
     const sources = incoming.get(edge.target.nodeId) ?? [];

@@ -71,7 +71,7 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
 }
 
 /** `timeoutMillis` → "Timeout millis", `max_items` → "Max items". */
-export function humanizeKey(key: string): string {
+function humanizeKey(key: string): string {
   const words = key
     .replaceAll(/([a-z0-9])([A-Z])/gu, '$1 $2')
     .replaceAll(/[_-]+/gu, ' ')
@@ -140,7 +140,7 @@ export function withConfigValue(
   );
 }
 
-export function parseJson(value: string): unknown {
+function parseJson(value: string): unknown {
   try {
     return JSON.parse(value) as unknown;
   } catch {
@@ -148,7 +148,7 @@ export function parseJson(value: string): unknown {
   }
 }
 
-export function isJsonObject(value: unknown): value is NodeConfig {
+function isJsonObject(value: unknown): value is NodeConfig {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     return false;
   return Object.values(value).every(isJsonValue);

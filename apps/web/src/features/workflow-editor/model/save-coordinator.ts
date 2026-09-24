@@ -18,7 +18,7 @@ export type SaveCoordinatorTransport = Readonly<{
  * Quiet time after the last edit before a save. Live-applied inspector edits
  * land here too, so a busy session stays well inside the draft-save limit.
  */
-export const SAVE_DEBOUNCE_MS = 1_000;
+const SAVE_DEBOUNCE_MS = 1_000;
 
 export type SaveCoordinator = Readonly<{
   schedule: () => void;

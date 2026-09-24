@@ -6,7 +6,7 @@ import { describeStep } from '@/features/catalog/presentation.public';
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 type Position = Readonly<{ x: number; y: number }>;
 
-export interface WorkflowNodeData extends Record<string, unknown> {
+interface WorkflowNodeData extends Record<string, unknown> {
   label: string | undefined;
   definitionKey: string;
   definitionVersion: number;
@@ -21,7 +21,7 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   loop: Readonly<{ maxIterations: number; maxConcurrency: number }> | null;
 }
 
-export interface WorkflowEdgeData extends Record<string, unknown> {
+interface WorkflowEdgeData extends Record<string, unknown> {
   sourceLabel: string;
   targetLabel: string;
   /** The last successful test ran along this connection. */
@@ -49,7 +49,7 @@ export type CanvasDecorations = Readonly<{
   dragPositions: ReadonlyMap<string, Position>;
 }>;
 
-export const noCanvasDecorations: CanvasDecorations = Object.freeze({
+const noCanvasDecorations: CanvasDecorations = Object.freeze({
   issuesByNode: new Map<string, number>(),
   flowingEdgeIds: new Set<string>(),
   weaveOrder: null,

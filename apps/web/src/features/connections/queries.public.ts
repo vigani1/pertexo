@@ -2,7 +2,4 @@ export {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
 } from './connections.queries';
-export {
-  parseConnectionsSearch,
-  type ConnectionsSearch,
-} from './model/connections-search';
+export { parseConnectionsSearch } from './model/connections-search';

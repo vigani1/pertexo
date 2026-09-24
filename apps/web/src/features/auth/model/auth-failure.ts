@@ -24,7 +24,7 @@ export function isEmailNotVerified(error: unknown): boolean {
 }
 
 /** The request may have been applied even though no answer arrived. */
-export function isLostResponse(error: unknown): boolean {
+function isLostResponse(error: unknown): boolean {
   const kind = nativeError(error)?.kind;
   return kind === 'network' || kind === 'timeout';
 }

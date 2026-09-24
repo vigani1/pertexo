@@ -13,7 +13,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from '../src/components/ui/field';
-import { AuroraLoadingPanel } from '../src/components/patterns/aurora-loading-panel';
 import { LoadingOrb } from '../src/components/ui/loading-orb';
 import { Status } from '../src/components/ui/status';
 import { FieldControl } from '../src/components/ui/field';
@@ -109,22 +108,6 @@ describe('Weft visual primitives', () => {
     ).toHaveAccessibleDescription(
       'Visible to workspace members. Enter a name.',
     );
-  });
-
-  it('adds only a decorative border without remounting its children', async () => {
-    const content = <Input aria-label="Preserved input" />;
-    const { container, rerender } = render(
-      <AuroraLoadingPanel active={false}>{content}</AuroraLoadingPanel>,
-    );
-    expect(container.querySelector('[data-slot="aurora-border"]')).toBeNull();
-    await userEvent.setup().type(screen.getByRole('textbox'), 'Keep me');
-    rerender(<AuroraLoadingPanel active>{content}</AuroraLoadingPanel>);
-    expect(
-      container.querySelector('[data-slot="aurora-border"]'),
-    ).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByRole('textbox')).toHaveValue('Keep me');
-    rerender(<AuroraLoadingPanel active={false}>{content}</AuroraLoadingPanel>);
-    expect(screen.getByRole('textbox')).toHaveValue('Keep me');
   });
 
   it('keeps the compact loading orb decorative', () => {

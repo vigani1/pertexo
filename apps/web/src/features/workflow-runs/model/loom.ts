@@ -42,7 +42,7 @@ export type LoomModel = Readonly<{
   ticks: readonly LoomTick[];
 }>;
 
-export const LOOM_MAX_LANES = 8;
+const LOOM_MAX_LANES = 8;
 const TICK_STEPS_MS = [
   60_000, 300_000, 600_000, 900_000, 1_800_000, 3_600_000, 7_200_000,
   10_800_000, 14_400_000, 21_600_000, 43_200_000, 86_400_000, 172_800_000,
@@ -161,7 +161,7 @@ export type LoomLayout = Readonly<{
  * component overlays `CoreOrb` there): 190 px wide on roomy canvases, 72 px
  * below 640 px, with the orb's sphere radius at 36 % of its box.
  */
-export const LOOM_COMPACT_WIDTH = 640;
+const LOOM_COMPACT_WIDTH = 640;
 
 export function loomLayout(
   model: Pick<LoomModel, 'lanes'>,

@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
 /** Commands canvas parts trigger themselves, such as an edge's ✕. */
-export type CanvasActions = Readonly<{
+type CanvasActions = Readonly<{
   editable: boolean;
   removeEdge: (edgeId: string) => void;
 }>;
