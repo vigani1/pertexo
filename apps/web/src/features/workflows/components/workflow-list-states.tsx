@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/empty';
 import { StatusGlyph } from '@/components/ui/status';
 import { describeReadError } from '@/lib/api/api-error-copy';
-import { formatClock } from '@/lib/format-time';
 import type { WorkflowView } from '../model/workflow-list-view';
 
 export function WorkflowListError({
@@ -33,33 +32,6 @@ export function WorkflowListError({
         </Button>
       </EmptyActions>
     </Empty>
-  );
-}
-
-/** A failed background refresh: the list stays, with one amber "as of" line. */
-export function WorkflowListStaleLine({
-  updatedAt,
-  retrying,
-  onRetry,
-}: Readonly<{ updatedAt: number; retrying: boolean; onRetry: () => void }>) {
-  return (
-    <p
-      role="status"
-      className="flex flex-wrap items-center gap-x-2 font-mono text-xs text-warning"
-    >
-      <StatusGlyph tone="attention" />
-      Couldn’t refresh. Showing workflows as of{' '}
-      {formatClock(new Date(updatedAt).toISOString())}.
-      <Button
-        type="button"
-        variant="link"
-        size="xs"
-        disabled={retrying}
-        onClick={onRetry}
-      >
-        Retry
-      </Button>
-    </p>
   );
 }
 

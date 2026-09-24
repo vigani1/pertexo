@@ -14,8 +14,8 @@ import {
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-  AuthStatusLine,
 } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 function nameProblem(value: string): string | undefined {
   if (value.trim().length === 0)
@@ -111,7 +111,7 @@ export function SignUpLens({
           {...fields.inputProps('password')}
         />
         {failure === undefined ? null : (
-          <AuthStatusLine tone="failure">{failure}</AuthStatusLine>
+          <Notice tone="destructive">{failure}</Notice>
         )}
         <ProgressButton
           type="submit"

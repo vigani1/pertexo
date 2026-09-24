@@ -152,7 +152,7 @@ describe('connections page', () => {
       queryKey: ['identity', userId, 'workspace', workspaceId, 'connections'],
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The latest refresh didn’t go through',
+      /Couldn’t refresh. Showing results from/u,
     );
     expect(screen.getByText('Primary Slack')).toBeVisible();
 

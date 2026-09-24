@@ -68,7 +68,6 @@ export function RunResults({
       {refreshing ? <SkeletonThread className="-mt-2" /> : null}
       {query.isError && !query.isFetchNextPageError ? (
         <StaleLine
-          className="rounded-md border border-warning/25 bg-warning/6 px-3 py-2 text-sm"
           updatedAt={query.dataUpdatedAt}
           retrying={query.isRefetching}
           onRetry={() => void query.refetch()}

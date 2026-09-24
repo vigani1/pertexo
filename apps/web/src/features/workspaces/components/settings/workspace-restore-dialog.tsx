@@ -55,7 +55,7 @@ export function WorkspaceRestoreDialog({
         {error === undefined ? null : (
           <Notice
             role="alert"
-            tone={retryAvailable ? 'attention' : 'failure'}
+            tone={retryAvailable ? 'warning' : 'destructive'}
             className="mt-5"
           >
             {error}

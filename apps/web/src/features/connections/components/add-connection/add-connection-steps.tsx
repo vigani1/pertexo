@@ -104,7 +104,7 @@ export function NameStep({
         <dd>{PROVIDERS[provider].usedBy}</dd>
       </dl>
       {commandError === undefined ? null : (
-        <Notice role="alert" tone={uncertain ? 'attention' : 'failure'}>
+        <Notice role="alert" tone={uncertain ? 'warning' : 'destructive'}>
           {commandError}
         </Notice>
       )}

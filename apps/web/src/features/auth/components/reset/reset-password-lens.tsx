@@ -16,8 +16,8 @@ import {
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-  AuthStatusLine,
 } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 /** New password plus confirmation for a one-time reset link. */
 export function ResetPasswordLens({
@@ -88,7 +88,7 @@ export function ResetPasswordLens({
           {...fields.inputProps('confirmation')}
         />
         {failure === undefined ? null : (
-          <AuthStatusLine tone="failure">{failure}</AuthStatusLine>
+          <Notice tone="destructive">{failure}</Notice>
         )}
         <ProgressButton
           type="submit"

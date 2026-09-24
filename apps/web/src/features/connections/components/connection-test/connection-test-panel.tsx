@@ -50,7 +50,7 @@ function TestOutcome({
     const copy = describeTestOutcome(provider, test.result.outcome);
     return (
       <Notice
-        tone={test.result.outcome.ok ? 'success' : 'failure'}
+        tone={test.result.outcome.ok ? 'success' : 'destructive'}
         title={copy.title}
       >
         {copy.detail}
@@ -59,7 +59,7 @@ function TestOutcome({
   }
   if (test.error !== undefined)
     return (
-      <Notice tone={test.phase === 'unsure' ? 'attention' : 'failure'}>
+      <Notice tone={test.phase === 'unsure' ? 'warning' : 'destructive'}>
         {test.error}
       </Notice>
     );

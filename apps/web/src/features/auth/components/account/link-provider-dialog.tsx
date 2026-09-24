@@ -22,7 +22,7 @@ import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useLatestRequest } from '../../use-latest-request';
 import { SocialProviderGrid } from '../social/social-provider-grid';
 import { providerName, type SocialProvider } from '../social/social-provider';
-import { AuthStatusLine } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 type Method = AccountSecurityResponse['methods'][number];
 
@@ -197,7 +197,7 @@ export function LinkProviderDialog({
               </p>
             )}
             {failure === undefined ? null : (
-              <AuthStatusLine tone="failure">{failure}</AuthStatusLine>
+              <Notice tone="destructive">{failure}</Notice>
             )}
             <div className="mt-2 flex flex-wrap justify-end gap-2">
               <Button type="button" variant="ghost" onClick={close}>

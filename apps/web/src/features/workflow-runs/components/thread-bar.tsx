@@ -1,6 +1,7 @@
 import type { StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import { toneLineStyle, toneTextClass } from './tone-styles';
+import { statusToneText } from '@/components/ui/status-tone';
+import { toneLineStyle } from './tone-styles';
 
 /**
  * A run's duration as a thread: its length is the run's share of the longest
@@ -19,7 +20,7 @@ export function ThreadBar({
       aria-hidden="true"
       className={cn(
         'relative block h-3 w-full',
-        toneTextClass[tone],
+        statusToneText[tone],
         className,
       )}
     >

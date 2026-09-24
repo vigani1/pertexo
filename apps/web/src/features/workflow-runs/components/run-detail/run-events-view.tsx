@@ -1,4 +1,5 @@
 import type { WorkflowRunEvent } from '@pertexo/contracts/schemas/workflow-runs';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { describeRunEvent } from '../../model/event-copy';
@@ -28,9 +29,7 @@ export function RunEventsView({
   return (
     <div className="flex flex-col gap-3">
       {recoveryMessage === undefined ? null : (
-        <p role="status" className="text-sm text-warning">
-          {recoveryMessage}
-        </p>
+        <Notice tone="warning">{recoveryMessage}</Notice>
       )}
       {truncatedCount > 0 ? (
         <p className="text-xs text-subtle-foreground">

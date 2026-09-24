@@ -5,7 +5,6 @@ export {
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-  AuthStatusLine,
 } from './components/stage/auth-lens';
 export { AuthStage } from './components/stage/auth-stage';
 export { Wordmark } from './components/stage/wordmark';

@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FieldGroup } from '@/components/ui/field';
@@ -41,29 +42,11 @@ import {
 export type ListRefresh = Readonly<{
   failed: boolean;
   pending: boolean;
+  /** When the list on screen was fetched, in epoch milliseconds. */
+  updatedAt: number;
   /** Refetches the list and resolves with the latest destinations. */
   reload: () => Promise<readonly FailureNotificationDestinationResponse[]>;
 }>;
-
-function StaleListNotice({
-  listRefresh,
-}: Readonly<{ listRefresh: ListRefresh }>) {
-  return (
-    <Notice tone="attention">
-      The destination list couldn’t refresh, so it may be out of date. Your
-      edits here are kept.{' '}
-      <Button
-        type="button"
-        size="xs"
-        variant="ghost"
-        disabled={listRefresh.pending}
-        onClick={() => void listRefresh.reload()}
-      >
-        {listRefresh.pending ? 'Retrying…' : 'Retry'}
-      </Button>
-    </Notice>
-  );
-}
 
 /** The version and identifier, for support rather than for deciding. */
 function DestinationDetails({
@@ -219,7 +202,13 @@ export function DestinationForm({
       </SheetHeader>
       <SheetBody className="flex flex-col gap-5">
         {listRefresh.failed ? (
-          <StaleListNotice listRefresh={listRefresh} />
+          <StaleLine
+            updatedAt={listRefresh.updatedAt}
+            retrying={listRefresh.pending}
+            onRetry={() => void listRefresh.reload()}
+          >
+            Your edits here are kept.
+          </StaleLine>
         ) : null}
         <FieldGroup>
           <DestinationFields
@@ -240,24 +229,25 @@ export function DestinationForm({
         {mutation.isError && !hasFieldIssues ? (
           <Notice
             role="alert"
-            tone={uncertain || conflict ? 'attention' : 'failure'}
+            tone={uncertain || conflict ? 'warning' : 'destructive'}
+            action={
+              conflict ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="default"
+                  disabled={listRefresh.pending}
+                  onClick={() => void rebaseOnLatest()}
+                >
+                  Load latest version
+                </Button>
+              ) : undefined
+            }
           >
             {destinationCommandError(
               mutation.error,
               editing ? 'update' : 'create',
             )}
-            {conflict ? (
-              <Button
-                type="button"
-                size="xs"
-                variant="default"
-                className="mt-2"
-                disabled={listRefresh.pending}
-                onClick={() => void rebaseOnLatest()}
-              >
-                Load latest version
-              </Button>
-            ) : null}
           </Notice>
         ) : null}
         {destination === undefined || expectedVersion === undefined ? null : (

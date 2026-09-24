@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { DownloadIcon, FileTextIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { describeReadError } from '@/lib/api/api-error-copy';
@@ -149,9 +150,9 @@ function ArtifactDownloadScope({
         </p>
       )}
       {error === undefined ? null : (
-        <p role="alert" className="mt-2 text-xs text-destructive">
+        <Notice tone="destructive" className="mt-2">
           {error}
-        </p>
+        </Notice>
       )}
     </div>
   );

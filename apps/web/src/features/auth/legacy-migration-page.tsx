@@ -15,7 +15,6 @@ import {
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-  AuthStatusLine,
 } from './components/stage/auth-lens';
 import { AuthStage } from './components/stage/auth-stage';
 import { LensLoading } from './components/stage/lens-states';
@@ -26,6 +25,7 @@ import {
 import { formatCountdown } from '@/lib/format-time';
 import { useCountdown } from '@/lib/use-countdown';
 import { useLatestRequest } from './use-latest-request';
+import { Notice } from '@/components/ui/notice';
 
 const WINDOW_MS = 5 * 60_000;
 
@@ -102,20 +102,20 @@ export function LegacyMigrationPage({
         </AuthLensDescription>
         <MigrationSteps current={windowOpen ? 'confirm' : 'choose'} />
         {!available ? (
-          <AuthStatusLine tone="attention" className="mt-6">
+          <Notice tone="warning" className="mt-6">
             Automatic recovery isn’t available here. Ask your Pertexo operator
             to review your account.
-          </AuthStatusLine>
+          </Notice>
         ) : windowOpen ? (
           <div className="mt-6 flex flex-col gap-3">
-            <AuthStatusLine tone="waiting">
+            <Notice tone="info" glyph="waiting">
               You have{' '}
               <span className="font-mono tabular-nums">
                 {formatCountdown(timeWindow.remainingSeconds)}
               </span>{' '}
               to confirm your old account. Then {providerName(started.provider)}{' '}
               confirms your new sign-in.
-            </AuthStatusLine>
+            </Notice>
             <Button
               type="button"
               variant="primary"
@@ -146,9 +146,9 @@ export function LegacyMigrationPage({
         ) : (
           <div className="mt-6 flex flex-col gap-3">
             {windowClosed ? (
-              <AuthStatusLine tone="timeout">
+              <Notice tone="destructive" glyph="timeout" role="status">
                 The 5-minute window closed. Choose your new sign-in again.
-              </AuthStatusLine>
+              </Notice>
             ) : null}
             <SocialProviderGrid
               label="Choose your new sign-in"
@@ -159,9 +159,9 @@ export function LegacyMigrationPage({
           </div>
         )}
         {failure === undefined ? null : (
-          <AuthStatusLine tone="failure" className="mt-4">
+          <Notice tone="destructive" className="mt-4">
             {failure}
-          </AuthStatusLine>
+          </Notice>
         )}
         <AuthLensFooter>
           <Link to="/login">Back to sign in</Link>

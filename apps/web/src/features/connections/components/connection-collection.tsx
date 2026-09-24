@@ -6,12 +6,11 @@ import type {
   InfiniteData,
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/ui/status';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { formatClock } from '@/lib/format-time';
 import { ConnectionList } from './connection-list';
 
 type ConnectionsQuery = UseInfiniteQueryResult<
@@ -38,32 +37,6 @@ function ListSkeleton() {
           />
         </div>
       ))}
-    </div>
-  );
-}
-
-/** "Showing connections from 14:02" after a failed background refresh. */
-function StaleNotice({ query }: Readonly<{ query: ConnectionsQuery }>) {
-  return (
-    <div
-      role="alert"
-      className="flex flex-wrap items-center gap-2 text-sm text-warning"
-    >
-      <StatusGlyph tone="attention" />
-      <span className="text-foreground">
-        Showing connections from{' '}
-        {formatClock(new Date(query.dataUpdatedAt).toISOString())}. The latest
-        refresh didn’t go through.
-      </span>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        disabled={query.isRefetching}
-        onClick={() => void query.refetch()}
-      >
-        {query.isRefetching ? 'Retrying…' : 'Retry'}
-      </Button>
     </div>
   );
 }
@@ -118,7 +91,11 @@ export function ConnectionCollection({
         ) : null}
       </div>
       {query.isError && items.length > 0 && !query.isFetchNextPageError ? (
-        <StaleNotice query={query} />
+        <StaleLine
+          updatedAt={query.dataUpdatedAt}
+          retrying={query.isRefetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       {query.isPending ? (
         <ListSkeleton />

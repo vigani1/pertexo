@@ -163,7 +163,7 @@ export function WorkspaceNameField({
       {command.error === undefined ? null : (
         <Notice
           role="alert"
-          tone={conflict || command.retryAvailable ? 'attention' : 'failure'}
+          tone={conflict || command.retryAvailable ? 'warning' : 'destructive'}
         >
           {latestLoaded
             ? workspace.name === editing.startedAs

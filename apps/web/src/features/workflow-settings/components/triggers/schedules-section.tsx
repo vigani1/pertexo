@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
+import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useScheduleCommand } from '../../mutations/use-trigger-commands';
@@ -56,9 +57,7 @@ export function SchedulesSection({
   return (
     <>
       {schedule.error === undefined ? null : (
-        <p role="alert" className="text-sm text-destructive">
-          {schedule.error}
-        </p>
+        <Notice tone="destructive">{schedule.error}</Notice>
       )}
       {triggers.map((trigger) => (
         <ScheduleCard

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
 import { KeyRoundIcon, RefreshCwIcon, WebhookIcon } from 'lucide-react';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status } from '@/components/ui/status';
@@ -67,24 +68,23 @@ export function WebhookCard({
         </p>
       )}
       {unresolved === undefined ? null : (
-        <div
+        <Notice
           role="alert"
-          className="flex flex-col items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm"
+          tone="warning"
+          action={
+            <Button
+              type="button"
+              size="sm"
+              disabled={pendingCommand !== undefined}
+              onClick={onRetryUnresolved}
+            >
+              {`Retry ${WEBHOOK_ACTIONS[unresolved.command]}`}
+            </Button>
+          }
         >
-          <p className="text-warning">
-            We couldn’t confirm whether {WEBHOOK_ACTIONS[unresolved.command]}{' '}
-            went through. Retry that first — it’s safe and won’t repeat the
-            change.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            disabled={pendingCommand !== undefined}
-            onClick={onRetryUnresolved}
-          >
-            {`Retry ${WEBHOOK_ACTIONS[unresolved.command]}`}
-          </Button>
-        </div>
+          We couldn’t confirm whether {WEBHOOK_ACTIONS[unresolved.command]} went
+          through. Retry that first — it’s safe and won’t repeat the change.
+        </Notice>
       )}
       {editable ? (
         <div className="flex flex-wrap gap-2">

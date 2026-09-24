@@ -8,6 +8,7 @@ import type {
   InfiniteData,
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -16,7 +17,6 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/api-error-copy';
@@ -98,18 +98,11 @@ export function MembersPanel({
   return (
     <div className="flex flex-col gap-3">
       {query.isError && !query.isFetchNextPageError ? (
-        <Notice role="alert" tone="attention">
-          The latest refresh didn’t go through, so members may be out of date.{' '}
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            disabled={query.isRefetching}
-            onClick={() => void query.refetch()}
-          >
-            {query.isRefetching ? 'Retrying…' : 'Retry'}
-          </Button>
-        </Notice>
+        <StaleLine
+          updatedAt={query.dataUpdatedAt}
+          retrying={query.isRefetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       <MemberRoleManagement
         apiClient={apiClient}

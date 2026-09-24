@@ -78,7 +78,7 @@ function OverviewActions({
   return (
     <>
       {reconnect ? (
-        <Notice tone="attention" title="This connection needs reconnecting.">
+        <Notice tone="warning" title="This connection needs reconnecting.">
           {PROVIDERS[connection.providerKey].name} stopped accepting its{' '}
           {PROVIDERS[connection.providerKey].credential}. Replace it to get the
           steps that use it working again.

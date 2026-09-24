@@ -6,7 +6,7 @@ import {
   type ThreadSegment,
   type ThreadView,
 } from '../../model/thread-view';
-import { toneTextClass } from '../tone-styles';
+import { statusToneText } from '@/components/ui/status-tone';
 
 function percent(value: number): string {
   return `${String(Math.round(value * 100) / 100)}%`;
@@ -128,7 +128,7 @@ export function ThreadTrack({
             key={`${segment.kind}-${String(segment.startMs)}-${String(index)}`}
             className={cn(
               'absolute top-1/2 -translate-y-1/2',
-              toneTextClass[segment.tone],
+              statusToneText[segment.tone],
             )}
             style={{
               left: percent(placement.left),

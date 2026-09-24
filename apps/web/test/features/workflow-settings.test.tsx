@@ -207,7 +207,7 @@ describe('workflow settings tab', () => {
     await queryClient.refetchQueries({ queryKey: detailKey });
     expect(
       (
-        await screen.findAllByText(/Couldn’t refresh. Showing what loaded at/u)
+        await screen.findAllByText(/Couldn’t refresh. Showing results from/u)
       )[0],
     ).toBeVisible();
     expect(within(region('Identity')).getByText('Daily control')).toBeVisible();
@@ -219,7 +219,7 @@ describe('workflow settings tab', () => {
     await queryClient.refetchQueries({ queryKey: detailKey });
     await waitFor(() => {
       expect(
-        screen.queryByText(/Couldn’t refresh. Showing what loaded at/u),
+        screen.queryByText(/Couldn’t refresh. Showing results from/u),
       ).not.toBeInTheDocument();
     });
     expect(

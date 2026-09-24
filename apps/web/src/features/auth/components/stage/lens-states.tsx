@@ -2,12 +2,8 @@ import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import {
-  AuthLens,
-  AuthLensFooter,
-  AuthLensTitle,
-  AuthStatusLine,
-} from './auth-lens';
+import { AuthLens, AuthLensFooter, AuthLensTitle } from './auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 /**
  * The lens while Pertexo checks which sign-in methods are available. The
@@ -53,9 +49,9 @@ export function LensUnavailable({
   return (
     <AuthLens pending={retrying} aria-labelledby={id}>
       <AuthLensTitle id={id}>{title}</AuthLensTitle>
-      <AuthStatusLine tone="attention" className="mt-5">
+      <Notice tone="warning" className="mt-5">
         {children}
-      </AuthStatusLine>
+      </Notice>
       {onRetry === undefined ? null : (
         <Button
           type="button"

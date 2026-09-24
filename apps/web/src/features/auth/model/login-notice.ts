@@ -1,3 +1,4 @@
+import type { NoticeTone } from '@/components/ui/notice';
 import type { StatusTone } from '@/components/ui/status';
 
 /** What an email link or provider callback told the sign-in page. */
@@ -13,7 +14,9 @@ export type LoginLinkOutcome = Readonly<{
 }>;
 
 export type LoginNotice = Readonly<{
-  tone: Extract<StatusTone, 'success' | 'waiting' | 'failure' | 'attention'>;
+  tone: NoticeTone;
+  /** A more specific thread than the tone's own, e.g. waiting. */
+  glyph?: Extract<StatusTone, 'waiting'>;
   text: string;
   /** An expired verification link can ask for a fresh one. */
   offersNewVerificationLink?: true;
@@ -30,35 +33,36 @@ export function loginNoticeFrom(
     };
   if (outcome.emailChangePending === true)
     return {
-      tone: 'waiting',
+      tone: 'info',
+      glyph: 'waiting',
       text: 'Old address confirmed. Check your new address for the final verification link.',
     };
   if (outcome.verificationInvalid === true)
     return {
-      tone: 'failure',
+      tone: 'destructive',
       text: 'That verification link is invalid, expired, or already used.',
       offersNewVerificationLink: true,
     };
   if (outcome.linkReauthenticate === true)
     return {
-      tone: 'attention',
+      tone: 'warning',
       text: 'Sign in again, then check your sign-in methods. A link that already finished isn’t repeated.',
     };
   if (outcome.migrationReauthenticate === true)
     return {
-      tone: 'attention',
+      tone: 'warning',
       text: 'Sign in with your new method, then check your workspaces.',
     };
   if (outcome.migrationFailed === true)
     return {
-      tone: 'failure',
+      tone: 'destructive',
       text: 'Account recovery didn’t finish and no access moved. Start again, or ask your Pertexo operator to review your account.',
     };
   if (outcome.verified === true)
     return { tone: 'success', text: 'Email verified. You can sign in now.' };
   if (outcome.socialError === true)
     return {
-      tone: 'failure',
+      tone: 'destructive',
       text: 'Sign-in with that provider didn’t finish. Try again, or use another method.',
     };
   return undefined;
