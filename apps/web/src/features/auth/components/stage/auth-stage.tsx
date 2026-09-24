@@ -8,7 +8,8 @@ import { Wordmark } from './wordmark';
 type StageLayout = 'docked' | 'centered';
 
 // Below 900px the Core becomes a 180px band above the lens and the threads
-// turn off; above it the Core sits in the stage and the threads flow in.
+// turn off; above it the Core sits in the stage and the threads flow in. Its
+// size is capped by the height so it always ends above the product facts.
 const CORE_SLOT: Record<StageLayout, string> = {
   docked: 'min-[900px]:left-[34%]',
   centered: 'min-[900px]:left-1/2',
@@ -93,7 +94,7 @@ export function AuthStage({
         ref={coreRef}
         aria-hidden="true"
         className={cn(
-          'pointer-events-none relative mx-auto size-[11.25rem] min-[900px]:fixed min-[900px]:top-1/2 min-[900px]:mx-0 min-[900px]:size-[66vmin] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2',
+          'pointer-events-none relative mx-auto size-[11.25rem] min-[900px]:fixed min-[900px]:top-[40%] min-[900px]:mx-0 min-[900px]:size-[min(66vmin,calc(120dvh-27rem))] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2',
           CORE_SLOT[layout],
         )}
       >
