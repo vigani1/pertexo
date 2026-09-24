@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -114,13 +114,21 @@ function installIdentity(workspaces: readonly object[] = []) {
   );
 }
 
-async function openCreation(label: string | RegExp) {
-  await userEvent.setup().click(
-    await screen.findByRole('button', {
-      name: label,
-    }),
-  );
-  return screen.findByRole('dialog', { name: 'Create a workspace' });
+/** The inline first-workspace form, or the sheet for another workspace. */
+async function openCreation(kind: 'first' | 'another') {
+  if (kind === 'first')
+    return screen.findByRole('region', { name: 'Create your workspace' });
+  await userEvent
+    .setup()
+    .click(await screen.findByRole('button', { name: 'New workspace' }));
+  return screen.findByRole('dialog', { name: 'New workspace' });
+}
+
+async function revealHandle(form: HTMLElement) {
+  await userEvent
+    .setup()
+    .click(within(form).getByRole('button', { name: 'Edit handle' }));
+  return within(form).getByLabelText('Handle');
 }
 
 describe('workspace creation', () => {
@@ -150,11 +158,10 @@ describe('workspace creation', () => {
     );
     const app = renderApp('/workspaces', { strict: true });
 
-    const dialog = await openCreation('Create your first workspace');
+    const dialog = await openCreation('first');
     const name = within(dialog).getByLabelText('Workspace name');
-    const slug = within(dialog).getByLabelText('Workspace slug');
     await userEvent.setup().type(name, 'Signal Operations');
-    expect(slug).toHaveValue('signal-operations');
+    expect(within(dialog).getByText('signal-operations')).toBeVisible();
     await userEvent
       .setup()
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
@@ -191,10 +198,12 @@ describe('workspace creation', () => {
     );
     renderApp('/workspaces');
 
-    const dialog = await openCreation('Create workspace');
+    const dialog = await openCreation('another');
     const name = within(dialog).getByLabelText('Workspace name');
-    const slug = within(dialog).getByLabelText('Workspace slug');
     await userEvent.setup().type(name, 'Initial Team');
+    const slug = await revealHandle(dialog);
+    expect(slug).toHaveFocus();
+    expect(slug).toHaveValue('initial-team');
     await userEvent.setup().clear(slug);
     await userEvent.setup().type(slug, 'chosen-slug');
     await userEvent.setup().clear(name);
@@ -208,33 +217,57 @@ describe('workspace creation', () => {
     ).not.toHaveLength(0);
   });
 
-  it('validates on blur and submit, focuses the first invalid field, and cancels cleanly', async () => {
+  it('validates on blur and submit and focuses the first invalid field', async () => {
     installIdentity();
     renderApp('/workspaces');
-    const dialog = await openCreation('Create your first workspace');
-    const name = within(dialog).getByLabelText('Workspace name');
-    const slug = within(dialog).getByLabelText('Workspace slug');
+    const form = await openCreation('first');
+    const name = within(form).getByLabelText('Workspace name');
 
     await userEvent.setup().click(name);
     await userEvent.setup().tab();
-    expect(within(dialog).getByText(/Enter a workspace name/u)).toBeVisible();
+    expect(within(form).getByText(/Give the workspace a name/u)).toBeVisible();
+    expect(name).toHaveAttribute('aria-invalid', 'true');
+    const slug = await revealHandle(form);
     await userEvent.setup().type(slug, 'Not valid');
     await userEvent
       .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
+      .click(within(form).getByRole('button', { name: 'Create workspace' }));
     expect(name).toHaveFocus();
-    expect(name).toHaveAttribute('aria-invalid', 'true');
     expect(slug).toHaveAttribute('aria-invalid', 'true');
+
+    await userEvent.setup().type(name, 'Valid name');
+    expect(name).not.toHaveAttribute('aria-invalid');
+    await userEvent
+      .setup()
+      .click(within(form).getByRole('button', { name: 'Create workspace' }));
+    expect(slug).toHaveFocus();
+  });
+
+  it('reveals an invalid handle on submit and cancels the sheet cleanly', async () => {
+    installIdentity([existingWorkspace]);
+    renderApp('/workspaces');
+    const sheet = await openCreation('another');
+    await userEvent
+      .setup()
+      .type(within(sheet).getByLabelText('Workspace name'), '!!!');
+    await userEvent
+      .setup()
+      .click(within(sheet).getByRole('button', { name: 'Create workspace' }));
+    const handle = within(sheet).getByLabelText('Handle');
+    expect(handle).toHaveFocus();
+    expect(handle).toHaveAttribute('aria-invalid', 'true');
 
     await userEvent
       .setup()
-      .click(within(dialog).getByRole('button', { name: 'Cancel' }));
-    expect(
-      screen.queryByRole('dialog', { name: 'Create a workspace' }),
-    ).not.toBeInTheDocument();
-    const reopened = await openCreation('Create your first workspace');
+      .click(within(sheet).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'New workspace' }),
+      ).not.toBeInTheDocument();
+    });
+    const reopened = await openCreation('another');
     expect(within(reopened).getByLabelText('Workspace name')).toHaveValue('');
-    expect(within(reopened).getByLabelText('Workspace slug')).toHaveValue('');
+    expect(within(reopened).queryByLabelText('Handle')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -242,14 +275,14 @@ describe('workspace creation', () => {
       'duplicate slug',
       409,
       'workspace.conflict',
-      'That workspace slug is already in use. Choose another slug.',
-      'Workspace slug',
+      'That handle is already taken. Choose another one.',
+      'Handle',
     ],
     [
       'forbidden creation',
       403,
       'auth.forbidden',
-      'This session is not allowed to create a workspace.',
+      'Your account isn’t allowed to create workspaces.',
       undefined,
     ],
   ])(
@@ -264,7 +297,7 @@ describe('workspace creation', () => {
         }),
       );
       renderApp('/workspaces');
-      const dialog = await openCreation('Create your first workspace');
+      const dialog = await openCreation('first');
       await userEvent
         .setup()
         .type(within(dialog).getByLabelText('Workspace name'), 'Duplicate');
@@ -309,7 +342,7 @@ describe('workspace creation', () => {
     );
     installWorkspaceDestination();
     renderApp('/workspaces');
-    const dialog = await openCreation('Create your first workspace');
+    const dialog = await openCreation('first');
     await userEvent
       .setup()
       .type(
@@ -321,24 +354,22 @@ describe('workspace creation', () => {
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
     expect(
       await within(dialog).findByRole('button', {
-        name: 'Retry same workspace',
+        name: 'Check again',
       }),
     ).toBeVisible();
 
     await userEvent
       .setup()
-      .click(
-        within(dialog).getByRole('button', { name: 'Retry same workspace' }),
-      );
+      .click(within(dialog).getByRole('button', { name: 'Check again' }));
     expect(
-      await within(dialog).findByText(/session could not be verified/u),
+      await within(dialog).findByText(
+        /couldn’t confirm you’re still signed in/u,
+      ),
     ).toBeVisible();
     expect(postCount).toBe(1);
     await userEvent
       .setup()
-      .click(
-        within(dialog).getByRole('button', { name: 'Retry same workspace' }),
-      );
+      .click(within(dialog).getByRole('button', { name: 'Check again' }));
     expect(
       await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
     ).not.toHaveLength(0);
@@ -346,7 +377,7 @@ describe('workspace creation', () => {
     expect(attempts[1]).toEqual(attempts[0]);
   });
 
-  it('requires explicit dismissal before a different command can be entered', async () => {
+  it('keeps an uncertain request locked until it is checked or started over', async () => {
     let postCount = 0;
     installIdentity();
     mockServer.use(
@@ -356,27 +387,28 @@ describe('workspace creation', () => {
       }),
     );
     renderApp('/workspaces');
-    const dialog = await openCreation('Create your first workspace');
+    const form = await openCreation('first');
     await userEvent
       .setup()
-      .type(within(dialog).getByLabelText('Workspace name'), 'Uncertain');
+      .type(within(form).getByLabelText('Workspace name'), 'Uncertain');
     await userEvent
       .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
+      .click(within(form).getByRole('button', { name: 'Create workspace' }));
 
     expect(
-      await within(dialog).findByRole('button', { name: 'Dismiss attempt' }),
+      await within(form).findByText(/not sure the workspace was created/u),
     ).toBeVisible();
-    expect(within(dialog).getByLabelText('Workspace name')).toBeDisabled();
+    expect(within(form).getByLabelText('Workspace name')).toBeDisabled();
+    expect(
+      within(form).getByRole('button', { name: 'Check again' }),
+    ).toBeVisible();
     await userEvent
       .setup()
-      .click(within(dialog).getByRole('button', { name: 'Dismiss attempt' }));
-    expect(
-      screen.queryByRole('dialog', { name: 'Create a workspace' }),
-    ).not.toBeInTheDocument();
+      .click(within(form).getByRole('button', { name: 'Start over' }));
 
-    const reopened = await openCreation('Create your first workspace');
-    expect(within(reopened).getByLabelText('Workspace name')).toHaveValue('');
+    const name = within(form).getByLabelText('Workspace name');
+    expect(name).toBeEnabled();
+    expect(name).toHaveValue('');
     expect(postCount).toBe(1);
   });
 
@@ -406,7 +438,7 @@ describe('workspace creation', () => {
       }),
     );
     const app = renderApp('/workspaces');
-    const dialog = await openCreation('Create workspace');
+    const dialog = await openCreation('another');
     await userEvent
       .setup()
       .type(within(dialog).getByLabelText('Workspace name'), 'Old Session');
@@ -415,7 +447,7 @@ describe('workspace creation', () => {
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
     await userEvent.setup().click(
       await within(dialog).findByRole('button', {
-        name: 'Retry same workspace',
+        name: 'Check again',
       }),
     );
 
@@ -454,7 +486,7 @@ describe('workspace creation', () => {
     );
     installWorkspaceDestination();
     renderApp('/workspaces');
-    const dialog = await openCreation('Create your first workspace');
+    const dialog = await openCreation('first');
     await userEvent
       .setup()
       .type(
@@ -471,7 +503,7 @@ describe('workspace creation', () => {
     expect(postCount).toBe(1);
     await userEvent.setup().click(
       within(dialog).getByRole('button', {
-        name: 'Refresh workspace access',
+        name: 'Open workspace',
       }),
     );
     expect(

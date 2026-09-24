@@ -185,7 +185,9 @@ test('signs in, lands in the only workspace, and signs out without runtime error
     page.getByRole('heading', { name: 'Sign in to continue' }),
   ).toBeVisible();
   await page.getByLabel('Email').fill('operator@example.test');
-  await page.getByLabel('Password').fill('correct horse battery staple');
+  await page
+    .getByLabel('Password', { exact: true })
+    .fill('correct horse battery staple');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(`/w/${workspaceId}`);
   expect(
@@ -246,7 +248,7 @@ test('renders configured social providers as accessible Pertexo controls', async
   expect(googleBox?.y).toBe(microsoftBox?.y);
 });
 
-test('shows the aurora panel and execution orb while sign-in is pending', async ({
+test('shows the live edge and execution orb while sign-in is pending', async ({
   page,
 }) => {
   await mockIdentity(page, { authenticated: false });
@@ -265,7 +267,9 @@ test('shows the aurora panel and execution orb while sign-in is pending', async 
 
   await page.goto('/login');
   await page.getByLabel('Email').fill('operator@example.test');
-  await page.getByLabel('Password').fill('correct horse battery staple');
+  await page
+    .getByLabel('Password', { exact: true })
+    .fill('correct horse battery staple');
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   const pendingButton = page.getByRole('button', { name: 'Signing in…' });
@@ -273,9 +277,7 @@ test('shows the aurora panel and execution orb while sign-in is pending', async 
   await expect(
     pendingButton.locator('[data-slot="loading-orb"]'),
   ).toBeVisible();
-  await expect(
-    page.locator('[data-slot="aurora-loading-panel"].live-edge'),
-  ).toBeVisible();
+  await expect(page.locator('[data-slot="auth-lens"].live-edge')).toBeVisible();
   await expect(page.locator('[aria-busy="true"]')).toBeVisible();
 
   release?.();
@@ -315,7 +317,8 @@ test('signing out in one tab clears protected workspace views in another tab', a
   await expect(
     page.getByRole('button', { name: /Control Operations/u }),
   ).toBeVisible();
-  await second.getByRole('button', { name: 'Sign out' }).click();
+  await second.getByRole('button', { name: /^Account menu for/u }).click();
+  await second.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(second).toHaveURL(/\/login$/u);
   await expect(page).toHaveURL(/\/login$/u);
   await expect(page.getByText('Control Operations')).toHaveCount(0);
@@ -357,7 +360,7 @@ test('a confirmed account switch revalidates another open workspace tab', async 
   await second.goto('/account/security');
   await expect(page.getByText(user.email)).toBeVisible();
   currentUser = anotherUser;
-  await second.getByRole('link', { name: 'Back to workspaces' }).click();
+  await second.getByRole('link', { name: 'Back to Pertexo' }).click();
   await expect(page.getByText(anotherUser.email)).toBeVisible();
   await expect(page.getByText(user.email)).toHaveCount(0);
   await second.close();
@@ -543,7 +546,7 @@ test('creates a workflow from the empty index with the shared transport', async 
   await expect(page.getByText('Browser verified')).toBeVisible();
 });
 
-test('creates the first workspace from the keyboard-accessible empty state', async ({
+test('creates the first workspace inline from the keyboard', async ({
   page,
 }) => {
   const createdId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
@@ -608,30 +611,21 @@ test('creates the first workspace from the keyboard-accessible empty state', asy
   );
 
   await page.goto('/workspaces');
-  const trigger = page.getByRole('button', {
-    name: 'Create your first workspace',
-  });
-  await trigger.focus();
-  await trigger.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Create a workspace' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel('Workspace name')).toBeFocused();
+  await expect(
+    page.getByRole('heading', { name: 'Create your workspace' }),
+  ).toBeVisible();
+  const name = page.getByLabel('Workspace name');
+  await name.focus();
+  await page.keyboard.type('Signal Operations');
+  await expect(
+    page.getByText('signal-operations', { exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(trigger).toBeFocused();
-
-  await trigger.press('Enter');
-  await dialog.getByLabel('Workspace name').fill('Signal Operations');
-  await expect(dialog.getByLabel('Workspace slug')).toHaveValue(
-    'signal-operations',
-  );
-  await dialog.getByRole('button', { name: 'Create workspace' }).click();
+  await page.keyboard.press('Enter');
 
   await expect(page).toHaveURL(`/w/${createdId}`);
   await expect(
@@ -709,7 +703,7 @@ test('explains expired and first-stage email verification links', async ({
   ).toBeVisible();
 });
 
-test('resumes verification resend after reload without repeating signup', async ({
+test('sends a fresh verification link again after reload without repeating signup', async ({
   page,
 }) => {
   await mockIdentity(page, { authenticated: false });
@@ -725,24 +719,19 @@ test('resumes verification resend after reload without repeating signup', async 
     );
     await route.fulfill({ json: { status: true } });
   });
-  await page.goto('/sign-up');
-  await page
-    .getByLabel('Need another verification link?')
-    .fill('operator@example.test');
-  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  const requestNewLink = async () => {
+    await page.goto('/login?error=verification_invalid');
+    await page.getByRole('button', { name: 'Send a new link' }).click();
+    await page.getByLabel('Email').fill('operator@example.test');
+    await page.getByRole('button', { name: 'Send link' }).click();
+  };
+  await requestNewLink();
   await expect(
-    page.getByText(/If this address needs verification/u).first(),
+    page.getByRole('heading', { name: 'Verify your email' }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: /If this address needs verification/u }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /Resend in/u })).toBeDisabled();
   await page.reload();
-  await page
-    .getByLabel('Need another verification link?')
-    .fill('operator@example.test');
-  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  await requestNewLink();
   await expect.poll(() => resendAddresses.length).toBe(2);
   expect(resendAddresses).toEqual([
     'operator@example.test',
@@ -799,11 +788,7 @@ test('recovers password recovery after a capabilities outage without exposing ac
   await page.getByRole('button', { name: 'Try again' }).click();
   await page.getByLabel('Email').fill('unknown@example.test');
   await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(
-    page.getByText(
-      /response is intentionally the same whether or not an account exists/u,
-    ),
-  ).toBeVisible();
+  await expect(page.getByText(/If an account exists for/u)).toBeVisible();
   expect(resetRequests).toBe(1);
 });
 
@@ -838,6 +823,9 @@ test('distinguishes an invalid reset link from a lost completion response', asyn
   await page.goto('/reset-password?token=one-time-token');
   await page
     .getByLabel('New password', { exact: true })
+    .fill('a new secure password value');
+  await page
+    .getByLabel('Confirm new password', { exact: true })
     .fill('a new secure password value');
   await page.getByRole('button', { name: 'Reset password' }).click();
   await expect(
@@ -894,17 +882,24 @@ test('keeps account security understandable and usable on a narrow screen', asyn
 
   await page.goto('/account/security');
   await expect(
-    page.getByRole('heading', { name: 'Account security' }),
+    page.getByRole('heading', { name: 'Account & security' }),
   ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
   await expect(
     page.getByRole('heading', { name: 'Sign-in methods' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Change password' }),
+    page.getByRole('heading', { name: 'Password', exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Signed-in browsers' }),
-  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole('tab', { name: 'Sessions' }).click();
+  await expect(page.getByRole('heading', { name: 'Sessions' })).toBeVisible();
+  await expect(page.getByText('This device')).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -984,43 +979,42 @@ test('confirms method and session removal before sending security commands', asy
   );
 
   await page.goto('/account/security');
-  await page
-    .getByRole('button', { name: 'Remove', exact: true })
-    .nth(1)
-    .click();
+  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+  await page.getByRole('button', { name: 'Remove Google' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Remove sign-in method?' }),
   ).toBeVisible();
   expect(removedMethods).toBe(0);
   await page.getByRole('button', { name: 'Keep method' }).click();
   expect(removedMethods).toBe(0);
-  await page
-    .getByRole('button', { name: 'Remove', exact: true })
-    .nth(1)
-    .click();
+  await page.getByRole('button', { name: 'Remove Google' }).click();
   await page.getByRole('button', { name: 'Remove method' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Remove sign-in method?' }),
   ).toBeHidden();
   expect(removedMethods).toBe(1);
   await expect(
-    page
-      .getByRole('list', { name: 'Authentication methods' })
-      .getByText('Google'),
+    page.getByRole('list', { name: 'Sign-in methods' }).getByText('Google'),
   ).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'End all other sessions' }).click();
-  await expect(
-    page.getByRole('dialog', { name: 'End browser session?' }),
-  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Sessions' }).click();
+  await page
+    .getByRole('button', { name: 'Sign out all other devices' })
+    .click();
+  const confirmation = page.getByRole('dialog', {
+    name: 'Sign out all other devices?',
+  });
+  await expect(confirmation).toBeVisible();
   expect(endedSessions).toBe(0);
-  await page.getByRole('button', { name: 'Keep sessions' }).click();
+  await confirmation.getByRole('button', { name: 'Cancel' }).click();
   expect(endedSessions).toBe(0);
-  await page.getByRole('button', { name: 'End all other sessions' }).click();
-  await page.getByRole('button', { name: 'End sessions' }).click();
-  await expect(
-    page.getByText('No other active browser sessions.'),
-  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Sign out all other devices' })
+    .click();
+  await confirmation
+    .getByRole('button', { name: 'Sign out', exact: true })
+    .click();
+  await expect(page.getByText('No other devices are signed in.')).toBeVisible();
   expect(endedSessions).toBe(1);
 });
 
@@ -1080,15 +1074,16 @@ test('requires an existing-method challenge before starting provider linking', a
   );
 
   await page.goto('/account/security');
-  await page.getByRole('button', { name: 'Link Google' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Link Google?' });
-  await dialog.getByRole('button', { name: 'Continue to provider' }).click();
+  await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+  await page.getByRole('button', { name: 'Add a sign-in method' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add a sign-in method' });
+  await dialog.getByRole('button', { name: 'Continue to Google' }).click();
   await expect(dialog.getByLabel('Current password')).toBeFocused();
   expect(starts).toBe(0);
   await dialog
     .getByLabel('Current password')
     .fill('correct horse battery staple');
-  await dialog.getByRole('button', { name: 'Continue to provider' }).click();
+  await dialog.getByRole('button', { name: 'Continue to Google' }).click();
   await expect(dialog.getByRole('alert')).toBeVisible();
   expect(starts).toBe(1);
 });
@@ -1129,7 +1124,7 @@ test('offers legacy migration only when configured and retains manual recovery o
 
   await page.goto('/account/migrate');
   await expect(
-    page.getByRole('heading', { name: 'Recover an existing Pertexo account' }),
+    page.getByRole('heading', { name: 'Move your sign-in' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   await expect(page.getByRole('alert')).toContainText(

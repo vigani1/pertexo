@@ -43,6 +43,8 @@ type State =
     }>;
 type RecoveryState = Extract<State, { kind: 'uncertain' | 'created' }>;
 
+export type WorkspaceCreationCommand = ReturnType<typeof useWorkspaceCreation>;
+
 export function useWorkspaceCreation({
   apiClient,
   userId,
@@ -100,7 +102,7 @@ export function useWorkspaceCreation({
           ...recovery,
           error: {
             message:
-              'Your session could not be verified. Check your connection, then retry without changing this command.',
+              'We couldn’t confirm you’re still signed in. Check your connection, then try again.',
           },
         });
         return false;
@@ -121,7 +123,7 @@ export function useWorkspaceCreation({
       refreshing: false,
       error: {
         message:
-          'The workspace was created, but workspace access could not be refreshed. Refresh access to continue without creating it again.',
+          'Your workspace was created, but we couldn’t open it yet. Try opening it again; nothing is created twice.',
       },
     };
     transition({ kind: 'created', attempt, workspace, refreshing: true });
@@ -165,7 +167,7 @@ export function useWorkspaceCreation({
         attempt,
         error: {
           message:
-            'Your session could not be verified. Check your connection, then retry this exact command.',
+            'We couldn’t confirm you’re still signed in. Check your connection, then check again.',
         },
       };
       if (!(await verifyIdentity(scope, verificationRecovery))) return false;
@@ -185,7 +187,7 @@ export function useWorkspaceCreation({
             attempt,
             error: {
               message:
-                'The creation result is uncertain. Retry sends the exact same workspace and command key.',
+                'We’re not sure the workspace was created. Check again; it won’t create a second one.',
             },
           });
           return false;
@@ -261,21 +263,22 @@ function creationError(error: unknown): CreationError {
     if (error.problem?.code === 'workspace.conflict')
       return {
         field: 'slug',
-        message: 'That workspace slug is already in use. Choose another slug.',
+        message: 'That handle is already taken. Choose another one.',
       };
     if (error.problem?.code === 'request.idempotency_conflict')
       return {
         message:
-          'This command key belongs to different workspace details. Close the dialog and start again.',
+          'These details changed since the last attempt. Start over to create the workspace.',
       };
     if (error.status === 403)
       return {
-        message: 'This session is not allowed to create a workspace.',
+        message: 'Your account isn’t allowed to create workspaces.',
       };
     if (error.status === 400)
       return {
-        message: 'The workspace details were rejected. Review both fields.',
+        message:
+          'Pertexo didn’t accept these details. Check the name and handle.',
       };
   }
-  return { message: 'The workspace could not be created. Try again.' };
+  return { message: 'The workspace couldn’t be created. Try again.' };
 }
