@@ -2,15 +2,14 @@ import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
 import { createQueryClient } from '@/app/query-client';
 import { createApiClient, type ApiClient } from '@/lib/api/client';
 import { LoginPage } from '@/features/auth/login-page';
-import { AccountMethodsSection } from '@/features/auth/components/account-methods-section';
+import { AccountMethodsSection } from '@/features/auth/components/account/account-methods-section';
 import { endBrowserSession } from '@/features/auth/session-actions';
 import { mockServer } from '../support/mock-server';
 import { renderApp, testFetch } from '../support/render-app';
+import { renderInRouter } from '../support/render-in-router';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -158,15 +157,12 @@ describe('authentication and workspace entry', () => {
       ),
     );
     const navigate = vi.fn();
-    const queryClient = createQueryClient();
     const apiClient = createApiClient({
       fetch: testFetch,
       readCsrfToken: () => undefined,
     });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <LoginPage apiClient={apiClient} navigateToProvider={navigate} />
-      </QueryClientProvider>,
+    renderInRouter(
+      <LoginPage apiClient={apiClient} navigateToProvider={navigate} />,
     );
     const continueButton = await screen.findByRole('button', {
       name: 'Continue with Google',
@@ -194,16 +190,14 @@ describe('authentication and workspace entry', () => {
       }),
     );
     const onAuthenticated = vi.fn();
-    const { container } = render(
-      <QueryClientProvider client={createQueryClient()}>
-        <LoginPage
-          apiClient={createApiClient({
-            fetch: testFetch,
-            readCsrfToken: () => undefined,
-          })}
-          onAuthenticated={onAuthenticated}
-        />
-      </QueryClientProvider>,
+    const { container } = renderInRouter(
+      <LoginPage
+        apiClient={createApiClient({
+          fetch: testFetch,
+          readCsrfToken: () => undefined,
+        })}
+        onAuthenticated={onAuthenticated}
+      />,
     );
     const interaction = userEvent.setup();
     await interaction.type(
@@ -221,9 +215,9 @@ describe('authentication and workspace entry', () => {
     expect(
       pendingButton.querySelector('[data-slot="loading-orb"]'),
     ).toHaveAttribute('aria-hidden', 'true');
-    expect(
-      container.querySelector('[data-slot="aurora-border"]'),
-    ).toHaveAttribute('aria-hidden', 'true');
+    const lens = container.querySelector('[data-slot="auth-lens"]');
+    expect(lens).toHaveClass('live-edge');
+    expect(lens).toHaveAttribute('aria-busy', 'true');
 
     release?.();
     await waitFor(() => {
@@ -252,10 +246,8 @@ describe('authentication and workspace entry', () => {
       readCsrfToken: () => undefined,
     });
     const navigate = vi.fn();
-    const page = render(
-      <QueryClientProvider client={createQueryClient()}>
-        <LoginPage apiClient={apiClient} navigateToProvider={navigate} />
-      </QueryClientProvider>,
+    const page = renderInRouter(
+      <LoginPage apiClient={apiClient} navigateToProvider={navigate} />,
     );
     await userEvent
       .setup()
@@ -290,28 +282,40 @@ describe('authentication and workspace entry', () => {
         },
       ],
     };
-    const page = render(
-      <QueryClientProvider client={createQueryClient()}>
-        <AccountMethodsSection
-          apiClient={apiClient}
-          userId={userId}
-          security={security}
-          navigateToProvider={navigate}
-        />
-      </QueryClientProvider>,
+    const page = renderInRouter(
+      <AccountMethodsSection
+        apiClient={apiClient}
+        userId={userId}
+        security={security}
+        navigateToProvider={navigate}
+      />,
     );
+    await userEvent.setup().click(
+      await screen.findByRole('button', {
+        name: 'Add a sign-in method',
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Add a sign-in method',
+    });
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Link Google' }));
+      .click(
+        within(dialog).getByRole('button', { name: 'Continue to Google' }),
+      );
+    expect(within(dialog).getByLabelText('Current password')).toHaveFocus();
+    expect(request).not.toHaveBeenCalled();
     await userEvent
       .setup()
       .type(
-        screen.getByLabelText('Current password'),
+        within(dialog).getByLabelText('Current password'),
         'correct horse battery staple',
       );
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Continue to provider' }));
+      .click(
+        within(dialog).getByRole('button', { name: 'Continue to Google' }),
+      );
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/v1/auth/account-security/methods/link/start',
@@ -337,15 +341,12 @@ describe('authentication and workspace entry', () => {
         problem(503, 'provider.unavailable', 'Identity service unavailable'),
       ),
     );
-    const queryClient = createQueryClient();
     const apiClient = createApiClient({
       fetch: testFetch,
       readCsrfToken: () => undefined,
     });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <LoginPage apiClient={apiClient} navigateToProvider={vi.fn()} />
-      </QueryClientProvider>,
+    renderInRouter(
+      <LoginPage apiClient={apiClient} navigateToProvider={vi.fn()} />,
     );
 
     await userEvent
@@ -355,7 +356,7 @@ describe('authentication and workspace entry', () => {
       );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Identity service unavailable',
+      'Google sign-in is unavailable right now',
     );
     expect(
       screen.getByRole('button', { name: 'Continue with Google' }),
@@ -373,15 +374,12 @@ describe('authentication and workspace entry', () => {
       ),
     );
     const navigate = vi.fn();
-    const queryClient = createQueryClient();
     const apiClient = createApiClient({
       fetch: testFetch,
       readCsrfToken: () => undefined,
     });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <LoginPage apiClient={apiClient} navigateToProvider={navigate} />
-      </QueryClientProvider>,
+    renderInRouter(
+      <LoginPage apiClient={apiClient} navigateToProvider={navigate} />,
     );
 
     await userEvent
@@ -425,6 +423,12 @@ describe('authentication and workspace entry', () => {
       );
     await userEvent
       .setup()
+      .type(
+        screen.getByLabelText('Confirm new password'),
+        'a sufficiently long password',
+      );
+    await userEvent
+      .setup()
       .click(screen.getByRole('button', { name: 'Reset password' }));
     await requestStarted;
     await app.router.navigate({
@@ -434,7 +438,7 @@ describe('authentication and workspace entry', () => {
     releaseResponse?.();
     expect(await screen.findByLabelText('New password')).toHaveValue('');
     expect(
-      screen.queryByText(/Your password has been reset/u),
+      screen.queryByRole('heading', { name: 'Password changed' }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Reset password' }),
@@ -459,6 +463,12 @@ describe('authentication and workspace entry', () => {
     await userEvent.setup().type(passwordInput, 'new secure password value');
     await userEvent
       .setup()
+      .type(
+        screen.getByLabelText('Confirm new password'),
+        'new secure password value',
+      );
+    await userEvent
+      .setup()
       .click(screen.getByRole('button', { name: 'Reset password' }));
     expect(
       await screen.findByText(
@@ -481,6 +491,12 @@ describe('authentication and workspace entry', () => {
       .type(secondPassword, 'another secure password value');
     await userEvent
       .setup()
+      .type(
+        screen.getByLabelText('Confirm new password'),
+        'another secure password value',
+      );
+    await userEvent
+      .setup()
       .click(screen.getByRole('button', { name: 'Reset password' }));
     expect(
       await screen.findByText(/Your password may have changed/u),
@@ -489,11 +505,14 @@ describe('authentication and workspace entry', () => {
     expect(secondPassword).not.toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('resumes verification mail from a fresh signup page without resubmitting credentials', async () => {
+  it('sends a fresh verification link from an expired link without resubmitting credentials', async () => {
     let signupCalls = 0;
     const addresses: string[] = [];
     mockServer.use(
       passwordCapabilities,
+      http.get('http://pertexo.test/v1/users/me', () =>
+        problem(401, 'auth.unauthenticated', 'Authentication required'),
+      ),
       http.post('http://pertexo.test/v1/auth/sign-up/email', () => {
         signupCalls += 1;
         return HttpResponse.json({ user: null });
@@ -506,42 +525,28 @@ describe('authentication and workspace entry', () => {
         },
       ),
     );
-    const app = renderApp('/sign-up');
-    await userEvent
-      .setup()
-      .type(
-        await screen.findByLabelText('Need another verification link?'),
-        'operator@example.test',
-      );
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Resend verification email' }));
+    const app = renderApp('/login?error=verification_invalid');
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Send a new link' }),
+    );
+    await actor.type(screen.getByLabelText('Email'), 'operator@example.test');
+    await actor.click(screen.getByRole('button', { name: 'Send link' }));
     expect(
-      await screen.findByText(/If this address needs verification/u),
+      await screen.findByRole('heading', { name: 'Verify your email' }),
     ).toBeVisible();
-    expect(
-      screen.getByText(/If this address needs verification/u),
-    ).toHaveAttribute('role', 'status');
-    expect(
-      screen.queryByLabelText('Need another verification link?'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('operator@example.test')).toBeVisible();
+    expect(screen.getByRole('button', { name: /Resend in/u })).toBeDisabled();
     expect(addresses).toEqual(['operator@example.test']);
-    expect(signupCalls).toBe(0);
     app.unmount();
 
-    renderApp('/sign-up');
-    expect(
-      await screen.findByLabelText('Need another verification link?'),
-    ).toHaveValue('');
-    await userEvent
-      .setup()
-      .type(
-        screen.getByLabelText('Need another verification link?'),
-        'operator@example.test',
-      );
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Resend verification email' }));
+    renderApp('/login?error=verification_invalid');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Send a new link' }),
+    );
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    await actor.type(screen.getByLabelText('Email'), 'operator@example.test');
+    await actor.click(screen.getByRole('button', { name: 'Send link' }));
     await waitFor(() => {
       expect(addresses).toHaveLength(2);
     });
@@ -551,34 +556,31 @@ describe('authentication and workspace entry', () => {
   it('marks only local resend validation as a field error', async () => {
     mockServer.use(
       passwordCapabilities,
+      http.get('http://pertexo.test/v1/users/me', () =>
+        problem(401, 'auth.unauthenticated', 'Authentication required'),
+      ),
       http.post('http://pertexo.test/v1/auth/send-verification-email', () =>
         problem(503, 'auth.unavailable', 'Identity service unavailable'),
       ),
     );
-    renderApp('/sign-up');
-    const resend = await screen.findByRole('button', {
-      name: 'Resend verification email',
-    });
-    await userEvent.setup().click(resend);
-    expect(
-      screen.getByLabelText('Need another verification link?'),
-    ).toHaveAttribute('aria-invalid', 'true');
-    await userEvent
-      .setup()
-      .type(
-        screen.getByLabelText('Need another verification link?'),
-        'operator@example.test',
-      );
-    expect(
-      screen.getByLabelText('Need another verification link?'),
-    ).not.toHaveAttribute('aria-invalid', 'true');
-    await userEvent.setup().click(resend);
-    expect(
-      await screen.findByText(/The response was lost or delayed/u),
-    ).toHaveAttribute('role', 'alert');
-    expect(
-      screen.getByLabelText('Need another verification link?'),
-    ).not.toHaveAttribute('aria-invalid', 'true');
+    renderApp('/login?error=verification_invalid');
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Send a new link' }),
+    );
+    const send = screen.getByRole('button', { name: 'Send link' });
+    await actor.click(send);
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(email).toHaveFocus();
+    await actor.type(email, 'operator@example.test');
+    expect(email).not.toHaveAttribute('aria-invalid', 'true');
+    await actor.click(send);
+    expect(await screen.findByText(/couldn’t send the email/u)).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /couldn’t send the email/u,
+    );
+    expect(email).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   it('does not offer password signup or recovery on direct routes when disabled', async () => {
@@ -715,7 +717,8 @@ describe('authentication and workspace entry', () => {
               updatedAt: '2026-09-22T11:00:00.000Z',
               expiresAt: '2026-09-29T10:00:00.000Z',
               ipAddress: null,
-              userAgent: 'Current browser',
+              userAgent:
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
             },
             ...(revokedSession === secondSessionId
               ? []
@@ -727,7 +730,8 @@ describe('authentication and workspace entry', () => {
                     updatedAt: '2026-09-21T11:00:00.000Z',
                     expiresAt: '2026-09-28T10:00:00.000Z',
                     ipAddress: '192.0.2.10',
-                    userAgent: 'Other browser',
+                    userAgent:
+                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
                   },
                 ]),
           ],
@@ -780,41 +784,56 @@ describe('authentication and workspace entry', () => {
 
     renderApp('/account/security', { strict: true });
     expect(
-      await screen.findByRole('heading', { name: 'Account security' }),
+      await screen.findByRole('heading', { name: 'Account & security' }),
     ).toBeVisible();
-    expect(await screen.findByText('Other browser')).toBeVisible();
+    const actor = userEvent.setup();
+    await actor.click(screen.getByRole('tab', { name: 'Sessions' }));
+    expect(await screen.findByText('Firefox on Windows')).toBeVisible();
+    expect(screen.getByText('Chrome on macOS')).toBeVisible();
+    expect(screen.getByText('This device')).toBeVisible();
+    expect(screen.getByText('192.0.2.10')).toBeVisible();
+    expect(screen.queryByText(/Mozilla/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/pertexo_session/iu)).not.toBeInTheDocument();
 
-    const actor = userEvent.setup();
-    await actor.click(screen.getByRole('button', { name: 'End session' }));
+    const signOutOther = () =>
+      screen.getByRole('button', { name: 'Sign out Firefox on Windows' });
+    await actor.click(signOutOther());
     expect(revokedSession).toBeUndefined();
     await actor.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Keep sessions',
+      within(screen.getByRole('dialog', { name: /\?$/u })).getByRole('button', {
+        name: 'Cancel',
       }),
     );
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: /\?$/u }),
+      ).not.toBeInTheDocument();
     });
     expect(revokedSession).toBeUndefined();
-    await actor.click(screen.getByRole('button', { name: 'End session' }));
+    await actor.click(signOutOther());
     await actor.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'End sessions',
+      within(screen.getByRole('dialog', { name: /\?$/u })).getByRole('button', {
+        name: 'Sign out',
       }),
     );
     await waitFor(() => {
       expect(revokedSession).toBe(secondSessionId);
     });
     await waitFor(() => {
-      expect(screen.queryByText('Other browser')).not.toBeInTheDocument();
+      expect(screen.queryByText('Firefox on Windows')).not.toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: /\?$/u }),
+      ).not.toBeInTheDocument();
     });
+    expect(
+      await screen.findByText('Signed out of Firefox on Windows'),
+    ).toBeVisible();
 
+    await actor.click(screen.getByRole('tab', { name: 'Sign-in & security' }));
     await actor.type(
-      screen.getByLabelText('Current password'),
+      await screen.findByLabelText('Current password'),
       'current secure password',
     );
     await actor.type(
@@ -829,8 +848,11 @@ describe('authentication and workspace entry', () => {
     await waitFor(() => {
       expect(passwordChanged).toBe(true);
     });
-    expect(await screen.findByText(/Password updated/u)).toBeVisible();
+    expect(await screen.findByText('Password changed')).toBeVisible();
+    expect(screen.getByLabelText('Current password')).toHaveValue('');
 
+    await actor.click(screen.getByRole('tab', { name: 'Profile' }));
+    expect(await screen.findByText('Verified')).toBeVisible();
     await actor.type(
       screen.getByLabelText('New email'),
       'new.operator@example.test',
@@ -839,7 +861,49 @@ describe('authentication and workspace entry', () => {
     await waitFor(() => {
       expect(emailChangeRequested).toBe(true);
     });
-    expect(await screen.findByText(/Check your current email/u)).toBeVisible();
+    expect(await screen.findByText(/Check your current inbox/u)).toBeVisible();
+  }, 15_000);
+
+  it('asks for a fresh sign-in when an email change needs one', async () => {
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/auth/account-security', () =>
+        HttpResponse.json({
+          email: user.email,
+          emailVerified: true,
+          availableProviders: [],
+          methods: [
+            {
+              id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              kind: 'password',
+              provider: null,
+            },
+          ],
+        }),
+      ),
+      http.post('http://pertexo.test/v1/auth/change-email', () =>
+        problem(403, 'auth.forbidden', 'Forbidden'),
+      ),
+    );
+    renderApp('/account/security');
+    const actor = userEvent.setup();
+    const email = await screen.findByLabelText('New email');
+    await actor.type(email, user.email);
+    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText(/That’s your current email/u)).toBeVisible();
+    await actor.clear(email);
+    await actor.type(email, 'new.operator@example.test');
+    await actor.click(screen.getByRole('button', { name: 'Change email' }));
+    expect(
+      await screen.findByText(/For your security, sign in again/u),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Sign in again' })).toHaveAttribute(
+      'href',
+      '/logout',
+    );
   });
 
   it('shows truthful linking return feedback alongside authoritative methods', async () => {
@@ -872,7 +936,7 @@ describe('authentication and workspace entry', () => {
     );
     renderApp('/account/security?linked=true');
     expect(
-      await screen.findByText(/Provider verification returned/u),
+      await screen.findByText(/You’re back from the provider/u),
     ).toBeVisible();
     expect(await screen.findByText('Google')).toBeVisible();
     expect(
@@ -918,29 +982,32 @@ describe('authentication and workspace entry', () => {
     );
     renderApp('/account/security');
     const actor = userEvent.setup();
-    const removeSocial = () => {
-      const button = screen.getAllByRole('button', { name: 'Remove' })[1];
-      if (button === undefined)
-        throw new Error('Social method action is missing');
-      return button;
-    };
+    await actor.click(
+      await screen.findByRole('tab', { name: 'Sign-in & security' }),
+    );
+    const removeSocial = () =>
+      screen.getByRole('button', { name: 'Remove Google' });
     await screen.findByText('Google');
     await actor.click(removeSocial());
-    const confirmation = screen.getByRole('dialog');
+    const confirmation = screen.getByRole('dialog', {
+      name: 'Remove sign-in method?',
+    });
     expect(
-      within(confirmation).getByText(/Other browser sessions will end/u),
+      within(confirmation).getByText(/Other devices will be signed out/u),
     ).toBeVisible();
     expect(removedMethod).toBeUndefined();
     await actor.click(
       within(confirmation).getByRole('button', { name: 'Keep method' }),
     );
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: /\?$/u }),
+      ).not.toBeInTheDocument();
     });
     expect(removedMethod).toBeUndefined();
     await actor.click(removeSocial());
     await actor.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
+      within(screen.getByRole('dialog', { name: /\?$/u })).getByRole('button', {
         name: 'Remove method',
       }),
     );
@@ -948,11 +1015,19 @@ describe('authentication and workspace entry', () => {
       expect(removedMethod).toBe(socialMethodId);
     });
     await waitFor(() => {
-      expect(screen.queryByText('Google')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Remove Google' }),
+      ).not.toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: /\?$/u }),
+      ).not.toBeInTheDocument();
     });
+    expect(
+      screen.getByRole('button', { name: 'Remove Password' }),
+    ).toBeDisabled();
+    expect(screen.getByText('Your only way to sign in')).toBeVisible();
   });
 
   it('routes an eligible pending-deletion workspace to lifecycle recovery', async () => {
@@ -971,7 +1046,7 @@ describe('authentication and workspace entry', () => {
       name: /Control Operations/u,
     });
     expect(entry).toBeEnabled();
-    expect(entry).toHaveTextContent('Open recovery');
+    expect(entry).toHaveTextContent('Restore');
     await userEvent.setup().click(entry);
     expect(
       await screen.findByRole('heading', { name: 'General' }),
@@ -1000,7 +1075,7 @@ describe('authentication and workspace entry', () => {
       name: /Control Operations/u,
     });
     expect(entry).toBeDisabled();
-    expect(entry).toHaveTextContent('Deletion pending');
+    expect(entry).toHaveTextContent('Being deleted');
   });
 
   it('keeps suspended workspaces unavailable even for managers', async () => {
@@ -1053,8 +1128,9 @@ describe('authentication and workspace entry', () => {
     expect(
       await screen.findByRole('heading', { name: 'Create your workspace' }),
     ).toBeVisible();
+    expect(screen.getByLabelText('Workspace name')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Create your first workspace' }),
+      screen.getByRole('button', { name: 'Create workspace' }),
     ).toBeVisible();
   });
 
@@ -1104,6 +1180,7 @@ describe('authentication and workspace entry', () => {
 
   it('verifies the session before classifying an invalid workspace deep link', async () => {
     mockServer.use(
+      passwordCapabilities,
       http.get('http://pertexo.test/v1/users/me', () =>
         problem(401, 'auth.unauthenticated', 'Authentication required'),
       ),
@@ -1165,6 +1242,7 @@ describe('authentication and workspace entry', () => {
     let workspaceReads = 0;
     let signedOut = false;
     mockServer.use(
+      passwordCapabilities,
       http.get('http://pertexo.test/v1/users/me', () =>
         signedOut
           ? problem(401, 'auth.unauthenticated', 'Authentication required')
@@ -1191,7 +1269,7 @@ describe('authentication and workspace entry', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Sign out did not complete',
+        name: 'We couldn’t confirm sign-out',
       }),
     ).toBeVisible();
     expect(logoutRequests).toBe(1);
@@ -1202,7 +1280,7 @@ describe('authentication and workspace entry', () => {
 
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Retry sign out' }));
+      .click(screen.getByRole('button', { name: 'Try again' }));
     expect(
       await screen.findByRole('heading', { name: 'Sign in to continue' }),
     ).toBeVisible();

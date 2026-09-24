@@ -1,19 +1,34 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
-import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
-import {
-  GlassSection,
-  GlassSectionContent,
-  GlassSectionDescription,
-  GlassSectionHeader,
-  GlassSectionTitle,
-} from '@/components/patterns/glass-section';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from './auth.queries';
-import { AuthenticationShell } from './authentication-shell';
-import { SocialProviderButton } from './components/social-provider-button';
-import { startLegacyMethodMigration } from './legacy-migration.api';
+import { MigrationSteps } from './components/migration/migration-steps';
+import { SocialProviderGrid } from './components/social/social-provider-grid';
+import {
+  providerName,
+  type SocialProvider,
+} from './components/social/social-provider';
+import {
+  AuthLens,
+  AuthLensDescription,
+  AuthLensFooter,
+  AuthLensTitle,
+  AuthStatusLine,
+} from './components/stage/auth-lens';
+import { AuthStage } from './components/stage/auth-stage';
+import { LensLoading } from './components/stage/lens-states';
+import {
+  startLegacyMethodMigration,
+  type LegacyMigrationStart,
+} from './legacy-migration.api';
+import { formatCountdown, useCountdown } from './use-countdown';
+import { useLatestRequest } from './use-latest-request';
+
+const WINDOW_MS = 5 * 60_000;
+
+type Started = LegacyMigrationStart & Readonly<{ provider: SocialProvider }>;
 
 export function LegacyMigrationPage({
   apiClient,
@@ -27,108 +42,130 @@ export function LegacyMigrationPage({
   const capabilities = useQuery(
     authenticationCapabilitiesQueryOptions(apiClient),
   );
+  const requests = useLatestRequest();
+  const timeWindow = useCountdown();
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string>();
-  const active = useRef<AbortController | undefined>(undefined);
-  useEffect(
-    () => () => {
-      active.current?.abort();
-      active.current = undefined;
-    },
-    [],
-  );
+  const [leaving, setLeaving] = useState(false);
+  const [failure, setFailure] = useState<string>();
+  const [started, setStarted] = useState<Started>();
+  const windowOpen = started !== undefined && timeWindow.remainingSeconds > 0;
+  const windowClosed = started !== undefined && !windowOpen;
 
-  const start = async (
-    provider: 'google' | 'github' | 'microsoft' | 'apple',
-  ) => {
-    const controller = new AbortController();
-    active.current = controller;
+  async function start(provider: SocialProvider) {
+    const request = requests.begin();
     setPending(true);
-    setError(undefined);
+    setFailure(undefined);
+    setStarted(undefined);
     try {
-      const url = await startLegacyMethodMigration(
+      const result = await startLegacyMethodMigration(
         apiClient,
         provider,
-        controller.signal,
+        request.signal,
       );
-      if (active.current === controller && !controller.signal.aborted)
-        navigateToProvider(url);
+      if (!request.isCurrent()) return;
+      timeWindow.startUntil(
+        Math.min(Date.parse(result.expiresAt), Date.now() + WINDOW_MS),
+      );
+      setStarted({ ...result, provider });
     } catch {
-      if (active.current === controller && !controller.signal.aborted)
-        setError(
-          'Recovery could not start. Your existing account was not changed. Contact your Pertexo operator if the old identity provider is unavailable.',
+      if (request.isCurrent())
+        setFailure(
+          'Recovery couldn’t start. Your existing account was not changed. If your old sign-in no longer works, ask your Pertexo operator for help.',
         );
     } finally {
-      if (active.current === controller) {
-        active.current = undefined;
-        setPending(false);
-      }
+      if (request.finish()) setPending(false);
     }
-  };
+  }
 
+  if (capabilities.isPending)
+    return (
+      <AuthStage>
+        <LensLoading
+          title="Move your sign-in"
+          label="Checking account recovery…"
+        />
+      </AuthStage>
+    );
+  const providers = capabilities.data?.socialProviders ?? [];
   const available =
     capabilities.data?.legacyMigrationAvailable === true &&
-    capabilities.data.socialProviders.length > 0;
+    providers.length > 0;
+
   return (
-    <AuthenticationShell>
-      <AuroraLoadingPanel active={pending || capabilities.isPending}>
-        <GlassSection aria-busy={pending || capabilities.isPending}>
-          <GlassSectionHeader>
-            <GlassSectionTitle>
-              Recover an existing Pertexo account
-            </GlassSectionTitle>
-            <GlassSectionDescription>
-              First confirm the identity you used before Pertexo changed
-              sign-in. Then independently authorize a new provider in this
-              browser. Your workspaces and user ID stay with the verified old
-              identity; a matching email address alone cannot transfer them.
-            </GlassSectionDescription>
-          </GlassSectionHeader>
-          <GlassSectionContent className="space-y-5">
-            {capabilities.isPending ? (
-              <p role="status" className="text-sm text-muted-foreground">
-                Checking recovery availability…
-              </p>
-            ) : !available ? (
-              <p role="alert" className="text-sm text-muted-foreground">
-                Automated recovery is unavailable here. Ask your Pertexo
-                operator for manual identity review; email ownership alone is
-                not enough.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Choose the new provider you want to use. The old identity
-                  proof and new provider authorization must finish within five
-                  minutes.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {capabilities.data?.socialProviders.map((provider) => (
-                    <SocialProviderButton
-                      key={provider}
-                      provider={provider}
-                      type="button"
-                      disabled={pending}
-                      onClick={() => void start(provider)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {error === undefined ? null : (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            <Link
-              to="/login"
-              className="text-sm font-medium text-primary hover:underline"
+    <AuthStage>
+      <AuthLens pending={pending || leaving} aria-labelledby="migrate-title">
+        <AuthLensTitle id="migrate-title">Move your sign-in</AuthLensTitle>
+        <AuthLensDescription>
+          Keep your workspaces: prove the old account is yours, then choose how
+          you’ll sign in from now on. A matching email alone can’t move them.
+        </AuthLensDescription>
+        <MigrationSteps current={windowOpen ? 'confirm' : 'choose'} />
+        {!available ? (
+          <AuthStatusLine tone="attention" className="mt-6">
+            Automatic recovery isn’t available here. Ask your Pertexo operator
+            to review your account.
+          </AuthStatusLine>
+        ) : windowOpen ? (
+          <div className="mt-6 flex flex-col gap-3">
+            <AuthStatusLine tone="waiting">
+              You have{' '}
+              <span className="font-mono tabular-nums">
+                {formatCountdown(timeWindow.remainingSeconds)}
+              </span>{' '}
+              to confirm your old account. Then {providerName(started.provider)}{' '}
+              confirms your new sign-in.
+            </AuthStatusLine>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={leaving}
+              onClick={() => {
+                setLeaving(true);
+                navigateToProvider(started.authorizationUrl);
+              }}
             >
-              Back to sign in
-            </Link>
-          </GlassSectionContent>
-        </GlassSection>
-      </AuroraLoadingPanel>
-    </AuthenticationShell>
+              Continue to your old sign-in
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="self-center"
+              disabled={leaving}
+              onClick={() => {
+                timeWindow.clear();
+                setStarted(undefined);
+              }}
+            >
+              Choose a different method
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col gap-3">
+            {windowClosed ? (
+              <AuthStatusLine tone="timeout">
+                The 5-minute window closed. Choose your new sign-in again.
+              </AuthStatusLine>
+            ) : null}
+            <SocialProviderGrid
+              label="Choose your new sign-in"
+              providers={providers}
+              disabled={pending}
+              onSelect={(provider) => void start(provider)}
+            />
+          </div>
+        )}
+        {failure === undefined ? null : (
+          <AuthStatusLine tone="failure" className="mt-4">
+            {failure}
+          </AuthStatusLine>
+        )}
+        <AuthLensFooter>
+          <Link to="/login">Back to sign in</Link>
+        </AuthLensFooter>
+      </AuthLens>
+    </AuthStage>
   );
 }

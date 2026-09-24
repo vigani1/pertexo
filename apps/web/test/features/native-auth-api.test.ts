@@ -15,9 +15,12 @@ describe('native authentication API', () => {
     });
     const apiClient = { request } as unknown as ApiClient;
 
-    await expect(startLegacyMethodMigration(apiClient, 'google')).resolves.toBe(
-      'https://identity.example.test/authorize',
-    );
+    await expect(
+      startLegacyMethodMigration(apiClient, 'google'),
+    ).resolves.toEqual({
+      authorizationUrl: 'https://identity.example.test/authorize',
+      expiresAt: '2026-09-24T00:05:00.000Z',
+    });
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/v1/auth/legacy-migration/start',

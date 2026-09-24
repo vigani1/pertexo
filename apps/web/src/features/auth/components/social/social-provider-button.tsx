@@ -10,6 +10,7 @@ type SocialProviderButtonProps = Readonly<
   }
 >;
 
+/** A compact provider choice: the mark and the name, "Continue with …". */
 export function SocialProviderButton({
   provider,
   action = 'Continue with',
@@ -18,39 +19,17 @@ export function SocialProviderButton({
 }: SocialProviderButtonProps) {
   return (
     <Button
+      type="button"
       aria-label={`${action} ${providerName(provider)}`}
       variant="outline"
       className={cn(
-        'group/provider h-12 w-full justify-start gap-3 overflow-hidden rounded-xl border-white/10 bg-background/45 px-2.5 text-left shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]',
-        'hover:-translate-y-px hover:border-primary/35 hover:bg-primary/[0.07] hover:text-foreground hover:shadow-[0_10px_32px_rgb(0_0_0/0.22),0_0_20px_color-mix(in_srgb,var(--primary)_9%,transparent)]',
-        'motion-reduce:hover:translate-y-0',
+        'h-9.5 w-full gap-2.5 border-white/10 bg-white/[0.035] text-[0.82rem] text-foreground hover:border-primary/35 hover:bg-primary/[0.07]',
         className,
       )}
       {...props}
     >
-      <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.035] shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]">
-        <span
-          aria-hidden="true"
-          className="absolute -top-4 -left-3 size-8 rounded-full bg-primary/25 blur-md transition-opacity group-hover/provider:opacity-80"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -right-4 -bottom-4 size-8 rounded-full bg-secondary/25 blur-md transition-opacity group-hover/provider:opacity-80"
-        />
-        <ProviderMark provider={provider} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[0.68rem] leading-none font-medium text-muted-foreground">
-          {action}
-        </span>
-        <span className="mt-1 block leading-none font-semibold text-foreground">
-          {providerName(provider)}
-        </span>
-      </span>
-      <span
-        aria-hidden="true"
-        className="mr-1 h-px w-6 origin-right scale-x-2/3 bg-linear-to-r from-primary/60 to-secondary/60 opacity-45 transition-[transform,opacity] group-hover/provider:scale-x-100 group-hover/provider:opacity-100 motion-reduce:transition-none"
-      />
+      <ProviderMark provider={provider} />
+      <span>{providerName(provider)}</span>
     </Button>
   );
 }

@@ -9,6 +9,8 @@ export class NativeAuthenticationError extends Error {
     public readonly status?: number,
     public readonly code?: string,
     public readonly kind?: ApiError['kind'],
+    /** Bounded Retry-After from a rate-limited response. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = 'NativeAuthenticationError';
@@ -42,6 +44,7 @@ async function postAuthentication<Value>(
         error.status,
         error.problem?.code,
         error.kind,
+        error.retryAfterMs,
       );
     throw new NativeAuthenticationError(
       'The authentication service could not be reached.',
