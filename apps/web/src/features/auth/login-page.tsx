@@ -1,33 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
-import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
-import { LoadingOrb } from '@/components/ui/loading-orb';
-import {
-  GlassSection,
-  GlassSectionContent,
-  GlassSectionDescription,
-  GlassSectionHeader,
-  GlassSectionTitle,
-} from '@/components/patterns/glass-section';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from './auth.queries';
-import { AuthenticationShell } from './authentication-shell';
-import { SocialProviderButton } from './components/social-provider-button';
+import { EmailRequestLens } from './components/inbox/email-request-lens';
 import {
-  NativeAuthenticationError,
-  signInWithEmail,
-  startSocialAuthentication,
-} from './native-auth.api';
+  InboxLens,
+  RESEND_COOLDOWN_SECONDS,
+} from './components/inbox/inbox-lens';
+import { SignInLens } from './components/sign-in/sign-in-lens';
+import { AuthLensFooter } from './components/stage/auth-lens';
+import { AuthStage } from './components/stage/auth-stage';
+import { LensLoading, LensUnavailable } from './components/stage/lens-states';
+import { resendFailure } from './model/auth-failure';
+import type { LoginNotice } from './model/login-notice';
+import { resendVerificationEmail } from './native-auth.api';
+import { useCountdown } from './use-countdown';
+
+type LoginView =
+  | Readonly<{ kind: 'sign-in' }>
+  | Readonly<{ kind: 'request-verification' }>
+  | Readonly<{ kind: 'verify'; email: string }>;
 
 type LoginPageProps = Readonly<{
   apiClient: ApiClient;
   navigateToProvider?: (authorizationUrl: string) => void;
   onAuthenticated?: () => void;
-  notice?: string;
+  notice?: LoginNotice | undefined;
 }>;
 
 export function LoginPage({
@@ -43,243 +42,89 @@ export function LoginPage({
   const capabilities = useQuery(
     authenticationCapabilitiesQueryOptions(apiClient),
   );
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string>();
-  const emailRef = useRef<HTMLInputElement>(null);
-  const activeRequest = useRef<AbortController | undefined>(undefined);
-
-  useEffect(
-    () => () => {
-      activeRequest.current?.abort();
-      activeRequest.current = undefined;
-    },
-    [],
+  const [view, setView] = useState<LoginView>({ kind: 'sign-in' });
+  const verificationCooldown = useCountdown();
+  const backToSignIn = (label: string) => (
+    <AuthLensFooter>
+      <Button
+        type="button"
+        variant="link"
+        size="sm"
+        className="h-auto px-0"
+        onClick={() => {
+          setView({ kind: 'sign-in' });
+        }}
+      >
+        {label}
+      </Button>
+    </AuthLensFooter>
   );
-
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    if (!email.includes('@')) {
-      setMessage('Enter the email address for your Pertexo account.');
-      emailRef.current?.focus();
-      return;
-    }
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    setPending(true);
-    setMessage(undefined);
-    try {
-      await signInWithEmail(
-        apiClient,
-        { email: email.trim(), password },
-        controller.signal,
-      );
-      if (activeRequest.current !== controller || controller.signal.aborted)
-        return;
-      setPassword('');
-      onAuthenticated();
-    } catch (error) {
-      if (activeRequest.current === controller && !controller.signal.aborted)
-        setMessage(loginError(error));
-    } finally {
-      if (activeRequest.current === controller) {
-        activeRequest.current = undefined;
-        setPending(false);
-      }
-    }
-  }
-
-  async function startProvider(
-    provider: 'google' | 'microsoft' | 'github' | 'apple',
-  ) {
-    if (pending) return;
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    setPending(true);
-    setMessage(undefined);
-    try {
-      const url = await startSocialAuthentication(
-        apiClient,
-        provider,
-        controller.signal,
-      );
-      if (activeRequest.current !== controller || controller.signal.aborted)
-        return;
-      navigateToProvider(url);
-    } catch (error) {
-      if (activeRequest.current === controller && !controller.signal.aborted) {
-        setMessage(loginError(error));
-        setPending(false);
-      }
-    }
-  }
-
-  const configured = capabilities.data;
-  const unavailable =
-    capabilities.isError ||
-    (configured !== undefined &&
-      !configured.password.enabled &&
-      configured.socialProviders.length === 0);
 
   return (
-    <AuthenticationShell>
-      <AuroraLoadingPanel active={pending || capabilities.isPending}>
-        <GlassSection
-          aria-labelledby="login-title"
-          aria-busy={pending || capabilities.isPending}
+    <AuthStage>
+      {capabilities.isPending ? (
+        <LensLoading
+          title="Sign in to continue"
+          label="Checking how you can sign in…"
+        />
+      ) : capabilities.isError ||
+        (!capabilities.data.password.enabled &&
+          capabilities.data.socialProviders.length === 0) ? (
+        <LensUnavailable
+          id="login-unavailable"
+          title="Sign in to continue"
+          retrying={capabilities.isFetching}
+          onRetry={() => void capabilities.refetch()}
         >
-          <GlassSectionHeader>
-            <GlassSectionTitle id="login-title">
-              Sign in to continue
-            </GlassSectionTitle>
-            <GlassSectionDescription>
-              Use your verified email or one of the configured identity
-              providers.
-            </GlassSectionDescription>
-          </GlassSectionHeader>
-          <GlassSectionContent className="flex flex-col gap-5">
-            {capabilities.isPending ? (
-              <p role="status" className="text-sm text-muted-foreground">
-                Checking available sign-in methods…
-              </p>
-            ) : unavailable ? (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              >
-                Authentication is not available right now. Ask the Pertexo
-                operator to check the identity configuration.
-              </div>
-            ) : null}
-            {message === undefined ? null : (
-              <p
-                role="alert"
-                className="rounded-lg border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              >
-                {message}
-              </p>
-            )}
-            {message !== undefined || notice === undefined ? null : (
-              <p
-                role="status"
-                className="rounded-lg border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-accent-foreground"
-              >
-                {notice}
-              </p>
-            )}
-            {configured?.password.enabled === true ? (
-              <form
-                className="flex flex-col gap-5"
-                onSubmit={(event) => void submit(event)}
-              >
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="login-email">Email</FieldLabel>
-                    <Input
-                      ref={emailRef}
-                      id="login-email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      disabled={pending}
-                      onChange={(event) => {
-                        setEmail(event.target.value);
-                      }}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="login-password">Password</FieldLabel>
-                    <Input
-                      id="login-password"
-                      name="password"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                      minLength={configured.password.minimumLength}
-                      maxLength={128}
-                      value={password}
-                      disabled={pending}
-                      onChange={(event) => {
-                        setPassword(event.target.value);
-                      }}
-                    />
-                  </Field>
-                </FieldGroup>
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full disabled:opacity-75"
-                  disabled={pending}
-                >
-                  {pending ? <LoadingOrb /> : null}
-                  {pending ? 'Signing in…' : 'Sign in'}
-                </Button>
-                <div className="flex items-center justify-between gap-4 text-sm">
-                  <a
-                    href="/forgot-password"
-                    className="text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </a>
-                  <a href="/sign-up" className="text-primary hover:underline">
-                    Create account
-                  </a>
-                </div>
-                {configured.legacyMigrationAvailable ? (
-                  <Link
-                    to="/account/migrate"
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    Recover an existing Pertexo account
-                  </Link>
-                ) : null}
-              </form>
-            ) : null}
-            {configured !== undefined &&
-            configured.socialProviders.length > 0 ? (
-              <div
-                className="grid gap-2 border-t pt-5 min-[30rem]:grid-cols-2"
-                aria-label="Social sign-in methods"
-              >
-                {configured.socialProviders.map((provider) => (
-                  <SocialProviderButton
-                    key={provider}
-                    provider={provider}
-                    type="button"
-                    disabled={pending}
-                    onClick={() => void startProvider(provider)}
-                  />
-                ))}
-              </div>
-            ) : null}
-            <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Sessions use secure browser cookies and workspace access remains
-              server-authorized.
-            </p>
-          </GlassSectionContent>
-        </GlassSection>
-      </AuroraLoadingPanel>
-    </AuthenticationShell>
+          Sign-in isn’t available right now. Try again in a moment.
+        </LensUnavailable>
+      ) : view.kind === 'verify' ? (
+        <InboxLens
+          title="Verify your email"
+          cooldown={verificationCooldown}
+          resend={(signal) =>
+            resendVerificationEmail(apiClient, view.email, signal)
+          }
+          footer={backToSignIn('Use another email')}
+        >
+          Open the verification link we sent to{' '}
+          <strong className="font-semibold text-foreground">
+            {view.email}
+          </strong>
+          , then sign in here.
+        </InboxLens>
+      ) : view.kind === 'request-verification' ? (
+        <EmailRequestLens
+          id="verification-request"
+          title="Get a new link"
+          description="Enter your email and we’ll send a fresh verification link if the address still needs one."
+          submitLabel="Send link"
+          pendingLabel="Sending…"
+          send={(email, signal) =>
+            resendVerificationEmail(apiClient, email, signal)
+          }
+          describeFailure={resendFailure}
+          onSent={(email) => {
+            verificationCooldown.startSeconds(RESEND_COOLDOWN_SECONDS);
+            setView({ kind: 'verify', email });
+          }}
+          footer={backToSignIn('Back to sign in')}
+        />
+      ) : (
+        <SignInLens
+          apiClient={apiClient}
+          capabilities={capabilities.data}
+          notice={notice}
+          navigateToProvider={navigateToProvider}
+          onAuthenticated={onAuthenticated}
+          onUnverified={(email) => {
+            setView({ kind: 'verify', email });
+          }}
+          onRequestVerificationLink={() => {
+            setView({ kind: 'request-verification' });
+          }}
+        />
+      )}
+    </AuthStage>
   );
-}
-
-function loginError(error: unknown): string {
-  if (error instanceof NativeAuthenticationError) {
-    if (error.code === 'auth.email_not_verified')
-      return 'Verify your email before signing in. You can resend the verification message from account creation.';
-    if (error.status === 401 || error.status === 400)
-      return 'The email or password is incorrect.';
-    if (error.status === 429)
-      return 'Too many sign-in attempts. Wait a moment and try again.';
-    if (error.status === 403)
-      return 'This sign-in request was rejected. Reload the page and try again.';
-    if (error.status === 503 && error.kind === 'problem') return error.message;
-    if (error.kind === 'network' || error.kind === 'timeout')
-      return 'The sign-in response was lost. Check whether this browser is signed in before trying again.';
-  }
-  return 'Sign in could not be confirmed. Try again.';
 }
