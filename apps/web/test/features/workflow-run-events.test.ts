@@ -206,9 +206,35 @@ describe('run event lifecycle', () => {
       expect(result.result.current.connectionStatus).toBe('failed');
     });
     expect(result.result.current.recoveryMessage).toMatch(
-      /response was invalid/u,
+      /sent an update this page couldn’t read/u,
     );
     expect(stream).toHaveBeenCalledOnce();
+  });
+
+  it('reconnects on request after a pause and backfills from the first event', async () => {
+    const stream = vi
+      .fn<ApiClient['stream']>()
+      .mockRejectedValueOnce(
+        new ApiError({ kind: 'problem', message: 'forbidden', status: 403 }),
+      )
+      .mockResolvedValueOnce(openEventStream([event(1), event(2)]));
+    const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+    const result = renderHook(
+      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      { wrapper: queryWrapper(false) },
+    );
+    await waitFor(() => {
+      expect(result.result.current.connectionStatus).toBe('access-denied');
+    });
+    act(() => {
+      result.result.current.reconnect();
+    });
+    await waitFor(() => {
+      expect(result.result.current.timeline).toHaveLength(2);
+    });
+    expect(stream).toHaveBeenCalledTimes(2);
+    expect(stream.mock.calls[1]?.[0].headers).toEqual({ 'Last-Event-ID': '0' });
+    result.unmount();
   });
 
   it('uses bounded backoff for a transient disconnect and closes on unmount', async () => {

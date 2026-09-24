@@ -2,183 +2,150 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
-import { GlassSection } from '@/components/patterns/glass-section';
-import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
+import { workflowSummaryQueryOptions } from '@/features/workflows/public';
+import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
-import { RunHistoryFiltersForm } from './components/run-history-filters';
-import { RunHistoryTable } from './components/run-history-table';
-import type { RunHistoryFilters } from './run-history.types';
-import { workflowRunsInfiniteQueryOptions } from './workflow-runs.queries';
+import { LiveRunCounts } from './components/run-count';
+import { RunFilters } from './components/run-filters/run-filters';
+import { WorkflowPicker } from './components/run-filters/workflow-picker';
+import { RunsForbidden } from './components/run-list/run-list-states';
+import { RunResults } from './components/run-list/run-results';
+import { RunsToolbar } from './components/run-list/runs-toolbar';
+import {
+  filtersFromSearch,
+  withoutRunFilter,
+  withRunView,
+  type RunSearch,
+} from './model/run-search';
+import { useRunHistory } from './use-run-history';
+import { runStatusCountsQueryOptions } from './workflow-runs.queries';
 
+/** The workspace's run log: live counts, URL filters, List or Loom. */
 export function RunHistoryPage({
   apiClient,
   user,
   workspace,
-  filters,
-  onFiltersChange,
+  search,
+  onSearchChange,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  filters: RunHistoryFilters;
-  onFiltersChange: (filters: RunHistoryFilters) => void;
+  search: RunSearch;
+  onSearchChange: (search: RunSearch) => void;
 }>) {
-  const canRead = workspace.capabilities.includes('run:read');
-  const query = useInfiniteQuery({
-    ...workflowRunsInfiniteQueryOptions(
+  const [live, setLive] = useState(false);
+  const { query, runs, canRead } = useRunHistory({
+    apiClient,
+    userId: user.id,
+    workspace,
+    filters: filtersFromSearch(search),
+    live,
+  });
+  const counts = useQuery({
+    ...runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
+    enabled: canRead,
+  });
+  const canReadWorkflows = workspace.capabilities.includes('workflow:read');
+  const workflows = useInfiniteQuery({
+    ...workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+    enabled: canRead && canReadWorkflows,
+  });
+  const selected = useQuery({
+    ...workflowSummaryQueryOptions(
       apiClient,
       user.id,
       workspace.id,
-      filters,
+      search.workflowId ?? '',
     ),
-    enabled: canRead,
+    enabled: canReadWorkflows && search.workflowId !== undefined,
   });
-  const runs = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const collectionUnavailable =
-    query.isError && isApiError(query.error) && query.error.status === 404;
-
-  if (!canRead)
-    return (
-      <Empty>
-        <EmptyTitle>Run history is unavailable</EmptyTitle>
-        <EmptyDescription>
-          Your workspace role does not allow you to view workflow runs.
-        </EmptyDescription>
-      </Empty>
-    );
-
-  if (collectionUnavailable)
-    return (
-      <Empty>
-        <EmptyTitle>Run history is unavailable</EmptyTitle>
-        <EmptyDescription>
-          This run collection is not available for the current workspace. It may
-          not exist or may be outside your account access.
-        </EmptyDescription>
-      </Empty>
-    );
+  const workflowName =
+    search.workflowId === undefined ? undefined : selected.data?.name;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
-          Run history
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Find accepted workflow versions and execution outcomes across{' '}
-          {workspace.name}.
-        </p>
-      </header>
-      <AuroraLoadingPanel
-        active={
-          query.isPending || query.isRefetching || query.isFetchingNextPage
-        }
-      >
-        <GlassSection
-          className="overflow-hidden"
-          aria-busy={
-            query.isPending || query.isRefetching || query.isFetchingNextPage
-          }
-        >
-          <RunHistoryFiltersForm
-            key={JSON.stringify(filters)}
-            filters={filters}
-            canFilterByWorkflowName={workspace.capabilities.includes(
-              'workflow:read',
+    <div className="flex flex-col gap-8">
+      <PageHeader>
+        <div className="min-w-0">
+          <PageHeaderTitle>Runs</PageHeaderTitle>
+          <PageHeaderMeta>
+            {counts.data === undefined ? (
+              <span>Every run in {workspace.name}</span>
+            ) : (
+              <LiveRunCounts counts={counts.data} />
             )}
-            onApply={onFiltersChange}
+          </PageHeaderMeta>
+        </div>
+        {canRead ? (
+          <PageHeaderActions>
+            <RunsToolbar
+              live={live}
+              onLiveChange={setLive}
+              view={search.view ?? 'list'}
+              onViewChange={(view) => {
+                onSearchChange(withRunView(search, view));
+              }}
+            />
+          </PageHeaderActions>
+        ) : null}
+      </PageHeader>
+      {canRead ? (
+        <>
+          <RunFilters
+            search={search}
+            onSearchChange={onSearchChange}
+            {...(workflowName === undefined ? {} : { workflowName })}
+            workflowFilter={
+              canReadWorkflows ? (
+                <WorkflowPicker
+                  key={`${search.workflowId ?? ''}:${search.workflowNamePrefix ?? ''}:${workflowName ?? ''}`}
+                  workflows={
+                    workflows.data?.pages.flatMap((page) => page.items) ?? []
+                  }
+                  initialText={workflowName ?? search.workflowNamePrefix ?? ''}
+                  onPickWorkflow={(workflow) => {
+                    onSearchChange({
+                      ...withoutRunFilter(search, 'workflowNamePrefix'),
+                      workflowId: workflow.id,
+                    });
+                  }}
+                  onNamePrefix={(prefix) => {
+                    const rest = withoutRunFilter(
+                      withoutRunFilter(search, 'workflowId'),
+                      'workflowNamePrefix',
+                    );
+                    onSearchChange(
+                      prefix === undefined
+                        ? rest
+                        : { ...rest, workflowNamePrefix: prefix },
+                    );
+                  }}
+                />
+              ) : undefined
+            }
           />
-
-          {query.isError && runs.length > 0 && !query.isFetchNextPageError ? (
-            <div
-              role="alert"
-              className="flex flex-wrap items-center justify-between gap-3 border-b border-destructive/25 bg-destructive/5 px-4 py-3 sm:px-5"
-            >
-              <p className="text-sm text-destructive">
-                These runs may be stale because the latest refresh failed.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={query.isRefetching}
-                onClick={() => void query.refetch()}
-              >
-                {query.isRefetching ? 'Retrying…' : 'Retry refresh'}
-              </Button>
-            </div>
-          ) : null}
-
-          {query.isPending ? (
-            <p
-              role="status"
-              className="px-5 py-16 text-sm text-muted-foreground"
-            >
-              Loading run history…
-            </p>
-          ) : query.isError && runs.length === 0 ? (
-            <Empty className="border-0 px-5">
-              <EmptyTitle>Run history could not be loaded</EmptyTitle>
-              <EmptyDescription>{historyError(query.error)}</EmptyDescription>
-              <Button
-                className="mt-6"
-                type="button"
-                variant="outline"
-                onClick={() => void query.refetch()}
-              >
-                Try again
-              </Button>
-            </Empty>
-          ) : runs.length === 0 ? (
-            <Empty className="border-0 px-5">
-              <EmptyTitle>No matching runs</EmptyTitle>
-              <EmptyDescription>
-                Runs will appear after a published workflow accepts an
-                execution. Clear filters to search the full workspace history.
-              </EmptyDescription>
-            </Empty>
-          ) : (
-            <>
-              <RunHistoryTable runs={runs} workspaceId={workspace.id} />
-              {query.hasNextPage || query.isFetchNextPageError ? (
-                <div className="border-t px-4 py-4 text-center sm:px-5">
-                  {query.hasNextPage ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={query.isFetchingNextPage}
-                      onClick={() => void query.fetchNextPage()}
-                    >
-                      {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
-                    </Button>
-                  ) : null}
-                  {query.isFetchNextPageError ? (
-                    <p role="alert" className="mt-3 text-sm text-destructive">
-                      The next history page could not be loaded. Try again.
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          )}
-        </GlassSection>
-      </AuroraLoadingPanel>
+          <RunResults
+            apiClient={apiClient}
+            userId={user.id}
+            workspace={workspace}
+            search={search}
+            onSearchChange={onSearchChange}
+            query={query}
+            runs={runs}
+            variant="workspace"
+          />
+        </>
+      ) : (
+        <RunsForbidden />
+      )}
     </div>
   );
-}
-
-function historyError(error: unknown): string {
-  if (isApiError(error)) {
-    if (error.status === 403)
-      return 'You no longer have access to run history in this workspace.';
-    if (error.kind === 'network')
-      return 'Run history could not be reached. Check your network and try again.';
-    if (error.kind === 'timeout')
-      return 'Run history took too long to load. Try again.';
-  }
-  return 'Run history could not be loaded. Try again.';
 }

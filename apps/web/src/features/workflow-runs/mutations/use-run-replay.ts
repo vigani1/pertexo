@@ -2,6 +2,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
+import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
 import { canonicalizeJson } from '@/lib/canonical-json';
 import { replayWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../workflow-runs.queries';
@@ -78,7 +82,7 @@ export function useRunReplay({
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
-      const uncertain = isUncertain(cause);
+      const uncertain = isUncertainOutcome(cause);
       if (!uncertain) attempt.current = undefined;
       setRetryAvailable(uncertain);
       setError(runReplayError(cause));
@@ -102,7 +106,7 @@ export function useRunReplay({
     if (pending || current === undefined) return Promise.resolve(false);
     if (normalizeReplayIntent(intent) !== current.normalizedIntent) {
       setError(
-        'The fields now describe a different replay. Restore the original values or dismiss this attempt before starting another replay.',
+        'The values changed since the unconfirmed replay. Restore them to retry it, or close this dialog to start over.',
       );
       return Promise.resolve(false);
     }
@@ -126,21 +130,10 @@ function normalizeReplayIntent(intent: RunReplayIntent): string {
   });
 }
 
-function isUncertain(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    (error.kind === 'network' ||
-      error.kind === 'timeout' ||
-      error.kind === 'protocol')
-  );
-}
-
 function runReplayError(error: unknown): string {
-  if (isUncertain(error))
-    return 'The replay result is uncertain. Retry the same values to reuse this command safely.';
-  if (isApiError(error) && error.status === 403)
-    return 'You no longer have permission to replay this run.';
+  if (isUncertainOutcome(error))
+    return 'We couldn’t confirm whether the replay started. Retry with the same values; Pertexo won’t start it twice.';
   if (isApiError(error) && error.status === 409)
-    return 'This replay conflicts with an earlier command. Dismiss it before starting a new replay.';
-  return 'The run could not be replayed.';
+    return 'This replay clashes with an earlier one. Close this dialog and start a new replay.';
+  return describeCommandError(error, 'replaying this run');
 }

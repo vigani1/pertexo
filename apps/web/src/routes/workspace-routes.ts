@@ -16,8 +16,12 @@ import {
 } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
-  recentWorkflowRunsQueryOptions,
-  runHistorySearchSchema,
+  anyRunQueryOptions,
+  attentionRunsQueryOptions,
+  filtersFromSearch,
+  runLoomQueryOptions,
+  runStatusCountsQueryOptions,
+  sanitizeRunSearch,
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
@@ -90,25 +94,57 @@ export const homeRoute = createRoute({
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);
+    // Warm the slower or secondary reads without holding the page: the Loom
+    // may page through 300 runs, and each block shows its own skeleton and
+    // retries on mount if its warm-up read failed.
+    const warm = (read: Promise<unknown>) => {
+      read.catch(() => undefined);
+    };
+    if (can('run:read'))
+      warm(
+        queryClient.query(
+          runLoomQueryOptions(apiClient, user.id, workspace.id, 3_600_000),
+        ),
+      );
+    if (can('connection:read'))
+      warm(
+        queryClient.query(
+          connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
+        ),
+      );
+    if (can('workflow:update'))
+      warm(
+        queryClient.query(
+          failureNotificationDestinationsQueryOptions(
+            apiClient,
+            user.id,
+            workspace.id,
+          ),
+        ),
+      );
     await settlePrefetches(context, [
+      ...(can('run:read')
+        ? [
+            queryClient.query(
+              runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
+            ),
+            queryClient.query(
+              attentionRunsQueryOptions(apiClient, user.id, workspace.id),
+            ),
+            queryClient.query(
+              anyRunQueryOptions(apiClient, user.id, workspace.id),
+            ),
+          ]
+        : []),
       ...(can('workflow:read')
         ? [
             queryClient.query(
               recentWorkflowsQueryOptions(apiClient, user.id, workspace.id),
             ),
-          ]
-        : []),
-      ...(can('run:read')
-        ? (['all', 'failed'] as const).map((status) =>
-            queryClient.query(
-              recentWorkflowRunsQueryOptions(
-                apiClient,
-                user.id,
-                workspace.id,
-                status,
-              ),
+            queryClient.infiniteQuery(
+              workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
             ),
-          )
+          ]
         : []),
     ]);
   },
@@ -156,8 +192,10 @@ export const runsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'runs',
   staticData: { crumb: 'Runs' },
-  validateSearch: (search) => runHistorySearchSchema.parse(search),
-  loaderDeps: ({ search }) => search,
+  // Unknown or malformed keys are dropped, never thrown: a bad link still
+  // opens the Runs page.
+  validateSearch: (search) => sanitizeRunSearch(search),
+  loaderDeps: ({ search }) => filtersFromSearch(search),
   loader: async ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('run:read')) return;
@@ -169,6 +207,9 @@ export const runsRoute = createRoute({
           workspace.id,
           deps,
         ),
+      ),
+      queryClient.query(
+        runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
       ),
     ]);
   },

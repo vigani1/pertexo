@@ -10,7 +10,7 @@ const timestamp = '2026-09-21T10:00:00.000Z';
 
 async function installRoutes(page: Page) {
   const workflowQueries: string[] = [];
-  const runQueries: string[] = [];
+  const runQueries: URLSearchParams[] = [];
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
       json: {
@@ -69,14 +69,17 @@ async function installRoutes(page: Page) {
     },
   );
   await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, async (route) => {
-    const url = new URL(route.request().url());
-    runQueries.push(url.search);
-    const failed = url.searchParams.get('status') === 'failed';
+    const query = new URL(route.request().url()).searchParams;
+    runQueries.push(query);
+    const status = query.get('status');
     await route.fulfill({
       json: {
-        items: [
-          run(failed ? failedRunId : runId, failed ? 'failed' : 'succeeded'),
-        ],
+        items:
+          status === 'failed'
+            ? [run(failedRunId, 'failed')]
+            : status === null
+              ? [run(runId, 'succeeded')]
+              : [],
         nextCursor: null,
       },
     });
@@ -90,6 +93,7 @@ function run(id: string, status: 'failed' | 'succeeded') {
     workspaceId,
     workflowId,
     workflowVersionId: versionId,
+    workflowName: 'Daily intake',
     status,
     triggerType: 'manual',
     createdAt: timestamp,
@@ -101,24 +105,39 @@ function run(id: string, status: 'failed' | 'succeeded') {
   };
 }
 
-test('shows bounded overview lists and keeps source links usable on mobile', async ({
+test('shows the loom, what needs attention and recent changes on mobile', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const queries = await installRoutes(page);
   await page.goto(`/w/${workspaceId}`);
 
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByText('Daily intake')).toBeVisible();
-  await expect(page.getByText(`Run ${runId.slice(0, 8)}…`)).toBeVisible();
-  await expect(page.getByText(`Run ${failedRunId.slice(0, 8)}…`)).toBeVisible();
-  expect(queries.workflowQueries).toContain('?limit=5&order=updated_desc');
-  expect(queries.runQueries).toEqual(
-    expect.arrayContaining(['?limit=5', '?limit=5&status=failed']),
-  );
   await expect(
-    page.getByRole('link', { name: 'View failed run history' }),
-  ).toHaveAttribute('href', `/w/${workspaceId}/runs?status=failed`);
+    page.getByRole('heading', { level: 1, name: 'Control Operations' }),
+  ).toBeVisible();
+  const attention = page.getByRole('region', { name: 'Needs attention' });
+  await expect(
+    attention.getByText('Daily intake failed once in the last 24 hours'),
+  ).toBeVisible();
+  await expect(
+    attention.getByRole('link', { name: 'Open run' }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/runs/${failedRunId}`);
+  await expect(
+    page
+      .getByRole('region', { name: 'Recently changed' })
+      .getByRole('link', { name: 'Daily intake' }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
+  await expect(page.getByRole('img', { name: /Timeline of/u })).toBeVisible();
+  expect(queries.workflowQueries).toContain('?limit=5&order=updated_desc');
+  for (const status of ['running', 'waiting', 'queued', 'failed'])
+    expect(
+      queries.runQueries.some((query) => query.get('status') === status),
+    ).toBe(true);
+  expect(
+    queries.runQueries
+      .find((query) => query.get('status') === 'failed')
+      ?.get('createdAtFrom'),
+  ).toBeTruthy();
 
   await expect(
     page
@@ -128,5 +147,9 @@ test('shows bounded overview lists and keeps source links usable on mobile', asy
 
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeEnabled();
-  await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });
