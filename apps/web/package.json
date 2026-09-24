@@ -21,7 +21,7 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@tanstack/react-query": "5.102.8",
-    "@tanstack/react-router": "1.170.36",
+    "@tanstack/react-router": "1.170.38",
     "@xyflow/react": "12.11.6",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
