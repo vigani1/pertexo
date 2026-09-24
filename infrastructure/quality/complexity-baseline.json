@@ -5,7 +5,6 @@
     "functionLines": 200
   },
   "fileHotspots": {
-    "apps/api/src/platform/config/api-config.ts": 518,
     "apps/api/src/workflow-runs/use-cases.ts": 523,
     "apps/web/src/routes/route-tree.ts": 545,
     "apps/worker/src/config/worker-config.ts": 574,
@@ -13,7 +12,6 @@
     "apps/worker/src/transport/outbox-dispatcher.ts": 627,
     "packages/artifact-store/src/control-ledger.ts": 877,
     "packages/artifact-store/src/store.ts": 950,
-    "packages/contracts/src/identity-workspace.ts": 599,
     "packages/database/src/connections/connection-persistence.ts": 643,
     "packages/database/src/execution/coordinator-run-store-observations.ts": 754,
     "packages/database/src/execution/failure-notification-destinations.ts": 613,
@@ -35,10 +33,6 @@
     "packages/workflow-engine/src/workflow-transition-observations.ts": 528
   },
   "functionHotspots": {
-    "apps/api/src/identity-workspace/module.ts#IdentityWorkspaceModule.register": {
-      "branches": 8,
-      "lines": 241
-    },
     "apps/web/src/features/workspaces/mutations/use-workspace-creation.ts#useWorkspaceCreation": {
       "branches": 5,
       "lines": 203
