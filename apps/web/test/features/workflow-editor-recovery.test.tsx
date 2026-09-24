@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { configure, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -30,7 +30,6 @@ import {
 } from '../support/workflow-editor-fixtures';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
-configure({ asyncUtilTimeout: 5_000 });
 
 describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
   it('retains an exact uncertain run through an identity pause until explicit retry', async () => {

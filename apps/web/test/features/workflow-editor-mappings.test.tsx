@@ -1,6 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
-  configure,
   fireEvent,
   screen,
   waitFor,
@@ -23,7 +22,6 @@ import {
 } from '../support/workflow-editor-fixtures';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
-configure({ asyncUtilTimeout: 5_000 });
 
 describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
   it('applies typed input mappings live and saves them through the draft pipeline', async () => {

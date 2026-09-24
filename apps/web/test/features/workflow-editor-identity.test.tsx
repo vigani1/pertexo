@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { configure, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -22,7 +22,6 @@ import {
 } from '../support/workflow-editor-fixtures';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
-configure({ asyncUtilTimeout: 5_000 });
 
 describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
   it('freezes saving and checks when the signed-in account changes', async () => {

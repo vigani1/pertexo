@@ -1,6 +1,5 @@
 import { HttpResponse, http } from 'msw';
 import {
-  configure,
   fireEvent,
   screen,
   waitFor,
@@ -38,7 +37,6 @@ import {
 } from '../support/workflow-editor-fixtures';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
-configure({ asyncUtilTimeout: 5_000 });
 
 describe('workflow editor publishing', { timeout: 30_000 }, () => {
   it('checks and publishes without a manual validate, then weaves in the new version', async () => {
