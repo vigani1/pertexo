@@ -590,21 +590,30 @@ Three different checks must stay distinct:
    catalog compatibility, connection access and publish/run admission. Frontend
    checks improve feedback but never replace these rules.
 
-Static forms use one feature-local owner, on-blur feedback and submit
-validation; after a failed submit revalidate corrected fields on change. Use
-shadcn Field, FieldLabel/Description/Error and appropriate Base UI controls.
-Link errors with `aria-describedby`, set `aria-invalid`, focus the first invalid
-field and keep a form-level error for unknown paths. Map only known safe
-contract paths into fields; do not mutate arbitrary object paths from a server
-error.
+Static forms own their values in the feature and share one timing engine,
+`useFieldValidation` (`components/ui/use-field-validation.ts`): a field is
+checked when people leave it, then live while its message shows or after a
+failed submit; submit focuses the first invalid control in document order;
+server field errors (`errors[].path`, mapped by the feature to known fields only
+— never arbitrary object paths) land on the same fields through `showErrors`;
+and a field that goes from invalid to valid ties a brief knot. Plain text forms
+may use the thin `useFieldValues(rules, initial)` layer over it. Render every
+labelled control with `LabelledField` (`components/ui/field.tsx`, optional label
+action, trailing control and live-feedback slots), which links
+`aria-describedby`, sets `aria-invalid` and draws the `FieldThread`. Keep a
+form-level `Notice` for failures without a known path.
 
-For node inspectors, form scratch values can temporarily be invalid. Use an
-explicit **Apply** action for the first editor: validated input becomes one
-editor command/undo transaction; Cancel discards scratch values. Switching nodes
-or navigating away with unapplied edits asks Apply/Discard/Stay. “Saved” must
-not be shown while local form edits remain unapplied. Later auto-apply is a
-separate interaction decision, not an effect copying every keystroke into three
-stores.
+Node inspectors use **live apply**, not an Apply button. Each field keeps its
+own text (`use-live-field.ts`): a value that parses is committed straight into
+the editor store as an undoable step — consecutive edits of the same field
+within two seconds coalesce into one step — and the save coordinator writes the
+draft after a one-second pause, serialized with the draft's ETag. Text that
+doesn't parse stays in the field as an unfinished local edit with its message;
+the store's `inspectorScratch` flag then keeps the save state from reading
+“Saved”, pauses automatic checks, blocks publish and runs (“Finish or discard
+the unfinished edit…”), asks Stay/Discard before a command would replace the
+inspected step (another step, undo/redo, deleting it) and asks before leaving
+the editor. No effect copies keystrokes between stores.
 
 Catalog config/input/output schemas arrive as **JSON Schema documents**, not
 executable Zod schemas. Do not cast them to Zod or import server registrations.
@@ -883,10 +892,10 @@ markup fragment.
 | Mobile navigation — same shell source                                                                                            | Left drawer with the same navigation/account content and compact header                                                     | Reuse one navigation composition for desktop/mobile; use an accessible current primitive for focus trap, Escape and focus return. Only drawer-open state is local; route state is not duplicated. Close on completed navigation without bypassing dirty-state protection. | Adapted with the Base UI dialog primitive; focus trap, Escape, focus return, completed-navigation closing and reduced motion are browser-verified. |
 | Header and content frame — same shell source and `src/app/globals.css`                                                           | Sticky translucent header, alignment, spacing, restrained peripheral cyan/violet light                                      | Workspace shell accepts explicit page-title/action composition where needed. Keep decorative light in one shell layer. No old header-event bus, pathname heuristics or global header-content store.                                                                       | Adapted with explicit route titles, page/editor frame variants and one bounded ambient-light layer.                                                |
 | Focused editor layout — same shell source plus builder chrome                                                                    | Canvas-first space with its own command bar instead of dashboard-width constraints                                          | Explicit editor-route composition with back navigation and current editor commands. Preserve save/conflict/navigation safeguards; do not hide the sidebar for every workflow-prefixed URL. Settings/detail pages keep their intended layout.                              | Adapted with a compact catalog, expansive canvas, inspector dock and feature-owned command bar; existing editor behavior is preserved.             |
-| Glass sections — `src/components/patterns/glass-section.tsx`                                                                     | Directional borders, layered surface, header/content spacing                                                                | Existing `components/patterns/glass-section.tsx` and shared tokens. Use for meaningful sections rather than wrapping every fragment in another card.                                                                                                                      | Adapted; reuse and align spacing.                                                                                                                  |
+| Glass sections — `src/components/patterns/glass-section.tsx`                                                                     | Directional borders, layered surface, header/content spacing                                                                | Superseded by Weft: page content is flat and only floating layers use the `lens` utility.                                                                                                                                                                                 | Adapted, then removed with the Weft uniformity pass.                                                                                               |
 | Metric/summary card — `src/components/patterns/metric-card.tsx`; `src/features/workflows/components/workflows-summary-cards.tsx` | Label/value/detail hierarchy, optional icon, restrained accent border and optional status/trend treatment                   | Adapt a presentational metric card when a real overview summary needs it; feature owns its data/composition. Promote to `components/patterns/metric-card.tsx` when genuinely reused. No old metric names, decorative fake trends or client-computed full-history totals.  | Not adapted; deliver with approved overview data, not as dummy dashboard content.                                                                  |
-| Lists, tables and pagination — `src/components/patterns/data-table.tsx`, `data-pagination.tsx`                                   | Header/row density, separators, hover/selection treatment and footer alignment                                              | Style existing `components/ui/table.tsx`; feature owns columns/actions. Adapt presentation only: current APIs use cursor pagination, so do not copy page-number/total-count assumptions.                                                                                  | Existing table primitive; cursor treatment verified in Workflows, Connections and Run history.                                                     |
-| Confirmation and structured detail — `src/components/patterns/confirmation-dialog.tsx`, `json-viewer.tsx`                        | Dialog hierarchy, readable structured content and restrained action emphasis                                                | Use existing dialog primitives and feature-owned command/error handling. Adapt JSON presentation only when needed, with bounded data and redaction; no raw secret rendering.                                                                                              | Selectively adapt with relevant command/detail slice; no parallel dialog framework.                                                                |
+| Lists, tables and pagination — `src/components/patterns/data-table.tsx`, `data-pagination.tsx`                                   | Header/row density, separators, hover/selection treatment and footer alignment                                              | Weft lists are rows, not tables; feature owns rows/actions and `LoadMore` pages them. Current APIs use cursor pagination, so do not copy page-number/total-count assumptions.                                                                                             | Cursor treatment verified in Workflows, Connections and Run history; the unused table primitive was removed.                                       |
+| Confirmation and structured detail — `src/components/patterns/confirmation-dialog.tsx`, `json-viewer.tsx`                        | Dialog hierarchy, readable structured content and restrained action emphasis                                                | `components/patterns/confirm-dialog.tsx` on the dialog primitive; features own commands and error copy. `JsonTree` shows bounded, redacted structured data; no raw secret rendering.                                                                                      | Adapted as the one `ConfirmDialog` and `JsonTree`; no parallel dialog framework.                                                                   |
 | Connection card — `src/features/workflow-builder/components/inspector/connections/workflow-connection-card.tsx`                  | Compact provider/connection identity, status and action layout                                                              | `features/connections/components/` owns reusable connection presentation; editor consumes its deliberate public interface if shared. Only show supported auth/status/actions from Pertexo contracts.                                                                      | Management actions are adapted in the connection table; a separate editor card is unnecessary until connection detail/recovery needs it.           |
 | Canvas node/ports/edges, palette, inspector and toolbar — detailed checklist below                                               | Legacy geometry, glass node faces, selected-state treatment, icon hierarchy, panel/dock layout and controls                 | Existing `workflow-editor` feature, split by meaningful visual responsibility; retain current graph adapter, IDs, catalog, state and commands. Execution motion remains in `workflow-runs` and reflects actual run state.                                                 | Adapted against the functional editor; fake metrics and editor-side execution motion remain intentionally absent.                                  |
 
@@ -1027,9 +1036,14 @@ of visual extraction.
 
 ### Weft design system (supersedes the aurora-glass refinement)
 
-Status: **in progress on `feat/weft-redesign`**. Weft replaces the earlier
-"aurora glass and workflow-first layouts" refinement and the legacy-layout
-targets above wherever they conflict. The visual reference is the Weft blueprint
+Status: **applied to every page** (Home, Runs and run detail; Workflows and the
+hub; the editor, publish and catalog; connections, alerts and workspace
+administration; sign-in, invitations and workspace entry). A uniformity pass
+then folded each area's own copies of shared concepts into one implementation
+each (listed under “Shared building blocks”); new work reuses those instead of
+adding variants. Weft replaces the earlier "aurora glass and workflow-first
+layouts" refinement and the legacy-layout targets above wherever they conflict.
+The visual reference is the Weft blueprint
 ([`docs/design/weft-blueprint.html`](../../docs/design/weft-blueprint.html),
 open it in a browser); this section is the binding summary for code. The
 palette, the particle orb, the aurora edge and glass stay — each with one job.
@@ -1077,25 +1091,38 @@ Features map their own enums to a `StatusTone` in their `model/` (for example
 
 #### Shared building blocks
 
-- Primitives (`components/ui`): button (`primary` is the one filled action per
-  screen; `default` tinted; `outline`, `ghost`, `destructive`, `link`), badge,
-  input/textarea, field (`FieldControl` draws the fray/knot validation thread),
-  select, dropdown-menu, tabs, tooltip, popover, switch, checkbox, sheet,
-  toggle-group, separator, kbd, skeleton (`Skeleton`, `SkeletonThread`), empty
-  (`Empty`, `EmptyMedia`, `EmptyTitle`, `EmptyDescription`, `EmptyActions` —
-  every empty state names its next action), status, toast
-  (`NotificationsProvider`, `useNotifications` with success/info/error/undo and
-  `track` for progress → result), loading-orb, dialog (`center`, `top`).
-- Patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
-  line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
-  illustrations, `AuroraLoadingPanel` (transitional; prefer the `live-edge`
-  class).
-- Shared libraries (`lib`): `format-time.ts` (all date/time/duration text — no
-  feature-local `Intl.DateTimeFormat`), `format-initials.ts`,
-  `api/api-error-copy.ts` (generic read/command failure sentences, uncertain
-  outcome, forbidden, rate-limit and support reference helpers),
-  `use-canvas-renderer.ts`, `use-prefers-reduced-motion.ts`,
-  `use-online-status.ts`.
+One implementation per concept; features compose these rather than restyling
+their own:
+
+| Concept        | Where                                                                     | Use                                                                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Field          | `components/ui/field.tsx`                                                 | `LabelledField` (label, optional label action, trailing control and live feedback; links hint and message), `FieldControl` draws the `FieldThread` (fray/knot)                                 |
+| Validation     | `components/ui/use-field-validation.ts`                                   | `useFieldValidation`: the only message timing (blur → live, focus first invalid, server `errors[].path`, knot); `useFieldValues` is the thin values-and-rules layer for plain text forms       |
+| Confirmation   | `components/patterns/confirm-dialog.tsx`                                  | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `unconfirmed` turns confirm into the exact retry and Cancel into Close  |
+| Pending button | `components/ui/progress-button.tsx`                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                     |
+| Copy           | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts` | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard   |
+| Notice         | `components/ui/notice.tsx`                                                | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes             |
+| Stale data     | `components/patterns/stale-line.tsx`                                      | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                      |
+| Lists          | `components/patterns/load-more.tsx`, `components/ui/skeleton.tsx`         | `LoadMore` (next page, retry, one failure line); `Skeleton`, `SkeletonThread`, `SkeletonRows` (a list loading in its row shape)                                                                |
+| Clock          | `lib/use-now.ts`, `lib/use-countdown.ts`, `lib/format-time.ts`            | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24" |
+| Canvas         | `lib/canvas-scene.ts`, `lib/use-canvas-renderer.ts`                       | `CanvasScene` (sized, cleared, token colours) for the Core, sign-in threads, Loom and loading wave; the hook owns the loop                                                                     |
+| Status colour  | `components/ui/status.tsx`, `components/ui/status-tone.ts`                | `Status`/`StatusGlyph` and `statusToneText`, the one colour per tone                                                                                                                           |
+| Pagination     | `lib/api/pagination.ts`                                                   | `cursorPages`/`collectPages` walk cursors once (repeat or overrun is a protocol failure); `searchParams` builds page queries                                                                   |
+
+Other primitives (`components/ui`): button (`primary` is the one filled action
+per screen; `default` tinted; `outline`, `ghost`, `destructive`, `link`), badge,
+input/textarea, select, dropdown-menu, tabs, tooltip, popover, switch, checkbox,
+sheet, toggle-group, separator, kbd, empty (`Empty`, `EmptyMedia`, `EmptyTitle`,
+`EmptyDescription`, `EmptyActions` — every empty state names its next action),
+toast (`NotificationsProvider`, `useNotifications` with success/info/error/undo
+and `track` for progress → result), loading-orb, dialog (`center`, `top`). Other
+patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
+line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
+illustrations. Other libraries (`lib`): `format-time.ts` (all date/time/duration
+text — no feature-local `Intl.DateTimeFormat`), `format-initials.ts`,
+`api/api-error-copy.ts` (generic read/command failure sentences, uncertain
+outcome, forbidden, rate-limit and support reference helpers),
+`use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 #### Structure
 
@@ -1111,7 +1138,16 @@ Features map their own enums to a `StatusTone` in their `model/` (for example
   its own right-hand actions; Build embeds the editor.
 - Routes are thin compositions (`useWorkspaceScope`, `useWorkflowHubScope`) and
   set document titles with `pageTitle`. Resource pages render `ResourceNotFound`
-  inside the frame for missing runs or workflows.
+  inside the frame for missing runs or workflows; their loaders use
+  `prefetchResource` (`routes/route-context.ts`), which turns a 404 into
+  `{ found: false }`.
+- File placement is the same in every feature: `components/` holds components
+  (and the Canvas scene a component owns); `model/` holds pure rules, types and
+  the editor store with its React contexts; feature hooks (`use-*.ts`) sit at
+  the feature root; server command hooks live in `<feature>.mutations.ts` or,
+  once there are several, one per file in `mutations/`. Query options other
+  features or loaders need come from one `queries.public.ts`; lazy pages and
+  focused interfaces use `public.ts` or `<responsibility>.public.ts`.
 
 #### Copy and feedback rules
 
@@ -1129,6 +1165,10 @@ Features map their own enums to a `StatusTone` in their `model/` (for example
   place. Lasting states (offline, pending deletion, suspended) are banners.
 - Destructive actions confirm or offer Undo. Rate limits count down from
   `Retry-After`.
+- Success effects of a command (toast, closing a dialog, navigating) follow an
+  awaited `mutateAsync()` or live in the mutation hook. TanStack Query drops
+  `mutate(x, { onSuccess })` callbacks once the caller unmounts, which a cache
+  update often causes; ESLint rejects `mutate()` with options in `src`.
 
 #### Budgets
 
@@ -1206,7 +1246,12 @@ in the same slice that introduces them:
   checking when extending those gates; the current docs command scans root
   README/docs, not every workspace guide.
 - Fresh QueryClient/router/editor store for each unit/component test. Test
-  through public behavior, not setter call counts or giant snapshots.
+  through public behavior, not setter call counts or giant snapshots. Page tests
+  share one budget set in `test/setup.ts` (testing-library's `asyncUtilTimeout`
+  of 3 s) and vitest's 15 s per-test ceiling; don't add per-file overrides.
+  Shared primitives have focused tests in `test/components/` and `test/lib/`.
+- ESLint rejects `mutate(x, options)` in `src` (callbacks are dropped when the
+  caller unmounts); act after an awaited `mutateAsync()` instead.
 - Add MSW when network integration begins so real transport/decoders participate
   in component tests. Fixtures satisfy public schemas; malformed fixtures are
   explicit negative cases. Mocking HTTP does not prove production auth/CORS/SSE.
