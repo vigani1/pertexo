@@ -110,7 +110,7 @@ describe('workspace overview', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/overview`, { strict: true });
+    renderApp(`/w/${workspaceId}`, { strict: true });
 
     expect(
       await screen.findByRole('heading', { name: 'Overview' }),
@@ -182,7 +182,7 @@ describe('workspace overview', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/overview`);
+    renderApp(`/w/${workspaceId}`);
     expect((await screen.findAllByText('Daily intake')).length).toBeGreaterThan(
       0,
     );
@@ -214,7 +214,7 @@ describe('workspace overview', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/overview`);
+    renderApp(`/w/${workspaceId}`);
     expect(await screen.findByText('Daily intake')).toBeVisible();
     expect(
       screen.queryByRole('heading', { name: 'Recent runs' }),
@@ -253,7 +253,7 @@ describe('workspace overview', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/overview`);
+    renderApp(`/w/${workspaceId}`);
     expect(await screen.findByText(/Run eeeeeeee…/u)).toBeVisible();
     await userEvent
       .setup()

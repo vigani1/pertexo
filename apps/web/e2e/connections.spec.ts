@@ -125,6 +125,10 @@ async function installRoutes(page: Page) {
     route.fulfill({ json: { schemaVersion: 1, release, items: [] } }),
   );
   await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) => route.fulfill({ json: { workflow } }),
+  );
+  await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
     (route) =>
       route.fulfill({
@@ -173,9 +177,7 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/connections`);
 
-  const navigation = page.getByRole('navigation', {
-    name: 'Workspace navigation',
-  });
+  const navigation = page.getByRole('navigation', { name: 'Workspace' });
   await expect(
     navigation.getByRole('link', { name: 'Connections' }),
   ).toHaveAttribute('aria-current', 'page');

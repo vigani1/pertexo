@@ -1,40 +1,24 @@
-import {
-  useLoaderData,
-  useNavigate,
-  useRouteContext,
-  useSearch,
-} from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { RunHistoryPage } from '@/features/workflow-runs/public';
-import { WorkspaceUnavailablePage } from './root-layout';
-import { WorkspaceRouteShell } from './workspace-route-shell';
+import { useWorkspaceScope } from './use-workspace-scope';
 
 export function RunHistoryRoute() {
-  const { apiClient } = useRouteContext({ from: '/w/$workspaceId/runs' });
-  const data = useLoaderData({ from: '/w/$workspaceId/runs' });
-  const filters = useSearch({ from: '/w/$workspaceId/runs' });
+  const { apiClient, user, workspace } = useWorkspaceScope();
+  const filters = useSearch({ from: '/w/$workspaceId/shell/runs' });
   const navigate = useNavigate();
-  if (data.workspace === null) return <WorkspaceUnavailablePage />;
-  const workspace = data.workspace;
   return (
-    <WorkspaceRouteShell
+    <RunHistoryPage
       apiClient={apiClient}
-      user={data.user}
+      user={user}
       workspace={workspace}
-      pageTitle="Run history"
-    >
-      <RunHistoryPage
-        apiClient={apiClient}
-        user={data.user}
-        workspace={workspace}
-        filters={filters}
-        onFiltersChange={(search) => {
-          void navigate({
-            to: '/w/$workspaceId/runs',
-            params: { workspaceId: workspace.id },
-            search,
-          });
-        }}
-      />
-    </WorkspaceRouteShell>
+      filters={filters}
+      onFiltersChange={(search) => {
+        void navigate({
+          to: '/w/$workspaceId/runs',
+          params: { workspaceId: workspace.id },
+          search,
+        });
+      }}
+    />
   );
 }

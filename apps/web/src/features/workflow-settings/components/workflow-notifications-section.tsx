@@ -88,7 +88,7 @@ export function WorkflowNotificationsSection({
       </ul>
       {canManageDestinations ? (
         <Link
-          to="/w/$workspaceId/settings/notifications"
+          to="/w/$workspaceId/alerts"
           params={{ workspaceId: workspace.id }}
           className="mt-4 inline-flex text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >

@@ -17,7 +17,12 @@ export const workflowRunKeys = {
     [...workflowRunKeys.scope(userId, workspaceId), 'detail', runId] as const,
   recent: (userId: string, workspaceId: string, status: 'all' | 'failed') =>
     [...workflowRunKeys.scope(userId, workspaceId), 'recent', status] as const,
+  liveCount: (userId: string, workspaceId: string) =>
+    [...workflowRunKeys.scope(userId, workspaceId), 'live-count'] as const,
 };
+
+const LIVE_COUNT_PAGE_SIZE = 100;
+const LIVE_COUNT_REFRESH_MS = 15_000;
 
 export function workflowRunsInfiniteQueryOptions(
   apiClient: ApiClient,
@@ -54,6 +59,35 @@ export function recentWorkflowRunsQueryOptions(
       ),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Running plus waiting runs, for the spine badge and Home. Each status is one
+ * bounded page, so the count saturates at 200; callers show "99+".
+ */
+export function liveRunCountQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+) {
+  return queryOptions({
+    queryKey: workflowRunKeys.liveCount(userId, workspaceId),
+    queryFn: async ({ signal }) => {
+      const [running, waiting] = await Promise.all(
+        (['running', 'waiting'] as const).map((status) =>
+          getWorkflowRunsPage(
+            apiClient,
+            workspaceId,
+            { status },
+            { limit: LIVE_COUNT_PAGE_SIZE, signal },
+          ),
+        ),
+      );
+      return (running?.items.length ?? 0) + (waiting?.items.length ?? 0);
+    },
+    staleTime: LIVE_COUNT_REFRESH_MS,
+    refetchInterval: LIVE_COUNT_REFRESH_MS,
   });
 }
 

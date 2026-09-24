@@ -1,142 +1,284 @@
-import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
-import { workspaceLifecycleOperationIdentifierSchema } from '@pertexo/contracts/schemas/identity-workspace';
-import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/members.queries.public';
-import { workspaceLifecycleOperationQueryOptions } from '@/features/workspaces/lifecycle.queries.public';
+import {
+  createRoute,
+  lazyRouteComponent,
+  notFound,
+} from '@tanstack/react-router';
+import {
+  workspaceLifecycleOperationIdentifierSchema,
+  type AccessibleWorkspace,
+} from '@pertexo/contracts/schemas/identity-workspace';
+import { workflowRunIdentifierSchema } from '@pertexo/contracts/schemas/workflow-runs';
+import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
 } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
-import { recentWorkflowsQueryOptions } from '@/features/workflows/queries.public';
-import { recentWorkflowRunsQueryOptions } from '@/features/workflow-runs/queries.public';
-import { rootRoute } from './root-route';
 import {
+  recentWorkflowRunsQueryOptions,
+  runHistorySearchSchema,
+  workflowRunQueryOptions,
+  workflowRunsInfiniteQueryOptions,
+} from '@/features/workflow-runs/queries.public';
+import {
+  recentWorkflowsQueryOptions,
+  workflowsInfiniteQueryOptions,
+} from '@/features/workflows/queries.public';
+import { workspaceLifecycleOperationQueryOptions } from '@/features/workspaces/lifecycle.queries.public';
+import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/members.queries.public';
+import { isNotFound } from '@/lib/api/api-error-copy';
+import { PagePending } from './page-pending';
+import { pageTitle } from './page-title';
+import {
+  findWorkspace,
   loadCurrentUser,
-  loadWorkspace,
-  loadWorkspaces,
-  redirectWhenAnyUnauthenticated,
-  redirectWhenUnauthenticated,
-} from './route-loaders';
+  rethrowError,
+  settlePrefetches,
+} from './route-context';
+import { rootRoute } from './root-route';
 
-export const workspacesRoute = createRoute({
+function assertWorkspaceOpenable(
+  workspace: AccessibleWorkspace | null,
+): asserts workspace is AccessibleWorkspace {
+  if (workspace === null)
+    notFound({
+      routeId: rootRoute.id,
+      data: { kind: 'workspace' },
+      throw: true,
+    });
+}
+
+/**
+ * `/w/$workspaceId` resolves the person and workspace once for every page
+ * below it. A workspace they can't open never renders a child.
+ */
+export const workspaceScopeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/workspaces',
-  loader: async ({ context }) => {
+  path: '/w/$workspaceId',
+  beforeLoad: async ({ context, params }) => {
     const user = await loadCurrentUser(context);
-    const workspaces = await loadWorkspaces(context, user.id);
-    return { user, workspaces };
+    const workspace = await findWorkspace(context, user.id, params.workspaceId);
+    assertWorkspaceOpenable(workspace);
+    return { user, workspace };
   },
+});
+
+/** Pathless layout: the spine, breadcrumb and banners around each page. */
+export const workspaceShellRoute = createRoute({
+  getParentRoute: () => workspaceScopeRoute,
+  id: 'shell',
+  pendingComponent: PagePending,
   component: lazyRouteComponent(
-    () => import('./workspace-selection-route'),
-    'WorkspaceSelectionRoute',
+    () => import('./workspace-shell-route'),
+    'WorkspaceShellRoute',
   ),
 });
 
-export const overviewRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/w/$workspaceId/overview',
-  loader: async ({ context, params }) => {
-    const user = await loadCurrentUser(context);
-    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
-    if (workspace !== null) {
-      const reads: Promise<unknown>[] = [];
-      if (workspace.capabilities.includes('workflow:read'))
-        reads.push(
-          context.queryClient.query(
-            recentWorkflowsQueryOptions(
-              context.apiClient,
-              user.id,
-              workspace.id,
+export const homeRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: '/',
+  staticData: { crumb: 'Home' },
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    const can = (capability: (typeof workspace.capabilities)[number]) =>
+      workspace.capabilities.includes(capability);
+    await settlePrefetches(context, [
+      ...(can('workflow:read')
+        ? [
+            queryClient.query(
+              recentWorkflowsQueryOptions(apiClient, user.id, workspace.id),
             ),
-          ),
-        );
-      if (workspace.capabilities.includes('run:read'))
-        reads.push(
-          context.queryClient.query(
-            recentWorkflowRunsQueryOptions(
-              context.apiClient,
-              user.id,
-              workspace.id,
-              'all',
+          ]
+        : []),
+      ...(can('run:read')
+        ? (['all', 'failed'] as const).map((status) =>
+            queryClient.query(
+              recentWorkflowRunsQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+                status,
+              ),
             ),
-          ),
-          context.queryClient.query(
-            recentWorkflowRunsQueryOptions(
-              context.apiClient,
-              user.id,
-              workspace.id,
-              'failed',
-            ),
-          ),
-        );
-      const results = await Promise.allSettled(reads);
-      await redirectWhenAnyUnauthenticated(context, results);
-    }
-    return { user, workspace };
+          )
+        : []),
+    ]);
   },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle(match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./home-route'), 'HomeRoute'),
+});
+
+export const workflowsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'workflows',
+  staticData: { crumb: 'Workflows' },
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    await settlePrefetches(context, [
+      queryClient.infiniteQuery(
+        workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+      ),
+      queryClient.query(authoringCatalogQueryOptions(apiClient, user.id)),
+      queryClient.query(
+        connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
+      ),
+    ]);
+  },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Workflows', match.context.workspace.name) }],
+  }),
   component: lazyRouteComponent(
-    () => import('./overview-route'),
-    'OverviewRoute',
+    () => import('./workflow-list-route'),
+    'WorkflowListRoute',
+  ),
+});
+
+export const runsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'runs',
+  staticData: { crumb: 'Runs' },
+  validateSearch: (search) => runHistorySearchSchema.parse(search),
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, deps }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    if (!workspace.capabilities.includes('run:read')) return;
+    await settlePrefetches(context, [
+      queryClient.infiniteQuery(
+        workflowRunsInfiniteQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          deps,
+        ),
+      ),
+    ]);
+  },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Runs', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./run-history-route'),
+    'RunHistoryRoute',
+  ),
+});
+
+export const runDetailRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'runs/$runId',
+  staticData: { crumb: 'Run' },
+  loader: async ({ context, params }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    const runId = workflowRunIdentifierSchema.safeParse(params.runId);
+    if (!runId.success) return { found: false as const };
+    try {
+      await settlePrefetches(
+        context,
+        [
+          queryClient.query(
+            workflowRunQueryOptions(
+              apiClient,
+              user.id,
+              workspace.id,
+              runId.data,
+            ),
+          ),
+        ],
+        'strict',
+      );
+    } catch (error) {
+      if (isNotFound(error)) return { found: false as const };
+      rethrowError(error);
+    }
+    return { found: true as const };
+  },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Run', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(
+    () => import('./run-detail-route'),
+    'RunDetailRoute',
   ),
 });
 
 export const connectionsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/w/$workspaceId/connections',
-  loader: async ({ context, params }) => {
-    const user = await loadCurrentUser(context);
-    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
-    if (workspace?.capabilities.includes('connection:read') === true) {
-      try {
-        await context.queryClient.infiniteQuery(
-          connectionsInfiniteQueryOptions(
-            context.apiClient,
-            user.id,
-            workspace.id,
-          ),
-        );
-      } catch (error) {
-        await redirectWhenUnauthenticated(context, error);
-      }
-    }
-    return { user, workspace };
+  getParentRoute: () => workspaceShellRoute,
+  path: 'connections',
+  staticData: { crumb: 'Connections' },
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    if (!workspace.capabilities.includes('connection:read')) return;
+    await settlePrefetches(context, [
+      queryClient.infiniteQuery(
+        connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+      ),
+    ]);
   },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Connections', match.context.workspace.name) }],
+  }),
   component: lazyRouteComponent(
     () => import('./connections-route'),
     'ConnectionsRoute',
   ),
 });
 
-export const workspaceMembersRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/w/$workspaceId/settings/members',
-  loader: async ({ context, params }) => {
-    const user = await loadCurrentUser(context);
-    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
-    if (workspace?.capabilities.includes('member:read') === true) {
-      try {
-        await context.queryClient.infiniteQuery(
-          workspaceMembersInfiniteQueryOptions(
-            context.apiClient,
-            user.id,
-            workspace.id,
-          ),
-        );
-      } catch (error) {
-        await redirectWhenUnauthenticated(context, error);
-      }
-    }
-    return { user, workspace };
+export const teamRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'team',
+  staticData: { crumb: 'Team' },
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    if (!workspace.capabilities.includes('member:read')) return;
+    await settlePrefetches(context, [
+      queryClient.infiniteQuery(
+        workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
+      ),
+    ]);
   },
-  component: lazyRouteComponent(
-    () => import('./workspace-members-route'),
-    'WorkspaceMembersRoute',
-  ),
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Team', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./team-route'), 'TeamRoute'),
 });
 
-export const workspaceGeneralRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/w/$workspaceId/settings/general',
+export const alertsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'alerts',
+  staticData: { crumb: 'Alerts' },
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    const can = (capability: (typeof workspace.capabilities)[number]) =>
+      workspace.capabilities.includes(capability);
+    if (!can('workflow:update')) return;
+    await settlePrefetches(context, [
+      queryClient.query(
+        failureNotificationDestinationsQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+        ),
+      ),
+      ...(can('connection:manage') && can('connection:read')
+        ? [
+            queryClient.query(
+              connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
+            ),
+          ]
+        : []),
+    ]);
+  },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Alerts', match.context.workspace.name) }],
+  }),
+  component: lazyRouteComponent(() => import('./alerts-route'), 'AlertsRoute'),
+});
+
+export const workspaceSettingsRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'settings',
+  staticData: { crumb: 'Settings' },
   validateSearch: (search) => {
     const parsed = workspaceLifecycleOperationIdentifierSchema.safeParse(
       Reflect.get(search, 'operationId'),
@@ -144,73 +286,44 @@ export const workspaceGeneralRoute = createRoute({
     return parsed.success ? { operationId: parsed.data } : {};
   },
   loaderDeps: ({ search }) => search,
-  loader: async ({ context, params, deps }) => {
-    const user = await loadCurrentUser(context);
-    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
+  loader: async ({ context, deps }) => {
+    const { apiClient, queryClient, user, workspace } = context;
     if (
-      workspace?.capabilities.includes('workspace:manage') === true &&
-      deps.operationId !== undefined
-    ) {
-      try {
-        await context.queryClient.query(
-          workspaceLifecycleOperationQueryOptions(
-            context.apiClient,
-            user.id,
-            workspace.id,
-            deps.operationId,
-          ),
-        );
-      } catch (error) {
-        await redirectWhenUnauthenticated(context, error);
-      }
-    }
-    return { user, workspace };
+      !workspace.capabilities.includes('workspace:manage') ||
+      deps.operationId === undefined
+    )
+      return;
+    await settlePrefetches(context, [
+      queryClient.query(
+        workspaceLifecycleOperationQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          deps.operationId,
+        ),
+      ),
+    ]);
   },
+  head: ({ match }) => ({
+    meta: [{ title: pageTitle('Settings', match.context.workspace.name) }],
+  }),
   component: lazyRouteComponent(
-    () => import('./workspace-general-route'),
-    'WorkspaceGeneralRoute',
+    () => import('./workspace-settings-route'),
+    'WorkspaceSettingsRoute',
   ),
 });
 
-export const workspaceNotificationsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/w/$workspaceId/settings/notifications',
-  loader: async ({ context, params }) => {
-    const user = await loadCurrentUser(context);
-    const workspace = await loadWorkspace(context, user.id, params.workspaceId);
-    if (workspace?.capabilities.includes('workflow:update') === true) {
-      const reads: Promise<unknown>[] = [
-        context.queryClient.query(
-          failureNotificationDestinationsQueryOptions(
-            context.apiClient,
-            user.id,
-            workspace.id,
-          ),
-        ),
-      ];
-      if (
-        workspace.capabilities.includes('connection:manage') &&
-        workspace.capabilities.includes('connection:read')
-      )
-        reads.push(
-          context.queryClient.query(
-            connectionDiscoveryQueryOptions(
-              context.apiClient,
-              user.id,
-              workspace.id,
-            ),
-          ),
-        );
-      try {
-        await Promise.all(reads);
-      } catch (error) {
-        await redirectWhenUnauthenticated(context, error);
-      }
-    }
-    return { user, workspace };
-  },
+export const workspaceAccountRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: 'account',
+  staticData: { crumb: 'Account & security' },
+  head: ({ match }) => ({
+    meta: [
+      { title: pageTitle('Account & security', match.context.workspace.name) },
+    ],
+  }),
   component: lazyRouteComponent(
-    () => import('./workspace-notifications-route'),
-    'WorkspaceNotificationsRoute',
+    () => import('./workspace-account-route'),
+    'WorkspaceAccountRoute',
   ),
 });

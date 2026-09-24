@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const criticalSmoke =
-  /signs in, selects a workspace, and signs out|keeps the mobile workspace drawer bounded and keyboard accessible|creates the first workspace from the keyboard-accessible empty state|keeps keyboard placement usable and the narrow editor horizontally bounded/u;
+  /signs in, lands in the only workspace, and signs out|keeps the mobile workspace bar and More sheet bounded and keyboard accessible|creates the first workspace from the keyboard-accessible empty state|keeps keyboard placement usable and the narrow editor horizontally bounded/u;
 
 export default defineConfig({
   testDir: './e2e',

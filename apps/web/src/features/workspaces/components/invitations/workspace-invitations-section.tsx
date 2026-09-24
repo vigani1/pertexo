@@ -142,7 +142,7 @@ export function WorkspaceInvitationsSection(
         </p>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+          <div className="relative mt-6 overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[42rem] text-left text-sm">
               <thead className="bg-muted/40 text-xs tracking-wide text-muted-foreground uppercase">
                 <tr>

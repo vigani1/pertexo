@@ -26,14 +26,14 @@ export function WorkspaceSelectionRoute() {
         void navigate({
           to:
             workspace.status === 'pending_deletion'
-              ? '/w/$workspaceId/settings/general'
-              : '/w/$workspaceId/workflows',
+              ? '/w/$workspaceId/settings'
+              : '/w/$workspaceId',
           params: { workspaceId: workspace.id },
         });
       }}
       onCreated={(workspace) => {
         void navigate({
-          to: '/w/$workspaceId/workflows',
+          to: '/w/$workspaceId',
           params: { workspaceId: workspace.id },
         });
       }}

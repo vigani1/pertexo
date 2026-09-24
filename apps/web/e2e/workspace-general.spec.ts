@@ -108,11 +108,13 @@ test('requests deletion through the accessible workspace settings flow', async (
       { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
     ]);
   await installRoutes(page);
-  await page.goto(`/w/${workspaceId}/settings/general`);
+  await page.goto(`/w/${workspaceId}/settings`);
 
   await expect(page.getByRole('heading', { name: 'General' })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Workspace settings' }),
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: 'Settings' }),
   ).toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: 'Request deletion' }).click();
@@ -129,7 +131,7 @@ test('requests deletion through the accessible workspace settings flow', async (
   await page.getByRole('button', { name: 'Request deletion' }).click();
 
   await expect(page).toHaveURL(
-    `/w/${workspaceId}/settings/general?operationId=${operationId}`,
+    `/w/${workspaceId}/settings?operationId=${operationId}`,
   );
   await expect(page.getByText('Running')).toBeVisible();
   await expect(
@@ -148,7 +150,7 @@ test('renames a workspace with keyboard-accessible validation and refreshes the 
       { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
     ]);
   await installRoutes(page);
-  await page.goto(`/w/${workspaceId}/settings/general`);
+  await page.goto(`/w/${workspaceId}/settings`);
 
   await page.getByRole('button', { name: 'Edit name' }).click();
   const name = page.getByLabel('Display name');
@@ -174,7 +176,7 @@ test('keeps a valid unbroken workspace name inside its card at 320 pixels', asyn
       { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
     ]);
   await installRoutes(page, longName);
-  await page.goto(`/w/${workspaceId}/settings/general`);
+  await page.goto(`/w/${workspaceId}/settings`);
   await page.getByRole('button', { name: 'Edit name' }).click();
   await page.getByLabel('Display name').fill(longName);
   await page.getByRole('button', { name: 'Save name' }).click();

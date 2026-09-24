@@ -196,7 +196,7 @@ describe('workflow settings route', () => {
       ).not.toBeInTheDocument();
     });
     await router.navigate({
-      to: '/w/$workspaceId/overview',
+      to: '/w/$workspaceId',
       params: { workspaceId },
     });
     expect(
@@ -295,7 +295,7 @@ describe('workflow settings route', () => {
       within(notificationsSection).getByRole('link', {
         name: 'Manage workspace destinations',
       }),
-    ).toHaveAttribute('href', `/w/${workspaceId}/settings/notifications`);
+    ).toHaveAttribute('href', `/w/${workspaceId}/alerts`);
 
     await event.click(
       await screen.findByRole('button', { name: 'Archive workflow' }),

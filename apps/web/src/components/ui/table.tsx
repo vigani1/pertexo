@@ -6,7 +6,7 @@ export function Table({ className, ...props }: ComponentProps<'table'>) {
     <div className="w-full">
       <div
         data-slot="table-container"
-        className="w-full overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="relative w-full overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         role="region"
         aria-label="Scrollable data table"
         tabIndex={0}

@@ -118,7 +118,7 @@ describe('workspace general settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general`, { strict: true });
+    renderApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -167,7 +167,7 @@ describe('workspace general settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -226,7 +226,7 @@ describe('workspace general settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -277,7 +277,7 @@ describe('workspace general settings', () => {
         );
       }),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -317,7 +317,7 @@ describe('workspace general settings', () => {
         return HttpResponse.json(renameResponse(workspace, false));
       }),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -358,7 +358,7 @@ describe('workspace general settings', () => {
         return problem(403, 'auth.forbidden', 'Access denied');
       }),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
     const input = screen.getByLabelText('Display name');
@@ -400,7 +400,7 @@ describe('workspace general settings', () => {
       ),
     );
 
-    const { router } = renderApp(`/w/${workspaceId}/settings/general`, {
+    const { router } = renderApp(`/w/${workspaceId}/settings`, {
       strict: true,
     });
     const actor = userEvent.setup();
@@ -455,7 +455,7 @@ describe('workspace general settings', () => {
       ),
     );
     const { router } = renderApp(
-      `/w/${workspaceId}/settings/general?operationId=${operationId}`,
+      `/w/${workspaceId}/settings?operationId=${operationId}`,
     );
     expect(await screen.findByText('Failed')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -495,7 +495,7 @@ describe('workspace general settings', () => {
         () => HttpResponse.json(operation('completed')),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general?operationId=${operationId}`);
+    renderApp(`/w/${workspaceId}/settings?operationId=${operationId}`);
     expect(await screen.findByText('Completed')).toBeVisible();
     await waitFor(() => {
       expect(workspaceReads).toBeGreaterThanOrEqual(2);
@@ -522,7 +522,7 @@ describe('workspace general settings', () => {
         () => HttpResponse.json(operation('running', 'deletion_restored')),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Restore workspace' }),
@@ -546,7 +546,7 @@ describe('workspace general settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/general`);
+    renderApp(`/w/${workspaceId}/settings`);
     expect(
       await screen.findByRole('heading', { name: 'General' }),
     ).toBeVisible();
@@ -557,10 +557,6 @@ describe('workspace general settings', () => {
     expect(
       screen.queryByRole('button', { name: 'Request deletion' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
     expect(requests).toBe(0);
   });
 });

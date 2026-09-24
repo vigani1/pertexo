@@ -86,7 +86,7 @@ describe('failure notification destinations', () => {
         () => HttpResponse.json({ items: [] }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/notifications`);
+    renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Add destination' }),
@@ -140,7 +140,7 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/notifications`, { strict: true });
+    renderApp(`/w/${workspaceId}/alerts`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Add destination' }),
@@ -189,7 +189,7 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/notifications`);
+    renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit' }));
     const channel = screen.getByLabelText('Channel ID');
@@ -228,9 +228,7 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    const { queryClient } = renderApp(
-      `/w/${workspaceId}/settings/notifications`,
-    );
+    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit' }));
     current = destination('C0000000002', 2);
@@ -277,10 +275,9 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    const { queryClient } = renderApp(
-      `/w/${workspaceId}/settings/notifications`,
-      { strict: true },
-    );
+    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`, {
+      strict: true,
+    });
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit' }));
     const channel = screen.getByLabelText('Channel ID');
@@ -331,10 +328,9 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    const { queryClient } = renderApp(
-      `/w/${workspaceId}/settings/notifications`,
-      { strict: true },
-    );
+    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`, {
+      strict: true,
+    });
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Disable' }));
     await screen.findByRole('button', { name: 'Retry safely' });
@@ -374,9 +370,7 @@ describe('failure notification destinations', () => {
             : HttpResponse.json({ items: [destination()] }),
       ),
     );
-    const { queryClient } = renderApp(
-      `/w/${workspaceId}/settings/notifications`,
-    );
+    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: 'Edit' }));
     const channel = screen.getByLabelText('Channel ID');
@@ -427,7 +421,7 @@ describe('failure notification destinations', () => {
           ),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/notifications`);
+    renderApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByRole('heading', {
         name: 'Notification destinations are unavailable',
@@ -455,7 +449,7 @@ describe('failure notification destinations', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/notifications`);
+    renderApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByRole('heading', {
         name: 'Notification destinations are unavailable',

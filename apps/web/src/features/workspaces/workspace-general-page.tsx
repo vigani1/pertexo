@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import type { ApiClient } from '@/lib/api/client';
 import { WorkspaceLifecycleSection } from './components/settings/workspace-lifecycle-section';
 import { WorkspaceNameSection } from './components/settings/workspace-name-section';
-import { WorkspaceSettingsNavigation } from './components/settings/workspace-settings-navigation';
 import {
   accessibleWorkspacesQueryOptions,
   workspaceLifecycleOperationQueryOptions,
@@ -72,7 +71,6 @@ export function WorkspaceGeneralPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <WorkspaceSettingsNavigation workspace={workspace} />
       <header>
         <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
           General

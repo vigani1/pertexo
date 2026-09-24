@@ -399,6 +399,12 @@
   }
 }
 
+@keyframes thread-drift {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
 @keyframes thread-flow {
   from {
     stroke-dashoffset: 26;

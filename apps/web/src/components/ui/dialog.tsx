@@ -13,6 +13,7 @@ const dialogViewportVariants = cva(
     variants: {
       placement: {
         center: 'items-center justify-center p-4',
+        top: 'items-start justify-center px-4 pt-[12svh] pb-4',
         left: 'items-stretch justify-start p-0',
       },
     },
@@ -27,6 +28,7 @@ const dialogContentVariants = cva(
       placement: {
         center:
           'max-h-[calc(100svh-2rem)] max-w-lg rounded-xl p-6 ease-unspool data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
+        top: 'max-h-[76svh] max-w-xl rounded-xl p-0 ease-unspool data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0',
         left: 'h-svh max-w-[min(21rem,88vw)] border-y-0 border-l-0 p-0 data-[ending-style]:-translate-x-full data-[ending-style]:opacity-0 data-[starting-style]:-translate-x-full data-[starting-style]:opacity-0',
       },
     },

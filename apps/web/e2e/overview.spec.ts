@@ -106,7 +106,7 @@ test('shows bounded overview lists and keeps source links usable on mobile', asy
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const queries = await installRoutes(page);
-  await page.goto(`/w/${workspaceId}/overview`);
+  await page.goto(`/w/${workspaceId}`);
 
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await expect(page.getByText('Daily intake')).toBeVisible();
@@ -120,15 +120,11 @@ test('shows bounded overview lists and keeps source links usable on mobile', asy
     page.getByRole('link', { name: 'View failed run history' }),
   ).toHaveAttribute('href', `/w/${workspaceId}/runs?status=failed`);
 
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(page.getByRole('link', { name: 'Overview' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-  await page.keyboard.press('Escape');
   await expect(
-    page.getByRole('button', { name: 'Open navigation' }),
-  ).toBeFocused();
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: 'Home' }),
+  ).toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeEnabled();
