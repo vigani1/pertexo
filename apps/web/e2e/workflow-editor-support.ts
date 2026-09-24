@@ -2,7 +2,7 @@ import { expect, type BrowserContext, type Page } from '@playwright/test';
 
 // Controlled HTTP fixtures shared by the workflow editor journeys.
 
-export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const editorUrl = `/w/${workspaceId}/workflows/${workflowId}`;
@@ -96,7 +96,7 @@ export function remoteDraft(graph: Graph = emptyGraph()): RemoteDraft {
   return { graph, revision: 1 };
 }
 
-export function emptyGraph(): Graph {
+function emptyGraph(): Graph {
   return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
 }
 
@@ -212,7 +212,7 @@ export function workflowSummary(
   };
 }
 
-export function compatibility() {
+function compatibility() {
   return {
     compatible: true,
     fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
@@ -220,7 +220,7 @@ export function compatibility() {
   };
 }
 
-export function draftBody(remote: RemoteDraft) {
+function draftBody(remote: RemoteDraft) {
   return {
     workflowId,
     revision: remote.revision,
