@@ -11,7 +11,7 @@ const pg = vi.hoisted(() => {
       queries: string[];
       ended: boolean;
     }[],
-    legacyOnlyUsers: 0,
+    legacyOnlyUsers: 0 as number | undefined,
     failure: undefined as Error | undefined,
   };
   class Pool {
@@ -25,7 +25,12 @@ const pg = vi.hoisted(() => {
     public query(text: string) {
       this.record.queries.push(text);
       if (state.failure !== undefined) return Promise.reject(state.failure);
-      return Promise.resolve({ rows: [{ affected: state.legacyOnlyUsers }] });
+      return Promise.resolve({
+        rows:
+          state.legacyOnlyUsers === undefined
+            ? []
+            : [{ affected: state.legacyOnlyUsers }],
+      });
     }
 
     public end() {
@@ -76,6 +81,13 @@ describe('standalone Better Auth cutover guard', () => {
       /not exists \(\s+select 1 from app\.auth_accounts/u,
     );
     expect(pool?.ended).toBe(true);
+  });
+
+  it('reports no legacy-only users when the count returns no row', async () => {
+    pg.state.legacyOnlyUsers = undefined;
+
+    await expect(countLegacyOnlyUsers(databaseConfig)).resolves.toBe(0);
+    expect(pg.state.pools[0]?.ended).toBe(true);
   });
 
   it('releases its connection when counting fails', async () => {

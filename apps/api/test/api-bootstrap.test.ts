@@ -26,6 +26,8 @@ import type { WebhookManagementService } from '../src/webhooks/service.js';
 import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
 import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
 import { parseApiConfig } from '../src/platform/config/api-config.js';
+import type { ApiIdentityConfig } from '../src/platform/config/identity-config.js';
+import type { BetterAuthRuntime } from '../src/identity-infrastructure/index.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
 import {
   createApiPlatformFixture,
@@ -125,6 +127,54 @@ function identityRuntime(
     },
   };
   return Object.freeze({ dependencies: identityDependencies, close });
+}
+
+const betterAuthLegacyOidc: NonNullable<ApiIdentityConfig['oidc']> = {
+  issuer: 'https://identity.example.test',
+  authorizationEndpoint: 'https://identity.example.test/authorize',
+  tokenEndpoint: 'https://identity.example.test/token',
+  jwksUri: 'https://identity.example.test/jwks',
+  clientId: 'client',
+  redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
+  scopes: ['openid'],
+  allowedAlgorithms: ['RS256'],
+  timeoutMillis: 1_000,
+  transactionTtlMillis: 300_000,
+  allowInsecureHttpForTests: false,
+};
+
+function betterAuthIdentityConfig(
+  origins: Pick<ApiIdentityConfig, 'publicWebOrigin' | 'oidc'>,
+): ApiIdentityConfig {
+  return {
+    ...origins,
+    session: { ttlMillis: 60_000, secureCookie: true, sameSite: 'lax' },
+    betterAuth: {
+      secret: 'bootstrap-better-auth-secret-at-least-32-characters',
+      mailMode: 'local',
+      providers: { google: { clientId: 'google', clientSecret: 'secret' } },
+    },
+  };
+}
+
+/** An injected identity runtime whose Better Auth handler records dispatch. */
+function betterAuthIdentityRuntime() {
+  const requests: string[] = [];
+  const betterAuth = {
+    auth: {
+      handler: (request: Request) => {
+        requests.push(`${request.method} ${request.url}`);
+        return Promise.resolve(Response.json({ ok: true }));
+      },
+    },
+    sessions: {},
+    close: () => Promise.resolve(),
+  } as unknown as BetterAuthRuntime;
+  const runtime = {
+    ...identityRuntime(vi.fn().mockResolvedValue(undefined)),
+    betterAuth,
+  };
+  return { runtime, requests };
 }
 
 function workflowAuthoringDatabase(
@@ -1376,6 +1426,88 @@ describe('API bootstrap ownership and health', () => {
       expect(response.json()).toMatchObject({ code: 'request.invalid' });
       expect(getDraft).not.toHaveBeenCalled();
       expect(acceptPreview).not.toHaveBeenCalled();
+    });
+
+    it('mounts Better Auth on the public web origin beside legacy OIDC', async () => {
+      const selected = betterAuthIdentityRuntime();
+      application = await createApiApplication(
+        {
+          ...config,
+          identity: betterAuthIdentityConfig({
+            publicWebOrigin: 'https://app.example.test',
+            oidc: betterAuthLegacyOidc,
+          }),
+        },
+        { ...dependencies(), identityRuntime: selected.runtime },
+      );
+      await application.init();
+
+      const capabilities = await application.inject({
+        method: 'GET',
+        url: '/v1/auth/capabilities',
+      });
+      expect(capabilities.json()).toEqual({
+        password: {
+          enabled: true,
+          minimumLength: 12,
+          verificationRequired: true,
+        },
+        socialProviders: ['google'],
+        legacyMigrationAvailable: true,
+      });
+      const crossOrigin = await application.inject({
+        method: 'POST',
+        url: '/v1/auth/sign-in/email',
+        headers: { origin: 'https://api.example.test' },
+        payload: {},
+      });
+      expect(crossOrigin.statusCode).toBe(403);
+      const accepted = await application.inject({
+        method: 'POST',
+        url: '/v1/auth/sign-in/email',
+        headers: { origin: 'https://app.example.test' },
+        payload: {},
+      });
+      expect(accepted.statusCode).toBe(200);
+      expect(selected.requests).toEqual([
+        'POST https://app.example.test/v1/auth/sign-in/email',
+      ]);
+    });
+
+    it('derives the Better Auth origin from the legacy OIDC redirect', async () => {
+      const selected = betterAuthIdentityRuntime();
+      application = await createApiApplication(
+        {
+          ...config,
+          identity: betterAuthIdentityConfig({ oidc: betterAuthLegacyOidc }),
+        },
+        { ...dependencies(), identityRuntime: selected.runtime },
+      );
+      await application.init();
+
+      const accepted = await application.inject({
+        method: 'POST',
+        url: '/v1/auth/sign-in/email',
+        headers: { origin: 'https://api.example.test' },
+        payload: {},
+      });
+      expect(accepted.statusCode).toBe(200);
+      expect(selected.requests).toEqual([
+        'POST https://api.example.test/v1/auth/sign-in/email',
+      ]);
+    });
+
+    it('refuses to mount Better Auth without a browser origin and closes its runtime', async () => {
+      const selected = betterAuthIdentityRuntime();
+
+      await expect(
+        createApiApplication(
+          { ...config, identity: betterAuthIdentityConfig({}) },
+          { ...dependencies(), identityRuntime: selected.runtime },
+        ),
+      ).rejects.toThrow('Identity public web origin is not configured');
+      expect(selected.runtime.close).toHaveBeenCalledOnce();
+      expect(selected.requests).toEqual([]);
     });
 
     it('closes an injected identity runtime when database readiness fails', async () => {
