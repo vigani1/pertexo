@@ -1,9 +1,13 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { configure, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+
+// Each page loads its lazy route on first render; under a busy machine that
+// can outlast the default one-second wait without anything being wrong.
+configure({ asyncUtilTimeout: 4_000 });
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -86,8 +90,8 @@ function renameResponse(current: typeof workspace, replayed: boolean) {
   };
 }
 
-describe('workspace general settings', () => {
-  it('renames from General and refreshes the authoritative shell in StrictMode', async () => {
+describe('workspace settings', () => {
+  it('renames in place and refreshes the authoritative shell in StrictMode', async () => {
     let authoritative = workspace;
     const commands: {
       body: unknown;
@@ -120,19 +124,24 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, '{Enter}');
     expect(input).toHaveFocus();
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(commands).toHaveLength(0);
     await actor.type(input, '  Incident Operations  ');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
-      (await screen.findAllByText('Incident Operations')).length,
-    ).toBeGreaterThan(0);
+      await screen.findByText('Renamed to Incident Operations'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Rename workspace' }),
+    ).toBeVisible();
     expect(commands).toHaveLength(1);
     expect(commands[0]?.body).toEqual({
       name: 'Incident Operations',
@@ -169,18 +178,18 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Recovered name');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The rename result is uncertain',
+      'We couldn’t confirm whether the rename went through',
     );
     expect(input).toBeDisabled();
-    await actor.click(
-      screen.getByRole('button', { name: 'Retry exact rename' }),
-    );
+    await actor.click(screen.getByRole('button', { name: 'Try again' }));
     expect(
       (await screen.findAllByText('Recovered name')).length,
     ).toBeGreaterThan(0);
@@ -228,21 +237,18 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Reviewed local name');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
-    expect(await screen.findByText(/workspace changed since/u)).toBeVisible();
-    await actor.click(
-      screen.getByRole('button', { name: 'Refresh workspace' }),
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Renamed to “Other tab name” meanwhile.',
     );
-    expect(
-      (await screen.findAllByText(/Other tab name/u)).length,
-    ).toBeGreaterThan(0);
-    await actor.click(
-      screen.getByRole('button', { name: 'Reapply against latest' }),
-    );
+    expect(input).toHaveValue('Reviewed local name');
+    await actor.click(screen.getByRole('button', { name: 'Keep mine' }));
     expect(
       (await screen.findAllByText('Reviewed local name')).length,
     ).toBeGreaterThan(0);
@@ -279,20 +285,20 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Durable rename');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'workspace access could not be refreshed',
+      'The new name is saved, but this page couldn’t catch up',
     );
 
     authoritative = { ...workspace, name: 'Newer tab name', revision: 3 };
     discoveryUnavailable = false;
-    await actor.click(
-      screen.getByRole('button', { name: 'Refresh workspace access' }),
-    );
+    await actor.click(screen.getByRole('button', { name: 'Refresh' }));
     expect(
       (await screen.findAllByText('Newer tab name')).length,
     ).toBeGreaterThan(0);
@@ -319,11 +325,13 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Must not dispatch');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
       await screen.findByRole('heading', { name: 'Sign in to continue' }),
@@ -360,19 +368,21 @@ describe('workspace general settings', () => {
     );
     renderApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit name' }));
-    const input = screen.getByLabelText('Display name');
+    await actor.click(
+      await screen.findByRole('button', { name: 'Rename workspace' }),
+    );
+    const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Denied rename');
-    await actor.click(screen.getByRole('button', { name: 'Save name' }));
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: 'Edit name' }),
+        screen.queryByRole('button', { name: 'Rename workspace' }),
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.queryByRole('button', { name: 'Request deletion' }),
+      screen.queryByRole('button', { name: 'Delete workspace' }),
     ).not.toBeInTheDocument();
     expect(patchCount).toBe(1);
   });
@@ -405,37 +415,38 @@ describe('workspace general settings', () => {
     });
     const actor = userEvent.setup();
     await actor.click(
-      await screen.findByRole('button', { name: 'Request deletion' }),
+      await screen.findByRole('button', { name: 'Delete workspace' }),
     );
-    const reason = screen.getByLabelText('Reason');
+    const dialog = within(
+      screen.getByRole('dialog', { name: 'Delete Control Operations?' }),
+    );
+    expect(dialog.getByText(/restore it for 30 days/u)).toBeVisible();
+    const confirmation = dialog.getByLabelText(
+      'Type Control Operations to confirm',
+    );
+    const reason = dialog.getByLabelText('Reason');
     await actor.click(reason);
     await actor.tab();
-    expect(
-      await screen.findByText('Enter a reason between 1 and 512 characters.'),
-    ).toBeVisible();
-    await actor.type(reason, '   ');
-    expect(
-      screen.getByText('Enter a reason between 1 and 512 characters.'),
-    ).toBeVisible();
-    await actor.clear(reason);
-    await actor.click(screen.getByRole('button', { name: 'Request deletion' }));
-    expect(screen.getByLabelText('Reason')).toHaveFocus();
-    expect(screen.getByLabelText('Reason')).toHaveAttribute(
-      'aria-describedby',
-      'workspace-deletion-description workspace-deletion-error',
+    expect(await dialog.findByText(/Say why in a sentence/u)).toBeVisible();
+    await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
+    expect(confirmation).toHaveFocus();
+    expect(confirmation).toHaveAccessibleDescription(
+      'Type Control Operations exactly to confirm.',
     );
+    await actor.type(confirmation, 'Control Operations');
+    expect(confirmation).toHaveAttribute('aria-invalid', 'false');
+    await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
+    expect(reason).toHaveFocus();
     await actor.type(reason, '   ');
-    expect(
-      screen.getByText('Enter a reason between 1 and 512 characters.'),
-    ).toBeVisible();
+    expect(dialog.getByText(/Say why in a sentence/u)).toBeVisible();
     await actor.clear(reason);
     await actor.type(reason, 'No longer needed');
-    await actor.click(screen.getByRole('button', { name: 'Request deletion' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The result is uncertain.',
+    await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'We couldn’t confirm whether the deletion request went through',
     );
-    expect(screen.getByLabelText('Reason')).toBeDisabled();
-    await actor.click(screen.getByRole('button', { name: 'Retry request' }));
+    expect(reason).toBeDisabled();
+    await actor.click(dialog.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('Running')).toBeVisible();
     expect(commands).toHaveLength(2);
@@ -459,13 +470,17 @@ describe('workspace general settings', () => {
     );
     expect(await screen.findByText('Failed')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent(
+      'The deletion didn’t finish, so nothing changed.',
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
       'workspace.lifecycle_failed',
     );
+    expect(screen.getByText('workspace.lifecycle_failed')).toBeInTheDocument();
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Dismiss operation' }));
+      .click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(
-      await screen.findByRole('button', { name: 'Request deletion' }),
+      await screen.findByRole('button', { name: 'Delete workspace' }),
     ).toBeVisible();
     await waitFor(() => {
       expect(router.state.location.search.operationId).toBeUndefined();
@@ -496,10 +511,10 @@ describe('workspace general settings', () => {
       ),
     );
     renderApp(`/w/${workspaceId}/settings?operationId=${operationId}`);
-    expect(await screen.findByText('Completed')).toBeVisible();
+    expect(await screen.findByText('Done')).toBeVisible();
     await waitFor(() => {
       expect(workspaceReads).toBeGreaterThanOrEqual(2);
-      expect(screen.getByText('pending deletion')).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Restore' })).toBeVisible();
     });
   });
 
@@ -527,10 +542,14 @@ describe('workspace general settings', () => {
     await actor.click(
       await screen.findByRole('button', { name: 'Restore workspace' }),
     );
+    const dialog = screen.getByRole('dialog', {
+      name: 'Restore Control Operations?',
+    });
+    expect(dialog).toHaveTextContent(/integrations stay off/u);
     await actor.click(
-      screen.getByRole('button', { name: 'Restore workspace' }),
+      within(dialog).getByRole('button', { name: 'Restore workspace' }),
     );
-    expect(await screen.findByText('Workspace restore')).toBeVisible();
+    expect(await screen.findByText('Restoring the workspace')).toBeVisible();
     expect(deletes).toBe(1);
   });
 
@@ -551,11 +570,16 @@ describe('workspace general settings', () => {
       await screen.findByRole('heading', { name: 'General' }),
     ).toBeVisible();
     expect(screen.getAllByText('Control Operations').length).toBeGreaterThan(0);
+    expect(screen.getByText('control-operations')).toBeVisible();
+    expect(screen.getByText('Owner')).toBeVisible();
     expect(
-      screen.queryByRole('button', { name: 'Edit name' }),
+      screen.getByRole('button', { name: 'Copy workspace ID' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Rename workspace' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Request deletion' }),
+      screen.queryByRole('button', { name: 'Delete workspace' }),
     ).not.toBeInTheDocument();
     expect(requests).toBe(0);
   });
