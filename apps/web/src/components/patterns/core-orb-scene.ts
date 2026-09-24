@@ -1,10 +1,10 @@
+import { CanvasScene, readTokenColor, type Rgb } from '@/lib/canvas-scene';
+
 // Canvas 2D port of the legacy particle-orb shader: points on a Fibonacci
 // sphere, displaced by three travelling waves, rotated and projected with a
 // soft additive sprite. Pure drawing code; the React component owns lifecycle.
 
 export type CoreOrbState = 'live' | 'idle' | 'waiting' | 'failed' | 'succeeded';
-
-type Rgb = readonly [number, number, number];
 
 type Motion = Readonly<{ speed: number; amplitude: number; loosen: boolean }>;
 
@@ -36,17 +36,6 @@ interface Particle {
   z: number;
   seed: number;
   swatch: number;
-}
-
-function parseHexColor(value: string): Rgb | undefined {
-  const match = /^#?([\da-f]{6})$/i.exec(value.trim());
-  if (match?.[1] === undefined) return undefined;
-  const numeric = Number.parseInt(match[1], 16);
-  return [(numeric >> 16) & 255, (numeric >> 8) & 255, numeric & 255];
-}
-
-function readTokenColor(styles: CSSStyleDeclaration, token: string): Rgb {
-  return parseHexColor(styles.getPropertyValue(token)) ?? FALLBACK_RGB;
 }
 
 const spriteCache = new Map<string, HTMLCanvasElement>();
@@ -81,33 +70,23 @@ function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
 }
 
-export class CoreOrbScene {
-  readonly #context: CanvasRenderingContext2D;
+export class CoreOrbScene extends CanvasScene {
   #particles: Particle[] = [];
   #scatter: readonly (readonly [number, number])[] = [];
   #sprites: readonly HTMLCanvasElement[] = [];
   #motion: Motion = MOTION.live;
-  #width = 0;
-  #height = 0;
-  #pixelRatio = 1;
   #energy = 1;
   #assemblyStart: number | undefined;
 
-  constructor(
-    private readonly canvas: HTMLCanvasElement,
-    state: CoreOrbState,
-  ) {
-    const context = canvas.getContext('2d');
-    if (context === null) throw new Error('Canvas 2D is unavailable');
-    this.#context = context;
+  constructor(canvas: HTMLCanvasElement, state: CoreOrbState) {
+    super(canvas);
     this.setState(state);
   }
 
   setState(state: CoreOrbState): void {
     this.#motion = MOTION[state];
-    const styles = getComputedStyle(document.documentElement);
     this.#sprites = PALETTE_TOKENS[state].map((token) =>
-      particleSprite(readTokenColor(styles, token)),
+      particleSprite(readTokenColor(token, FALLBACK_RGB)),
     );
   }
 
@@ -118,7 +97,7 @@ export class CoreOrbScene {
   /** Scatter the particles off-centre so the next frames gather them in. */
   assemble(timeSeconds: number): void {
     this.#assemblyStart = timeSeconds;
-    const reach = Math.max(this.#width, this.#height);
+    const reach = Math.max(this.width, this.height);
     this.#scatter = this.#particles.map(() => {
       const angle = Math.random() * Math.PI * 2;
       const radius = reach * (0.35 + Math.random() * 0.6);
@@ -126,25 +105,19 @@ export class CoreOrbScene {
     });
   }
 
-  resize(width: number, height: number, pixelRatio: number): void {
-    this.#width = width;
-    this.#height = height;
-    this.#pixelRatio = pixelRatio;
-    this.canvas.width = Math.max(1, Math.round(width * pixelRatio));
-    this.canvas.height = Math.max(1, Math.round(height * pixelRatio));
+  override resize(width: number, height: number, pixelRatio: number): void {
+    super.resize(width, height, pixelRatio);
     const count = particleCountFor(Math.min(width, height));
     if (count !== this.#particles.length)
       this.#particles = createParticles(count);
   }
 
   render(timeSeconds: number): void {
-    const context = this.#context;
-    context.setTransform(this.#pixelRatio, 0, 0, this.#pixelRatio, 0, 0);
-    context.clearRect(0, 0, this.#width, this.#height);
+    const context = this.beginFrame();
     context.globalCompositeOperation = 'lighter';
-    const radius = Math.min(this.#width, this.#height) * 0.36;
-    const centreX = this.#width / 2;
-    const centreY = this.#height / 2;
+    const radius = Math.min(this.width, this.height) * 0.36;
+    const centreX = this.width / 2;
+    const centreY = this.height / 2;
     const time = timeSeconds * this.#motion.speed;
     const amplitude = this.#motion.amplitude * this.#energy;
     const cosY = Math.cos(time * 0.1);

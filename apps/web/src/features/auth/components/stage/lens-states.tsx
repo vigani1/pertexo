@@ -1,9 +1,13 @@
+import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { AuthLens, AuthLensFooter, AuthLensTitle } from './auth-lens';
 import { Notice } from '@/components/ui/notice';
+import type { ApiClient } from '@/lib/api/client';
+import { authenticationCapabilitiesQueryOptions } from '../../auth.queries';
 
 /**
  * The lens while Pertexo checks which sign-in methods are available. The
@@ -69,42 +73,50 @@ export function LensUnavailable({
   );
 }
 
-type CapabilitiesRead = Readonly<{
-  isError: boolean;
-  isFetching: boolean;
-  refetch: () => Promise<unknown>;
-}>;
-
 /**
- * Password sign-up, recovery or reset can't be used here: a retry when the
- * capabilities couldn't be read, and always the way back to sign in.
+ * Password sign-up, recovery and reset: the loading lens while Pertexo reads
+ * which sign-in methods it offers, a dead end with the way back to sign in
+ * (and a retry when the read failed) when passwords can't be used here, and
+ * otherwise `children` with the capabilities.
  */
-export function PasswordUnavailableLens({
+export function PasswordCapabilityGate({
+  apiClient,
   id,
   title,
-  capabilities,
+  loadingLabel,
+  unavailable,
   children,
 }: Readonly<{
+  apiClient: ApiClient;
   id: string;
   title: string;
-  capabilities: CapabilitiesRead;
-  children: ReactNode;
+  loadingLabel: string;
+  /** Why the page can't be used, e.g. "Password reset is not available right now." */
+  unavailable: string;
+  children: (capabilities: AuthenticationCapabilitiesResponse) => ReactNode;
 }>) {
-  return (
-    <LensUnavailable
-      id={id}
-      title={title}
-      retrying={capabilities.isFetching}
-      {...(capabilities.isError
-        ? { onRetry: () => void capabilities.refetch() }
-        : {})}
-      footer={
-        <AuthLensFooter>
-          <Link to="/login">Back to sign in</Link>
-        </AuthLensFooter>
-      }
-    >
-      {children}
-    </LensUnavailable>
+  const capabilities = useQuery(
+    authenticationCapabilitiesQueryOptions(apiClient),
   );
+  if (capabilities.isPending)
+    return <LensLoading title={title} label={loadingLabel} />;
+  if (capabilities.isError || !capabilities.data.password.enabled)
+    return (
+      <LensUnavailable
+        id={id}
+        title={title}
+        retrying={capabilities.isFetching}
+        {...(capabilities.isError
+          ? { onRetry: () => void capabilities.refetch() }
+          : {})}
+        footer={
+          <AuthLensFooter>
+            <Link to="/login">Back to sign in</Link>
+          </AuthLensFooter>
+        }
+      >
+        {unavailable}
+      </LensUnavailable>
+    );
+  return children(capabilities.data);
 }

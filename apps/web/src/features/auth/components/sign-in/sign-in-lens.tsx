@@ -1,14 +1,13 @@
 import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link } from '@tanstack/react-router';
-import type { SyntheticEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
+import { AuthForm } from '../../forms/auth-form';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '@/components/ui/progress-button';
 import type { LoginNotice } from '../../model/login-notice';
 import { useSignIn } from '../../use-sign-in';
 import { OrDivider, SocialProviderGrid } from '../social/social-provider-grid';
@@ -51,8 +50,7 @@ export function SignInLens({
   const passwordEnabled = capabilities.password.enabled;
   const busy = signIn.pending || signIn.waitSeconds > 0;
 
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit() {
     if (signIn.pending) return;
     const values = fields.validate();
     if (values === undefined) return;
@@ -108,10 +106,13 @@ export function SignInLens({
           ) : (
             <OrDivider>or with email</OrDivider>
           )}
-          <form
-            noValidate
-            className="flex flex-col gap-4"
-            onSubmit={(event) => void submit(event)}
+          <AuthForm
+            failure={signIn.failure}
+            pending={signIn.pending}
+            pendingLabel="Signing in…"
+            submitLabel="Sign in"
+            waitSeconds={signIn.waitSeconds}
+            onSubmit={() => void submit()}
           >
             <LabelledField
               id="login-email"
@@ -145,21 +146,7 @@ export function SignInLens({
               }
               {...fields.control('password')}
             />
-            {signIn.failure === undefined ? null : (
-              <Notice tone="destructive">{signIn.failure}</Notice>
-            )}
-            <ProgressButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="mt-1 w-full"
-              pending={signIn.pending}
-              pendingLabel="Signing in…"
-              waitSeconds={signIn.waitSeconds}
-            >
-              Sign in
-            </ProgressButton>
-          </form>
+          </AuthForm>
           <AuthLensFooter>
             New to Pertexo? <Link to="/sign-up">Create an account</Link>
           </AuthLensFooter>

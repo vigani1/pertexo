@@ -14,6 +14,7 @@ import {
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from './model/run-search';
+import { searchParams } from '@/lib/api/pagination';
 
 export function getWorkflowRunsPage(
   apiClient: ApiClient,
@@ -30,11 +31,8 @@ export function getWorkflowRunsPage(
     ...filters,
     ...(input.after === undefined ? {} : { after: input.after }),
   });
-  const query = new URLSearchParams();
-  for (const [name, value] of Object.entries(parsed))
-    query.set(name, String(value));
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs?${query.toString()}`,
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs?${searchParams(parsed)}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',

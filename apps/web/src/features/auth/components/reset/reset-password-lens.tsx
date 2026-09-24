@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router';
-import type { SyntheticEvent } from 'react';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -7,7 +6,6 @@ import {
   newPasswordProblem,
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '@/components/ui/progress-button';
 import { resetFailure } from '../../model/auth-failure';
 import { resetPassword } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
@@ -17,7 +15,7 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { AuthForm } from '../../forms/auth-form';
 
 /** New password plus confirmation for a one-time reset link. */
 export function ResetPasswordLens({
@@ -42,31 +40,34 @@ export function ResetPasswordLens({
   const request = useAuthRequest(resetFailure);
   const { pending, failure } = request;
 
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const values = fields.validate();
-    if (values === undefined) return;
-    await request.run(
-      (signal) =>
-        resetPassword(apiClient, { token, password: values.password }, signal),
-      () => {
-        fields.reset();
-        onReset();
-      },
-    );
-  }
-
   return (
     <AuthLens pending={pending} aria-labelledby="reset-title">
       <AuthLensTitle id="reset-title">Choose a new password</AuthLensTitle>
       <AuthLensDescription>
         Saving it signs you out on every other device.
       </AuthLensDescription>
-      <form
-        noValidate
-        className="mt-6 flex flex-col gap-4"
-        onSubmit={(event) => void submit(event)}
+      <AuthForm
+        className="mt-6"
+        failure={failure}
+        pending={pending}
+        pendingLabel="Saving…"
+        submitLabel="Reset password"
+        waitSeconds={request.waitSeconds}
+        onSubmit={() =>
+          void request.submit(
+            fields.validate,
+            (values, signal) =>
+              resetPassword(
+                apiClient,
+                { token, password: values.password },
+                signal,
+              ),
+            () => {
+              fields.reset();
+              onReset();
+            },
+          )
+        }
       >
         <PasswordField
           id="reset-password"
@@ -85,21 +86,7 @@ export function ResetPasswordLens({
           {...fields.field('confirmation')}
           {...fields.control('confirmation')}
         />
-        {failure === undefined ? null : (
-          <Notice tone="destructive">{failure}</Notice>
-        )}
-        <ProgressButton
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="mt-1 w-full"
-          pending={pending}
-          pendingLabel="Saving…"
-          waitSeconds={request.waitSeconds}
-        >
-          Reset password
-        </ProgressButton>
-      </form>
+      </AuthForm>
       <AuthLensFooter className="flex flex-wrap justify-center gap-x-5 gap-y-1">
         <Link to="/login">Try signing in</Link>
         <Link to="/forgot-password">Request a new link</Link>

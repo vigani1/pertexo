@@ -552,7 +552,7 @@ describe('team: members', () => {
       .setup()
       .click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'More members couldn’t be loaded. Try again.',
+      'More members couldn’t be loaded. The ones above are unchanged.',
     );
     expect(screen.getByText('Ada Operator')).toBeVisible();
   });

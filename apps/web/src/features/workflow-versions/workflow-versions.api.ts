@@ -10,6 +10,7 @@ import {
   type WorkflowDraftSnapshot,
 } from '@/features/workflow-drafts/public';
 import type { ApiClient } from '@/lib/api/client';
+import { collectPages, cursorPages } from '@/lib/api/pagination';
 
 function versionsPath(workspaceId: string, workflowId: string) {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/versions` as const;
@@ -33,35 +34,33 @@ function getWorkflowVersionsPage(
   });
 }
 
+function readVersionPage(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal: AbortSignal | undefined,
+) {
+  return (after: string | undefined) =>
+    getWorkflowVersionsPage(apiClient, workspaceId, workflowId, {
+      ...(after === undefined ? {} : { after }),
+      ...(signal === undefined ? {} : { signal }),
+    });
+}
+
 export async function getAllWorkflowVersions(
   apiClient: ApiClient,
   workspaceId: string,
   workflowId: string,
   signal?: AbortSignal,
 ): Promise<WorkflowVersionsResponse> {
-  const items: WorkflowVersionResponse[] = [];
-  const seen = new Set<string>();
-  let after: string | undefined;
-  for (let page = 0; page < 40; page += 1) {
-    const response = await getWorkflowVersionsPage(
-      apiClient,
-      workspaceId,
-      workflowId,
-      {
-        ...(after === undefined ? {} : { after }),
-        ...(signal === undefined ? {} : { signal }),
-      },
-    );
-    items.push(...response.items);
-    if (response.nextCursor === null) return { items, nextCursor: null };
-    if (seen.has(response.nextCursor))
-      throw new Error('Workflow version pagination repeated a cursor.');
-    seen.add(response.nextCursor);
-    after = response.nextCursor;
-  }
-  throw new Error(
-    'Workflow version discovery exceeded its bounded page limit.',
+  const items = await collectPages(
+    readVersionPage(apiClient, workspaceId, workflowId, signal),
+    {
+      read: 'Workflow version discovery',
+      signal,
+    },
   );
+  return { items: [...items], nextCursor: null };
 }
 
 export async function findWorkflowVersion(
@@ -71,25 +70,12 @@ export async function findWorkflowVersion(
   versionId: string,
   signal?: AbortSignal,
 ): Promise<WorkflowVersionResponse> {
-  let after: string | undefined;
-  const seen = new Set<string>();
-  for (let page = 0; page < 40; page += 1) {
-    const response = await getWorkflowVersionsPage(
-      apiClient,
-      workspaceId,
-      workflowId,
-      {
-        ...(after === undefined ? {} : { after }),
-        ...(signal === undefined ? {} : { signal }),
-      },
-    );
-    const version = response.items.find((item) => item.id === versionId);
+  for await (const page of cursorPages(
+    readVersionPage(apiClient, workspaceId, workflowId, signal),
+    { read: 'Workflow version lookup', signal },
+  )) {
+    const version = page.items.find((item) => item.id === versionId);
     if (version !== undefined) return version;
-    if (response.nextCursor === null) break;
-    if (seen.has(response.nextCursor))
-      throw new Error('Workflow version pagination repeated a cursor.');
-    seen.add(response.nextCursor);
-    after = response.nextCursor;
   }
   throw new Error(
     'The workflow version lookup exceeded its bounded result set.',

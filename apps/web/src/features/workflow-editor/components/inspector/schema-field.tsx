@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   parseNumberField,
   withConfigValue,
+  type FieldParseResult,
   type NodeConfig,
   type SchemaFieldSpec,
 } from '../../model/inspector-draft';
@@ -83,7 +84,7 @@ export function SchemaField({
       </Field>
     );
   return field.kind === 'string' ? (
-    <TextField
+    <ConfigTextField
       field={field}
       id={id}
       value={value}
@@ -91,7 +92,7 @@ export function SchemaField({
       commit={commit}
     />
   ) : (
-    <NumberField
+    <ConfigNumberField
       field={field}
       id={id}
       value={value}
@@ -101,34 +102,44 @@ export function SchemaField({
   );
 }
 
-function TextField({
-  field,
-  id,
-  value,
-  form,
-  commit,
-}: Readonly<{
+type LiveFieldProps = Readonly<{
   field: SchemaFieldSpec;
   id: string;
   value: ConfigValue;
   form: NodeFormApi;
   commit: (value: ConfigValue) => void;
-}>) {
-  const live = useLiveField<ConfigValue>({
+}>;
+
+/** A field's text under live apply, reporting unfinished scratch to the form. */
+function useConfigText(
+  { field, value, form, commit }: LiveFieldProps,
+  format: (value: ConfigValue) => string,
+  parse: (text: string) => FieldParseResult<ConfigValue>,
+) {
+  return useLiveField<ConfigValue>({
     value,
-    format: (current) =>
-      typeof current === 'string' || typeof current === 'number'
-        ? String(current)
-        : '',
-    parse: (text) => ({
-      ok: true,
-      value: text === '' && !field.required ? undefined : text,
-    }),
+    format,
+    parse,
     commit,
     onScratchChange: (scratch) => {
       form.reportScratch(field.key, scratch);
     },
   });
+}
+
+function ConfigTextField(props: LiveFieldProps) {
+  const { field, id, form } = props;
+  const live = useConfigText(
+    props,
+    (current) =>
+      typeof current === 'string' || typeof current === 'number'
+        ? String(current)
+        : '',
+    (text) => ({
+      ok: true,
+      value: text === '' && !field.required ? undefined : text,
+    }),
+  );
   return (
     <Field>
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
@@ -149,28 +160,13 @@ function TextField({
   );
 }
 
-function NumberField({
-  field,
-  id,
-  value,
-  form,
-  commit,
-}: Readonly<{
-  field: SchemaFieldSpec;
-  id: string;
-  value: ConfigValue;
-  form: NodeFormApi;
-  commit: (value: ConfigValue) => void;
-}>) {
-  const live = useLiveField<ConfigValue>({
-    value,
-    format: (current) => (typeof current === 'number' ? String(current) : ''),
-    parse: (text) => parseNumberField(field, text),
-    commit,
-    onScratchChange: (scratch) => {
-      form.reportScratch(field.key, scratch);
-    },
-  });
+function ConfigNumberField(props: LiveFieldProps) {
+  const { field, id, form } = props;
+  const live = useConfigText(
+    props,
+    (current) => (typeof current === 'number' ? String(current) : ''),
+    (text) => parseNumberField(field, text),
+  );
   const errorId = `${id}-error`;
   function nudge(direction: 1 | -1) {
     const current = Number(live.text);

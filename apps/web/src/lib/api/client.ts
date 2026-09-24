@@ -5,6 +5,7 @@ import {
 } from '@pertexo/contracts/schemas/errors';
 import { csrfTokenSchema } from '@pertexo/contracts/schemas/transport';
 import { ApiError, isApiError } from './api-error';
+import { requestController } from './request-controller';
 
 type ApiPath = `/v1${string}`;
 type ApiMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
@@ -374,25 +375,17 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     const body = serializeBody(request, method);
     const headers = createHeaders(request, method, options.readCsrfToken);
 
-    const controller = new AbortController();
-    const timeoutReason = Object.freeze({ kind: 'api-timeout' });
-    const forwardAbort = () => {
-      controller.abort(request.signal?.reason);
-    };
-    request.signal?.addEventListener('abort', forwardAbort, { once: true });
-    const timeout = window.setTimeout(() => {
-      controller.abort(timeoutReason);
-    }, timeoutMs);
+    const call = requestController(request.signal, timeoutMs, 'api-timeout');
 
     try {
       const response = await options.fetch(request.path, {
         method,
         headers,
         credentials: 'same-origin',
-        signal: controller.signal,
+        signal: call.signal,
         ...(body === undefined ? {} : { body }),
       });
-      if (controller.signal.reason === timeoutReason)
+      if (call.timedOut())
         throw new ApiError({
           kind: 'timeout',
           message: 'The API request timed out.',
@@ -411,14 +404,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         response,
       );
     } catch (error) {
-      throwTransportFailure(
-        error,
-        controller.signal.reason === timeoutReason,
-        request.signal,
-      );
+      throwTransportFailure(error, call.timedOut(), request.signal);
     } finally {
-      window.clearTimeout(timeout);
-      request.signal?.removeEventListener('abort', forwardAbort);
+      call.dispose();
     }
   }
 
@@ -435,38 +423,30 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         message: 'The API request was canceled.',
       });
     const headers = createHeaders(request, method, options.readCsrfToken);
-    const controller = new AbortController();
-    const timeoutReason = Object.freeze({ kind: 'api-stream-timeout' });
-    const forwardAbort = () => {
-      controller.abort(request.signal?.reason);
-    };
-    request.signal?.addEventListener('abort', forwardAbort, { once: true });
-    const timeout = window.setTimeout(() => {
-      controller.abort(timeoutReason);
-    }, timeoutMs);
-    const cleanup = () => {
-      window.clearTimeout(timeout);
-      request.signal?.removeEventListener('abort', forwardAbort);
-    };
+    const call = requestController(
+      request.signal,
+      timeoutMs,
+      'api-stream-timeout',
+    );
     try {
       const response = await options.fetch(request.path, {
         method,
         headers,
         credentials: 'same-origin',
-        signal: controller.signal,
+        signal: call.signal,
       });
-      window.clearTimeout(timeout);
+      call.stopTimer();
       if (!response.ok)
         throw await errorForResponse(response, request.decodeProblem);
       if (mediaType(response) !== request.response.mediaType) {
-        controller.abort();
+        call.abort();
         throw protocolError(
           'The server returned an unexpected stream content type.',
           { status: response.status, requestId: requestIdFrom(response) },
         );
       }
       if (response.body === null) {
-        controller.abort();
+        call.abort();
         throw protocolError('The server returned an empty event stream.', {
           status: response.status,
           requestId: requestIdFrom(response),
@@ -475,17 +455,13 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return Object.freeze({
         body: response.body,
         close: () => {
-          controller.abort();
-          cleanup();
+          call.abort();
+          call.dispose();
         },
       });
     } catch (error) {
-      cleanup();
-      throwTransportFailure(
-        error,
-        controller.signal.reason === timeoutReason,
-        request.signal,
-      );
+      call.dispose();
+      throwTransportFailure(error, call.timedOut(), request.signal);
     }
   }
 

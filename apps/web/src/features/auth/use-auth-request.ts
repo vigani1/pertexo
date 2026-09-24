@@ -34,10 +34,27 @@ export function useAuthRequest(describeFailure: (error: unknown) => string) {
     }
   }
 
+  /** Checks the form, then sends it unless a request is already in flight. */
+  async function submit<Values>(
+    validate: () => Values | undefined,
+    work: (values: Values, signal: AbortSignal) => Promise<unknown>,
+    onSuccess: (values: Values) => void,
+  ) {
+    if (pending) return;
+    const values = validate();
+    if (values === undefined) return;
+    await run(
+      (signal) => work(values, signal),
+      () => {
+        onSuccess(values);
+      },
+    );
+  }
+
   return {
     pending,
     failure,
     waitSeconds: rateLimit.remainingSeconds,
-    run,
+    submit,
   };
 }

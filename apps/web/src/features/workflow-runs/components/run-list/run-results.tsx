@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
-import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/api-error';
 import { describeReadError } from '@/lib/api/api-error-copy';
@@ -102,25 +102,13 @@ export function RunResults({
           variant={variant}
         />
       )}
-      {query.hasNextPage || query.isFetchNextPageError ? (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          {query.hasNextPage ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={query.isFetchingNextPage}
-              onClick={() => void query.fetchNextPage()}
-            >
-              {query.isFetchingNextPage ? 'Loading more…' : 'Load more'}
-            </Button>
-          ) : null}
-          {query.isFetchNextPageError ? (
-            <p role="alert" className="text-sm text-destructive">
-              More runs couldn’t be loaded. Try again.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <LoadMore
+        subject="runs"
+        hasNextPage={query.hasNextPage}
+        loading={query.isFetchingNextPage}
+        failed={query.isFetchNextPageError}
+        onLoadMore={() => void query.fetchNextPage()}
+      />
     </div>
   );
 }

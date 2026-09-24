@@ -1,7 +1,5 @@
 import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
 import { workflowIdentifierSchema } from '@pertexo/contracts/schemas/workflow-authoring';
-import { authoringCatalogQueryOptions } from '@/features/catalog/public';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
   scheduleTriggersQueryOptions,
@@ -15,10 +13,13 @@ import {
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/public';
-import { isNotFound } from '@/lib/api/api-error-copy';
 import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
-import { rethrowError, settlePrefetches } from './route-context';
+import {
+  authoringPrefetches,
+  prefetchResource,
+  settlePrefetches,
+} from './route-context';
 import { workspaceScopeRoute } from './workspace-routes';
 
 /**
@@ -57,33 +58,15 @@ export const workflowHubRoute = createRoute({
 export const workflowBuildRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   path: '/',
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
-    if (workflowId === null) return { found: false as const };
-    try {
-      await settlePrefetches(
-        context,
-        [
-          queryClient.query(
-            workflowDraftQueryOptions(
-              apiClient,
-              user.id,
-              workspace.id,
-              workflowId,
-            ),
-          ),
-          queryClient.query(authoringCatalogQueryOptions(apiClient, user.id)),
-          queryClient.query(
-            connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
-          ),
-        ],
-        'strict',
-      );
-    } catch (error) {
-      if (isNotFound(error)) return { found: false as const };
-      rethrowError(error);
-    }
-    return { found: true as const };
+    if (workflowId === null) return { found: false };
+    return prefetchResource(context, [
+      queryClient.query(
+        workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
+      ),
+      ...authoringPrefetches(context, user.id, workspace.id),
+    ]);
   },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Build', match.context.workspace.name) }],
