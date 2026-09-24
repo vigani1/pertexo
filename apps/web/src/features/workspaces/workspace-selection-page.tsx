@@ -4,11 +4,11 @@ import type {
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { WorkspaceCreationDialog } from './components/creation/workspace-creation-dialog';
-import { WorkspaceChooser } from './components/selection/workspace-chooser';
-import { WorkspaceOnboarding } from './components/selection/workspace-onboarding';
-import { WorkspaceSessionHeader } from './components/selection/workspace-session-header';
-import './workspace-selection.css';
+import { WorkspaceCreationSheet } from './components/creation/workspace-creation-sheet';
+import { WorkspaceFirstRun } from './components/selection/workspace-first-run';
+import { WorkspaceGrid } from './components/selection/workspace-grid';
+import { WorkspacePickerHeader } from './components/selection/workspace-picker-header';
+import { readLastWorkspace } from './last-workspace';
 
 type WorkspaceSelectionPageProps = Readonly<{
   apiClient: ApiClient;
@@ -22,6 +22,10 @@ type WorkspaceSelectionPageProps = Readonly<{
   onLogout: () => void;
 }>;
 
+/**
+ * The workspace picker: rarely seen, since "/" opens the last workspace. New
+ * people create their first workspace inline; everyone else picks a card.
+ */
 export function WorkspaceSelectionPage({
   apiClient,
   user,
@@ -34,52 +38,59 @@ export function WorkspaceSelectionPage({
   onLogout,
 }: WorkspaceSelectionPageProps) {
   const [creationOpen, setCreationOpen] = useState(false);
-  const openCreation = () => {
-    setCreationOpen(true);
-  };
+  const lastOpenedId = readLastWorkspace(user.id);
 
   return (
-    <main id="main" className="app-stage min-h-svh px-5 sm:px-8">
-      <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col">
-        <WorkspaceSessionHeader
-          email={user.email}
-          logoutPending={logoutPending}
-          onLogout={onLogout}
-        />
-
-        {logoutError ? (
-          <p
-            role="alert"
-            className="workspace-logout-error text-sm text-destructive"
-          >
+    <div className="relative isolate min-h-svh bg-background">
+      <div className="ambient fixed -z-10" aria-hidden="true" />
+      <div
+        className="warp pointer-events-none fixed inset-0 -z-10"
+        aria-hidden="true"
+      />
+      <WorkspacePickerHeader
+        user={user}
+        logoutPending={logoutPending}
+        onLogout={onLogout}
+      />
+      <main
+        id="main"
+        className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pt-12 pb-20 sm:px-8 sm:pt-16"
+      >
+        {logoutError === undefined ? null : (
+          <p role="alert" className="text-sm text-destructive">
             {logoutError}
           </p>
-        ) : null}
-
-        <div className="workspace-selection-content">
-          {workspaces.length === 0 ? (
-            <WorkspaceOnboarding onCreate={openCreation} />
-          ) : (
-            <WorkspaceChooser
+        )}
+        {workspaces.length === 0 ? (
+          <WorkspaceFirstRun
+            key={user.id}
+            apiClient={apiClient}
+            userId={user.id}
+            onCreated={onCreated}
+            onSessionInvalidated={onSessionInvalidated}
+          />
+        ) : (
+          <>
+            <WorkspaceGrid
               workspaces={workspaces}
-              onCreate={openCreation}
+              lastOpenedId={lastOpenedId}
               onSelect={onSelect}
+              onCreate={() => {
+                setCreationOpen(true);
+              }}
             />
-          )}
-        </div>
-        <WorkspaceCreationDialog
-          key={user.id}
-          apiClient={apiClient}
-          userId={user.id}
-          open={creationOpen}
-          onOpenChange={setCreationOpen}
-          onCreated={onCreated}
-          onSessionInvalidated={() => {
-            setCreationOpen(false);
-            onSessionInvalidated();
-          }}
-        />
-      </div>
-    </main>
+            <WorkspaceCreationSheet
+              key={user.id}
+              apiClient={apiClient}
+              userId={user.id}
+              open={creationOpen}
+              onOpenChange={setCreationOpen}
+              onCreated={onCreated}
+              onSessionInvalidated={onSessionInvalidated}
+            />
+          </>
+        )}
+      </main>
+    </div>
   );
 }

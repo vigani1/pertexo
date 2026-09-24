@@ -12,7 +12,8 @@ export function rememberLastWorkspace(userId: string, workspaceId: string) {
   }
 }
 
-function readLastWorkspace(userId: string): string | undefined {
+/** The workspace this person opened last in this browser, if remembered. */
+export function readLastWorkspace(userId: string): string | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw === null) return undefined;
