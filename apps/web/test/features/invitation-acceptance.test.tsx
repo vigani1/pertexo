@@ -53,7 +53,7 @@ describe('invitation acceptance', () => {
     );
 
     expect(
-      await screen.findByRole('button', { name: 'Continue with sign in' }),
+      await screen.findByRole('button', { name: 'Sign in to accept' }),
     ).toBeVisible();
     expect(resolvedToken).toEqual({
       token: `wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`,
@@ -90,11 +90,11 @@ describe('invitation acceptance', () => {
     renderApp(`/invitations/accept#token=${encodeURIComponent(token)}`);
 
     await browser.click(
-      await screen.findByRole('button', { name: 'Retry invitation link' }),
+      await screen.findByRole('button', { name: 'Try the link again' }),
     );
 
     expect(
-      await screen.findByRole('button', { name: 'Continue with sign in' }),
+      await screen.findByRole('button', { name: 'Sign in to accept' }),
     ).toBeVisible();
     expect(requests).toEqual([{ token }, { token }]);
   });
@@ -167,13 +167,13 @@ describe('invitation acceptance', () => {
     );
 
     await browser.click(
-      await screen.findByRole('button', { name: 'Accept invitation' }),
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'result is uncertain',
-    );
+    expect(
+      await screen.findByText(/couldn’t confirm whether you joined/u),
+    ).toBeVisible();
     await browser.click(
-      screen.getByRole('button', { name: 'Accept invitation' }),
+      screen.getByRole('button', { name: 'Accept and open workspace' }),
     );
     expect(
       await screen.findByRole('button', { name: 'Open workspace' }),
@@ -237,15 +237,13 @@ describe('invitation acceptance', () => {
     );
 
     await browser.click(
-      await screen.findByRole('button', { name: 'Accept invitation' }),
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
     );
     expect(
-      await screen.findByRole('button', { name: 'Check acceptance status' }),
+      await screen.findByRole('button', { name: 'Check status' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Sign in again' })).toBeVisible();
-    await browser.click(
-      screen.getByRole('button', { name: 'Check acceptance status' }),
-    );
+    await browser.click(screen.getByRole('button', { name: 'Check status' }));
     await waitFor(() => {
       expect(reads).toBe(1);
     });
@@ -289,7 +287,7 @@ describe('invitation acceptance', () => {
       />,
     );
     await browser.click(
-      await screen.findByRole('button', { name: 'Continue with sign in' }),
+      await screen.findByRole('button', { name: 'Sign in to accept' }),
     );
     await waitFor(() => {
       expect(finishOidc).toBeDefined();
@@ -327,7 +325,7 @@ describe('invitation acceptance', () => {
 
     await browser.click(await screen.findByRole('button', { name: 'Sign in' }));
     await browser.click(
-      screen.getByRole('button', { name: 'Find my workspaces' }),
+      screen.getByRole('button', { name: 'Go to my workspaces' }),
     );
     expect(openSignIn).toHaveBeenCalledOnce();
     expect(openWorkspaceDiscovery).toHaveBeenCalledOnce();
@@ -356,7 +354,7 @@ describe('invitation acceptance', () => {
 
     await browser.click(
       await screen.findByRole('button', {
-        name: 'Retry invitation status',
+        name: 'Try again',
       }),
     );
     expect(
@@ -396,7 +394,7 @@ describe('invitation acceptance', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Continue with sign in' }),
+      await screen.findByRole('button', { name: 'Sign in to accept' }),
     ).toBeVisible();
     expect(resolveRequests).toBe(1);
   });
@@ -443,7 +441,7 @@ describe('invitation acceptance', () => {
       { strict: true },
     );
     await browser.click(
-      await screen.findByRole('button', { name: 'Accept invitation' }),
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
     );
     await waitFor(() => {
       expect(finishCompletion).toBeDefined();
@@ -453,7 +451,9 @@ describe('invitation acceptance', () => {
       to: '/invitations/accept',
       hash: `token=${encodeURIComponent(tokenB)}`,
     });
-    expect(await screen.findByText('Workspace B')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Join Workspace B' }),
+    ).toBeVisible();
     finishCompletion?.(
       HttpResponse.json({
         intentId,
@@ -465,9 +465,11 @@ describe('invitation acceptance', () => {
     );
     await Promise.resolve();
 
-    expect(screen.getByText('Workspace B')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Accept invitation' }),
+      screen.getByRole('heading', { name: 'Join Workspace B' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Accept and open workspace' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Open workspace' }),
@@ -525,12 +527,16 @@ describe('invitation acceptance', () => {
       to: '/invitations/accept',
       hash: `token=${encodeURIComponent(tokenB)}`,
     });
-    expect(await screen.findByText('Workspace B')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Join Workspace B' }),
+    ).toBeVisible();
     finishCleanup?.(new Response(null, { status: 204 }));
     await Promise.resolve();
 
     expect(router.state.location.pathname).toBe('/invitations/accept');
-    expect(screen.getByText('Workspace B')).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Join Workspace B' }),
+    ).toBeVisible();
   });
 
   it('retires an uncertain command when reconciliation selects another invitation', async () => {
@@ -587,17 +593,19 @@ describe('invitation acceptance', () => {
       `/invitations/accept#token=${encodeURIComponent(`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`)}`,
     );
     await browser.click(
-      await screen.findByRole('button', { name: 'Accept invitation' }),
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
     );
     await browser.click(
-      await screen.findByRole('button', { name: 'Check acceptance status' }),
+      await screen.findByRole('button', { name: 'Check status' }),
     );
-    expect(await screen.findByText('Workspace B')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Join Workspace B' }),
+    ).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent(
       'different invitation is now selected',
     );
     await browser.click(
-      screen.getByRole('button', { name: 'Accept invitation' }),
+      screen.getByRole('button', { name: 'Accept and open workspace' }),
     );
     await screen.findByRole('button', { name: 'Open workspace' });
     expect(commands).toHaveLength(2);
@@ -661,7 +669,7 @@ describe('invitation acceptance', () => {
       />,
     );
     await browser.click(
-      await screen.findByRole('button', { name: 'Accept invitation' }),
+      await screen.findByRole('button', { name: 'Accept and open workspace' }),
     );
     await browser.click(
       await screen.findByRole('button', {
@@ -773,9 +781,9 @@ describe('invitation acceptance', () => {
     await browser.click(
       await screen.findByRole('button', { name: 'Open workspace' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'invitation was accepted, but local cleanup did not finish',
-    );
+    expect(
+      await screen.findByText(/couldn’t finish tidying up the invitation/u),
+    ).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Open workspace' }),
     ).toBeVisible();
@@ -847,9 +855,9 @@ describe('invitation acceptance', () => {
     await browser.click(
       await screen.findByRole('button', { name: 'Open workspace' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'invitation was accepted, but local cleanup did not finish',
-    );
+    expect(
+      await screen.findByText(/couldn’t finish tidying up the invitation/u),
+    ).toBeVisible();
     await browser.click(screen.getByRole('button', { name: 'Open workspace' }));
     expect(openWorkspace).toHaveBeenCalledWith(workspaceId);
     expect(
@@ -910,5 +918,194 @@ describe('invitation acceptance', () => {
     resolveCleanup?.(new Response(null, { status: 204 }));
     await Promise.resolve();
     expect(openWorkspace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['expired', 'This invitation has expired'],
+    ['revoked', 'This invitation was withdrawn'],
+    ['superseded', 'A newer invitation replaced this one'],
+  ] as const)(
+    'explains a %s invitation in words and points to workspaces',
+    async (state, title) => {
+      mockServer.use(
+        http.get('http://pertexo.test/v1/invitation-acceptance', () =>
+          HttpResponse.json({
+            state,
+            intentId,
+            expiresAt: '2026-09-19T18:00:00.000Z',
+            csrfToken,
+          }),
+        ),
+      );
+      const openWorkspaceDiscovery = vi.fn();
+      render(
+        <InvitationAcceptancePage
+          apiClient={componentApiClient()}
+          clearFragment={vi.fn()}
+          navigateToProvider={vi.fn()}
+          openWorkspace={vi.fn()}
+          openSignIn={vi.fn()}
+          openWorkspaceDiscovery={openWorkspaceDiscovery}
+        />,
+      );
+      expect(await screen.findByRole('heading', { name: title })).toBeVisible();
+      expect(
+        screen.getByText(/Ask an admin for a new invitation/u),
+      ).toBeVisible();
+      expect(document.body).not.toHaveTextContent(
+        state === 'superseded' ? /superseded/u : /is revoked|is expired\./u,
+      );
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Go to my workspaces' }));
+      expect(openWorkspaceDiscovery).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('names the signed-in account when the invitation belongs to another', async () => {
+    mockServer.use(
+      http.get('http://pertexo.test/v1/invitation-acceptance', () =>
+        HttpResponse.json({
+          state: 'wrong_account',
+          intentId,
+          expiresAt: '2026-09-19T18:00:00.000Z',
+          csrfToken,
+        }),
+      ),
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json({
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          email: 'someone-else@example.test',
+          displayName: 'Someone Else',
+          status: 'active',
+          createdAt: '2026-09-14T10:00:00.000Z',
+          updatedAt: '2026-09-14T10:00:00.000Z',
+        }),
+      ),
+    );
+    renderApp('/invitations/accept');
+    expect(
+      await screen.findByRole('heading', {
+        name: 'This invitation is for someone else',
+      }),
+    ).toBeVisible();
+    expect(await screen.findByText('someone-else@example.test')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Switch account' }),
+    ).toBeVisible();
+  });
+
+  it('sets a ready invitation aside with Not now before leaving', async () => {
+    let cleared = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/invitation-acceptance', () =>
+        HttpResponse.json({
+          state: 'ready',
+          intentId,
+          expiresAt: '2026-09-19T18:00:00.000Z',
+          csrfToken,
+          invitationRevision: 3,
+          role: 'builder',
+          sessionRotationRequired: true,
+          workspace: { id: workspaceId, name: 'Control Operations' },
+        }),
+      ),
+      http.delete(
+        'http://pertexo.test/v1/invitation-acceptance',
+        ({ request }) => {
+          expect(request.headers.get('x-invitation-csrf-token')).toBe(
+            csrfToken,
+          );
+          cleared += 1;
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+    );
+    const openWorkspaceDiscovery = vi.fn();
+    render(
+      <InvitationAcceptancePage
+        apiClient={componentApiClient()}
+        clearFragment={vi.fn()}
+        navigateToProvider={vi.fn()}
+        openWorkspace={vi.fn()}
+        openSignIn={vi.fn()}
+        openWorkspaceDiscovery={openWorkspaceDiscovery}
+      />,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Join Control Operations' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Builds, publishes and runs workflows'),
+    ).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Not now' }));
+    await waitFor(() => {
+      expect(openWorkspaceDiscovery).toHaveBeenCalledOnce();
+    });
+    expect(cleared).toBe(1);
+  });
+
+  it('opens a joined workspace on its own after a visible pause, unless asked to stay', async () => {
+    const completed = {
+      state: 'completed',
+      intentId,
+      expiresAt: '2026-09-19T18:00:00.000Z',
+      csrfToken,
+      workspace: { id: workspaceId, name: 'Control Operations' },
+      role: 'viewer',
+      membershipCreated: true,
+    };
+    mockServer.use(
+      http.get('http://pertexo.test/v1/invitation-acceptance', () =>
+        HttpResponse.json(completed),
+      ),
+      http.delete(
+        'http://pertexo.test/v1/invitation-acceptance',
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    const openWorkspace = vi.fn();
+    const automatic = render(
+      <InvitationAcceptancePage
+        apiClient={componentApiClient()}
+        clearFragment={vi.fn()}
+        navigateToProvider={vi.fn()}
+        openWorkspace={openWorkspace}
+        openSignIn={vi.fn()}
+        openWorkspaceDiscovery={vi.fn()}
+        autoOpenAfterMs={60}
+      />,
+    );
+    expect(
+      await screen.findByText('Opening Control Operations…'),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(openWorkspace).toHaveBeenCalledWith(workspaceId);
+    });
+    automatic.unmount();
+
+    const stayed = vi.fn();
+    render(
+      <InvitationAcceptancePage
+        apiClient={componentApiClient()}
+        clearFragment={vi.fn()}
+        navigateToProvider={vi.fn()}
+        openWorkspace={stayed}
+        openSignIn={vi.fn()}
+        openWorkspaceDiscovery={vi.fn()}
+        autoOpenAfterMs={200}
+      />,
+    );
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Stay here' }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(stayed).not.toHaveBeenCalled();
+    expect(screen.queryByText('Opening Control Operations…')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Open workspace' }),
+    ).toBeVisible();
   });
 });

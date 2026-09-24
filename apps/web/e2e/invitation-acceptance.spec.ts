@@ -67,7 +67,7 @@ test('removes the invitation token and explicitly accepts the bound journey', as
   await page.goto(`/invitations/accept#token=${encodeURIComponent(token)}`);
   await expect(page).toHaveURL('/invitations/accept');
   await expect(
-    page.getByRole('button', { name: 'Accept invitation' }),
+    page.getByRole('button', { name: 'Accept and open workspace' }),
   ).toBeVisible();
   expect(resolvedBody).toEqual({ token });
   expect(resolveHeader).toBe('resolve');
@@ -78,7 +78,7 @@ test('removes the invitation token and explicitly accepts the bound journey', as
     })),
   ).toEqual({ local: 0, session: 0 });
 
-  await page.getByRole('button', { name: 'Accept invitation' }).click();
+  await page.getByRole('button', { name: 'Accept and open workspace' }).click();
   await expect(
     page.getByRole('button', { name: 'Open workspace' }),
   ).toBeVisible();
@@ -120,14 +120,14 @@ test('offers reconciliation and reauthentication when completion loses its sessi
   });
 
   await page.goto(`/invitations/accept#token=${encodeURIComponent(token)}`);
-  await page.getByRole('button', { name: 'Accept invitation' }).click();
+  await page.getByRole('button', { name: 'Accept and open workspace' }).click();
   await expect(
-    page.getByRole('button', { name: 'Check acceptance status' }),
+    page.getByRole('button', { name: 'Check status' }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Sign in again' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Check acceptance status' }).click();
+  await page.getByRole('button', { name: 'Check status' }).click();
   await expect(
     page.getByRole('button', { name: 'Sign in', exact: true }),
   ).toBeVisible();
@@ -147,8 +147,10 @@ test('recovers a tokenless continuation after its initial status read fails', as
   });
 
   await page.goto('/invitations/accept');
-  await page.getByRole('button', { name: 'Retry invitation status' }).click();
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Sign in', exact: true }),
+  ).toBeVisible();
   expect(reads).toBe(2);
 });
 
@@ -184,7 +186,7 @@ test('reload recovery exposes sign-in or a completed receipt without replaying a
 
   await page.goto('/invitations/accept');
   await expect(
-    page.getByRole('button', { name: 'Continue with sign in' }),
+    page.getByRole('button', { name: 'Sign in to accept' }),
   ).toBeVisible();
   authenticated = true;
   await page.reload();
@@ -236,17 +238,19 @@ test('reopens the same email after a committed replacement loses its response an
 
   await page.goto(`/invitations/accept#token=${encodeURIComponent(token)}`);
   await expect(
-    page.getByRole('button', { name: 'Retry invitation link' }),
+    page.getByRole('button', { name: 'Try the link again' }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Continue with sign in' }),
+    page.getByRole('button', { name: 'Sign in', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Sign in to accept' }),
   ).toHaveCount(0);
 
   await page.goto(`/invitations/accept#token=${encodeURIComponent(token)}`);
   await expect(
-    page.getByRole('button', { name: 'Continue with sign in' }),
+    page.getByRole('button', { name: 'Sign in to accept' }),
   ).toBeVisible();
   expect(resolveRequests).toBe(2);
   await expect
@@ -300,12 +304,12 @@ test('reloads the committed journey when the replacement cookie arrives before a
 
   await page.goto(`/invitations/accept#token=${encodeURIComponent(token)}`);
   await expect(
-    page.getByRole('button', { name: 'Retry invitation link' }),
+    page.getByRole('button', { name: 'Try the link again' }),
   ).toBeVisible();
   await page.reload();
 
   await expect(
-    page.getByRole('button', { name: 'Continue with sign in' }),
+    page.getByRole('button', { name: 'Sign in to accept' }),
   ).toBeVisible();
 });
 
@@ -376,8 +380,10 @@ test('keeps ordinary workspace discovery available when a replacement binding re
 
   await page.goto('/invitations/accept');
   await page.getByRole('button', { name: 'Open workspace' }).click();
-  await expect(page.getByText(/local cleanup did not finish/i)).toBeVisible();
-  await page.getByRole('button', { name: 'Find my workspaces' }).click();
+  await expect(
+    page.getByText(/couldn’t finish tidying up the invitation/iu),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Go to my workspaces' }).click();
 
   await expect(page).toHaveURL('/workspaces');
   expect(cleanupRequests).toBe(1);

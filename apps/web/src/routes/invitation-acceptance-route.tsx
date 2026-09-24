@@ -40,6 +40,9 @@ export function InvitationAcceptanceRoute() {
       openSignIn={() => {
         void navigate({ to: '/login' });
       }}
+      openSignUp={() => {
+        void navigate({ to: '/sign-up' });
+      }}
       openWorkspaceDiscovery={() => {
         void navigate({ to: '/workspaces' });
       }}
