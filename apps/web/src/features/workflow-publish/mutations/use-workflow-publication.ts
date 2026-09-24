@@ -1,7 +1,10 @@
 import type { WorkflowValidateResponse } from '@pertexo/contracts/schemas/workflow-authoring';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { retryAfterSeconds } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow, validateWorkflow } from '../workflow-publish.api';
+import { workflowPublishKeys } from '../workflow-publish.queries';
 import { commandErrorMessage, isUncertainCommandError } from './command-utils';
 
 export type ValidationResult = Readonly<{
@@ -10,21 +13,36 @@ export type ValidationResult = Readonly<{
   revision: number;
 }>;
 
-type PublishAttempt = Readonly<{
+type SavedDraft = Readonly<{
   etag: string;
   generation: number;
   revision: number;
-  idempotencyKey: string;
 }>;
+
+type PublishAttempt = SavedDraft & Readonly<{ idempotencyKey: string }>;
 
 export type PublicationReceipt = Readonly<{
   versionId: string;
+  versionNumber: number;
   generation: number;
   revision: number;
 }>;
 
+export type PublishStage = 'saving' | 'checking' | 'publishing';
+export type PublishResult =
+  | Readonly<{ kind: 'published'; receipt: PublicationReceipt }>
+  | Readonly<{ kind: 'blocked' | 'failed' }>;
+
+const failed: PublishResult = { kind: 'failed' };
+
+/**
+ * Validation and publication of the saved draft. Publishing saves, checks the
+ * exact saved revision (reusing a fresh report) and only then sends one
+ * keyed command; an uncertain outcome keeps that command for an exact retry.
+ */
 export function useWorkflowPublication({
   apiClient,
+  userId,
   workspaceId,
   workflowId,
   verifyIdentity,
@@ -32,23 +50,27 @@ export function useWorkflowPublication({
   onPublicationAccepted,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspaceId: string;
   workflowId: string;
   verifyIdentity: () => Promise<void>;
-  ensureSaved: () => Promise<
-    Readonly<{ etag: string; generation: number; revision: number }>
-  >;
+  ensureSaved: () => Promise<SavedDraft>;
   onPublicationAccepted?: () => void;
 }>) {
+  const queryClient = useQueryClient();
   const [validation, setValidation] = useState<ValidationResult>();
   const [validationPending, setValidationPending] = useState(false);
   const [validationError, setValidationError] = useState<string>();
-  const [publishPending, setPublishPending] = useState(false);
+  const [validationBlockedUntil, setValidationBlockedUntil] =
+    useState<number>();
+  const [publishStage, setPublishStage] = useState<PublishStage>();
   const [publishError, setPublishError] = useState<string>();
   const [publicationReceipt, setPublicationReceipt] =
     useState<PublicationReceipt>();
   const [publishRecoveryPending, setPublishRecoveryPending] = useState(false);
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
+  const validationInFlight =
+    useRef<Promise<ValidationResult | undefined>>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
 
   useEffect(() => {
@@ -58,99 +80,133 @@ export function useWorkflowPublication({
       if (owner.current === currentOwner) {
         owner.current = undefined;
         publishAttempt.current = undefined;
+        validationInFlight.current = undefined;
       }
     };
   }, [apiClient, workspaceId, workflowId]);
 
+  async function checkSavedDraft(
+    saved: SavedDraft,
+    checkOwner: symbol,
+  ): Promise<ValidationResult | undefined> {
+    const report = await validateWorkflow(apiClient, workspaceId, workflowId);
+    if (owner.current !== checkOwner) return undefined;
+    const result = {
+      report,
+      generation: saved.generation,
+      revision: saved.revision,
+    };
+    setValidation(result);
+    setValidationError(undefined);
+    setValidationBlockedUntil(undefined);
+    return result;
+  }
+
   async function validate() {
-    if (validationPending) return;
-    const validationOwner = owner.current;
-    if (validationOwner === undefined) return;
+    const checkOwner = owner.current;
+    if (validationInFlight.current !== undefined || checkOwner === undefined)
+      return;
     setValidationPending(true);
     setValidationError(undefined);
+    const request = ensureSaved().then((saved) =>
+      owner.current === checkOwner
+        ? checkSavedDraft(saved, checkOwner)
+        : undefined,
+    );
+    validationInFlight.current = request;
     try {
-      const saved = await ensureSaved();
-      if (owner.current !== validationOwner) return;
-      const report = await validateWorkflow(apiClient, workspaceId, workflowId);
-      if (owner.current !== validationOwner) return;
-      setValidation({
-        report,
-        generation: saved.generation,
-        revision: saved.revision,
-      });
+      await request;
     } catch (error) {
-      if (owner.current !== validationOwner) return;
-      setValidationError(commandErrorMessage(error, 'validate the workflow'));
+      if (owner.current !== checkOwner) return;
+      const seconds = retryAfterSeconds(error);
+      if (seconds !== undefined)
+        setValidationBlockedUntil(Date.now() + seconds * 1_000);
+      setValidationError(commandErrorMessage(error, 'checking for issues'));
     } finally {
-      if (owner.current === validationOwner) setValidationPending(false);
+      if (validationInFlight.current === request)
+        validationInFlight.current = undefined;
+      if (owner.current === checkOwner) setValidationPending(false);
     }
   }
 
-  async function publish() {
-    if (publishPending) return false;
-    const publicationOwner = owner.current;
-    if (publicationOwner === undefined) return false;
+  async function freshValidation(
+    saved: SavedDraft,
+    publishOwner: symbol,
+  ): Promise<ValidationResult | undefined> {
+    const inFlight = await validationInFlight.current?.catch(() => undefined);
+    const known = inFlight ?? validation;
+    if (
+      known?.generation === saved.generation &&
+      known.revision === saved.revision
+    )
+      return known;
+    setPublishStage('checking');
+    return checkSavedDraft(saved, publishOwner);
+  }
+
+  async function prepareAttempt(
+    publishOwner: symbol,
+  ): Promise<PublishAttempt | 'blocked' | undefined> {
+    setPublishStage('saving');
+    const saved = await ensureSaved();
+    if (owner.current !== publishOwner) return undefined;
+    const checked = await freshValidation(saved, publishOwner);
+    if (owner.current !== publishOwner || checked === undefined)
+      return undefined;
+    if (!checked.report.valid) return 'blocked';
+    return { ...saved, idempotencyKey: crypto.randomUUID() };
+  }
+
+  async function publish(): Promise<PublishResult> {
+    const publishOwner = owner.current;
+    if (publishStage !== undefined || publishOwner === undefined) return failed;
     let dispatched = false;
-    setPublishPending(true);
     setPublishError(undefined);
     try {
+      setPublishStage('saving');
       await verifyIdentity();
-      if (owner.current !== publicationOwner) return false;
-      let command = publishAttempt.current;
-      if (command === undefined) {
-        const saved = await ensureSaved();
-        if (owner.current !== publicationOwner) return false;
-        if (
-          validation === undefined ||
-          !validation.report.valid ||
-          validation.generation !== saved.generation ||
-          validation.revision !== saved.revision
-        )
-          throw new Error('Validate this saved draft before publishing it.');
-        command = {
-          etag: saved.etag,
-          generation: saved.generation,
-          revision: saved.revision,
-          idempotencyKey: crypto.randomUUID(),
-        };
-      }
-      publishAttempt.current = command;
+      if (owner.current !== publishOwner) return failed;
+      const prepared =
+        publishAttempt.current ?? (await prepareAttempt(publishOwner));
+      if (prepared === undefined) return failed;
+      if (prepared === 'blocked') return { kind: 'blocked' };
+      publishAttempt.current = prepared;
       dispatched = true;
+      setPublishStage('publishing');
       const response = await publishWorkflow(
         apiClient,
         workspaceId,
         workflowId,
-        {
-          etag: command.etag,
-          idempotencyKey: command.idempotencyKey,
-        },
+        { etag: prepared.etag, idempotencyKey: prepared.idempotencyKey },
       );
-      if (owner.current !== publicationOwner) return false;
+      if (owner.current !== publishOwner) return failed;
       publishAttempt.current = undefined;
       setPublishRecoveryPending(false);
-      setPublicationReceipt({
+      const receipt = {
         versionId: response.version.id,
-        generation: command.generation,
-        revision: command.revision,
+        versionNumber: response.version.versionNumber,
+        generation: prepared.generation,
+        revision: prepared.revision,
+      };
+      setPublicationReceipt(receipt);
+      void queryClient.invalidateQueries({
+        queryKey: workflowPublishKeys.latestVersion(
+          userId,
+          workspaceId,
+          workflowId,
+        ),
       });
       onPublicationAccepted?.();
-      return true;
+      return { kind: 'published', receipt };
     } catch (error) {
-      if (owner.current !== publicationOwner) return false;
-      if (!dispatched) {
-        setPublishRecoveryPending(publishAttempt.current !== undefined);
-        setPublishError(commandErrorMessage(error, 'verify this session'));
-        return false;
-      }
-      const uncertain = isUncertainCommandError(error);
-      if (!uncertain) publishAttempt.current = undefined;
-      setPublishRecoveryPending(
-        uncertain && publishAttempt.current !== undefined,
-      );
-      setPublishError(commandErrorMessage(error, 'publish the workflow'));
-      return false;
+      if (owner.current !== publishOwner) return failed;
+      if (dispatched && !isUncertainCommandError(error))
+        publishAttempt.current = undefined;
+      setPublishRecoveryPending(publishAttempt.current !== undefined);
+      setPublishError(commandErrorMessage(error, 'publishing'));
+      return failed;
     } finally {
-      if (owner.current === publicationOwner) setPublishPending(false);
+      if (owner.current === publishOwner) setPublishStage(undefined);
     }
   }
 
@@ -158,8 +214,10 @@ export function useWorkflowPublication({
     validation,
     validationPending,
     validationError,
+    validationBlockedUntil,
     publicationReceipt,
-    publishPending,
+    publishStage,
+    publishPending: publishStage !== undefined,
     publishError,
     publishRecoveryPending,
     clearPublishError: () => {
@@ -169,3 +227,5 @@ export function useWorkflowPublication({
     publish,
   };
 }
+
+export type WorkflowPublication = ReturnType<typeof useWorkflowPublication>;

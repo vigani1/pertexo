@@ -89,7 +89,7 @@ export function useWorkflowRunSubmission({
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
-      setError(commandErrorMessage(cause, 'open the accepted run'));
+      setError(commandErrorMessage(cause, 'opening the run'));
       return false;
     } finally {
       if (owner.current === submissionOwner) setPending(false);
@@ -136,7 +136,7 @@ export function useWorkflowRunSubmission({
         if (!uncertain) attempt.current = undefined;
         setRetryAvailable(uncertain && attempt.current !== undefined);
       }
-      setError(commandErrorMessage(cause, 'start the published workflow'));
+      setError(commandErrorMessage(cause, 'starting this run'));
       return false;
     } finally {
       if (owner.current === submissionOwner) setPending(false);

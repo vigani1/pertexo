@@ -4,6 +4,7 @@ import { WorkflowEditorPage } from '@/features/workflow-editor/public';
 import { ResourceNotFound } from './system-pages';
 import { useWorkflowHubScope } from './workflow-hub-scope';
 
+/** The Build tab: the editor fills the immersive hub, bar included. */
 export function WorkflowBuildRoute() {
   const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();
   const { found } = useLoaderData({
@@ -25,31 +26,17 @@ export function WorkflowBuildRoute() {
       </div>
     );
   return (
-    <div className="h-svh min-h-0">
-      <WorkflowEditorPage
-        apiClient={apiClient}
-        user={user}
-        workspace={workspace}
-        workflowId={workflowId}
-        onBack={() =>
-          void navigate({
-            to: '/w/$workspaceId/workflows',
-            params: { workspaceId: workspace.id },
-          })
-        }
-        onRunAccepted={(runId) => {
-          void navigate({
-            to: '/w/$workspaceId/runs/$runId',
-            params: { workspaceId: workspace.id, runId },
-          });
-        }}
-        onOpenSettings={() => {
-          void navigate({
-            to: '/w/$workspaceId/workflows/$workflowId/settings',
-            params: { workspaceId: workspace.id, workflowId },
-          });
-        }}
-      />
-    </div>
+    <WorkflowEditorPage
+      apiClient={apiClient}
+      user={user}
+      workspace={workspace}
+      workflowId={workflowId}
+      onRunAccepted={(runId) => {
+        void navigate({
+          to: '/w/$workspaceId/runs/$runId',
+          params: { workspaceId: workspace.id, runId },
+        });
+      }}
+    />
   );
 }

@@ -14,6 +14,12 @@ export type SaveCoordinatorTransport = Readonly<{
   message: (error: unknown) => string;
 }>;
 
+/**
+ * Quiet time after the last edit before a save. Live-applied inspector edits
+ * land here too, so a busy session stays well inside the draft-save limit.
+ */
+export const SAVE_DEBOUNCE_MS = 1_000;
+
 export type SaveCoordinator = Readonly<{
   schedule: () => void;
   flush: () => Promise<void>;
@@ -23,7 +29,7 @@ export type SaveCoordinator = Readonly<{
 export function createSaveCoordinator(
   store: EditorStore,
   transport: SaveCoordinatorTransport,
-  debounceMs = 800,
+  debounceMs = SAVE_DEBOUNCE_MS,
 ): SaveCoordinator {
   let timer: number | undefined;
   let active: Promise<void> | null = null;
@@ -54,7 +60,12 @@ export function createSaveCoordinator(
       if (graphsEqual(remote.draft.graph, snapshot.graph)) {
         store
           .getState()
-          .acceptSave(remote.etag, remote.draft.revision, snapshot.generation);
+          .acceptSave(
+            remote.etag,
+            remote.draft.revision,
+            snapshot.generation,
+            remote.draft.updatedAt,
+          );
         return;
       }
       store.getState().reportConflict({
@@ -94,7 +105,12 @@ export function createSaveCoordinator(
       if (isDestroyed()) return;
       store
         .getState()
-        .acceptSave(saved.etag, saved.draft.revision, snapshot.generation);
+        .acceptSave(
+          saved.etag,
+          saved.draft.revision,
+          snapshot.generation,
+          saved.draft.updatedAt,
+        );
     } catch (error) {
       if (isDestroyed()) return;
       if (transport.isConflict(error)) {

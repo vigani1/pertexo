@@ -1,109 +1,241 @@
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { MinusIcon, PlusIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldControl,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import type { NodeConfig, SchemaFieldSpec } from '../../model/inspector-draft';
+import { Switch } from '@/components/ui/switch';
+import {
+  parseNumberField,
+  withConfigValue,
+  type NodeConfig,
+  type SchemaFieldSpec,
+} from '../../model/inspector-draft';
+import { useLiveField } from '../../model/use-live-field';
+import { ChoiceSelect } from './choice-select';
+import { fieldControlId, type NodeFormApi } from './node-form';
 
+type ConfigValue = NodeConfig[string] | undefined;
+
+/** One schema-described setup field that applies valid values as you type. */
 export function SchemaField({
   field,
-  value,
-  nodeId,
-  scratchValue,
-  error,
-  disabled,
-  onChange,
-  onScratchChange,
+  config,
+  form,
 }: Readonly<{
   field: SchemaFieldSpec;
-  value: NodeConfig[string] | undefined;
-  nodeId: string;
-  scratchValue?: string;
-  error?: string;
-  disabled: boolean;
-  onChange: (value: NodeConfig[string]) => void;
-  onScratchChange: (value: string) => void;
+  config: NodeConfig;
+  form: NodeFormApi;
 }>) {
+  const id = fieldControlId(form.nodeId, field.key);
+  const value = config[field.key];
+  function commit(next: ConfigValue) {
+    form.commit(
+      (node) => ({ config: withConfigValue(node.config, field.key, next) }),
+      `${form.nodeId}:config:${field.key}`,
+    );
+  }
   if (field.kind === 'boolean')
     return (
       <Field>
-        <label className="flex items-center gap-3 text-sm">
-          <input
-            id={`config-${nodeId}-${field.key}`}
-            type="checkbox"
-            name={`config.${field.key}`}
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
+          <Switch
+            id={id}
             checked={value === true}
-            disabled={disabled}
-            onChange={(event) => {
-              onChange(event.currentTarget.checked);
+            disabled={!form.editable}
+            onCheckedChange={(checked) => {
+              commit(checked);
             }}
           />
-          {field.label}
-        </label>
+        </div>
+        {field.description === undefined ? null : (
+          <FieldDescription>{field.description}</FieldDescription>
+        )}
       </Field>
     );
   if (field.options !== undefined)
     return (
       <Field>
-        <FieldLabel htmlFor={`config-${nodeId}-${field.key}`}>
-          {field.label}
-        </FieldLabel>
-        <select
-          id={`config-${nodeId}-${field.key}`}
-          name={`config.${field.key}`}
-          autoComplete="off"
-          className="recessed-control h-10 rounded-lg border px-3 text-base"
-          value={typeof value === 'string' ? value : ''}
-          disabled={disabled}
-          onChange={(event) => {
-            onChange(event.currentTarget.value);
+        <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
+        <ChoiceSelect
+          id={id}
+          value={typeof value === 'string' ? value : null}
+          disabled={!form.editable}
+          choices={[
+            ...(field.required ? [] : [{ value: null, label: 'Not set' }]),
+            ...field.options.map((option) => ({
+              value: option,
+              label: option,
+            })),
+          ]}
+          onChange={(next) => {
+            commit(next ?? undefined);
           }}
-        >
-          <option value="">Choose a value</option>
-          {field.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+        />
+        {field.description === undefined ? null : (
+          <FieldDescription>{field.description}</FieldDescription>
+        )}
       </Field>
     );
+  return field.kind === 'string' ? (
+    <TextField
+      field={field}
+      id={id}
+      value={value}
+      form={form}
+      commit={commit}
+    />
+  ) : (
+    <NumberField
+      field={field}
+      id={id}
+      value={value}
+      form={form}
+      commit={commit}
+    />
+  );
+}
+
+function TextField({
+  field,
+  id,
+  value,
+  form,
+  commit,
+}: Readonly<{
+  field: SchemaFieldSpec;
+  id: string;
+  value: ConfigValue;
+  form: NodeFormApi;
+  commit: (value: ConfigValue) => void;
+}>) {
+  const live = useLiveField<ConfigValue>({
+    value,
+    format: (current) =>
+      typeof current === 'string' || typeof current === 'number'
+        ? String(current)
+        : '',
+    parse: (text) => ({
+      ok: true,
+      value: text === '' && !field.required ? undefined : text,
+    }),
+    commit,
+    onScratchChange: (scratch) => {
+      form.reportScratch(field.key, scratch);
+    },
+  });
   return (
-    <Field data-invalid={error !== undefined}>
-      <FieldLabel htmlFor={`config-${nodeId}-${field.key}`}>
-        {field.label}
-      </FieldLabel>
+    <Field>
+      <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
       <Input
-        id={`config-${nodeId}-${field.key}`}
+        id={id}
         name={`config.${field.key}`}
         autoComplete="off"
-        type="text"
-        inputMode={
-          field.kind === 'number' || field.kind === 'integer'
-            ? 'decimal'
-            : undefined
-        }
-        value={
-          field.kind === 'number' || field.kind === 'integer'
-            ? scratchValue
-            : typeof value === 'string' || typeof value === 'number'
-              ? String(value)
-              : ''
-        }
-        disabled={disabled}
-        aria-invalid={error !== undefined}
-        aria-describedby={
-          error === undefined
-            ? undefined
-            : `config-${nodeId}-${field.key}-error`
-        }
+        value={live.text}
+        disabled={!form.editable}
         onChange={(event) => {
-          if (field.kind === 'number' || field.kind === 'integer')
-            onScratchChange(event.currentTarget.value);
-          else onChange(event.currentTarget.value);
+          live.change(event.currentTarget.value);
         }}
       />
-      {error === undefined ? null : (
-        <FieldError id={`config-${nodeId}-${field.key}-error`}>
-          {error}
-        </FieldError>
+      {field.description === undefined ? null : (
+        <FieldDescription>{field.description}</FieldDescription>
+      )}
+    </Field>
+  );
+}
+
+function NumberField({
+  field,
+  id,
+  value,
+  form,
+  commit,
+}: Readonly<{
+  field: SchemaFieldSpec;
+  id: string;
+  value: ConfigValue;
+  form: NodeFormApi;
+  commit: (value: ConfigValue) => void;
+}>) {
+  const live = useLiveField<ConfigValue>({
+    value,
+    format: (current) => (typeof current === 'number' ? String(current) : ''),
+    parse: (text) => parseNumberField(field, text),
+    commit,
+    onScratchChange: (scratch) => {
+      form.reportScratch(field.key, scratch);
+    },
+  });
+  const errorId = `${id}-error`;
+  function nudge(direction: 1 | -1) {
+    const current = Number(live.text);
+    const base =
+      live.text.trim() === '' || !Number.isFinite(current) ? 0 : current;
+    const next = base + direction;
+    const bounded = Math.min(
+      field.maximum ?? Number.POSITIVE_INFINITY,
+      Math.max(field.minimum ?? Number.NEGATIVE_INFINITY, next),
+    );
+    live.change(String(bounded));
+  }
+  return (
+    <Field data-invalid={live.error !== undefined}>
+      <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
+      <div className="flex items-center gap-1.5">
+        <FieldControl
+          state={live.error === undefined ? undefined : 'invalid'}
+          className="flex-1"
+        >
+          <Input
+            id={id}
+            name={`config.${field.key}`}
+            autoComplete="off"
+            inputMode="decimal"
+            className="font-mono"
+            value={live.text}
+            disabled={!form.editable}
+            aria-invalid={live.error !== undefined}
+            aria-describedby={live.error === undefined ? undefined : errorId}
+            onChange={(event) => {
+              live.change(event.currentTarget.value);
+            }}
+          />
+        </FieldControl>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          aria-label={`Decrease ${field.label}`}
+          disabled={!form.editable}
+          onClick={() => {
+            nudge(-1);
+          }}
+        >
+          <MinusIcon />
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          aria-label={`Increase ${field.label}`}
+          disabled={!form.editable}
+          onClick={() => {
+            nudge(1);
+          }}
+        >
+          <PlusIcon />
+        </Button>
+      </div>
+      {field.description === undefined ? null : (
+        <FieldDescription>{field.description}</FieldDescription>
+      )}
+      {live.error === undefined ? null : (
+        <FieldError id={errorId}>{live.error}</FieldError>
       )}
     </Field>
   );

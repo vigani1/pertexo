@@ -8,25 +8,20 @@ export type SchemaFieldSpec = Readonly<{
   label: string;
   kind: 'boolean' | 'integer' | 'number' | 'string';
   required: boolean;
+  description?: string;
   options?: readonly string[];
+  minimum?: number;
+  maximum?: number;
 }>;
 
-export type NumericConfigResult =
-  | Readonly<{ config: NodeConfig; errors: Readonly<Record<string, never>> }>
-  | Readonly<{
-      config?: never;
-      errors: Readonly<Record<string, string>>;
-    }>;
+/** A typed value ready for the graph, or a sentence saying what's wrong. */
+export type FieldParseResult<Value> =
+  Readonly<{ ok: true; value: Value }> | Readonly<{ ok: false; error: string }>;
 
-export function persistedNodeState(node: WorkflowNode): string {
-  return JSON.stringify({
-    label: node.label ?? '',
-    config: node.config,
-    inputMappings: node.inputMappings,
-    connectionRefs: node.connectionRefs,
-  });
-}
-
+/**
+ * The supported subset of a catalog JSON Schema: top-level primitive and
+ * enum properties. Everything else stays reachable through "Edit as JSON".
+ */
 export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
   if (!isRecord(schema) || Reflect.get(schema, 'type') !== 'object') return [];
   const properties = Reflect.get(schema, 'properties');
@@ -50,7 +45,10 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
     )
       return [];
     const title = Reflect.get(candidate, 'title');
+    const description = Reflect.get(candidate, 'description');
     const optionValue = Reflect.get(candidate, 'enum');
+    const minimum = Reflect.get(candidate, 'minimum');
+    const maximum = Reflect.get(candidate, 'maximum');
     const options =
       type === 'string' &&
       Array.isArray(optionValue) &&
@@ -60,152 +58,86 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
     return [
       {
         key,
-        label: typeof title === 'string' ? title : key,
+        label: typeof title === 'string' ? title : humanizeKey(key),
         kind: type,
         required: required.has(key),
+        ...(typeof description === 'string' ? { description } : {}),
         ...(options === undefined ? {} : { options }),
+        ...(typeof minimum === 'number' ? { minimum } : {}),
+        ...(typeof maximum === 'number' ? { maximum } : {}),
       } satisfies SchemaFieldSpec,
     ];
   });
 }
 
-export function numericScratchFor(
-  config: NodeConfig,
-  fields: readonly SchemaFieldSpec[],
-): Readonly<Record<string, string>> {
-  return Object.fromEntries(
-    fields.flatMap((field) => {
-      if (field.kind !== 'number' && field.kind !== 'integer') return [];
-      const value = config[field.key];
-      return [[field.key, typeof value === 'number' ? String(value) : '']];
-    }),
-  );
+/** `timeoutMillis` → "Timeout millis", `max_items` → "Max items". */
+export function humanizeKey(key: string): string {
+  const words = key
+    .replaceAll(/([a-z0-9])([A-Z])/gu, '$1 $2')
+    .replaceAll(/[_-]+/gu, ' ')
+    .trim()
+    .toLowerCase();
+  return words === ''
+    ? key
+    : `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
 }
-
-export function ordinaryFieldScratchFor(
-  config: NodeConfig,
-  fields: readonly SchemaFieldSpec[],
-): Readonly<Record<string, NodeConfig[string] | undefined>> {
-  return Object.fromEntries(
-    fields.flatMap((field) =>
-      field.kind === 'number' || field.kind === 'integer'
-        ? []
-        : [[field.key, config[field.key]]],
-    ),
-  );
-}
-
-export function applyOrdinaryFieldScratch(
-  config: NodeConfig,
-  scratch: Readonly<Record<string, NodeConfig[string] | undefined>>,
-  scratchOwnedFields: ReadonlySet<string>,
-): NodeConfig {
-  let next = { ...config };
-  for (const fieldKey of scratchOwnedFields) {
-    const value = scratch[fieldKey];
-    if (value === undefined)
-      next = Object.fromEntries(
-        Object.entries(next).filter(([key]) => key !== fieldKey),
-      );
-    else next[fieldKey] = value;
-  }
-  return next;
-}
-
-export function applyNumericScratch(
-  config: NodeConfig,
-  fields: readonly SchemaFieldSpec[],
-  scratch: Readonly<Record<string, string>>,
-  scratchOwnedFields?: ReadonlySet<string>,
-): NumericConfigResult {
-  let next = { ...config };
-  const errors: Record<string, string> = {};
-  for (const field of fields) {
-    if (field.kind !== 'number' && field.kind !== 'integer') continue;
-    if (
-      scratchOwnedFields !== undefined &&
-      !scratchOwnedFields.has(field.key)
-    ) {
-      const present = Object.prototype.hasOwnProperty.call(config, field.key);
-      const value = config[field.key];
-      if (!present) {
-        if (field.required) errors[field.key] = `${field.label} is required.`;
-        continue;
-      }
-      if (typeof value !== 'number' || !Number.isFinite(value)) {
-        errors[field.key] = `${field.label} must be a valid number.`;
-        continue;
-      }
-      if (field.kind === 'integer' && !Number.isInteger(value))
-        errors[field.key] = `${field.label} must be a whole number.`;
-      continue;
-    }
-    const text = scratch[field.key] ?? '';
-    if (text.trim() === '') {
-      if (field.required) errors[field.key] = `${field.label} is required.`;
-      else
-        next = Object.fromEntries(
-          Object.entries(next).filter(([key]) => key !== field.key),
-        );
-      continue;
-    }
-    const value = Number(text);
-    if (!Number.isFinite(value)) {
-      errors[field.key] = `${field.label} must be a valid number.`;
-      continue;
-    }
-    if (field.kind === 'integer' && !Number.isInteger(value)) {
-      errors[field.key] = `${field.label} must be a whole number.`;
-      continue;
-    }
-    next[field.key] = value;
-  }
-  return Object.keys(errors).length === 0
-    ? { config: next, errors: {} }
-    : { errors };
-}
-
-export type JsonScratchChanges = Readonly<{
-  ordinary: readonly (readonly [string, NodeConfig[string] | undefined])[];
-  numeric: readonly (readonly [string, string])[];
-}>;
 
 /**
- * Form scratch implied by a raw JSON edit: every schema field whose presence
- * or value differs from the previous valid JSON config, paired with the value
- * its control should now show. Numeric controls show text, and a missing or
- * non-finite number shows as empty.
+ * Parses number text. An empty optional field removes the property
+ * (`value: undefined`); partial text such as "-" or "1.5" for an integer is
+ * reported rather than silently coerced.
  */
-export function scratchChangesFromJson(
-  previous: NodeConfig,
-  next: NodeConfig,
-  fields: readonly SchemaFieldSpec[],
-): JsonScratchChanges {
-  const ordinary: (readonly [string, NodeConfig[string] | undefined])[] = [];
-  const numeric: (readonly [string, string])[] = [];
-  for (const field of fields) {
-    const wasPresent = Object.prototype.hasOwnProperty.call(
-      previous,
-      field.key,
-    );
-    const isPresent = Object.prototype.hasOwnProperty.call(next, field.key);
-    if (
-      wasPresent === isPresent &&
-      Object.is(previous[field.key], next[field.key])
-    )
-      continue;
-    const value = next[field.key];
-    if (field.kind !== 'number' && field.kind !== 'integer')
-      ordinary.push([field.key, value]);
-    else
-      numeric.push([
-        field.key,
-        typeof value === 'number' && Number.isFinite(value)
-          ? String(value)
-          : '',
-      ]);
-  }
-  return { ordinary, numeric };
+export function parseNumberField(
+  field: SchemaFieldSpec,
+  text: string,
+): FieldParseResult<number | undefined> {
+  if (text.trim() === '')
+    return field.required
+      ? { ok: false, error: `${field.label} is required.` }
+      : { ok: true, value: undefined };
+  const value = Number(text);
+  if (!Number.isFinite(value))
+    return { ok: false, error: `${field.label} must be a number.` };
+  if (field.kind === 'integer' && !Number.isInteger(value))
+    return { ok: false, error: `${field.label} must be a whole number.` };
+  if (field.minimum !== undefined && value < field.minimum)
+    return {
+      ok: false,
+      error: `${field.label} must be at least ${String(field.minimum)}.`,
+    };
+  if (field.maximum !== undefined && value > field.maximum)
+    return {
+      ok: false,
+      error: `${field.label} can be at most ${String(field.maximum)}.`,
+    };
+  return { ok: true, value };
+}
+
+export function parseConfigJson(text: string): FieldParseResult<NodeConfig> {
+  const parsed = parseJson(text);
+  if (parsed === undefined)
+    return {
+      ok: false,
+      error: 'That isn’t valid JSON yet. Check for a missing quote or brace.',
+    };
+  if (!isJsonObject(parsed))
+    return {
+      ok: false,
+      error: 'The setup must be a JSON object, like {"name": "value"}.',
+    };
+  return { ok: true, value: parsed };
+}
+
+/** Sets or removes one property without disturbing the others. */
+export function withConfigValue(
+  config: NodeConfig,
+  key: string,
+  value: NodeConfig[string] | undefined,
+): NodeConfig {
+  if (value !== undefined) return { ...config, [key]: value };
+  return Object.fromEntries(
+    Object.entries(config).filter(([entryKey]) => entryKey !== key),
+  );
 }
 
 export function parseJson(value: string): unknown {
