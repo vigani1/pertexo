@@ -30,7 +30,7 @@ export function WorkspaceChooser({
             Open a workspace to continue, or create another operational home.
           </p>
         </div>
-        <Button type="button" variant="solid" onClick={onCreate}>
+        <Button type="button" variant="primary" onClick={onCreate}>
           Create workspace
         </Button>
       </div>

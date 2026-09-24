@@ -128,7 +128,7 @@ export function CreateSlackConnectionDialog({
     <>
       <Button
         type="button"
-        variant="solid"
+        variant="primary"
         onClick={() => {
           setOpen(true);
         }}
@@ -273,7 +273,7 @@ export function CreateSlackConnectionDialog({
               </DialogClose>
               <Button
                 type="submit"
-                variant="solid"
+                variant="primary"
                 disabled={mutation.isPending}
               >
                 {mutation.isPending

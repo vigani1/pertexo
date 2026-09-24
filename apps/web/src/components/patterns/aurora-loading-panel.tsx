@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 type AuroraLoadingPanelProps = ComponentProps<'div'> & { active: boolean };
 
 // Decorative only: callers provide their own loading text and aria-busy when
-// real work is pending. The border must never intercept input or claim progress.
+// real work is pending. The live edge never intercepts input or claims progress.
 export function AuroraLoadingPanel({
   active,
   className,
@@ -14,26 +14,17 @@ export function AuroraLoadingPanel({
   return (
     <div
       data-slot="aurora-loading-panel"
-      className={cn('relative isolate min-w-0 rounded-xl', className)}
+      className={cn(
+        'relative isolate min-w-0 rounded-xl',
+        active && 'live-edge',
+        className,
+      )}
       {...props}
     >
-      {active ? <AuroraBorder /> : null}
+      {active ? (
+        <span data-slot="aurora-border" aria-hidden="true" hidden />
+      ) : null}
       {children}
-    </div>
-  );
-}
-
-function AuroraBorder() {
-  return (
-    <div data-slot="aurora-border" className="aurora-border" aria-hidden="true">
-      <div className="aurora-border-glow">
-        <div className="aurora-border-glow-gradient" />
-      </div>
-      <div className="aurora-border-ring">
-        <div className="aurora-border-ring-mask">
-          <div className="aurora-border-ring-gradient" />
-        </div>
-      </div>
     </div>
   );
 }

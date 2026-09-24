@@ -14,9 +14,40 @@ import {
   FieldLabel,
 } from '../src/components/ui/field';
 import { AuroraLoadingPanel } from '../src/components/patterns/aurora-loading-panel';
-import { LoadingOrb } from '../src/components/patterns/loading-orb';
+import { LoadingOrb } from '../src/components/ui/loading-orb';
+import { Status } from '../src/components/ui/status';
+import { FieldControl } from '../src/components/ui/field';
 
-describe('ported visual primitives', () => {
+describe('Weft visual primitives', () => {
+  it('labels a status with its word and keeps the glyph decorative', () => {
+    const { container } = render(<Status tone="failure">Failed</Status>);
+    expect(screen.getByText('Failed')).toBeVisible();
+    expect(
+      container.querySelector('[data-slot="status-glyph"]'),
+    ).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelector('[data-slot="status"]')).toHaveAttribute(
+      'data-tone',
+      'failure',
+    );
+  });
+
+  it('marks field validation visually without changing the control', async () => {
+    const { container } = render(
+      <FieldControl state="invalid">
+        <Input aria-label="Email" aria-invalid="true" />
+      </FieldControl>,
+    );
+    expect(
+      container.querySelector('[data-slot="field-control"]'),
+    ).toHaveAttribute('data-state', 'invalid');
+    await userEvent
+      .setup()
+      .type(screen.getByRole('textbox', { name: 'Email' }), 'a@b.dev');
+    expect(screen.getByRole('textbox', { name: 'Email' })).toHaveValue(
+      'a@b.dev',
+    );
+  });
+
   it('keeps destructive actions disabled and styled links semantic', async () => {
     const click = vi.fn();
     render(

@@ -262,7 +262,7 @@ export function WorkspaceCreationDialog({
             )}
             <Button
               type="submit"
-              variant="solid"
+              variant="primary"
               disabled={command.pending || command.refreshPending}
             >
               {command.pending

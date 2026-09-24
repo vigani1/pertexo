@@ -227,7 +227,7 @@ function AppliedRunFilters({
           }}
         >
           <Badge
-            variant="secondary"
+            variant="default"
             className="flex max-w-full min-w-0 gap-1.5 py-1"
           >
             <span className="min-w-0 truncate">{label}</span>

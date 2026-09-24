@@ -249,7 +249,7 @@ export function ReplayRunDialog({
               >
                 Cancel
               </DialogClose>
-              <Button type="submit" variant="solid" disabled={replay.pending}>
+              <Button type="submit" variant="primary" disabled={replay.pending}>
                 {replay.pending
                   ? 'Replaying…'
                   : replay.retryAvailable

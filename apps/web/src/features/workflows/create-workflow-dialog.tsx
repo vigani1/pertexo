@@ -73,7 +73,7 @@ export function CreateWorkflowDialog({
     <>
       <Button
         type="button"
-        variant="solid"
+        variant="primary"
         onClick={() => {
           setOpen(true);
         }}
@@ -139,7 +139,7 @@ export function CreateWorkflowDialog({
               </DialogClose>
               <Button
                 type="submit"
-                variant="solid"
+                variant="primary"
                 disabled={mutation.isPending}
               >
                 {mutation.isPending

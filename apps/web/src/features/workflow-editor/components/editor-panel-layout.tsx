@@ -116,7 +116,7 @@ function EditorPanelButton({
       id={`editor-panel-tab-${panel}`}
       type="button"
       size="sm"
-      variant={selected ? 'solid' : 'ghost'}
+      variant={selected ? 'primary' : 'ghost'}
       aria-pressed={selected}
       aria-controls={`editor-panel-${panel}`}
       onClick={() => {

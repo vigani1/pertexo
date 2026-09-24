@@ -1,0 +1,225 @@
+// Canvas 2D port of the legacy particle-orb shader: points on a Fibonacci
+// sphere, displaced by three travelling waves, rotated and projected with a
+// soft additive sprite. Pure drawing code; the React component owns lifecycle.
+
+export type CoreOrbState = 'live' | 'idle' | 'waiting' | 'failed' | 'succeeded';
+
+type Rgb = readonly [number, number, number];
+
+type Motion = Readonly<{ speed: number; amplitude: number; loosen: boolean }>;
+
+const MOTION: Record<CoreOrbState, Motion> = {
+  live: { speed: 1, amplitude: 1, loosen: false },
+  idle: { speed: 0.6, amplitude: 0.8, loosen: false },
+  waiting: { speed: 0.45, amplitude: 0.55, loosen: false },
+  failed: { speed: 0.35, amplitude: 0.7, loosen: true },
+  succeeded: { speed: 0.5, amplitude: 0.45, loosen: false },
+};
+
+// Palettes come from the design tokens so the orb never drifts from the theme.
+const PALETTE_TOKENS: Record<CoreOrbState, readonly [string, string, string]> =
+  {
+    live: ['--primary', '--accent-foreground', '--secondary'],
+    idle: ['--primary', '--accent-foreground', '--secondary'],
+    waiting: ['--secondary', '--accent-foreground', '--secondary'],
+    failed: ['--destructive', '--destructive', '--secondary'],
+    succeeded: ['--success', '--accent-foreground', '--primary'],
+  };
+
+const FALLBACK_RGB: Rgb = [0, 229, 255];
+const CAMERA_DISTANCE = 2.5;
+const ASSEMBLY_SECONDS = 1.5;
+
+interface Particle {
+  x: number;
+  y: number;
+  z: number;
+  seed: number;
+  swatch: number;
+}
+
+function parseHexColor(value: string): Rgb | undefined {
+  const match = /^#?([\da-f]{6})$/i.exec(value.trim());
+  if (match?.[1] === undefined) return undefined;
+  const numeric = Number.parseInt(match[1], 16);
+  return [(numeric >> 16) & 255, (numeric >> 8) & 255, numeric & 255];
+}
+
+function readTokenColor(styles: CSSStyleDeclaration, token: string): Rgb {
+  return parseHexColor(styles.getPropertyValue(token)) ?? FALLBACK_RGB;
+}
+
+const spriteCache = new Map<string, HTMLCanvasElement>();
+
+function particleSprite(rgb: Rgb): HTMLCanvasElement {
+  const key = rgb.join(',');
+  const cached = spriteCache.get(key);
+  if (cached !== undefined) return cached;
+  const sprite = document.createElement('canvas');
+  sprite.width = 64;
+  sprite.height = 64;
+  const context = sprite.getContext('2d');
+  if (context !== null) {
+    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, `rgba(${key},1)`);
+    gradient.addColorStop(0.22, `rgba(${key},0.6)`);
+    gradient.addColorStop(1, `rgba(${key},0)`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+  }
+  spriteCache.set(key, sprite);
+  return sprite;
+}
+
+function particleCountFor(cssSize: number): number {
+  if (cssSize <= 48) return 150;
+  if (cssSize <= 140) return 520;
+  return 1400;
+}
+
+function easeOutCubic(progress: number): number {
+  return 1 - (1 - progress) ** 3;
+}
+
+export class CoreOrbScene {
+  readonly #context: CanvasRenderingContext2D;
+  #particles: Particle[] = [];
+  #scatter: readonly (readonly [number, number])[] = [];
+  #sprites: readonly HTMLCanvasElement[] = [];
+  #motion: Motion = MOTION.live;
+  #width = 0;
+  #height = 0;
+  #pixelRatio = 1;
+  #energy = 1;
+  #assemblyStart: number | undefined;
+
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    state: CoreOrbState,
+  ) {
+    const context = canvas.getContext('2d');
+    if (context === null) throw new Error('Canvas 2D is unavailable');
+    this.#context = context;
+    this.setState(state);
+  }
+
+  setState(state: CoreOrbState): void {
+    this.#motion = MOTION[state];
+    const styles = getComputedStyle(document.documentElement);
+    this.#sprites = PALETTE_TOKENS[state].map((token) =>
+      particleSprite(readTokenColor(styles, token)),
+    );
+  }
+
+  setEnergy(energy: number): void {
+    this.#energy = Math.min(1.6, Math.max(0.2, energy));
+  }
+
+  /** Scatter the particles off-centre so the next frames gather them in. */
+  assemble(timeSeconds: number): void {
+    this.#assemblyStart = timeSeconds;
+    const reach = Math.max(this.#width, this.#height);
+    this.#scatter = this.#particles.map(() => {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = reach * (0.35 + Math.random() * 0.6);
+      return [Math.cos(angle) * radius, Math.sin(angle) * radius] as const;
+    });
+  }
+
+  resize(width: number, height: number, pixelRatio: number): void {
+    this.#width = width;
+    this.#height = height;
+    this.#pixelRatio = pixelRatio;
+    this.canvas.width = Math.max(1, Math.round(width * pixelRatio));
+    this.canvas.height = Math.max(1, Math.round(height * pixelRatio));
+    const count = particleCountFor(Math.min(width, height));
+    if (count !== this.#particles.length)
+      this.#particles = createParticles(count);
+  }
+
+  render(timeSeconds: number): void {
+    const context = this.#context;
+    context.setTransform(this.#pixelRatio, 0, 0, this.#pixelRatio, 0, 0);
+    context.clearRect(0, 0, this.#width, this.#height);
+    context.globalCompositeOperation = 'lighter';
+    const radius = Math.min(this.#width, this.#height) * 0.36;
+    const centreX = this.#width / 2;
+    const centreY = this.#height / 2;
+    const time = timeSeconds * this.#motion.speed;
+    const amplitude = this.#motion.amplitude * this.#energy;
+    const cosY = Math.cos(time * 0.1);
+    const sinY = Math.sin(time * 0.1);
+    const cosX = Math.cos(time * 0.05);
+    const sinX = Math.sin(time * 0.05);
+    const breathe = 0.95 + Math.sin(time * 0.5) * 0.05 * amplitude;
+    const baseSize = Math.max(1.1, radius / 34);
+    const assembly = this.#assemblyProgress(timeSeconds);
+
+    this.#particles.forEach((particle, index) => {
+      const { x, y, z, seed } = particle;
+      const wave =
+        Math.sin(x * 2 + time * 1.5) * Math.cos(y * 2 + time * 1.2) * 0.15 +
+        Math.sin(z * 3 - time * 2) * 0.1 +
+        Math.sin(Math.hypot(x, y) * 4 + time) * 0.05;
+      let scale = (1 + wave * amplitude) * breathe;
+      if (this.#motion.loosen && seed > 0.8)
+        scale += (Math.sin(time * 1.3 + seed * 40) * 0.5 + 0.5) * 0.45;
+      const rotatedX = x * scale * cosY + z * scale * sinY;
+      const rotatedZ = -x * scale * sinY + z * scale * cosY;
+      const projectedY = y * scale * cosX - rotatedZ * sinX;
+      const depth = y * scale * sinX + rotatedZ * cosX;
+      const perspective = CAMERA_DISTANCE / (CAMERA_DISTANCE - depth * 0.9);
+      let screenX = centreX + rotatedX * radius * perspective;
+      let screenY = centreY + projectedY * radius * perspective;
+      let alpha = Math.max(0.06, 0.35 + 0.55 * Math.sin(time * 2 + seed * 10));
+      alpha *= 0.35 + 0.65 * ((depth + 1) / 2);
+      const offset = this.#scatter[index];
+      if (assembly < 1 && offset !== undefined) {
+        screenX += offset[0] * (1 - assembly);
+        screenY += offset[1] * (1 - assembly);
+        alpha *= 0.25 + 0.75 * assembly;
+      }
+      const size = baseSize * (1 + seed * 1.2) * perspective;
+      const sprite = this.#sprites[particle.swatch] ?? this.#sprites[0];
+      if (sprite === undefined) return;
+      context.globalAlpha = alpha;
+      context.drawImage(
+        sprite,
+        screenX - size,
+        screenY - size,
+        size * 2,
+        size * 2,
+      );
+    });
+
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = 'source-over';
+  }
+
+  #assemblyProgress(timeSeconds: number): number {
+    if (this.#assemblyStart === undefined) return 1;
+    const progress = (timeSeconds - this.#assemblyStart) / ASSEMBLY_SECONDS;
+    if (progress >= 1) {
+      this.#assemblyStart = undefined;
+      return 1;
+    }
+    return easeOutCubic(Math.max(0, progress));
+  }
+}
+
+function createParticles(count: number): Particle[] {
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  return Array.from({ length: count }, (_, index) => {
+    const y = 1 - (2 * (index + 0.5)) / count;
+    const ring = Math.sqrt(1 - y * y);
+    const theta = goldenAngle * index;
+    const pick = Math.random();
+    return {
+      x: Math.cos(theta) * ring,
+      y,
+      z: Math.sin(theta) * ring,
+      seed: Math.random(),
+      swatch: pick < 0.68 ? 0 : pick < 0.88 ? 1 : 2,
+    };
+  });
+}
