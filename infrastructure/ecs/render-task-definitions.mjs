@@ -47,9 +47,19 @@ for (const [name, workload] of Object.entries(manifest.workloads).sort(
         name: configuration,
         valueFrom: `${process.env.ECS_CONFIG_PREFIX_ARN}/${name}/${configuration}`,
       })),
+      ...[...(workload.sharedConfiguration ?? [])]
+        .sort()
+        .map((configuration) => ({
+          name: configuration,
+          valueFrom: `${process.env.ECS_CONFIG_PREFIX_ARN}/shared/${configuration}`,
+        })),
       ...[...workload.secrets].sort().map((secret) => ({
         name: secret,
         valueFrom: `${process.env.ECS_SECRET_PREFIX_ARN}/${name}/${secret}`,
+      })),
+      ...[...(workload.sharedSecrets ?? [])].sort().map((secret) => ({
+        name: secret,
+        valueFrom: `${process.env.ECS_SECRET_PREFIX_ARN}/shared/${secret}`,
       })),
     ],
     mountPoints: [

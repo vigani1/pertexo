@@ -54,6 +54,12 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     ),
     reapTransientData: vi.fn(() =>
       Promise.resolve({
+        authenticationMailDeleted: 0,
+        authenticationMailExpired: 0,
+        authenticationProofsDeleted: 0,
+        authenticationLinkAttemptsDeleted: 0,
+        authenticationLegacyAttemptsDeleted: 0,
+        identitySecurityAuditDeleted: 0,
         invitationAcceptanceIntentsDeleted: 0,
         invitationReplacementClaimsDeleted: 0,
         invitationsExpired: 0,

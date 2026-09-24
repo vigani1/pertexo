@@ -7,7 +7,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ApiIdentityConfig } from '../../src/platform/config/api-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
-const identityConfig: ApiIdentityConfig = {
+const identityConfig: ApiIdentityConfig & {
+  oidc: NonNullable<ApiIdentityConfig['oidc']>;
+  secretEncryption: NonNullable<ApiIdentityConfig['secretEncryption']>;
+} = {
   oidc: {
     issuer: 'https://identity.example.test',
     authorizationEndpoint: 'https://identity.example.test/authorize',
@@ -69,6 +72,54 @@ function transactionStore(close = vi.fn().mockResolvedValue(undefined)) {
 }
 
 describe('identity runtime composition', () => {
+  it('composes Better Auth without legacy OIDC dependencies', async () => {
+    const runtime = await createApiIdentityRuntime(
+      {
+        publicWebOrigin: 'https://app.example.test',
+        session: identityConfig.session,
+        betterAuth: {
+          secret: 'standalone-runtime-secret-at-least-32-characters',
+          mailMode: 'local',
+          providers: {},
+        },
+      },
+      databaseConfig,
+      {
+        legacyOnlyUserCount: () => Promise.resolve(0),
+        persistence: { database: identityDatabase() },
+      },
+    );
+
+    expect(runtime.betterAuth).toBeDefined();
+    expect(runtime.dependencies.provider).toBeUndefined();
+    expect(runtime.dependencies.transactions).toBeUndefined();
+    expect(runtime.dependencies.config.oidc).toBeUndefined();
+    await runtime.close();
+  });
+
+  it('blocks standalone cutover when active legacy-only users remain', async () => {
+    await expect(
+      createApiIdentityRuntime(
+        {
+          publicWebOrigin: 'https://app.example.test',
+          session: identityConfig.session,
+          betterAuth: {
+            secret: 'standalone-runtime-secret-at-least-32-characters',
+            mailMode: 'local',
+            providers: {},
+          },
+        },
+        databaseConfig,
+        {
+          legacyOnlyUserCount: () => Promise.resolve(3),
+          persistence: { database: identityDatabase() },
+        },
+      ),
+    ).rejects.toThrow(
+      'Standalone Better Auth cutover blocked: 3 active legacy-only user(s)',
+    );
+  });
+
   it('owns and closes the production database resources when none are injected', async () => {
     const runtime = await createApiIdentityRuntime(
       identityConfig,
@@ -107,7 +158,7 @@ describe('identity runtime composition', () => {
     expect(runtime.dependencies.config.publicWebOrigin).toBe(
       'https://app.example.test',
     );
-    expect(runtime.dependencies.config.oidc.callbackLandingPath).toBe(
+    expect(runtime.dependencies.config.oidc?.callbackLandingPath).toBe(
       '/invitation/continue',
     );
     await runtime.close();
@@ -258,7 +309,7 @@ describe('identity runtime composition', () => {
     );
 
     await expect(
-      runtime.dependencies.transactions.consume(
+      runtime.dependencies.transactions?.consume(
         transaction.stateDigest,
         transaction.browserBindingDigest,
         new Date('2026-08-20T12:00:00.000Z'),
@@ -271,7 +322,7 @@ describe('identity runtime composition', () => {
       'binding_mismatch',
     ] as const) {
       await expect(
-        runtime.dependencies.transactions.consume(
+        runtime.dependencies.transactions?.consume(
           transaction.stateDigest,
           transaction.browserBindingDigest,
           new Date('2026-08-20T12:00:00.000Z'),
@@ -298,7 +349,7 @@ describe('identity runtime composition', () => {
     );
 
     await expect(
-      runtime.dependencies.transactions.consume(
+      runtime.dependencies.transactions?.consume(
         'a'.repeat(64),
         'b'.repeat(64),
         new Date('2026-08-20T12:00:00.000Z'),

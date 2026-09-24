@@ -3,6 +3,9 @@ import { z } from 'zod';
 export const API_PROBLEM_CODES = [
   'auth.unauthenticated',
   'auth.forbidden',
+  'auth.email_not_verified',
+  'auth.reset_link_invalid',
+  'auth.conflict',
   'resource.not_found',
   'request.invalid',
   'request.precondition_required',
@@ -97,6 +100,24 @@ const apiProblemDetails = {
     title: 'Forbidden',
     severity: 'info',
     exposeDetail: true,
+  },
+  'auth.email_not_verified': {
+    status: 403,
+    title: 'Email verification required',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.reset_link_invalid': {
+    status: 400,
+    title: 'Reset link invalid or expired',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.conflict': {
+    status: 409,
+    title: 'Authentication change conflict',
+    severity: 'info',
+    exposeDetail: false,
   },
   'resource.not_found': {
     status: 404,

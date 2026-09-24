@@ -1164,10 +1164,12 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       const identityConfig = config().identity;
       if (identityConfig === undefined)
         throw new Error('Identity configuration is missing');
-      invitationToken = createApplicationSecretEnvelope(
+      const invitationEncryption =
         identityConfig.invitationTokenEncryption ??
-          identityConfig.secretEncryption,
-      ).open(
+        identityConfig.secretEncryption;
+      if (invitationEncryption === undefined)
+        throw new Error('Invitation token encryption is missing');
+      invitationToken = createApplicationSecretEnvelope(invitationEncryption).open(
         {
           ciphertext: row.token_ciphertext,
           nonce: row.token_nonce,

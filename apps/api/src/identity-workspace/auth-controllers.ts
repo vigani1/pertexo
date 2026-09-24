@@ -31,6 +31,7 @@ import {
   SessionAuthenticationGuard,
 } from './guards.js';
 import type { SessionCookiePolicy } from './ports.js';
+import type { IdentityWorkspaceConfig } from './ports.js';
 import {
   oidcStartResponseSchema,
   type CookieResponse,
@@ -38,6 +39,7 @@ import {
 } from './types.js';
 import {
   IDENTITY_WORKSPACE_TELEMETRY,
+  IDENTITY_WORKSPACE_CONFIG,
   OIDC_CALLBACK_LANDING_PATH,
   SESSION_COOKIE_POLICY,
 } from './tokens.js';
@@ -52,6 +54,7 @@ import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js
 @Controller('v1/auth/oidc')
 export class OidcController {
   private readonly application: OidcApplicationService;
+  private readonly genericLoginEnabled: boolean;
 
   public constructor(
     oidc: OidcLoginService,
@@ -65,14 +68,23 @@ export class OidcController {
     telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
     @Optional()
     invitationAcceptance?: InvitationAcceptanceUseCase,
+    @Optional()
+    @Inject(IDENTITY_WORKSPACE_CONFIG)
+    config?: IdentityWorkspaceConfig,
   ) {
+    this.genericLoginEnabled = config?.allowGenericOidcLogin !== false;
     this.application = new OidcApplicationService(
       oidc,
       sessions,
       telemetry,
-      invitationAcceptance === undefined
-        ? undefined
-        : (result) => invitationAcceptance.recordProof(result),
+      async (result) => {
+        if (
+          !this.genericLoginEnabled &&
+          result.continuation?.kind !== 'invitation_acceptance'
+        )
+          return throwApplicationError(applicationError('auth.forbidden'));
+        await invitationAcceptance?.recordProof(result);
+      },
     );
   }
 
@@ -81,6 +93,8 @@ export class OidcController {
   public async start(
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<Readonly<{ authorizationUrl: string; expiresAt: string }>> {
+    if (!this.genericLoginEnabled)
+      return throwApplicationError(applicationError('auth.forbidden'));
     const result = await this.application.start();
     response.header(
       'set-cookie',
@@ -182,6 +196,17 @@ class ResponseCookieBoundary {
     this.response.header('set-cookie', [
       this.clearedOidcBinding,
       serializeCookie(SESSION_COOKIE_NAME, token, options),
+      serializeCookie(CSRF_COOKIE_NAME, this.csrfToken, options, false),
+    ]);
+  }
+
+  public writeSessionCookieHeaders(
+    setCookies: readonly string[],
+    options: SessionCookieOptions,
+  ): void {
+    this.response.header('set-cookie', [
+      this.clearedOidcBinding,
+      ...setCookies,
       serializeCookie(CSRF_COOKIE_NAME, this.csrfToken, options, false),
     ]);
   }

@@ -377,4 +377,25 @@ describe('worker readiness lifecycle', () => {
     await expect(readiness.checkReadiness()).resolves.toBeUndefined();
     for (const check of checks) expect(check).toHaveBeenCalledOnce();
   });
+
+  it('refuses readiness when authentication mail delivery is degraded', async () => {
+    const mail = {
+      checkReadiness: vi.fn(() => {
+        throw new Error('mail unavailable');
+      }),
+    };
+    const readiness = new WorkerReadiness(
+      { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
+      { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never,
+      new WorkerDrainState(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mail as never,
+    );
+    await expect(readiness.checkReadiness()).rejects.toThrow(
+      'mail unavailable',
+    );
+  });
 });

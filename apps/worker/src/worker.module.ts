@@ -7,6 +7,12 @@ import type {
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/execution';
+import { createAuthenticationMailDeliveryStore } from '@pertexo/database/execution';
+import {
+  createApplicationSecretEnvelope,
+  createNodeSecureHttpClient,
+  createResendClient,
+} from '@pertexo/integrations/server';
 import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
@@ -19,6 +25,12 @@ import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
 import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
 import type { TriggerRuntime } from './triggers/trigger-runtime.js';
+import { createAuthenticationMailDeliveryHandler } from './execution/authentication-mail-delivery.js';
+import {
+  AUTHENTICATION_MAIL_RUNTIME,
+  createAuthenticationMailRuntime,
+  type AuthenticationMailRuntime,
+} from './execution/authentication-mail-runtime.js';
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
@@ -131,6 +143,33 @@ export class WorkerModule {
         WorkerProcessKeepalive,
         WorkerShutdownCoordinator,
         {
+          provide: AUTHENTICATION_MAIL_RUNTIME,
+          useFactory: (): AuthenticationMailRuntime | undefined => {
+            const mail = config.authenticationMailDelivery;
+            if (mail === undefined) return undefined;
+            const store = createAuthenticationMailDeliveryStore(
+              config.database,
+              dependencies.databaseRuntime,
+            );
+            const handler = createAuthenticationMailDeliveryHandler({
+              store,
+              envelope: createApplicationSecretEnvelope(mail.encryption),
+              email: createResendClient(createNodeSecureHttpClient()),
+              apiKey: mail.apiKey,
+              timeoutMillis: mail.timeoutMillis,
+              workerId: mail.workerId,
+            });
+            return createAuthenticationMailRuntime(
+              handler,
+              store,
+              mail.pollIntervalMillis,
+              () => {
+                dependencies.logger.error('authentication_mail.delivery_cycle_failed');
+              },
+            );
+          },
+        },
+        {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
@@ -158,12 +197,19 @@ export class WorkerModule {
             WorkerShutdownCoordinator,
             OutboxDispatcherLifecycle,
             WORKSPACE_DATABASE,
+            AUTHENTICATION_MAIL_RUNTIME,
           ],
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,
             database: WorkspaceDatabase,
+            authenticationMail: AuthenticationMailRuntime | undefined,
           ) => {
+            authenticationMail?.start();
+            if (authenticationMail !== undefined)
+              shutdown.register('authentication-mail', () =>
+                authenticationMail.close(),
+              );
             shutdown.register('transport', () => transport.close());
             shutdown.register('database', () => database.close());
             if (dependencies.databaseRuntime !== undefined)

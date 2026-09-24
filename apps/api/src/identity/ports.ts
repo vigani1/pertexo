@@ -78,6 +78,10 @@ export interface SessionCookieBoundary {
     token: string,
     options: SessionCookieOptions,
   ): void | Promise<void>;
+  writeSessionCookieHeaders?(
+    setCookies: readonly string[],
+    options: SessionCookieOptions,
+  ): void | Promise<void>;
 }
 
 export interface IdentityClock {

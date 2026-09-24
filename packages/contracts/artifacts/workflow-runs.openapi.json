@@ -681,6 +681,9 @@
             "enum": [
               "auth.unauthenticated",
               "auth.forbidden",
+              "auth.email_not_verified",
+              "auth.reset_link_invalid",
+              "auth.conflict",
               "resource.not_found",
               "request.invalid",
               "request.precondition_required",

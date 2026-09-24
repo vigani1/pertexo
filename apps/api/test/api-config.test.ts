@@ -16,6 +16,11 @@ function validDeployedEnvironment(): Record<string, string> {
     OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
     OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
     OIDC_TRANSACTION_KEY_VERSION: 'v2',
+    BETTER_AUTH_SECRET: 'better-auth-production-secret-at-least-32-characters',
+    AUTH_MAIL_MODE: 'durable',
+    AUTH_MAIL_FROM: 'security@example.test',
+    AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
+    AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
     INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
     INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',
@@ -39,6 +44,50 @@ function validDeployedEnvironment(): Record<string, string> {
 }
 
 describe('parseApiConfig', () => {
+  it('enables Better Auth without requiring legacy OIDC configuration', () => {
+    const config = parseApiConfig({
+      DATABASE_API_URL:
+        'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+      BETTER_AUTH_SECRET:
+        'standalone-better-auth-secret-at-least-32-characters',
+      AUTH_MAIL_MODE: 'local',
+      PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
+    });
+
+    expect(config.identity).toMatchObject({
+      publicWebOrigin: 'http://127.0.0.1:5173',
+      betterAuth: { mailMode: 'local' },
+      session: { secureCookie: false },
+    });
+    expect(config.identity?.oidc).toBeUndefined();
+    expect(config.identity?.secretEncryption).toBeUndefined();
+  });
+
+  it('requires a public browser origin for standalone Better Auth', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        BETTER_AUTH_SECRET:
+          'standalone-better-auth-secret-at-least-32-characters',
+      }),
+    ).toThrow('PUBLIC_WEB_ORIGIN is required for Better Auth');
+  });
+
+  it('rejects secure browser cookies on an HTTP public origin', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        BETTER_AUTH_SECRET:
+          'standalone-better-auth-secret-at-least-32-characters',
+        AUTH_MAIL_MODE: 'local',
+        PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
+        SESSION_COOKIE_SECURE: 'true',
+      }),
+    ).toThrow('Secure session cookies require an HTTPS public web origin');
+  });
+
   it('accepts one complete production environment', () => {
     expect(parseApiConfig(validDeployedEnvironment())).toMatchObject({
       nodeEnv: 'production',
@@ -255,7 +304,7 @@ describe('parseApiConfig', () => {
           'postgresql://pertexo_api:secret@localhost:5432/pertexo',
         NODE_ENV: 'staging',
       }),
-    ).toThrow('Identity configuration is incomplete');
+    ).toThrow('Better Auth configuration is incomplete');
   });
 
   it('parses and freezes complete identity configuration', () => {
@@ -275,6 +324,11 @@ describe('parseApiConfig', () => {
       OIDC_ALLOWED_ALGORITHMS: 'RS256,ES256',
       OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
       OIDC_TRANSACTION_KEY_VERSION: 'v2',
+      BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
+      AUTH_MAIL_MODE: 'durable',
+      AUTH_MAIL_FROM: 'security@example.test',
+      AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
+      AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
       INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
       INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
       PUBLIC_WEB_ORIGIN: 'https://app.example.test',
@@ -319,7 +373,7 @@ describe('parseApiConfig', () => {
       },
     });
     expect(Object.isFrozen(config.identity)).toBe(true);
-    expect(Object.isFrozen(config.identity?.oidc.scopes)).toBe(true);
+    expect(Object.isFrozen(config.identity?.oidc?.scopes)).toBe(true);
     expect(config.connections).toEqual({
       kmsKeyReference: 'arn:aws:kms:eu-central-1:123456789012:key/example',
       region: 'eu-central-1',
@@ -373,7 +427,7 @@ describe('parseApiConfig', () => {
       SESSION_COOKIE_SECURE: 'false',
     });
 
-    expect(config.identity?.oidc.allowInsecureHttpForTests).toBe(true);
+    expect(config.identity?.oidc?.allowInsecureHttpForTests).toBe(true);
   });
 
   it('rejects insecure identity endpoints in a deployed environment', () => {
@@ -391,6 +445,11 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
+        AUTH_MAIL_MODE: 'durable',
+        AUTH_MAIL_FROM: 'security@example.test',
+        AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
+        AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
         INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
         INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
       }),
@@ -439,6 +498,11 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        BETTER_AUTH_SECRET: 'better-auth-staging-secret-at-least-32-characters',
+        AUTH_MAIL_MODE: 'durable',
+        AUTH_MAIL_FROM: 'security@example.test',
+        AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
+        AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
         INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
         INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
         CONNECTION_KMS_KEY_REFERENCE:
@@ -479,6 +543,12 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        BETTER_AUTH_SECRET:
+          'better-auth-production-secret-at-least-32-characters',
+        AUTH_MAIL_MODE: 'durable',
+        AUTH_MAIL_FROM: 'security@example.test',
+        AUTH_MAIL_KEY: Buffer.alloc(32, 9).toString('base64'),
+        AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
         CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
         INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64'),
         INVITATION_TOKEN_KEY_VERSION: 'invite-v1',

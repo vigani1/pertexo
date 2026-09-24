@@ -1,5 +1,9 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { WorkspaceDatabase } from '@pertexo/database/execution';
+import {
+  AUTHENTICATION_MAIL_RUNTIME,
+  type AuthenticationMailRuntime,
+} from '../execution/authentication-mail-runtime.js';
 
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import {
@@ -44,6 +48,9 @@ export class WorkerReadiness {
     @Inject(PREVIEW_MAINTENANCE_RUNTIME)
     private readonly previewMaintenanceRuntime:
       PreviewMaintenanceRuntime | undefined,
+    @Optional()
+    @Inject(AUTHENTICATION_MAIL_RUNTIME)
+    private readonly authenticationMailRuntime?: AuthenticationMailRuntime,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -62,6 +69,7 @@ export class WorkerReadiness {
       this.coordinatorRuntime?.checkReadiness(),
       this.previewMaintenanceRuntime?.checkReadiness(),
     ]);
+    this.authenticationMailRuntime?.checkReadiness();
     this.assertCanAcceptWork();
   }
 }

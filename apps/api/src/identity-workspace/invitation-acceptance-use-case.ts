@@ -228,7 +228,7 @@ export class InvitationAcceptanceUseCase {
       idempotencyKey: input.idempotencyKey,
       replacementSession: {
         id: randomUUID(),
-        tokenDigest: digestSha256Hex(rawToken, this.crypto),
+        token: rawToken,
         expiresAt,
         ...(input.userAgent === undefined
           ? {}

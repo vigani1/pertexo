@@ -1,8 +1,12 @@
 import type {
   IdentityClock,
   IdentityCrypto,
+  AuthenticatedSession,
   OidcLoginTransactionStore,
   OidcProviderPort,
+  SessionCookieBoundary,
+  SessionIssueInput,
+  SessionIssueResult,
   SessionStorePort,
 } from '../identity/index.js';
 import type {
@@ -14,7 +18,8 @@ import type { IdentityWorkspaceTelemetry } from './telemetry.js';
 
 export type IdentityWorkspaceConfig = Readonly<{
   publicWebOrigin?: string;
-  oidc: Readonly<{
+  allowGenericOidcLogin?: boolean;
+  oidc?: Readonly<{
     issuer: string;
     authorizationEndpoint: string;
     clientId: string;
@@ -264,7 +269,7 @@ export type InvitationAcceptanceCompletePersistenceInput = Readonly<{
   idempotencyKey: string;
   replacementSession: Readonly<{
     id: string;
-    tokenDigest: string;
+    token: string;
     expiresAt: Date;
     userAgent?: string | null;
     ipAddress?: string | null;
@@ -349,16 +354,33 @@ export interface WorkspaceAuthorizationReader {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;
 }
 
+export interface IdentitySessionAuthority {
+  issue(
+    input: SessionIssueInput,
+    cookieBoundary: SessionCookieBoundary,
+  ): Promise<SessionIssueResult>;
+  authenticate(
+    cookieValue: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ): Promise<AuthenticatedSession>;
+  revoke(cookieValue: string): Promise<void>;
+  deliver?(
+    token: string,
+    cookieBoundary: SessionCookieBoundary,
+  ): Promise<SessionIssueResult>;
+}
+
 export type IdentityWorkspaceDependencies = Readonly<{
   config: IdentityWorkspaceConfig;
-  provider: OidcProviderPort;
-  transactions: OidcLoginTransactionStore;
+  provider?: OidcProviderPort;
+  transactions?: OidcLoginTransactionStore;
   persistence: IdentityWorkspacePersistence;
   authorization: WorkspaceAuthorizationSource;
   crypto?: IdentityCrypto;
   clock?: IdentityClock;
   telemetry?: IdentityWorkspaceTelemetry;
   invitationTokens?: InvitationTokenProtector;
+  sessions?: IdentitySessionAuthority;
 }>;
 
 export type { WorkspaceAuthorizationSource } from '../workspaces/index.js';

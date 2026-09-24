@@ -21,6 +21,12 @@ export type {
   ReadConnectionInput,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
+export { createAuthenticationMailEnqueueStore } from './identity/authentication-mail.js';
+export type {
+  AuthenticationMailEnqueueStore,
+  AuthenticationMailPurpose,
+  SealedAuthenticationMailPayload,
+} from './identity/authentication-mail.js';
 export {
   AUTHORIZATION_CAPABILITIES,
   ROLES,

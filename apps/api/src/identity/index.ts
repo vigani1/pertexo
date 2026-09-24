@@ -23,6 +23,8 @@ export type {
   OidcTokenResponse,
   OidcTransactionConsumeResult,
   SessionCookieBoundary,
+  SessionIssueInput,
   SessionIssueResult,
+  AuthenticatedSession,
   SessionStorePort,
 } from './ports.js';

@@ -44,6 +44,7 @@ const productionCohorts = ['core', 'merge_v3_activation'];
 
 const parserScript = String.raw`
   const environment = JSON.parse(process.env.PERTEXO_RENDERED_ENV ?? '{}');
+  const { createApplicationSecretEnvelope } = await import('./packages/integrations/src/server.ts');
   const role = process.env.PERTEXO_CONFIG_ROLE;
   const config = role === 'api'
     ? (await import('./apps/api/src/platform/config/api-config.ts')).parseApiConfig(environment)
@@ -53,11 +54,24 @@ const parserScript = String.raw`
     serviceVersion: config.observability.serviceVersion,
   };
   if (role === 'api') {
+    result.authenticationMailKeyVersion = config.identity.betterAuth?.durableMail?.encryption.current.version;
+    result.hasDurableAuthenticationMail = config.identity.betterAuth?.mailMode === 'durable';
+    result.authenticationMailProbe = createApplicationSecretEnvelope(
+      config.identity.betterAuth.durableMail.encryption,
+    ).seal('shared-key-proof', 'pertexo/authentication-mail/config-proof');
     result.hasArtifactStore = config.artifacts !== undefined;
     result.connectionKmsKeyReference = config.connections?.kmsKeyReference;
     result.connectionKmsRegion = config.connections?.region;
     result.trustedProxyCidrs = config.trustedProxyCidrs;
   } else {
+    result.authenticationMailKeyVersion = config.authenticationMailDelivery?.encryption.current.version;
+    result.hasAuthenticationMailDelivery = config.authenticationMailDelivery !== undefined;
+    result.authenticationMailProbeOpened = createApplicationSecretEnvelope(
+      config.authenticationMailDelivery.encryption,
+    ).open(
+      JSON.parse(process.env.PERTEXO_AUTH_MAIL_PROBE ?? '{}'),
+      'pertexo/authentication-mail/config-proof',
+    ) === 'shared-key-proof';
     result.enabledJobNames = config.outboxDispatcher.enabledJobNames;
     result.hasConnectionEncryption = config.connectionEncryption !== undefined;
     result.hasArtifactStore = config.artifactStore !== undefined;
@@ -85,6 +99,10 @@ function scalarEnvironment(value) {
 
 function syntheticValue(name, cohort) {
   const values = {
+    AUTH_MAIL_FROM: 'security@example.test',
+    AUTH_MAIL_EMAIL_API_KEY: 'local-fake-provider-key',
+    AUTH_MAIL_KEY: Buffer.alloc(32, 13).toString('base64'),
+    AUTH_MAIL_KEY_VERSION: 'auth-mail-v1',
     ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-access',
     ARTIFACT_STORE_BUCKET: 'pertexo-artifacts-primary',
     ARTIFACT_STORE_ENDPOINT: 'https://objects-primary.example.test',
@@ -99,6 +117,8 @@ function syntheticValue(name, cohort) {
     ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',
+    BETTER_AUTH_SECRET:
+      'test-better-auth-secret-more-than-thirty-two-characters',
     DATABASE_API_URL:
       'postgresql://api:password@postgres.example.test:5432/pertexo',
     DATABASE_DISPATCHER_URL:
@@ -119,6 +139,7 @@ function syntheticValue(name, cohort) {
     OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
     OIDC_TRANSACTION_KEY_VERSION: 'v1',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
+    PUBLIC_WEB_ORIGIN: 'https://pertexo.example.test',
     OUTBOX_DISPATCH_JOB_NAMES: activeQueueJobNames.join(','),
     REDIS_URL: 'rediss://redis.example.test:6380/0',
     SERVICE_VERSION: 'release-2026-09-06',
@@ -145,7 +166,12 @@ function resolveRenderedEnvironment(workloadName, workload, task, cohort) {
   const references = new Map(
     (container.secrets ?? []).map(({ name, valueFrom }) => [name, valueFrom]),
   );
-  for (const name of [...workload.configuration, ...workload.secrets]) {
+  for (const name of [
+    ...workload.configuration,
+    ...workload.secrets,
+    ...(workload.sharedConfiguration ?? []),
+    ...(workload.sharedSecrets ?? []),
+  ]) {
     assert.ok(
       renderedNames.has(name),
       `${workloadName} does not render ${name} through ECS secret/config injection`,
@@ -166,10 +192,24 @@ function resolveRenderedEnvironment(workloadName, workload, task, cohort) {
       `${workloadName} secret ${name} must use the Secrets Manager prefix`,
     );
   }
+  for (const name of workload.sharedConfiguration ?? []) {
+    assert.equal(
+      references.get(name),
+      `${renderEnvironment.ECS_CONFIG_PREFIX_ARN}/shared/${name}`,
+      `${workloadName} shared configuration ${name} must use one SSM reference`,
+    );
+  }
+  for (const name of workload.sharedSecrets ?? []) {
+    assert.equal(
+      references.get(name),
+      `${renderEnvironment.ECS_SECRET_PREFIX_ARN}/shared/${name}`,
+      `${workloadName} shared secret ${name} must use one Secrets Manager reference`,
+    );
+  }
   return environment;
 }
 
-async function parseRole(role, environment) {
+async function parseRole(role, environment, probe) {
   const result = await execFileAsync(
     process.execPath,
     ['--import', 'tsx', '--input-type=module', '--eval', parserScript],
@@ -179,6 +219,9 @@ async function parseRole(role, environment) {
         ...process.env,
         PERTEXO_CONFIG_ROLE: role,
         PERTEXO_RENDERED_ENV: JSON.stringify(environment),
+        ...(probe === undefined
+          ? {}
+          : { PERTEXO_AUTH_MAIL_PROBE: JSON.stringify(probe) }),
       },
     },
   );
@@ -228,6 +271,8 @@ test('rendered API and worker definitions satisfy their public production parser
         '2001:db8::/32',
       ]);
       assert.equal(apiConfig.serviceVersion, 'release-2026-09-06');
+      assert.equal(apiConfig.hasDurableAuthenticationMail, true);
+      assert.equal(apiConfig.authenticationMailKeyVersion, 'auth-mail-v1');
 
       const workerConfig = await parseRole(
         'worker',
@@ -237,15 +282,75 @@ test('rendered API and worker definitions satisfy their public production parser
           tasks.worker,
           cohort,
         ),
+        apiConfig.authenticationMailProbe,
       );
       assert.equal(workerConfig.cohort, cohort);
       assert.deepEqual(workerConfig.enabledJobNames, activeQueueJobNames);
       assert.equal(workerConfig.serviceVersion, 'release-2026-09-06');
+      assert.equal(workerConfig.hasAuthenticationMailDelivery, true);
+      assert.equal(workerConfig.authenticationMailKeyVersion, 'auth-mail-v1');
+      assert.equal(workerConfig.authenticationMailProbeOpened, true);
+      const apiSecrets = new Map(
+        tasks.api.containerDefinitions[0].secrets.map(({ name, valueFrom }) => [
+          name,
+          valueFrom,
+        ]),
+      );
+      const workerSecrets = new Map(
+        tasks.worker.containerDefinitions[0].secrets.map(
+          ({ name, valueFrom }) => [name, valueFrom],
+        ),
+      );
+      assert.equal(
+        apiSecrets.get('AUTH_MAIL_KEY'),
+        workerSecrets.get('AUTH_MAIL_KEY'),
+      );
+      assert.equal(
+        apiSecrets.get('AUTH_MAIL_KEY_VERSION'),
+        workerSecrets.get('AUTH_MAIL_KEY_VERSION'),
+      );
       if (cohort === 'merge_v3_activation') {
         assert.equal(workerConfig.hasConnectionEncryption, true);
         assert.equal(workerConfig.hasArtifactStore, true);
       }
     }
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('a worker with a different key cannot open an API-sealed authentication-mail probe', async () => {
+  const manifest = await loadManifest();
+  const temporaryRoot = await mkdtemp(
+    resolve(tmpdir(), 'pertexo-ecs-auth-mail-key-proof-'),
+  );
+  try {
+    await render(temporaryRoot);
+    const apiTask = JSON.parse(
+      await readFile(resolve(temporaryRoot, 'api.json'), 'utf8'),
+    );
+    const workerTask = JSON.parse(
+      await readFile(resolve(temporaryRoot, 'worker.json'), 'utf8'),
+    );
+    const api = await parseRole(
+      'api',
+      resolveRenderedEnvironment(
+        'api',
+        manifest.workloads.api,
+        apiTask,
+        'core',
+      ),
+    );
+    const workerEnvironment = resolveRenderedEnvironment(
+      'worker',
+      manifest.workloads.worker,
+      workerTask,
+      'core',
+    );
+    workerEnvironment.AUTH_MAIL_KEY = Buffer.alloc(32, 14).toString('base64');
+    await assert.rejects(
+      parseRole('worker', workerEnvironment, api.authenticationMailProbe),
+    );
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

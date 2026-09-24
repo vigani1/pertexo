@@ -13,7 +13,7 @@ import {
 
 const root = resolve(import.meta.dirname, '../..');
 const credentialPattern =
-  /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|TOKEN_KEY|ACCESS_KEY_ID)$/u;
+  /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|TOKEN_KEY|ACCESS_KEY_ID|AUTH_MAIL_KEY|AUTH_MAIL_EMAIL_API_KEY|BETTER_AUTH_SECRET)$/u;
 const telemetryWorkloads = new Set([
   'api',
   'worker',
@@ -133,8 +133,22 @@ function assertDistinctStringArray(values, label) {
 function assertDisjointInjectionNames(name, workload) {
   assertDistinctStringArray(workload.configuration, `${name} configuration`);
   assertDistinctStringArray(workload.secrets, `${name} secrets`);
+  assertDistinctStringArray(
+    workload.sharedConfiguration ?? [],
+    `${name} shared configuration`,
+  );
+  assertDistinctStringArray(
+    workload.sharedSecrets ?? [],
+    `${name} shared secrets`,
+  );
   const environmentNames = Object.keys(workload.environment);
-  const groups = [environmentNames, workload.configuration, workload.secrets];
+  const groups = [
+    environmentNames,
+    workload.configuration,
+    workload.secrets,
+    workload.sharedConfiguration ?? [],
+    workload.sharedSecrets ?? [],
+  ];
   const allNames = groups.flat();
   if (new Set(allNames).size !== allNames.length)
     throw new Error(
@@ -415,6 +429,18 @@ export function validateDeploymentContracts({
       );
     if (workload.secrets.some((key) => !credentialPattern.test(key)))
       throw new Error(`${name} has a non-credential in Secrets Manager`);
+    if (
+      (workload.sharedConfiguration ?? []).some((key) =>
+        credentialPattern.test(key),
+      )
+    )
+      throw new Error(
+        `${name} exposes a shared credential through configuration parameters`,
+      );
+    if (
+      (workload.sharedSecrets ?? []).some((key) => !credentialPattern.test(key))
+    )
+      throw new Error(`${name} has a non-credential in shared Secrets Manager`);
     if (workload.kind === 'service' && !workload.healthCheck)
       throw new Error(`${name} service requires a health check`);
     if (workload.kind !== 'service' && workload.healthCheck)
@@ -431,6 +457,25 @@ export function validateDeploymentContracts({
       if (!workload.configuration.includes(configuration))
         throw new Error(`${name} must receive ${configuration} configuration`);
     }
+  }
+
+  for (const name of ['api', 'worker']) {
+    const workload = manifest.workloads[name];
+    if (
+      !sameSortedValues(workload.sharedConfiguration ?? [], [
+        'AUTH_MAIL_KEY_VERSION',
+      ]) ||
+      !sameSortedValues(workload.sharedSecrets ?? [], ['AUTH_MAIL_KEY']) ||
+      (name === 'api'
+        ? workload.environment.AUTH_MAIL_MODE !== 'durable' ||
+          workload.environment.SESSION_COOKIE_SECURE !== 'true' ||
+          !workload.configuration.includes('AUTH_MAIL_FROM') ||
+          !workload.configuration.includes('PUBLIC_WEB_ORIGIN') ||
+          !workload.secrets.includes('BETTER_AUTH_SECRET')
+        : workload.environment.AUTH_MAIL_DELIVERY_ENABLED !== 'true' ||
+          !workload.secrets.includes('AUTH_MAIL_EMAIL_API_KEY'))
+    )
+      throw new Error(`${name} authentication mail deployment is incomplete`);
   }
 
   for (const name of ['api', 'worker']) {

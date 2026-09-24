@@ -233,7 +233,7 @@ export type CompleteInvitationAcceptanceInput = Readonly<{
   idempotencyKey: string;
   replacementSession: Readonly<{
     id: string;
-    tokenDigest: string;
+    token: string;
     expiresAt: Date;
     userAgent?: string | null;
     ipAddress?: string | null;

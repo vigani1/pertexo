@@ -884,10 +884,11 @@ describe('API bootstrap ownership and health', () => {
 
     it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
       const selectedIdentityRuntime = identityRuntime();
+      const selectedProvider = selectedIdentityRuntime.dependencies.provider;
+      if (selectedProvider === undefined)
+        throw new Error('OIDC provider is missing from the test runtime');
       const authorizationUrl = vi.fn(
-        selectedIdentityRuntime.dependencies.provider.authorizationUrl.bind(
-          selectedIdentityRuntime.dependencies.provider,
-        ),
+        selectedProvider.authorizationUrl.bind(selectedProvider),
       );
       application = await createApiApplication(config, {
         ...dependencies(),
@@ -896,7 +897,7 @@ describe('API bootstrap ownership and health', () => {
           dependencies: {
             ...selectedIdentityRuntime.dependencies,
             provider: {
-              ...selectedIdentityRuntime.dependencies.provider,
+              ...selectedProvider,
               authorizationUrl,
             },
           },

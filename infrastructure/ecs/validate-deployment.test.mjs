@@ -77,6 +77,30 @@ test('requires literal environment, configuration, and secret names to be disjoi
   }
 });
 
+test('requires both authentication-mail workloads to share the key and version references', () => {
+  for (const mutate of [
+    (value) => value.manifest.workloads.api.sharedSecrets.pop(),
+    (value) => value.manifest.workloads.worker.sharedConfiguration.pop(),
+    (value) => {
+      value.manifest.workloads.worker.environment.AUTH_MAIL_DELIVERY_ENABLED =
+        'false';
+    },
+    (value) => {
+      value.manifest.workloads.worker.secrets =
+        value.manifest.workloads.worker.secrets.filter(
+          (name) => name !== 'AUTH_MAIL_EMAIL_API_KEY',
+        );
+    },
+  ]) {
+    const value = inputs();
+    mutate(value);
+    assert.throws(
+      () => validateDeploymentContracts(value),
+      /authentication mail deployment is incomplete/u,
+    );
+  }
+});
+
 test('requires the exact workload inventory and command semantics', () => {
   const extra = inputs();
   extra.manifest.workloads.shadow = extra.manifest.workloads.api;

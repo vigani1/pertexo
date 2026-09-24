@@ -122,6 +122,7 @@ async function settleResult(
   }
   if (
     result.kind === 'rejected' &&
+    result.status < 500 &&
     result.error !== 'concurrent_idempotent_requests'
   ) {
     await store.complete({

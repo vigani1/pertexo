@@ -68,7 +68,9 @@ const startupRow = Object.freeze({
 
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0099_workflow_recent_list.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0107_legacy_method_migration_attempts.sql',
+    );
   });
 
   it('checks only bounded live compatibility state', async () => {

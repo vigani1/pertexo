@@ -190,6 +190,10 @@ const workerConfigSchema = z
       .string()
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
       .default('worker-local'),
+    AUTH_MAIL_DELIVERY_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
@@ -364,6 +368,16 @@ export type WorkerConfig = Readonly<
         previous: readonly Readonly<{ version: string; key: string }>[];
       }>;
     }>;
+    authenticationMailDelivery?: Readonly<{
+      apiKey: string;
+      timeoutMillis: number;
+      pollIntervalMillis: number;
+      workerId: string;
+      encryption: Readonly<{
+        current: Readonly<{ version: string; key: string }>;
+        previous: readonly Readonly<{ version: string; key: string }>[];
+      }>;
+    }>;
   }
 >;
 
@@ -504,6 +518,51 @@ function invitationDeliveryConfig(
   });
 }
 
+function authenticationMailDeliveryConfig(
+  environment: Readonly<Record<string, string | undefined>>,
+  enabled: boolean,
+): WorkerConfig['authenticationMailDelivery'] {
+  const names = [
+    'AUTH_MAIL_EMAIL_API_KEY',
+    'AUTH_MAIL_KEY',
+    'AUTH_MAIL_KEY_VERSION',
+  ] as const;
+  if (!enabled && names.every((name) => environment[name] === undefined))
+    return undefined;
+  if (!enabled)
+    throw new Error('Authentication mail delivery configuration is inactive');
+  const parsed = z
+    .object({
+      apiKey: z.string().min(1).max(512),
+      key: z.string().min(1),
+      version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
+      previous: z.string().optional(),
+      timeoutMillis: z.coerce.number().int().min(100).max(30_000).default(5_000),
+      pollIntervalMillis: z.coerce.number().int().min(100).max(60_000).default(1_000),
+      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
+    })
+    .strict()
+    .parse({
+      apiKey: environment.AUTH_MAIL_EMAIL_API_KEY,
+      key: environment.AUTH_MAIL_KEY,
+      version: environment.AUTH_MAIL_KEY_VERSION,
+      previous: environment.AUTH_MAIL_PREVIOUS_KEYS,
+      timeoutMillis: environment.AUTH_MAIL_EMAIL_TIMEOUT_MILLIS,
+      pollIntervalMillis: environment.AUTH_MAIL_POLL_MILLIS,
+      workerId: `auth-mail:${environment.WORKER_INSTANCE_ID ?? 'worker-local'}`,
+    });
+  return Object.freeze({
+    apiKey: parsed.apiKey,
+    timeoutMillis: parsed.timeoutMillis,
+    pollIntervalMillis: parsed.pollIntervalMillis,
+    workerId: parsed.workerId,
+    encryption: Object.freeze({
+      current: Object.freeze({ version: parsed.version, key: parsed.key }),
+      previous: parseApplicationPreviousKeys(parsed.previous),
+    }),
+  });
+}
+
 function parseApplicationPreviousKeys(input: string | undefined) {
   if (input === undefined) return Object.freeze([]);
   return Object.freeze(
@@ -542,6 +601,12 @@ export function parseWorkerConfig(
       ),
       deployed,
     );
+    if (deployed && raw.AUTH_MAIL_DELIVERY_ENABLED !== 'true')
+      throw new Error('Deployed workers require authentication mail delivery');
+    const authenticationMailDelivery = authenticationMailDeliveryConfig(
+      raw,
+      raw.AUTH_MAIL_DELIVERY_ENABLED === 'true',
+    );
     if (
       platformServingReleaseRequiresHttpCapabilities(
         result.data.nodeCompatibilityCohort,
@@ -559,6 +624,9 @@ export function parseWorkerConfig(
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
       ...(artifactStore === undefined ? {} : { artifactStore }),
       ...(invitationDelivery === undefined ? {} : { invitationDelivery }),
+      ...(authenticationMailDelivery === undefined
+        ? {}
+        : { authenticationMailDelivery }),
       database: Object.freeze(result.data.database),
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
       coordinator: Object.freeze(result.data.coordinator),

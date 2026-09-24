@@ -161,7 +161,7 @@ export function createWorkspaceInvitationDeliveryStore(
                   invitation.status invitation_status,invitation.revision current_revision,
                   invitation.recipient_email,invitation.role,invitation.expires_at,
                   invitation.expires_at<=clock_timestamp() expired,
-                  workspace.name workspace_name,workspace.status workspace_status
+                  attempt.workspace_name,workspace.status workspace_status
              from app.workspace_invitation_delivery_attempts attempt
              join app.workspace_invitations invitation
                on invitation.workspace_id=attempt.workspace_id and invitation.id=attempt.invitation_id

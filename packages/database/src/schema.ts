@@ -1,5 +1,8 @@
 import {
   users,
+  authAccounts,
+  authSessions,
+  authVerifications,
   authIdentities,
   sessions,
   oidcLoginTransactions,
@@ -76,6 +79,9 @@ import {
 
 export {
   users,
+  authAccounts,
+  authSessions,
+  authVerifications,
   authIdentities,
   sessions,
   workspaces,
@@ -130,7 +136,10 @@ export const databaseSchema = {
   artifacts,
   workspaceArtifactCapacity,
   auditEvents,
+  authAccounts,
   authIdentities,
+  authSessions,
+  authVerifications,
   connectionEvents,
   connections,
   connectionSecretVersions,

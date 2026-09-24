@@ -94,6 +94,24 @@ function createTransientDataReapRecorder(
       data_class: 'workspace_creation_idempotency_record',
     });
     reaps.add(result.sessionsDeleted, { data_class: 'session' });
+    reaps.add(result.authenticationMailDeleted, {
+      data_class: 'authentication_mail',
+    });
+    reaps.add(result.authenticationMailExpired, {
+      data_class: 'authentication_mail_expiry',
+    });
+    reaps.add(result.authenticationProofsDeleted, {
+      data_class: 'authentication_email_proof',
+    });
+    reaps.add(result.authenticationLinkAttemptsDeleted, {
+      data_class: 'authentication_method_link_attempt',
+    });
+    reaps.add(result.authenticationLegacyAttemptsDeleted, {
+      data_class: 'authentication_legacy_migration_attempt',
+    });
+    reaps.add(result.identitySecurityAuditDeleted, {
+      data_class: 'identity_security_audit_fact',
+    });
     reaps.add(result.invitationAcceptanceIntentsDeleted, {
       data_class: 'workspace_invitation_acceptance_intent',
     });
@@ -111,7 +129,13 @@ function createTransientDataReapRecorder(
           result.invitationReplacementClaimsDeleted +
           result.invitationsExpired +
           result.workspaceCreationRecordsDeleted +
-          result.sessionsDeleted >
+          result.sessionsDeleted +
+          result.authenticationMailDeleted +
+          result.authenticationMailExpired +
+          result.authenticationProofsDeleted +
+          result.authenticationLinkAttemptsDeleted +
+          result.authenticationLegacyAttemptsDeleted +
+          result.identitySecurityAuditDeleted >
         0
           ? 'deleted'
           : 'idle',

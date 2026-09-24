@@ -183,7 +183,6 @@ async function replacementLineageIsLive(
     visited.add(identity);
     if (
       current.intent !== undefined &&
-      current.intent.status !== 'completed' &&
       current.intent.status !== 'abandoned' &&
       current.intent.status !== 'superseded' &&
       current.intent.expires_at.getTime() > now.getTime()
@@ -771,12 +770,17 @@ async function completeAcceptance(
           [actorUserId],
         );
         await client.query(
-          `insert into app.sessions(id,user_id,token_digest,expires_at,user_agent,ip_address)
-           values($1,$2,$3,$4,$5,$6)`,
+          `delete from app.auth_sessions where user_id=$1`,
+          [actorUserId],
+        );
+        await client.query(
+          `insert into app.auth_sessions
+             (id,user_id,token,expires_at,user_agent,ip_address,created_at,updated_at)
+           values($1,$2,$3,$4,$5,$6,clock_timestamp(),clock_timestamp())`,
           [
             raw.replacementSession.id,
             actorUserId,
-            digest.parse(raw.replacementSession.tokenDigest),
+            raw.replacementSession.token,
             raw.replacementSession.expiresAt,
             raw.replacementSession.userAgent ?? null,
             raw.replacementSession.ipAddress ?? null,
