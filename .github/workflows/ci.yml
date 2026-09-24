@@ -237,10 +237,10 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium
+      - name: Install Playwright browsers
         run:
           pnpm --filter @pertexo/web exec playwright install --with-deps
-          chromium
+          chromium firefox webkit
       - name: Run authenticated browser journeys
         run: pnpm --filter @pertexo/web test:e2e
       - name: Upload browser traces
