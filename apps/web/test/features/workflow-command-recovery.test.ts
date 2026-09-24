@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, StrictMode, type ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,6 +10,7 @@ import {
   useWorkflowRunSubmission,
 } from '@/features/workflow-publish/mutations/use-workflow-run-submission';
 
+const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
@@ -16,7 +18,7 @@ const runId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const etagA = `"draft-v1.${'a'.repeat(43)}"`;
 const etagB = `"draft-v1.${'b'.repeat(43)}"`;
 
-describe('workflow command recovery', () => {
+describe('workflow publication recovery', () => {
   it('recovers an uncertain publish with its original precondition and key', async () => {
     const savedA = savedState(etagA, 2, 4);
     const savedB = savedState(etagB, 3, 5);
@@ -54,14 +56,17 @@ describe('workflow command recovery', () => {
       });
     });
     const verifyIdentity = vi.fn().mockResolvedValue(undefined);
-    const hook = renderHook(() =>
-      useWorkflowPublication({
-        apiClient,
-        workspaceId,
-        workflowId,
-        verifyIdentity,
-        ensureSaved: saveBarrier,
-      }),
+    const hook = renderHook(
+      () =>
+        useWorkflowPublication({
+          apiClient,
+          userId,
+          workspaceId,
+          workflowId,
+          verifyIdentity,
+          ensureSaved: saveBarrier,
+        }),
+      { wrapper: QueryWrapper },
     );
 
     await act(() => hook.result.current.validate());
@@ -91,11 +96,14 @@ describe('workflow command recovery', () => {
     expect(verifyIdentity).toHaveBeenCalledTimes(4);
     expect(hook.result.current.publicationReceipt).toEqual({
       versionId,
+      versionNumber: 1,
       generation: 4,
       revision: 2,
     });
   });
+});
 
+describe('workflow run submission recovery', () => {
   it('retries the exact accepted run intent without another save barrier', async () => {
     const requests: ApiJsonRequest<unknown>[] = [];
     let calls = 0;
@@ -231,7 +239,9 @@ describe('workflow command recovery', () => {
 
     expect(onRunAccepted).not.toHaveBeenCalled();
   });
+});
 
+describe('workflow run submission lifecycle', () => {
   it('does not dispatch a run after disposal during the save barrier', async () => {
     const saved = deferred<unknown>();
     const requests: ApiJsonRequest<unknown>[] = [];
@@ -366,4 +376,12 @@ function deferred<T>() {
 
 function StrictModeWrapper({ children }: Readonly<{ children: ReactNode }>) {
   return createElement(StrictMode, undefined, children);
+}
+
+function QueryWrapper({ children }: Readonly<{ children: ReactNode }>) {
+  return createElement(
+    QueryClientProvider,
+    { client: new QueryClient() },
+    children,
+  );
 }

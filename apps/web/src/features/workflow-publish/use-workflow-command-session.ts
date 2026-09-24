@@ -10,6 +10,7 @@ export type SavedDraftIdentity = Readonly<{
 
 export function useWorkflowCommandSession({
   apiClient,
+  userId,
   workspaceId,
   workflowId,
   verifyIdentity,
@@ -20,6 +21,7 @@ export function useWorkflowCommandSession({
   onPublicationAccepted,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspaceId: string;
   workflowId: string;
   verifyIdentity: () => Promise<void>;
@@ -31,6 +33,7 @@ export function useWorkflowCommandSession({
 }>) {
   const publication = useWorkflowPublication({
     apiClient,
+    userId,
     workspaceId,
     workflowId,
     verifyIdentity,

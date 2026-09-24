@@ -6,55 +6,44 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
-import { WorkflowActions } from '@/features/workflow-publish/workflow-actions';
-import { useWorkflowCommandSession } from '@/features/workflow-publish/use-workflow-command-session';
-import { createEditorStore } from '@/features/workflow-editor/model/editor.store';
+import { NotificationsProvider } from '@/components/ui/toast';
+import { NodeTestPanel } from '@/features/workflow-publish/public';
 import { ApiError } from '@/lib/api/api-error';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const previewId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const etag = `"draft-v1.${'a'.repeat(43)}"`;
-const workspace = {
-  id: workspaceId,
-  name: 'Workspace',
-  slug: 'workspace',
-  status: 'active',
-  revision: 1,
-  role: 'owner',
-  capabilities: ['workflow:read', 'workflow:update'],
-  createdAt: '2026-09-15T10:00:00.000Z',
-  updatedAt: '2026-09-15T10:00:00.000Z',
-} satisfies AccessibleWorkspace;
 
-describe('node preview lifecycle', () => {
-  it('resets input, validation, result, and acknowledgement when the node changes', async () => {
+describe('node test panel', () => {
+  it('resets input, check, result and acknowledgement when the step changes', async () => {
     let resolveValidation: ((value: unknown) => void) | undefined;
     const validation = new Promise((resolve) => {
       resolveValidation = resolve;
     });
     const apiClient = apiClientFor(() => validation);
-    const store = editorStore();
-    store.getState().selectNode('node-a');
     const event = userEvent.setup();
-    const view = render(actions(store, apiClient));
+    const view = render(panel(apiClient, 'node-a'));
 
-    await event.click(screen.getByRole('button', { name: 'Preview node' }));
     fireEvent.change(screen.getByLabelText('Sample input (JSON)'), {
       target: { value: '{"a":1}' },
     });
-    await event.click(screen.getByRole('checkbox'));
-    await event.click(screen.getByRole('button', { name: 'Validate node' }));
+    await event.click(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    );
+    await event.click(screen.getByRole('button', { name: 'Check setup' }));
 
-    store.getState().selectNode('node-b');
-    view.rerender(actions(store, apiClient));
+    view.rerender(panel(apiClient, 'node-b'));
     expect(screen.getByLabelText('Sample input (JSON)')).toHaveValue('{}');
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
-    expect(screen.queryByText('Node valid')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    ).not.toBeChecked();
 
     await act(async () => {
       resolveValidation?.({
@@ -67,10 +56,65 @@ describe('node preview lifecycle', () => {
       });
       await Promise.resolve();
     });
-    expect(screen.queryByText('Node valid')).not.toBeInTheDocument();
+    expect(screen.queryByText('Setup looks right')).not.toBeInTheDocument();
   });
 
-  it('resumes observation of an accepted preview instead of executing again', async () => {
+  it('shows the setup check issues inline in plain words', async () => {
+    const apiClient = apiClientFor(() =>
+      Promise.resolve({
+        mode: 'validate',
+        valid: false,
+        revision: 1,
+        nodeId: 'node-a',
+        issues: [
+          {
+            path: '$.config.channelId',
+            code: 'invalid_config',
+            message: 'channel is required',
+          },
+        ],
+        disclosure: {
+          ...disclosure,
+          sideEffectClass: 'unsafe',
+          mayCauseExternalSideEffect: true,
+        },
+      }),
+    );
+    render(panel(apiClient, 'node-a', 'This sends a real Slack message.'));
+    expect(screen.getByText('This sends a real Slack message.')).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Check setup' }));
+    expect(await screen.findByText('1 thing to fix')).toBeVisible();
+    expect(screen.getByText('Channel is required.')).toBeVisible();
+  });
+
+  it('shows inline output as a JSON tree after a passed test', async () => {
+    const onSucceeded = vi.fn();
+    const apiClient = apiClientFor(() =>
+      Promise.resolve({
+        mode: 'test_execute',
+        replayed: false,
+        preview: previewSummary('succeeded'),
+      }),
+    );
+    render(panel(apiClient, 'node-a', undefined, onSucceeded));
+    const event = userEvent.setup();
+    expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled();
+    await event.click(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    );
+    await event.click(screen.getByRole('button', { name: 'Run test' }));
+    expect(await screen.findByText('Test passed')).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: 'Test output' }),
+    ).toHaveTextContent('accepted');
+    expect(onSucceeded).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes observation of an accepted test instead of running it again', async () => {
     let submissions = 0;
     let observations = 0;
     const apiClient = apiClientFor((request) => {
@@ -89,38 +133,41 @@ describe('node preview lifecycle', () => {
         );
       return Promise.resolve({ preview: previewSummary('succeeded') });
     });
-    const store = editorStore();
-    store.getState().selectNode('node-a');
-    render(actions(store, apiClient));
+    render(panel(apiClient, 'node-a'));
     const event = userEvent.setup();
 
-    await event.click(screen.getByRole('button', { name: 'Preview node' }));
-    await event.click(screen.getByRole('checkbox'));
-    await event.click(screen.getByRole('button', { name: 'Test execute' }));
+    await event.click(
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    );
+    await event.click(screen.getByRole('button', { name: 'Run test' }));
     expect(
       await screen.findByRole(
         'button',
-        { name: 'Resume preview status' },
-        {
-          timeout: 2_500,
-        },
+        { name: 'Check test status' },
+        { timeout: 2_500 },
       ),
     ).toBeVisible();
     expect(submissions).toBe(1);
     fireEvent.change(screen.getByLabelText('Sample input (JSON)'), {
       target: { value: '{\n}' },
     });
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
     expect(
-      screen.getByRole('button', { name: 'Resume preview status' }),
+      screen.getByRole('switch', {
+        name: 'I understand this test runs for real',
+      }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Check test status' }),
     ).toBeEnabled();
 
     await event.click(
-      screen.getByRole('button', { name: 'Resume preview status' }),
+      screen.getByRole('button', { name: 'Check test status' }),
     );
     await waitFor(
       () => {
-        expect(screen.getByText(/succeeded/u)).toBeVisible();
+        expect(screen.getByText('Test passed')).toBeVisible();
       },
       { timeout: 2_500 },
     );
@@ -145,7 +192,10 @@ function previewSummary(status: 'running' | 'succeeded') {
     nodeId: 'node-a',
     status,
     disclosure,
-    output: status === 'succeeded' ? { kind: 'inline', value: true } : null,
+    output:
+      status === 'succeeded'
+        ? { kind: 'inline', value: { accepted: true } }
+        : null,
     safeErrorCode: null,
     createdAt: '2026-09-15T10:00:00.000Z',
     startedAt: '2026-09-15T10:00:01.000Z',
@@ -154,55 +204,26 @@ function previewSummary(status: 'running' | 'succeeded') {
   };
 }
 
-function editorStore() {
-  return createEditorStore({
-    graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
-    etag,
-    revision: 1,
-  });
-}
-
-function actions(store: ReturnType<typeof editorStore>, apiClient: ApiClient) {
-  return <TestWorkflowActions store={store} apiClient={apiClient} />;
-}
-
-function TestWorkflowActions({
-  store,
-  apiClient,
-}: Readonly<{
-  store: ReturnType<typeof editorStore>;
-  apiClient: ApiClient;
-}>) {
-  const ensureSaved = () =>
-    Promise.resolve({
-      etag: store.getState().etag,
-      generation: store.getState().generation,
-      revision: store.getState().revision,
-    });
-  const commandSession = useWorkflowCommandSession({
-    apiClient,
-    workspaceId,
-    workflowId,
-    verifyIdentity: () => Promise.resolve(),
-    isSessionPaused: () => false,
-    ensureSaved,
-    onRunAccepted: vi.fn(),
-  });
-
+function panel(
+  apiClient: ApiClient,
+  nodeId: string,
+  stepSideEffect?: string,
+  onSucceeded?: () => void,
+): ReactNode {
   return (
-    <WorkflowActions
-      apiClient={apiClient}
-      userId={userId}
-      workspace={workspace}
-      workflowId={workflowId}
-      selectedNodeId={store.getState().selectedNodeId}
-      graph={store.getState().graph}
-      generation={store.getState().generation}
-      revision={store.getState().revision}
-      commandSession={commandSession}
-      ensureSaved={ensureSaved}
-      onValidationTarget={vi.fn()}
-    />
+    <NotificationsProvider>
+      <NodeTestPanel
+        key={nodeId}
+        apiClient={apiClient}
+        workspaceId={workspaceId}
+        workflowId={workflowId}
+        nodeId={nodeId}
+        stepSideEffect={stepSideEffect}
+        priorPreview={undefined}
+        ensureSaved={() => Promise.resolve({ revision: 1 })}
+        {...(onSucceeded === undefined ? {} : { onSucceeded })}
+      />
+    </NotificationsProvider>
   );
 }
 

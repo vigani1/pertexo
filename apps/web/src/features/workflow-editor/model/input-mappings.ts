@@ -1,44 +1,36 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { parseJsonPath } from '@pertexo/workflow-model/json-path';
+import { stepTitle } from './graph-adapter';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type InputMapping = WorkflowNode['inputMappings'][string];
 type JsonValue = Extract<InputMapping, { readonly kind: 'literal' }>['value'];
 export type EditableInputMappingKind = Extract<
   InputMapping,
-  { readonly kind: 'literal' | 'run_input' | 'node_output' }
+  { readonly kind: 'literal' | 'run_input' | 'node_output' | 'expression' }
 >['kind'];
 
+/** The restricted JSONata policy the catalog's expression steps accept. */
+export const EXPRESSION_POLICY_VERSION = 1;
+
+type RowBase = Readonly<{ id: string; destinationKey: string }>;
+
 export type InputMappingDraftRow =
-  | Readonly<{
-      id: string;
-      destinationKey: string;
-      kind: 'literal';
-      literalJson: string;
-    }>
-  | Readonly<{
-      id: string;
-      destinationKey: string;
-      kind: 'run_input';
-      path: string;
-    }>
-  | Readonly<{
-      id: string;
-      destinationKey: string;
-      kind: 'node_output';
-      nodeId: string;
-      path: string;
-    }>
-  | Readonly<{
-      id: string;
-      destinationKey: string;
-      kind: 'advanced';
-      source: Extract<
-        InputMapping,
-        { readonly kind: 'expression' | 'structured_input' }
-      >;
-    }>;
+  | (RowBase & Readonly<{ kind: 'literal'; literalJson: string }>)
+  | (RowBase & Readonly<{ kind: 'run_input'; path: string }>)
+  | (RowBase & Readonly<{ kind: 'node_output'; nodeId: string; path: string }>)
+  | (RowBase &
+      Readonly<{
+        kind: 'expression';
+        expression: string;
+        policyVersion: number;
+      }>)
+  | (RowBase &
+      Readonly<{
+        kind: 'advanced';
+        source: Extract<InputMapping, { readonly kind: 'structured_input' }>;
+      }>);
 
 export type InputMappingRowErrors = Readonly<{
   destinationKey?: string;
@@ -55,10 +47,14 @@ export type InputMappingValidationResult =
       errors: Readonly<Record<string, InputMappingRowErrors>>;
     }>;
 
+export type SchemaValueType =
+  'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
+
 export type InputKeySuggestion = Readonly<{
   key: string;
   label: string;
   description?: string;
+  type?: SchemaValueType;
 }>;
 
 export type PredecessorOption = Readonly<{
@@ -70,37 +66,46 @@ export function inputMappingRowsFor(
   inputMappings: WorkflowNode['inputMappings'],
 ): readonly InputMappingDraftRow[] {
   return Object.entries(inputMappings).map(
-    ([destinationKey, source], index) => {
+    ([destinationKey, source], index): InputMappingDraftRow => {
       const id = `existing-${String(index)}`;
-      if (source.kind === 'literal')
-        return {
-          id,
-          destinationKey,
-          kind: 'literal',
-          literalJson: JSON.stringify(source.value, null, 2),
-        };
-      if (source.kind === 'run_input')
-        return { id, destinationKey, kind: 'run_input', path: source.path };
-      if (source.kind === 'node_output')
-        return {
-          id,
-          destinationKey,
-          kind: 'node_output',
-          nodeId: source.nodeId,
-          path: source.path,
-        };
-      return { id, destinationKey, kind: 'advanced', source };
+      switch (source.kind) {
+        case 'literal':
+          return {
+            id,
+            destinationKey,
+            kind: 'literal',
+            literalJson: JSON.stringify(source.value, null, 2),
+          };
+        case 'run_input':
+          return { id, destinationKey, kind: 'run_input', path: source.path };
+        case 'node_output':
+          return {
+            id,
+            destinationKey,
+            kind: 'node_output',
+            nodeId: source.nodeId,
+            path: source.path,
+          };
+        case 'expression':
+          return {
+            id,
+            destinationKey,
+            kind: 'expression',
+            expression: source.expression,
+            policyVersion: source.policyVersion,
+          };
+        case 'structured_input':
+          return { id, destinationKey, kind: 'advanced', source };
+      }
     },
   );
 }
 
-export function newInputMappingRow(id: string): InputMappingDraftRow {
-  return {
-    id,
-    destinationKey: '',
-    kind: 'literal',
-    literalJson: 'null',
-  };
+export function newInputMappingRow(
+  id: string,
+  destinationKey = '',
+): InputMappingDraftRow {
+  return { id, destinationKey, kind: 'literal', literalJson: 'null' };
 }
 
 export function changeInputMappingKind(
@@ -108,88 +113,114 @@ export function changeInputMappingKind(
   kind: EditableInputMappingKind,
   firstPredecessorId = '',
 ): InputMappingDraftRow {
-  if (kind === 'literal')
-    return {
-      id: row.id,
-      destinationKey: row.destinationKey,
-      kind,
-      literalJson: 'null',
-    };
-  if (kind === 'run_input')
-    return {
-      id: row.id,
-      destinationKey: row.destinationKey,
-      kind,
-      path: '$',
-    };
-  return {
-    id: row.id,
-    destinationKey: row.destinationKey,
-    kind,
-    nodeId: firstPredecessorId,
-    path: '$',
-  };
+  const base = { id: row.id, destinationKey: row.destinationKey };
+  switch (kind) {
+    case 'literal':
+      return { ...base, kind, literalJson: 'null' };
+    case 'run_input':
+      return { ...base, kind, path: '$' };
+    case 'node_output':
+      return { ...base, kind, nodeId: firstPredecessorId, path: '$' };
+    case 'expression':
+      return {
+        ...base,
+        kind,
+        expression: '',
+        policyVersion: EXPRESSION_POLICY_VERSION,
+      };
+  }
 }
 
+/**
+ * Converts rows into mappings. `requireDirectPredecessor: false` accepts a
+ * step-output source that is no longer wired: live editing keeps such a row
+ * (shown as a warning) instead of blocking every other input edit.
+ */
 export function validateInputMappingRows(
   rows: readonly InputMappingDraftRow[],
   graph: WorkflowGraphContract,
   targetNodeId: string,
+  options: Readonly<{ requireDirectPredecessor?: boolean }> = {},
 ): InputMappingValidationResult {
   const errors: Record<string, InputMappingRowErrors> = {};
-  const keyOwners = new Map<string, string[]>();
-  for (const row of rows) {
-    const owners = keyOwners.get(row.destinationKey) ?? [];
-    owners.push(row.id);
-    keyOwners.set(row.destinationKey, owners);
-  }
-
+  const keyCounts = new Map<string, number>();
+  for (const row of rows)
+    keyCounts.set(
+      row.destinationKey,
+      (keyCounts.get(row.destinationKey) ?? 0) + 1,
+    );
   const directPredecessors = new Set(
     directPredecessorOptions(graph, targetNodeId).map(({ nodeId }) => nodeId),
   );
+  const requirePredecessor = options.requireDirectPredecessor ?? true;
   const inputMappings = Object.create(null) as Record<string, InputMapping>;
   for (const row of rows) {
-    let destinationKeyError: string | undefined;
-    let sourceError: string | undefined;
-    if (row.destinationKey.trim() === '')
-      destinationKeyError = 'Destination key is required.';
-    else if ((keyOwners.get(row.destinationKey)?.length ?? 0) > 1)
-      destinationKeyError = 'Destination keys must be unique.';
-
-    let source: InputMapping | undefined;
-    if (row.kind === 'advanced') source = row.source;
-    else if (row.kind === 'literal') {
-      const value = parseJsonValue(row.literalJson);
-      if (value === undefined)
-        sourceError = 'Literal value must be valid JSON.';
-      else source = { kind: 'literal', value };
-    } else if (parseJsonPath(row.path) === undefined)
-      sourceError =
-        'Use $, dot properties, array indexes, or quoted properties.';
-    else if (row.kind === 'run_input')
-      source = { kind: 'run_input', path: row.path };
-    else if (row.nodeId === '') sourceError = 'Choose a connected predecessor.';
-    else if (!directPredecessors.has(row.nodeId))
-      sourceError = 'The source must be a directly connected predecessor.';
-    else source = { kind: 'node_output', nodeId: row.nodeId, path: row.path };
-
-    if (destinationKeyError !== undefined || sourceError !== undefined) {
+    const destinationKey =
+      row.destinationKey.trim() === ''
+        ? 'Destination key is required.'
+        : (keyCounts.get(row.destinationKey) ?? 0) > 1
+          ? 'Destination keys must be unique.'
+          : undefined;
+    const source = rowSource(row, directPredecessors, requirePredecessor);
+    if (destinationKey !== undefined || source.error !== undefined) {
       errors[row.id] = {
-        ...(destinationKeyError === undefined
-          ? {}
-          : { destinationKey: destinationKeyError }),
-        ...(sourceError === undefined ? {} : { source: sourceError }),
+        ...(destinationKey === undefined ? {} : { destinationKey }),
+        ...(source.error === undefined ? {} : { source: source.error }),
       };
       continue;
     }
-    if (source !== undefined) inputMappings[row.destinationKey] = source;
+    if (source.mapping !== undefined)
+      inputMappings[row.destinationKey] = source.mapping;
   }
-
   return Object.keys(errors).length === 0
     ? { inputMappings, errors: {} }
     : { errors };
 }
 
+function rowSource(
+  row: InputMappingDraftRow,
+  directPredecessors: ReadonlySet<string>,
+  requirePredecessor: boolean,
+): Readonly<{ mapping?: InputMapping; error?: string }> {
+  switch (row.kind) {
+    case 'advanced':
+      return { mapping: row.source };
+    case 'literal': {
+      const value = parseJsonValue(row.literalJson);
+      return value === undefined
+        ? { error: 'Literal value must be valid JSON.' }
+        : { mapping: { kind: 'literal', value } };
+    }
+    case 'expression':
+      return row.expression.trim() === ''
+        ? { error: 'Write an expression, such as body.amount > 5000.' }
+        : {
+            mapping: {
+              kind: 'expression',
+              language: 'jsonata',
+              expression: row.expression,
+              policyVersion: row.policyVersion,
+            },
+          };
+    case 'run_input':
+    case 'node_output':
+      break;
+  }
+  if (parseJsonPath(row.path) === undefined)
+    return {
+      error: 'Use $, dot properties, array indexes, or quoted properties.',
+    };
+  if (row.kind === 'run_input')
+    return { mapping: { kind: 'run_input', path: row.path } };
+  if (row.nodeId === '') return { error: 'Choose a connected predecessor.' };
+  if (requirePredecessor && !directPredecessors.has(row.nodeId))
+    return { error: 'The source must be a directly connected predecessor.' };
+  return {
+    mapping: { kind: 'node_output', nodeId: row.nodeId, path: row.path },
+  };
+}
+
+/** Graph-consistency warnings that live editing shows but does not block. */
 export function inputMappingSourceErrors(
   rows: readonly InputMappingDraftRow[],
   graph: WorkflowGraphContract,
@@ -208,20 +239,37 @@ export function inputMappingSourceErrors(
 export function inputKeySuggestions(
   inputSchema: NodeDefinitionCatalogItem['inputSchema'] | undefined,
 ): readonly InputKeySuggestion[] {
-  if (!isRecord(inputSchema) || Reflect.get(inputSchema, 'type') !== 'object')
-    return [];
-  const properties = Reflect.get(inputSchema, 'properties');
-  if (!isRecord(properties)) return [];
-  return Object.entries(properties).map(([key, candidate]) => {
+  return schemaProperties(inputSchema).map(([key, candidate]) => {
     if (!isRecord(candidate)) return { key, label: key };
     const title = Reflect.get(candidate, 'title');
     const description = Reflect.get(candidate, 'description');
+    const type = schemaValueType(candidate);
     return {
       key,
       label: typeof title === 'string' ? title : key,
       ...(typeof description === 'string' ? { description } : {}),
+      ...(type === undefined ? {} : { type }),
     };
   });
+}
+
+export type OutputField = Readonly<{ key: string; type?: SchemaValueType }>;
+
+/** Top-level fields a step's output schema promises, for "Insert data". */
+export function outputFieldsOf(
+  outputSchema: NodeDefinitionCatalogItem['outputSchema'] | undefined,
+): readonly OutputField[] {
+  return schemaProperties(outputSchema).map(([key, candidate]) => {
+    const type = isRecord(candidate) ? schemaValueType(candidate) : undefined;
+    return type === undefined ? { key } : { key, type };
+  });
+}
+
+/** A JSON path for one top-level property: `$.amount` or `$['a-b']`. */
+export function propertyPath(key: string): string {
+  return /^[A-Za-z_$][\w$]*$/u.test(key)
+    ? `$.${key}`
+    : `$[${JSON.stringify(key).replaceAll('"', "'")}]`;
 }
 
 export function directPredecessorOptions(
@@ -235,12 +283,7 @@ export function directPredecessorOptions(
   );
   return graph.nodes.flatMap((node) =>
     predecessorIds.has(node.id)
-      ? [
-          {
-            nodeId: node.id,
-            label: node.label ?? node.definition.key,
-          },
-        ]
+      ? [{ nodeId: node.id, label: stepTitle(node) }]
       : [],
   );
 }
@@ -273,11 +316,34 @@ export function inputMappingSourceControlId(
 }
 
 export function isEditableInputMappingKind(
-  value: string,
+  value: unknown,
 ): value is EditableInputMappingKind {
   return (
-    value === 'literal' || value === 'run_input' || value === 'node_output'
+    value === 'literal' ||
+    value === 'run_input' ||
+    value === 'node_output' ||
+    value === 'expression'
   );
+}
+
+function schemaProperties(schema: unknown): [string, unknown][] {
+  if (!isRecord(schema) || Reflect.get(schema, 'type') !== 'object') return [];
+  const properties = Reflect.get(schema, 'properties');
+  return isRecord(properties) ? Object.entries(properties) : [];
+}
+
+function schemaValueType(
+  candidate: Readonly<Record<string, unknown>>,
+): SchemaValueType | undefined {
+  const type = Reflect.get(candidate, 'type');
+  return type === 'string' ||
+    type === 'number' ||
+    type === 'integer' ||
+    type === 'boolean' ||
+    type === 'object' ||
+    type === 'array'
+    ? type
+    : undefined;
 }
 
 function parseJsonValue(value: string): JsonValue | undefined {
