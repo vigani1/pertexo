@@ -5,12 +5,6 @@ import {
   type ScheduleManagementCommandResponse,
 } from '@pertexo/contracts/schemas/schedules';
 import {
-  workflowLifecycleRequestSchema,
-  workflowLifecycleResponseSchema,
-  type WorkflowLifecycleResponse,
-  type WorkflowSummary,
-} from '@pertexo/contracts/schemas/workflow-authoring';
-import {
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
   webhookTriggerListResponseSchema,
@@ -20,30 +14,6 @@ import type { ApiClient } from '@/lib/api/client';
 
 function workflowPath(workspaceId: string, workflowId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}`;
-}
-
-export function transitionWorkflowLifecycle(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  input: Readonly<{
-    command: 'archive' | 'restore';
-    expectedLifecycleRevision: number;
-    idempotencyKey: string;
-  }>,
-): Promise<WorkflowLifecycleResponse> {
-  return apiClient.request({
-    path: `${workflowPath(workspaceId, workflowId)}/${input.command}`,
-    method: 'POST',
-    headers: { 'Idempotency-Key': input.idempotencyKey },
-    body: workflowLifecycleRequestSchema.parse({
-      expectedLifecycleRevision: input.expectedLifecycleRevision,
-    }),
-    response: {
-      kind: 'json',
-      decode: (value) => workflowLifecycleResponseSchema.parse(value),
-    },
-  });
 }
 
 export function getScheduleTriggers(
@@ -140,7 +110,7 @@ export function setFailureNotificationPolicy(
   idempotencyKey: string,
 ): Promise<void> {
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/failure-notification-policy`,
+    path: `${workflowPath(workspaceId, workflowId)}/failure-notification-policy`,
     method: 'PUT',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: workflowFailureNotificationPolicyRequestSchema.parse({
@@ -157,17 +127,9 @@ export function clearFailureNotificationPolicy(
   idempotencyKey: string,
 ): Promise<void> {
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/failure-notification-policy`,
+    path: `${workflowPath(workspaceId, workflowId)}/failure-notification-policy`,
     method: 'DELETE',
     headers: { 'Idempotency-Key': idempotencyKey },
     response: { kind: 'empty' },
   });
 }
-
-export type WorkflowSettingsSummary = WorkflowSummary | null;
-export type WorkflowSettingsSchedules = Awaited<
-  ReturnType<typeof getScheduleTriggers>
->;
-export type WorkflowSettingsWebhooks = Awaited<
-  ReturnType<typeof getWebhookTriggers>
->;

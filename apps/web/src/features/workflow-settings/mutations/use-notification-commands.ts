@@ -11,6 +11,10 @@ import {
   useCommandAttemptKeys,
 } from './settings-command';
 
+/**
+ * Sets or clears where failure alerts go. An unconfirmed attempt must be
+ * retried exactly (same key) before a different choice is sent.
+ */
 export function useFailureNotificationCommands({
   apiClient,
   workspaceId,
@@ -24,9 +28,8 @@ export function useFailureNotificationCommands({
   const pendingRef = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [result, setResult] = useState<string>();
 
-  async function updatePolicy(destinationId?: string) {
+  async function updatePolicy(destinationId?: string): Promise<boolean> {
     if (pendingRef.current) return false;
     const clear = destinationId === undefined;
     const scope = `policy:${workflowId}`;
@@ -56,18 +59,13 @@ export function useFailureNotificationCommands({
           attempt.key,
         );
       commands.complete(scope, intent);
-      setResult(
-        clear
-          ? 'Failure notification policy cleared.'
-          : 'Failure notification policy updated.',
-      );
       return true;
     } catch (cause) {
       if (!isUncertainSettingsCommand(cause)) commands.complete(scope, intent);
       setError(
         settingsCommandError(
           cause,
-          clear ? 'clear the policy' : 'set the policy',
+          clear ? 'turning failure alerts off' : 'changing where alerts go',
         ),
       );
       return false;
@@ -77,10 +75,5 @@ export function useFailureNotificationCommands({
     }
   }
 
-  return {
-    pending,
-    error,
-    result,
-    updatePolicy,
-  };
+  return { pending, error, updatePolicy };
 }
