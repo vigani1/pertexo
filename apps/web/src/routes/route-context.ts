@@ -17,7 +17,7 @@ export type RouterContext = Readonly<{
   apiClient: ApiClient;
 }>;
 
-export function rethrowError(error: unknown): never {
+function rethrowError(error: unknown): never {
   if (error instanceof Error) throw error;
   throw new Error('An unexpected route failure occurred.', { cause: error });
 }

@@ -73,7 +73,7 @@ function commandFor(
   return undefined;
 }
 
-export function isEditableTarget(target: EventTarget | null): boolean {
+function isEditableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (target.isContentEditable ||

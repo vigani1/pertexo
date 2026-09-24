@@ -12,7 +12,7 @@ export type DestinationErrors = Readonly<
   Partial<Record<DestinationField, string | undefined>>
 >;
 
-export function destinationTarget(
+function destinationTarget(
   config: FailureNotificationDestinationConfig,
 ): string {
   return config.kind === 'slack' ? `#${config.channelId}` : config.toEmail;

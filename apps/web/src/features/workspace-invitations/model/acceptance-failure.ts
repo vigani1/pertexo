@@ -7,7 +7,7 @@ export type AcceptanceFailure = Readonly<{
   message: string;
 }>;
 
-export const UNCERTAIN_ACCEPTANCE: AcceptanceFailure = {
+const UNCERTAIN_ACCEPTANCE: AcceptanceFailure = {
   kind: 'uncertain',
   message:
     'We couldn’t confirm whether you joined. Check the status; checking never accepts twice.',

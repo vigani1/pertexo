@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import { cn } from '@/lib/utils';
 import { popupSurface } from './popup-surface';
@@ -86,22 +85,6 @@ export function DropdownMenuSeparator({
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
       className={cn('-mx-1 my-1 h-px bg-border', className)}
-      {...props}
-    />
-  );
-}
-
-export function DropdownMenuShortcut({
-  className,
-  ...props
-}: ComponentProps<'span'>) {
-  return (
-    <span
-      data-slot="dropdown-menu-shortcut"
-      className={cn(
-        'ml-auto font-mono text-[0.7rem] text-subtle-foreground',
-        className,
-      )}
       {...props}
     />
   );

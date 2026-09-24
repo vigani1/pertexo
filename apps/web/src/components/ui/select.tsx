@@ -111,19 +111,3 @@ export function SelectGroup({
     />
   );
 }
-
-export function SelectLabel({
-  className,
-  ...props
-}: SelectPrimitive.GroupLabel.Props) {
-  return (
-    <SelectPrimitive.GroupLabel
-      data-slot="select-label"
-      className={cn(
-        'px-2 py-1 font-mono text-[0.68rem] tracking-wide text-subtle-foreground uppercase',
-        className,
-      )}
-      {...props}
-    />
-  );
-}

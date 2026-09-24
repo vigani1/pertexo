@@ -65,16 +65,6 @@ export function diffWorkflowGraphs(
   };
 }
 
-export function isEmptyGraphDiff(diff: WorkflowGraphDiff): boolean {
-  return (
-    diff.added.length === 0 &&
-    diff.removed.length === 0 &&
-    diff.changed.length === 0 &&
-    diff.connectionsAdded === 0 &&
-    diff.connectionsRemoved === 0
-  );
-}
-
 function changedAspects(
   before: WorkflowNode,
   after: WorkflowNode,

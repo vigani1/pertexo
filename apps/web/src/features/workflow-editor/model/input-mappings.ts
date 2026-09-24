@@ -12,7 +12,7 @@ export type EditableInputMappingKind = Extract<
 >['kind'];
 
 /** The restricted JSONata policy the catalog's expression steps accept. */
-export const EXPRESSION_POLICY_VERSION = 1;
+const EXPRESSION_POLICY_VERSION = 1;
 
 type RowBase = Readonly<{ id: string; destinationKey: string }>;
 

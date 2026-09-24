@@ -50,10 +50,7 @@ const REJECTED_CREDENTIAL: Readonly<Record<ProviderKey, string>> = {
 };
 
 /** A few words for why the last test failed, never the raw code. */
-export function describeTestFailure(
-  provider: ProviderKey,
-  errorCode: string,
-): string {
+function describeTestFailure(provider: ProviderKey, errorCode: string): string {
   if (errorCode === 'connection.credential_rejected')
     return REJECTED_CREDENTIAL[provider];
   return FAILURE_REASONS[errorCode] ?? 'something went wrong';

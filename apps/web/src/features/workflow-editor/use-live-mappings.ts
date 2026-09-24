@@ -19,7 +19,7 @@ type MappingDraft = Readonly<{
   sequence: number;
 }>;
 
-export const MAPPINGS_FIELD = 'inputs';
+const MAPPINGS_FIELD = 'inputs';
 
 /**
  * A step's input rows under live apply. When every row is complete the

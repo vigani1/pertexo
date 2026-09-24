@@ -2,7 +2,7 @@
 // do). The code itself stays visible in mono beside the sentence, so support
 // can still find it; prose never shows a bare code.
 
-export type StepErrorFix = 'reconnect' | 'review-connection';
+type StepErrorFix = 'reconnect' | 'review-connection';
 
 export type StepErrorCopy = Readonly<{
   sentence: string;

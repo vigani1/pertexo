@@ -2,10 +2,4 @@ export {
   decodeWorkflowDraftSnapshot,
   type WorkflowDraftSnapshot,
 } from './workflow-draft-snapshot';
-export {
-  diffWorkflowGraphs,
-  isEmptyGraphDiff,
-  type ChangedStep,
-  type StepChangeAspect,
-  type WorkflowGraphDiff,
-} from './model/graph-diff';
+export { diffWorkflowGraphs, type StepChangeAspect } from './model/graph-diff';

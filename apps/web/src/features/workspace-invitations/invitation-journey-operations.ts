@@ -84,7 +84,7 @@ export function retireJourney(runtime: JourneyRuntime) {
 }
 
 /** Resolves the link token once, or reads the bound journey after reload. */
-export async function bootstrapJourney(
+async function bootstrapJourney(
   runtime: JourneyRuntime,
   signal: AbortSignal,
   ownership: number,

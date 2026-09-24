@@ -3,4 +3,4 @@ export {
   workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
 } from './workspaces.queries';
-export { parseTeamSearch, type TeamSearch } from './model/team-search';
+export { parseTeamSearch } from './model/team-search';

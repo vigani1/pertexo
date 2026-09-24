@@ -19,7 +19,7 @@ import {
   type ThreadSegment,
 } from './step-replay';
 
-export type { StepOutput, StepStoryEntry, ThreadSegment };
+export type { ThreadSegment };
 
 export type ThreadStepStatus = NodeStatus | 'not_started';
 

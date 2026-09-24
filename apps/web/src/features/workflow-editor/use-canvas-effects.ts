@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import { edgeWeaveOrder, upstreamEdgeIds } from './model/graph-order';
 
 /** How long a passed test's path keeps flowing along the canvas. */
-export const TEST_FLOW_MS = 10_000;
+const TEST_FLOW_MS = 10_000;
 /** The weave-in plus the stamp; the canvas returns to rest afterwards. */
-export const WEAVE_MS = 4_600;
+const WEAVE_MS = 4_600;
 
 const noEdges: ReadonlySet<string> = new Set();
 

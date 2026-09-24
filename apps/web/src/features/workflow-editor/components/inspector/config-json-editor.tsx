@@ -10,7 +10,7 @@ import { parseConfigJson, type NodeConfig } from '../../model/inspector-draft';
 import { useLiveField } from '../../use-live-field';
 import type { NodeFormApi } from '../../model/node-form';
 
-export const CONFIG_JSON_FIELD = '\u0000json';
+const CONFIG_JSON_FIELD = '\u0000json';
 
 /**
  * The whole setup as JSON. Every property is kept exactly, including ones no

@@ -21,7 +21,7 @@ export function isNotFound(error: unknown): boolean {
   return isApiError(error) && error.status === 404;
 }
 
-export function isWritePaused(error: unknown): boolean {
+function isWritePaused(error: unknown): boolean {
   return isApiError(error) && error.problem?.code === 'platform.write_paused';
 }
 
