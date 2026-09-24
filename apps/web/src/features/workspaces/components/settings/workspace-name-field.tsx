@@ -91,25 +91,14 @@ export function WorkspaceNameField({
 
   if (editing === undefined)
     return (
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="min-w-0 break-all text-sm font-semibold">
-          {workspace.name}
-        </span>
-        {canRename ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Rename workspace"
-            onClick={() => {
-              setName(workspace.name);
-              setEditing({ startedAs: workspace.name });
-            }}
-          >
-            <PencilIcon aria-hidden="true" />
-          </Button>
-        ) : null}
-      </div>
+      <NameDisplay
+        name={workspace.name}
+        canRename={canRename}
+        onEdit={() => {
+          setName(workspace.name);
+          setEditing({ startedAs: workspace.name });
+        }}
+      />
     );
 
   const conflict = command.error?.kind === 'conflict';
@@ -166,43 +155,90 @@ export function WorkspaceNameField({
           tone={conflict || command.retryAvailable ? 'warning' : 'destructive'}
         >
           {latestLoaded
-            ? workspace.name === editing.startedAs
-              ? 'This workspace changed while you were editing.'
-              : `Renamed to “${workspace.name}” meanwhile.`
+            ? meanwhileMessage(workspace.name, editing.startedAs)
             : command.error.message}
         </Notice>
       )}
-      {latestLoaded ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="ghost" onClick={stopEditing}>
-            Use theirs
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => {
-              command.clearError();
-              save(workspace.revision);
-            }}
-          >
-            Keep mine
-          </Button>
-        </div>
-      ) : conflict ? (
-        <Button
-          type="button"
-          variant="default"
-          className="self-start"
-          onClick={() => {
+      {conflict ? (
+        <ConflictActions
+          latestLoaded={latestLoaded}
+          onUseTheirs={stopEditing}
+          onKeepMine={() => {
+            command.clearError();
+            save(workspace.revision);
+          }}
+          onLoadLatest={() => {
             void command.reloadLatest();
           }}
-        >
-          Load the latest name
-        </Button>
+        />
       ) : (
         <SaveActions command={command} onCancel={stopEditing} />
       )}
     </form>
+  );
+}
+
+function meanwhileMessage(current: string, startedAs: string): string {
+  return current === startedAs
+    ? 'This workspace changed while you were editing.'
+    : `Renamed to “${current}” meanwhile.`;
+}
+
+function NameDisplay({
+  name,
+  canRename,
+  onEdit,
+}: Readonly<{ name: string; canRename: boolean; onEdit: () => void }>) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 break-all text-sm font-semibold">{name}</span>
+      {canRename ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Rename workspace"
+          onClick={onEdit}
+        >
+          <PencilIcon aria-hidden="true" />
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Someone renamed it meanwhile: load their name, then keep either. */
+function ConflictActions({
+  latestLoaded,
+  onUseTheirs,
+  onKeepMine,
+  onLoadLatest,
+}: Readonly<{
+  latestLoaded: boolean;
+  onUseTheirs: () => void;
+  onKeepMine: () => void;
+  onLoadLatest: () => void;
+}>) {
+  if (!latestLoaded)
+    return (
+      <Button
+        type="button"
+        variant="default"
+        className="self-start"
+        onClick={onLoadLatest}
+      >
+        Load the latest name
+      </Button>
+    );
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="ghost" onClick={onUseTheirs}>
+        Use theirs
+      </Button>
+      <Button type="button" variant="default" onClick={onKeepMine}>
+        Keep mine
+      </Button>
+    </div>
   );
 }
 

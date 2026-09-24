@@ -172,6 +172,9 @@ export function useWorkspaceRename({
   onAccessLost: () => void;
 }>) {
   const queryClient = useQueryClient();
+  // The command owns the refresh: after re-verifying the identity it
+  // invalidates and re-reads discovery until it shows the new revision
+  // (catchUpDiscovery).
   const mutation = useMutation({
     mutationFn: (attempt: WorkspaceRenameAttempt) =>
       renameWorkspace(apiClient, workspaceId, attempt),

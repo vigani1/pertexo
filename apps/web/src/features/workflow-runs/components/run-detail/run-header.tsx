@@ -75,6 +75,59 @@ function RunLiveIndicator({
   );
 }
 
+/** The run's facts in mono: start, duration, trigger, version, deadline, stop. */
+function RunFacts({
+  run,
+  nowMs,
+  workspaceId,
+  versionLabel,
+}: Readonly<{
+  run: WorkflowRunReadSummary;
+  nowMs: number;
+  workspaceId: string;
+  versionLabel: string | undefined;
+}>) {
+  const active = isActiveRunStatus(run.status);
+  const durationMs = runDurationMs(run, nowMs);
+  return (
+    <PageHeaderMeta>
+      <MetaFact>
+        started <b>{formatClock(run.startedAt ?? run.createdAt)}</b>
+      </MetaFact>
+      {durationMs === undefined ? null : (
+        <MetaFact>
+          <b>{formatDurationMs(durationMs)}</b>{' '}
+          {active ? 'elapsed' : 'in total'}
+        </MetaFact>
+      )}
+      <MetaFact>
+        {describeTrigger(run.triggerType).toLocaleLowerCase()}
+      </MetaFact>
+      {versionLabel === undefined ? null : (
+        <MetaFact>
+          version{' '}
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/versions"
+            params={{
+              workspaceId,
+              workflowId: run.workflowId,
+            }}
+            className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
+          >
+            {versionLabel}
+          </Link>
+        </MetaFact>
+      )}
+      <MetaFact>{deadlineFact(run, nowMs)}</MetaFact>
+      {run.cancelRequestedAt === null ? null : (
+        <MetaFact>
+          stop requested <b>{formatClock(run.cancelRequestedAt)}</b>
+        </MetaFact>
+      )}
+    </PageHeaderMeta>
+  );
+}
+
 /**
  * The run's Core, a sentence that says where the run is, the facts in mono
  * and the two things you can do: replay it, or stop it while it runs.
@@ -108,7 +161,6 @@ export function RunHeader({
     workspace.capabilities.includes(capability);
   const canCancel =
     can('run:cancel') && active && run.cancelRequestedAt === null;
-  const durationMs = runDurationMs(run, nowMs);
   const name = workflowLabel(run);
   const versionLabel =
     versionNumber === undefined ? undefined : `v${String(versionNumber)}`;
@@ -151,41 +203,12 @@ export function RunHeader({
         <PageHeaderTitle className="mt-2 text-3xl break-words sm:text-[2.5rem]">
           {sentence}
         </PageHeaderTitle>
-        <PageHeaderMeta>
-          <MetaFact>
-            started <b>{formatClock(run.startedAt ?? run.createdAt)}</b>
-          </MetaFact>
-          {durationMs === undefined ? null : (
-            <MetaFact>
-              <b>{formatDurationMs(durationMs)}</b>{' '}
-              {active ? 'elapsed' : 'in total'}
-            </MetaFact>
-          )}
-          <MetaFact>
-            {describeTrigger(run.triggerType).toLocaleLowerCase()}
-          </MetaFact>
-          {versionLabel === undefined ? null : (
-            <MetaFact>
-              version{' '}
-              <Link
-                to="/w/$workspaceId/workflows/$workflowId/versions"
-                params={{
-                  workspaceId: workspace.id,
-                  workflowId: run.workflowId,
-                }}
-                className="font-medium text-foreground underline decoration-white/20 underline-offset-4 hover:decoration-foreground"
-              >
-                {versionLabel}
-              </Link>
-            </MetaFact>
-          )}
-          <MetaFact>{deadlineFact(run, nowMs)}</MetaFact>
-          {run.cancelRequestedAt === null ? null : (
-            <MetaFact>
-              stop requested <b>{formatClock(run.cancelRequestedAt)}</b>
-            </MetaFact>
-          )}
-        </PageHeaderMeta>
+        <RunFacts
+          run={run}
+          nowMs={nowMs}
+          workspaceId={workspace.id}
+          versionLabel={versionLabel}
+        />
       </div>
       <PageHeaderActions className="md:self-start">
         {can('run:replay') ? (

@@ -84,6 +84,52 @@ function initialValues(
   };
 }
 
+function submitLabel(uncertain: boolean, editing: boolean): string {
+  if (uncertain) return 'Try again';
+  return editing ? 'Save changes' : 'Add destination';
+}
+
+/**
+ * A failed save that isn't about one field. A concurrent edit offers the
+ * latest version; an unconfirmed save reads as a warning, not a failure.
+ */
+function SaveFailure({
+  error,
+  editing,
+  refreshing,
+  onLoadLatest,
+}: Readonly<{
+  error: unknown;
+  editing: boolean;
+  refreshing: boolean;
+  onLoadLatest: () => void;
+}>) {
+  if (isApiError(error) && (error.problem?.errors?.length ?? 0) > 0)
+    return null;
+  const conflict = editing && isDestinationConflict(error);
+  return (
+    <Notice
+      role="alert"
+      tone={conflict || isUncertainOutcome(error) ? 'warning' : 'destructive'}
+      action={
+        conflict ? (
+          <Button
+            type="button"
+            size="xs"
+            variant="default"
+            disabled={refreshing}
+            onClick={onLoadLatest}
+          >
+            Load latest version
+          </Button>
+        ) : undefined
+      }
+    >
+      {destinationCommandError(error, editing ? 'update' : 'create')}
+    </Notice>
+  );
+}
+
 /**
  * Add or edit one destination. Editing appends a new version on top of the
  * version the form opened with, so a concurrent edit is refused, not lost.
@@ -179,10 +225,6 @@ export function DestinationForm({
   const conflict =
     editing && mutation.isError && isDestinationConflict(mutation.error);
   const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
-  const hasFieldIssues =
-    mutation.isError &&
-    isApiError(mutation.error) &&
-    (mutation.error.problem?.errors?.length ?? 0) > 0;
 
   return (
     <form
@@ -228,29 +270,13 @@ export function DestinationForm({
             }}
           />
         </FieldGroup>
-        {mutation.isError && !hasFieldIssues ? (
-          <Notice
-            role="alert"
-            tone={uncertain || conflict ? 'warning' : 'destructive'}
-            action={
-              conflict ? (
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="default"
-                  disabled={listRefresh.pending}
-                  onClick={() => void rebaseOnLatest()}
-                >
-                  Load latest version
-                </Button>
-              ) : undefined
-            }
-          >
-            {destinationCommandError(
-              mutation.error,
-              editing ? 'update' : 'create',
-            )}
-          </Notice>
+        {mutation.isError ? (
+          <SaveFailure
+            error={mutation.error}
+            editing={editing}
+            refreshing={listRefresh.pending}
+            onLoadLatest={() => void rebaseOnLatest()}
+          />
         ) : null}
         {destination === undefined || expectedVersion === undefined ? null : (
           <DestinationDetails
@@ -274,11 +300,7 @@ export function DestinationForm({
           pending={mutation.isPending}
           pendingLabel="Saving…"
         >
-          {uncertain
-            ? 'Try again'
-            : editing
-              ? 'Save changes'
-              : 'Add destination'}
+          {submitLabel(uncertain, editing)}
         </ProgressButton>
       </SheetFooter>
     </form>

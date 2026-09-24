@@ -90,3 +90,38 @@ export function acceptanceFailure(
         message: 'We couldn’t open this invitation. Try again.',
       };
 }
+
+/** The safe next steps a failure offers, from the failure and the journey. */
+export type FailureNextSteps = Readonly<{
+  /** Check whether the acceptance went through (never accepts again). */
+  checkStatus: boolean;
+  /** Sign in with the invited account again, or verify it again. */
+  signIn: 'authentication' | 'verification' | undefined;
+  /** The joined workspace to open when only the tidy-up failed. */
+  openWorkspaceId: string | undefined;
+  /** Read the invitation again when it never loaded. */
+  retry: boolean;
+}>;
+
+export function failureNextSteps(
+  error: AcceptanceFailure,
+  journeyState:
+    Readonly<{ state: string; workspaceId: string | undefined }> | undefined,
+): FailureNextSteps {
+  const signsIn =
+    error.kind === 'authentication' || error.kind === 'verification';
+  return {
+    checkStatus: signsIn || error.kind === 'uncertain',
+    signIn:
+      signsIn &&
+      journeyState !== undefined &&
+      journeyState.state !== 'unavailable'
+        ? error.kind
+        : undefined,
+    openWorkspaceId:
+      error.kind === 'cleanup' && journeyState?.state === 'completed'
+        ? journeyState.workspaceId
+        : undefined,
+    retry: journeyState === undefined,
+  };
+}

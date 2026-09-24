@@ -45,6 +45,48 @@ function linkFailure(error: unknown, provider: string): string {
   return 'Connecting couldn’t start. Your sign-in methods didn’t change.';
 }
 
+/** "Confirm with": which existing method proves it's you. */
+function SourcePicker({
+  sources,
+  source,
+  disabled,
+  onChange,
+}: Readonly<{
+  sources: readonly Method[];
+  source: Method | undefined;
+  disabled: boolean;
+  onChange: (sourceId: string) => void;
+}>) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span
+        id="link-source-label"
+        className="text-[0.8rem] font-semibold text-foreground/85"
+      >
+        Confirm with
+      </span>
+      <ToggleGroup
+        aria-labelledby="link-source-label"
+        value={source === undefined ? [] : [source.id]}
+        onValueChange={(value) => {
+          const [next] = value;
+          if (typeof next === 'string') onChange(next);
+        }}
+      >
+        {sources.map((method) => (
+          <ToggleGroupItem
+            key={method.id}
+            value={method.id}
+            disabled={disabled}
+          >
+            {methodLabel(method)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  );
+}
+
 /**
  * Add a sign-in method: pick the provider, confirm it's you with a method
  * you already have, then continue to the provider. Both proofs must finish
@@ -150,35 +192,16 @@ export function LinkProviderDialog({
             onSubmit={(event) => void submit(event)}
           >
             {sources.length > 1 ? (
-              <div className="flex flex-col gap-2">
-                <span
-                  id="link-source-label"
-                  className="text-[0.8rem] font-semibold text-foreground/85"
-                >
-                  Confirm with
-                </span>
-                <ToggleGroup
-                  aria-labelledby="link-source-label"
-                  value={source === undefined ? [] : [source.id]}
-                  onValueChange={(value) => {
-                    const [next] = value;
-                    if (typeof next !== 'string') return;
-                    setSourceId(next);
-                    fields.reset();
-                    setFailure(undefined);
-                  }}
-                >
-                  {sources.map((method) => (
-                    <ToggleGroupItem
-                      key={method.id}
-                      value={method.id}
-                      disabled={pending}
-                    >
-                      {methodLabel(method)}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              </div>
+              <SourcePicker
+                sources={sources}
+                source={source}
+                disabled={pending}
+                onChange={(next) => {
+                  setSourceId(next);
+                  fields.reset();
+                  setFailure(undefined);
+                }}
+              />
             ) : null}
             {confirmsWithPassword ? (
               <PasswordField

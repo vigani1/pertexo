@@ -11,7 +11,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { useFieldValidation } from '@/components/ui/use-field-validation';
+import {
+  useFieldValidation,
+  type FieldValidation,
+} from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
@@ -27,12 +30,19 @@ import {
   suggestConnectionName,
   type ProviderKey,
 } from '../../model/connection-providers';
-import { toCreateRequest } from '../../model/credential-draft';
-import { useConnectionTest } from '../../use-connection-test';
+import {
+  toCreateRequest,
+  type CredentialDraft,
+} from '../../model/credential-draft';
+import {
+  useConnectionTest,
+  type ConnectionTest,
+} from '../../use-connection-test';
 import { CredentialFields } from '../credential/credential-fields';
 import {
   createHeaderRowId,
   useCredentialForm,
+  type CredentialForm,
 } from '../../use-credential-form';
 import { ProviderSockets } from '../provider-sockets';
 import {
@@ -93,14 +103,7 @@ export function AddConnectionSheet({
   function close() {
     if (create.isPending) return;
     if (created !== undefined)
-      notifications.success(
-        test.phase === 'ok'
-          ? { title: `Connected ${created.name}` }
-          : {
-              title: `Saved ${created.name}`,
-              description: 'It hasn’t passed a test yet.',
-            },
-      );
+      notifications.success(savedMessage(created.name, test.phase === 'ok'));
     attempt.current = undefined;
     setChosen(undefined);
     setStep(undefined);
@@ -115,6 +118,16 @@ export function AddConnectionSheet({
 
   function continueToName() {
     if (credential.validate() !== undefined) setStep('name');
+  }
+
+  /** Server field errors land on the name or the credential step. */
+  function placeServerIssues(error: unknown) {
+    const issues = isApiError(error) ? (error.problem?.errors ?? []) : [];
+    if (issues.some((issue) => issue.path === 'name'))
+      nameValidation.showErrors({
+        name: 'Pertexo couldn’t use this name. Try a shorter one.',
+      });
+    if (credential.showServerIssues(issues)) setStep('credential');
   }
 
   async function save() {
@@ -135,12 +148,7 @@ export function AddConnectionSheet({
     try {
       connection = await create.mutateAsync(command);
     } catch (error) {
-      const issues = isApiError(error) ? (error.problem?.errors ?? []) : [];
-      if (issues.some((issue) => issue.path === 'name'))
-        nameValidation.showErrors({
-          name: 'Pertexo couldn’t use this name. Try a shorter one.',
-        });
-      if (credential.showServerIssues(issues)) setStep('credential');
+      placeServerIssues(error);
       return;
     }
     attempt.current = undefined;
@@ -183,53 +191,31 @@ export function AddConnectionSheet({
               else if (step === 'name') void save();
             }}
           >
-            {step === 'provider' ? (
-              <ProviderSockets
-                onConnect={(next) => {
-                  setChosen(next);
-                  setStep('credential');
-                }}
-              />
-            ) : null}
-            {step === 'credential' && provider !== undefined ? (
-              <CredentialFields
-                draft={credential.draft}
-                idPrefix={id}
-                disabled={create.isPending}
-                validation={credential.validation}
-                createId={createHeaderRowId}
-                onChange={(next) => {
-                  credential.setDraft(next);
-                  if (create.isError) clearSensitiveState();
-                }}
-              />
-            ) : null}
-            {step === 'name' && provider !== undefined ? (
-              <NameStep
-                id={id}
-                provider={provider}
-                name={name}
-                disabled={create.isPending}
-                validation={nameValidation}
-                onNameChange={(next) => {
-                  setNameInput(next);
-                  if (create.isError) clearSensitiveState();
-                }}
-                uncertain={uncertain}
-                commandError={
-                  createFailed
-                    ? connectionCommandError(
-                        create.error,
-                        'create',
-                        name.trim(),
-                      )
-                    : undefined
-                }
-              />
-            ) : null}
-            {step === 'test' && created !== undefined ? (
-              <TestStep connection={created} test={test} />
-            ) : null}
+            <StepBody
+              id={id}
+              step={step}
+              provider={provider}
+              created={created}
+              credential={credential}
+              name={name}
+              nameValidation={nameValidation}
+              disabled={create.isPending}
+              uncertain={uncertain}
+              createError={createFailed ? create.error : undefined}
+              test={test}
+              onChoose={(next) => {
+                setChosen(next);
+                setStep('credential');
+              }}
+              onCredentialChange={(next) => {
+                credential.setDraft(next);
+                if (create.isError) clearSensitiveState();
+              }}
+              onNameChange={(next) => {
+                setNameInput(next);
+                if (create.isError) clearSensitiveState();
+              }}
+            />
           </form>
         </SheetBody>
         <SheetFooter>
@@ -250,6 +236,80 @@ export function AddConnectionSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+/** The body of the current step; only the step's own controls render. */
+function StepBody({
+  id,
+  step,
+  provider,
+  created,
+  credential,
+  name,
+  nameValidation,
+  disabled,
+  uncertain,
+  createError,
+  test,
+  onChoose,
+  onCredentialChange,
+  onNameChange,
+}: Readonly<{
+  id: string;
+  step: AddStep;
+  provider: ProviderKey | undefined;
+  created: ConnectionResponse | undefined;
+  credential: CredentialForm;
+  name: string;
+  nameValidation: FieldValidation<'name'>;
+  disabled: boolean;
+  uncertain: boolean;
+  /** A failed save that isn't about one field. */
+  createError: unknown;
+  test: ConnectionTest;
+  onChoose: (provider: ProviderKey) => void;
+  onCredentialChange: (draft: CredentialDraft) => void;
+  onNameChange: (name: string) => void;
+}>) {
+  if (step === 'provider') return <ProviderSockets onConnect={onChoose} />;
+  if (step === 'test')
+    return created === undefined ? null : (
+      <TestStep connection={created} test={test} />
+    );
+  if (provider === undefined) return null;
+  if (step === 'credential')
+    return (
+      <CredentialFields
+        draft={credential.draft}
+        idPrefix={id}
+        disabled={disabled}
+        validation={credential.validation}
+        createId={createHeaderRowId}
+        onChange={onCredentialChange}
+      />
+    );
+  return (
+    <NameStep
+      id={id}
+      provider={provider}
+      name={name}
+      disabled={disabled}
+      validation={nameValidation}
+      onNameChange={onNameChange}
+      uncertain={uncertain}
+      commandError={
+        createError === undefined
+          ? undefined
+          : connectionCommandError(createError, 'create', name.trim())
+      }
+    />
+  );
+}
+
+function savedMessage(name: string, passed: boolean) {
+  return passed
+    ? { title: `Connected ${name}` }
+    : { title: `Saved ${name}`, description: 'It hasn’t passed a test yet.' };
 }
 
 function isFieldProblem(error: unknown): boolean {

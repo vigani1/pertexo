@@ -52,3 +52,5 @@ export function useCredentialForm(provider: ProviderKey) {
     },
   } as const;
 }
+
+export type CredentialForm = ReturnType<typeof useCredentialForm>;
