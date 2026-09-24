@@ -9,4 +9,3 @@ export {
 export { AuthStage } from './components/stage/auth-stage';
 export { Wordmark } from './components/stage/wordmark';
 export { LensLoading } from './components/stage/lens-states';
-export { ProgressButton } from './forms/progress-button';

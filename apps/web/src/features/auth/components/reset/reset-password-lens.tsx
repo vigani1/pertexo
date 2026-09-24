@@ -6,7 +6,7 @@ import {
   newPasswordProblem,
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import { resetFailure } from '../../model/auth-failure';
 import { resetPassword } from '../../native-auth.api';

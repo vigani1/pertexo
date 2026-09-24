@@ -132,7 +132,7 @@ export function DestinationForm({
     if (Object.keys(fields).length > 0) validation.showErrors(fields);
   }
 
-  function submit() {
+  async function submit() {
     if (mutation.isPending) return;
     if (!validation.submit(errorsFor(values)) || values.connectionId === null)
       return;
@@ -147,22 +147,22 @@ export function DestinationForm({
         ? attempt.current.key
         : crypto.randomUUID();
     attempt.current = { signature, key };
-    if (destination === undefined || expectedVersion === undefined) {
-      create.mutate(
-        { config, idempotencyKey: key },
-        { onSuccess: succeed, onError: fail },
-      );
+    let saved: FailureNotificationDestinationResponse;
+    try {
+      saved =
+        destination === undefined || expectedVersion === undefined
+          ? await create.mutateAsync({ config, idempotencyKey: key })
+          : await append.mutateAsync({
+              destinationId: destination.id,
+              expectedVersion,
+              config,
+              idempotencyKey: key,
+            });
+    } catch (error) {
+      fail(error);
       return;
     }
-    append.mutate(
-      {
-        destinationId: destination.id,
-        expectedVersion,
-        config,
-        idempotencyKey: key,
-      },
-      { onSuccess: succeed, onError: fail },
-    );
+    succeed(saved);
   }
 
   async function rebaseOnLatest() {
@@ -188,7 +188,7 @@ export function DestinationForm({
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        void submit();
       }}
     >
       <SheetHeader>

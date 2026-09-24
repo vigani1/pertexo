@@ -1,12 +1,5 @@
-import { useState, type SyntheticEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   Field,
   FieldControl,
@@ -15,32 +8,54 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { extractEndpointKey } from '../../model/endpoint-key';
 
-function RotateSecretForm({
+/**
+ * Rotating the signing secret needs the current endpoint key. People paste
+ * the address they gave senders, or the key, and the key is taken from it.
+ */
+export function RotateSecretDialog({
+  open,
   pending,
   onRotate,
+  onClose,
 }: Readonly<{
+  open: boolean;
   pending: boolean;
-  onRotate: (endpointKey: string) => void;
+  onRotate: (endpointKey: string) => Promise<unknown>;
+  onClose: () => void;
 }>) {
   const [pasted, setPasted] = useState('');
   const [validation, setValidation] = useState<'invalid' | 'corrected'>();
   const invalid = validation === 'invalid';
 
-  function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const endpointKey = extractEndpointKey(pasted);
-    if (endpointKey === undefined) {
-      setValidation('invalid');
-      return;
-    }
-    onRotate(endpointKey);
+  function clear() {
+    setPasted('');
+    setValidation(undefined);
   }
 
   return (
-    <form noValidate className="mt-5 flex flex-col gap-6" onSubmit={submit}>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) return;
+        clear();
+        onClose();
+      }}
+      title="Rotate the signing secret"
+      description="Senders using the current secret keep working for 5 more minutes, then need the new one."
+      confirmLabel="Rotate secret"
+      pendingLabel="Rotating…"
+      pending={pending}
+      onConfirm={async () => {
+        const endpointKey = extractEndpointKey(pasted);
+        if (endpointKey === undefined) {
+          setValidation('invalid');
+          return;
+        }
+        await onRotate(endpointKey).finally(clear);
+      }}
+    >
       <Field data-invalid={invalid}>
         <FieldLabel htmlFor="current-endpoint">
           Current address or endpoint key
@@ -81,53 +96,6 @@ function RotateSecretForm({
           </FieldDescription>
         )}
       </Field>
-      <div className="flex justify-end gap-2">
-        <DialogClose
-          render={<Button type="button" variant="ghost" disabled={pending} />}
-        >
-          Cancel
-        </DialogClose>
-        <Button type="submit" disabled={pending}>
-          {pending ? <LoadingOrb /> : null}
-          {pending ? 'Rotating…' : 'Rotate secret'}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-/**
- * Rotating the signing secret needs the current endpoint key. People paste
- * the address they gave senders, or the key, and the key is taken from it.
- */
-export function RotateSecretDialog({
-  open,
-  pending,
-  onRotate,
-  onClose,
-}: Readonly<{
-  open: boolean;
-  pending: boolean;
-  onRotate: (endpointKey: string) => void;
-  onClose: () => void;
-}>) {
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !pending) onClose();
-      }}
-    >
-      <DialogContent>
-        <DialogTitle>Rotate the signing secret</DialogTitle>
-        <DialogDescription>
-          Senders using the current secret keep working for 5 more minutes, then
-          need the new one.
-        </DialogDescription>
-        {open ? (
-          <RotateSecretForm pending={pending} onRotate={onRotate} />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    </ConfirmDialog>
   );
 }

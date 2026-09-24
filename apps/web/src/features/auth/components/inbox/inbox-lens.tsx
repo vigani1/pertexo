@@ -5,7 +5,7 @@ import {
   rateLimitSeconds,
   resendFailure,
 } from '../../model/auth-failure';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import type { Countdown } from '@/lib/use-countdown';
 import { useLatestRequest } from '../../use-latest-request';
 import {

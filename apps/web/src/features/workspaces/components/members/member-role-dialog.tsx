@@ -1,14 +1,5 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import {
   ROLE_SUMMARIES,
   withArticle,
@@ -36,68 +27,27 @@ export function MemberRoleDialog(
   const { change } = props;
   const firstName = change?.member.displayName.split(/\s+/u)[0] ?? 'They';
   return (
-    <Dialog
+    <ConfirmDialog
       open={change !== undefined}
       onOpenChange={(open) => {
-        if (!open && !props.locked) props.onClose();
+        if (!open) props.onClose();
       }}
-    >
-      <DialogContent>
-        <DialogTitle>
-          Make {change?.member.displayName ?? 'this member'}{' '}
-          {change === undefined ? 'a new role' : withArticle(change.role)}?
-        </DialogTitle>
-        <DialogDescription>
-          {change === undefined ? null : ROLE_SUMMARIES[change.role]}{' '}
-          {firstName} will be signed out everywhere and signs in again with the
-          new role.
-        </DialogDescription>
-        {props.error === undefined ? null : (
-          <Notice
-            role="alert"
-            tone={props.retryAvailable ? 'warning' : 'destructive'}
-            className="mt-5"
-          >
-            {props.error}
-          </Notice>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
-          {props.retryAvailable ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                props.onDismissUncertain();
-                props.onClose();
-              }}
-            >
-              Close
-            </Button>
-          ) : (
-            <DialogClose
-              disabled={props.locked}
-              render={
-                <Button type="button" variant="ghost" disabled={props.locked} />
-              }
-            >
-              Cancel
-            </DialogClose>
-          )}
-          <Button
-            type="button"
-            variant="primary"
-            disabled={props.pending || change === undefined}
-            onClick={props.retryAvailable ? props.onRetry : props.onConfirm}
-          >
-            {props.pending ? <LoadingOrb data-icon="inline-start" /> : null}
-            {props.pending
-              ? 'Changing…'
-              : props.retryAvailable
-                ? 'Try again'
-                : 'Change role'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      locked={props.locked}
+      title={`Make ${change?.member.displayName ?? 'this member'} ${
+        change === undefined ? 'a new role' : withArticle(change.role)
+      }?`}
+      description={`${change === undefined ? '' : ROLE_SUMMARIES[change.role]} ${firstName} will be signed out everywhere and signs in again with the new role.`}
+      confirmLabel="Change role"
+      pendingLabel="Changing…"
+      pending={props.pending}
+      confirmDisabled={change === undefined}
+      error={props.error}
+      onConfirm={props.onConfirm}
+      unconfirmed={
+        props.retryAvailable
+          ? { onRetry: props.onRetry, onDismiss: props.onDismissUncertain }
+          : undefined
+      }
+    />
   );
 }

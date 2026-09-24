@@ -17,7 +17,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { startAccountLink } from '../../account-security.api';
 import { requiredPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useLatestRequest } from '../../use-latest-request';
 import { SocialProviderGrid } from '../social/social-provider-grid';

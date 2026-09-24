@@ -118,7 +118,7 @@ export function NewWorkflowSheet({
       });
   }
 
-  function submit(event: SyntheticEvent<HTMLFormElement>) {
+  async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = workflowCreateRequestSchema.safeParse({ name });
     if (!parsed.success) {
@@ -135,18 +135,20 @@ export function NewWorkflowSheet({
       starter === undefined || writer === undefined
         ? undefined
         : { graph: buildStarterGraph(starter), write: writer };
-    mutation.mutate(
-      { ...current, ...(seed === undefined ? {} : { seed }) },
-      {
-        onSuccess: (result) => {
-          attempt.current = undefined;
-          setName('');
-          setValidation(undefined);
-          announce(result);
-          onCreated(result.created.body.workflow.id);
-        },
-      },
-    );
+    let result: CreateWorkflowResult;
+    try {
+      result = await mutation.mutateAsync({
+        ...current,
+        ...(seed === undefined ? {} : { seed }),
+      });
+    } catch {
+      return; // The mutation's error renders in the sheet.
+    }
+    attempt.current = undefined;
+    setName('');
+    setValidation(undefined);
+    announce(result);
+    onCreated(result.created.body.workflow.id);
   }
 
   const invalid = validation === 'invalid';
@@ -161,7 +163,7 @@ export function NewWorkflowSheet({
         <form
           noValidate
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={submit}
+          onSubmit={(event) => void submit(event)}
         >
           <SheetHeader>
             <SheetTitle>New workflow</SheetTitle>

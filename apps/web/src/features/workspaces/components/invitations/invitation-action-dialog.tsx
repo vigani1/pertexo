@@ -1,14 +1,5 @@
 import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import type { InvitationAction } from './invitation-list';
 
 export type InvitationSelection = Readonly<{
@@ -48,63 +39,25 @@ export function InvitationActionDialog(
 ) {
   const copy = COPY[props.selection?.action ?? 'resend'];
   return (
-    <Dialog
+    <ConfirmDialog
       open={props.selection !== undefined}
       onOpenChange={(open) => {
-        if (!open && !props.locked) props.onClose();
+        if (!open) props.onClose();
       }}
-    >
-      <DialogContent>
-        <DialogTitle>
-          {copy.title(props.selection?.invitation.email ?? 'this person')}
-        </DialogTitle>
-        <DialogDescription>{copy.description}</DialogDescription>
-        {props.message === undefined ? null : (
-          <Notice
-            role="alert"
-            tone={props.retryAvailable ? 'warning' : 'destructive'}
-            className="mt-5"
-          >
-            {props.message}
-          </Notice>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
-          {props.retryAvailable ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                props.onDismiss();
-                props.onClose();
-              }}
-            >
-              Close
-            </Button>
-          ) : (
-            <DialogClose
-              disabled={props.locked}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          )}
-          <Button
-            type="button"
-            variant={
-              props.selection?.action === 'revoke' ? 'destructive' : 'primary'
-            }
-            disabled={props.pending}
-            onClick={props.retryAvailable ? props.onRetry : props.onConfirm}
-          >
-            {props.pending ? <LoadingOrb data-icon="inline-start" /> : null}
-            {props.pending
-              ? copy.busy
-              : props.retryAvailable
-                ? 'Try again'
-                : copy.confirm}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      locked={props.locked}
+      title={copy.title(props.selection?.invitation.email ?? 'this person')}
+      description={copy.description}
+      tone={props.selection?.action === 'revoke' ? 'destructive' : 'default'}
+      confirmLabel={copy.confirm}
+      pendingLabel={copy.busy}
+      pending={props.pending}
+      error={props.message}
+      onConfirm={props.onConfirm}
+      unconfirmed={
+        props.retryAvailable
+          ? { onRetry: props.onRetry, onDismiss: props.onDismiss }
+          : undefined
+      }
+    />
   );
 }

@@ -3,7 +3,7 @@ import type { SyntheticEvent } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { useRequestAccountEmailChange } from '../../account-security.mutations';
 import { emailProblem } from '../../forms/field-rules';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import { AccountCommandFailure, AccountSection } from './account-section';

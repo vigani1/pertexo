@@ -3,7 +3,7 @@ import type { SyntheticEvent } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import { signUpFailure } from '../../model/auth-failure';

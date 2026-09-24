@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import type { LoginNotice } from '../../model/login-notice';

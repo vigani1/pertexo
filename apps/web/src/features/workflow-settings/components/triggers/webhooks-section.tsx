@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -7,7 +8,6 @@ import {
   useWebhookCommand,
   type WebhookCommand,
 } from '../../mutations/use-trigger-commands';
-import { ConfirmDialog } from '../confirm-dialog';
 import { RotateSecretDialog } from './rotate-secret-dialog';
 import { SecretRevealDialog } from './secret-reveal-dialog';
 import { WebhookCard } from './webhook-card';
@@ -102,26 +102,29 @@ export function WebhooksSection({
       ))}
       <ConfirmDialog
         open={confirming?.command === 'rotate-endpoint'}
+        onOpenChange={(open) => {
+          if (!open) setConfirming(undefined);
+        }}
         title="Rotate this webhook’s URL?"
         description="Senders using the current address stop being accepted right away. You’ll get a new endpoint key to give them."
+        tone="destructive"
         confirmLabel="Rotate URL"
-        destructive
+        pendingLabel="Rotating…"
         pending={webhook.pending?.command === 'rotate-endpoint'}
-        onConfirm={() => {
-          if (confirming !== undefined)
-            void run(confirming.triggerId, 'rotate-endpoint');
-        }}
-        onClose={() => {
-          setConfirming(undefined);
-        }}
+        onConfirm={() =>
+          confirming === undefined
+            ? undefined
+            : run(confirming.triggerId, 'rotate-endpoint')
+        }
       />
       <RotateSecretDialog
         open={confirming?.command === 'rotate-secret'}
         pending={webhook.pending?.command === 'rotate-secret'}
-        onRotate={(endpointKey) => {
-          if (confirming !== undefined)
-            void run(confirming.triggerId, 'rotate-secret', endpointKey);
-        }}
+        onRotate={(endpointKey) =>
+          confirming === undefined
+            ? Promise.resolve()
+            : run(confirming.triggerId, 'rotate-secret', endpointKey)
+        }
         onClose={() => {
           setConfirming(undefined);
         }}
