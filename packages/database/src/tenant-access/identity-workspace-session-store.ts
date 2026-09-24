@@ -1,11 +1,12 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema } from '../validation/persisted-primitives.js';
 import { withPlatformTransaction } from './workspace.js';
 
 import type {
+  CompleteInvitationAcceptanceInput,
   CreateSessionInput,
   IdentityWorkspaceDatabase,
   SessionRecord,
@@ -121,4 +122,48 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
       return result.rowCount === 1;
     },
   });
+}
+
+/**
+ * Ends every browser session of a user inside the caller's transaction, both
+ * legacy OIDC sessions and Better Auth sessions, so changed workspace
+ * authority cannot be exercised by a session issued before the change.
+ */
+export async function revokeUserSessions(
+  client: PoolClient,
+  userId: string,
+): Promise<void> {
+  await client.query(
+    `update app.sessions set revoked_at=coalesce(revoked_at,clock_timestamp())
+      where user_id=$1 and revoked_at is null`,
+    [userId],
+  );
+  await client.query(`delete from app.auth_sessions where user_id=$1`, [
+    userId,
+  ]);
+}
+
+/**
+ * Revokes every existing session of a user and issues the single Better Auth
+ * session that replaces them, atomically with the caller's transaction.
+ */
+export async function replaceUserSessions(
+  client: PoolClient,
+  userId: string,
+  replacement: CompleteInvitationAcceptanceInput['replacementSession'],
+): Promise<void> {
+  await revokeUserSessions(client, userId);
+  await client.query(
+    `insert into app.auth_sessions
+       (id,user_id,token,expires_at,user_agent,ip_address,created_at,updated_at)
+     values($1,$2,$3,$4,$5,$6,clock_timestamp(),clock_timestamp())`,
+    [
+      replacement.id,
+      userId,
+      replacement.token,
+      replacement.expiresAt,
+      replacement.userAgent ?? null,
+      replacement.ipAddress ?? null,
+    ],
+  );
 }

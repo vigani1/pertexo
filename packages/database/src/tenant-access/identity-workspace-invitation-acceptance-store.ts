@@ -12,6 +12,15 @@ import type {
   ResolveInvitationAcceptanceInput,
 } from './identity-workspace-contracts.js';
 import { InvitationAcceptanceConflictError } from './identity-workspace-errors.js';
+import {
+  acceptanceReceiptSchema,
+  lockAcceptanceReceipt,
+  recordAcceptedInvitation,
+  replayAcceptanceReceipt,
+  replayedAcceptance,
+} from './identity-workspace-invitation-acceptance-receipts.js';
+import { cancelOpenInvitationDeliveries } from './identity-workspace-invitation-deliveries.js';
+import { replaceUserSessions } from './identity-workspace-session-store.js';
 import { parseIdentityUuid } from './identity-workspace-support.js';
 import { withTenantScopedClient } from './workspace.js';
 
@@ -30,16 +39,7 @@ const key = z
   .min(1)
   .max(128)
   .regex(/^[\x21-\x7e]+$/u);
-const role = z.enum(['owner', 'admin', 'builder', 'operator', 'viewer']);
 const delegatedRole = z.enum(['admin', 'builder', 'operator', 'viewer']);
-const receiptSchema = z
-  .object({
-    intentId: z.uuid(),
-    workspaceId: z.uuid(),
-    role,
-    membershipCreated: z.boolean(),
-  })
-  .strict();
 
 type IntentRow = Readonly<{
   id: string;
@@ -85,7 +85,7 @@ const intentSelection = `intent.id,intent.workspace_id,intent.invitation_id,
 
 function mapIntent(row: IntentRow): InvitationAcceptanceIntentRecord {
   const parsedReceipt =
-    row.receipt === null ? null : receiptSchema.parse(row.receipt);
+    row.receipt === null ? null : acceptanceReceiptSchema.parse(row.receipt);
   return Object.freeze({
     id: z.uuid().parse(row.id),
     workspaceId: z.uuid().parse(row.workspace_id),
@@ -261,14 +261,10 @@ export function createIdentityWorkspaceInvitationAcceptanceStore(
               where workspace_id=$1 and id=$2`,
             [workspaceId, invitationId],
           );
-          await client.query(
-            `update app.workspace_invitation_delivery_attempts
-                set status=case when status in ('queued','failed') then 'canceled' else status end,
-                    token_ciphertext=null,token_nonce=null,token_tag=null,
-                    token_key_version=null,updated_at=clock_timestamp()
-              where workspace_id=$1 and invitation_id=$2
-                and status in ('queued','failed','unknown')`,
-            [workspaceId, invitationId],
+          await cancelOpenInvitationDeliveries(
+            client,
+            workspaceId,
+            invitationId,
           );
           return null;
         }
@@ -624,47 +620,21 @@ async function completeAcceptance(
           'unavailable',
           'The invitation journey is unavailable',
         );
-      const priorReceipt = await client.query<{
-        request_hash: string;
-        status: string;
-        result_ref: unknown;
-      }>(
-        `select request_hash,status,result_ref
-           from app.workspace_invitation_command_receipts
-          where actor_user_id=$1 and workspace_id=$2 and operation='accept' and key_hash=$3
-          for update`,
-        [actorUserId, workspaceId, keyHash],
+      const priorReceipt = await lockAcceptanceReceipt(
+        client,
+        actorUserId,
+        workspaceId,
+        keyHash,
       );
-      const priorReceiptRow = priorReceipt.rows[0];
-      if (
-        priorReceiptRow !== undefined &&
-        priorReceiptRow.request_hash !== commandHash
-      )
-        throw new InvitationAcceptanceConflictError(
-          'idempotency_conflict',
-          'The key belongs to another acceptance command',
-        );
-      if (priorReceiptRow !== undefined) {
-        const prior = receiptSchema.safeParse(priorReceiptRow.result_ref);
-        if (priorReceiptRow.status !== 'completed' || !prior.success)
-          throw new Error('Invitation acceptance receipt is incomplete');
-        return Object.freeze({
-          ...prior.data,
-          replayed: true,
-          replacementSessionCreated: false,
-        });
-      }
+      if (priorReceipt !== undefined)
+        return replayAcceptanceReceipt(priorReceipt, commandHash);
       if (intent.status === 'completed') {
         if (intent.acceptedUserId !== actorUserId || intent.receipt === null)
           throw new InvitationAcceptanceConflictError(
             'unavailable',
             'The invitation receipt is unavailable',
           );
-        return Object.freeze({
-          ...intent.receipt,
-          replayed: true,
-          replacementSessionCreated: false,
-        });
+        return replayedAcceptance(intent.receipt);
       }
       if (user.rows[0]?.status !== 'active')
         throw new InvitationAcceptanceConflictError(
@@ -679,31 +649,16 @@ async function completeAcceptance(
          on conflict(actor_user_id,workspace_id,operation,key_hash) do nothing`,
         [receiptId, workspaceId, actorUserId, keyHash, commandHash],
       );
-      if (claimed.rowCount !== 1) {
-        const existing = await client.query<{
-          request_hash: string;
-          status: string;
-          result_ref: unknown;
-        }>(
-          `select request_hash,status,result_ref from app.workspace_invitation_command_receipts
-            where actor_user_id=$1 and workspace_id=$2 and operation='accept' and key_hash=$3 for update`,
-          [actorUserId, workspaceId, keyHash],
+      if (claimed.rowCount !== 1)
+        return replayAcceptanceReceipt(
+          await lockAcceptanceReceipt(
+            client,
+            actorUserId,
+            workspaceId,
+            keyHash,
+          ),
+          commandHash,
         );
-        const row = existing.rows[0];
-        if (row?.request_hash !== commandHash)
-          throw new InvitationAcceptanceConflictError(
-            'idempotency_conflict',
-            'The key belongs to another acceptance command',
-          );
-        const prior = receiptSchema.safeParse(row.result_ref);
-        if (row.status !== 'completed' || !prior.success)
-          throw new Error('Invitation acceptance receipt is incomplete');
-        return Object.freeze({
-          ...prior.data,
-          replayed: true,
-          replacementSessionCreated: false,
-        });
-      }
       const now = new Date();
       if (intent.expiresAt.getTime() <= now.getTime())
         throw new InvitationAcceptanceConflictError(
@@ -764,80 +719,23 @@ async function completeAcceptance(
            values($1,$2,$3,'active')`,
           [workspaceId, actorUserId, assignedRole],
         );
-        await client.query(
-          `update app.sessions set revoked_at=coalesce(revoked_at,clock_timestamp())
-            where user_id=$1 and revoked_at is null`,
-          [actorUserId],
-        );
-        await client.query(`delete from app.auth_sessions where user_id=$1`, [
-          actorUserId,
-        ]);
-        await client.query(
-          `insert into app.auth_sessions
-             (id,user_id,token,expires_at,user_agent,ip_address,created_at,updated_at)
-           values($1,$2,$3,$4,$5,$6,clock_timestamp(),clock_timestamp())`,
-          [
-            raw.replacementSession.id,
-            actorUserId,
-            raw.replacementSession.token,
-            raw.replacementSession.expiresAt,
-            raw.replacementSession.userAgent ?? null,
-            raw.replacementSession.ipAddress ?? null,
-          ],
-        );
+        await replaceUserSessions(client, actorUserId, raw.replacementSession);
       }
-      const receipt = receiptSchema.parse({
+      const receipt = acceptanceReceiptSchema.parse({
         intentId,
         workspaceId,
         role: assignedRole,
         membershipCreated,
       });
-      await client.query(
-        `update app.workspace_invitations
-            set status='accepted',accepted_by=$3,accepted_at=clock_timestamp(),
-                delivery_status='canceled',updated_at=clock_timestamp()
-          where workspace_id=$1 and id=$2`,
-        [workspaceId, intent.invitationId, actorUserId],
-      );
-      await client.query(
-        `update app.workspace_invitation_delivery_attempts
-            set token_ciphertext=null,token_nonce=null,token_tag=null,token_key_version=null,
-                status=case when status='queued' then 'canceled' else status end,
-                updated_at=clock_timestamp()
-          where workspace_id=$1 and invitation_id=$2`,
-        [workspaceId, intent.invitationId],
-      );
-      await client.query(
-        `update app.workspace_invitation_acceptance_intents
-            set status='completed',accepted_user_id=$3,receipt=$4::jsonb,
-                completed_at=clock_timestamp(),updated_at=clock_timestamp()
-          where workspace_id=$1 and id=$2`,
-        [workspaceId, intentId, actorUserId, JSON.stringify(receipt)],
-      );
-      await client.query(
-        `insert into app.audit_events
-           (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-         values($1,$2,$3,'workspace.invitation_accepted','workspace_invitation',$4,$5,$6,$7::jsonb)`,
-        [
-          generatePersistedId(),
-          workspaceId,
-          actorUserId,
-          intent.invitationId,
-          raw.requestId ?? null,
-          raw.traceId ?? null,
-          JSON.stringify({
-            invitationRevision,
-            membershipCreated,
-            role: assignedRole,
-          }),
-        ],
-      );
-      await client.query(
-        `update app.workspace_invitation_command_receipts
-            set status='completed',result_ref=$2::jsonb,updated_at=clock_timestamp()
-          where id=$1 and status='in_progress'`,
-        [receiptId, JSON.stringify(receipt)],
-      );
+      await recordAcceptedInvitation(client, {
+        receiptId,
+        receipt,
+        actorUserId,
+        invitationId: intent.invitationId,
+        invitationRevision,
+        requestId: raw.requestId ?? null,
+        traceId: raw.traceId ?? null,
+      });
       return Object.freeze({
         ...receipt,
         replayed: false,

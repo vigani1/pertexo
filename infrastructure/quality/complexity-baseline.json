@@ -120,14 +120,6 @@
       "branches": 20,
       "lines": 217
     },
-    "packages/database/src/tenant-access/identity-workspace-invitation-acceptance-store.ts#completeAcceptance": {
-      "branches": 0,
-      "lines": 285
-    },
-    "packages/database/src/tenant-access/identity-workspace-invitation-acceptance-store.ts#completeAcceptance.<ArrowFunction>": {
-      "branches": 35,
-      "lines": 261
-    },
     "packages/database/src/triggers/webhook-triggers.ts#createWebhookTriggerDatabase": {
       "branches": 1,
       "lines": 301
