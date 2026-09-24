@@ -1,12 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import {
-  configure,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -34,7 +28,6 @@ import {
 } from '../support/workflow-editor-fixtures';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
-configure({ asyncUtilTimeout: 5_000 });
 
 describe('workflow editor canvas', { timeout: 30_000 }, () => {
   it('places a step in view and conditionally autosaves the domain graph', async () => {
@@ -54,12 +47,9 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
     ).toBeVisible();
     await event.click(addStepButton(/Set fields/u));
     expect(screen.getByText('Unsaved')).toBeVisible();
-    await waitFor(
-      () => {
-        expect(savedNodes).toBe(1);
-      },
-      { timeout: 3_000 },
-    );
+    await waitFor(() => {
+      expect(savedNodes).toBe(1);
+    });
     expect(await screen.findByText(/^Saved/u)).toBeVisible();
     expect(
       within(screen.getByRole('application')).getByText('Set fields'),

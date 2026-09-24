@@ -143,11 +143,7 @@ describe('node test panel', () => {
     );
     await event.click(screen.getByRole('button', { name: 'Run test' }));
     expect(
-      await screen.findByRole(
-        'button',
-        { name: 'Check test status' },
-        { timeout: 2_500 },
-      ),
+      await screen.findByRole('button', { name: 'Check test status' }),
     ).toBeVisible();
     expect(submissions).toBe(1);
     fireEvent.change(screen.getByLabelText('Sample input (JSON)'), {
@@ -165,12 +161,9 @@ describe('node test panel', () => {
     await event.click(
       screen.getByRole('button', { name: 'Check test status' }),
     );
-    await waitFor(
-      () => {
-        expect(screen.getByText('Test passed')).toBeVisible();
-      },
-      { timeout: 2_500 },
-    );
+    await waitFor(() => {
+      expect(screen.getByText('Test passed')).toBeVisible();
+    });
     expect(submissions).toBe(1);
     expect(observations).toBe(2);
   }, 7_000);

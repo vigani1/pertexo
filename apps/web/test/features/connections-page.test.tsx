@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import { configure, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
@@ -7,7 +7,6 @@ import { renderApp } from '../support/render-app';
 
 // Each page loads its lazy route on first render; under a busy machine that
 // can outlast the default one-second wait without anything being wrong.
-configure({ asyncUtilTimeout: 4_000 });
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
