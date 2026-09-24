@@ -122,14 +122,9 @@ test('keeps the member directory reachable and bounded on mobile', async ({
   await expect(page).toHaveURL(`/w/${workspaceId}/team`);
   await expect(bar.getByRole('button', { name: 'More' })).toBeVisible();
   await expect(page.getByText('Ada Operator')).toBeVisible();
-  const tableRegion = page.getByRole('region', {
-    name: 'Scrollable data table',
-  });
-  await tableRegion.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect
-    .poll(() => tableRegion.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(0);
+  await expect(
+    page.getByRole('list', { name: 'Members' }).getByText('Owner'),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -207,13 +202,18 @@ test('confirms a role change and sends its exact revision and command key', asyn
   );
 
   await page.goto(`/w/${workspaceId}/team`);
-  await page.getByRole('button', { name: 'Change role' }).click();
-  await expect(page.getByText(/must sign in again/u)).toBeVisible();
-  await page.getByLabel('New role').selectOption('operator');
-  await page.getByRole('button', { name: 'Change role' }).click();
-  await expect(page.getByRole('dialog')).not.toBeVisible();
-  const memberRow = page.getByRole('row').filter({ hasText: 'Ada Operator' });
-  await expect(memberRow.getByText('operator', { exact: true })).toBeVisible();
+  await page.getByRole('combobox', { name: 'Role for Ada Operator' }).click();
+  await page.getByRole('option', { name: 'Operator' }).click();
+  const confirmation = page.getByRole('dialog', {
+    name: 'Make Ada Operator an Operator?',
+  });
+  await expect(confirmation.getByText(/signed out everywhere/u)).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Change role' }).click();
+  await expect(confirmation).not.toBeVisible();
+  await expect(page.getByText('Ada Operator is now an Operator')).toBeVisible();
+  await expect(
+    page.getByRole('combobox', { name: 'Role for Ada Operator' }),
+  ).toHaveText('Operator');
 });
 
 test('creates an invitation and refreshes the authoritative pending list', async ({
@@ -282,14 +282,21 @@ test('creates an invitation and refreshes the authoritative pending list', async
   );
 
   await page.goto(`/w/${workspaceId}/team`);
-  await page.getByRole('button', { name: 'Invite member' }).click();
-  await page.getByLabel('Recipient email').fill('new.builder@example.test');
-  await page.getByLabel('Workspace role').selectOption('builder');
-  await page.getByRole('button', { name: 'Send invitation' }).click();
+  await page.getByRole('button', { name: 'Invite people' }).click();
+  const lens = page.locator('[data-slot="sheet-content"]');
+  await lens.getByLabel('Email addresses').fill('new.builder@example.test');
+  await lens.getByRole('combobox', { name: 'Role' }).click();
+  await page.getByRole('option', { name: /^Builder/u }).click();
+  await lens.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(
+    page.getByText('Invitation sent to new.builder@example.test'),
+  ).toBeVisible();
 
+  await page.getByRole('tab', { name: /Invitations/u }).click();
   const row = page
-    .getByRole('row')
+    .getByRole('list', { name: 'Invitations' })
+    .getByRole('listitem')
     .filter({ hasText: 'new.builder@example.test' });
-  await expect(row.getByText('builder', { exact: true })).toBeVisible();
-  await expect(row.getByText('queued', { exact: true })).toBeVisible();
+  await expect(row.getByText('Builder', { exact: true })).toBeVisible();
+  await expect(row.getByText(/^Sending/u)).toBeVisible();
 });

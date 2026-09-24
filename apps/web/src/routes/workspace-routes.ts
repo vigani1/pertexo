@@ -30,7 +30,10 @@ import {
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/queries.public';
 import { workspaceLifecycleOperationQueryOptions } from '@/features/workspaces/lifecycle.queries.public';
-import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/members.queries.public';
+import {
+  parseTeamSearch,
+  workspaceMembersInfiniteQueryOptions,
+} from '@/features/workspaces/members.queries.public';
 import { isNotFound } from '@/lib/api/api-error-copy';
 import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
@@ -243,6 +246,7 @@ export const teamRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'team',
   staticData: { crumb: 'Team' },
+  validateSearch: (search) => parseTeamSearch(search),
   loader: async ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('member:read')) return;

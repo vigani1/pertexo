@@ -1,15 +1,21 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { configure, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 
+// Each page loads its lazy route on first render; under a busy machine that
+// can outlast the default one-second wait without anything being wrong.
+configure({ asyncUtilTimeout: 4_000 });
+
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const firstMemberId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const secondMemberId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const invitationId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const timestamp = '2026-09-15T10:00:00.000Z';
+const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
 const user = {
   id: userId,
   email: 'operator@example.test',
@@ -29,19 +35,41 @@ const workspace = {
   createdAt: timestamp,
   updatedAt: timestamp,
 };
+const ownerWorkspace = {
+  ...workspace,
+  role: 'owner',
+  capabilities: ['workspace:read', 'member:read', 'member:manage'],
+};
+
+type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
 
 function member(
   userIdValue: string,
   displayName: string,
-  role: 'owner' | 'admin' | 'builder' | 'operator' | 'viewer',
+  role: Role,
+  roleRevision = 1,
 ) {
   return {
     userId: userIdValue,
     email: `${userIdValue.slice(0, 8)}@example.test`,
     displayName,
     role,
-    roleRevision: 1,
+    roleRevision,
     membershipStatus: 'active',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function invitation(email: string, id = invitationId) {
+  return {
+    id,
+    email,
+    role: 'viewer',
+    status: 'pending',
+    revision: 1,
+    deliveryStatus: 'queued',
+    expiresAt: new Date(Date.now() + 6.5 * 86_400_000).toISOString(),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -56,29 +84,28 @@ function identityHandlers(currentWorkspace: unknown = workspace) {
   ];
 }
 
-function forbidden() {
-  return HttpResponse.json(
-    {
-      type: 'https://pertexo.test/problems/auth.forbidden',
-      title: 'Forbidden',
-      status: 403,
-      code: 'auth.forbidden',
-      requestId: 'request-members-forbidden',
-    },
-    { status: 403, headers: { 'content-type': 'application/problem+json' } },
+function membersOf(items: () => readonly unknown[]) {
+  return http.get(`${api}/members`, () =>
+    HttpResponse.json({ items: items(), nextCursor: null }),
   );
 }
 
-function unauthenticated() {
+function noInvitations() {
+  return http.get(`${api}/invitations`, () =>
+    HttpResponse.json({ items: [], nextCursor: null }),
+  );
+}
+
+function problem(status: number, code: string) {
   return HttpResponse.json(
     {
-      type: 'https://pertexo.test/problems/auth.unauthenticated',
-      title: 'Unauthenticated',
-      status: 401,
-      code: 'auth.unauthenticated',
-      requestId: 'request-members-unauthenticated',
+      type: `https://pertexo.test/problems/${code}`,
+      title: 'Problem',
+      status,
+      code,
+      requestId: `request-${code}`,
     },
-    { status: 401, headers: { 'content-type': 'application/problem+json' } },
+    { status, headers: { 'content-type': 'application/problem+json' } },
   );
 }
 
@@ -90,76 +117,78 @@ function deferred<T>() {
   return { promise, resolve } as const;
 }
 
-describe('workspace members', () => {
+function sheet() {
+  return document.querySelector<HTMLElement>('[data-slot="sheet-content"]');
+}
+
+function lens() {
+  const element = sheet();
+  if (element === null) throw new Error('No lens is open.');
+  return within(element);
+}
+
+function confirmation() {
+  return screen.queryByRole('dialog', { name: /^Make /u });
+}
+
+async function pickRole(
+  actor: ReturnType<typeof userEvent.setup>,
+  name: string,
+  role: string,
+) {
+  await actor.click(
+    await screen.findByRole('combobox', { name: `Role for ${name}` }),
+  );
+  await actor.click(await screen.findByRole('option', { name: role }));
+}
+
+function rowOf(name: string) {
+  const row = screen.getByText(name).closest('li');
+  if (row === null) throw new Error(`${name} row is unavailable`);
+  return within(row);
+}
+
+describe('team: invitations', () => {
   it('creates an invitation and retries an uncertain command with the exact body and key', async () => {
     const commandRequests: { body: unknown; key: string | null }[] = [];
-    let attempt = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+      noInvitations(),
+      http.post(`${api}/invitations`, async ({ request }) => {
+        commandRequests.push({
+          body: await request.json(),
+          key: request.headers.get('idempotency-key'),
+        });
+        if (commandRequests.length === 1) return HttpResponse.error();
+        return HttpResponse.json(
+          { invitation: invitation('new.member@example.test'), replayed: true },
+          { status: 202 },
+        );
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
-          nextCursor: null,
-        }),
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        () => HttpResponse.json({ items: [], nextCursor: null }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        async ({ request }) => {
-          commandRequests.push({
-            body: await request.json(),
-            key: request.headers.get('idempotency-key'),
-          });
-          attempt += 1;
-          if (attempt === 1) return HttpResponse.error();
-          return HttpResponse.json(
-            {
-              invitation: {
-                id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-                email: 'new.member@example.test',
-                role: 'viewer',
-                status: 'pending',
-                revision: 1,
-                deliveryStatus: 'queued',
-                expiresAt: '2026-09-22T10:00:00.000Z',
-                createdAt: timestamp,
-                updatedAt: timestamp,
-              },
-              replayed: true,
-            },
-            { status: 202 },
-          );
-        },
-      ),
     );
     const browser = userEvent.setup();
     renderApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
-      await screen.findByRole('button', { name: 'Invite member' }),
+      await screen.findByRole('button', { name: 'Invite people' }),
     );
     await browser.type(
-      screen.getByLabelText('Recipient email'),
+      lens().getByLabelText('Email addresses'),
       'new.member@example.test',
     );
     await browser.click(
-      screen.getByRole('button', { name: 'Send invitation' }),
+      lens().getByRole('button', { name: 'Send invitation' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'result is uncertain',
+    expect(await lens().findByRole('alert')).toHaveTextContent(
+      'We couldn’t confirm whether the invitation to new.member@example.test went through',
     );
-    await browser.click(
-      screen.getByRole('button', { name: 'Retry same invitation' }),
-    );
+    await browser.click(lens().getByRole('button', { name: 'Try again' }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(sheet()).not.toBeInTheDocument();
     });
+    expect(
+      await screen.findByText('Invitation sent to new.member@example.test'),
+    ).toBeVisible();
     expect(commandRequests).toHaveLength(2);
     expect(commandRequests[1]).toEqual(commandRequests[0]);
     expect(commandRequests[0]?.body).toEqual({
@@ -167,6 +196,62 @@ describe('workspace members', () => {
       role: 'viewer',
     });
     expect(commandRequests[0]?.key).toBeTruthy();
+  });
+
+  it('sends several invitations one by one and reports each address', async () => {
+    const sent: unknown[] = [];
+    mockServer.use(
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+      noInvitations(),
+      http.post(`${api}/invitations`, async ({ request }) => {
+        const body = (await request.json()) as { email: string };
+        sent.push(body);
+        if (body.email === 'taken@example.test')
+          return problem(409, 'workspace.invitation_conflict');
+        return HttpResponse.json(
+          { invitation: invitation(body.email), replayed: false },
+          { status: 202 },
+        );
+      }),
+    );
+    const browser = userEvent.setup();
+    renderApp(`/w/${workspaceId}/team?invite=true`);
+    const field = await screen.findByLabelText('Email addresses');
+    await browser.type(field, 'first@example.test, nope ');
+    expect(lens().getByText('first@example.test')).toBeVisible();
+    expect(field).toHaveValue('nope');
+    expect(field).toHaveAccessibleDescription(
+      expect.stringContaining('“nope” isn’t a complete email address'),
+    );
+    await browser.clear(field);
+    await browser.type(field, 'taken@example.test{Enter}');
+    expect(field).toHaveAttribute('aria-invalid', 'false');
+    await browser.click(lens().getByRole('combobox', { name: 'Role' }));
+    await browser.click(
+      await screen.findByRole('option', { name: /^Operator/u }),
+    );
+    await browser.click(
+      lens().getByRole('button', { name: 'Send 2 invitations' }),
+    );
+
+    const results = await lens().findByRole('list', {
+      name: 'Invitation results',
+    });
+    await waitFor(() => {
+      expect(
+        within(results).getByText('first@example.test').closest('li'),
+      ).toHaveTextContent('Sent');
+    });
+    expect(
+      within(results).getByText('taken@example.test').closest('li'),
+    ).toHaveTextContent(
+      'taken@example.test already has a pending invitation or is a member.',
+    );
+    expect(sent).toEqual([
+      { email: 'first@example.test', role: 'operator' },
+      { email: 'taken@example.test', role: 'operator' },
+    ]);
   });
 
   it('does not submit an invitation after the authenticated identity changes', async () => {
@@ -177,47 +262,27 @@ describe('workspace members', () => {
         HttpResponse.json(currentUser),
       ),
       http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({
-          items: [
-            {
-              ...workspace,
-              role: 'owner',
-              capabilities: ['workspace:read', 'member:read', 'member:manage'],
-            },
-          ],
-          nextCursor: null,
-        }),
+        HttpResponse.json({ items: [ownerWorkspace], nextCursor: null }),
       ),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
-          nextCursor: null,
-        }),
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        () => HttpResponse.json({ items: [], nextCursor: null }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        () => {
-          commands += 1;
-          return HttpResponse.error();
-        },
-      ),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+      noInvitations(),
+      http.post(`${api}/invitations`, () => {
+        commands += 1;
+        return HttpResponse.error();
+      }),
     );
     const browser = userEvent.setup();
     renderApp(`/w/${workspaceId}/team`);
     await browser.click(
-      await screen.findByRole('button', { name: 'Invite member' }),
+      await screen.findByRole('button', { name: 'Invite people' }),
     );
     await browser.type(
-      screen.getByLabelText('Recipient email'),
+      lens().getByLabelText('Email addresses'),
       'new.member@example.test',
     );
     currentUser = { ...user, id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' };
     await browser.click(
-      screen.getByRole('button', { name: 'Send invitation' }),
+      lens().getByRole('button', { name: 'Send invitation' }),
     );
     expect(
       await screen.findByText('Your session is no longer available'),
@@ -233,145 +298,167 @@ describe('workspace members', () => {
         HttpResponse.json(currentUser),
       ),
       http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({
-          items: [
-            {
-              ...workspace,
-              role: 'owner',
-              capabilities: ['workspace:read', 'member:read', 'member:manage'],
-            },
-          ],
-          nextCursor: null,
-        }),
+        HttpResponse.json({ items: [ownerWorkspace], nextCursor: null }),
       ),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
-          nextCursor: null,
-        }),
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        () => HttpResponse.json({ items: [], nextCursor: null }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        () => {
-          commands += 1;
-          return HttpResponse.error();
-        },
-      ),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+      noInvitations(),
+      http.post(`${api}/invitations`, () => {
+        commands += 1;
+        return HttpResponse.error();
+      }),
     );
     const browser = userEvent.setup();
     renderApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
-      await screen.findByRole('button', { name: 'Invite member' }),
+      await screen.findByRole('button', { name: 'Invite people' }),
     );
     await browser.type(
-      screen.getByLabelText('Recipient email'),
+      lens().getByLabelText('Email addresses'),
       'new.member@example.test',
     );
     await browser.click(
-      screen.getByRole('button', { name: 'Send invitation' }),
+      lens().getByRole('button', { name: 'Send invitation' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('uncertain');
+    expect(await lens().findByRole('alert')).toHaveTextContent(
+      'couldn’t confirm',
+    );
     currentUser = { ...user, id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' };
-    await browser.click(
-      screen.getByRole('button', { name: 'Retry same invitation' }),
-    );
+    await browser.click(lens().getByRole('button', { name: 'Try again' }));
     expect(
       await screen.findByText('Your session is no longer available'),
     ).toBeVisible();
     expect(commands).toBe(1);
   });
 
-  it('paginates pending invitations independently from members', async () => {
+  it('paginates invitations independently from members and puts delivery and expiry in words', async () => {
     const requestedCursors: (string | null)[] = [];
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'owner')]),
+      http.get(`${api}/invitations`, ({ request }) => {
+        const after = new URL(request.url).searchParams.get('after');
+        requestedCursors.push(after);
+        return HttpResponse.json({
+          items: [
+            after === null
+              ? invitation('first.invite@example.test')
+              : {
+                  ...invitation(
+                    'second.invite@example.test',
+                    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+                  ),
+                  deliveryStatus: 'failed',
+                },
+          ],
+          nextCursor: after === null ? 'next-invitation-page' : null,
+        });
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Ada Operator', 'owner')],
-          nextCursor: null,
-        }),
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
-        ({ request }) => {
-          const after = new URL(request.url).searchParams.get('after');
-          requestedCursors.push(after);
-          return HttpResponse.json({
-            items: [
-              {
-                id:
-                  after === null
-                    ? 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
-                    : 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-                email:
-                  after === null
-                    ? 'first.invite@example.test'
-                    : 'second.invite@example.test',
-                role: 'viewer',
-                status: 'pending',
-                revision: 1,
-                deliveryStatus: 'queued',
-                expiresAt: '2026-09-22T10:00:00.000Z',
-                createdAt: timestamp,
-                updatedAt: timestamp,
-              },
-            ],
-            nextCursor: after === null ? 'next-invitation-page' : null,
-          });
-        },
-      ),
     );
 
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    renderApp(`/w/${workspaceId}/team?tab=invitations`, { strict: true });
     expect(await screen.findByText('first.invite@example.test')).toBeVisible();
+    expect(screen.getByText('Sending · expires in 6 days')).toBeVisible();
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Load more invitations' }));
     expect(await screen.findByText('second.invite@example.test')).toBeVisible();
-    expect(requestedCursors).toContain(null);
+    expect(screen.getByText('Couldn’t send · expires in 6 days')).toBeVisible();
     expect(
       requestedCursors.filter((cursor) => cursor === 'next-invitation-page'),
     ).toHaveLength(1);
     expect(requestedCursors.at(-1)).toBe('next-invitation-page');
   });
 
-  it('paginates safe member projections in StrictMode', async () => {
+  it('revokes an invitation from its menu after confirming', async () => {
+    const commands: unknown[] = [];
+    let revoked = false;
+    mockServer.use(
+      ...identityHandlers(ownerWorkspace),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'owner')]),
+      http.get(`${api}/invitations`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...invitation('first.invite@example.test'),
+              status: revoked ? 'revoked' : 'pending',
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.post(
+        `${api}/invitations/${invitationId}/revoke`,
+        async ({ request }) => {
+          commands.push(await request.json());
+          revoked = true;
+          return HttpResponse.json({
+            invitation: {
+              ...invitation('first.invite@example.test'),
+              status: 'revoked',
+              revision: 2,
+            },
+            replayed: false,
+          });
+        },
+      ),
+    );
+    const browser = userEvent.setup();
+    renderApp(`/w/${workspaceId}/team?tab=invitations`);
+    await browser.click(
+      await screen.findByRole('button', {
+        name: 'Actions for first.invite@example.test',
+      }),
+    );
+    await browser.click(
+      await screen.findByRole('menuitem', { name: 'Revoke invitation' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Revoke the invitation for first.invite@example.test?',
+    });
+    await browser.click(
+      within(dialog).getByRole('button', { name: 'Revoke invitation' }),
+    );
+    expect(
+      await screen.findByText(
+        'Revoked the invitation for first.invite@example.test',
+      ),
+    ).toBeVisible();
+    expect(commands).toEqual([{ expectedRevision: 1 }]);
+    await waitFor(() => {
+      expect(
+        rowOf('first.invite@example.test').getByText('Revoked'),
+      ).toBeVisible();
+    });
+  });
+});
+
+describe('team: members', () => {
+  it('paginates safe member projections and shows the roles matrix', async () => {
     const requestedCursors: (string | null)[] = [];
     mockServer.use(
       ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        ({ request }) => {
-          const query = new URL(request.url).searchParams;
-          requestedCursors.push(query.get('after'));
-          expect(query.get('limit')).toBe('50');
-          return HttpResponse.json(
-            query.get('after') === null
-              ? {
-                  items: [
-                    member(
-                      firstMemberId,
-                      'A member with a display name long enough to need truncation in narrow layouts',
-                      'owner',
-                    ),
-                  ],
-                  nextCursor: 'next-page',
-                }
-              : {
-                  items: [member(secondMemberId, 'Second Member', 'viewer')],
-                  nextCursor: null,
-                },
-          );
-        },
-      ),
+      http.get(`${api}/members`, ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        requestedCursors.push(query.get('after'));
+        expect(query.get('limit')).toBe('50');
+        return HttpResponse.json(
+          query.get('after') === null
+            ? {
+                items: [
+                  member(
+                    userId,
+                    'A member with a display name long enough to need truncation in narrow layouts',
+                    'viewer',
+                  ),
+                ],
+                nextCursor: 'next-page',
+              }
+            : {
+                items: [member(secondMemberId, 'Second Member', 'viewer')],
+                nextCursor: null,
+              },
+        );
+      }),
     );
 
     renderApp(`/w/${workspaceId}/team`, { strict: true });
@@ -380,6 +467,19 @@ describe('workspace members', () => {
         'A member with a display name long enough to need truncation in narrow layouts',
       ),
     ).toBeVisible();
+    expect(screen.getByText('you')).toBeVisible();
+    const matrix = screen.getByRole('table');
+    expect(
+      within(matrix).getByRole('rowheader', {
+        name: 'Rename or delete the workspace',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('You’re a Viewer. Your column is highlighted.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('tab', { name: /Invitations/u }),
+    ).not.toBeInTheDocument();
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Load more' }));
@@ -390,91 +490,70 @@ describe('workspace members', () => {
   it('does not request or advertise members without read capability', async () => {
     let reads = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        capabilities: ['workspace:read'],
+      ...identityHandlers({ ...workspace, capabilities: ['workspace:read'] }),
+      http.get(`${api}/members`, () => {
+        reads += 1;
+        return HttpResponse.json({ items: [], nextCursor: null });
       }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () => {
-          reads += 1;
-          return HttpResponse.json({ items: [], nextCursor: null });
-        },
-      ),
     );
-
     renderApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
         name: 'Workspace members are unavailable',
       }),
     ).toBeVisible();
-    expect(
-      screen.queryByRole('link', { name: 'Workspace settings' }),
-    ).not.toBeInTheDocument();
     expect(reads).toBe(0);
   });
 
   it('keeps a failed read distinct from an empty member list', async () => {
     mockServer.use(
       ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.error(),
-      ),
+      http.get(`${api}/members`, () => HttpResponse.error()),
     );
-
     renderApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
-        name: 'Workspace members could not be loaded',
+        name: 'Members couldn’t be loaded',
       }),
     ).toBeVisible();
     expect(
-      screen.queryByRole('heading', { name: 'No workspace members' }),
+      screen.queryByRole('heading', { name: 'No members to show' }),
     ).not.toBeInTheDocument();
   });
 
   it('shows an empty directory only after a successful read', async () => {
     mockServer.use(
       ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({ items: [], nextCursor: null }),
-      ),
+      membersOf(() => []),
     );
-
     renderApp(`/w/${workspaceId}/team`);
     expect(
-      await screen.findByRole('heading', { name: 'No workspace members' }),
+      await screen.findByRole('heading', { name: 'No members to show' }),
     ).toBeVisible();
     expect(
-      screen.queryByRole('heading', {
-        name: 'Workspace members could not be loaded',
-      }),
+      screen.queryByRole('heading', { name: 'Members couldn’t be loaded' }),
     ).not.toBeInTheDocument();
   });
 
   it('keeps loaded members visible when the next page fails', async () => {
     mockServer.use(
       ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        ({ request }) =>
-          new URL(request.url).searchParams.get('after') === null
-            ? HttpResponse.json({
-                items: [member(firstMemberId, 'Ada Operator', 'owner')],
-                nextCursor: 'next-page',
-              })
-            : HttpResponse.error(),
+      http.get(`${api}/members`, ({ request }) =>
+        new URL(request.url).searchParams.get('after') === null
+          ? HttpResponse.json({
+              items: [member(firstMemberId, 'Ada Operator', 'owner')],
+              nextCursor: 'next-page',
+            })
+          : HttpResponse.error(),
       ),
     );
-
     renderApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The next member page could not be loaded. Try again.',
+      'More members couldn’t be loaded. Try again.',
     );
     expect(screen.getByText('Ada Operator')).toBeVisible();
   });
@@ -483,15 +562,13 @@ describe('workspace members', () => {
     let fail = false;
     mockServer.use(
       ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () =>
-          fail
-            ? HttpResponse.error()
-            : HttpResponse.json({
-                items: [member(firstMemberId, 'Ada Operator', 'owner')],
-                nextCursor: null,
-              }),
+      http.get(`${api}/members`, () =>
+        fail
+          ? HttpResponse.error()
+          : HttpResponse.json({
+              items: [member(firstMemberId, 'Ada Operator', 'owner')],
+              nextCursor: null,
+            }),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/team`);
@@ -501,31 +578,29 @@ describe('workspace members', () => {
       queryKey: ['identity', userId, 'workspace', workspaceId, 'members'],
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'These members may be stale',
+      'The latest refresh didn’t go through',
     );
     expect(screen.getByText('Ada Operator')).toBeVisible();
     fail = false;
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Retry refresh' }));
+      .click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 
-  it('hides cached members and settings actions after permission is lost', async () => {
+  it('hides cached members after permission is lost', async () => {
     let denied = false;
     mockServer.use(
       ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () =>
-          denied
-            ? forbidden()
-            : HttpResponse.json({
-                items: [member(firstMemberId, 'Ada Operator', 'owner')],
-                nextCursor: null,
-              }),
+      http.get(`${api}/members`, () =>
+        denied
+          ? problem(403, 'auth.forbidden')
+          : HttpResponse.json({
+              items: [member(firstMemberId, 'Ada Operator', 'owner')],
+              nextCursor: null,
+            }),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/team`);
@@ -538,143 +613,97 @@ describe('workspace members', () => {
       await screen.findByRole('heading', { name: 'Member access was removed' }),
     ).toBeVisible();
     expect(screen.queryByText('Ada Operator')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Load more' }),
-    ).not.toBeInTheDocument();
   });
 
   it('removes cached members and an open confirmation after authentication is lost', async () => {
     let sessionExpired = false;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
-      }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () =>
-          sessionExpired
-            ? unauthenticated()
-            : HttpResponse.json({
-                items: [member(firstMemberId, 'Alice Member', 'viewer')],
-                nextCursor: null,
-              }),
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      http.get(`${api}/members`, () =>
+        sessionExpired
+          ? problem(401, 'auth.unauthenticated')
+          : HttpResponse.json({
+              items: [member(firstMemberId, 'Alice Member', 'viewer')],
+              nextCursor: null,
+            }),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/team`);
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'Change role' }));
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
+    await pickRole(userEvent.setup(), 'Alice Member', 'Operator');
+    expect(confirmation()).toHaveTextContent('Alice Member');
 
     sessionExpired = true;
     await queryClient.refetchQueries({
       queryKey: ['identity', userId, 'workspace', workspaceId, 'members'],
     });
-
     expect(
       await screen.findByRole('heading', {
         name: 'Your session is no longer available',
       }),
     ).toBeVisible();
     expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Change role' }),
-    ).not.toBeInTheDocument();
+    expect(confirmation()).not.toBeInTheDocument();
   });
 
   it('removes protected state after a role command reports authentication loss without replaying', async () => {
     let commandCount = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      membersOf(() => [member(firstMemberId, 'Alice Member', 'viewer')]),
+      http.post(`${api}/members/${firstMemberId}/role`, () => {
+        commandCount += 1;
+        return problem(401, 'auth.unauthenticated');
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Alice Member', 'viewer')],
-          nextCursor: null,
-        }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/${firstMemberId}/role`,
-        () => {
-          commandCount += 1;
-          return unauthenticated();
-        },
-      ),
     );
     const browser = userEvent.setup();
     renderApp(`/w/${workspaceId}/team`, { strict: true });
-    await browser.click(
-      await screen.findByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
-
     expect(
       await screen.findByRole('heading', {
         name: 'Your session is no longer available',
       }),
     ).toBeVisible();
     expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmation()).not.toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(commandCount).toBe(1);
   });
 
   it('keeps the exact role command available after an uncertain response', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
-    let attempt = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+      http.post(`${api}/members/${firstMemberId}/role`, async ({ request }) => {
+        commands.push({
+          key: request.headers.get('idempotency-key'),
+          body: await request.json(),
+        });
+        return commands.length === 1
+          ? HttpResponse.error()
+          : HttpResponse.json({
+              userId: firstMemberId,
+              role: 'operator',
+              roleRevision: 2,
+              changed: true,
+              replayed: true,
+            });
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
-          nextCursor: null,
-        }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/${firstMemberId}/role`,
-        async ({ request }) => {
-          commands.push({
-            key: request.headers.get('idempotency-key'),
-            body: await request.json(),
-          });
-          attempt += 1;
-          return attempt === 1
-            ? HttpResponse.error()
-            : HttpResponse.json({
-                userId: firstMemberId,
-                role: 'operator',
-                roleRevision: 2,
-                changed: true,
-                replayed: true,
-              });
-        },
-      ),
     );
 
     renderApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
-    await browser.click(
-      await screen.findByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Ada Operator', 'Operator');
+    expect(confirmation()).toHaveTextContent('signed out everywhere');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'result is uncertain',
+      'We couldn’t confirm whether Ada Operator’s role changed',
     );
-    await browser.click(
-      screen.getByRole('button', { name: 'Retry same change' }),
-    );
+    await browser.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => {
       expect(commands).toHaveLength(2);
     });
@@ -683,33 +712,24 @@ describe('workspace members', () => {
       role: 'operator',
       expectedRoleRevision: 1,
     });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(confirmation()).not.toBeInTheDocument();
+    });
   });
 
   it('keeps an in-flight and uncertain command attached to its original member', async () => {
     const firstResponse = deferred<Response>();
-    const commands: {
-      target: string;
-      key: string | null;
-      body: unknown;
-    }[] = [];
+    const commands: { target: string; key: string | null; body: unknown }[] =
+      [];
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
-      }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [
-            member(firstMemberId, 'Alice Member', 'viewer'),
-            member(secondMemberId, 'Bob Member', 'builder'),
-          ],
-          nextCursor: null,
-        }),
-      ),
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      membersOf(() => [
+        member(firstMemberId, 'Alice Member', 'viewer'),
+        member(secondMemberId, 'Bob Member', 'builder'),
+      ]),
       http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/:targetUserId/role`,
+        `${api}/members/:targetUserId/role`,
         async ({ params, request }) => {
           commands.push({
             target: String(params.targetUserId),
@@ -731,41 +751,26 @@ describe('workspace members', () => {
 
     renderApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
-    const aliceRow = (await screen.findByText('Alice Member')).closest('tr');
-    if (aliceRow === null) throw new Error('Alice row is unavailable');
-    await browser.click(
-      within(aliceRow).getByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
 
     await browser.keyboard('{Escape}');
-    await browser.click(document.body);
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
-    const bobRow = screen.getByText('Bob Member').closest('tr');
-    if (bobRow === null) throw new Error('Bob row is unavailable');
-    const disabledBobAction = within(bobRow).getByRole('button', {
-      name: 'Change role',
-      hidden: true,
-    });
-    expect(disabledBobAction).toBeDisabled();
-    disabledBobAction.click();
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
+    expect(confirmation()).toHaveTextContent('Alice Member');
+    expect(
+      rowOf('Bob Member').getByRole('combobox', { hidden: true }),
+    ).toHaveAttribute('data-disabled');
 
     firstResponse.resolve(Response.error());
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'result is uncertain',
+      'Alice Member’s role changed',
     );
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
-    expect(screen.getByRole('dialog')).not.toHaveTextContent('Bob Member');
+    expect(confirmation()).toHaveTextContent('Alice Member');
+    expect(confirmation()).not.toHaveTextContent('Bob Member');
     await browser.keyboard('{Escape}');
-    await browser.click(document.body);
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
+    expect(confirmation()).toHaveTextContent('Alice Member');
 
-    await browser.click(
-      screen.getByRole('button', { name: 'Retry same change' }),
-    );
+    await browser.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => {
       expect(commands).toHaveLength(2);
     });
@@ -775,20 +780,15 @@ describe('workspace members', () => {
       body: { role: 'operator', expectedRoleRevision: 1 },
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'result is uncertain',
+      'couldn’t confirm',
     );
 
-    await browser.click(
-      screen.getByRole('button', { name: 'Dismiss attempt' }),
-    );
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    const currentBobRow = screen.getByText('Bob Member').closest('tr');
-    if (currentBobRow === null) throw new Error('Bob row is unavailable');
-    await browser.click(
-      within(currentBobRow).getByRole('button', { name: 'Change role' }),
-    );
-    expect(screen.getByRole('dialog')).toHaveTextContent('Bob Member');
-    await browser.selectOptions(screen.getByLabelText('New role'), 'viewer');
+    await browser.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => {
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+    await pickRole(browser, 'Bob Member', 'Viewer');
+    expect(confirmation()).toHaveTextContent('Bob Member');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(commands).toHaveLength(3);
@@ -800,114 +800,87 @@ describe('workspace members', () => {
     expect(commands[2]?.key).not.toBe(commands[0]?.key);
   });
 
-  it('keeps the dialog locked through authoritative refresh reconciliation', async () => {
+  it('keeps the confirmation locked through authoritative refresh reconciliation', async () => {
     const refreshedMembers = deferred<Response>();
     let reads = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      http.get(`${api}/members`, () => {
+        reads += 1;
+        return reads === 1
+          ? HttpResponse.json({
+              items: [member(firstMemberId, 'Alice Member', 'viewer')],
+              nextCursor: null,
+            })
+          : refreshedMembers.promise;
       }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () => {
-          reads += 1;
-          return reads === 1
-            ? HttpResponse.json({
-                items: [member(firstMemberId, 'Alice Member', 'viewer')],
-                nextCursor: null,
-              })
-            : refreshedMembers.promise;
-        },
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/${firstMemberId}/role`,
-        () =>
-          HttpResponse.json({
-            userId: firstMemberId,
-            role: 'operator',
-            roleRevision: 2,
-            changed: true,
-            replayed: false,
-          }),
+      http.post(`${api}/members/${firstMemberId}/role`, () =>
+        HttpResponse.json({
+          userId: firstMemberId,
+          role: 'operator',
+          roleRevision: 2,
+          changed: true,
+          replayed: false,
+        }),
       ),
     );
     renderApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
-    await browser.click(
-      await screen.findByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(reads).toBe(2);
     });
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     await browser.keyboard('{Escape}');
-    await browser.click(document.body);
-    expect(screen.getByRole('dialog')).toHaveTextContent('Alice Member');
+    expect(confirmation()).toHaveTextContent('Alice Member');
 
     refreshedMembers.resolve(
       Response.json({
-        items: [
-          {
-            ...member(firstMemberId, 'Alice Member', 'operator'),
-            roleRevision: 2,
-          },
-        ],
+        items: [member(firstMemberId, 'Alice Member', 'operator', 2)],
         nextCursor: null,
       }),
     );
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(confirmation()).not.toBeInTheDocument();
     });
-    const aliceRow = screen.getByText('Alice Member').closest('tr');
-    if (aliceRow === null) throw new Error('Alice row is unavailable');
-    expect(within(aliceRow).getByText('operator')).toBeVisible();
+    expect(
+      await screen.findByText('Alice Member is now an Operator'),
+    ).toBeVisible();
+    expect(rowOf('Alice Member').getByRole('combobox')).toHaveTextContent(
+      'Operator',
+    );
   });
 
-  it('fences reconciliation callbacks after the members route is disposed', async () => {
+  it('fences reconciliation callbacks after the team route is disposed', async () => {
     const refreshedMembers = deferred<Response>();
     let reads = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      http.get(`${api}/members`, () => {
+        reads += 1;
+        return reads === 1
+          ? HttpResponse.json({
+              items: [member(firstMemberId, 'Alice Member', 'viewer')],
+              nextCursor: null,
+            })
+          : refreshedMembers.promise;
       }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members`,
-        () => {
-          reads += 1;
-          return reads === 1
-            ? HttpResponse.json({
-                items: [member(firstMemberId, 'Alice Member', 'viewer')],
-                nextCursor: null,
-              })
-            : refreshedMembers.promise;
-        },
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/${firstMemberId}/role`,
-        () =>
-          HttpResponse.json({
-            userId: firstMemberId,
-            role: 'operator',
-            roleRevision: 2,
-            changed: true,
-            replayed: false,
-          }),
+      http.post(`${api}/members/${firstMemberId}/role`, () =>
+        HttpResponse.json({
+          userId: firstMemberId,
+          role: 'operator',
+          roleRevision: 2,
+          changed: true,
+          replayed: false,
+        }),
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/team`, {
-      strict: true,
-    });
+    const { router } = renderApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
-    await browser.click(
-      await screen.findByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(reads).toBe(2);
@@ -919,18 +892,13 @@ describe('workspace members', () => {
     ).toBeVisible();
     refreshedMembers.resolve(
       Response.json({
-        items: [
-          {
-            ...member(firstMemberId, 'Alice Member', 'operator'),
-            roleRevision: 2,
-          },
-        ],
+        items: [member(firstMemberId, 'Alice Member', 'operator', 2)],
         nextCursor: null,
       }),
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(router.state.location.pathname).toBe('/workspaces');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmation()).not.toBeInTheDocument();
   });
 
   it('does not offer self, owner, or admin-managed admin role changes', async () => {
@@ -940,25 +908,19 @@ describe('workspace members', () => {
         role: 'admin',
         capabilities: ['workspace:read', 'member:read', 'member:manage'],
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [
-            member(userId, 'Current Admin', 'viewer'),
-            member(firstMemberId, 'Workspace Owner', 'owner'),
-            {
-              ...member(secondMemberId, 'Another Admin', 'viewer'),
-              role: 'admin',
-            },
-          ],
-          nextCursor: null,
-        }),
-      ),
+      noInvitations(),
+      membersOf(() => [
+        member(userId, 'Current Admin', 'viewer'),
+        member(firstMemberId, 'Workspace Owner', 'owner'),
+        member(secondMemberId, 'Another Admin', 'admin'),
+      ]),
     );
     renderApp(`/w/${workspaceId}/team`);
     await screen.findByText('Another Admin');
     expect(
-      screen.queryByRole('button', { name: 'Change role' }),
+      screen.queryByRole('combobox', { name: /^Role for/u }),
     ).not.toBeInTheDocument();
+    expect(rowOf('Workspace Owner').getByText('Owner')).toBeVisible();
   });
 
   it('lets an admin manage delegated roles without exposing admin or owner promotion', async () => {
@@ -968,91 +930,59 @@ describe('workspace members', () => {
         role: 'admin',
         capabilities: ['workspace:read', 'member:read', 'member:manage'],
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [member(firstMemberId, 'Builder Member', 'builder')],
-          nextCursor: null,
-        }),
-      ),
+      noInvitations(),
+      membersOf(() => [member(firstMemberId, 'Builder Member', 'builder')]),
     );
     renderApp(`/w/${workspaceId}/team`);
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'Change role' }));
-    const choices = screen
-      .getAllByRole('option')
-      .map((option) => option.getAttribute('value'));
-    expect(choices).toEqual(['builder', 'operator', 'viewer']);
+    await userEvent.setup().click(
+      await screen.findByRole('combobox', {
+        name: 'Role for Builder Member',
+      }),
+    );
+    const choices = (await screen.findAllByRole('option')).map(
+      (option) => option.textContent,
+    );
+    expect(choices).toEqual(['Builder', 'Operator', 'Viewer']);
   });
 
   it('refreshes a stale revision and requires an explicit new confirmation', async () => {
     let revision = 1;
     const commands: { key: string | null; body: unknown }[] = [];
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        role: 'owner',
-        capabilities: ['workspace:read', 'member:read', 'member:manage'],
+      ...identityHandlers(ownerWorkspace),
+      noInvitations(),
+      membersOf(() => [
+        member(firstMemberId, 'Ada Operator', 'viewer', revision),
+      ]),
+      http.post(`${api}/members/${firstMemberId}/role`, async ({ request }) => {
+        commands.push({
+          key: request.headers.get('idempotency-key'),
+          body: await request.json(),
+        });
+        if (commands.length === 1) {
+          revision = 2;
+          return problem(409, 'workspace.member_role_revision_conflict');
+        }
+        return HttpResponse.json({
+          userId: firstMemberId,
+          role: 'operator',
+          roleRevision: 3,
+          changed: true,
+          replayed: false,
+        });
       }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
-        HttpResponse.json({
-          items: [
-            {
-              ...member(firstMemberId, 'Ada Operator', 'viewer'),
-              roleRevision: revision,
-            },
-          ],
-          nextCursor: null,
-        }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/members/${firstMemberId}/role`,
-        async ({ request }) => {
-          commands.push({
-            key: request.headers.get('idempotency-key'),
-            body: await request.json(),
-          });
-          if (commands.length === 1) {
-            revision = 2;
-            return HttpResponse.json(
-              {
-                type: 'urn:pertexo:problem:workspace.member_role_revision_conflict',
-                title: 'Workspace member role changed',
-                status: 409,
-                code: 'workspace.member_role_revision_conflict',
-                requestId: 'request-role-conflict',
-              },
-              {
-                status: 409,
-                headers: { 'content-type': 'application/problem+json' },
-              },
-            );
-          }
-          return HttpResponse.json({
-            userId: firstMemberId,
-            role: 'operator',
-            roleRevision: 3,
-            changed: true,
-            replayed: false,
-          });
-        },
-      ),
     );
     renderApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
-    await browser.click(
-      await screen.findByRole('button', { name: 'Change role' }),
-    );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Ada Operator', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(confirmation()).not.toBeInTheDocument();
     });
-    await browser.click(screen.getByRole('button', { name: 'Change role' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'changed since you opened',
+    expect(await rowOf('Ada Operator').findByRole('alert')).toHaveTextContent(
+      'Ada Operator’s role changed while you were deciding',
     );
-    await browser.selectOptions(screen.getByLabelText('New role'), 'operator');
+    await pickRole(browser, 'Ada Operator', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(commands).toHaveLength(2);

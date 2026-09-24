@@ -3,278 +3,240 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { PlusIcon } from 'lucide-react';
 import { useState } from 'react';
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
-import { isUnauthenticated } from '@/features/auth/session-identity.public';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
-import type { ApiClient } from '@/lib/api/client';
+import { Status } from '@/components/ui/status';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
-import { WorkspaceMembersTable } from './components/members/workspace-members-table';
-import { MemberRoleDialog } from './components/members/member-role-dialog';
-import { useMemberRoleCommand } from './mutations/use-member-role-command';
-import { WorkspaceInvitationsSection } from './components/invitations/workspace-invitations-section';
-import { workspaceMembersInfiniteQueryOptions } from './workspaces.queries';
+import type { ApiClient } from '@/lib/api/client';
+import { InvitationsPanel } from './components/invitations/invitations-panel';
+import { InviteLens } from './components/invitations/invite-lens';
+import { MembersPanel } from './components/members/members-panel';
+import { RolesMatrix } from './components/members/roles-matrix';
+import type { TeamSearch } from './model/team-search';
+import { assignableRoles } from './model/workspace-roles';
+import { useInvitationCommand } from './mutations/use-invitation-command';
+import {
+  workspaceInvitationsInfiniteQueryOptions,
+  workspaceMembersInfiniteQueryOptions,
+} from './workspaces.queries';
 
-export function WorkspaceMembersPage({
-  apiClient,
-  user,
-  workspace,
-}: Readonly<{
-  apiClient: ApiClient;
-  user: UserProfileResponse;
-  workspace: AccessibleWorkspace;
-}>) {
-  const canRead = workspace.capabilities.includes('member:read');
-  const [commandAccessLoss, setCommandAccessLoss] = useState<
-    'authentication' | 'permission'
-  >();
-  const query = useInfiniteQuery({
-    ...workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
-    enabled: canRead,
-  });
-  const members = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const queryAuthenticationLost =
-    query.isError && isUnauthenticated(query.error);
-  const authenticationLost =
-    commandAccessLoss === 'authentication' || queryAuthenticationLost;
-  const permissionLost =
-    commandAccessLoss === 'permission' ||
-    (query.isError && isApiError(query.error) && query.error.status === 403);
-  const accessLost = authenticationLost || permissionLost;
+type AccessLoss = 'authentication' | 'permission';
 
-  if (!canRead)
-    return (
-      <Empty>
-        <EmptyTitle>Workspace members are unavailable</EmptyTitle>
-        <EmptyDescription>
-          Your workspace role does not allow you to view members.
-        </EmptyDescription>
-      </Empty>
-    );
-
-  if (accessLost)
-    return (
-      <Empty>
-        <EmptyTitle>
-          {authenticationLost
-            ? 'Your session is no longer available'
-            : 'Member access was removed'}
-        </EmptyTitle>
-        <EmptyDescription>
-          {authenticationLost
-            ? 'Sign in again before viewing or managing workspace members.'
-            : 'Your current session no longer has permission to view workspace members.'}
-        </EmptyDescription>
-      </Empty>
-    );
-
+function Blocked({
+  title,
+  description,
+}: Readonly<{ title: string; description: string }>) {
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
-          Members
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          See who can access {workspace.name} and the role assigned to each
-          member.
-        </p>
-      </header>
-
-      {query.isError && members.length > 0 && !query.isFetchNextPageError ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
-        >
-          <p className="text-sm text-destructive">
-            These members may be stale because the latest refresh failed.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={query.isRefetching}
-            onClick={() => void query.refetch()}
-          >
-            {query.isRefetching ? 'Retrying…' : 'Retry refresh'}
-          </Button>
-        </div>
-      ) : null}
-
-      {query.isPending ? (
-        <p role="status" className="py-16 text-sm text-muted-foreground">
-          Loading workspace members…
-        </p>
-      ) : query.isError && members.length === 0 ? (
-        <Empty>
-          <EmptyTitle>Workspace members could not be loaded</EmptyTitle>
-          <EmptyDescription>{membersError(query.error)}</EmptyDescription>
-          <Button
-            className="mt-6"
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
-            Try again
-          </Button>
-        </Empty>
-      ) : members.length === 0 ? (
-        <Empty>
-          <EmptyTitle>No workspace members</EmptyTitle>
-          <EmptyDescription>
-            This workspace does not currently have any visible members.
-          </EmptyDescription>
-        </Empty>
-      ) : (
-        <>
-          <div className="glass-panel overflow-hidden rounded-xl">
-            <MemberRoleManagement
-              apiClient={apiClient}
-              user={user}
-              workspace={workspace}
-              members={members}
-              onAccessLost={setCommandAccessLoss}
-            />
-          </div>
-          {query.hasNextPage ? (
-            <div className="mt-6 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={query.isFetchingNextPage}
-                onClick={() => void query.fetchNextPage()}
-              >
-                {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </Button>
-            </div>
-          ) : null}
-          {query.isFetchNextPageError ? (
-            <p
-              role="alert"
-              className="mt-4 text-center text-sm text-destructive"
-            >
-              The next member page could not be loaded. Try again.
-            </p>
-          ) : null}
-        </>
-      )}
-      {workspace.capabilities.includes('member:manage') ? (
-        <WorkspaceInvitationsSection
-          apiClient={apiClient}
-          user={user}
-          workspace={workspace}
-          onAccessLost={setCommandAccessLoss}
-        />
-      ) : null}
+    <div className="flex flex-col gap-8">
+      <PageHeader>
+        <PageHeaderTitle>Team</PageHeaderTitle>
+      </PageHeader>
+      <Empty>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </Empty>
     </div>
   );
 }
 
-function MemberRoleManagement({
+function lossOf(
+  error: unknown,
+  notFoundIsLoss: boolean,
+): AccessLoss | undefined {
+  if (isUnauthenticated(error)) return 'authentication';
+  if (!isApiError(error)) return undefined;
+  if (error.status === 403 || (notFoundIsLoss && error.status === 404))
+    return 'permission';
+  return undefined;
+}
+
+/**
+ * Who has access and what they can do: members with inline roles, the
+ * invitations people are still to accept, and the roles matrix beside them.
+ */
+export function WorkspaceMembersPage({
   apiClient,
   user,
   workspace,
-  members,
-  onAccessLost,
+  search,
+  onSearchChange,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
-  members: readonly WorkspaceMember[];
-  onAccessLost: (loss: 'authentication' | 'permission') => void;
+  search: TeamSearch;
+  onSearchChange: (next: TeamSearch) => void;
 }>) {
-  const [selectedMember, setSelectedMember] = useState<WorkspaceMember>();
-  const roleCommand = useMemberRoleCommand({
+  const canRead = workspace.capabilities.includes('member:read');
+  const canManage = workspace.capabilities.includes('member:manage');
+  const [commandLoss, setCommandLoss] = useState<AccessLoss>();
+  const members = useInfiniteQuery({
+    ...workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
+    enabled: canRead,
+  });
+  const invitations = useInfiniteQuery({
+    ...workspaceInvitationsInfiniteQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+    ),
+    enabled: canRead && canManage,
+  });
+  const command = useInvitationCommand({
     apiClient,
-    actorUserId: user.id,
+    userId: user.id,
     workspaceId: workspace.id,
-    onConflict: () => {
-      setSelectedMember(undefined);
-    },
     onAuthenticationLost: () => {
-      onAccessLost('authentication');
+      setCommandLoss('authentication');
     },
     onPermissionLost: () => {
-      onAccessLost('permission');
-    },
-    onTargetUnavailable: () => {
-      setSelectedMember(undefined);
+      setCommandLoss('permission');
     },
   });
-  const dialogMember = roleCommand.activeMember ?? selectedMember;
+  const memberItems = members.data?.pages.flatMap((page) => page.items) ?? [];
+  const invitationItems =
+    invitations.data?.pages.flatMap((page) => page.items) ?? [];
+  const pendingInvitations = invitationItems.filter(
+    (item) => item.status === 'pending',
+  ).length;
+  const losses = [
+    commandLoss,
+    members.isError ? lossOf(members.error, false) : undefined,
+    invitations.isError ? lossOf(invitations.error, true) : undefined,
+  ];
+
+  if (!canRead)
+    return (
+      <Blocked
+        title="Workspace members are unavailable"
+        description="Your role can’t see who’s in this workspace."
+      />
+    );
+  if (losses.includes('authentication'))
+    return (
+      <Blocked
+        title="Your session is no longer available"
+        description="Sign in again to see or manage this workspace’s members."
+      />
+    );
+  if (losses.includes('permission'))
+    return (
+      <Blocked
+        title="Member access was removed"
+        description="Your role no longer lets you see this workspace’s members."
+      />
+    );
+
+  const tab =
+    canManage && search.tab === 'invitations' ? 'invitations' : 'members';
+  const openInvite = () => {
+    onSearchChange({ ...search, invite: true });
+  };
+  const memberCount = `${String(memberItems.length)}${members.hasNextPage ? '+' : ''}`;
 
   return (
-    <>
-      <WorkspaceMembersTable
-        members={members}
-        actionsDisabled={roleCommand.locked}
-        canManage={(member) =>
-          workspace.capabilities.includes('member:manage') &&
-          canManageMember(workspace.role, user.id, member)
-        }
-        onChangeRole={(member) => {
-          if (!roleCommand.locked) setSelectedMember(member);
-        }}
-      />
-      <MemberRoleDialog
-        key={`${dialogMember?.userId ?? 'closed'}:${String(dialogMember?.roleRevision ?? 0)}`}
-        {...(dialogMember === undefined ? {} : { member: dialogMember })}
-        allowedRoles={allowedRoles(workspace.role)}
-        pending={roleCommand.pending}
-        locked={roleCommand.locked}
-        retryAvailable={roleCommand.retryAvailable}
-        {...(roleCommand.error === undefined ||
-        roleCommand.errorTargetUserId !== dialogMember?.userId
-          ? {}
-          : { error: roleCommand.error })}
-        onClose={() => {
-          setSelectedMember(undefined);
-        }}
-        onChange={(role) =>
-          selectedMember === undefined
-            ? Promise.resolve(false)
-            : roleCommand.start(selectedMember, role)
-        }
-        onRetry={roleCommand.retry}
-        onDismissUncertain={roleCommand.dismiss}
-      />
-    </>
+    <div className="flex flex-col gap-8">
+      <PageHeader>
+        <div>
+          <PageHeaderTitle>Team</PageHeaderTitle>
+          {members.isSuccess ? (
+            <PageHeaderMeta>
+              <span>
+                <b className="text-foreground">{memberCount}</b>{' '}
+                {memberItems.length === 1 ? 'member' : 'members'}
+              </span>
+              {pendingInvitations > 0 ? (
+                <Status tone="queued">
+                  {pendingInvitations}{' '}
+                  {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
+                  pending
+                </Status>
+              ) : null}
+            </PageHeaderMeta>
+          ) : null}
+        </div>
+        {canManage ? (
+          <PageHeaderActions>
+            <Button type="button" variant="primary" onClick={openInvite}>
+              <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              Invite people
+            </Button>
+          </PageHeaderActions>
+        ) : null}
+      </PageHeader>
+
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            onSearchChange({
+              ...(search.invite === true ? { invite: true } : {}),
+              ...(next === 'invitations' ? { tab: 'invitations' } : {}),
+            });
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="members">
+              Members
+              <span className="font-mono text-xs text-subtle-foreground">
+                {memberCount}
+              </span>
+            </TabsTrigger>
+            {canManage ? (
+              <TabsTrigger value="invitations">
+                Invitations
+                <span className="font-mono text-xs text-subtle-foreground">
+                  {pendingInvitations}
+                </span>
+              </TabsTrigger>
+            ) : null}
+          </TabsList>
+          <TabsContent value="members" className="pt-3">
+            <MembersPanel
+              apiClient={apiClient}
+              user={user}
+              workspace={workspace}
+              query={members}
+              members={memberItems}
+              onAccessLost={setCommandLoss}
+            />
+          </TabsContent>
+          {canManage ? (
+            <TabsContent value="invitations" className="pt-3">
+              <InvitationsPanel
+                query={invitations}
+                invitations={invitationItems}
+                command={command}
+                onInvite={openInvite}
+              />
+            </TabsContent>
+          ) : null}
+        </Tabs>
+        <RolesMatrix yourRole={workspace.role} />
+      </div>
+
+      {canManage ? (
+        <InviteLens
+          open={
+            search.invite === true || command.activeAttempt?.kind === 'create'
+          }
+          roles={assignableRoles(workspace.role)}
+          command={command}
+          onClose={() => {
+            onSearchChange(search.tab === undefined ? {} : { tab: search.tab });
+          }}
+        />
+      ) : null}
+    </div>
   );
-}
-
-const delegatedRoles = ['builder', 'operator', 'viewer'] as const;
-
-function allowedRoles(actorRole: AccessibleWorkspace['role']) {
-  return actorRole === 'owner'
-    ? (['admin', ...delegatedRoles] as const)
-    : delegatedRoles;
-}
-
-function canManageMember(
-  actorRole: AccessibleWorkspace['role'],
-  actorUserId: string,
-  member: WorkspaceMember,
-): boolean {
-  if (
-    member.userId === actorUserId ||
-    member.membershipStatus !== 'active' ||
-    member.role === 'owner'
-  )
-    return false;
-  if (actorRole === 'owner') return true;
-  return (
-    actorRole === 'admin' && delegatedRoles.some((role) => role === member.role)
-  );
-}
-
-function membersError(error: unknown): string {
-  if (isApiError(error)) {
-    if (error.status === 403)
-      return 'You no longer have access to members in this workspace.';
-    if (error.kind === 'network')
-      return 'Workspace members could not be reached. Check your network and try again.';
-    if (error.kind === 'timeout')
-      return 'Workspace members took too long to load. Try again.';
-  }
-  return 'Workspace members could not be loaded. Try again.';
 }
