@@ -145,17 +145,28 @@ test('creates, versions and disables a notification destination', async ({
       .getByRole('link', { name: 'Alerts' }),
   ).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Add destination' }).click();
-  await page.getByLabel('Slack connection').selectOption(connectionId);
-  await page.getByLabel('Channel ID').fill('C0123456789');
-  await page.getByRole('button', { name: 'Add destination' }).click();
-  await expect(page.getByText('C0123456789')).toBeVisible();
+  const lens = page.locator('[data-slot="sheet-content"]');
+  await lens.getByLabel('Slack connection').click();
+  await page.getByRole('option', { name: 'Incident Slack' }).click();
+  await lens.getByLabel('Channel ID').fill('C0123456789');
+  await lens.getByRole('button', { name: 'Add destination' }).click();
+  await expect(page.getByText('#C0123456789 via Incident Slack')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit' }).click();
-  await page.getByLabel('Channel ID').fill('C9876543210');
-  await page.getByRole('button', { name: 'Save new version' }).click();
-  await expect(page.getByText('C9876543210')).toBeVisible();
-  await expect(page.getByText(/Version 2/u)).toBeVisible();
+  await page.getByRole('button', { name: /^Edit #C0123456789/u }).click();
+  await expect(
+    lens.getByText(/Version 1 · saving creates version 2/u),
+  ).toBeAttached();
+  await lens.getByLabel('Channel ID').fill('C9876543210');
+  await lens.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('#C9876543210 via Incident Slack')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Disable' }).click();
-  await expect(page.getByText('disabled')).toBeVisible();
+  const toggle = page.getByRole('switch', {
+    name: 'Send alerts to #C9876543210 via Incident Slack',
+  });
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+  await expect(
+    page.getByText('Alerts to #C9876543210 via Incident Slack turned off'),
+  ).toBeVisible();
 });
