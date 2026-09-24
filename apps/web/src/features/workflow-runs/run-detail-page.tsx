@@ -3,6 +3,7 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
@@ -146,42 +147,43 @@ export function RunDetailPage({
             {runCancellationError(cancellation.error)}
           </p>
         ) : null}
+        <dl className="mt-5 grid gap-x-6 gap-y-4 border-t pt-4 sm:grid-cols-3">
+          <Detail
+            label="Accepted workflow version"
+            value={snapshot.run.workflowVersionId}
+            mono
+          />
+          <Detail label="Trigger" value={snapshot.run.triggerType} />
+          <Detail label="Created" value={formatDate(snapshot.run.createdAt)} />
+        </dl>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3" aria-label="Run details">
-        <Detail
-          label="Accepted workflow version"
-          value={snapshot.run.workflowVersionId}
-          mono
-        />
-        <Detail label="Trigger" value={snapshot.run.triggerType} />
-        <Detail label="Created" value={formatDate(snapshot.run.createdAt)} />
-      </section>
-
       {version.data === undefined ? (
-        <section className="glass-panel overflow-hidden rounded-xl">
-          <div className="border-b px-5 py-4 sm:px-6">
-            <h2 className="font-heading text-xl font-semibold">
-              Execution map
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {canViewWorkflow
-                ? version.isError
-                  ? 'The exact workflow version could not be loaded. Run details remain available.'
-                  : 'Loading the exact workflow version…'
-                : 'Workflow read access is required to view the execution map.'}
-            </p>
-          </div>
-          {canViewWorkflow && !version.isError ? (
-            <div
-              className="relative h-64 bg-background/70"
-              aria-busy="true"
-              aria-label="Loading execution map"
-            >
-              <WorkflowRunLoadingWave />
+        <AuroraLoadingPanel active={canViewWorkflow && !version.isError}>
+          <section className="glass-panel overflow-hidden rounded-xl">
+            <div className="border-b px-5 py-4 sm:px-6">
+              <h2 className="font-heading text-xl font-semibold">
+                Execution map
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {canViewWorkflow
+                  ? version.isError
+                    ? 'The exact workflow version could not be loaded. Run details remain available.'
+                    : 'Loading the exact workflow version…'
+                  : 'Workflow read access is required to view the execution map.'}
+              </p>
             </div>
-          ) : null}
-        </section>
+            {canViewWorkflow && !version.isError ? (
+              <div
+                className="relative h-64 bg-background/70"
+                aria-busy="true"
+                aria-label="Loading execution map"
+              >
+                <WorkflowRunLoadingWave />
+              </div>
+            ) : null}
+          </section>
+        </AuroraLoadingPanel>
       ) : (
         <WorkflowRunGraph
           graph={version.data.graph}
@@ -273,13 +275,13 @@ function Detail({
   mono = false,
 }: Readonly<{ label: string; value: string; mono?: boolean }>) {
   return (
-    <div className="glass-panel rounded-xl p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
         className={`mt-1 break-all text-sm font-medium ${mono ? 'font-mono' : ''}`}
       >
         {value}
-      </p>
+      </dd>
     </div>
   );
 }

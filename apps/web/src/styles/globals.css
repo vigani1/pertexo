@@ -59,7 +59,7 @@
   --glass-border-strong: rgb(255 255 255 / 16%);
   --glass-border-subtle: rgb(255 255 255 / 6%);
   --control-background: rgb(0 0 0 / 20%);
-  --control-border: rgb(0 229 255 / 20%);
+  --control-border: rgb(0 229 255 / 45%);
   --blur-glass: 20px;
 }
 
@@ -100,6 +100,13 @@
   ::selection {
     color: var(--primary-foreground);
     background: var(--primary);
+  }
+
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline: 2px solid Highlight !important;
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -144,18 +151,6 @@
   }
 }
 
-@property --aurora-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes aurora-orbit {
-  to {
-    --aurora-angle: 360deg;
-  }
-}
-
 @keyframes workflow-node-scan {
   to {
     background-position: 240% 0;
@@ -168,8 +163,16 @@
   .workflow-canvas-controls .react-flow__controls-button:focus {
     position: relative;
     z-index: 10;
-    outline: none;
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
     box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  @media (forced-colors: active) {
+    .workflow-canvas-controls .react-flow__controls-button:focus {
+      outline-color: Highlight;
+      box-shadow: none;
+    }
   }
 
   .app-stage,
@@ -284,36 +287,138 @@
   }
 
   .aurora-border {
-    position: absolute;
-    inset: 0;
+    --aurora-border-duration: 3.4s;
+    --aurora-border-gradient: conic-gradient(
+      transparent 0%,
+      color-mix(in srgb, var(--primary) 0%, transparent) 10%,
+      color-mix(in srgb, var(--primary) 42%, transparent) 16.3%,
+      color-mix(in srgb, var(--accent-foreground) 92%, transparent) 22.5%,
+      color-mix(in srgb, var(--secondary) 38%, transparent) 28.8%,
+      color-mix(in srgb, var(--primary) 0%, transparent) 35%,
+      transparent 45%
+    );
     pointer-events: none;
-    border: 1px solid var(--primary);
+    position: absolute;
+    inset: -1px;
+    z-index: 20;
     border-radius: inherit;
-    box-shadow: var(--shadow-glow-primary);
+    overflow: visible;
   }
 
-  @supports (mask-composite: exclude) {
-    .aurora-border {
-      border: 0;
-      padding: 1px;
-      background: conic-gradient(
-        from var(--aurora-angle),
-        transparent 35%,
-        var(--primary) 55%,
-        var(--accent-foreground) 65%,
-        var(--secondary) 75%,
-        transparent 90%
-      );
-      mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-      mask-composite: exclude;
-      animation: aurora-orbit 3.4s linear infinite;
-    }
+  .aurora-border-glow {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    opacity: 0.2;
+    mask-image:
+      linear-gradient(black, transparent 42px),
+      linear-gradient(to top, black, transparent 42px),
+      linear-gradient(to right, black, transparent 42px),
+      linear-gradient(to left, black, transparent 42px);
+    mask-composite: add;
+  }
+
+  .aurora-border-glow-gradient,
+  .aurora-border-ring-gradient {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150vmax;
+    height: 150vmax;
+    background: var(--aurora-border-gradient);
+    animation: aurora-border-rotate var(--aurora-border-duration) linear
+      infinite;
+    will-change: transform;
+  }
+
+  .aurora-border-glow-gradient {
+    filter: blur(45px);
+  }
+
+  .aurora-border-ring {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    opacity: 0.78;
+  }
+
+  .aurora-border-ring-mask {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    border-radius: inherit;
+    padding: 1px;
+    mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    mask-clip: content-box, border-box;
+    mask-origin: content-box, border-box;
+    mask-composite: exclude;
+    -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-origin: content-box, border-box;
+    -webkit-mask-composite: xor;
+  }
+
+  .loading-orb {
+    position: relative;
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    perspective: 4rem;
+    transform-style: preserve-3d;
+  }
+
+  .loading-orb-core {
+    position: absolute;
+    inset: 0.3125rem;
+    border-radius: 999px;
+    background: var(--accent-foreground);
+    box-shadow:
+      0 0 0.3rem color-mix(in srgb, var(--primary) 75%, transparent),
+      0 0 0.7rem color-mix(in srgb, var(--secondary) 55%, transparent);
+    animation: loading-orb-core 1.2s ease-in-out infinite;
+  }
+
+  .loading-orb-ring {
+    position: absolute;
+    inset: 0.125rem;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    transform-style: preserve-3d;
+  }
+
+  .loading-orb-ring-primary {
+    border-top-color: var(--accent-foreground);
+    border-right-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    animation: loading-orb-primary 1.05s linear infinite;
+  }
+
+  .loading-orb-ring-secondary {
+    border-bottom-color: color-mix(in srgb, var(--secondary) 85%, transparent);
+    border-left-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    animation: loading-orb-secondary 1.35s linear infinite reverse;
+  }
+
+  .loading-orb-particle {
+    position: absolute;
+    top: 0.0625rem;
+    left: calc(50% - 0.09375rem);
+    width: 0.1875rem;
+    height: 0.1875rem;
+    border-radius: 999px;
+    background: var(--accent-foreground);
+    box-shadow: 0 0 0.35rem var(--primary);
+    transform-origin: 50% 0.4375rem;
+    animation: loading-orb-particle 0.9s linear infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .aurora-border,
+    .aurora-border-glow-gradient,
+    .aurora-border-ring-gradient,
+    .loading-orb-core,
+    .loading-orb-ring,
+    .loading-orb-particle,
     .session-pulse {
       animation: none;
     }
@@ -321,12 +426,57 @@
 
   @media (forced-colors: active) {
     .aurora-border {
-      animation: none;
-      background: none;
-      mask: none;
       border: 1px solid Highlight;
       box-shadow: none;
     }
+
+    .aurora-border-glow,
+    .aurora-border-ring {
+      display: none;
+    }
+  }
+}
+
+@keyframes aurora-border-rotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes loading-orb-primary {
+  from {
+    transform: rotateX(62deg) rotateZ(0deg);
+  }
+
+  to {
+    transform: rotateX(62deg) rotateZ(360deg);
+  }
+}
+
+@keyframes loading-orb-secondary {
+  from {
+    transform: rotateY(58deg) rotateZ(0deg);
+  }
+
+  to {
+    transform: rotateY(58deg) rotateZ(360deg);
+  }
+}
+
+@keyframes loading-orb-particle {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-orb-core {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.72) translateZ(0.2rem);
   }
 }
 

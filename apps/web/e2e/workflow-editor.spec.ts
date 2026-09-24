@@ -99,6 +99,7 @@ async function installEditorRoutes(
   remote: RemoteDraft,
   accessibleWorkspace = workspace,
   definitions: readonly unknown[] = [definition],
+  workflowName = 'Customer onboarding',
 ) {
   await page.route('**/v1/users/me', (route) => route.fulfill({ json: user }));
   await page.route('**/v1/workspaces?**', (route) =>
@@ -126,7 +127,7 @@ async function installEditorRoutes(
           workflow: {
             id: workflowId,
             workspaceId,
-            name: 'Customer onboarding',
+            name: workflowName,
             lifecycleStatus: 'active',
             lifecycleRevision: 1,
             activationStatus: 'inactive',
@@ -266,6 +267,60 @@ test('edits typed input mappings, saves them and restores rendered controls afte
   expect(JSON.parse(restoredLiteral)).toEqual(
     JSON.parse('{"__proto__":{"x":1},"normal":2,"nested":[{"__proto__":3}]}'),
   );
+});
+
+test('cross-tab sign-out pauses a dirty editor without exposing its scratch to the new session', async ({
+  context,
+  page,
+}) => {
+  const remote: RemoteDraft = {
+    graph: mappingGraph(),
+    revision: 1,
+    etagIndex: 0,
+  };
+  const second = await context.newPage();
+  let authenticated = true;
+  await addCsrfCookie(context);
+  for (const tab of [page, second]) {
+    await installEditorRoutes(tab, remote, workspace, [
+      manualDefinition,
+      definition,
+    ]);
+    await tab.route('**/v1/users/me', async (route) => {
+      if (authenticated) await route.fulfill({ json: user });
+      else
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({
+            type: 'urn:pertexo:problem:auth.unauthenticated',
+            title: 'Authentication required',
+            status: 401,
+            code: 'auth.unauthenticated',
+            requestId: 'cross-tab-auth-loss',
+          }),
+        });
+    });
+  }
+  await second.route('**/v1/auth/logout', async (route) => {
+    authenticated = false;
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
+  await page.getByTestId('rf__node-target').click();
+  await page.getByLabel('Value').fill('private unfinished work');
+  await second.goto('/workspaces');
+  await second.getByRole('button', { name: 'Sign out' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Editor paused' }),
+  ).toBeVisible();
+  await expect(page.getByText('private unfinished work')).toBeHidden();
+  expect(remote.revision).toBe(1);
+  authenticated = true;
+  await page.getByRole('button', { name: 'Verify original account' }).click();
+  await expect(page.getByLabel('Value')).toHaveValue('private unfinished work');
+  await second.close();
 });
 
 test('edits, autosaves, and preserves both drafts during a two-tab conflict', async ({
@@ -539,12 +594,20 @@ test('confirms dirty-editor logout before revoking the session', async ({
   await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
   await page.getByTestId('rf__node-node-a').click();
   await page.getByLabel('Label').fill('Unapplied logout scratch');
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page
+    .getByRole('dialog', { name: 'Workspace navigation' })
+    .getByRole('button', { name: 'Sign out' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Leave with unapplied changes?' }),
   ).toBeVisible();
   expect(logoutRequests).toBe(0);
   await page.getByRole('button', { name: 'Stay here' }).click();
+  await page
+    .getByRole('dialog', { name: 'Workspace navigation' })
+    .getByRole('button', { name: 'Close navigation' })
+    .click();
   await expect(page.getByLabel('Label')).toHaveValue(
     'Unapplied logout scratch',
   );
@@ -592,7 +655,7 @@ test('confirms dirty-editor logout before revoking the session', async ({
 test('keeps editable canvas and canvas-local toolbar usable across responsive layouts', async ({
   context,
   page,
-}) => {
+}, testInfo) => {
   const remote: RemoteDraft = {
     graph: {
       schemaVersion: 1,
@@ -604,10 +667,21 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
     etagIndex: 0,
   };
   await addCsrfCookie(context);
-  await installEditorRoutes(page, remote);
+  const longWorkflowName =
+    'Customer onboarding and account provisioning across regional operations';
+  await installEditorRoutes(
+    page,
+    remote,
+    workspace,
+    [definition],
+    longWorkflowName,
+  );
   await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
+  await expect(
+    page.getByRole('navigation', { name: 'Workspace navigation' }),
+  ).toHaveCount(0);
 
-  for (const width of [390, 1024, 1280, 1440]) {
+  for (const width of [390, 720, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const panelNavigation = page.getByRole('navigation', {
       name: 'Workflow editor panels',
@@ -619,13 +693,33 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
       await expect(panelNavigation).toBeHidden();
     }
     const canvas = page.getByRole('region', { name: 'Workflow canvas' });
+    const commandBar = page.getByLabel('Workflow editor commands');
+    const commandBarBox = await commandBar.boundingBox();
+    if (width === 1440) expect(commandBarBox?.height).toBeLessThanOrEqual(64);
+    if (width === 390) expect(commandBarBox?.height).toBeLessThanOrEqual(160);
+    await expect(
+      commandBar.getByRole('heading', { name: longWorkflowName }),
+    ).toHaveAttribute('title', longWorkflowName);
+    await expect(
+      commandBar.getByRole('button', { name: 'Open navigation' }),
+    ).toBeVisible();
     await expect(canvas).toBeVisible();
     await page.getByTestId('rf__node-node-a').click();
     const toolbar = page.getByRole('toolbar', { name: 'Canvas selection' });
     await expect(toolbar).toBeVisible();
     const canvasBox = await canvas.boundingBox();
     const toolbarBox = await toolbar.boundingBox();
-    expect(canvasBox?.width).toBeGreaterThan(width === 390 ? 350 : 400);
+    expect(canvasBox?.width).toBeGreaterThan(
+      width === 390
+        ? 350
+        : width === 720
+          ? 680
+          : width === 1024
+            ? 990
+            : width === 1280
+              ? 680
+              : 830,
+    );
     expect(toolbarBox?.x).toBeGreaterThanOrEqual(canvasBox?.x ?? 0);
     expect((toolbarBox?.x ?? 0) + (toolbarBox?.width ?? 0)).toBeLessThanOrEqual(
       (canvasBox?.x ?? 0) + (canvasBox?.width ?? 0),
@@ -646,7 +740,9 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
     );
     if (width === 390) expect(minimapBox).toBeNull();
     else await expect(canvas.locator('.react-flow__minimap')).toBeVisible();
-    const firstControl = canvas.locator('.react-flow__controls-button').first();
+    const firstControl = canvas
+      .locator('.react-flow__controls-button:not(:disabled)')
+      .first();
     const controlColors = await firstControl.evaluate((element) => {
       const buttonStyle = getComputedStyle(element);
       const icon = element.querySelector('svg');
@@ -658,11 +754,18 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
     expect(controlColors.background).not.toBe('rgb(254, 254, 254)');
     expect(controlColors.icon).not.toBe(controlColors.background);
     await firstControl.focus();
+    const controlFocus = await firstControl.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        active: document.activeElement === element,
+        outline: style.outlineStyle,
+        shadow: style.boxShadow,
+      };
+    });
+    expect(controlFocus.active).toBe(true);
     expect(
-      await firstControl.evaluate(
-        (element) => getComputedStyle(element).boxShadow,
-      ),
-    ).not.toBe('none');
+      controlFocus.outline !== 'none' || controlFocus.shadow !== 'none',
+    ).toBe(true);
     const inspector = page.getByRole('region', { name: 'Node inspector' });
     if (width >= 1280) {
       const inspectorBox = await inspector.boundingBox();
@@ -670,7 +773,52 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
         (toolbarBox?.x ?? 0) + (toolbarBox?.width ?? 0),
       ).toBeLessThanOrEqual(inspectorBox?.x ?? Number.POSITIVE_INFINITY);
     }
+    if (width === 390 || width === 720 || width === 1440) {
+      const evidenceName =
+        width === 720
+          ? 'editor-200-percent-equivalent'
+          : `editor-${String(width)}`;
+      const screenshot = await page.screenshot({ fullPage: true });
+      await testInfo.attach(evidenceName, {
+        body: screenshot,
+        contentType: 'image/png',
+      });
+      if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+        await page.screenshot({
+          path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/${evidenceName}.png`,
+          fullPage: true,
+        });
+    }
   }
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  const navigationTrigger = page.getByRole('button', {
+    name: 'Open navigation',
+  });
+  await page.getByRole('button', { name: 'Settings' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(navigationTrigger).toBeFocused();
+  const forcedFocus = await navigationTrigger.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      active: document.activeElement === element,
+      outline: style.outlineStyle,
+      shadow: style.boxShadow,
+    };
+  });
+  expect(forcedFocus.active).toBe(true);
+  expect(forcedFocus.outline !== 'none' || forcedFocus.shadow !== 'none').toBe(
+    true,
+  );
+  await testInfo.attach('editor-forced-colors', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+    await page.screenshot({
+      path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/editor-forced-colors.png`,
+      fullPage: true,
+    });
 });
 
 test('gives a read-only actor the flexible canvas column without moving the inspector', async ({
@@ -770,8 +918,9 @@ test('guards unapplied inspector fields and applies the supported schema control
   const count = page.getByLabel('Count');
   await expect(count).toHaveValue('7');
   await count.fill('');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
   await page
-    .getByRole('navigation', { name: 'Workspace navigation' })
+    .getByRole('dialog', { name: 'Workspace navigation' })
     .getByRole('link', { name: 'Workflows' })
     .click();
   await expect(
@@ -779,6 +928,10 @@ test('guards unapplied inspector fields and applies the supported schema control
   ).toBeVisible();
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${workflowId}`);
   await page.getByRole('button', { name: 'Stay here' }).click();
+  await page
+    .getByRole('dialog', { name: 'Workspace navigation' })
+    .getByRole('button', { name: 'Close navigation' })
+    .click();
   await count.fill('-');
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect(page.getByText('Count must be a valid number.')).toBeVisible();

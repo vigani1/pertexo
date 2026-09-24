@@ -23,7 +23,7 @@ export function NodePalette({
       className="flex min-h-0 flex-col border-r border-white/8 bg-card/65 backdrop-blur-xl"
       aria-label="Node palette"
     >
-      <div className="border-b border-white/8 p-4">
+      <div className="border-b border-white/8 p-3">
         <div className="flex items-center gap-2.5">
           <span className="flex size-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary shadow-[0_0_18px_rgb(0_229_255/10%)]">
             <BoxesIcon aria-hidden="true" className="size-4" />

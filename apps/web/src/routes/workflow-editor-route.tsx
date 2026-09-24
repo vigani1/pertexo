@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
 import { WorkspaceUnavailablePage } from './root-layout';
-import { WorkspaceRouteShell } from './workspace-route-shell';
+import { WorkspaceEditorRouteShell } from './workspace-editor-route-shell';
 
 export function WorkflowEditorRoute() {
   const { apiClient } = useRouteContext({
@@ -22,40 +22,41 @@ export function WorkflowEditorRoute() {
   if (data.workspace === null) return <WorkspaceUnavailablePage />;
   const workspace = data.workspace;
   return (
-    <WorkspaceRouteShell
+    <WorkspaceEditorRouteShell
       apiClient={apiClient}
       user={data.user}
       workspace={workspace}
-      pageTitle="Workflow editor"
-      layout="editor"
     >
-      <WorkflowEditorPage
-        apiClient={apiClient}
-        user={data.user}
-        workspace={workspace}
-        workflowId={params.workflowId}
-        onBack={() =>
-          void navigate({
-            to: '/w/$workspaceId/workflows',
-            params: { workspaceId: workspace.id },
-          })
-        }
-        onRunAccepted={(runId) => {
-          void navigate({
-            to: '/w/$workspaceId/runs/$runId',
-            params: { workspaceId: workspace.id, runId },
-          });
-        }}
-        onOpenSettings={() => {
-          void navigate({
-            to: '/w/$workspaceId/workflows/$workflowId/settings',
-            params: {
-              workspaceId: workspace.id,
-              workflowId: params.workflowId,
-            },
-          });
-        }}
-      />
-    </WorkspaceRouteShell>
+      {(mobileNavigation) => (
+        <WorkflowEditorPage
+          apiClient={apiClient}
+          user={data.user}
+          workspace={workspace}
+          workflowId={params.workflowId}
+          onBack={() =>
+            void navigate({
+              to: '/w/$workspaceId/workflows',
+              params: { workspaceId: workspace.id },
+            })
+          }
+          onRunAccepted={(runId) => {
+            void navigate({
+              to: '/w/$workspaceId/runs/$runId',
+              params: { workspaceId: workspace.id, runId },
+            });
+          }}
+          onOpenSettings={() => {
+            void navigate({
+              to: '/w/$workspaceId/workflows/$workflowId/settings',
+              params: {
+                workspaceId: workspace.id,
+                workflowId: params.workflowId,
+              },
+            });
+          }}
+          mobileNavigation={mobileNavigation}
+        />
+      )}
+    </WorkspaceEditorRouteShell>
   );
 }

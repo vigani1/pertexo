@@ -201,7 +201,7 @@ describe('workflow settings route', () => {
     });
     expect(
       await screen.findByRole('heading', {
-        name: 'Recently managed workflows',
+        name: 'Recent workflows',
       }),
     ).toBeVisible();
     expect(screen.getByText('archived')).toBeVisible();

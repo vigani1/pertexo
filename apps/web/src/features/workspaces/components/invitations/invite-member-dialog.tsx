@@ -85,7 +85,7 @@ export function InviteMemberDialog(
           id="invite-email"
           type="email"
           autoComplete="email"
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-base sm:text-sm"
           value={email}
           disabled={props.locked}
           aria-invalid={emailError === undefined ? undefined : true}
@@ -111,7 +111,7 @@ export function InviteMemberDialog(
         </label>
         <select
           id="invite-role"
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-base sm:text-sm"
           value={role}
           disabled={props.locked}
           onChange={(event) => {

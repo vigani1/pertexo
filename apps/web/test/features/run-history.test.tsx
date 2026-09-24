@@ -151,6 +151,7 @@ describe('workspace run history', () => {
       screen.getByLabelText('Workflow name starts with'),
       'Customer',
     );
+    await event.click(screen.getByRole('button', { name: 'Add filters' }));
     await event.type(screen.getByLabelText('Workflow ID'), workflowId);
     await event.selectOptions(screen.getByLabelText('Status'), 'succeeded');
     await event.type(screen.getByLabelText('Created from'), '2026-09-14');
@@ -173,11 +174,17 @@ describe('workspace run history', () => {
       workflowId,
       status: 'succeeded',
     });
+    expect(
+      screen.getByRole('button', {
+        name: 'Remove filter Status: succeeded',
+      }),
+    ).toBeVisible();
 
     await event.click(screen.getByRole('button', { name: 'Clear' }));
     await waitFor(() => {
       expect(router.state.location.search).toEqual({});
     });
+    await event.click(screen.getByRole('button', { name: 'Add filters' }));
     expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
     router.history.back();
     await waitFor(() => {
@@ -189,12 +196,13 @@ describe('workspace run history', () => {
     });
     router.history.forward();
     await waitFor(() => {
-      expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
       expect(screen.getByLabelText('Workflow name starts with')).toHaveValue(
         '',
       );
       expect(screen.getByLabelText('Status')).toHaveValue('');
     });
+    await event.click(screen.getByRole('button', { name: 'Add filters' }));
+    expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
   });
 
   it('clears unapplied values and validation even when no URL filters are applied', async () => {
@@ -207,6 +215,7 @@ describe('workspace run history', () => {
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
     await screen.findByRole('heading', { name: 'Run history' });
+    await event.click(screen.getByRole('button', { name: 'Add filters' }));
     await event.type(screen.getByLabelText('Workflow ID'), 'not-a-workflow');
     await event.type(screen.getByLabelText('Created from'), '2026-09-16');
     await event.type(screen.getByLabelText('Created before'), '2026-09-14');
@@ -217,11 +226,44 @@ describe('workspace run history', () => {
 
     await event.click(screen.getByRole('button', { name: 'Clear' }));
 
+    await event.click(screen.getByRole('button', { name: 'Add filters' }));
     expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
     expect(screen.getByLabelText('Created from')).toHaveValue('');
     expect(screen.getByLabelText('Created before')).toHaveValue('');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(router.state.location.search).toEqual({});
+  });
+
+  it('keeps long applied filters inspectable and keyboard removable', async () => {
+    const longPrefix = 'W'.repeat(128);
+    mockServer.use(
+      ...identityHandlers(),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+    );
+    const { router } = renderApp(
+      `/w/${workspaceId}/runs?workflowNamePrefix=${longPrefix}&workflowId=${workflowId}`,
+    );
+    const event = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Run history' });
+    const prefixChip = screen.getByRole('button', {
+      name: `Remove filter Name: ${longPrefix}`,
+    });
+    expect(prefixChip).toHaveAttribute('title', `Name: ${longPrefix}`);
+    prefixChip.focus();
+    await event.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(router.state.location.search).not.toHaveProperty(
+        'workflowNamePrefix',
+      );
+    });
+    expect(router.state.location.search).toMatchObject({ workflowId });
+    expect(
+      screen.getByRole('button', {
+        name: `Remove filter Workflow: ${workflowId}`,
+      }),
+    ).toBeVisible();
   });
 
   it('reports and recovers from a failed background refresh without hiding cached runs', async () => {

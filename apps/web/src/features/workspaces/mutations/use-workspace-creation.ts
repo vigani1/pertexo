@@ -9,7 +9,7 @@ import {
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
   isUnauthenticated,
-} from '@/features/auth/public';
+} from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import {

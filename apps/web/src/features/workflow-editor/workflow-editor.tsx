@@ -13,20 +13,15 @@ import { useBlocker } from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/public';
-import {
-  assertSessionIdentity,
-  currentUserQueryOptions,
-  isSessionIdentityChangedError,
-  isSessionIdentityUnverifiedError,
-} from '@/features/auth/public';
 import {
   useWorkflowCommandSession,
   WorkflowActions,
@@ -47,6 +42,10 @@ import {
   UnappliedChangesDialog,
 } from './components/editor-dialogs';
 import { EditorCommandBar } from './components/chrome/editor-command-bar';
+import {
+  EditorPanelLayout,
+  type EditorPanel,
+} from './components/editor-panel-layout';
 import { WorkflowCanvas } from './components/workflow-canvas';
 import {
   WorkflowInspector,
@@ -61,6 +60,7 @@ import {
 import { addDefinitionNode, removeWorkflowNode } from './model/graph-adapter';
 import type { SaveCoordinatorTransport } from './model/save-coordinator';
 import { useSaveCoordinator } from './model/use-save-coordinator';
+import { useEditorSessionVerification } from './model/use-editor-session-verification';
 import { getWorkflowDraft, saveWorkflowDraft } from './workflow-editor.api';
 import { workflowDraftQueryOptions } from './workflow-editor.queries';
 
@@ -72,6 +72,7 @@ export function WorkflowEditorPage({
   onBack,
   onRunAccepted,
   onOpenSettings,
+  mobileNavigation,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -80,6 +81,7 @@ export function WorkflowEditorPage({
   onBack: () => void;
   onRunAccepted: (runId: string) => void;
   onOpenSettings: () => void;
+  mobileNavigation?: ReactNode;
 }>) {
   const draft = useSuspenseQuery(
     workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
@@ -115,6 +117,7 @@ export function WorkflowEditorPage({
         onBack={onBack}
         onRunAccepted={onRunAccepted}
         onOpenSettings={onOpenSettings}
+        mobileNavigation={mobileNavigation}
       />
     </EditorProvider>
   );
@@ -133,6 +136,7 @@ function WorkflowEditorSession({
   onBack,
   onRunAccepted,
   onOpenSettings,
+  mobileNavigation,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -146,6 +150,7 @@ function WorkflowEditorSession({
   onBack: () => void;
   onRunAccepted: (runId: string) => void;
   onOpenSettings: () => void;
+  mobileNavigation?: ReactNode;
 }>) {
   const store = useEditorStoreApi();
   const graph = useEditorStore((state) => state.graph);
@@ -156,7 +161,6 @@ function WorkflowEditorSession({
     (state) => state.conflict !== null && state.saveStatus !== 'conflict',
   );
   const transact = useEditorStore((state) => state.transact);
-  const [formDirty, setFormDirty] = useState(false);
   const inspectorRef = useRef<WorkflowInspectorHandle>(null);
   const [scratchVersion, setScratchVersion] = useState(0);
   const [focusTarget, setFocusTarget] = useState<
@@ -165,111 +169,20 @@ function WorkflowEditorSession({
   const [pendingAction, setPendingAction] = useState<PendingEditorAction>();
   const [smallScreenPanel, setSmallScreenPanel] =
     useState<EditorPanel>('canvas');
-  const [sessionPause, setSessionPause] = useState<
-    'changed' | 'unverified' | undefined
-  >();
-  const [verificationPending, setVerificationPending] = useState(false);
-  const sessionLifecycle = useRef({ paused: false });
-  const verificationOwner = useRef<symbol | undefined>(undefined);
-  const verificationAbort = useRef<AbortController | undefined>(undefined);
   const queryClient = useQueryClient();
-  const currentUser = useQuery(currentUserQueryOptions(apiClient));
   const canUpdate = workspace.capabilities.includes('workflow:update');
-  const pauseSession = useCallback((reason: 'changed' | 'unverified') => {
-    sessionLifecycle.current.paused = true;
-    setSessionPause(reason);
-  }, []);
-  const verifyOwner = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        await assertSessionIdentity(apiClient, userId, signal);
-      } catch (error) {
-        if (
-          isSessionIdentityChangedError(error) ||
-          (isApiError(error) && error.status === 401)
-        )
-          pauseSession('changed');
-        else if (isSessionIdentityUnverifiedError(error))
-          pauseSession('unverified');
-        throw error;
-      }
-    },
-    [apiClient, pauseSession, userId],
-  );
-
-  const observedIdentityChanged =
-    (currentUser.data !== undefined && currentUser.data.id !== userId) ||
-    (isApiError(currentUser.error) && currentUser.error.status === 401);
-  const effectiveSessionPause =
-    sessionPause ?? (observedIdentityChanged ? 'changed' : undefined);
-
-  useLayoutEffect(() => {
-    const lifecycle = sessionLifecycle.current;
-    lifecycle.paused = effectiveSessionPause !== undefined;
-    return () => {
-      lifecycle.paused = true;
-    };
-  }, [effectiveSessionPause]);
-
-  useEffect(() => {
-    const owner = Symbol('editor-session-verification');
-    verificationOwner.current = owner;
-    return () => {
-      if (verificationOwner.current === owner) {
-        verificationOwner.current = undefined;
-        verificationAbort.current?.abort();
-        verificationAbort.current = undefined;
-      }
-    };
-  }, [apiClient, userId, workflowId, workspace.id]);
-
-  const verifyOriginalAccount = useCallback(async () => {
-    if (verificationAbort.current !== undefined) return;
-    const owner = verificationOwner.current;
-    if (owner === undefined) return;
-    const controller = new AbortController();
-    verificationAbort.current = controller;
-    setVerificationPending(true);
-    try {
-      const verifiedUser = await assertSessionIdentity(
-        apiClient,
-        userId,
-        controller.signal,
-      );
-      if (
-        verificationOwner.current !== owner ||
-        verificationAbort.current !== controller
-      )
-        return;
-      queryClient.setQueryData(
-        currentUserQueryOptions(apiClient).queryKey,
-        verifiedUser,
-      );
-      sessionLifecycle.current.paused = false;
-      setSessionPause(undefined);
-    } catch (error) {
-      if (
-        verificationOwner.current !== owner ||
-        verificationAbort.current !== controller
-      )
-        return;
-      if (isApiError(error) && error.kind === 'canceled') return;
-      pauseSession(
-        isSessionIdentityChangedError(error) ||
-          (isApiError(error) && error.status === 401)
-          ? 'changed'
-          : 'unverified',
-      );
-    } finally {
-      if (
-        verificationOwner.current === owner &&
-        verificationAbort.current === controller
-      ) {
-        verificationAbort.current = undefined;
-        setVerificationPending(false);
-      }
-    }
-  }, [apiClient, pauseSession, queryClient, userId]);
+  const {
+    pauseReason: effectiveSessionPause,
+    verificationPending,
+    verifyOwner,
+    verifyOriginalAccount,
+    isPaused,
+  } = useEditorSessionVerification({
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    workflowId,
+  });
 
   const saveTransport = useMemo<SaveCoordinatorTransport>(
     () => ({
@@ -301,7 +214,7 @@ function WorkflowEditorSession({
       throw new Error(
         'The editor is paused because its authenticated identity is no longer verified.',
       );
-    if (formDirty)
+    if (inspectorRef.current?.isDirty())
       throw new Error(
         'Apply or discard the inspector changes before continuing.',
       );
@@ -320,13 +233,13 @@ function WorkflowEditorSession({
       generation: state.generation,
       revision: state.revision,
     } as const;
-  }, [effectiveSessionPause, flushSave, formDirty, store, verifyOwner]);
+  }, [effectiveSessionPause, flushSave, store, verifyOwner]);
   const shouldBlock = useCallback(
     () =>
-      formDirty ||
+      inspectorRef.current?.isDirty() === true ||
       store.getState().saveStatus !== 'clean' ||
       hasRetainedComparison,
-    [formDirty, hasRetainedComparison, store],
+    [hasRetainedComparison, store],
   );
   const blocker = useBlocker({
     shouldBlockFn: shouldBlock,
@@ -338,7 +251,7 @@ function WorkflowEditorSession({
     workspaceId: workspace.id,
     workflowId,
     verifyIdentity: verifyOwner,
-    isSessionPaused: () => sessionLifecycle.current.paused,
+    isSessionPaused: isPaused,
     ensureSaved,
     onRunAccepted,
     onRunCommandAccepted: () => {
@@ -379,48 +292,53 @@ function WorkflowEditorSession({
   );
   const requestEditorAction = useCallback(
     (action: PendingEditorAction) => {
+      if (isPaused()) return;
       if (
         action.kind === 'selection' &&
         action.nodeId === store.getState().selectedNodeId &&
         action.focusTarget === undefined
       )
         return;
-      if (formDirty) setPendingAction(action);
+      if (inspectorRef.current?.isDirty()) setPendingAction(action);
       else performEditorAction(action);
     },
-    [formDirty, performEditorAction, store],
+    [isPaused, performEditorAction, store],
   );
 
+  const onEditorKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (isPaused()) return;
+    if (isEditableTarget(event.target)) return;
+    const commandKey = event.metaKey || event.ctrlKey;
+    if (commandKey && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      requestEditorAction({ kind: event.shiftKey ? 'redo' : 'undo' });
+    } else if (commandKey && event.key.toLowerCase() === 'y') {
+      event.preventDefault();
+      requestEditorAction({ kind: 'redo' });
+    } else if (
+      (event.key === 'Delete' || event.key === 'Backspace') &&
+      selectedNodeId !== null &&
+      canUpdate &&
+      document.activeElement?.closest('[data-workflow-canvas]') !== null
+    ) {
+      event.preventDefault();
+      requestEditorAction({ kind: 'delete', nodeId: selectedNodeId });
+    }
+  });
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (isEditableTarget(event.target)) return;
-      const commandKey = event.metaKey || event.ctrlKey;
-      if (commandKey && event.key.toLowerCase() === 'z') {
-        event.preventDefault();
-        requestEditorAction({ kind: event.shiftKey ? 'redo' : 'undo' });
-      } else if (commandKey && event.key.toLowerCase() === 'y') {
-        event.preventDefault();
-        requestEditorAction({ kind: 'redo' });
-      } else if (
-        (event.key === 'Delete' || event.key === 'Backspace') &&
-        selectedNodeId !== null &&
-        canUpdate &&
-        document.activeElement?.closest('[data-workflow-canvas]') !== null
-      ) {
-        event.preventDefault();
-        requestEditorAction({ kind: 'delete', nodeId: selectedNodeId });
-      }
+      onEditorKeyDown(event);
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [canUpdate, requestEditorAction, selectedNodeId, store, transact]);
+  }, []);
 
-  if (effectiveSessionPause !== undefined) {
-    return (
+  const pauseNotice =
+    effectiveSessionPause === undefined ? null : (
       <section className="grid h-full min-h-0 place-items-center bg-background p-6">
-        <div className="max-w-lg rounded-xl border border-white/10 bg-card p-6 shadow-xl">
+        <div className="max-w-lg rounded-xl border border-white/10 bg-card p-6">
           <h1 className="text-lg font-semibold">Editor paused</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {effectiveSessionPause === 'changed'
@@ -447,7 +365,6 @@ function WorkflowEditorSession({
         </div>
       </section>
     );
-  }
 
   function addNode(definition: NodeDefinitionCatalogItem) {
     const count = graph.nodes.length;
@@ -460,173 +377,121 @@ function WorkflowEditorSession({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background">
-      <EditorCommandBar
-        workflowId={workflowId}
-        workflowName={workflowName}
-        workflowNameUnavailable={workflowNameUnavailable}
-        onRetryWorkflowName={onRetryWorkflowName}
-        canUpdate={canUpdate}
-        onBack={onBack}
-        onSave={() => void flushSave()}
-        onUndo={() => {
-          requestEditorAction({ kind: 'undo' });
-        }}
-        onRedo={() => {
-          requestEditorAction({ kind: 'redo' });
-        }}
-        onOpenSettings={onOpenSettings}
-        actions={
-          <WorkflowActions
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflowId={workflowId}
-            selectedNodeId={selectedNodeId}
-            graph={graph}
-            generation={generation}
-            revision={revision}
-            commandSession={commandSession}
-            ensureSaved={ensureSaved}
-            onValidationTarget={(target) => {
-              requestEditorAction({
-                kind: 'selection',
-                nodeId: target.nodeId,
-                focusTarget: target,
-              });
-            }}
-          />
-        }
-      />
-      <ConflictComparisonNotice />
-      <nav
-        className={cn(
-          'grid gap-1 border-b border-white/8 bg-card/65 p-2 xl:hidden',
-          canUpdate ? 'grid-cols-3' : 'grid-cols-2',
-        )}
-        aria-label="Workflow editor panels"
-      >
-        {canUpdate ? (
-          <EditorPanelButton
-            panel="palette"
-            current={smallScreenPanel}
-            onSelect={setSmallScreenPanel}
-          >
-            Nodes
-          </EditorPanelButton>
-        ) : null}
-        <EditorPanelButton
-          panel="canvas"
-          current={smallScreenPanel}
-          onSelect={setSmallScreenPanel}
-        >
-          Canvas
-        </EditorPanelButton>
-        <EditorPanelButton
-          panel="inspector"
-          current={smallScreenPanel}
-          onSelect={setSmallScreenPanel}
-        >
-          Inspector
-        </EditorPanelButton>
-      </nav>
+    <>
+      {pauseNotice}
       <div
         className={cn(
-          'grid min-h-0 flex-1 grid-cols-1',
-          canUpdate
-            ? 'xl:grid-cols-[13rem_minmax(0,1fr)_22rem]'
-            : 'xl:grid-cols-[minmax(0,1fr)_22rem]',
+          'h-full min-h-0 flex-col bg-background',
+          effectiveSessionPause === undefined ? 'flex' : 'hidden',
         )}
+        inert={effectiveSessionPause !== undefined}
+        aria-hidden={effectiveSessionPause !== undefined}
       >
-        {canUpdate ? (
-          <div
-            id="editor-panel-palette"
-            role="region"
-            aria-label="Node palette"
-            className={cn(
-              'min-h-0 [&>aside]:h-full',
-              smallScreenPanel === 'palette' ? 'block' : 'hidden',
-              'xl:block',
-            )}
-          >
-            <NodePalette definitions={definitions} onAdd={addNode} />
-          </div>
+        <EditorCommandBar
+          workflowId={workflowId}
+          workflowName={workflowName}
+          workflowNameUnavailable={workflowNameUnavailable}
+          onRetryWorkflowName={onRetryWorkflowName}
+          canUpdate={canUpdate}
+          onBack={onBack}
+          onSave={() => void flushSave()}
+          onUndo={() => {
+            requestEditorAction({ kind: 'undo' });
+          }}
+          onRedo={() => {
+            requestEditorAction({ kind: 'redo' });
+          }}
+          onOpenSettings={onOpenSettings}
+          navigation={mobileNavigation}
+          actions={
+            effectiveSessionPause === undefined ? (
+              <WorkflowActions
+                apiClient={apiClient}
+                userId={userId}
+                workspace={workspace}
+                workflowId={workflowId}
+                selectedNodeId={selectedNodeId}
+                graph={graph}
+                generation={generation}
+                revision={revision}
+                commandSession={commandSession}
+                ensureSaved={ensureSaved}
+                onValidationTarget={(target) => {
+                  requestEditorAction({
+                    kind: 'selection',
+                    nodeId: target.nodeId,
+                    focusTarget: target,
+                  });
+                }}
+              />
+            ) : null
+          }
+        />
+        <ConflictComparisonNotice />
+        <EditorPanelLayout
+          canUpdate={canUpdate}
+          current={smallScreenPanel}
+          onSelect={setSmallScreenPanel}
+          palette={<NodePalette definitions={definitions} onAdd={addNode} />}
+          canvas={
+            <WorkflowCanvas
+              definitions={definitions}
+              editable={canUpdate}
+              onSelectionRequest={(nodeId) => {
+                requestEditorAction({ kind: 'selection', nodeId });
+              }}
+              onDeleteRequest={(nodeId) => {
+                requestEditorAction({ kind: 'delete', nodeId });
+              }}
+            />
+          }
+          inspector={
+            <WorkflowInspector
+              definitions={definitions}
+              connections={connections}
+              editable={canUpdate}
+              actionRef={inspectorRef}
+              scratchVersion={scratchVersion}
+              {...(focusTarget === undefined ? {} : { focusTarget })}
+            />
+          }
+        />
+        {effectiveSessionPause === undefined ? <ConflictDialog /> : null}
+        {effectiveSessionPause === undefined ? (
+          <UnappliedChangesDialog
+            open={pendingAction !== undefined}
+            action={
+              pendingAction?.kind === 'selection'
+                ? 'selection'
+                : pendingAction?.kind === 'delete'
+                  ? 'delete'
+                  : 'history'
+            }
+            onApply={() => {
+              if (pendingAction === undefined) return;
+              if (inspectorRef.current?.apply() !== true) return;
+              const action = pendingAction;
+              setPendingAction(undefined);
+              if (action.kind === 'selection') performEditorAction(action);
+            }}
+            onDiscard={() => {
+              if (pendingAction === undefined) return;
+              const action = pendingAction;
+              setPendingAction(undefined);
+              setScratchVersion((current) => current + 1);
+              performEditorAction(action);
+            }}
+            onStay={() => {
+              setPendingAction(undefined);
+            }}
+          />
         ) : null}
-        <div
-          id="editor-panel-canvas"
-          role="region"
-          aria-label="Workflow canvas"
-          className={cn(
-            'min-h-0 min-w-0',
-            smallScreenPanel === 'canvas' ? 'block' : 'hidden',
-            'xl:block',
-          )}
-        >
-          <WorkflowCanvas
-            definitions={definitions}
-            editable={canUpdate}
-            onSelectionRequest={(nodeId) => {
-              requestEditorAction({ kind: 'selection', nodeId });
-            }}
-            onDeleteRequest={(nodeId) => {
-              requestEditorAction({ kind: 'delete', nodeId });
-            }}
-          />
-        </div>
-        <div
-          id="editor-panel-inspector"
-          role="region"
-          aria-label="Node inspector"
-          className={cn(
-            'min-h-0 [&>aside]:h-full',
-            smallScreenPanel === 'inspector' ? 'block' : 'hidden',
-            'xl:block',
-          )}
-        >
-          <WorkflowInspector
-            definitions={definitions}
-            connections={connections}
-            editable={canUpdate}
-            onFormDirtyChange={setFormDirty}
-            actionRef={inspectorRef}
-            scratchVersion={scratchVersion}
-            {...(focusTarget === undefined ? {} : { focusTarget })}
-          />
-        </div>
       </div>
-      <ConflictDialog />
       <LeaveEditorDialog
         blocker={blocker}
         retainedComparison={hasRetainedComparison}
       />
-      <UnappliedChangesDialog
-        open={pendingAction !== undefined}
-        action={
-          pendingAction?.kind === 'selection'
-            ? 'selection'
-            : pendingAction?.kind === 'delete'
-              ? 'delete'
-              : 'history'
-        }
-        onApply={() => {
-          if (pendingAction === undefined) return;
-          if (inspectorRef.current?.apply() !== true) return;
-          const action = pendingAction;
-          setPendingAction(undefined);
-          if (action.kind === 'selection') performEditorAction(action);
-        }}
-        onDiscard={() => {
-          if (pendingAction === undefined) return;
-          const action = pendingAction;
-          setPendingAction(undefined);
-          setScratchVersion((current) => current + 1);
-          performEditorAction(action);
-        }}
-        onStay={() => {
-          setPendingAction(undefined);
-        }}
-      />
-    </div>
+    </>
   );
 }
 
@@ -638,37 +503,6 @@ type PendingEditorAction =
     }>
   | Readonly<{ kind: 'delete'; nodeId: string }>
   | Readonly<{ kind: 'undo' | 'redo' }>;
-
-type EditorPanel = 'palette' | 'canvas' | 'inspector';
-
-function EditorPanelButton({
-  panel,
-  current,
-  onSelect,
-  children,
-}: Readonly<{
-  panel: EditorPanel;
-  current: EditorPanel;
-  onSelect: (panel: EditorPanel) => void;
-  children: string;
-}>) {
-  const selected = current === panel;
-  return (
-    <Button
-      id={`editor-panel-tab-${panel}`}
-      type="button"
-      size="sm"
-      variant={selected ? 'solid' : 'ghost'}
-      aria-pressed={selected}
-      aria-controls={`editor-panel-${panel}`}
-      onClick={() => {
-        onSelect(panel);
-      }}
-    >
-      {children}
-    </Button>
-  );
-}
 
 function editorSaveErrorMessage(error: unknown): string {
   if (!isApiError(error)) return 'The draft could not be saved.';

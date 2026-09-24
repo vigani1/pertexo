@@ -1,3 +1,151 @@
+.workspace-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.workspace-wordmark {
+  color: var(--foreground);
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.workspace-selection-content {
+  display: grid;
+  flex: 1;
+  align-items: center;
+  padding-block: clamp(3rem, 8vw, 7rem);
+}
+
+.workspace-logout-error {
+  margin-top: 1rem;
+}
+
+.workspace-onboarding {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(22rem, 1.14fr);
+  gap: clamp(3rem, 8vw, 7.5rem);
+  align-items: center;
+}
+
+.workspace-onboarding-copy {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.workspace-onboarding-description {
+  max-width: 34rem;
+  margin-block: 1.25rem 2rem;
+  color: var(--muted-foreground);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.workspace-invitation-note {
+  max-width: 30rem;
+  margin-top: 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.workspace-boundary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+  border-radius: calc(var(--radius-xl) + 0.35rem);
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary) 7%, transparent), transparent 48%),
+    color-mix(in srgb, var(--glass-fallback) 88%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
+    0 1.5rem 5rem color-mix(in srgb, black 32%, transparent);
+}
+
+.workspace-boundary::before {
+  position: absolute;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  content: '';
+  filter: blur(4rem);
+  inset: -8rem -6rem auto auto;
+  pointer-events: none;
+}
+
+.workspace-boundary figcaption {
+  position: relative;
+  max-width: 19rem;
+  color: var(--foreground);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.workspace-boundary-flow {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.workspace-boundary-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 3.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.workspace-boundary-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+  border-radius: 0.65rem;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+.workspace-boundary-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.workspace-boundary-connector {
+  position: absolute;
+  z-index: 1;
+  bottom: -0.8rem;
+  left: 1.95rem;
+  width: 1px;
+  height: 0.85rem;
+  background: color-mix(in srgb, var(--primary) 50%, var(--border));
+}
+
+.workspace-chooser-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
 .workspace-list {
   display: grid;
   gap: 1px;
@@ -59,6 +207,30 @@
 }
 
 @media (max-width: 40rem) {
+  .workspace-session-header {
+    min-height: 4.5rem;
+  }
+
+  .workspace-selection-content {
+    align-items: start;
+    padding-block: 2.5rem 4rem;
+  }
+
+  .workspace-onboarding {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .workspace-boundary {
+    padding: 1.25rem;
+  }
+
+  .workspace-chooser-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 2rem;
+  }
+
   .workspace-entry {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

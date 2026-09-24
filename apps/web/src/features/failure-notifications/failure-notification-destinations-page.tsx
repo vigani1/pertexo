@@ -71,17 +71,14 @@ export function FailureNotificationDestinationsPage({
     void destinations.refetch();
   };
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <WorkspaceSettingsNavigation workspace={workspace} />
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-xs tracking-[0.2em] text-secondary">
-            FAILURE DELIVERY
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
             Notifications
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Configure versioned Slack or email destinations that workflows can
             select for failure notifications.
           </p>
@@ -99,16 +96,10 @@ export function FailureNotificationDestinationsPage({
         ) : null}
       </header>
 
-      <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 border-y border-border py-3 font-mono text-[0.68rem] tracking-[0.1em] text-muted-foreground uppercase">
-        <span>{items.length} configured</span>
-        <span>Versioned configuration</span>
-        <span>{canManage ? 'Manage access' : 'Read-only access'}</span>
-      </div>
-
       {destinations.isError && items.length > 0 ? (
         <div
           role="alert"
-          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
         >
           <p className="text-sm text-destructive">
             These destinations may be stale because the latest refresh failed.

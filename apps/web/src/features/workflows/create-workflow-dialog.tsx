@@ -1,6 +1,5 @@
 import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,8 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowCreateErrorMessage } from './workflow-errors';
-import { workflowKeys } from './workflows.queries';
-import { createWorkflowMutationOptions } from './workflows.mutations';
+import { useCreateWorkflow } from './workflows.mutations';
 
 type CreateWorkflowDialogProps = Readonly<{
   apiClient: ApiClient;
@@ -36,22 +34,11 @@ export function CreateWorkflowDialog({
   workspaceId,
   triggerLabel = 'Create workflow',
 }: CreateWorkflowDialogProps) {
-  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [validationError, setValidationError] = useState<string>();
   const attempt = useRef<Attempt | undefined>(undefined);
-  const mutation = useMutation({
-    ...createWorkflowMutationOptions(apiClient, workspaceId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
-      attempt.current = undefined;
-      setName('');
-      setOpen(false);
-    },
-  });
+  const mutation = useCreateWorkflow(apiClient, userId, workspaceId);
 
   function resetForName(nextName: string) {
     if (mutation.isPending) return;
@@ -73,7 +60,13 @@ export function CreateWorkflowDialog({
         ? attempt.current
         : { name: parsed.data.name, idempotencyKey: crypto.randomUUID() };
     attempt.current = currentAttempt;
-    mutation.mutate(currentAttempt);
+    mutation.mutate(currentAttempt, {
+      onSuccess: () => {
+        attempt.current = undefined;
+        setName('');
+        setOpen(false);
+      },
+    });
   }
 
   return (

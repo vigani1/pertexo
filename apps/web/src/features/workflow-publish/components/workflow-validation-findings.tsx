@@ -28,7 +28,7 @@ export function WorkflowValidationFindings({
       className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-left"
       aria-label="Workflow validation findings"
     >
-      <p className="text-xs font-medium text-destructive">
+      <p className="text-sm font-medium text-destructive">
         {String(findingCount)} validation{' '}
         {findingCount === 1 ? 'finding' : 'findings'}
         {stale ? ' from an earlier draft' : ''}
@@ -39,10 +39,10 @@ export function WorkflowValidationFindings({
           return (
             <li
               key={`${issue.path}\u0000${issue.code}\u0000${issue.message}`}
-              className="rounded-md border border-white/8 bg-background/35 p-2"
+              className="border-b border-white/8 py-2 last:border-b-0"
             >
-              <p className="text-xs text-foreground">{issue.message}</p>
-              <p className="mt-1 break-all font-mono text-[0.65rem] text-muted-foreground">
+              <p className="text-sm text-foreground">{issue.message}</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                 {issue.code} · {issue.path}
               </p>
               {target === undefined ? null : (
@@ -50,7 +50,7 @@ export function WorkflowValidationFindings({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="mt-1"
+                  className="mt-1 text-base sm:text-sm"
                   onClick={() => {
                     onNavigate(target);
                   }}
@@ -70,13 +70,13 @@ export function WorkflowValidationFindings({
           return (
             <li
               key={`${issue.code}\u0000${issue.definitionKey}\u0000${String(issue.version)}`}
-              className="rounded-md border border-white/8 bg-background/35 p-2"
+              className="border-b border-white/8 py-2 last:border-b-0"
             >
-              <p className="text-xs text-foreground">
+              <p className="text-sm text-foreground">
                 Definition {issue.definitionKey}@{String(issue.version)} is not
                 available in the current catalog.
               </p>
-              <p className="mt-1 break-all font-mono text-[0.65rem] text-muted-foreground">
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                 {issue.code} · {issue.definitionKey}@{String(issue.version)}
               </p>
               {target === undefined ? null : (
@@ -84,7 +84,7 @@ export function WorkflowValidationFindings({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="mt-1"
+                  className="mt-1 text-base sm:text-sm"
                   onClick={() => {
                     onNavigate(target);
                   }}

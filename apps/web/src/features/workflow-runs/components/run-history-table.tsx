@@ -2,14 +2,6 @@ import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow
 import { Link } from '@tanstack/react-router';
 import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -24,73 +16,85 @@ export function RunHistoryTable({
   workspaceId: string;
 }>) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Run</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Trigger</TableHead>
-          <TableHead>Workflow version</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead>Duration</TableHead>
-          <TableHead className="text-right">Details</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <div>
+      <div
+        aria-hidden="true"
+        className="hidden grid-cols-[minmax(15rem,1fr)_7rem_8rem_10rem_5rem_4rem] gap-4 border-b px-5 py-3 font-mono text-[0.68rem] tracking-[0.08em] text-muted-foreground xl:grid"
+      >
+        <span>Workflow and run</span>
+        <span>Outcome</span>
+        <span>Trigger</span>
+        <span>Created</span>
+        <span>Duration</span>
+        <span className="text-right">Open</span>
+      </div>
+      <ul className="divide-y" aria-label="Workflow runs">
         {runs.map((run) => (
-          <TableRow key={run.id}>
-            <TableCell>
-              <span
-                className="block max-w-64 truncate font-medium"
-                title={run.workflowName ?? 'Workflow name unavailable'}
-              >
-                {run.workflowName ?? 'Workflow name unavailable'}
-              </span>
-              <span className="sr-only">{run.id}</span>
-              <span
-                className="mt-1 block max-w-48 truncate font-mono text-[0.68rem] text-muted-foreground"
-                title={`Run ${run.id}; workflow ${run.workflowId}`}
-              >
-                Run {shortId(run.id)} · Workflow {shortId(run.workflowId)}
-              </span>
-            </TableCell>
-            <TableCell>
-              <Badge variant={statusVariant(run.status)}>
-                {run.status.replaceAll('_', ' ')}
-              </Badge>
-            </TableCell>
-            <TableCell className="capitalize text-muted-foreground">
-              {run.triggerType}
-            </TableCell>
-            <TableCell>
-              <span
-                className="block max-w-44 truncate font-mono text-xs text-muted-foreground"
-                title={run.workflowVersionId}
-              >
-                {run.workflowVersionId}
-              </span>
-            </TableCell>
-            <TableCell className="whitespace-nowrap text-muted-foreground">
-              {dateFormatter.format(new Date(run.createdAt))}
-            </TableCell>
-            <TableCell className="whitespace-nowrap text-muted-foreground">
-              {duration(run)}
-            </TableCell>
-            <TableCell className="text-right">
+          <li
+            key={run.id}
+            className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-4 transition-colors hover:bg-primary/[0.025] sm:px-5 xl:grid-cols-[minmax(15rem,1fr)_7rem_8rem_10rem_5rem_4rem] xl:items-center xl:gap-4"
+          >
+            <div className="min-w-0">
               <Link
                 to="/w/$workspaceId/runs/$runId"
                 params={{ workspaceId, runId: run.id }}
-                aria-label={`Open run ${run.id}`}
-                className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-white/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                title={run.workflowName ?? 'Workflow name unavailable'}
+                className="block truncate font-heading text-base font-semibold text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                Open
-                <ArrowRightIcon aria-hidden="true" />
+                {run.workflowName ?? 'Workflow name unavailable'}
               </Link>
-            </TableCell>
-          </TableRow>
+              <span className="sr-only">{run.id}</span>
+              <p
+                className="mt-1 truncate font-mono text-xs text-muted-foreground"
+                title={`Run ${run.id}; workflow ${run.workflowId}; version ${run.workflowVersionId}`}
+              >
+                Run {shortId(run.id)} · version {shortId(run.workflowVersionId)}
+              </p>
+            </div>
+            <div className="col-start-1 row-start-2 xl:col-auto xl:row-auto">
+              <Badge variant={statusVariant(run.status)}>
+                {run.status.replaceAll('_', ' ')}
+              </Badge>
+            </div>
+            <p className="col-span-2 text-sm capitalize text-muted-foreground xl:col-auto">
+              <span className="xl:hidden">Trigger: </span>
+              {run.triggerType}
+            </p>
+            <time
+              dateTime={run.createdAt}
+              className="col-span-2 text-sm text-muted-foreground xl:col-auto"
+            >
+              <span className="xl:hidden">Created: </span>
+              {dateFormatter.format(new Date(run.createdAt))}
+            </time>
+            <p className="col-span-2 text-sm text-muted-foreground xl:col-auto">
+              <span className="xl:hidden">Duration: </span>
+              {duration(run)}
+            </p>
+            <div className="col-start-2 row-start-1 text-right xl:col-auto xl:row-auto">
+              <RunLink workspaceId={workspaceId} run={run} />
+            </div>
+          </li>
         ))}
-      </TableBody>
-    </Table>
+      </ul>
+    </div>
+  );
+}
+
+function RunLink({
+  workspaceId,
+  run,
+}: Readonly<{ workspaceId: string; run: WorkflowRunReadSummary }>) {
+  return (
+    <Link
+      to="/w/$workspaceId/runs/$runId"
+      params={{ workspaceId, runId: run.id }}
+      aria-label={`Open run ${run.id}`}
+      className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <span className="sr-only xl:not-sr-only">Open</span>
+      <ArrowRightIcon aria-hidden="true" className="size-4" />
+    </Link>
   );
 }
 

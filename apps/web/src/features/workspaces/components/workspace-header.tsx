@@ -25,7 +25,7 @@ export function WorkspaceHeader({
   onLogout: () => void;
 }>) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center gap-3 border-b border-white/8 bg-background/70 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-40 flex h-14 min-w-0 items-center gap-3 border-b border-white/8 bg-background/78 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
       <MobileWorkspaceNavigation
         user={user}
         workspace={workspace}
@@ -38,7 +38,7 @@ export function WorkspaceHeader({
         <p className="truncate text-xs text-muted-foreground">
           {workspace.name}
         </p>
-        <p className="truncate font-heading text-base font-semibold text-foreground">
+        <p className="truncate font-heading text-sm font-semibold text-foreground">
           {pageTitle}
         </p>
       </div>

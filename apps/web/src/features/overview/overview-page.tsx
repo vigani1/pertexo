@@ -83,18 +83,15 @@ export function OverviewPage({
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-xs tracking-[0.2em] text-secondary">
-            WORKSPACE PULSE
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
             Overview
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Recent retained activity for {workspace.name}. Each list refreshes
-            independently and is not an aggregate reporting snapshot.
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Resume recent work and inspect the latest retained execution
+            activity for {workspace.name}.
           </p>
         </div>
         <Button
@@ -108,11 +105,12 @@ export function OverviewPage({
         </Button>
       </header>
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
         {canReadWorkflows ? (
           <OverviewCard
-            title="Recently managed workflows"
-            description="The five workflows with the latest lifecycle or publication metadata changes. Draft-only edits are not included."
+            appearance="resume"
+            title="Recent workflows"
+            description="Return to workflows whose lifecycle or publication metadata changed most recently. Draft-only edits are not included."
             updatedAt={workflows.dataUpdatedAt}
             pending={workflows.isPending}
             error={workflows.isError}
@@ -128,7 +126,7 @@ export function OverviewPage({
               {workflows.data?.items.map((workflow) => (
                 <li
                   key={workflow.id}
-                  className="flex min-w-0 items-center justify-between gap-4 py-4"
+                  className="flex min-w-0 items-start justify-between gap-4 py-5"
                 >
                   <div className="min-w-0">
                     <Link
@@ -137,7 +135,7 @@ export function OverviewPage({
                         workspaceId: workspace.id,
                         workflowId: workflow.id,
                       }}
-                      className="block truncate font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="block truncate font-heading text-lg font-semibold text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       {workflow.name}
                     </Link>
@@ -163,27 +161,9 @@ export function OverviewPage({
 
         {canReadRuns ? (
           <OverviewCard
-            title="Recent runs"
-            description="The five newest workflow runs."
-            updatedAt={recentRuns.dataUpdatedAt}
-            pending={recentRuns.isPending}
-            error={recentRuns.isError}
-            dataAvailable={recentRuns.data !== undefined}
-            empty={recentRuns.data?.items.length === 0}
-            retrying={recentRuns.isRefetching}
-            onRetry={() => void recentRuns.refetch()}
-          >
-            <RunList
-              workspaceId={workspace.id}
-              runs={recentRuns.data?.items ?? []}
-            />
-          </OverviewCard>
-        ) : null}
-
-        {canReadRuns ? (
-          <OverviewCard
+            appearance="attention"
             title="Recent failed runs"
-            description="The five newest runs whose status is failed."
+            description="The newest retained runs whose outcome is failed."
             updatedAt={failedRuns.dataUpdatedAt}
             pending={failedRuns.isPending}
             error={failedRuns.isError}
@@ -195,6 +175,7 @@ export function OverviewPage({
             <RunList
               workspaceId={workspace.id}
               runs={failedRuns.data?.items ?? []}
+              appearance="attention"
             />
             <Link
               to="/w/$workspaceId/runs"
@@ -204,6 +185,28 @@ export function OverviewPage({
             >
               View failed run history
             </Link>
+          </OverviewCard>
+        ) : null}
+
+        {canReadRuns ? (
+          <OverviewCard
+            className="xl:col-span-2"
+            appearance="activity"
+            title="Recent run activity"
+            description="The five newest workflow runs, in accepted order."
+            updatedAt={recentRuns.dataUpdatedAt}
+            pending={recentRuns.isPending}
+            error={recentRuns.isError}
+            dataAvailable={recentRuns.data !== undefined}
+            empty={recentRuns.data?.items.length === 0}
+            retrying={recentRuns.isRefetching}
+            onRetry={() => void recentRuns.refetch()}
+          >
+            <RunList
+              workspaceId={workspace.id}
+              runs={recentRuns.data?.items ?? []}
+              appearance="activity"
+            />
           </OverviewCard>
         ) : null}
 
@@ -224,16 +227,22 @@ export function OverviewPage({
 function RunList({
   workspaceId,
   runs,
+  appearance,
 }: Readonly<{
   workspaceId: string;
   runs: readonly WorkflowRunReadSummary[];
+  appearance: 'attention' | 'activity';
 }>) {
   return (
     <ul className="divide-y divide-border" aria-label="Workflow runs">
       {runs.map((run) => (
         <li
           key={run.id}
-          className="flex min-w-0 items-center justify-between gap-4 py-4"
+          className={
+            appearance === 'attention'
+              ? 'flex min-w-0 items-start justify-between gap-4 border-l-2 border-destructive/30 py-4 pl-3'
+              : 'grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-4 sm:grid-cols-[minmax(0,1fr)_10rem_auto]'
+          }
         >
           <div className="min-w-0">
             <Link
@@ -248,6 +257,14 @@ function RunList({
               {run.id.slice(0, 8)}…
             </p>
           </div>
+          {appearance === 'activity' ? (
+            <time
+              dateTime={run.createdAt}
+              className="hidden text-sm text-muted-foreground sm:block"
+            >
+              {dateFormatter.format(new Date(run.createdAt))}
+            </time>
+          ) : null}
           <Badge variant={runStatusVariant(run.status)}>
             {run.status.replaceAll('_', ' ')}
           </Badge>

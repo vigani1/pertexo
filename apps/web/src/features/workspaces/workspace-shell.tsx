@@ -3,7 +3,6 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 import { WorkspaceHeader } from './components/workspace-header';
 import { WorkspaceSidebarContent } from './components/workspace-sidebar-content';
 
@@ -32,8 +31,19 @@ export function WorkspaceShell({
   onLogout,
   children,
 }: WorkspaceShellProps) {
+  if (layout === 'editor') {
+    return (
+      <div className="app-stage relative h-svh min-h-0 overflow-hidden">
+        <div className="workspace-shell-ambient" aria-hidden="true" />
+        <main id="main" className="relative z-10 h-full min-h-0 min-w-0">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="app-stage relative min-h-svh overflow-x-clip lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)]">
+    <div className="app-stage relative min-h-svh overflow-x-clip lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)]">
       <aside className="glass-panel sticky top-0 z-40 hidden h-svh min-h-0 rounded-none border-y-0 border-l-0 shadow-[0_0_24px_color-mix(in_srgb,var(--primary)_5%,transparent)] lg:flex lg:flex-col">
         <WorkspaceSidebarContent
           user={user}
@@ -59,12 +69,7 @@ export function WorkspaceShell({
         />
         <main
           id="main"
-          className={cn(
-            'relative z-10 min-w-0',
-            layout === 'editor'
-              ? 'h-[calc(100svh-4rem)] min-h-[36rem]'
-              : 'mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10',
-          )}
+          className="relative z-10 mx-auto w-full max-w-7xl min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
         >
           {children}
         </main>

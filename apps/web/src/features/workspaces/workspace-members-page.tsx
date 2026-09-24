@@ -5,7 +5,7 @@ import type {
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
-import { isUnauthenticated } from '@/features/auth/public';
+import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import type { ApiClient } from '@/lib/api/client';
@@ -71,16 +71,13 @@ export function WorkspaceMembersPage({
     );
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <WorkspaceSettingsNavigation workspace={workspace} />
       <header>
-        <p className="font-mono text-xs tracking-[0.2em] text-secondary">
-          WORKSPACE ACCESS
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+        <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
           Members
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           See who can access {workspace.name} and the role assigned to each
           member.
         </p>
@@ -89,7 +86,7 @@ export function WorkspaceMembersPage({
       {query.isError && members.length > 0 && !query.isFetchNextPageError ? (
         <div
           role="alert"
-          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
         >
           <p className="text-sm text-destructive">
             These members may be stale because the latest refresh failed.
@@ -105,11 +102,6 @@ export function WorkspaceMembersPage({
           </Button>
         </div>
       ) : null}
-
-      <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 border-y border-border py-3 font-mono text-[0.68rem] tracking-[0.1em] text-muted-foreground uppercase">
-        <span>{members.length} loaded</span>
-        <span>Workspace roles</span>
-      </div>
 
       {query.isPending ? (
         <p role="status" className="py-16 text-sm text-muted-foreground">
@@ -137,13 +129,15 @@ export function WorkspaceMembersPage({
         </Empty>
       ) : (
         <>
-          <MemberRoleManagement
-            apiClient={apiClient}
-            user={user}
-            workspace={workspace}
-            members={members}
-            onAccessLost={setCommandAccessLoss}
-          />
+          <div className="glass-panel overflow-hidden rounded-xl">
+            <MemberRoleManagement
+              apiClient={apiClient}
+              user={user}
+              workspace={workspace}
+              members={members}
+              onAccessLost={setCommandAccessLoss}
+            />
+          </div>
           {query.hasNextPage ? (
             <div className="mt-6 flex justify-center">
               <Button

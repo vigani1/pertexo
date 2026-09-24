@@ -16,7 +16,7 @@ export function NodeInspectorHeader({
     <div className="border-b border-white/8 px-5 py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[0.64rem] tracking-[0.14em] text-primary/75 uppercase">
+          <p className="font-mono text-xs tracking-[0.14em] text-primary/75 uppercase">
             Selected node
           </p>
           <h2 className="mt-1 truncate font-heading text-lg font-semibold">
@@ -28,7 +28,7 @@ export function NodeInspectorHeader({
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-black/20 px-3 py-2">
-        <p className="min-w-0 truncate font-mono text-[0.66rem] text-muted-foreground">
+        <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
           {definitionIdentity}
         </p>
         <Badge variant={supported ? 'muted' : 'secondary'}>

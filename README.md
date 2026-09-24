@@ -6,10 +6,10 @@ focuses on the backend foundations that make workflow execution reliable:
 immutable published versions, resumable runs, idempotent side effects, tenant
 isolation, and observable API and worker processes.
 
-The backend is accompanied by a minimal
-[React web foundation](./apps/web/README.md). It includes tooling, theme and a
-placeholder page, not product screens or API integration. Start it with
-`pnpm dev:web`; no backend services are needed yet.
+The backend is accompanied by the [React web application](./apps/web/README.md),
+including authentication, workspace administration, workflow authoring and
+execution surfaces. Start the mocked frontend with `pnpm dev:web`; integrated
+authentication and data flows also require the API and its local dependencies.
 
 For a feature overview, system diagrams, execution flow, and code navigation,
 start with the [codebase map](./docs/codebase-map.md).
@@ -50,7 +50,7 @@ credentials, or large payloads.
 
 ```text
 apps/
-  web/                 React/Vite frontend foundation (no product features yet)
+  web/                 React/Vite product application
   api/                 NestJS control-plane API
   worker/              coordination, node attempts, previews, and triggers
   retention/           retention and purge processing
@@ -111,6 +111,8 @@ Common commands:
 Workspace packages resolve their compiled `dist` exports. After changing a
 shared package, run `pnpm build` and restart the affected development process.
 The API/worker source watchers do not replace the shared-package build step.
+`pnpm dev:api` compiles the API with TypeScript before watching its emitted
+JavaScript, preserving the decorator metadata required by NestJS.
 
 ```bash
 pnpm dev:api

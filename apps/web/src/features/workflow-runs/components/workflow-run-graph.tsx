@@ -19,6 +19,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import { useMemo } from 'react';
+import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { WorkflowRunLoadingWave } from './workflow-run-loading-wave';
@@ -82,46 +83,50 @@ export function WorkflowRunGraph({
     !isTerminalRunStatus(run.status) && nodeRuns.length === 0;
 
   return (
-    <section className="glass-panel overflow-hidden rounded-xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6">
-        <div>
-          <h2 className="font-heading text-xl font-semibold">Execution map</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live status for the exact workflow version accepted by this run.
-          </p>
+    <AuroraLoadingPanel active={!isTerminalRunStatus(run.status)}>
+      <section className="glass-panel overflow-hidden rounded-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6">
+          <div>
+            <h2 className="font-heading text-xl font-semibold">
+              Execution map
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Live status for the exact workflow version accepted by this run.
+            </p>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {String(graph.nodes.length)} nodes · {String(graph.edges.length)}{' '}
+            edges
+          </span>
         </div>
-        <span className="text-sm text-muted-foreground">
-          {String(graph.nodes.length)} nodes · {String(graph.edges.length)}{' '}
-          edges
-        </span>
-      </div>
-      <div
-        className="relative h-[28rem] bg-background/70"
-        aria-label="Workflow execution map"
-      >
-        {showLoadingWave ? <WorkflowRunLoadingWave /> : null}
-        <ReactFlow<RunNode, RunEdge>
-          nodes={projection.nodes}
-          edges={projection.edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable={false}
-          colorMode="dark"
-          fitView
-          fitViewOptions={{ padding: 0.24 }}
-          minZoom={0.35}
-          maxZoom={1.6}
-          deleteKeyCode={null}
-          proOptions={{ hideAttribution: true }}
+        <div
+          className="relative h-[28rem] bg-background/70"
+          aria-label="Workflow execution map"
         >
-          <Background gap={24} size={1} color="rgba(185, 214, 219, 0.12)" />
-          <MiniMap pannable zoomable position="bottom-left" />
-          <Controls position="bottom-right" showInteractive={false} />
-        </ReactFlow>
-      </div>
-    </section>
+          {showLoadingWave ? <WorkflowRunLoadingWave /> : null}
+          <ReactFlow<RunNode, RunEdge>
+            nodes={projection.nodes}
+            edges={projection.edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            colorMode="dark"
+            fitView
+            fitViewOptions={{ padding: 0.24 }}
+            minZoom={0.35}
+            maxZoom={1.6}
+            deleteKeyCode={null}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background gap={24} size={1} color="rgba(185, 214, 219, 0.12)" />
+            <MiniMap pannable zoomable position="bottom-left" />
+            <Controls position="bottom-right" showInteractive={false} />
+          </ReactFlow>
+        </div>
+      </section>
+    </AuroraLoadingPanel>
   );
 }
 
