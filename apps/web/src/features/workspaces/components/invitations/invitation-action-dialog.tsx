@@ -1,4 +1,4 @@
-import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,56 +9,63 @@ import {
 } from '@/components/ui/dialog';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
-import {
-  ROLE_SUMMARIES,
-  withArticle,
-  type ManagedRole,
-} from '../../model/workspace-roles';
+import type { InvitationAction } from './invitation-list';
 
-/**
- * Confirms a role change. The person is signed out everywhere so their next
- * sign-in carries the new role; that is said before anything is sent.
- */
-export function MemberRoleDialog(
+export type InvitationSelection = Readonly<{
+  invitation: WorkspaceInvitation;
+  action: InvitationAction;
+}>;
+
+const COPY = {
+  resend: {
+    title: (email: string) => `Send ${email} a new link?`,
+    description:
+      'The old link, and any acceptance already in progress, stops working.',
+    confirm: 'Send new link',
+    busy: 'Sending…',
+  },
+  revoke: {
+    title: (email: string) => `Revoke the invitation for ${email}?`,
+    description: 'The link stops working. You can invite them again later.',
+    confirm: 'Revoke invitation',
+    busy: 'Revoking…',
+  },
+} as const;
+
+/** Confirms Resend or Revoke; an unconfirmed command offers its exact retry. */
+export function InvitationActionDialog(
   props: Readonly<{
-    change:
-      Readonly<{ member: WorkspaceMember; role: ManagedRole }> | undefined;
+    selection: InvitationSelection | undefined;
     pending: boolean;
     locked: boolean;
     retryAvailable: boolean;
-    error: string | undefined;
+    message: string | undefined;
     onClose: () => void;
     onConfirm: () => void;
     onRetry: () => void;
-    onDismissUncertain: () => void;
+    onDismiss: () => void;
   }>,
 ) {
-  const { change } = props;
-  const firstName = change?.member.displayName.split(/\s+/u)[0] ?? 'They';
+  const copy = COPY[props.selection?.action ?? 'resend'];
   return (
     <Dialog
-      open={change !== undefined}
+      open={props.selection !== undefined}
       onOpenChange={(open) => {
         if (!open && !props.locked) props.onClose();
       }}
     >
       <DialogContent>
         <DialogTitle>
-          Make {change?.member.displayName ?? 'this member'}{' '}
-          {change === undefined ? 'a new role' : withArticle(change.role)}?
+          {copy.title(props.selection?.invitation.email ?? 'this person')}
         </DialogTitle>
-        <DialogDescription>
-          {change === undefined ? null : ROLE_SUMMARIES[change.role]}{' '}
-          {firstName} will be signed out everywhere and signs in again with the
-          new role.
-        </DialogDescription>
-        {props.error === undefined ? null : (
+        <DialogDescription>{copy.description}</DialogDescription>
+        {props.message === undefined ? null : (
           <Notice
             role="alert"
             tone={props.retryAvailable ? 'attention' : 'failure'}
             className="mt-5"
           >
-            {props.error}
+            {props.message}
           </Notice>
         )}
         <div className="mt-6 flex justify-end gap-2">
@@ -67,7 +74,7 @@ export function MemberRoleDialog(
               type="button"
               variant="ghost"
               onClick={() => {
-                props.onDismissUncertain();
+                props.onDismiss();
                 props.onClose();
               }}
             >
@@ -76,25 +83,25 @@ export function MemberRoleDialog(
           ) : (
             <DialogClose
               disabled={props.locked}
-              render={
-                <Button type="button" variant="ghost" disabled={props.locked} />
-              }
+              render={<Button type="button" variant="ghost" />}
             >
               Cancel
             </DialogClose>
           )}
           <Button
             type="button"
-            variant="primary"
-            disabled={props.pending || change === undefined}
+            variant={
+              props.selection?.action === 'revoke' ? 'destructive' : 'primary'
+            }
+            disabled={props.pending}
             onClick={props.retryAvailable ? props.onRetry : props.onConfirm}
           >
             {props.pending ? <LoadingOrb data-icon="inline-start" /> : null}
             {props.pending
-              ? 'Changing…'
+              ? copy.busy
               : props.retryAvailable
                 ? 'Try again'
-                : 'Change role'}
+                : copy.confirm}
           </Button>
         </div>
       </DialogContent>
