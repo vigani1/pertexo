@@ -59,6 +59,19 @@ export function manifestProblemResponse(status: number, code: ApiProblemCode) {
   } as const;
 }
 
+export function queryParameter(
+  name: string,
+  schema: z.ZodType,
+  required = false,
+) {
+  return {
+    name,
+    in: 'query',
+    required,
+    schema: jsonSchema(schema, 'input'),
+  } as const;
+}
+
 export function uuidPathParameter(name: string, description?: string) {
   return pathParameter(name, jsonSchema(z.uuid(), 'input'), description);
 }
