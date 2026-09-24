@@ -2,24 +2,75 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
+import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { PlusIcon } from 'lucide-react';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyActions,
+  EmptyDescription,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/api-error';
-import { connectionListErrorMessage } from './connection-errors';
-import { ConnectionTable } from './components/connection-table';
-import { CreateSlackConnectionDialog } from './components/create-slack-connection-dialog';
+import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
+import { AddConnectionSheet } from './components/add-connection/add-connection-sheet';
+import { ConnectionCollection } from './components/connection-collection';
+import { ConnectionDetailSheet } from './components/detail/connection-detail-sheet';
+import { ProviderSockets } from './components/provider-sockets';
 import { connectionsInfiniteQueryOptions } from './connections.queries';
+import type { ConnectionsSearch } from './model/connections-search';
 
+function countByStatus(items: readonly ConnectionResponse[]) {
+  let active = 0;
+  let reconnect = 0;
+  let revoked = 0;
+  for (const item of items) {
+    if (item.status === 'active') active += 1;
+    else if (item.status === 'revoked') revoked += 1;
+    else reconnect += 1;
+  }
+  return { active, reconnect, revoked } as const;
+}
+
+function Unavailable({ description }: Readonly<{ description: string }>) {
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader>
+        <PageHeaderTitle>Connections</PageHeaderTitle>
+      </PageHeader>
+      <Empty>
+        <EmptyTitle>Connections are unavailable</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </Empty>
+    </div>
+  );
+}
+
+/**
+ * Where Pertexo plugs into Slack, HTTPS APIs and email — and whether each
+ * connection still works. Lenses (add, detail) and the revoked view are URL
+ * state owned by the route.
+ */
 export function ConnectionsPage({
   apiClient,
   user,
   workspace,
+  search,
+  onSearchChange,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
+  search: ConnectionsSearch;
+  onSearchChange: (next: ConnectionsSearch) => void;
 }>) {
   const canRead = workspace.capabilities.includes('connection:read');
   const canTest = workspace.capabilities.includes('connection:use');
@@ -28,151 +79,121 @@ export function ConnectionsPage({
     ...connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
     enabled: canRead,
   });
+  const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const items = connections.data?.pages.flatMap((page) => page.items) ?? [];
-  const collectionUnavailable =
-    connections.isError &&
-    isApiError(connections.error) &&
-    connections.error.status === 404;
+  const counts = countByStatus(items);
 
-  if (!canRead) {
+  if (!canRead)
     return (
-      <Empty>
-        <EmptyTitle>Connections are unavailable</EmptyTitle>
-        <EmptyDescription>
-          Your workspace role does not allow you to view stored connections.
-        </EmptyDescription>
-      </Empty>
+      <Unavailable description="Your role can’t see this workspace’s connections." />
     );
-  }
+  if (connections.isError && isNotFound(connections.error))
+    return (
+      <Unavailable description="This workspace’s connections don’t exist, or you don’t have access to them." />
+    );
 
-  if (collectionUnavailable) {
-    return (
-      <Empty>
-        <EmptyTitle>Connections are unavailable</EmptyTitle>
-        <EmptyDescription>
-          This collection is not available for the current workspace. It may not
-          exist, be inactive, or be outside your account access.
-        </EmptyDescription>
-      </Empty>
-    );
-  }
+  const openAdd = (add: NonNullable<ConnectionsSearch['add']>) => {
+    onSearchChange({ ...search, add });
+  };
+  const withoutLens = {
+    ...(search.view === undefined ? {} : { view: search.view }),
+  };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-8">
+      <PageHeader>
         <div>
-          <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
-            Connections
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Manage the external accounts workflow nodes can use in{' '}
-            {workspace.name}. Stored credentials are never displayed here.
-          </p>
+          <PageHeaderTitle>Connections</PageHeaderTitle>
+          {items.length > 0 ? (
+            <PageHeaderMeta>
+              <span>
+                <b className="text-foreground">{counts.active}</b> active
+              </span>
+              {counts.reconnect > 0 ? (
+                <Status tone="attention">
+                  {counts.reconnect} needs reconnecting
+                </Status>
+              ) : null}
+            </PageHeaderMeta>
+          ) : null}
         </div>
         {canManage ? (
-          <CreateSlackConnectionDialog
-            key={`${user.id}:${workspace.id}:header`}
-            apiClient={apiClient}
-            userId={user.id}
-            workspaceId={workspace.id}
-          />
+          <PageHeaderActions>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                openAdd('any');
+              }}
+            >
+              <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              Add connection
+            </Button>
+          </PageHeaderActions>
         ) : null}
-      </div>
+      </PageHeader>
 
-      {connections.isError &&
-      items.length > 0 &&
-      !connections.isFetchNextPageError ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
-        >
-          <p className="text-sm text-destructive">
-            These connections may be stale because the latest refresh failed.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={connections.isRefetching}
-            onClick={() => void connections.refetch()}
-          >
-            {connections.isRefetching ? 'Retrying…' : 'Retry refresh'}
-          </Button>
-        </div>
-      ) : null}
+      {canManage ? <ProviderSockets onConnect={openAdd} /> : null}
 
-      {connections.isPending ? (
-        <p role="status" className="py-16 text-sm text-muted-foreground">
-          Loading connections…
-        </p>
-      ) : connections.isError && items.length === 0 ? (
+      {connections.isError && items.length === 0 ? (
         <Empty>
-          <EmptyTitle>Connections are unavailable</EmptyTitle>
+          <EmptyTitle>Connections couldn’t be loaded</EmptyTitle>
           <EmptyDescription>
-            {connectionListErrorMessage(connections.error)}
+            {describeReadError(connections.error, 'Connections')}
           </EmptyDescription>
-          <Button
-            className="mt-6"
-            type="button"
-            variant="outline"
-            onClick={() => void connections.refetch()}
-          >
-            Try again
-          </Button>
+          <EmptyActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void connections.refetch()}
+            >
+              Try again
+            </Button>
+          </EmptyActions>
         </Empty>
-      ) : items.length === 0 ? (
+      ) : connections.isSuccess && items.length === 0 ? (
         <Empty>
-          <EmptyTitle>No connections yet</EmptyTitle>
+          <EmptyTitle>Nothing connected yet</EmptyTitle>
           <EmptyDescription>
-            Add a connection when a workflow needs permission to call an
-            external service.
+            {canManage
+              ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
+              : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
           </EmptyDescription>
-          {canManage ? (
-            <div className="mt-6">
-              <CreateSlackConnectionDialog
-                key={`${user.id}:${workspace.id}:empty`}
-                apiClient={apiClient}
-                userId={user.id}
-                workspaceId={workspace.id}
-                triggerLabel="Add the first connection"
-              />
-            </div>
-          ) : null}
         </Empty>
       ) : (
-        <>
-          <div className="glass-panel overflow-hidden rounded-xl">
-            <ConnectionTable
-              connections={items}
-              apiClient={apiClient}
-              userId={user.id}
-              workspaceId={workspace.id}
-              canTest={canTest}
-              canManage={canManage}
-            />
-          </div>
-          {connections.hasNextPage ? (
-            <div className="mt-6 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={connections.isFetchingNextPage}
-                onClick={() => void connections.fetchNextPage()}
-              >
-                {connections.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </Button>
-            </div>
-          ) : null}
-          {connections.isFetchNextPageError ? (
-            <p
-              role="alert"
-              className="mt-4 text-center text-sm text-destructive"
-            >
-              The next page could not be loaded. Try again.
-            </p>
-          ) : null}
-        </>
+        <ConnectionCollection
+          query={connections}
+          items={items}
+          revokedCount={counts.revoked}
+          view={search.view === 'revoked' ? 'revoked' : 'current'}
+          onViewChange={(view) => {
+            onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
+          }}
+          onOpen={(connection) => {
+            onSearchChange({ ...withoutLens, connection });
+          }}
+        />
       )}
+
+      <ConnectionDetailSheet
+        scope={scope}
+        connectionId={search.connection}
+        placeholder={items.find((item) => item.id === search.connection)}
+        permissions={{ canTest, canManage }}
+        onClose={() => {
+          onSearchChange(withoutLens);
+        }}
+      />
+      {canManage ? (
+        <AddConnectionSheet
+          scope={scope}
+          workspaceName={workspace.name}
+          request={search.add}
+          onClose={() => {
+            onSearchChange(withoutLens);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

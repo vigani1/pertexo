@@ -12,6 +12,7 @@ import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
+  parseConnectionsSearch,
 } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import {
@@ -219,6 +220,7 @@ export const connectionsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'connections',
   staticData: { crumb: 'Connections' },
+  validateSearch: (search) => parseConnectionsSearch(search),
   loader: async ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('connection:read')) return;

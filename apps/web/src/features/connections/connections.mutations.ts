@@ -1,24 +1,46 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useMemo } from 'react';
+import type {
+  ConnectionCreateRequest,
+  ConnectionResponse,
+  ConnectionTestRequest,
+} from '@pertexo/contracts/schemas/connections';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  createSlackConnection,
+  createConnection,
   revokeConnection,
-  rotateSlackConnectionSecret,
-  testSlackConnection,
+  rotateConnectionSecret,
+  testConnection,
+  type ConnectionCredential,
 } from './connections.api';
 import { connectionKeys } from './connections.queries';
 
-export type SlackConnectionCommand = Readonly<{
-  name: string;
-  botToken: string;
-  idempotencyKey: string;
-}>;
-
-type ConnectionMutationScope = Readonly<{
+export type ConnectionMutationScope = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
+}>;
+
+export type CreateConnectionCommand = Readonly<{
+  request: ConnectionCreateRequest;
+  idempotencyKey: string;
+}>;
+
+export type RotateConnectionCommand = Readonly<{
+  connectionId: string;
+  expectedSecretVersionId: string;
+  credential: ConnectionCredential;
+  idempotencyKey: string;
+}>;
+
+export type TestConnectionCommand = Readonly<{
+  connectionId: string;
+  request: ConnectionTestRequest;
+  idempotencyKey: string;
 }>;
 
 function secretMutationKey(
@@ -38,7 +60,7 @@ function secretMutationKey(
 }
 
 function removeSecretMutation(
-  queryClient: ReturnType<typeof useQueryClient>,
+  queryClient: QueryClient,
   mutationKey: readonly unknown[],
 ) {
   const cache = queryClient.getMutationCache();
@@ -46,10 +68,32 @@ function removeSecretMutation(
     cache.remove(mutation);
 }
 
-function useSecretConnectionMutation<TCommand, TResult>(
+async function storeConnection(
+  queryClient: QueryClient,
+  scope: ConnectionMutationScope,
+  connection: ConnectionResponse,
+) {
+  queryClient.setQueryData(
+    connectionKeys.detail(scope.userId, scope.workspaceId, connection.id),
+    connection,
+  );
+  await queryClient.invalidateQueries({
+    queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
+    predicate: (query) =>
+      query.queryKey.at(-1) !== connection.id ||
+      query.queryKey.at(-2) !== 'detail',
+  });
+}
+
+/**
+ * Credential commands carry secrets in their variables, so their mutation
+ * entries are removed from the cache as soon as the owning form lets go.
+ */
+function useSecretConnectionMutation<Command, Result>(
   scope: ConnectionMutationScope,
   operation: 'create' | 'rotate',
-  execute: (command: TCommand) => Promise<TResult>,
+  execute: (command: Command) => Promise<Result>,
+  onSettledResult: (result: Result) => Promise<void>,
 ) {
   const queryClient = useQueryClient();
   const ownerId = useId();
@@ -61,11 +105,7 @@ function useSecretConnectionMutation<TCommand, TResult>(
   const mutation = useMutation({
     mutationKey,
     mutationFn: execute,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
+    onSuccess: onSettledResult,
   });
   const reset = mutation.reset;
   const clearSensitiveState = useCallback(() => {
@@ -81,51 +121,36 @@ function useSecretConnectionMutation<TCommand, TResult>(
   return { mutation, clearSensitiveState } as const;
 }
 
-export function useCreateSlackConnectionMutation(
-  scope: ConnectionMutationScope,
-) {
+export function useCreateConnectionMutation(scope: ConnectionMutationScope) {
+  const queryClient = useQueryClient();
   return useSecretConnectionMutation(
     scope,
     'create',
-    (command: SlackConnectionCommand) =>
-      createSlackConnection(scope.apiClient, scope.workspaceId, command),
+    (command: CreateConnectionCommand) =>
+      createConnection(scope.apiClient, scope.workspaceId, command),
+    (connection) => storeConnection(queryClient, scope, connection),
   );
 }
 
-export type TestConnectionCommand = Readonly<{
-  connectionId: string;
-  idempotencyKey: string;
-}>;
-
-export function useTestSlackConnectionMutation(scope: ConnectionMutationScope) {
+export function useRotateConnectionMutation(scope: ConnectionMutationScope) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (command: TestConnectionCommand) =>
-      testSlackConnection(scope.apiClient, scope.workspaceId, command),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
-  });
-}
-
-export type RotateSlackConnectionCommand = Readonly<{
-  connectionId: string;
-  expectedSecretVersionId: string;
-  botToken: string;
-  idempotencyKey: string;
-}>;
-
-export function useRotateSlackConnectionMutation(
-  scope: ConnectionMutationScope,
-) {
   return useSecretConnectionMutation(
     scope,
     'rotate',
-    (command: RotateSlackConnectionCommand) =>
-      rotateSlackConnectionSecret(scope.apiClient, scope.workspaceId, command),
+    (command: RotateConnectionCommand) =>
+      rotateConnectionSecret(scope.apiClient, scope.workspaceId, command),
+    (connection) => storeConnection(queryClient, scope, connection),
   );
+}
+
+export function useTestConnectionMutation(scope: ConnectionMutationScope) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (command: TestConnectionCommand) =>
+      testConnection(scope.apiClient, scope.workspaceId, command),
+    onSuccess: (result) =>
+      storeConnection(queryClient, scope, result.connection),
+  });
 }
 
 export function useRevokeConnectionMutation(scope: ConnectionMutationScope) {
@@ -133,10 +158,10 @@ export function useRevokeConnectionMutation(scope: ConnectionMutationScope) {
   return useMutation({
     mutationFn: (connectionId: string) =>
       revokeConnection(scope.apiClient, scope.workspaceId, connectionId),
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
+    onSuccess: (connection) => storeConnection(queryClient, scope, connection),
+    onError: () =>
+      queryClient.invalidateQueries({
         queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
+      }),
   });
 }
