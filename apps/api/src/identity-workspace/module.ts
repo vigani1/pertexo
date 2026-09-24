@@ -73,19 +73,7 @@ export class IdentityWorkspaceModule {
   public static register(
     dependencies: IdentityWorkspaceDependencies,
   ): DynamicModule {
-    const oidcConfigured =
-      dependencies.config.oidc !== undefined &&
-      dependencies.provider !== undefined &&
-      dependencies.transactions !== undefined;
-    if (
-      oidcConfigured !==
-      (dependencies.config.oidc !== undefined ||
-        dependencies.provider !== undefined ||
-        dependencies.transactions !== undefined)
-    )
-      throw new TypeError(
-        'OIDC configuration, provider, and transaction store must be supplied together',
-      );
+    const oidc = completeOidcDependencies(dependencies);
     const crypto: IdentityCrypto = dependencies.crypto ?? nodeIdentityCrypto;
     const clock: IdentityClock = dependencies.clock ?? {
       now: (): Date => new Date(),
@@ -206,7 +194,7 @@ export class IdentityWorkspaceModule {
           IDENTITY_CLOCK,
         ],
       },
-      ...(oidcConfigured ? oidcProviders(dependencies) : []),
+      ...(oidc === undefined ? [] : oidcProviders(dependencies, oidc)),
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -234,9 +222,9 @@ export class IdentityWorkspaceModule {
         WorkspaceMembersController,
         WorkspaceInvitationsController,
         WorkspaceController,
-        ...(oidcConfigured
-          ? [OidcController, InvitationAcceptanceController]
-          : []),
+        ...(oidc === undefined
+          ? []
+          : [OidcController, InvitationAcceptanceController]),
       ],
       providers,
       exports: [
@@ -256,9 +244,9 @@ export class IdentityWorkspaceModule {
         WorkspaceManageGuard,
         WorkspaceMemberManageGuard,
         WorkspaceMemberReadGuard,
-        ...(oidcConfigured
-          ? [OidcLoginService, InvitationAcceptanceUseCase]
-          : []),
+        ...(oidc === undefined
+          ? []
+          : [OidcLoginService, InvitationAcceptanceUseCase]),
       ],
     };
   }
@@ -272,18 +260,39 @@ function identityPublicOrigin(
   throw new TypeError('Identity public web origin is not configured');
 }
 
+type OidcDependencies = Readonly<{
+  oidc: NonNullable<IdentityWorkspaceDependencies['config']['oidc']>;
+  provider: NonNullable<IdentityWorkspaceDependencies['provider']>;
+  transactions: NonNullable<IdentityWorkspaceDependencies['transactions']>;
+}>;
+
+/** Generic OIDC is wired only as a whole; a partial set is a composition error. */
+function completeOidcDependencies(
+  dependencies: IdentityWorkspaceDependencies,
+): OidcDependencies | undefined {
+  const { provider, transactions } = dependencies;
+  const oidc = dependencies.config.oidc;
+  if (
+    oidc !== undefined &&
+    provider !== undefined &&
+    transactions !== undefined
+  )
+    return { oidc, provider, transactions };
+  if (
+    oidc !== undefined ||
+    provider !== undefined ||
+    transactions !== undefined
+  )
+    throw new TypeError(
+      'OIDC configuration, provider, and transaction store must be supplied together',
+    );
+  return undefined;
+}
+
 function oidcProviders(
   dependencies: IdentityWorkspaceDependencies,
+  { oidc, provider, transactions }: OidcDependencies,
 ): Provider[] {
-  const oidc = dependencies.config.oidc;
-  const provider = dependencies.provider;
-  const transactions = dependencies.transactions;
-  if (
-    oidc === undefined ||
-    provider === undefined ||
-    transactions === undefined
-  )
-    return [];
   return [
     { provide: OIDC_PROVIDER, useValue: provider },
     {
