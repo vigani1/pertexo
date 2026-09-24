@@ -1,15 +1,20 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { configure, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+
+// Each page loads its lazy route on first render; under a busy machine that
+// can outlast the default one-second wait without anything being wrong.
+configure({ asyncUtilTimeout: 4_000 });
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const destinationId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const timestamp = '2026-09-15T10:00:00.000Z';
+const destinationsUrl = `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`;
 const user = {
   id: userId,
   email: 'owner@example.test',
@@ -47,12 +52,16 @@ const connection = {
   updatedAt: timestamp,
 };
 
-function destination(channelId = 'C0123456789', currentVersion = 1) {
+function destination(
+  channelId = 'C0123456789',
+  currentVersion = 1,
+  status: 'enabled' | 'disabled' = 'enabled',
+) {
   return {
     id: destinationId,
     workspaceId,
     kind: 'slack',
-    status: 'enabled',
+    status,
     currentVersion,
     config: { kind: 'slack', connectionId, channelId },
     createdAt: timestamp,
@@ -76,44 +85,97 @@ function connectionHandler() {
   );
 }
 
-describe('failure notification destinations', () => {
-  it('maps validation errors to their controls and focuses the first invalid field', async () => {
+function destinationsOf(
+  items: () => readonly ReturnType<typeof destination>[],
+) {
+  return http.get(destinationsUrl, () => HttpResponse.json({ items: items() }));
+}
+
+function problem(status: number, code: string) {
+  return HttpResponse.json(
+    {
+      type: `urn:pertexo:problem:${code}`,
+      title: 'Problem',
+      status,
+      code,
+      requestId: `request-${code}`,
+    },
+    { status, headers: { 'content-type': 'application/problem+json' } },
+  );
+}
+
+function lens() {
+  const sheet = document.querySelector<HTMLElement>(
+    '[data-slot="sheet-content"]',
+  );
+  if (sheet === null) throw new Error('No lens is open.');
+  return within(sheet);
+}
+
+async function chooseConnection(actor: ReturnType<typeof userEvent.setup>) {
+  await actor.click(lens().getByLabelText('Slack connection'));
+  await actor.click(
+    await screen.findByRole('option', { name: 'Incident Slack' }),
+  );
+}
+
+describe('alert destinations', () => {
+  it('names each destination in words with a success-toned Enabled switch', async () => {
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => HttpResponse.json({ items: [] }),
-      ),
+      destinationsOf(() => [destination()]),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+    expect(
+      await screen.findByText('#C0123456789 via Incident Slack'),
+    ).toBeVisible();
+    const toggle = screen.getByRole('switch', {
+      name: 'Send alerts to #C0123456789 via Incident Slack',
+    });
+    expect(toggle).toBeChecked();
+    expect(toggle.className).toContain('data-checked:bg-success');
+    expect(screen.queryByText(/Version 1/u)).not.toBeInTheDocument();
+  });
+
+  it('offers Add destination from the empty state and validates fields in order', async () => {
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      destinationsOf(() => []),
     );
     renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
-    await actor.click(
-      await screen.findByRole('button', { name: 'Add destination' }),
-    );
+    expect(
+      await screen.findByRole('heading', { name: 'No alert destinations yet' }),
+    ).toBeVisible();
     await actor.click(screen.getByRole('button', { name: 'Add destination' }));
+    await actor.click(lens().getByRole('button', { name: 'Add destination' }));
 
-    const connectionSelect = screen.getByLabelText('Slack connection');
+    const connectionSelect = lens().getByLabelText('Slack connection');
     expect(connectionSelect).toHaveFocus();
     expect(connectionSelect).toHaveAttribute('aria-invalid', 'true');
     expect(connectionSelect).toHaveAccessibleDescription(
-      'Choose an active slack connection.',
+      'Choose the Slack connection that posts the alert.',
     );
-    await actor.selectOptions(connectionSelect, connectionId);
-    await actor.click(screen.getByRole('button', { name: 'Add destination' }));
+    await chooseConnection(actor);
+    expect(connectionSelect).toHaveAttribute('aria-invalid', 'false');
+    await actor.click(lens().getByRole('button', { name: 'Add destination' }));
 
-    const target = screen.getByLabelText('Channel ID');
+    const target = lens().getByLabelText('Channel ID');
     expect(target).toHaveFocus();
     expect(target).toHaveAttribute('aria-invalid', 'true');
-    expect(target).toHaveAccessibleDescription('Enter a Slack channel ID.');
-    await actor.type(target, 'invalid');
+    await actor.type(target, 'general');
     await actor.tab();
     expect(target).toHaveAccessibleDescription(
-      'Enter a valid Slack channel ID.',
+      expect.stringContaining('Channel IDs start with C, G or D'),
     );
     await actor.clear(target);
-    await actor.type(target, 'C0123456789');
+    await actor.type(target, '#C0123456789');
     expect(target).toHaveAttribute('aria-invalid', 'false');
+    expect(
+      lens().getByRole('link', { name: 'New Slack connection' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/connections?add=slack`);
   });
 
   it('creates with an exact uncertain retry and no credentials in the command', async () => {
@@ -122,22 +184,16 @@ describe('failure notification destinations', () => {
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => HttpResponse.json({ items: created ? [destination()] : [] }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        async ({ request }) => {
-          requests.push({
-            key: request.headers.get('idempotency-key'),
-            body: await request.json(),
-          });
-          if (requests.length === 1) return HttpResponse.error();
-          created = true;
-          return HttpResponse.json(destination(), { status: 201 });
-        },
-      ),
+      destinationsOf(() => (created ? [destination()] : [])),
+      http.post(destinationsUrl, async ({ request }) => {
+        requests.push({
+          key: request.headers.get('idempotency-key'),
+          body: await request.json(),
+        });
+        if (requests.length === 1) return HttpResponse.error();
+        created = true;
+        return HttpResponse.json(destination(), { status: 201 });
+      }),
     );
 
     renderApp(`/w/${workspaceId}/alerts`, { strict: true });
@@ -145,17 +201,19 @@ describe('failure notification destinations', () => {
     await actor.click(
       await screen.findByRole('button', { name: 'Add destination' }),
     );
-    await actor.selectOptions(
-      screen.getByLabelText('Slack connection'),
-      connectionId,
+    await chooseConnection(actor);
+    await actor.type(lens().getByLabelText('Channel ID'), 'C0123456789');
+    await actor.click(lens().getByRole('button', { name: 'Add destination' }));
+    expect(await lens().findByRole('alert')).toHaveTextContent(
+      'We couldn’t confirm whether the destination was added',
     );
-    await actor.type(screen.getByLabelText('Channel ID'), 'C0123456789');
-    await actor.click(screen.getByRole('button', { name: 'Add destination' }));
-    await actor.click(
-      await screen.findByRole('button', { name: 'Retry safely' }),
-    );
+    await actor.click(lens().getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('C0123456789')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Alerts now go to #C0123456789 via Incident Slack',
+      ),
+    ).toBeVisible();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
     expect(requests[0]?.body).toEqual({
@@ -166,63 +224,20 @@ describe('failure notification destinations', () => {
     expect(JSON.stringify(requests)).not.toContain('xoxb-');
   });
 
-  it('appends a version with the displayed precondition', async () => {
+  it('saves a new version on top of the version the lens opened with', async () => {
     let current = destination();
-    let command: { key: string | null; body: unknown } | undefined;
+    let submitted: { key: string | null; body: unknown } | undefined;
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => HttpResponse.json({ items: [current] }),
-      ),
+      destinationsOf(() => [current]),
       http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
+        `${destinationsUrl}/${destinationId}/versions`,
         async ({ request }) => {
-          command = {
+          submitted = {
             key: request.headers.get('idempotency-key'),
             body: await request.json(),
           };
-          current = destination('C9876543210', 2);
-          return HttpResponse.json(current);
-        },
-      ),
-    );
-
-    renderApp(`/w/${workspaceId}/alerts`);
-    const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit' }));
-    const channel = screen.getByLabelText('Channel ID');
-    await actor.clear(channel);
-    await actor.type(channel, 'C9876543210');
-    await actor.click(screen.getByRole('button', { name: 'Save new version' }));
-
-    expect(await screen.findByText('C9876543210')).toBeVisible();
-    expect(command?.key).toBeTruthy();
-    expect(command?.body).toEqual({
-      expectedVersion: 1,
-      config: {
-        kind: 'slack',
-        connectionId,
-        channelId: 'C9876543210',
-      },
-    });
-  });
-
-  it('keeps the editing snapshot version while a background refetch advances the destination', async () => {
-    let current = destination();
-    let submittedBody: unknown;
-    mockServer.use(
-      ...identityHandlers(),
-      connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => HttpResponse.json({ items: [current] }),
-      ),
-      http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
-        async ({ request }) => {
-          submittedBody = await request.json();
           return HttpResponse.json(destination('C9876543210', 3));
         },
       ),
@@ -230,25 +245,27 @@ describe('failure notification destinations', () => {
 
     const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit' }));
+    await actor.click(
+      await screen.findByRole('button', { name: /^Edit #C0123456789/u }),
+    );
+    expect(
+      lens().getByText(/Version 1 · saving creates version 2/u),
+    ).toBeInTheDocument();
     current = destination('C0000000002', 2);
     await queryClient.invalidateQueries();
-    await screen.findByText('C0000000002');
-    const channel = screen.getByLabelText('Channel ID');
+    await screen.findByText('#C0000000002 via Incident Slack');
+    const channel = lens().getByLabelText('Channel ID');
     await actor.clear(channel);
     await actor.type(channel, 'C9876543210');
-    await actor.click(screen.getByRole('button', { name: 'Save new version' }));
+    await actor.click(lens().getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => {
-      expect(submittedBody).toEqual({
+      expect(submitted?.body).toEqual({
         expectedVersion: 1,
-        config: {
-          kind: 'slack',
-          connectionId,
-          channelId: 'C9876543210',
-        },
+        config: { kind: 'slack', connectionId, channelId: 'C9876543210' },
       });
     });
+    expect(submitted?.key).toBeTruthy();
   });
 
   it('retries the exact version command after a lost response and refetch', async () => {
@@ -257,12 +274,9 @@ describe('failure notification destinations', () => {
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => HttpResponse.json({ items: [current] }),
-      ),
+      destinationsOf(() => [current]),
       http.post(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
+        `${destinationsUrl}/${destinationId}/versions`,
         async ({ request }) => {
           commands.push({
             key: request.headers.get('idempotency-key'),
@@ -279,123 +293,152 @@ describe('failure notification destinations', () => {
       strict: true,
     });
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit' }));
-    const channel = screen.getByLabelText('Channel ID');
+    await actor.click(await screen.findByRole('button', { name: /^Edit/u }));
+    const channel = lens().getByLabelText('Channel ID');
     await actor.clear(channel);
     await actor.type(channel, 'C9876543210');
-    await actor.click(screen.getByRole('button', { name: 'Save new version' }));
-    await screen.findByRole('button', { name: 'Retry safely' });
+    await actor.click(lens().getByRole('button', { name: 'Save changes' }));
+    await lens().findByRole('button', { name: 'Try again' });
     await queryClient.invalidateQueries();
-    await actor.click(screen.getByRole('button', { name: 'Retry safely' }));
+    await actor.click(lens().getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('C9876543210')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Saved alerts to #C9876543210 via Incident Slack',
+      ),
+    ).toBeVisible();
     expect(commands).toHaveLength(2);
     expect(commands[1]).toEqual(commands[0]);
     expect(commands[0]?.body).toEqual({
       expectedVersion: 1,
-      config: {
-        kind: 'slack',
-        connectionId,
-        channelId: 'C9876543210',
-      },
+      config: { kind: 'slack', connectionId, channelId: 'C9876543210' },
     });
   });
 
-  it('retries an uncertain status command with the same identity', async () => {
-    const keys: (string | null)[] = [];
-    let disabled = false;
+  it('keeps edits through a version conflict and saves on top of the latest version', async () => {
+    let current = destination();
+    const commands: { key: string | null; body: unknown }[] = [];
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () =>
-          HttpResponse.json({
-            items: [
-              { ...destination(), status: disabled ? 'disabled' : 'enabled' },
-            ],
-          }),
-      ),
-      http.put(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/status`,
+      destinationsOf(() => [current]),
+      http.post(
+        `${destinationsUrl}/${destinationId}/versions`,
         async ({ request }) => {
-          keys.push(request.headers.get('idempotency-key'));
-          expect(await request.json()).toEqual({ status: 'disabled' });
-          disabled = true;
-          if (keys.length === 1) return HttpResponse.error();
-          return HttpResponse.json({ ...destination(), status: 'disabled' });
+          commands.push({
+            key: request.headers.get('idempotency-key'),
+            body: await request.json(),
+          });
+          if (commands.length === 1) {
+            current = destination('C0000000002', 2);
+            return problem(409, 'connection.conflict');
+          }
+          return HttpResponse.json(destination('C9876543210', 3));
         },
       ),
     );
 
-    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`, {
-      strict: true,
-    });
+    renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Disable' }));
-    await screen.findByRole('button', { name: 'Retry safely' });
-    await queryClient.invalidateQueries();
-    await waitFor(() => expect(screen.getByText('disabled')).toBeVisible());
-    await actor.click(
-      await screen.findByRole('button', { name: 'Retry safely' }),
+    await actor.click(await screen.findByRole('button', { name: /^Edit/u }));
+    const channel = lens().getByLabelText('Channel ID');
+    await actor.clear(channel);
+    await actor.type(channel, 'C9876543210');
+    await actor.click(lens().getByRole('button', { name: 'Save changes' }));
+    expect(await lens().findByRole('alert')).toHaveTextContent(
+      'Someone changed this destination while you were editing',
     );
-    await waitFor(() => expect(screen.getByText('disabled')).toBeVisible());
+    await actor.click(
+      lens().getByRole('button', { name: 'Load latest version' }),
+    );
+    expect(channel).toHaveValue('C9876543210');
+    await waitFor(() => {
+      expect(lens().queryByRole('alert')).not.toBeInTheDocument();
+    });
+    await actor.click(lens().getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(commands).toHaveLength(2);
+    });
+    expect(commands[1]?.body).toEqual({
+      expectedVersion: 2,
+      config: { kind: 'slack', connectionId, channelId: 'C9876543210' },
+    });
+    expect(commands[1]?.key).not.toBe(commands[0]?.key);
+  });
+
+  it('repeats an unconfirmed switch change with the same key', async () => {
+    const keys: (string | null)[] = [];
+    let status: 'enabled' | 'disabled' = 'enabled';
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      destinationsOf(() => [destination('C0123456789', 1, status)]),
+      http.put(
+        `${destinationsUrl}/${destinationId}/status`,
+        async ({ request }) => {
+          keys.push(request.headers.get('idempotency-key'));
+          expect(await request.json()).toEqual({ status: 'disabled' });
+          status = 'disabled';
+          if (keys.length === 1) return HttpResponse.error();
+          return HttpResponse.json(destination('C0123456789', 1, 'disabled'));
+        },
+      ),
+    );
+
+    renderApp(`/w/${workspaceId}/alerts`, { strict: true });
+    const actor = userEvent.setup();
+    await actor.click(
+      await screen.findByRole('switch', { name: /Send alerts/u }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We couldn’t confirm whether these alerts turned off',
+    );
+    await actor.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText(
+        'Alerts to #C0123456789 via Incident Slack turned off',
+      ),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(
+        screen.getByRole('switch', { name: /Send alerts/u }),
+      ).not.toBeChecked();
+    });
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBeTruthy();
     expect(keys[1]).toBe(keys[0]);
   });
 
-  it('preserves a dirty row dialog through a recoverable background failure', async () => {
+  it('keeps a dirty lens through a failed background refresh', async () => {
     let refreshFails = false;
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () =>
-          refreshFails
-            ? HttpResponse.json(
-                {
-                  type: 'urn:pertexo:problem:internal.unexpected',
-                  title: 'Unexpected server error',
-                  status: 500,
-                  code: 'internal.unexpected',
-                  requestId: 'notification-refresh-failed',
-                },
-                {
-                  status: 500,
-                  headers: { 'content-type': 'application/problem+json' },
-                },
-              )
-            : HttpResponse.json({ items: [destination()] }),
+      http.get(destinationsUrl, () =>
+        refreshFails
+          ? problem(500, 'internal.unexpected')
+          : HttpResponse.json({ items: [destination()] }),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
-    await actor.click(await screen.findByRole('button', { name: 'Edit' }));
-    const channel = screen.getByLabelText('Channel ID');
+    await actor.click(await screen.findByRole('button', { name: /^Edit/u }));
+    const channel = lens().getByLabelText('Channel ID');
     await actor.clear(channel);
     await actor.type(channel, 'C9999999999');
 
     refreshFails = true;
     await queryClient.invalidateQueries();
-    const dialog = screen.getByRole('dialog');
-    expect(
-      await within(dialog).findByText(/destination list may be stale/u),
-    ).toBeVisible();
-    expect(dialog).toBeVisible();
+    expect(await lens().findByText(/list couldn’t refresh/u)).toBeVisible();
     expect(channel).toHaveValue('C9999999999');
 
     refreshFails = false;
-    await actor.click(
-      within(dialog).getByRole('button', { name: 'Retry refresh' }),
-    );
+    await actor.click(lens().getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(
-        within(dialog).queryByText(/destination list may be stale/u),
+        lens().queryByText(/list couldn’t refresh/u),
       ).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('dialog')).toBeVisible();
     expect(channel).toHaveValue('C9999999999');
   });
 
@@ -403,61 +446,35 @@ describe('failure notification destinations', () => {
     mockServer.use(
       ...identityHandlers(),
       connectionHandler(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () =>
-          HttpResponse.json(
-            {
-              type: 'urn:pertexo:problem:resource.not_found',
-              title: 'Resource not found',
-              status: 404,
-              code: 'resource.not_found',
-              requestId: 'notification-collection-unavailable',
-            },
-            {
-              status: 404,
-              headers: { 'content-type': 'application/problem+json' },
-            },
-          ),
-      ),
+      http.get(destinationsUrl, () => problem(404, 'resource.not_found')),
     );
     renderApp(`/w/${workspaceId}/alerts`);
     expect(
-      await screen.findByRole('heading', {
-        name: 'Notification destinations are unavailable',
-      }),
+      await screen.findByRole('heading', { name: 'Alerts are unavailable' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Add destination' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('C0123456789')).not.toBeInTheDocument();
+    expect(screen.queryByText(/C0123456789/u)).not.toBeInTheDocument();
   });
 
-  it('does not load or advertise the page without workflow update access', async () => {
+  it('does not load the page without workflow update access', async () => {
     let destinationReads = 0;
     mockServer.use(
       ...identityHandlers({
         ...workspace,
         capabilities: ['workspace:read', 'connection:read'],
       }),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
-        () => {
-          destinationReads += 1;
-          return HttpResponse.json({ items: [] });
-        },
-      ),
+      http.get(destinationsUrl, () => {
+        destinationReads += 1;
+        return HttpResponse.json({ items: [] });
+      }),
     );
 
     renderApp(`/w/${workspaceId}/alerts`);
     expect(
-      await screen.findByRole('heading', {
-        name: 'Notification destinations are unavailable',
-      }),
+      await screen.findByRole('heading', { name: 'Alerts are unavailable' }),
     ).toBeVisible();
-    expect(
-      screen.queryByRole('link', { name: 'Workspace settings' }),
-    ).not.toBeInTheDocument();
     expect(destinationReads).toBe(0);
   });
 });

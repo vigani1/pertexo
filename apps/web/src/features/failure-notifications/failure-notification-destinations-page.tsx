@@ -2,17 +2,57 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
-import { useQuery } from '@tanstack/react-query';
+import { useIsMutating, useQuery } from '@tanstack/react-query';
+import { PlusIcon } from 'lucide-react';
+import { useState } from 'react';
+import {
+  PageHeader,
+  PageHeaderActions,
+  PageHeaderMeta,
+  PageHeaderTitle,
+} from '@/components/patterns/page-header';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/public';
+import { Notice } from '@/components/ui/notice';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import type { ApiClient } from '@/lib/api/client';
+import { isForbidden, isNotFound } from '@/lib/api/api-error-copy';
 import { isApiError } from '@/lib/api/api-error';
-import { DestinationFormDialog } from './components/destination-form-dialog';
-import { DestinationRow } from './components/destination-row';
-import { destinationListErrorMessage } from './failure-notification-errors';
+import { DestinationCollection } from './components/destination-collection';
+import { DestinationForm } from './components/destination-lens';
+import { destinationEditMutationKey } from './failure-notifications.mutations';
 import { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
 
+type Lens = Readonly<{
+  open: boolean;
+  destinationId: string | undefined;
+  session: number;
+}>;
+
+function Unavailable({ description }: Readonly<{ description: string }>) {
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader>
+        <PageHeaderTitle>Alerts</PageHeaderTitle>
+      </PageHeader>
+      <Empty>
+        <EmptyTitle>Alerts are unavailable</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </Empty>
+    </div>
+  );
+}
+
+function isHidden(error: unknown): boolean {
+  return (
+    isNotFound(error) ||
+    isForbidden(error) ||
+    (isApiError(error) && error.status === 401)
+  );
+}
+
+/** Decide where Pertexo speaks up when a run fails. */
 export function FailureNotificationDestinationsPage({
   apiClient,
   user,
@@ -25,6 +65,7 @@ export function FailureNotificationDestinationsPage({
   const canRead = workspace.capabilities.includes('workflow:update');
   const canManage = workspace.capabilities.includes('connection:manage');
   const canReadConnections = workspace.capabilities.includes('connection:read');
+  const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const destinations = useQuery({
     ...failureNotificationDestinationsQueryOptions(
       apiClient,
@@ -35,137 +76,119 @@ export function FailureNotificationDestinationsPage({
   });
   const connections = useQuery({
     ...connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
-    enabled: canManage && canReadConnections,
+    enabled: canRead && canReadConnections,
   });
-  const items = destinations.data?.items ?? [];
-  const collectionUnavailable =
-    destinations.isError &&
-    isApiError(destinations.error) &&
-    [401, 403, 404].includes(destinations.error.status ?? 0);
+  const saving =
+    useIsMutating({ mutationKey: destinationEditMutationKey(scope) }) > 0;
+  const [lens, setLens] = useState<Lens>({
+    open: false,
+    destinationId: undefined,
+    session: 0,
+  });
 
   if (!canRead)
     return (
-      <Empty>
-        <EmptyTitle>Notification destinations are unavailable</EmptyTitle>
-        <EmptyDescription>
-          Your workspace role does not allow you to view workflow notification
-          destinations.
-        </EmptyDescription>
-      </Empty>
+      <Unavailable description="Your role can’t manage alerts. Builders, admins and owners can." />
     );
-
-  if (collectionUnavailable)
+  if (destinations.isError && isHidden(destinations.error))
     return (
-      <Empty>
-        <EmptyTitle>Notification destinations are unavailable</EmptyTitle>
-        <EmptyDescription>
-          This collection is not available for the current workspace or session.
-          It may not exist or may be outside your account access.
-        </EmptyDescription>
-      </Empty>
+      <Unavailable description="This workspace’s alert destinations don’t exist, or you don’t have access to them." />
     );
 
-  const availableConnections = connections.data?.items ?? [];
-  const retryDestinationRefresh = () => {
-    void destinations.refetch();
+  const items = destinations.data?.items ?? [];
+  const enabledCount = items.filter((item) => item.status === 'enabled').length;
+  const open = (destinationId?: string) => {
+    setLens((current) => ({
+      open: true,
+      destinationId,
+      session: current.session + 1,
+    }));
   };
+  const close = () => {
+    if (!saving) setLens((current) => ({ ...current, open: false }));
+  };
+
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-8">
+      <PageHeader>
         <div>
-          <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
-            Notifications
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Configure versioned Slack or email destinations that workflows can
-            select for failure notifications.
-          </p>
+          <PageHeaderTitle>Alerts</PageHeaderTitle>
+          {items.length > 0 ? (
+            <PageHeaderMeta>
+              <span>
+                <b className="text-foreground">{items.length}</b>{' '}
+                {items.length === 1 ? 'destination' : 'destinations'}
+              </span>
+              <span>
+                <b className="text-foreground">{enabledCount}</b> on
+              </span>
+            </PageHeaderMeta>
+          ) : null}
         </div>
-        {canManage && !connections.isPending ? (
-          <DestinationFormDialog
-            apiClient={apiClient}
-            userId={user.id}
-            workspaceId={workspace.id}
-            connections={availableConnections}
-            listRefreshFailed={destinations.isError && items.length > 0}
-            listRefreshPending={destinations.isRefetching}
-            onRetryListRefresh={retryDestinationRefresh}
-          />
+        {canManage && items.length > 0 ? (
+          <PageHeaderActions>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                open();
+              }}
+            >
+              <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              Add destination
+            </Button>
+          </PageHeaderActions>
         ) : null}
-      </header>
+      </PageHeader>
+      <p className="-mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        Pertexo sends an alert when a run fails, times out or ends with an
+        unknown outcome. Add where it goes here, then choose it in a workflow’s
+        settings.
+      </p>
 
-      {destinations.isError && items.length > 0 ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
-        >
-          <p className="text-sm text-destructive">
-            These destinations may be stale because the latest refresh failed.
-            Open edits are preserved.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={destinations.isRefetching}
-            onClick={retryDestinationRefresh}
-          >
-            {destinations.isRefetching ? 'Retrying…' : 'Retry refresh'}
-          </Button>
-        </div>
-      ) : null}
-
-      {destinations.isPending ? (
-        <p role="status" className="py-16 text-sm text-muted-foreground">
-          Loading notification destinations…
-        </p>
-      ) : destinations.isError && items.length === 0 ? (
-        <Empty>
-          <EmptyTitle>Notification destinations could not be loaded</EmptyTitle>
-          <EmptyDescription>
-            {destinationListErrorMessage(destinations.error)}
-          </EmptyDescription>
-          <Button
-            className="mt-6"
-            type="button"
-            variant="outline"
-            onClick={() => void destinations.refetch()}
-          >
-            Try again
-          </Button>
-        </Empty>
-      ) : items.length === 0 ? (
-        <Empty>
-          <EmptyTitle>No notification destinations</EmptyTitle>
-          <EmptyDescription>
-            Add a destination to deliver workflow failure notifications through
-            an existing connection.
-          </EmptyDescription>
-        </Empty>
-      ) : (
-        <ul>
-          {items.map((destination) => (
-            <DestinationRow
-              key={destination.id}
-              apiClient={apiClient}
-              userId={user.id}
-              workspaceId={workspace.id}
-              destination={destination}
-              connections={availableConnections}
-              canManage={canManage}
-              listRefreshFailed={destinations.isError && items.length > 0}
-              listRefreshPending={destinations.isRefetching}
-              onRetryListRefresh={retryDestinationRefresh}
-            />
-          ))}
-        </ul>
-      )}
+      <DestinationCollection
+        query={destinations}
+        items={items}
+        connections={connections.data?.items ?? []}
+        scope={scope}
+        canManage={canManage}
+        onAdd={() => {
+          open();
+        }}
+        onEdit={open}
+      />
       {canManage && connections.isError ? (
-        <p role="alert" className="mt-5 text-sm text-destructive">
-          Connections could not be loaded. Destination status remains available,
-          but creation and version editing require a refreshed connection list.
-        </p>
+        <Notice role="alert" tone="attention">
+          Connections couldn’t be loaded, so destinations can’t be added or
+          edited right now. Alerts keep being sent.
+        </Notice>
       ) : null}
+
+      <Sheet
+        open={lens.open}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
+      >
+        <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
+          <DestinationForm
+            key={lens.session}
+            scope={scope}
+            destination={items.find((item) => item.id === lens.destinationId)}
+            connections={connections.data?.items ?? []}
+            listRefresh={{
+              failed: destinations.isError,
+              pending: destinations.isRefetching,
+              reload: async () =>
+                (await destinations.refetch()).data?.items ?? [],
+            }}
+            onDone={() => {
+              setLens((current) => ({ ...current, open: false }));
+            }}
+            onCancel={close}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

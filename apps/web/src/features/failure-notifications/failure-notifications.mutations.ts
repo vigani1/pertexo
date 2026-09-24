@@ -13,6 +13,16 @@ export type DestinationMutationScope = Readonly<{
   workspaceId: string;
 }>;
 
+/** Create and edit share one key so the page can tell a save is in flight. */
+export function destinationEditMutationKey(scope: DestinationMutationScope) {
+  return [
+    'failure-notification-destinations',
+    scope.userId,
+    scope.workspaceId,
+    'edit',
+  ] as const;
+}
+
 function useDestinationMutationInvalidation(scope: DestinationMutationScope) {
   const queryClient = useQueryClient();
   return () =>
@@ -29,6 +39,7 @@ export function useCreateFailureNotificationDestinationMutation(
 ) {
   const invalidate = useDestinationMutationInvalidation(scope);
   return useMutation({
+    mutationKey: destinationEditMutationKey(scope),
     mutationFn: (
       command: Parameters<typeof createFailureNotificationDestination>[2],
     ) =>
@@ -46,6 +57,7 @@ export function useAppendFailureNotificationDestinationVersionMutation(
 ) {
   const invalidate = useDestinationMutationInvalidation(scope);
   return useMutation({
+    mutationKey: destinationEditMutationKey(scope),
     mutationFn: (
       command: Parameters<
         typeof appendFailureNotificationDestinationVersion

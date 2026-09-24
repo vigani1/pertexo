@@ -1,29 +1,53 @@
 import { isApiError } from '@/lib/api/api-error';
+import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
 
-export function destinationListErrorMessage(error: unknown): string {
-  if (isApiError(error)) {
-    if (error.status === 401 || error.status === 403 || error.status === 404)
-      return 'Notification destinations are unavailable for this workspace or session.';
-    if (error.kind === 'network')
-      return 'Notification destinations could not be reached. Check your network and try again.';
-    if (error.kind === 'timeout')
-      return 'Notification destinations took too long to load. Try again.';
-  }
-  return 'Notification destinations could not be loaded. Try again.';
+type DestinationCommand = 'create' | 'update' | 'enable' | 'disable';
+
+const ACTIONS: Readonly<Record<DestinationCommand, string>> = {
+  create: 'adding this destination',
+  update: 'saving this destination',
+  enable: 'turning these alerts on',
+  disable: 'turning these alerts off',
+};
+
+const UNCERTAIN: Readonly<Record<DestinationCommand, string>> = {
+  create:
+    'We couldn’t confirm whether the destination was added. Try again — it can’t be added twice.',
+  update:
+    'We couldn’t confirm whether your changes were saved. Try again — they can’t be saved twice.',
+  enable:
+    'We couldn’t confirm whether these alerts turned on. Try again — it repeats the same request.',
+  disable:
+    'We couldn’t confirm whether these alerts turned off. Try again — it repeats the same request.',
+};
+
+/** Someone saved a newer version while this edit was open. */
+export function isDestinationConflict(error: unknown): boolean {
+  return (
+    isApiError(error) &&
+    (error.status === 412 ||
+      (error.status === 409 && error.problem?.code === 'connection.conflict'))
+  );
 }
 
-export function destinationCommandErrorMessage(
+export function destinationCommandError(
   error: unknown,
-  action: string,
+  command: DestinationCommand,
 ): string {
+  if (isUncertainOutcome(error)) return UNCERTAIN[command];
+  if (isDestinationConflict(error))
+    return command === 'update'
+      ? 'Someone changed this destination while you were editing. Load the latest version, then save again — your edits stay.'
+      : 'Pertexo couldn’t use this connection for alerts. Check it still works, then try again.';
   if (
     isApiError(error) &&
-    ['network', 'timeout', 'protocol'].includes(error.kind)
+    error.problem?.code === 'request.idempotency_conflict'
   )
-    return `The result is uncertain. Retry to ${action} with the same command.`;
-  if (isApiError(error) && (error.status === 409 || error.status === 412))
-    return 'This destination changed. Close the dialog, refresh, and try again.';
+    return 'This request was already used with different details. Try again.';
   if (isApiError(error) && (error.status === 403 || error.status === 404))
-    return `You no longer have permission to ${action}.`;
-  return `Could not ${action}. Check the values and try again.`;
+    return 'Your role can’t change alert destinations. Admins and owners can.';
+  return describeCommandError(error, ACTIONS[command]);
 }
