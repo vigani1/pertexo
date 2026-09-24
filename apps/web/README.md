@@ -152,13 +152,18 @@ states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
 switching, useful canvas dimensions and retained inspector scratch state. After
-the Weft uniformity pass, React Doctor's scan of the files it changed reports
-two diagnostics, both `query-mutation-missing-invalidation` on the workspace
-creation and rename commands, whose identity-fenced refresh owns the cache (as
-documented in those hooks). The score remains a triage aid rather than a
-delivery gate. Firefox/WebKit and a live-backend journey through the controlled
-OIDC provider remain pending; the mocked Chromium lane does not prove either
-integration.
+the Weft uniformity pass, React Doctor's scan of the changes that pass made
+reports no diagnostics. Its scan of the whole Weft branch against `main` keeps
+19 reviewed advisories that are not defects: loading flags already reset in
+`finally` behind a request-ownership check, a validation message whose name
+reads like a token, the inspector's deliberate `flushSync` before focusing a
+tab's control, an append-only step story keyed by position, the invitation
+journey's token-handover and StrictMode-safe retirement effects, the Loom's
+pointer shortcut (each run is also a link in the list beside it), and two
+mutations whose cache update the caller supplies or which change nothing cached
+yet. The score remains a triage aid rather than a delivery gate. Firefox/WebKit
+and a live-backend journey through the controlled OIDC provider remain pending;
+the mocked Chromium lane does not prove either integration.
 
 React Compiler was evaluated with the documented Babel/Vite integration and was
 not adopted: the controlled trial increased build work and emitted bundle size
