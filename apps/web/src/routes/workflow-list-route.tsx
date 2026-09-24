@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { saveWorkflowDraft } from '@/features/workflow-editor/draft.public';
 import { WorkflowListPage } from '@/features/workflows/list.public';
 import { useWorkspaceScope } from './use-workspace-scope';
 
@@ -6,14 +7,13 @@ export function WorkflowListRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const search = useSearch({ from: '/w/$workspaceId/shell/workflows' });
   const navigate = useNavigate();
-  // Starters need the editor's draft-save transport, which has no public
-  // interface yet; until it does, the New workflow lens offers Blank only.
   return (
     <WorkflowListPage
       apiClient={apiClient}
       user={user}
       workspace={workspace}
       search={search}
+      starterDraftWriter={saveWorkflowDraft}
       onSearchChange={(next) => {
         void navigate({
           to: '/w/$workspaceId/workflows',

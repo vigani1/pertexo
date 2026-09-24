@@ -1,4 +1,4 @@
-export { getWorkflowDraft } from './workflow-editor.api';
+export { getWorkflowDraft, saveWorkflowDraft } from './workflow-editor.api';
 export {
   workflowDraftKeys,
   workflowDraftQueryOptions,
