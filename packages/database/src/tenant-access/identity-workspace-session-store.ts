@@ -6,9 +6,9 @@ import { sha256HexSchema } from '../validation/persisted-primitives.js';
 import { withPlatformTransaction } from './workspace.js';
 
 import type {
-  CompleteInvitationAcceptanceInput,
   CreateSessionInput,
   IdentityWorkspaceDatabase,
+  ReplacementSessionInput,
   SessionRecord,
 } from './identity-workspace-contracts.js';
 import {
@@ -144,15 +144,36 @@ export async function revokeUserSessions(
 }
 
 /**
- * Revokes every existing session of a user and issues the single Better Auth
- * session that replaces them, atomically with the caller's transaction.
+ * Revokes every existing session of a user and installs the single session
+ * that replaces them, atomically with the caller's transaction. The
+ * replacement is written to the store of the active session authority so the
+ * browser that receives it is still signed in.
  */
 export async function replaceUserSessions(
   client: PoolClient,
   userId: string,
-  replacement: CompleteInvitationAcceptanceInput['replacementSession'],
+  replacement: ReplacementSessionInput,
 ): Promise<void> {
   await revokeUserSessions(client, userId);
+  const metadata = [
+    replacement.userAgent ?? null,
+    replacement.ipAddress ?? null,
+  ];
+  if (replacement.authority === 'opaque') {
+    await client.query(
+      `insert into app.sessions
+         (id,user_id,token_digest,expires_at,user_agent,ip_address)
+       values($1,$2,$3,$4,$5,$6)`,
+      [
+        uuidSchema.parse(replacement.id),
+        userId,
+        digestSchema.parse(replacement.tokenDigest),
+        replacement.expiresAt,
+        ...metadata,
+      ],
+    );
+    return;
+  }
   await client.query(
     `insert into app.auth_sessions
        (id,user_id,token,expires_at,user_agent,ip_address,created_at,updated_at)
@@ -162,8 +183,7 @@ export async function replaceUserSessions(
       userId,
       replacement.token,
       replacement.expiresAt,
-      replacement.userAgent ?? null,
-      replacement.ipAddress ?? null,
+      ...metadata,
     ],
   );
 }

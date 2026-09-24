@@ -2904,6 +2904,7 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
+        authority: 'better_auth',
         id: randomUUID(),
         token: replacementSessionToken,
         expiresAt: new Date(Date.now() + 60_000),
@@ -3056,6 +3057,7 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
+        authority: 'better_auth',
         id: randomUUID(),
         token: createHash('sha256').update(randomUUID()).digest('hex'),
         expiresAt: new Date(Date.now() + 60_000),
@@ -3168,6 +3170,7 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: randomUUID(),
       replacementSession: {
+        authority: 'better_auth' as const,
         id: randomUUID(),
         token: createHash('sha256').update(randomUUID()).digest('hex'),
         expiresAt: new Date(Date.now() + 60_000),
@@ -3709,6 +3712,7 @@ describe('identity/workspace persistence', () => {
       actorUserId: recipient.id,
       idempotencyKey: key,
       replacementSession: {
+        authority: 'better_auth' as const,
         id: randomUUID(),
         token: replacementToken,
         expiresAt: new Date(Date.now() + 60_000),
@@ -3758,6 +3762,97 @@ describe('identity/workspace persistence', () => {
         invitationWorkspace.id,
       ),
     ).resolves.toMatchObject({ role: 'viewer', membershipStatus: 'active' });
+  });
+
+  it('installs a digest-only replacement for the legacy opaque session authority', async () => {
+    const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
+      {
+        name: 'Opaque session acceptance',
+        slug: `invite-opaque-${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
+    );
+    const recipient = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Opaque session recipient',
+    });
+    const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    const created = await identityDatabase.createWorkspaceInvitation({
+      ...invitationCreateCommand(
+        invitationWorkspace.id,
+        ownerUserId,
+        recipient.email,
+      ),
+      tokenDigest,
+    });
+    const intentId = randomUUID();
+    const bindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await identityDatabase.resolveInvitationAcceptance({
+      workspaceId: invitationWorkspace.id,
+      invitationId: created.invitation.id,
+      tokenDigest,
+      intentId,
+      bindingDigest,
+      csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 15 * 60_000),
+    });
+    await identityDatabase.recordInvitationAcceptanceProof({
+      workspaceId: invitationWorkspace.id,
+      intentId,
+      bindingDigest,
+      userId: recipient.id,
+      verifiedEmail: recipient.email,
+      verifiedAt: new Date(),
+    });
+    const oldDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: recipient.id,
+      tokenDigest: oldDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const replacementDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    const replacementId = randomUUID();
+
+    await expect(
+      identityDatabase.completeInvitationAcceptance({
+        workspaceId: invitationWorkspace.id,
+        intentId,
+        invitationRevision: 1,
+        actorUserId: recipient.id,
+        idempotencyKey: randomUUID(),
+        replacementSession: {
+          authority: 'opaque',
+          id: replacementId,
+          tokenDigest: replacementDigest,
+          expiresAt: new Date(Date.now() + 60_000),
+          userAgent: 'opaque-acceptance-test',
+        },
+      }),
+    ).resolves.toMatchObject({ membershipCreated: true, replayed: false });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(oldDigest),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.findActiveSessionByDigest(replacementDigest),
+    ).resolves.toMatchObject({
+      id: replacementId,
+      userId: recipient.id,
+      userAgent: 'opaque-acceptance-test',
+    });
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const betterAuthSessions = await pool.query<{ count: number }>(
+        'select count(*)::int count from app.auth_sessions where user_id=$1',
+        [recipient.id],
+      );
+      expect(betterAuthSessions.rows).toEqual([{ count: 0 }]);
+    } finally {
+      await pool.end();
+    }
   });
 
   it('rechecks active user status under the acceptance transaction lock', async () => {
@@ -3823,6 +3918,7 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
+          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),
@@ -3934,6 +4030,7 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
+          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),
@@ -4002,6 +4099,7 @@ describe('identity/workspace persistence', () => {
         actorUserId: recipient.id,
         idempotencyKey: randomUUID(),
         replacementSession: {
+          authority: 'better_auth',
           id: randomUUID(),
           token: createHash('sha256').update(randomUUID()).digest('hex'),
           expiresAt: new Date(Date.now() + 60_000),

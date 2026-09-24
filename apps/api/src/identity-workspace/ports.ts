@@ -4,6 +4,7 @@ import type {
   AuthenticatedSession,
   OidcLoginTransactionStore,
   OidcProviderPort,
+  ReplacementSessionCredential,
   SessionCookieBoundary,
   SessionIssueInput,
   SessionIssueResult,
@@ -269,11 +270,11 @@ export type InvitationAcceptanceCompletePersistenceInput = Readonly<{
   idempotencyKey: string;
   replacementSession: Readonly<{
     id: string;
-    token: string;
     expiresAt: Date;
     userAgent?: string | null;
     ipAddress?: string | null;
-  }>;
+  }> &
+    ReplacementSessionCredential;
   requestId?: string;
   traceId?: string;
 }>;
@@ -364,6 +365,11 @@ export interface IdentitySessionAuthority {
     options?: Readonly<{ signal?: AbortSignal }>,
   ): Promise<AuthenticatedSession>;
   revoke(cookieValue: string): Promise<void>;
+  /**
+   * The stored form of a replacement session that persistence installs
+   * atomically with a membership change, so this authority resolves it.
+   */
+  replacementCredential(token: string): ReplacementSessionCredential;
   deliver?(
     token: string,
     cookieBoundary: SessionCookieBoundary,

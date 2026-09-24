@@ -12,6 +12,7 @@ import {
 } from '../identity/index.js';
 import type { OidcLoginPort } from './use-cases.js';
 import type {
+  IdentitySessionAuthority,
   IdentityWorkspaceConfig,
   IdentityWorkspacePersistence,
   InvitationAcceptanceIntentPersistenceRecord,
@@ -55,6 +56,10 @@ export class InvitationAcceptanceUseCase {
     private readonly crypto: IdentityCrypto,
     private readonly clock: IdentityClock,
     private readonly config: IdentityWorkspaceConfig,
+    private readonly sessions: Pick<
+      IdentitySessionAuthority,
+      'replacementCredential'
+    >,
   ) {}
 
   public async resolve(
@@ -226,9 +231,11 @@ export class InvitationAcceptanceUseCase {
       invitationRevision: request.expectedRevision,
       actorUserId: input.authenticatedUserId,
       idempotencyKey: input.idempotencyKey,
+      // The replacement must live in the store of the active session
+      // authority, or the rotated browser would be signed out.
       replacementSession: {
         id: randomUUID(),
-        token: rawToken,
+        ...this.sessions.replacementCredential(rawToken),
         expiresAt,
         ...(input.userAgent === undefined
           ? {}

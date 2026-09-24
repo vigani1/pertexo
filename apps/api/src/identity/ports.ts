@@ -100,3 +100,12 @@ export type SessionIssueResult = Readonly<{
 }>;
 
 export type AuthenticatedSession = SessionLookup;
+
+/**
+ * How another transaction stores a replacement browser session so the
+ * authority that owns the credential resolves it: opaque sessions persist
+ * only the token digest, Better Auth persists its random session token.
+ */
+export type ReplacementSessionCredential =
+  | Readonly<{ authority: 'opaque'; tokenDigest: string }>
+  | Readonly<{ authority: 'better_auth'; token: string }>;

@@ -1,6 +1,7 @@
 import { IdentityError } from '../identity/errors.js';
 import type {
   AuthenticatedSession,
+  ReplacementSessionCredential,
   SessionCookieBoundary,
   SessionIssueInput,
   SessionIssueResult,
@@ -35,6 +36,11 @@ export class BetterAuthSessionService {
       throw new IdentityError('identity.session_invalid');
     }
     return resultFrom(delivery, this.cookieOptions);
+  }
+
+  /** Better Auth resolves a database session by its random session token. */
+  public replacementCredential(token: string): ReplacementSessionCredential {
+    return Object.freeze({ authority: 'better_auth' as const, token });
   }
 
   public async deliver(

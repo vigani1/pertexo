@@ -225,19 +225,28 @@ export type ResolveInvitationAcceptanceInput = Readonly<{
     bindingDigest: string;
   }>;
 }>;
+/**
+ * The browser session that replaces every session of a user, stored where the
+ * deployment's single session authority resolves it: Better Auth keeps its
+ * random session token, while legacy opaque sessions persist only a digest.
+ */
+export type ReplacementSessionInput = Readonly<{
+  id: string;
+  expiresAt: Date;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}> &
+  (
+    | Readonly<{ authority: 'better_auth'; token: string }>
+    | Readonly<{ authority: 'opaque'; tokenDigest: string }>
+  );
 export type CompleteInvitationAcceptanceInput = Readonly<{
   workspaceId: string;
   intentId: string;
   invitationRevision: number;
   actorUserId: string;
   idempotencyKey: string;
-  replacementSession: Readonly<{
-    id: string;
-    token: string;
-    expiresAt: Date;
-    userAgent?: string | null;
-    ipAddress?: string | null;
-  }>;
+  replacementSession: ReplacementSessionInput;
   requestId?: string;
   traceId?: string;
 }>;
