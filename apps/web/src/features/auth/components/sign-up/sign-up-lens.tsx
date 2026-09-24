@@ -1,12 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import type { SyntheticEvent } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
-import { ProgressButton } from '@/components/ui/progress-button';
 import { signUpFailure } from '../../model/auth-failure';
 import { signUpWithEmail } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
@@ -16,7 +14,7 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { AuthForm } from '../../forms/auth-form';
 
 function nameProblem(value: string): string | undefined {
   if (value.trim().length === 0)
@@ -45,30 +43,6 @@ export function SignUpLens({
   const request = useAuthRequest(signUpFailure);
   const { pending, failure } = request;
 
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const values = fields.validate();
-    if (values === undefined) return;
-    const email = values.email.trim();
-    await request.run(
-      (signal) =>
-        signUpWithEmail(
-          apiClient,
-          {
-            displayName: values.name.trim(),
-            email,
-            password: values.password,
-          },
-          signal,
-        ),
-      () => {
-        fields.reset({ ...values, password: '' });
-        onCreated(email);
-      },
-    );
-  }
-
   return (
     <AuthLens pending={pending} aria-labelledby="sign-up-title">
       <AuthLensTitle id="sign-up-title">Create your account</AuthLensTitle>
@@ -76,10 +50,32 @@ export function SignUpLens({
         Verify your email first. Workspace access comes from an invitation or a
         workspace you create.
       </AuthLensDescription>
-      <form
-        noValidate
-        className="mt-6 flex flex-col gap-4"
-        onSubmit={(event) => void submit(event)}
+      <AuthForm
+        className="mt-6"
+        failure={failure}
+        pending={pending}
+        pendingLabel="Creating account…"
+        submitLabel="Create account"
+        waitSeconds={request.waitSeconds}
+        onSubmit={() =>
+          void request.submit(
+            fields.validate,
+            (values, signal) =>
+              signUpWithEmail(
+                apiClient,
+                {
+                  displayName: values.name.trim(),
+                  email: values.email.trim(),
+                  password: values.password,
+                },
+                signal,
+              ),
+            (values) => {
+              fields.reset({ ...values, password: '' });
+              onCreated(values.email.trim());
+            },
+          )
+        }
       >
         <LabelledField
           id="sign-up-name"
@@ -120,21 +116,7 @@ export function SignUpLens({
           {...fields.field('password')}
           {...fields.control('password')}
         />
-        {failure === undefined ? null : (
-          <Notice tone="destructive">{failure}</Notice>
-        )}
-        <ProgressButton
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="mt-1 w-full"
-          pending={pending}
-          pendingLabel="Creating account…"
-          waitSeconds={request.waitSeconds}
-        >
-          Create account
-        </ProgressButton>
-      </form>
+      </AuthForm>
       <AuthLensFooter>
         Already have an account? <Link to="/login">Sign in</Link>
       </AuthLensFooter>

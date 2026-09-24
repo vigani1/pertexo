@@ -1,11 +1,10 @@
 import type { StatusTone } from '@/components/ui/status';
-import type { CanvasRenderer } from '@/lib/use-canvas-renderer';
 import {
-  CanvasSurface,
+  CanvasScene,
   readTokenColors,
   rgba,
   type Rgb,
-} from '../canvas-surface';
+} from '@/lib/canvas-scene';
 import {
   loomLaneY,
   loomLayout,
@@ -68,16 +67,13 @@ function bezierPoint(
   ];
 }
 
-export class LoomRenderer implements CanvasRenderer {
-  readonly #surface: CanvasSurface;
-  readonly #context: CanvasRenderingContext2D;
+export class LoomRenderer extends CanvasScene {
   readonly #palette: Palette;
   readonly #landed = new Map<string, number>();
   #model: LoomModel;
 
   public constructor(canvas: HTMLCanvasElement, model: LoomModel) {
-    this.#surface = new CanvasSurface(canvas);
-    this.#context = this.#surface.context;
+    super(canvas);
     this.#palette = readTokenColors(TOKENS);
     this.#model = model;
   }
@@ -96,13 +92,9 @@ export class LoomRenderer implements CanvasRenderer {
     this.#model = model;
   }
 
-  public resize(width: number, height: number, pixelRatio: number): void {
-    this.#surface.resize(width, height, pixelRatio);
-  }
-
   public render(timeSeconds: number): void {
-    const context = this.#surface.beginFrame();
-    const { width, height } = this.#surface;
+    const context = this.beginFrame();
+    const { width, height } = this;
     if (width === 0 || height === 0) return;
     const nowMs = Date.now();
     const layout = loomLayout(this.#model, width, height);
@@ -124,7 +116,7 @@ export class LoomRenderer implements CanvasRenderer {
   }
 
   #drawGrid(layout: LoomLayout, nowMs: number): void {
-    const context = this.#context;
+    const context = this.context;
     const palette = this.#palette;
     context.font =
       '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
@@ -192,18 +184,18 @@ export class LoomRenderer implements CanvasRenderer {
   }
 
   #fit(label: string, maxWidth: number): string {
-    if (this.#context.measureText(label).width <= maxWidth) return label;
+    if (this.context.measureText(label).width <= maxWidth) return label;
     let fitted = label;
     while (
       fitted.length > 1 &&
-      this.#context.measureText(`${fitted}…`).width > maxWidth
+      this.context.measureText(`${fitted}…`).width > maxWidth
     )
       fitted = fitted.slice(0, -1);
     return `${fitted}…`;
   }
 
   #drawLive(x0: number, x1: number, y: number): void {
-    const context = this.#context;
+    const context = this.context;
     const gradient = context.createLinearGradient(x0, 0, x1, 0);
     gradient.addColorStop(0, rgba(this.#palette.live, 0.18));
     gradient.addColorStop(1, rgba(this.#palette.tip, 1));
@@ -225,7 +217,7 @@ export class LoomRenderer implements CanvasRenderer {
     y: number,
     timeSeconds: number,
   ): void {
-    const context = this.#context;
+    const context = this.context;
     const color = toneColor(this.#palette, run.tone);
     const dashed = run.tone === 'waiting' || run.tone === 'queued';
     const dotted = run.tone === 'attention';
@@ -247,7 +239,7 @@ export class LoomRenderer implements CanvasRenderer {
     y: number,
     timeSeconds: number,
   ): void {
-    const context = this.#context;
+    const context = this.context;
     switch (run.tone) {
       case 'success': {
         context.fillStyle = rgba(color, 1);
@@ -306,7 +298,7 @@ export class LoomRenderer implements CanvasRenderer {
     tips: readonly (readonly [number, number])[],
     timeSeconds: number,
   ): void {
-    const context = this.#context;
+    const context = this.context;
     const palette = this.#palette;
     const { core } = layout;
     const targetX = core.x - core.radius * 0.8;

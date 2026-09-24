@@ -45,3 +45,43 @@ export function SkeletonThread({
     />
   );
 }
+
+const ROW_WIDTHS = [64, 40, 78, 52] as const;
+
+/**
+ * A list loading in the shape of its rows — a mark, a name and a spooling
+ * thread per row — announced once with `label`, e.g. "Loading members".
+ */
+export function SkeletonRows({
+  label,
+  rows = 3,
+  mark = 'tile',
+}: Readonly<{
+  label: string;
+  rows?: number;
+  /** People lists show round avatars; everything else square tiles. */
+  mark?: 'tile' | 'avatar';
+}>) {
+  return (
+    <div role="status" aria-label={label} className="flex flex-col gap-5 py-2">
+      {ROW_WIDTHS.slice(0, rows).map((width, order) => (
+        <div
+          key={width}
+          className="grid grid-cols-[2rem_minmax(0,12rem)_minmax(0,1fr)] items-center gap-4"
+        >
+          <Skeleton
+            className={cn(
+              'size-8',
+              mark === 'avatar' ? 'rounded-full' : 'rounded-md',
+            )}
+          />
+          <Skeleton className="h-2.5" />
+          <SkeletonThread
+            order={order}
+            style={{ width: `${String(width)}%` }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}

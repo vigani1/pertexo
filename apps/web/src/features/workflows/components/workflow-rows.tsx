@@ -1,7 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
-import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { LoadMore } from '@/components/patterns/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import type { RecentRunTicks } from '../use-recent-run-ticks';
@@ -113,28 +112,13 @@ export function WorkflowListFooter({
 }>) {
   return (
     <div className="flex flex-col items-center gap-3 pt-2 text-center">
-      {hasNextPage || nextPageError ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={loadingNextPage}
-          className="min-w-32"
-          onClick={onLoadMore}
-        >
-          {loadingNextPage ? <LoadingOrb /> : null}
-          {loadingNextPage
-            ? 'Loading…'
-            : nextPageError
-              ? 'Retry next page'
-              : 'Load more'}
-        </Button>
-      ) : null}
-      {nextPageError ? (
-        <p role="alert" className="text-sm text-destructive">
-          The next page of workflows couldn’t be loaded. The ones above are
-          unchanged.
-        </p>
-      ) : null}
+      <LoadMore
+        subject="workflows"
+        hasNextPage={hasNextPage}
+        loading={loadingNextPage}
+        failed={nextPageError}
+        onLoadMore={onLoadMore}
+      />
       {filtering && hasNextPage ? (
         <p className="text-xs text-subtle-foreground">
           The filter covers the {String(loadedCount)} workflows loaded so far.

@@ -1,10 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { authenticationCapabilitiesQueryOptions } from './auth.queries';
 import { ResetPasswordLens } from './components/reset/reset-password-lens';
 import {
   AuthLens,
@@ -12,10 +10,7 @@ import {
   AuthLensTitle,
 } from './components/stage/auth-lens';
 import { AuthStage } from './components/stage/auth-stage';
-import {
-  LensLoading,
-  PasswordUnavailableLens,
-} from './components/stage/lens-states';
+import { PasswordCapabilityGate } from './components/stage/lens-states';
 
 function OutcomeLens({
   id,
@@ -50,9 +45,6 @@ export function PasswordResetPage({
   apiClient,
   token,
 }: Readonly<{ apiClient: ApiClient; token?: string }>) {
-  const capabilities = useQuery(
-    authenticationCapabilitiesQueryOptions(apiClient),
-  );
   const [changed, setChanged] = useState(false);
 
   return (
@@ -70,47 +62,46 @@ export function PasswordResetPage({
           Part of the reset link is missing. Open the latest reset email again,
           or request a new link.
         </OutcomeLens>
-      ) : capabilities.isPending ? (
-        <LensLoading
-          title="Choose a new password"
-          label="Checking password reset…"
-        />
-      ) : capabilities.isError || !capabilities.data.password.enabled ? (
-        <PasswordUnavailableLens
+      ) : (
+        <PasswordCapabilityGate
+          apiClient={apiClient}
           id="reset-unavailable"
           title="Choose a new password"
-          capabilities={capabilities}
+          loadingLabel="Checking password reset…"
+          unavailable="Password reset is not available right now."
         >
-          Password reset is not available right now.
-        </PasswordUnavailableLens>
-      ) : changed ? (
-        <OutcomeLens
-          id="reset-done"
-          glyph={
-            <StatusGlyph
-              tone="success"
-              className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
-            />
+          {(capabilities) =>
+            changed ? (
+              <OutcomeLens
+                id="reset-done"
+                glyph={
+                  <StatusGlyph
+                    tone="success"
+                    className="mb-4 size-6 text-success motion-safe:animate-knot [&_svg]:size-6"
+                  />
+                }
+                title="Password changed"
+                action={
+                  <Link to="/login" className={primaryLink}>
+                    Sign in
+                  </Link>
+                }
+              >
+                We signed you out on every other device. Sign in with your new
+                password.
+              </OutcomeLens>
+            ) : (
+              <ResetPasswordLens
+                apiClient={apiClient}
+                token={token}
+                minimumPasswordLength={capabilities.password.minimumLength}
+                onReset={() => {
+                  setChanged(true);
+                }}
+              />
+            )
           }
-          title="Password changed"
-          action={
-            <Link to="/login" className={primaryLink}>
-              Sign in
-            </Link>
-          }
-        >
-          We signed you out on every other device. Sign in with your new
-          password.
-        </OutcomeLens>
-      ) : (
-        <ResetPasswordLens
-          apiClient={apiClient}
-          token={token}
-          minimumPasswordLength={capabilities.data.password.minimumLength}
-          onReset={() => {
-            setChanged(true);
-          }}
-        />
+        </PasswordCapabilityGate>
       )}
     </AuthStage>
   );

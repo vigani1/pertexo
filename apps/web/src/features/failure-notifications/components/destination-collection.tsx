@@ -10,35 +10,11 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { FailureNotificationDestinationList } from '../failure-notifications.api';
 import type { DestinationMutationScope } from '../failure-notifications.mutations';
 import { DestinationRow } from './destination-row';
-
-function ListSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading alert destinations"
-      className="flex flex-col gap-5"
-    >
-      {[58, 34].map((width, order) => (
-        <div
-          key={width}
-          className="grid grid-cols-[2rem_minmax(0,14rem)_minmax(0,1fr)] items-center gap-4"
-        >
-          <Skeleton className="size-8 rounded-md" />
-          <Skeleton className="h-2.5" />
-          <SkeletonThread
-            order={order}
-            style={{ width: `${String(width)}%` }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** The destinations list with its loading, failed, stale and empty states. */
 export function DestinationCollection({
@@ -58,7 +34,8 @@ export function DestinationCollection({
   onAdd: () => void;
   onEdit: (destinationId: string) => void;
 }>) {
-  if (query.isPending) return <ListSkeleton />;
+  if (query.isPending)
+    return <SkeletonRows label="Loading alert destinations" rows={2} />;
   if (query.isError && items.length === 0)
     return (
       <Empty>

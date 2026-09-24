@@ -110,7 +110,7 @@ describe('workflow list', () => {
     expect(await screen.findByText('Daily intake')).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The next page of workflows couldn’t be loaded',
+      'More workflows couldn’t be loaded',
     );
     expect(screen.getByText('Daily intake')).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Retry next page' }));

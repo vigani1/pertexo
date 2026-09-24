@@ -8,6 +8,7 @@ import type {
   InfiniteData,
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
+import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,8 +17,7 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
+import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import { MemberRoleManagement } from './member-role-management';
@@ -25,30 +25,6 @@ import { MemberRoleManagement } from './member-role-management';
 type MembersQuery = UseInfiniteQueryResult<
   InfiniteData<WorkspaceMembersResponse>
 >;
-
-function MembersSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading members"
-      className="flex flex-col gap-5 py-2"
-    >
-      {[62, 44, 70].map((width, order) => (
-        <div
-          key={width}
-          className="grid grid-cols-[2rem_minmax(0,12rem)_minmax(0,1fr)] items-center gap-4"
-        >
-          <Skeleton className="size-8 rounded-full" />
-          <Skeleton className="h-2.5" />
-          <SkeletonThread
-            order={order}
-            style={{ width: `${String(width)}%` }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** The Members tab: everyone with access, loaded page by page. */
 export function MembersPanel({
@@ -66,7 +42,8 @@ export function MembersPanel({
   members: readonly WorkspaceMember[];
   onAccessLost: (loss: 'authentication' | 'permission') => void;
 }>) {
-  if (query.isPending) return <MembersSkeleton />;
+  if (query.isPending)
+    return <SkeletonRows label="Loading members" mark="avatar" />;
   if (query.isError && members.length === 0)
     return (
       <Empty>
@@ -111,25 +88,13 @@ export function MembersPanel({
         members={members}
         onAccessLost={onAccessLost}
       />
-      {query.hasNextPage ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="self-center"
-          disabled={query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          {query.isFetchingNextPage ? (
-            <LoadingOrb data-icon="inline-start" />
-          ) : null}
-          {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
-        </Button>
-      ) : null}
-      {query.isFetchNextPageError ? (
-        <p role="alert" className="text-center text-sm text-destructive">
-          More members couldn’t be loaded. Try again.
-        </p>
-      ) : null}
+      <LoadMore
+        subject="members"
+        hasNextPage={query.hasNextPage}
+        loading={query.isFetchingNextPage}
+        failed={query.isFetchNextPageError}
+        onLoadMore={() => void query.fetchNextPage()}
+      />
     </div>
   );
 }

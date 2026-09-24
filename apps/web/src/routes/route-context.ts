@@ -1,12 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 import { workspaceIdentifierSchema } from '@pertexo/contracts/schemas/identity-workspace';
+import { isNotFound } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
 } from '@/features/auth/session.queries.public';
 import { publishSessionChange } from '@/features/auth/session-sync.public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 
 export type RouterContext = Readonly<{
@@ -102,4 +105,37 @@ export async function settlePrefetches(
   if (failures.some(isUnauthenticated)) await signOutLocally(context);
   const [first] = failures;
   if (mode === 'strict' && first !== undefined) rethrowError(first);
+}
+
+/** The step catalog and connections every workflow-building page reads. */
+export function authoringPrefetches(
+  context: RouterContext,
+  userId: string,
+  workspaceId: string,
+): readonly Promise<unknown>[] {
+  const { apiClient, queryClient } = context;
+  return [
+    queryClient.query(authoringCatalogQueryOptions(apiClient, userId)),
+    queryClient.query(
+      connectionDiscoveryQueryOptions(apiClient, userId, workspaceId),
+    ),
+  ];
+}
+
+/**
+ * Strict prefetch for one resource's page. A 404 (missing, or hidden by the
+ * API's non-disclosing policy) renders the in-shell not-found page instead
+ * of the route error boundary.
+ */
+export async function prefetchResource(
+  context: RouterContext,
+  reads: readonly Promise<unknown>[],
+): Promise<Readonly<{ found: boolean }>> {
+  try {
+    await settlePrefetches(context, reads, 'strict');
+  } catch (error) {
+    if (isNotFound(error)) return { found: false };
+    rethrowError(error);
+  }
+  return { found: true };
 }

@@ -13,6 +13,7 @@ import {
   type ConnectionTestResponse,
 } from '@pertexo/contracts/schemas/connections';
 import type { ApiClient } from '@/lib/api/client';
+import { collectPages } from '@/lib/api/pagination';
 
 export type ConnectionCredential = ConnectionRotateSecretRequest['credential'];
 
@@ -54,22 +55,15 @@ export async function getAllConnections(
   workspaceId: string,
   signal?: AbortSignal,
 ): Promise<ConnectionListResponse> {
-  const items: ConnectionListResponse['items'][number][] = [];
-  const seen = new Set<string>();
-  let after: string | undefined;
-  for (let page = 0; page < 40; page += 1) {
-    const response = await getConnectionsPage(apiClient, workspaceId, {
-      ...(after === undefined ? {} : { after }),
-      ...(signal === undefined ? {} : { signal }),
-    });
-    items.push(...response.items);
-    if (response.nextCursor === null) return { items, nextCursor: null };
-    if (seen.has(response.nextCursor))
-      throw new Error('Connection pagination repeated a cursor.');
-    seen.add(response.nextCursor);
-    after = response.nextCursor;
-  }
-  throw new Error('Connection discovery exceeded its bounded page limit.');
+  const items = await collectPages(
+    (after) =>
+      getConnectionsPage(apiClient, workspaceId, {
+        ...(after === undefined ? {} : { after }),
+        ...(signal === undefined ? {} : { signal }),
+      }),
+    { read: 'Connection discovery', signal },
+  );
+  return { items: [...items], nextCursor: null };
 }
 
 export function getConnection(

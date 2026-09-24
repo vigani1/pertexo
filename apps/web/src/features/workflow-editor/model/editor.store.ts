@@ -77,76 +77,12 @@ export function createEditorStore(
   }>,
   clock: Readonly<{ now: () => number }> = { now: () => Date.now() },
 ) {
-  return createStore<EditorState & EditorActions>((set, get) => ({
-    graph: input.graph,
-    etag: input.etag,
-    revision: input.revision,
-    savedAt: input.savedAt ?? null,
-    generation: 0,
-    selectedNodeId: null,
-    selectedNodeIds: [],
-    selectedEdgeIds: [],
-    inspectorScratch: false,
-    lastEdit: null,
-    history: emptyEditorHistory,
-    saveStatus: 'clean',
-    saveError: null,
-    conflict: null,
-    transact: (next, options = {}) => {
-      const current = get();
-      if (next === current.graph || current.saveStatus === 'conflict') return;
-      const at = clock.now();
-      const coalesce =
-        options.coalesceKey !== undefined &&
-        current.lastEdit?.key === options.coalesceKey &&
-        at - current.lastEdit.at < EDIT_COALESCE_WINDOW_MS;
-      set({
-        graph: next,
-        generation: current.generation + 1,
-        history: coalesce
-          ? { past: current.history.past, future: [] }
-          : recordHistory(current.history, current.graph),
-        lastEdit:
-          options.coalesceKey === undefined
-            ? null
-            : { key: options.coalesceKey, at },
-        saveStatus: 'dirty',
-        saveError: null,
-        ...pruneSelection(next, current),
-      });
-    },
-    selectNode: (selectedNodeId) => {
-      const current = get();
-      set({
-        selectedNodeId,
-        selectedNodeIds: selectedNodeId === null ? [] : [selectedNodeId],
-        selectedEdgeIds: [],
-        inspectorScratch:
-          selectedNodeId === current.selectedNodeId && current.inspectorScratch,
-      });
-    },
-    selectNodes: (selectedNodeIds) => {
-      const current = get();
-      const primary =
-        selectedNodeIds.length === 1 ? (selectedNodeIds[0] ?? null) : null;
-      set({
-        selectedNodeIds,
-        selectedNodeId: primary,
-        inspectorScratch:
-          primary === current.selectedNodeId && current.inspectorScratch,
-      });
-    },
-    selectEdges: (selectedEdgeIds) => {
-      set({ selectedEdgeIds });
-    },
-    setInspectorScratch: (inspectorScratch) => {
-      if (get().inspectorScratch !== inspectorScratch)
-        set({ inspectorScratch });
-    },
-    undo: () => {
+  return createStore<EditorState & EditorActions>((set, get) => {
+    /** Undo or redo: the graph moves through history and is saved again. */
+    const travel = (step: typeof undoHistory) => {
       const current = get();
       if (current.saveStatus === 'conflict') return;
-      const result = undoHistory(current.history, current.graph);
+      const result = step(current.history, current.graph);
       if (result === null) return;
       set({
         graph: result.graph,
@@ -157,58 +93,118 @@ export function createEditorStore(
         saveError: null,
         ...pruneSelection(result.graph, current),
       });
-    },
-    redo: () => {
-      const current = get();
-      if (current.saveStatus === 'conflict') return;
-      const result = redoHistory(current.history, current.graph);
-      if (result === null) return;
-      set({
-        graph: result.graph,
-        history: result.history,
-        generation: current.generation + 1,
-        lastEdit: null,
-        saveStatus: 'dirty',
-        saveError: null,
-        ...pruneSelection(result.graph, current),
-      });
-    },
-    beginSave: () => {
-      set({ saveStatus: 'saving', saveError: null });
-    },
-    acceptSave: (etag, revision, savedGeneration, savedAt) => {
-      const current = get();
-      set({
-        etag,
-        revision,
-        savedAt: savedAt ?? current.savedAt,
-        saveStatus: current.generation === savedGeneration ? 'clean' : 'dirty',
-        saveError: null,
-      });
-    },
-    reportFailure: (saveError, uncertain) => {
-      set({ saveStatus: uncertain ? 'uncertain' : 'failed', saveError });
-    },
-    reportConflict: (conflict) => {
-      set({ saveStatus: 'conflict', conflict, saveError: null });
-    },
-    discardLocalAndUseRemote: () => {
-      const conflict = get().conflict;
-      if (conflict === null) return;
-      set({
-        ...adoptRemote(conflict, get().generation),
-        conflict: null,
-      });
-    },
-    acceptRemoteForReview: () => {
-      const conflict = get().conflict;
-      if (conflict === null) return;
-      set(adoptRemote(conflict, get().generation));
-    },
-    dismissConflictComparison: () => {
-      if (get().saveStatus !== 'conflict') set({ conflict: null });
-    },
-  }));
+    };
+    return {
+      graph: input.graph,
+      etag: input.etag,
+      revision: input.revision,
+      savedAt: input.savedAt ?? null,
+      generation: 0,
+      selectedNodeId: null,
+      selectedNodeIds: [],
+      selectedEdgeIds: [],
+      inspectorScratch: false,
+      lastEdit: null,
+      history: emptyEditorHistory,
+      saveStatus: 'clean',
+      saveError: null,
+      conflict: null,
+      transact: (next, options = {}) => {
+        const current = get();
+        if (next === current.graph || current.saveStatus === 'conflict') return;
+        const at = clock.now();
+        const coalesce =
+          options.coalesceKey !== undefined &&
+          current.lastEdit?.key === options.coalesceKey &&
+          at - current.lastEdit.at < EDIT_COALESCE_WINDOW_MS;
+        set({
+          graph: next,
+          generation: current.generation + 1,
+          history: coalesce
+            ? { past: current.history.past, future: [] }
+            : recordHistory(current.history, current.graph),
+          lastEdit:
+            options.coalesceKey === undefined
+              ? null
+              : { key: options.coalesceKey, at },
+          saveStatus: 'dirty',
+          saveError: null,
+          ...pruneSelection(next, current),
+        });
+      },
+      selectNode: (selectedNodeId) => {
+        const current = get();
+        set({
+          selectedNodeId,
+          selectedNodeIds: selectedNodeId === null ? [] : [selectedNodeId],
+          selectedEdgeIds: [],
+          inspectorScratch:
+            selectedNodeId === current.selectedNodeId &&
+            current.inspectorScratch,
+        });
+      },
+      selectNodes: (selectedNodeIds) => {
+        const current = get();
+        const primary =
+          selectedNodeIds.length === 1 ? (selectedNodeIds[0] ?? null) : null;
+        set({
+          selectedNodeIds,
+          selectedNodeId: primary,
+          inspectorScratch:
+            primary === current.selectedNodeId && current.inspectorScratch,
+        });
+      },
+      selectEdges: (selectedEdgeIds) => {
+        set({ selectedEdgeIds });
+      },
+      setInspectorScratch: (inspectorScratch) => {
+        if (get().inspectorScratch !== inspectorScratch)
+          set({ inspectorScratch });
+      },
+      undo: () => {
+        travel(undoHistory);
+      },
+      redo: () => {
+        travel(redoHistory);
+      },
+      beginSave: () => {
+        set({ saveStatus: 'saving', saveError: null });
+      },
+      acceptSave: (etag, revision, savedGeneration, savedAt) => {
+        const current = get();
+        set({
+          etag,
+          revision,
+          savedAt: savedAt ?? current.savedAt,
+          saveStatus:
+            current.generation === savedGeneration ? 'clean' : 'dirty',
+          saveError: null,
+        });
+      },
+      reportFailure: (saveError, uncertain) => {
+        set({ saveStatus: uncertain ? 'uncertain' : 'failed', saveError });
+      },
+      reportConflict: (conflict) => {
+        set({ saveStatus: 'conflict', conflict, saveError: null });
+      },
+      discardLocalAndUseRemote: () => {
+        const conflict = get().conflict;
+        if (conflict === null) return;
+        set({
+          ...adoptRemote(conflict, get().generation),
+          conflict: null,
+        });
+      },
+      acceptRemoteForReview: () => {
+        const conflict = get().conflict;
+        if (conflict === null) return;
+        set(adoptRemote(conflict, get().generation));
+      },
+      dismissConflictComparison: () => {
+        if (get().saveStatus !== 'conflict') set({ conflict: null });
+      },
+    };
+  });
 }
 
 function adoptRemote(conflict: EditorConflict, generation: number) {

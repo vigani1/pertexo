@@ -1,4 +1,4 @@
-import type { CanvasRenderer } from '@/lib/use-canvas-renderer';
+import { CanvasScene, readTokenColor, type Rgb } from '@/lib/canvas-scene';
 
 // The weave moment behind the sign-in family: faint threads run in from the
 // edges of the screen and particles of light travel along them into the Core.
@@ -21,14 +21,8 @@ const THREAD_COUNT = 30;
 const PARTICLES_PER_THREAD = 2;
 const TRAIL_STEPS = 5;
 const COLOR_TOKENS = ['--primary', '--secondary', '--accent-foreground'];
-const FALLBACK_RGB = '0,229,255';
-
-function tokenRgb(styles: CSSStyleDeclaration, token: string): string {
-  const match = /^#?([\da-f]{6})$/i.exec(styles.getPropertyValue(token).trim());
-  if (match?.[1] === undefined) return FALLBACK_RGB;
-  const value = Number.parseInt(match[1], 16);
-  return `${String((value >> 16) & 255)},${String((value >> 8) & 255)},${String(value & 255)}`;
-}
+const FALLBACK: Rgb = [0, 229, 255];
+const FALLBACK_RGB = FALLBACK.join(',');
 
 function glowSprite(rgb: string): HTMLCanvasElement | undefined {
   const sprite = document.createElement('canvas');
@@ -82,9 +76,7 @@ function edgeStart(
   return [random() * width, height + 20];
 }
 
-export class ConvergingThreadsScene implements CanvasRenderer {
-  readonly #canvas: HTMLCanvasElement;
-  readonly #context: CanvasRenderingContext2D;
+export class ConvergingThreadsScene extends CanvasScene {
   readonly #locateTarget: (width: number, height: number) => ThreadTarget;
   readonly #palette: readonly {
     rgb: string;
@@ -92,32 +84,21 @@ export class ConvergingThreadsScene implements CanvasRenderer {
   }[];
   #threads: Thread[] = [];
   #target: ThreadTarget = { x: 0, y: 0, radius: 0 };
-  #width = 0;
-  #height = 0;
-  #pixelRatio = 1;
 
   constructor(
     canvas: HTMLCanvasElement,
     locateTarget: (width: number, height: number) => ThreadTarget,
   ) {
-    const context = canvas.getContext('2d');
-    if (context === null) throw new Error('Canvas 2D is unavailable');
-    this.#canvas = canvas;
-    this.#context = context;
+    super(canvas);
     this.#locateTarget = locateTarget;
-    const styles = getComputedStyle(document.documentElement);
     this.#palette = COLOR_TOKENS.map((token) => {
-      const rgb = tokenRgb(styles, token);
+      const rgb = readTokenColor(token, FALLBACK).join(',');
       return { rgb, sprite: glowSprite(rgb) };
     });
   }
 
-  resize(width: number, height: number, pixelRatio: number): void {
-    this.#width = width;
-    this.#height = height;
-    this.#pixelRatio = pixelRatio;
-    this.#canvas.width = Math.max(1, Math.round(width * pixelRatio));
-    this.#canvas.height = Math.max(1, Math.round(height * pixelRatio));
+  override resize(width: number, height: number, pixelRatio: number): void {
+    super.resize(width, height, pixelRatio);
     this.#target = this.#locateTarget(width, height);
     this.#threads = this.#weave();
   }
@@ -126,7 +107,7 @@ export class ConvergingThreadsScene implements CanvasRenderer {
     const random = seededRandom(7);
     const { x, y, radius } = this.#target;
     return Array.from({ length: THREAD_COUNT }, (_, index) => {
-      const start = edgeStart(index, this.#width, this.#height, random);
+      const start = edgeStart(index, this.width, this.height, random);
       const angle = Math.atan2(start[1] - y, start[0] - x);
       const end: Point = [
         x + Math.cos(angle) * radius * 0.95,
@@ -157,9 +138,7 @@ export class ConvergingThreadsScene implements CanvasRenderer {
   }
 
   render(timeSeconds: number): void {
-    const context = this.#context;
-    context.setTransform(this.#pixelRatio, 0, 0, this.#pixelRatio, 0, 0);
-    context.clearRect(0, 0, this.#width, this.#height);
+    const context = this.beginFrame();
     this.#drawHalo();
     context.lineWidth = 1;
     for (const thread of this.#threads) {
@@ -183,25 +162,18 @@ export class ConvergingThreadsScene implements CanvasRenderer {
   #drawHalo(): void {
     const { x, y, radius } = this.#target;
     const [primary, secondary] = this.#palette;
-    const halo = this.#context.createRadialGradient(
-      x,
-      y,
-      0,
-      x,
-      y,
-      radius * 2.4,
-    );
+    const halo = this.context.createRadialGradient(x, y, 0, x, y, radius * 2.4);
     halo.addColorStop(0, `rgba(${primary?.rgb ?? FALLBACK_RGB},0.1)`);
     halo.addColorStop(0.5, `rgba(${secondary?.rgb ?? FALLBACK_RGB},0.04)`);
     halo.addColorStop(1, 'rgba(0,0,0,0)');
-    this.#context.fillStyle = halo;
-    this.#context.fillRect(0, 0, this.#width, this.#height);
+    this.context.fillStyle = halo;
+    this.context.fillRect(0, 0, this.width, this.height);
   }
 
   #drawParticles(thread: Thread, timeSeconds: number): void {
     const { sprite } = thread;
     if (sprite === undefined) return;
-    const context = this.#context;
+    const context = this.context;
     context.globalCompositeOperation = 'lighter';
     for (let particle = 0; particle < PARTICLES_PER_THREAD; particle += 1) {
       const progress =

@@ -8,7 +8,6 @@ import {
   type AccessibleWorkspace,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { workflowRunIdentifierSchema } from '@pertexo/contracts/schemas/workflow-runs';
-import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
@@ -38,13 +37,13 @@ import {
   parseTeamSearch,
   workspaceMembersInfiniteQueryOptions,
 } from '@/features/workspaces/members.queries.public';
-import { isNotFound } from '@/lib/api/api-error-copy';
 import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
 import {
   findWorkspace,
+  authoringPrefetches,
   loadCurrentUser,
-  rethrowError,
+  prefetchResource,
   settlePrefetches,
 } from './route-context';
 import { rootRoute } from './root-route';
@@ -173,10 +172,7 @@ export const workflowsRoute = createRoute({
           WORKFLOW_ORDER_BY_SORT[deps.sort ?? 'updated'],
         ),
       ),
-      queryClient.query(authoringCatalogQueryOptions(apiClient, user.id)),
-      queryClient.query(
-        connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
-      ),
+      ...authoringPrefetches(context, user.id, workspace.id),
     ]);
   },
   head: ({ match }) => ({
@@ -226,30 +222,15 @@ export const runDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'runs/$runId',
   staticData: { crumb: 'Run' },
-  loader: async ({ context, params }) => {
+  loader: ({ context, params }) => {
     const { apiClient, queryClient, user, workspace } = context;
     const runId = workflowRunIdentifierSchema.safeParse(params.runId);
-    if (!runId.success) return { found: false as const };
-    try {
-      await settlePrefetches(
-        context,
-        [
-          queryClient.query(
-            workflowRunQueryOptions(
-              apiClient,
-              user.id,
-              workspace.id,
-              runId.data,
-            ),
-          ),
-        ],
-        'strict',
-      );
-    } catch (error) {
-      if (isNotFound(error)) return { found: false as const };
-      rethrowError(error);
-    }
-    return { found: true as const };
+    if (!runId.success) return { found: false };
+    return prefetchResource(context, [
+      queryClient.query(
+        workflowRunQueryOptions(apiClient, user.id, workspace.id, runId.data),
+      ),
+    ]);
   },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Run', match.context.workspace.name) }],

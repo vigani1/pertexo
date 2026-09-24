@@ -1,16 +1,15 @@
-import type { ReactNode, SyntheticEvent } from 'react';
+import type { ReactNode } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { emailProblem } from '../../forms/field-rules';
-import { ProgressButton } from '@/components/ui/progress-button';
 import { useAuthRequest } from '../../use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { Notice } from '@/components/ui/notice';
+import { AuthForm } from '../../forms/auth-form';
 
 /**
  * One email field that asks Pertexo to send something (a reset link, a new
@@ -42,28 +41,26 @@ export function EmailRequestLens({
   const request = useAuthRequest(describeFailure);
   const { pending, failure } = request;
 
-  async function submit(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const values = fields.validate();
-    if (values === undefined) return;
-    const email = values.email.trim();
-    await request.run(
-      (signal) => send(email, signal),
-      () => {
-        onSent(email);
-      },
-    );
-  }
-
   return (
     <AuthLens pending={pending} aria-labelledby={`${id}-title`}>
       <AuthLensTitle id={`${id}-title`}>{title}</AuthLensTitle>
       <AuthLensDescription>{description}</AuthLensDescription>
-      <form
-        noValidate
-        className="mt-6 flex flex-col gap-4"
-        onSubmit={(event) => void submit(event)}
+      <AuthForm
+        className="mt-6"
+        failure={failure}
+        pending={pending}
+        pendingLabel={pendingLabel}
+        submitLabel={submitLabel}
+        waitSeconds={request.waitSeconds}
+        onSubmit={() =>
+          void request.submit(
+            fields.validate,
+            (values, signal) => send(values.email.trim(), signal),
+            (values) => {
+              onSent(values.email.trim());
+            },
+          )
+        }
       >
         <LabelledField
           id={`${id}-email`}
@@ -80,21 +77,7 @@ export function EmailRequestLens({
             />
           )}
         </LabelledField>
-        {failure === undefined ? null : (
-          <Notice tone="destructive">{failure}</Notice>
-        )}
-        <ProgressButton
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="mt-1 w-full"
-          pending={pending}
-          pendingLabel={pendingLabel}
-          waitSeconds={request.waitSeconds}
-        >
-          {submitLabel}
-        </ProgressButton>
-      </form>
+      </AuthForm>
       {footer}
     </AuthLens>
   );

@@ -27,7 +27,7 @@ import {
   workspaceRenameResponseSchema,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { ApiClient } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/api-error';
+import { collectPages, searchParams } from '@/lib/api/pagination';
 
 export function createWorkspace(
   apiClient: ApiClient,
@@ -93,11 +93,8 @@ export function getWorkspaceInvitationsPage(
     limit: 50,
     ...(input.after === undefined ? {} : { after: input.after }),
   });
-  const query = new URLSearchParams();
-  for (const [name, value] of Object.entries(parsed))
-    query.set(name, String(value));
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/invitations?${query.toString()}`,
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/invitations?${searchParams(parsed)}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
@@ -197,12 +194,8 @@ export function getWorkspaceMembersPage(
     limit: 50,
     ...(input.after === undefined ? {} : { after: input.after }),
   });
-  const query = new URLSearchParams();
-  for (const [name, value] of Object.entries(parsed))
-    query.set(name, String(value));
-
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/members?${query.toString()}`,
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/members?${searchParams(parsed)}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
@@ -277,24 +270,14 @@ export async function getAllAccessibleWorkspaces(
   apiClient: ApiClient,
   signal?: AbortSignal,
 ) {
-  const items: AccessibleWorkspacesResponse['items'][number][] = [];
-  const cursors = new Set<string>();
-  let after: string | undefined;
-
-  for (;;) {
-    signal?.throwIfAborted();
-    const page = await getAccessibleWorkspacesPage(apiClient, {
-      ...(after === undefined ? {} : { after }),
-      ...(signal === undefined ? {} : { signal }),
-    });
-    items.push(...page.items);
-    if (page.nextCursor === null) return Object.freeze(items);
-    if (cursors.has(page.nextCursor))
-      throw new ApiError({
-        kind: 'protocol',
-        message: 'Workspace discovery returned an invalid cursor sequence.',
-      });
-    cursors.add(page.nextCursor);
-    after = page.nextCursor;
-  }
+  const items = await collectPages(
+    (after) =>
+      getAccessibleWorkspacesPage(apiClient, {
+        ...(after === undefined ? {} : { after }),
+        ...(signal === undefined ? {} : { signal }),
+      }),
+    // Every accessible workspace is needed to route; no page bound.
+    { read: 'Workspace discovery', maxPages: Number.POSITIVE_INFINITY, signal },
+  );
+  return Object.freeze(items);
 }

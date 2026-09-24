@@ -1,5 +1,4 @@
-import type { CanvasRenderer } from '@/lib/use-canvas-renderer';
-import { CanvasSurface, readTokenColors, type Rgb } from '../canvas-surface';
+import { CanvasScene, readTokenColors, type Rgb } from '@/lib/canvas-scene';
 
 // A ripple travelling across a dot grid while a run waits for its first
 // step. Colours come from the theme tokens; the hook owns the loop.
@@ -30,22 +29,17 @@ function mix(from: Rgb, to: Rgb, amount: number): string {
     .join(',');
 }
 
-export class LoadingWaveRenderer implements CanvasRenderer {
-  readonly #surface: CanvasSurface;
+export class LoadingWaveRenderer extends CanvasScene {
   readonly #colors: Readonly<Record<keyof typeof TOKENS, Rgb>>;
 
   public constructor(canvas: HTMLCanvasElement) {
-    this.#surface = new CanvasSurface(canvas);
+    super(canvas);
     this.#colors = readTokenColors(TOKENS);
   }
 
-  public resize(width: number, height: number, pixelRatio: number): void {
-    this.#surface.resize(width, height, pixelRatio);
-  }
-
   public render(timeSeconds: number): void {
-    const context = this.#surface.beginFrame();
-    const { width, height } = this.#surface;
+    const context = this.beginFrame();
+    const { width, height } = this;
     const progress = (timeSeconds % WAVE_SECONDS) / WAVE_SECONDS;
     const centreX = width / 2;
     const centreY = height / 2;
