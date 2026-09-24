@@ -2,12 +2,13 @@ import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/sche
 import { Link } from '@tanstack/react-router';
 import type { SyntheticEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { LabelledField } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { TextField } from '@/components/patterns/text-field';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import type { LoginNotice } from '../../model/login-notice';
 import { useSignIn } from '../../use-sign-in';
 import { OrDivider, SocialProviderGrid } from '../social/social-provider-grid';
@@ -45,7 +46,7 @@ export function SignInLens({
     onAuthenticated,
     onUnverified,
   });
-  const fields = useValidatedFields(fieldRules, { email: '', password: '' });
+  const fields = useFieldValues(fieldRules, { email: '', password: '' });
   const providers = capabilities.socialProviders;
   const passwordEnabled = capabilities.password.enabled;
   const busy = signIn.pending || signIn.waitSeconds > 0;
@@ -53,7 +54,7 @@ export function SignInLens({
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (signIn.pending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     const signedIn = await signIn.withPassword(
       values.email.trim(),
@@ -112,23 +113,27 @@ export function SignInLens({
             className="flex flex-col gap-4"
             onSubmit={(event) => void submit(event)}
           >
-            <TextField
+            <LabelledField
               id="login-email"
               label="Email"
-              type="email"
-              autoComplete="email"
-              disabled={signIn.pending}
-              error={fields.errors.email}
-              state={fields.threadState('email')}
-              {...fields.inputProps('email')}
-            />
+              {...fields.field('email')}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  type="email"
+                  autoComplete="email"
+                  disabled={signIn.pending}
+                  {...fields.control('email')}
+                />
+              )}
+            </LabelledField>
             <PasswordField
               id="login-password"
               label="Password"
               autoComplete="current-password"
               disabled={signIn.pending}
-              error={fields.errors.password}
-              state={fields.threadState('password')}
+              {...fields.field('password')}
               labelAction={
                 <Link
                   to="/forgot-password"
@@ -138,7 +143,7 @@ export function SignInLens({
                   Forgot?
                 </Link>
               }
-              {...fields.inputProps('password')}
+              {...fields.control('password')}
             />
             {signIn.failure === undefined ? null : (
               <Notice tone="destructive">{signIn.failure}</Notice>

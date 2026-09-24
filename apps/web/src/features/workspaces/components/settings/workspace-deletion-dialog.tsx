@@ -2,11 +2,10 @@ import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { FieldGroup } from '@/components/ui/field';
+import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { ValidatedField } from '@/components/ui/validated-field';
 
 type DeletionField = 'confirmation' | 'reason';
 
@@ -96,7 +95,7 @@ export function WorkspaceDeletionDialog({
       }
     >
       <FieldGroup>
-        <ValidatedField
+        <LabelledField
           id={`${id}-confirmation`}
           label={`Type ${workspaceName} to confirm`}
           error={validation.error('confirmation')}
@@ -123,8 +122,8 @@ export function WorkspaceDeletionDialog({
               }}
             />
           )}
-        </ValidatedField>
-        <ValidatedField
+        </LabelledField>
+        <LabelledField
           id={`${id}-reason`}
           label="Reason"
           description="Recorded with the request so other owners know why."
@@ -150,7 +149,7 @@ export function WorkspaceDeletionDialog({
               }}
             />
           )}
-        </ValidatedField>
+        </LabelledField>
       </FieldGroup>
     </ConfirmDialog>
   );

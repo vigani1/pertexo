@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router';
 import type { SyntheticEvent } from 'react';
+import { LabelledField } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { TextField } from '@/components/patterns/text-field';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { signUpFailure } from '../../model/auth-failure';
 import { signUpWithEmail } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
@@ -33,7 +34,7 @@ export function SignUpLens({
   minimumPasswordLength: number;
   onCreated: (email: string) => void;
 }>) {
-  const fields = useValidatedFields(
+  const fields = useFieldValues(
     {
       name: nameProblem,
       email: emailProblem,
@@ -47,7 +48,7 @@ export function SignUpLens({
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     const email = values.email.trim();
     await request.run(
@@ -80,35 +81,44 @@ export function SignUpLens({
         className="mt-6 flex flex-col gap-4"
         onSubmit={(event) => void submit(event)}
       >
-        <TextField
+        <LabelledField
           id="sign-up-name"
           label="Your name"
-          autoComplete="name"
-          maxLength={256}
-          disabled={pending}
-          error={fields.errors.name}
-          state={fields.threadState('name')}
-          {...fields.inputProps('name')}
-        />
-        <TextField
+          {...fields.field('name')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              autoComplete="name"
+              maxLength={256}
+              disabled={pending}
+              {...fields.control('name')}
+            />
+          )}
+        </LabelledField>
+        <LabelledField
           id="sign-up-email"
           label="Email"
-          type="email"
-          autoComplete="email"
-          disabled={pending}
-          error={fields.errors.email}
-          state={fields.threadState('email')}
-          {...fields.inputProps('email')}
-        />
+          {...fields.field('email')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="email"
+              autoComplete="email"
+              disabled={pending}
+              {...fields.control('email')}
+            />
+          )}
+        </LabelledField>
         <PasswordField
           id="sign-up-password"
           label="Password"
           autoComplete="new-password"
           minimumLength={minimumPasswordLength}
           disabled={pending}
-          error={fields.errors.password}
-          state={fields.threadState('password')}
-          {...fields.inputProps('password')}
+          {...fields.field('password')}
+          {...fields.control('password')}
         />
         {failure === undefined ? null : (
           <Notice tone="destructive">{failure}</Notice>

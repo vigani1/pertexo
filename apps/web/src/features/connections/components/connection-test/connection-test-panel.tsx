@@ -3,12 +3,16 @@ import { connectionTestRequestSchema } from '@pertexo/contracts/schemas/connecti
 import type { ConnectionTestRequest } from '@pertexo/contracts/schemas/connections';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Field, FieldDescription, FieldError } from '@/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  LabelledField,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { ValidatedField } from '@/components/ui/validated-field';
 import { describeTestOutcome } from '../../model/connection-health';
 import type { ProviderKey } from '../../model/connection-providers';
 import type { ConnectionTest } from '../../use-connection-test';
@@ -111,7 +115,7 @@ export function ConnectionTestPanel({
         <TestOutcome provider={provider} test={test} />
       </div>
       {provider === 'http' ? (
-        <ValidatedField
+        <LabelledField
           id={`${id}-url`}
           label="Address to call"
           description="Pertexo sends a GET request with your headers, like https://api.example.com/me."
@@ -140,7 +144,7 @@ export function ConnectionTestPanel({
               }}
             />
           )}
-        </ValidatedField>
+        </LabelledField>
       ) : null}
       {provider === 'email' ? (
         <Field

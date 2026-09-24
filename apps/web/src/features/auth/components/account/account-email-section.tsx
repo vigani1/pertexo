@@ -1,11 +1,12 @@
 import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import type { SyntheticEvent } from 'react';
+import { LabelledField } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { useRequestAccountEmailChange } from '../../account-security.mutations';
 import { emailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { TextField } from '@/components/patterns/text-field';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { AccountCommandFailure, AccountSection } from './account-section';
 import { Notice } from '@/components/ui/notice';
 
@@ -15,7 +16,7 @@ export function AccountEmailSection({
   security,
 }: Readonly<{ apiClient: ApiClient; security: AccountSecurityResponse }>) {
   const mutation = useRequestAccountEmailChange(apiClient);
-  const fields = useValidatedFields(
+  const fields = useFieldValues(
     {
       email: (value) =>
         emailProblem(value) ??
@@ -29,7 +30,7 @@ export function AccountEmailSection({
   function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mutation.isPending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     mutation.reset();
     mutation.mutate(values.email.trim());
@@ -46,20 +47,25 @@ export function AccountEmailSection({
         className="flex max-w-md flex-col gap-4"
         onSubmit={submit}
       >
-        <TextField
+        <LabelledField
           id="account-new-email"
           label="New email"
-          type="email"
-          autoComplete="email"
-          disabled={mutation.isPending}
-          error={fields.errors.email}
-          state={fields.threadState('email')}
-          {...fields.inputProps('email')}
-          onChange={(event) => {
-            mutation.reset();
-            fields.setValue('email', event.target.value);
-          }}
-        />
+          {...fields.field('email')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="email"
+              autoComplete="email"
+              disabled={mutation.isPending}
+              {...fields.control('email')}
+              onChange={(event) => {
+                mutation.reset();
+                fields.setValue('email', event.target.value);
+              }}
+            />
+          )}
+        </LabelledField>
         {mutation.error === null ? null : (
           <AccountCommandFailure
             error={mutation.error}

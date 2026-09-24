@@ -1,8 +1,9 @@
 import type { ReactNode, SyntheticEvent } from 'react';
+import { LabelledField } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import { emailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { TextField } from '@/components/patterns/text-field';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useAuthRequest } from '../../use-auth-request';
 import {
   AuthLens,
@@ -37,14 +38,14 @@ export function EmailRequestLens({
   onSent: (email: string) => void;
   footer?: ReactNode;
 }>) {
-  const fields = useValidatedFields({ email: emailProblem }, { email: '' });
+  const fields = useFieldValues({ email: emailProblem }, { email: '' });
   const request = useAuthRequest(describeFailure);
   const { pending, failure } = request;
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     const email = values.email.trim();
     await request.run(
@@ -64,16 +65,21 @@ export function EmailRequestLens({
         className="mt-6 flex flex-col gap-4"
         onSubmit={(event) => void submit(event)}
       >
-        <TextField
+        <LabelledField
           id={`${id}-email`}
           label="Email"
-          type="email"
-          autoComplete="email"
-          disabled={pending}
-          error={fields.errors.email}
-          state={fields.threadState('email')}
-          {...fields.inputProps('email')}
-        />
+          {...fields.field('email')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="email"
+              autoComplete="email"
+              disabled={pending}
+              {...fields.control('email')}
+            />
+          )}
+        </LabelledField>
         {failure === undefined ? null : (
           <Notice tone="destructive">{failure}</Notice>
         )}

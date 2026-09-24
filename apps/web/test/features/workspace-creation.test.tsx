@@ -236,7 +236,7 @@ describe('workspace creation', () => {
     expect(slug).toHaveAttribute('aria-invalid', 'true');
 
     await userEvent.setup().type(name, 'Valid name');
-    expect(name).not.toHaveAttribute('aria-invalid');
+    expect(name).toHaveAttribute('aria-invalid', 'false');
     await userEvent
       .setup()
       .click(within(form).getByRole('button', { name: 'Create workspace' }));

@@ -12,13 +12,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { startAccountLink } from '../../account-security.api';
 import { requiredPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useLatestRequest } from '../../use-latest-request';
 import { SocialProviderGrid } from '../social/social-provider-grid';
 import { providerName, type SocialProvider } from '../social/social-provider';
@@ -72,7 +72,7 @@ export function LinkProviderDialog({
   const [sourceId, setSourceId] = useState(sources[0]?.id);
   const source = sources.find((method) => method.id === sourceId) ?? sources[0];
   const confirmsWithPassword = source?.kind === 'password';
-  const fields = useValidatedFields(
+  const fields = useFieldValues(
     {
       password: (value) =>
         confirmsWithPassword ? requiredPasswordProblem(value) : undefined,
@@ -92,7 +92,7 @@ export function LinkProviderDialog({
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || target === undefined || source === undefined) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     const existingMethod: AccountSecurityLinkStartRequest['existingMethod'] =
       source.kind === 'password'
@@ -186,9 +186,8 @@ export function LinkProviderDialog({
                 label="Current password"
                 autoComplete="current-password"
                 disabled={pending}
-                error={fields.errors.password}
-                state={fields.threadState('password')}
-                {...fields.inputProps('password')}
+                {...fields.field('password')}
+                {...fields.control('password')}
               />
             ) : source === undefined ? null : (
               <p className="text-sm text-muted-foreground">

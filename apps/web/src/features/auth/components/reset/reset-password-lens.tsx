@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { SyntheticEvent } from 'react';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import {
   confirmationProblem,
@@ -7,7 +8,6 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { resetFailure } from '../../model/auth-failure';
 import { resetPassword } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
@@ -31,7 +31,7 @@ export function ResetPasswordLens({
   minimumPasswordLength: number;
   onReset: () => void;
 }>) {
-  const fields = useValidatedFields(
+  const fields = useFieldValues(
     {
       password: (value) => newPasswordProblem(value, minimumPasswordLength),
       confirmation: (value, values) =>
@@ -45,7 +45,7 @@ export function ResetPasswordLens({
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     await request.run(
       (signal) =>
@@ -74,18 +74,16 @@ export function ResetPasswordLens({
           autoComplete="new-password"
           minimumLength={minimumPasswordLength}
           disabled={pending}
-          error={fields.errors.password}
-          state={fields.threadState('password')}
-          {...fields.inputProps('password')}
+          {...fields.field('password')}
+          {...fields.control('password')}
         />
         <PasswordField
           id="reset-confirmation"
           label="Confirm new password"
           autoComplete="new-password"
           disabled={pending}
-          error={fields.errors.confirmation}
-          state={fields.threadState('confirmation')}
-          {...fields.inputProps('confirmation')}
+          {...fields.field('confirmation')}
+          {...fields.control('confirmation')}
         />
         {failure === undefined ? null : (
           <Notice tone="destructive">{failure}</Notice>

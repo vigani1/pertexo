@@ -2,7 +2,12 @@ import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections'
 import { Link } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  LabelledField,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -13,7 +18,6 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import { ValidatedField } from '@/components/ui/validated-field';
 import {
   usableConnections,
   type DestinationField,
@@ -92,7 +96,7 @@ export function DestinationFields({
           </FieldDescription>
         ) : null}
       </Field>
-      <ValidatedField
+      <LabelledField
         id={`${id}-connection`}
         label={
           values.kind === 'slack' ? 'Slack connection' : 'Email connection'
@@ -147,8 +151,8 @@ export function DestinationFields({
             </Link>
           </div>
         )}
-      </ValidatedField>
-      <ValidatedField
+      </LabelledField>
+      <LabelledField
         id={`${id}-target`}
         label={values.kind === 'slack' ? 'Channel ID' : 'Recipient email'}
         description={
@@ -180,7 +184,7 @@ export function DestinationFields({
             onBlur={blurTarget}
           />
         )}
-      </ValidatedField>
+      </LabelledField>
     </>
   );
 }

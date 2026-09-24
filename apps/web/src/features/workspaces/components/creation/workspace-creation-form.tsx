@@ -1,14 +1,14 @@
 import { workspaceCreateRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
-import { TextField } from '@/components/patterns/text-field';
 import { Button } from '@/components/ui/button';
-import { FieldGroup } from '@/components/ui/field';
+import { FieldGroup, LabelledField } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { WorkspaceCreationCommand } from '../../mutations/use-workspace-creation';
 
 type Field = 'name' | 'slug';
-type FieldErrors = Readonly<Partial<Record<Field, string | undefined>>>;
 
 const FIELD_MESSAGES: Record<Field, string> = {
   name: 'Give the workspace a name of up to 128 characters.',
@@ -128,14 +128,13 @@ export function WorkspaceCreationForm({
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
   const [editingSlug, setEditingSlug] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const nameRef = useRef<HTMLInputElement>(null);
+  const validation = useFieldValidation<Field>();
   const slugRef = useRef<HTMLInputElement | null>(null);
   const focusSlugOnMount = useRef(false);
   const locked = command.locked || command.created;
+  // A taken handle is the server's answer to this request, shown in place.
   const slugError =
-    errors.slug ??
+    validation.error('slug') ??
     (command.error?.field === 'slug' ? command.error.message : undefined);
   const generalError =
     command.error?.field === undefined ? command.error?.message : undefined;
@@ -144,13 +143,6 @@ export function WorkspaceCreationForm({
   useEffect(() => {
     if (command.error?.field === 'slug') slugRef.current?.focus();
   }, [command.error]);
-
-  function check(field: Field, value: string) {
-    setErrors((current) => ({
-      ...current,
-      [field]: fieldProblem(field, value),
-    }));
-  }
 
   function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -162,20 +154,14 @@ export function WorkspaceCreationForm({
       void command.refresh();
       return;
     }
-    setSubmitted(true);
-    const next = {
+    const errors = {
       name: fieldProblem('name', name),
       slug: fieldProblem('slug', slug),
     };
-    setErrors(next);
-    if (next.name !== undefined) {
-      nameRef.current?.focus();
-      return;
-    }
-    if (next.slug !== undefined) {
-      if (slugRef.current === null) focusSlugOnMount.current = true;
-      else slugRef.current.focus();
-      setEditingSlug(true);
+    if (!validation.submit(errors)) {
+      if (errors.name === undefined && slugRef.current === null)
+        focusSlugOnMount.current = true;
+      if (errors.slug !== undefined) setEditingSlug(true);
       return;
     }
     const parsed = workspaceCreateRequestSchema.parse({ name, slug });
@@ -185,59 +171,74 @@ export function WorkspaceCreationForm({
   return (
     <form noValidate className="flex flex-col gap-5" onSubmit={submit}>
       <FieldGroup className="gap-4">
-        <TextField
-          ref={nameRef}
+        <LabelledField
           id={`${idPrefix}-name`}
           label="Workspace name"
-          autoComplete="off"
-          maxLength={128}
-          disabled={locked}
-          value={name}
-          error={errors.name}
-          state={errors.name === undefined ? undefined : 'invalid'}
-          aria-invalid={errors.name === undefined ? undefined : true}
-          onBlur={() => {
-            check('name', name);
-          }}
-          onChange={(event) => {
-            const nextName = event.target.value;
-            setName(nextName);
-            command.clearError();
-            if (!slugEdited) setSlug(suggestWorkspaceSlug(nextName));
-            if (submitted || errors.name !== undefined) check('name', nextName);
-          }}
-        />
+          error={validation.error('name')}
+          thread={validation.thread('name')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              ref={validation.register('name')}
+              autoComplete="off"
+              maxLength={128}
+              disabled={locked}
+              value={name}
+              onBlur={() => {
+                validation.blur('name', fieldProblem('name', name));
+              }}
+              onChange={(event) => {
+                const nextName = event.target.value;
+                setName(nextName);
+                command.clearError();
+                if (!slugEdited) setSlug(suggestWorkspaceSlug(nextName));
+                validation.change('name', fieldProblem('name', nextName));
+              }}
+            />
+          )}
+        </LabelledField>
         {slugVisible ? (
-          <TextField
-            ref={(element) => {
-              slugRef.current = element;
-              if (element !== null && focusSlugOnMount.current) {
-                focusSlugOnMount.current = false;
-                element.focus();
-              }
-            }}
+          <LabelledField
             id={`${idPrefix}-slug`}
             label="Handle"
             description="Lowercase letters, numbers and single hyphens. It identifies the workspace in references."
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={64}
-            disabled={locked}
-            value={slug}
             error={slugError}
-            state={slugError === undefined ? undefined : 'invalid'}
-            aria-invalid={slugError === undefined ? undefined : true}
-            onBlur={() => {
-              check('slug', slug);
-            }}
-            onChange={(event) => {
-              setSlug(event.target.value);
-              setSlugEdited(true);
-              command.clearError();
-              if (submitted || errors.slug !== undefined)
-                check('slug', event.target.value);
-            }}
-          />
+            thread={
+              slugError === undefined ? validation.thread('slug') : 'invalid'
+            }
+          >
+            {(control) => (
+              <Input
+                {...control}
+                ref={(element) => {
+                  validation.register('slug')(element);
+                  slugRef.current = element;
+                  if (element !== null && focusSlugOnMount.current) {
+                    focusSlugOnMount.current = false;
+                    element.focus();
+                  }
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={64}
+                disabled={locked}
+                value={slug}
+                onBlur={() => {
+                  validation.blur('slug', fieldProblem('slug', slug));
+                }}
+                onChange={(event) => {
+                  setSlug(event.target.value);
+                  setSlugEdited(true);
+                  command.clearError();
+                  validation.change(
+                    'slug',
+                    fieldProblem('slug', event.target.value),
+                  );
+                }}
+              />
+            )}
+          </LabelledField>
         ) : (
           <HandlePreview
             slug={slug}

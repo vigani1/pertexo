@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { extractEndpointKey } from '../../model/endpoint-key';
+
+function endpointProblem(pasted: string): string | undefined {
+  return extractEndpointKey(pasted) === undefined
+    ? 'That doesn’t contain an endpoint key. Paste the full address ending in /hooks/…, or the 43-character key on its own.'
+    : undefined;
+}
 
 /**
  * Rotating the signing secret needs the current endpoint key. People paste
@@ -26,12 +27,11 @@ export function RotateSecretDialog({
   onClose: () => void;
 }>) {
   const [pasted, setPasted] = useState('');
-  const [validation, setValidation] = useState<'invalid' | 'corrected'>();
-  const invalid = validation === 'invalid';
+  const validation = useFieldValidation<'endpoint'>();
 
   function clear() {
     setPasted('');
-    setValidation(undefined);
+    validation.reset();
   }
 
   return (
@@ -48,54 +48,42 @@ export function RotateSecretDialog({
       pendingLabel="Rotating…"
       pending={pending}
       onConfirm={async () => {
+        if (!validation.submit({ endpoint: endpointProblem(pasted) })) return;
         const endpointKey = extractEndpointKey(pasted);
-        if (endpointKey === undefined) {
-          setValidation('invalid');
-          return;
-        }
-        await onRotate(endpointKey).finally(clear);
+        if (endpointKey !== undefined)
+          await onRotate(endpointKey).finally(clear);
       }}
     >
-      <Field data-invalid={invalid}>
-        <FieldLabel htmlFor="current-endpoint">
-          Current address or endpoint key
-        </FieldLabel>
-        <FieldControl state={validation}>
+      <LabelledField
+        id="current-endpoint"
+        label="Current address or endpoint key"
+        description="Pertexo uses it to confirm which endpoint you mean. It isn’t stored here."
+        error={validation.error('endpoint')}
+        thread={validation.thread('endpoint')}
+      >
+        {(control) => (
           <Input
-            id="current-endpoint"
+            {...control}
+            ref={validation.register('endpoint')}
             name="currentEndpoint"
             type="password"
             autoComplete="off"
             autoFocus
             disabled={pending}
             value={pasted}
-            aria-invalid={invalid}
-            aria-describedby={
-              invalid ? 'current-endpoint-error' : 'current-endpoint-help'
-            }
             onChange={(event) => {
               setPasted(event.target.value);
-              if (validation !== undefined)
-                setValidation(
-                  extractEndpointKey(event.target.value) === undefined
-                    ? 'invalid'
-                    : 'corrected',
-                );
+              validation.change(
+                'endpoint',
+                endpointProblem(event.target.value),
+              );
+            }}
+            onBlur={() => {
+              validation.blur('endpoint', endpointProblem(pasted));
             }}
           />
-        </FieldControl>
-        {invalid ? (
-          <FieldError id="current-endpoint-error">
-            That doesn’t contain an endpoint key. Paste the full address ending
-            in /hooks/…, or the 43-character key on its own.
-          </FieldError>
-        ) : (
-          <FieldDescription id="current-endpoint-help">
-            Pertexo uses it to confirm which endpoint you mean. It isn’t stored
-            here.
-          </FieldDescription>
         )}
-      </Field>
+      </LabelledField>
     </ConfirmDialog>
   );
 }

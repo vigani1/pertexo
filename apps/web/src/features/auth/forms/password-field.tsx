@@ -1,36 +1,42 @@
-import { useState } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LabelledField, type FieldThread } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { PasswordMeter } from './password-meter';
-import {
-  TextField,
-  type TextFieldProps,
-} from '@/components/patterns/text-field';
 
-type PasswordFieldProps = Omit<TextFieldProps, 'type' | 'trailing'> &
-  Readonly<{
-    /** Shows the requirement thread for a new password. */
-    minimumLength?: number | undefined;
-  }>;
+type PasswordFieldProps = Readonly<{
+  id: string;
+  label: ReactNode;
+  labelAction?: ReactNode;
+  error?: string | undefined;
+  thread?: FieldThread;
+  /** Shows the requirement thread for a new password. */
+  minimumLength?: number | undefined;
+}> &
+  Omit<ComponentProps<typeof Input>, 'id' | 'type' | 'children'>;
 
 /** A password input with show/hide and, for new passwords, the meter. */
 export function PasswordField({
   id,
+  label,
+  labelAction,
+  error,
+  thread,
   minimumLength,
-  value,
-  children,
-  ...props
+  ...inputProps
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   const meterId = `${id}-meter`;
-  const length = typeof value === 'string' ? value.length : 0;
+  const { value } = inputProps;
   return (
-    <TextField
+    <LabelledField
       id={id}
-      type={visible ? 'text' : 'password'}
-      value={value}
-      maxLength={128}
-      {...(minimumLength === undefined ? {} : { 'aria-describedby': meterId })}
+      label={label}
+      labelAction={labelAction}
+      error={error}
+      thread={thread}
+      describedBy={minimumLength === undefined ? undefined : meterId}
       trailing={
         <Button
           type="button"
@@ -50,16 +56,24 @@ export function PasswordField({
           )}
         </Button>
       }
-      {...props}
+      feedback={
+        minimumLength === undefined ? undefined : (
+          <PasswordMeter
+            id={meterId}
+            length={typeof value === 'string' ? value.length : 0}
+            minimumLength={minimumLength}
+          />
+        )
+      }
     >
-      {minimumLength === undefined ? null : (
-        <PasswordMeter
-          id={meterId}
-          length={length}
-          minimumLength={minimumLength}
+      {(control) => (
+        <Input
+          {...control}
+          type={visible ? 'text' : 'password'}
+          maxLength={128}
+          {...inputProps}
         />
       )}
-      {children}
-    </TextField>
+    </LabelledField>
   );
 }

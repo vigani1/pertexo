@@ -400,9 +400,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     );
     expect(input).toHaveFocus();
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(input).toHaveAccessibleDescription(
-      'Run input must be valid JSON, like {"customerId": "customer-7"}.',
-    );
+    expect(input).toHaveAccessibleDescription(/isn’t valid JSON/u);
     fireEvent.change(input, { target: { value: '{}' } });
     expect(input).toHaveAttribute('aria-invalid', 'false');
   });

@@ -1,8 +1,8 @@
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import { ValidatedField } from '@/components/ui/validated-field';
 import { cn } from '@/lib/utils';
 import {
   connectionNameError,
@@ -70,7 +70,7 @@ export function NameStep({
 }>) {
   return (
     <div className="flex flex-col gap-5">
-      <ValidatedField
+      <LabelledField
         id={`${id}-name`}
         label="Connection name"
         description="People pick connections by this name in steps and alerts."
@@ -96,7 +96,7 @@ export function NameStep({
             }}
           />
         )}
-      </ValidatedField>
+      </LabelledField>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-subtle-foreground">Saves</dt>
         <dd>{describeConnectionKind(provider)}, stored encrypted</dd>
