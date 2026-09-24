@@ -9,11 +9,13 @@ import { ResetPasswordLens } from './components/reset/reset-password-lens';
 import {
   AuthLens,
   AuthLensDescription,
-  AuthLensFooter,
   AuthLensTitle,
 } from './components/stage/auth-lens';
 import { AuthStage } from './components/stage/auth-stage';
-import { LensLoading, LensUnavailable } from './components/stage/lens-states';
+import {
+  LensLoading,
+  PasswordUnavailableLens,
+} from './components/stage/lens-states';
 
 function OutcomeLens({
   id,
@@ -74,21 +76,13 @@ export function PasswordResetPage({
           label="Checking password reset…"
         />
       ) : capabilities.isError || !capabilities.data.password.enabled ? (
-        <LensUnavailable
+        <PasswordUnavailableLens
           id="reset-unavailable"
           title="Choose a new password"
-          retrying={capabilities.isFetching}
-          {...(capabilities.isError
-            ? { onRetry: () => void capabilities.refetch() }
-            : {})}
-          footer={
-            <AuthLensFooter>
-              <Link to="/login">Back to sign in</Link>
-            </AuthLensFooter>
-          }
+          capabilities={capabilities}
         >
           Password reset is not available right now.
-        </LensUnavailable>
+        </PasswordUnavailableLens>
       ) : changed ? (
         <OutcomeLens
           id="reset-done"

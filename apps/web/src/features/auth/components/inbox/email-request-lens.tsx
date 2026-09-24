@@ -1,11 +1,9 @@
-import { useState, type ReactNode, type SyntheticEvent } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
 import { emailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '../../forms/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
-import { rateLimitSeconds } from '../../model/auth-failure';
-import { useCountdown } from '../../use-countdown';
-import { useLatestRequest } from '../../use-latest-request';
+import { useAuthRequest } from '../../use-auth-request';
 import {
   AuthLens,
   AuthLensDescription,
@@ -40,10 +38,8 @@ export function EmailRequestLens({
   footer?: ReactNode;
 }>) {
   const fields = useValidatedFields({ email: emailProblem }, { email: '' });
-  const requests = useLatestRequest();
-  const rateLimit = useCountdown();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<string>();
+  const request = useAuthRequest(describeFailure);
+  const { pending, failure } = request;
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,20 +47,12 @@ export function EmailRequestLens({
     const values = fields.validateAll();
     if (values === undefined) return;
     const email = values.email.trim();
-    const request = requests.begin();
-    setPending(true);
-    setFailure(undefined);
-    try {
-      await send(email, request.signal);
-      if (request.isCurrent()) onSent(email);
-    } catch (error) {
-      if (!request.isCurrent()) return;
-      const seconds = rateLimitSeconds(error);
-      if (seconds !== undefined) rateLimit.startSeconds(seconds);
-      setFailure(describeFailure(error));
-    } finally {
-      if (request.finish()) setPending(false);
-    }
+    await request.run(
+      (signal) => send(email, signal),
+      () => {
+        onSent(email);
+      },
+    );
   }
 
   return (
@@ -96,7 +84,7 @@ export function EmailRequestLens({
           className="mt-1 w-full"
           pending={pending}
           pendingLabel={pendingLabel}
-          waitSeconds={rateLimit.remainingSeconds}
+          waitSeconds={request.waitSeconds}
         >
           {submitLabel}
         </ProgressButton>

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
@@ -11,7 +10,10 @@ import {
 import { SignUpLens } from './components/sign-up/sign-up-lens';
 import { AuthLensFooter } from './components/stage/auth-lens';
 import { AuthStage } from './components/stage/auth-stage';
-import { LensLoading, LensUnavailable } from './components/stage/lens-states';
+import {
+  LensLoading,
+  PasswordUnavailableLens,
+} from './components/stage/lens-states';
 import { resendVerificationEmail } from './native-auth.api';
 import { useCountdown } from './use-countdown';
 
@@ -30,21 +32,13 @@ export function SignUpPage({ apiClient }: Readonly<{ apiClient: ApiClient }>) {
           label="Checking how you can create an account…"
         />
       ) : capabilities.isError || !capabilities.data.password.enabled ? (
-        <LensUnavailable
+        <PasswordUnavailableLens
           id="sign-up-unavailable"
           title="Create your account"
-          retrying={capabilities.isFetching}
-          {...(capabilities.isError
-            ? { onRetry: () => void capabilities.refetch() }
-            : {})}
-          footer={
-            <AuthLensFooter>
-              <Link to="/login">Back to sign in</Link>
-            </AuthLensFooter>
-          }
+          capabilities={capabilities}
         >
           Password sign-up is not available right now.
-        </LensUnavailable>
+        </PasswordUnavailableLens>
       ) : sentTo === undefined ? (
         <SignUpLens
           apiClient={apiClient}

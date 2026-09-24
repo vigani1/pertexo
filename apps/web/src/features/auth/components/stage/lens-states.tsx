@@ -1,7 +1,13 @@
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import { AuthLens, AuthLensTitle, AuthStatusLine } from './auth-lens';
+import {
+  AuthLens,
+  AuthLensFooter,
+  AuthLensTitle,
+  AuthStatusLine,
+} from './auth-lens';
 
 /**
  * The lens while Pertexo checks which sign-in methods are available. The
@@ -64,5 +70,45 @@ export function LensUnavailable({
       )}
       {footer}
     </AuthLens>
+  );
+}
+
+type CapabilitiesRead = Readonly<{
+  isError: boolean;
+  isFetching: boolean;
+  refetch: () => Promise<unknown>;
+}>;
+
+/**
+ * Password sign-up, recovery or reset can't be used here: a retry when the
+ * capabilities couldn't be read, and always the way back to sign in.
+ */
+export function PasswordUnavailableLens({
+  id,
+  title,
+  capabilities,
+  children,
+}: Readonly<{
+  id: string;
+  title: string;
+  capabilities: CapabilitiesRead;
+  children: ReactNode;
+}>) {
+  return (
+    <LensUnavailable
+      id={id}
+      title={title}
+      retrying={capabilities.isFetching}
+      {...(capabilities.isError
+        ? { onRetry: () => void capabilities.refetch() }
+        : {})}
+      footer={
+        <AuthLensFooter>
+          <Link to="/login">Back to sign in</Link>
+        </AuthLensFooter>
+      }
+    >
+      {children}
+    </LensUnavailable>
   );
 }
