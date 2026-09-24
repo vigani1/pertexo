@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,8 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { LoadingOrb } from '@/components/ui/loading-orb';
+import { Notice } from '@/components/ui/notice';
 
+/** Restoring cancels the deletion; the dialog says what stays off afterwards. */
 export function WorkspaceRestoreDialog({
   workspaceName,
   pending,
@@ -20,7 +23,7 @@ export function WorkspaceRestoreDialog({
 }: Readonly<{
   workspaceName: string;
   pending: boolean;
-  error?: string;
+  error: string | undefined;
   retryAvailable: boolean;
   onDismissUncertain: () => void;
   onRestore: () => Promise<boolean>;
@@ -28,59 +31,69 @@ export function WorkspaceRestoreDialog({
 }>) {
   const [open, setOpen] = useState(false);
 
-  function changeOpen(next: boolean) {
-    if (!next && retryAvailable) return;
-    setOpen(next);
-  }
-
   async function submit() {
-    const accepted = await (retryAvailable ? onRetry() : onRestore());
-    if (accepted) changeOpen(false);
+    if (await (retryAvailable ? onRetry() : onRestore())) setOpen(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger render={<Button type="button" variant="outline" />}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next || (!pending && !retryAvailable)) setOpen(next);
+      }}
+    >
+      <DialogTrigger render={<Button type="button" variant="default" />}>
         Restore workspace
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Restore this workspace?</DialogTitle>
+        <DialogTitle>Restore {workspaceName}?</DialogTitle>
         <DialogDescription>
-          Cancel deletion for {workspaceName}. A completed restore returns the
-          workspace to suspended state; it does not reactivate other resources.
+          This cancels the deletion. The workspace comes back suspended: people
+          can sign in and look around, but triggers and integrations stay off
+          until their connections are reconnected.
         </DialogDescription>
         {error === undefined ? null : (
-          <p role="alert" className="mt-5 text-sm text-destructive">
+          <Notice
+            role="alert"
+            tone={retryAvailable ? 'attention' : 'failure'}
+            className="mt-5"
+          >
             {error}
-          </p>
+          </Notice>
         )}
-        {retryAvailable ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Retry uses the same command key because the previous result is
-            uncertain.
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           {retryAvailable ? (
-            <Button type="button" variant="ghost" onClick={onDismissUncertain}>
-              Dismiss attempt
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                onDismissUncertain();
+                setOpen(false);
+              }}
+            >
+              Close
             </Button>
           ) : (
-            <DialogClose render={<Button type="button" variant="ghost" />}>
+            <DialogClose
+              disabled={pending}
+              render={<Button type="button" variant="ghost" />}
+            >
               Cancel
             </DialogClose>
           )}
           <Button
             type="button"
+            variant="primary"
             disabled={pending}
             onClick={() => {
               void submit();
             }}
           >
+            {pending ? <LoadingOrb data-icon="inline-start" /> : null}
             {pending
-              ? 'Submitting…'
+              ? 'Restoring…'
               : retryAvailable
-                ? 'Retry restore'
+                ? 'Try again'
                 : 'Restore workspace'}
           </Button>
         </div>

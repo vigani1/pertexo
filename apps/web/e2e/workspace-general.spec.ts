@@ -117,27 +117,28 @@ test('requests deletion through the accessible workspace settings flow', async (
       .getByRole('link', { name: 'Settings' }),
   ).toHaveAttribute('aria-current', 'page');
 
-  await page.getByRole('button', { name: 'Request deletion' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Request workspace deletion?' }),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Delete workspace' }).click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Delete Control Operations?',
+  });
+  await expect(dialog.getByText(/restore it for 30 days/u)).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(
-    page.getByRole('heading', { name: 'Request workspace deletion?' }),
-  ).toBeHidden();
+  await expect(dialog).toBeHidden();
 
-  await page.getByRole('button', { name: 'Request deletion' }).click();
-  await page.getByLabel('Reason').fill('Retiring this space');
-  await page.getByRole('button', { name: 'Request deletion' }).click();
+  await page.getByRole('button', { name: 'Delete workspace' }).click();
+  await dialog
+    .getByLabel('Type Control Operations to confirm')
+    .fill('Control Operations');
+  await dialog.getByLabel('Reason').fill('Retiring this space');
+  await dialog.getByRole('button', { name: 'Delete workspace' }).click();
 
   await expect(page).toHaveURL(
     `/w/${workspaceId}/settings?operationId=${operationId}`,
   );
-  await expect(page.getByText('Running')).toBeVisible();
+  const request = page.getByRole('region', { name: 'Deletion request' });
+  await expect(request.getByText('Running')).toBeVisible();
   await expect(
-    page.getByText(
-      'The command was accepted, but the workspace change is not complete yet.',
-    ),
+    request.getByText(/Pertexo is stopping access and triggers/u),
   ).toBeVisible();
 });
 
@@ -152,17 +153,19 @@ test('renames a workspace with keyboard-accessible validation and refreshes the 
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/settings`);
 
-  await page.getByRole('button', { name: 'Edit name' }).click();
-  const name = page.getByLabel('Display name');
+  await page.getByRole('button', { name: 'Rename workspace' }).click();
+  const name = page.getByLabel('Workspace name');
   await name.fill('');
   await name.press('Enter');
   await expect(name).toBeFocused();
   await expect(name).toHaveAttribute('aria-invalid', 'true');
   await name.fill('Incident Operations');
-  await page.getByRole('button', { name: 'Save name' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
 
-  await expect(page.getByText('Incident Operations').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Edit name' })).toBeVisible();
+  await expect(page.getByText('Renamed to Incident Operations')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Rename workspace' }),
+  ).toBeVisible();
 });
 
 test('keeps a valid unbroken workspace name inside its card at 320 pixels', async ({
@@ -177,22 +180,28 @@ test('keeps a valid unbroken workspace name inside its card at 320 pixels', asyn
     ]);
   await installRoutes(page, longName);
   await page.goto(`/w/${workspaceId}/settings`);
-  await page.getByRole('button', { name: 'Edit name' }).click();
-  await page.getByLabel('Display name').fill(longName);
-  await page.getByRole('button', { name: 'Save name' }).click();
+  await page.getByRole('button', { name: 'Rename workspace' }).click();
+  await page.getByLabel('Workspace name').fill(longName);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Rename workspace' }),
+  ).toBeVisible();
 
-  for (const heading of ['Workspace name', 'Workspace identity']) {
-    const section = page
-      .getByRole('heading', { name: heading })
-      .locator('xpath=ancestor::section[1]');
-    const name = section.getByText(longName, { exact: true });
-    const [nameBox, sectionBox] = await Promise.all([
-      name.boundingBox(),
-      section.boundingBox(),
-    ]);
-    expect(nameBox?.x).toBeGreaterThanOrEqual(sectionBox?.x ?? 0);
-    expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual(
-      (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) + 1,
-    );
-  }
+  const section = page
+    .getByRole('heading', { name: 'General' })
+    .locator('xpath=ancestor::section[1]');
+  const name = section.getByText(longName, { exact: true });
+  const [nameBox, sectionBox] = await Promise.all([
+    name.boundingBox(),
+    section.boundingBox(),
+  ]);
+  expect(nameBox?.x).toBeGreaterThanOrEqual(sectionBox?.x ?? 0);
+  expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual(
+    (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) + 1,
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

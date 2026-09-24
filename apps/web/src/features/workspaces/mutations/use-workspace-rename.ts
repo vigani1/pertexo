@@ -1,4 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { WorkspaceRenameResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import {
@@ -8,6 +12,10 @@ import {
   isUnauthenticated,
 } from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
+import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,
@@ -19,7 +27,7 @@ import {
 } from '../workspaces.mutations';
 
 type RenameError = Readonly<{
-  kind: 'conflict' | 'denied' | 'other' | 'verification';
+  kind: 'conflict' | 'other' | 'verification';
   message: string;
 }>;
 type State =
@@ -37,18 +45,125 @@ type State =
       refreshing: boolean;
       error?: RenameError;
     }>;
+type Failure =
+  | Readonly<{ kind: 'signed-out' }>
+  | Readonly<{ kind: 'forbidden' }>
+  | Readonly<{ kind: 'uncertain' }>
+  | Readonly<{ kind: 'rejected'; error: RenameError }>;
 
+const CONFLICT: RenameError = {
+  kind: 'conflict',
+  message: 'This workspace changed while you were editing.',
+};
+const UNCERTAIN: RenameError = {
+  kind: 'other',
+  message:
+    'We couldn’t confirm whether the rename went through. Try again — it can’t apply twice.',
+};
+const UNVERIFIED: RenameError = {
+  kind: 'verification',
+  message:
+    'We couldn’t check your session. Try again — the same rename is kept.',
+};
+const NOT_CAUGHT_UP: RenameError = {
+  kind: 'other',
+  message:
+    'The new name is saved, but this page couldn’t catch up. Refresh to see it everywhere.',
+};
+const RELOAD_FAILED: RenameError = {
+  kind: 'conflict',
+  message:
+    'Someone changed this workspace meanwhile, and the latest name couldn’t be loaded. Try again.',
+};
+
+function classifyFailure(error: unknown): Failure {
+  if (isUnauthenticated(error)) return { kind: 'signed-out' };
+  if (isApiError(error) && error.status === 403) return { kind: 'forbidden' };
+  if (isUncertainOutcome(error)) return { kind: 'uncertain' };
+  const code = isApiError(error) ? error.problem?.code : undefined;
+  if (code === 'workspace.revision_conflict')
+    return { kind: 'rejected', error: CONFLICT };
+  if (code === 'request.idempotency_conflict')
+    return {
+      kind: 'rejected',
+      error: {
+        kind: 'other',
+        message:
+          'This request was already used with different details. Try again.',
+      },
+    };
+  if (code === 'workspace.conflict')
+    return {
+      kind: 'rejected',
+      error: {
+        kind: 'other',
+        message: 'Only an active workspace can be renamed.',
+      },
+    };
+  return {
+    kind: 'rejected',
+    error: {
+      kind: 'other',
+      message: describeCommandError(error, 'renaming the workspace'),
+    },
+  };
+}
+
+/** Whether the signed-in person is still the one who started the rename. */
+async function checkSession(
+  apiClient: ApiClient,
+  userId: string,
+): Promise<'same' | 'changed' | 'unverified'> {
+  try {
+    await assertSessionIdentity(apiClient, userId);
+    return 'same';
+  } catch (error) {
+    if (isSessionIdentityChangedError(error)) return 'changed';
+    if (isSessionIdentityUnverifiedError(error)) return 'unverified';
+    throw error;
+  }
+}
+
+/** Reloads workspace discovery until it shows at least the renamed revision. */
+async function catchUpDiscovery(
+  queryClient: QueryClient,
+  apiClient: ApiClient,
+  userId: string,
+  receipt: WorkspaceRenameResponse,
+) {
+  await queryClient.invalidateQueries({
+    queryKey: workspaceKeys.accessible(userId),
+  });
+  const workspaces = await queryClient.query(
+    accessibleWorkspacesQueryOptions(apiClient, userId),
+  );
+  const discovered = workspaces.find(
+    (workspace) => workspace.id === receipt.workspace.id,
+  );
+  return (
+    discovered !== undefined &&
+    discovered.revision >= receipt.workspace.revision
+  );
+}
+
+/**
+ * Renames the workspace at the revision the form started from. An
+ * unconfirmed rename keeps its exact command; a conflict loads the latest
+ * workspace so people choose between their name and the newer one.
+ */
 export function useWorkspaceRename({
   apiClient,
   userId,
   workspaceId,
   onChanged,
+  onReloaded,
   onAccessLost,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
-  onChanged: () => void;
+  onChanged: (name: string) => void;
+  onReloaded: () => void;
   onAccessLost: () => void;
 }>) {
   const queryClient = useQueryClient();
@@ -73,50 +188,12 @@ export function useWorkspaceRename({
     setState(next);
   }
 
-  async function clearInvalidIdentity(scope: symbol) {
-    await queryClient.cancelQueries({ queryKey: ['identity'] });
+  async function loseAccess(scope: symbol, queryKey: readonly unknown[]) {
+    await queryClient.cancelQueries({ queryKey });
     if (owner.current !== scope) return;
-    queryClient.removeQueries({ queryKey: ['identity'] });
+    queryClient.removeQueries({ queryKey });
     transition({ kind: 'idle' });
     onAccessLost();
-  }
-
-  async function clearWorkspaceAccess(scope: symbol) {
-    await queryClient.cancelQueries({
-      queryKey: workspaceKeys.accessible(userId),
-    });
-    if (owner.current !== scope) return;
-    queryClient.removeQueries({
-      queryKey: workspaceKeys.accessible(userId),
-    });
-    transition({ kind: 'idle' });
-    onAccessLost();
-  }
-
-  async function verify(scope: symbol, attempt: WorkspaceRenameAttempt) {
-    try {
-      await assertSessionIdentity(apiClient, userId);
-      return owner.current === scope;
-    } catch (error) {
-      if (owner.current !== scope) return false;
-      if (isSessionIdentityChangedError(error)) {
-        await clearInvalidIdentity(scope);
-        return false;
-      }
-      if (isSessionIdentityUnverifiedError(error)) {
-        transition({
-          kind: 'uncertain',
-          attempt,
-          error: {
-            kind: 'verification',
-            message:
-              'Your session could not be verified. Retry preserves this exact rename command.',
-          },
-        });
-        return false;
-      }
-      throw error;
-    }
   }
 
   async function refresh(
@@ -125,39 +202,46 @@ export function useWorkspaceRename({
     receipt: WorkspaceRenameResponse,
   ) {
     transition({ kind: 'accepted', attempt, receipt, refreshing: true });
-    try {
-      const options = accessibleWorkspacesQueryOptions(apiClient, userId);
-      await queryClient.invalidateQueries({
-        queryKey: workspaceKeys.accessible(userId),
-      });
-      const workspaces = await queryClient.query(options);
-      if (owner.current !== scope) return false;
-      const discovered = workspaces.find(
-        (workspace) => workspace.id === receipt.workspace.id,
-      );
-      if (
-        discovered === undefined ||
-        discovered.revision < receipt.workspace.revision
-      ) {
-        throw new Error('Renamed workspace is not visible in discovery');
-      }
-      transition({ kind: 'idle' });
-      onChanged();
-      return true;
-    } catch {
-      if (owner.current !== scope) return false;
+    const caughtUp = await catchUpDiscovery(
+      queryClient,
+      apiClient,
+      userId,
+      receipt,
+    ).catch(() => false);
+    if (owner.current !== scope) return false;
+    if (!caughtUp) {
       transition({
         kind: 'accepted',
         attempt,
         receipt,
         refreshing: false,
-        error: {
-          kind: 'other',
-          message:
-            'The name changed, but workspace access could not be refreshed. Refresh access without renaming again.',
-        },
+        error: NOT_CAUGHT_UP,
       });
       return false;
+    }
+    transition({ kind: 'idle' });
+    onChanged(receipt.workspace.name);
+    return true;
+  }
+
+  /** Sends the rename; on failure settles the state and says whether it conflicted. */
+  async function send(scope: symbol, attempt: WorkspaceRenameAttempt) {
+    try {
+      return { receipt: await mutation.mutateAsync(attempt), conflict: false };
+    } catch (error) {
+      const failure = classifyFailure(error);
+      if (owner.current !== scope)
+        return { receipt: undefined, conflict: false };
+      if (failure.kind === 'signed-out') await loseAccess(scope, ['identity']);
+      else if (failure.kind === 'forbidden')
+        await loseAccess(scope, workspaceKeys.accessible(userId));
+      else if (failure.kind === 'uncertain')
+        transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
+      else transition({ kind: 'idle', error: failure.error });
+      return {
+        receipt: undefined,
+        conflict: failure.kind === 'rejected' && failure.error === CONFLICT,
+      };
     }
   }
 
@@ -165,46 +249,26 @@ export function useWorkspaceRename({
     const scope = owner.current;
     if (scope === undefined || inFlight.current) return false;
     inFlight.current = true;
-    transition({ kind: 'executing', attempt });
+    let conflicted = false;
     try {
-      if (!(await verify(scope, attempt))) return false;
-      let receipt: WorkspaceRenameResponse;
-      try {
-        receipt = await mutation.mutateAsync(attempt);
-      } catch (error) {
-        if (owner.current !== scope) return false;
-        if (isUnauthenticated(error)) {
-          await clearInvalidIdentity(scope);
-          return false;
-        }
-        if (isApiError(error) && error.status === 403) {
-          await clearWorkspaceAccess(scope);
-          return false;
-        }
-        if (
-          isApiError(error) &&
-          (error.kind === 'network' ||
-            error.kind === 'timeout' ||
-            error.kind === 'protocol')
-        ) {
-          transition({
-            kind: 'uncertain',
-            attempt,
-            error: {
-              kind: 'other',
-              message:
-                'The rename result is uncertain. Retry sends the exact same name, revision and command key.',
-            },
-          });
-          return false;
-        }
-        transition({ kind: 'idle', error: renameError(error) });
+      transition({ kind: 'executing', attempt });
+      const session = await checkSession(apiClient, userId);
+      if (owner.current !== scope) return false;
+      if (session === 'changed') {
+        await loseAccess(scope, ['identity']);
         return false;
       }
-      if (owner.current !== scope) return false;
-      return await refresh(scope, attempt, receipt);
+      if (session === 'unverified') {
+        transition({ kind: 'uncertain', attempt, error: UNVERIFIED });
+        return false;
+      }
+      const sent = await send(scope, attempt);
+      conflicted = sent.conflict;
+      if (sent.receipt === undefined || owner.current !== scope) return false;
+      return await refresh(scope, attempt, sent.receipt);
     } finally {
       inFlight.current = false;
+      if (conflicted) void reloadLatest();
     }
   }
 
@@ -220,23 +284,33 @@ export function useWorkspaceRename({
       return false;
     inFlight.current = true;
     try {
-      const options = accessibleWorkspacesQueryOptions(apiClient, userId);
       await queryClient.invalidateQueries({
         queryKey: workspaceKeys.accessible(userId),
       });
-      await queryClient.query(options);
-      return owner.current === scope;
+      await queryClient.query(
+        accessibleWorkspacesQueryOptions(apiClient, userId),
+      );
+      if (owner.current !== scope) return false;
+      transition({ kind: 'idle', error: CONFLICT });
+      onReloaded();
+      return true;
     } catch {
       if (owner.current === scope)
-        transition({
-          kind: 'idle',
-          error: {
-            kind: 'conflict',
-            message:
-              'The workspace changed, but the latest value could not be refreshed. Try refreshing again before reapplying.',
-          },
-        });
+        transition({ kind: 'idle', error: RELOAD_FAILED });
       return false;
+    } finally {
+      inFlight.current = false;
+    }
+  }
+
+  async function refreshAccepted() {
+    const current = stateRef.current;
+    const scope = owner.current;
+    if (current.kind !== 'accepted' || scope === undefined || inFlight.current)
+      return false;
+    inFlight.current = true;
+    try {
+      return await refresh(scope, current.attempt, current.receipt);
     } finally {
       inFlight.current = false;
     }
@@ -244,12 +318,7 @@ export function useWorkspaceRename({
 
   return {
     accepted: state.kind === 'accepted',
-    error:
-      state.kind === 'idle' ||
-      state.kind === 'uncertain' ||
-      state.kind === 'accepted'
-        ? state.error
-        : undefined,
+    error: state.kind === 'executing' ? undefined : state.error,
     pending: state.kind === 'executing',
     retryAvailable: state.kind === 'uncertain',
     reloadLatest,
@@ -267,46 +336,9 @@ export function useWorkspaceRename({
     dismiss: () => {
       if (stateRef.current.kind === 'uncertain') transition({ kind: 'idle' });
     },
-    refresh: async () => {
-      const current = stateRef.current;
-      const scope = owner.current;
-      if (
-        current.kind !== 'accepted' ||
-        scope === undefined ||
-        inFlight.current
-      )
-        return false;
-      inFlight.current = true;
-      try {
-        return await refresh(scope, current.attempt, current.receipt);
-      } finally {
-        inFlight.current = false;
-      }
-    },
+    refresh: refreshAccepted,
     clearError: () => {
       if (stateRef.current.kind === 'idle') transition({ kind: 'idle' });
     },
   };
-}
-
-function renameError(error: unknown): RenameError {
-  if (isApiError(error)) {
-    if (error.problem?.code === 'workspace.revision_conflict')
-      return {
-        kind: 'conflict',
-        message:
-          'The workspace changed since this form was loaded. Refresh it, review the latest name, then explicitly reapply your edit.',
-      };
-    if (error.problem?.code === 'request.idempotency_conflict')
-      return {
-        kind: 'other',
-        message: 'This command key belongs to different rename details.',
-      };
-    if (error.problem?.code === 'workspace.conflict')
-      return {
-        kind: 'other',
-        message: 'Only an active workspace can be renamed.',
-      };
-  }
-  return { kind: 'other', message: 'The workspace name could not be changed.' };
 }

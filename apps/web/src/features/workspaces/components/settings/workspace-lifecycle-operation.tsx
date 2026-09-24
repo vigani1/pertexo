@@ -1,14 +1,45 @@
 import type { WorkspaceLifecycleOperationResponse } from '@pertexo/contracts/schemas/identity-workspace';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
+import { Notice } from '@/components/ui/notice';
+import { Status, type StatusTone } from '@/components/ui/status';
+import { formatDateTime } from '@/lib/format-time';
+import { cn } from '@/lib/utils';
 
-const labels = {
-  pending: 'Pending',
-  running: 'Running',
-  completed: 'Completed',
-  failed: 'Failed',
-} as const;
+type Operation = WorkspaceLifecycleOperationResponse;
 
+const STATUS: Readonly<
+  Record<Operation['status'], Readonly<{ tone: StatusTone; label: string }>>
+> = {
+  pending: { tone: 'queued', label: 'Queued' },
+  running: { tone: 'live', label: 'Running' },
+  completed: { tone: 'success', label: 'Done' },
+  failed: { tone: 'failure', label: 'Failed' },
+};
+
+function sentence(operation: Operation): string {
+  const deleting = operation.commandType === 'deletion_requested';
+  switch (operation.status) {
+    case 'pending':
+    case 'running':
+      return deleting
+        ? 'Pertexo is stopping access and triggers. This updates on its own.'
+        : 'Pertexo is bringing the workspace back. This updates on its own.';
+    case 'completed':
+      return deleting
+        ? 'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.'
+        : 'The workspace is back, suspended. Triggers and integrations stay off until you reconnect them.';
+    case 'failed':
+      return deleting
+        ? 'The deletion didn’t finish, so nothing changed.'
+        : 'The restore didn’t finish, so the workspace is still scheduled for deletion.';
+  }
+}
+
+/**
+ * A lifecycle request on its way: the live edge runs while it is in flight;
+ * raw identifiers stay in Details for support.
+ */
 export function WorkspaceLifecycleOperation({
   operation,
   loading,
@@ -16,7 +47,7 @@ export function WorkspaceLifecycleOperation({
   onRetryRead,
   onDismiss,
 }: Readonly<{
-  operation?: WorkspaceLifecycleOperationResponse;
+  operation: Operation | undefined;
   loading: boolean;
   readError: boolean;
   onRetryRead: () => void;
@@ -25,95 +56,89 @@ export function WorkspaceLifecycleOperation({
   if (loading && operation === undefined)
     return (
       <p role="status" className="text-sm text-muted-foreground">
-        Loading lifecycle operation…
+        Loading the latest request…
       </p>
     );
   if (readError && operation === undefined)
     return (
-      <div>
-        <p role="alert" className="text-sm text-destructive">
-          The lifecycle operation could not be loaded.
-        </p>
-        <Button
-          className="mt-3"
-          type="button"
-          variant="outline"
-          onClick={onRetryRead}
-        >
+      <Notice role="alert" tone="failure">
+        The latest request couldn’t be loaded.{' '}
+        <Button type="button" size="xs" variant="ghost" onClick={onRetryRead}>
           Try again
         </Button>
-      </div>
+      </Notice>
     );
   if (operation === undefined) return null;
 
-  const terminal =
-    operation.status === 'completed' || operation.status === 'failed';
+  const status = STATUS[operation.status];
+  const inFlight =
+    operation.status === 'pending' || operation.status === 'running';
   return (
-    <div
-      className="rounded-lg border border-border bg-background/35 p-4"
+    <section
       aria-live="polite"
+      aria-label={
+        operation.commandType === 'deletion_requested'
+          ? 'Deletion request'
+          : 'Restore request'
+      }
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border border-border bg-background/40 p-4',
+        inFlight && 'live-edge',
+      )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">
-            {operation.commandType === 'deletion_requested'
-              ? 'Deletion request'
-              : 'Workspace restore'}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Operation {operation.id}
-          </p>
-        </div>
-        <Badge
-          variant={
-            operation.status === 'failed'
-              ? 'destructive'
-              : operation.status === 'completed'
-                ? 'secondary'
-                : 'muted'
-          }
-        >
-          {labels[operation.status]}
-        </Badge>
+        <p className="text-sm font-semibold">
+          {operation.commandType === 'deletion_requested'
+            ? 'Deleting the workspace'
+            : 'Restoring the workspace'}
+        </p>
+        <Status tone={status.tone}>{status.label}</Status>
       </div>
-      {!terminal ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          The command was accepted, but the workspace change is not complete
-          yet.
-        </p>
-      ) : null}
-      {operation.status === 'failed' ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
-          The operation failed
-          {operation.errorCode === null ? '.' : ` (${operation.errorCode}).`}
-        </p>
-      ) : null}
+      <p
+        role={operation.status === 'failed' ? 'alert' : undefined}
+        className="text-sm text-muted-foreground"
+      >
+        {sentence(operation)}
+      </p>
       {readError ? (
-        <div className="mt-3">
-          <p role="alert" className="text-sm text-destructive">
-            The latest operation status could not be loaded. The last known
-            state remains visible.
-          </p>
-          <Button
-            className="mt-3"
-            type="button"
-            variant="outline"
-            onClick={onRetryRead}
-          >
-            Retry status
+        <Notice role="alert" tone="attention">
+          The latest status couldn’t be loaded; this is the last one we saw.{' '}
+          <Button type="button" size="xs" variant="ghost" onClick={onRetryRead}>
+            Try again
           </Button>
-        </div>
+        </Notice>
       ) : null}
-      {terminal ? (
+      <details className="text-xs text-subtle-foreground">
+        <summary className="cursor-pointer select-none hover:text-foreground">
+          Details
+        </summary>
+        <dl className="mt-2 grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 font-mono">
+          <dt>Request</dt>
+          <dd className="flex items-center gap-1">
+            {operation.id.slice(0, 4)}…{operation.id.slice(-3)}
+            <CopyButton value={operation.id} label="Copy request ID" />
+          </dd>
+          <dt>Submitted</dt>
+          <dd>{formatDateTime(operation.submittedAt)}</dd>
+          {operation.errorCode === null ? null : (
+            <>
+              <dt>Error code</dt>
+              <dd>{operation.errorCode}</dd>
+            </>
+          )}
+        </dl>
+      </details>
+      {inFlight ? null : (
         <Button
-          className="mt-4"
           type="button"
           variant="ghost"
+          size="sm"
+          className="self-start"
           onClick={onDismiss}
         >
-          Dismiss operation
+          Dismiss
         </Button>
-      ) : null}
-    </div>
+      )}
+    </section>
   );
 }

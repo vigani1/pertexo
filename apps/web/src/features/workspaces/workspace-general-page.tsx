@@ -3,23 +3,50 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
-import {
-  GlassSection,
-  GlassSectionContent,
-  GlassSectionDescription,
-  GlassSectionHeader,
-  GlassSectionTitle,
-} from '@/components/patterns/glass-section';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
+import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
-import { WorkspaceLifecycleSection } from './components/settings/workspace-lifecycle-section';
-import { WorkspaceNameSection } from './components/settings/workspace-name-section';
+import { formatDate } from '@/lib/format-time';
+import { WorkspaceDangerZone } from './components/settings/workspace-danger-zone';
+import { WorkspaceNameField } from './components/settings/workspace-name-field';
+import { ROLE_NAMES } from './model/workspace-roles';
 import {
   accessibleWorkspacesQueryOptions,
   workspaceLifecycleOperationQueryOptions,
 } from './workspaces.queries';
 
+function Fact({
+  term,
+  children,
+}: Readonly<{ term: string; children: ReactNode }>) {
+  return (
+    <div className="grid gap-1 border-t border-border py-3.5 first:border-t-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+      <dt className="text-sm text-muted-foreground">{term}</dt>
+      <dd className="min-w-0">{children}</dd>
+    </div>
+  );
+}
+
+function CopyableValue({
+  value,
+  shown,
+  label,
+}: Readonly<{ value: string; shown: string; label: string }>) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 font-mono text-sm">
+      <span className="truncate" title={value}>
+        {shown}
+      </span>
+      <CopyButton value={value} label={label} />
+    </span>
+  );
+}
+
+/**
+ * Workspace settings: the name (edited in place), its address and identity,
+ * then the lifecycle behind a clearly fenced danger zone.
+ */
 export function WorkspaceGeneralPage({
   apiClient,
   user,
@@ -48,6 +75,7 @@ export function WorkspaceGeneralPage({
   });
   const handledTerminal = useRef<string | undefined>(undefined);
 
+  // A finished lifecycle request changes the workspace itself; reload it once.
   useEffect(() => {
     const operation = operationQuery.data;
     if (
@@ -70,92 +98,70 @@ export function WorkspaceGeneralPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
+    <div className="flex max-w-3xl flex-col gap-8">
+      <PageHeader>
+        <PageHeaderTitle>Settings</PageHeaderTitle>
+      </PageHeader>
+
+      <section aria-labelledby="general-title" className="flex flex-col gap-2">
+        <h2 id="general-title" className="text-lg font-semibold">
           General
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Review workspace details and manage its lifecycle.
-        </p>
-      </header>
+        </h2>
+        <dl>
+          <Fact term="Name">
+            <WorkspaceNameField
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+              onWorkspaceChanged={onWorkspaceChanged}
+              onAccessLost={onWorkspaceChanged}
+            />
+          </Fact>
+          <Fact term="URL slug">
+            <CopyableValue
+              value={workspace.slug}
+              shown={workspace.slug}
+              label="Copy URL slug"
+            />
+          </Fact>
+          <Fact term="Workspace ID">
+            <CopyableValue
+              value={workspace.id}
+              shown={`${workspace.id.slice(0, 8)}…`}
+              label="Copy workspace ID"
+            />
+          </Fact>
+          <Fact term="Your role">
+            <span className="text-sm">{ROLE_NAMES[workspace.role]}</span>
+          </Fact>
+          <Fact term="Created">
+            <span className="font-mono text-sm">
+              {formatDate(workspace.createdAt)}
+            </span>
+          </Fact>
+        </dl>
+      </section>
 
-      <div className="grid gap-6">
-        <WorkspaceNameSection
+      {canManage ? (
+        <WorkspaceDangerZone
           apiClient={apiClient}
-          userId={user.id}
           workspace={workspace}
-          onWorkspaceChanged={onWorkspaceChanged}
-          onAccessLost={onWorkspaceChanged}
+          operation={operationQuery.data}
+          operationLoading={
+            operationQuery.isPending && operationId !== undefined
+          }
+          operationReadError={operationQuery.isError}
+          onOperationAccepted={(id) => {
+            onOperationChange(id);
+          }}
+          onOperationDismissed={() => {
+            onOperationChange();
+          }}
+          onRetryOperationRead={() => {
+            void operationQuery.refetch();
+          }}
         />
-        <GlassSection>
-          <GlassSectionHeader>
-            <GlassSectionTitle>Workspace identity</GlassSectionTitle>
-            <GlassSectionDescription>
-              The slug is a stable identifier and remains read-only.
-            </GlassSectionDescription>
-          </GlassSectionHeader>
-          <GlassSectionContent>
-            <dl className="grid gap-6 sm:grid-cols-3">
-              <div className="min-w-0">
-                <dt className="text-xs font-medium text-muted-foreground uppercase">
-                  Name
-                </dt>
-                <dd className="mt-2 break-all text-sm">{workspace.name}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase">
-                  Slug
-                </dt>
-                <dd className="mt-2 break-all font-mono text-sm">
-                  {workspace.slug}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase">
-                  Status
-                </dt>
-                <dd className="mt-2">
-                  <Badge
-                    variant={
-                      workspace.status === 'pending_deletion'
-                        ? 'destructive'
-                        : workspace.status === 'suspended'
-                          ? 'muted'
-                          : 'secondary'
-                    }
-                  >
-                    {workspace.status.replace('_', ' ')}
-                  </Badge>
-                </dd>
-              </div>
-            </dl>
-          </GlassSectionContent>
-        </GlassSection>
-
-        {canManage ? (
-          <WorkspaceLifecycleSection
-            apiClient={apiClient}
-            workspace={workspace}
-            {...(operationQuery.data === undefined
-              ? {}
-              : { operation: operationQuery.data })}
-            operationLoading={
-              operationQuery.isPending && operationId !== undefined
-            }
-            operationReadError={operationQuery.isError}
-            onOperationAccepted={(id) => {
-              onOperationChange(id);
-            }}
-            onOperationDismissed={() => {
-              onOperationChange();
-            }}
-            onRetryOperationRead={() => {
-              void operationQuery.refetch();
-            }}
-          />
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }

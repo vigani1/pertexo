@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import {
+  describeCommandError,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
+import {
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
 } from '../workspaces.api';
@@ -16,6 +20,10 @@ type LifecycleAttempt = Readonly<{
   idempotencyKey: string;
 }>;
 
+/**
+ * Deletion and restore requests. An unconfirmed request keeps its exact
+ * reason and key until it is retried or dismissed.
+ */
 export function useWorkspaceLifecycleCommand({
   apiClient,
   workspaceId,
@@ -66,7 +74,7 @@ export function useWorkspaceLifecycleCommand({
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
-      const uncertain = isUncertain(cause);
+      const uncertain = isUncertainOutcome(cause);
       if (!uncertain) attempt.current = undefined;
       setRetryAvailable(uncertain);
       setError(lifecycleCommandError(cause, current.intent.command));
@@ -100,28 +108,20 @@ export function useWorkspaceLifecycleCommand({
   };
 }
 
-function isUncertain(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    (error.kind === 'network' ||
-      error.kind === 'timeout' ||
-      error.kind === 'protocol')
-  );
-}
-
 function lifecycleCommandError(
   error: unknown,
   command: LifecycleIntent['command'],
 ): string {
-  const action =
-    command === 'request-deletion'
-      ? 'request deletion'
-      : 'restore the workspace';
-  if (isUncertain(error))
-    return `The result is uncertain. Retry to ${action} with the same command key.`;
-  if (isApiError(error) && error.status === 403)
-    return `You no longer have permission to ${action}.`;
+  const subject =
+    command === 'request-deletion' ? 'the deletion request' : 'the restore';
+  if (isUncertainOutcome(error))
+    return `We couldn’t confirm whether ${subject} went through. Try again — it’s the same request, so it can’t run twice.`;
   if (isApiError(error) && error.status === 409)
-    return 'The workspace state changed. Refresh before trying again.';
-  return `Could not ${action}.`;
+    return 'The workspace changed meanwhile. Reload the page to see where it stands.';
+  return describeCommandError(
+    error,
+    command === 'request-deletion'
+      ? 'requesting deletion'
+      : 'restoring the workspace',
+  );
 }
