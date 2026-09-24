@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { connectionTestRequestSchema } from '@pertexo/contracts/schemas/connections';
 import type { ConnectionTestRequest } from '@pertexo/contracts/schemas/connections';
-import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
@@ -10,7 +10,6 @@ import {
   LabelledField,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeTestOutcome } from '../../model/connection-health';
@@ -183,23 +182,20 @@ export function ConnectionTestPanel({
           )}
         </Field>
       ) : null}
-      <Button
+      <ProgressButton
         type="button"
         variant="default"
         className="self-start"
-        disabled={disabled || running}
+        pending={running}
+        pendingLabel="Testing…"
+        disabled={disabled}
         onClick={() => {
           const next = request();
           if (next !== undefined) onRun(next);
         }}
       >
-        {running ? <LoadingOrb data-icon="inline-start" /> : null}
-        {running
-          ? 'Testing…'
-          : test.phase === 'idle'
-            ? RUN_LABEL[provider]
-            : 'Test again'}
-      </Button>
+        {test.phase === 'idle' ? RUN_LABEL[provider] : 'Test again'}
+      </ProgressButton>
     </div>
   );
 }

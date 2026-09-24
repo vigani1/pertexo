@@ -9,6 +9,8 @@ type ProgressButtonProps = Omit<ComponentProps<typeof Button>, 'children'> &
     pending?: boolean;
     /** The swapped verb while the request is in flight, e.g. "Signing in…". */
     pendingLabel: string;
+    /** A leading icon the mini orb replaces while pending. */
+    icon?: ReactNode;
     /** Seconds until the action is allowed again (rate limit or cooldown). */
     waitSeconds?: number;
     /** Leads the countdown, e.g. "Try again in" or "Resend in". */
@@ -26,13 +28,14 @@ export function ProgressButton({
   pendingLabel,
   waitSeconds = 0,
   waitLabel = 'Try again in',
+  icon,
   disabled,
   ...props
 }: ProgressButtonProps) {
   const waiting = waitSeconds > 0;
   return (
     <Button disabled={disabled === true || pending || waiting} {...props}>
-      {pending ? <LoadingOrb data-icon="inline-start" /> : null}
+      {pending ? <LoadingOrb data-icon="inline-start" /> : icon}
       {pending ? (
         pendingLabel
       ) : waiting ? (

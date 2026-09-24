@@ -1,10 +1,10 @@
 import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   Sheet,
   SheetBody,
@@ -214,19 +214,17 @@ export function NewWorkflowSheet({
             >
               Cancel
             </SheetClose>
-            <Button
+            <ProgressButton
               type="submit"
               variant="primary"
-              disabled={mutation.isPending}
               className="min-w-36"
+              pending={mutation.isPending}
+              pendingLabel="Creating…"
             >
-              {mutation.isPending ? <LoadingOrb /> : null}
-              {mutation.isPending
-                ? 'Creating…'
-                : mutation.isError && isUncertainOutcome(mutation.error)
-                  ? 'Retry safely'
-                  : 'Create workflow'}
-            </Button>
+              {mutation.isError && isUncertainOutcome(mutation.error)
+                ? 'Retry safely'
+                : 'Create workflow'}
+            </ProgressButton>
           </SheetFooter>
         </form>
       </SheetContent>

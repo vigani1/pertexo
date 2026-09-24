@@ -1,11 +1,11 @@
 import { useId, useRef, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FieldGroup } from '@/components/ui/field';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import {
   SheetBody,
@@ -268,16 +268,18 @@ export function DestinationForm({
         >
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={mutation.isPending}>
-          {mutation.isPending ? <LoadingOrb data-icon="inline-start" /> : null}
-          {mutation.isPending
-            ? 'Saving…'
-            : uncertain
-              ? 'Try again'
-              : editing
-                ? 'Save changes'
-                : 'Add destination'}
-        </Button>
+        <ProgressButton
+          type="submit"
+          variant="primary"
+          pending={mutation.isPending}
+          pendingLabel="Saving…"
+        >
+          {uncertain
+            ? 'Try again'
+            : editing
+              ? 'Save changes'
+              : 'Add destination'}
+        </ProgressButton>
       </SheetFooter>
     </form>
   );

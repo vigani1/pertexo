@@ -2,10 +2,10 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import { workspaceRenameRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { PencilIcon } from 'lucide-react';
 import { useId, useState } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { LabelledField } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -216,11 +216,8 @@ function SaveActions({
   >;
   onCancel: () => void;
 }>) {
-  const busy = command.pending || command.refreshPending;
   let label = 'Save';
-  if (command.pending) label = 'Saving…';
-  else if (command.refreshPending) label = 'Refreshing…';
-  else if (command.retryAvailable) label = 'Try again';
+  if (command.retryAvailable) label = 'Try again';
   else if (command.accepted) label = 'Refresh';
   return (
     <div className="flex flex-wrap gap-2">
@@ -234,10 +231,14 @@ function SaveActions({
           Cancel
         </Button>
       )}
-      <Button type="submit" variant="default" disabled={busy}>
-        {busy ? <LoadingOrb data-icon="inline-start" /> : null}
+      <ProgressButton
+        type="submit"
+        variant="default"
+        pending={command.pending || command.refreshPending}
+        pendingLabel={command.pending ? 'Saving…' : 'Refreshing…'}
+      >
         {label}
-      </Button>
+      </ProgressButton>
     </div>
   );
 }

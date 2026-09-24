@@ -1,6 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
 import { useRef } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import type { PublishSummary } from '../model/publish-summary';
@@ -123,25 +123,21 @@ export function PublishLens({
           >
             Cancel
           </DialogClose>
-          <Button
+          <ProgressButton
             type="button"
             variant="primary"
-            disabled={pending || blockingGroups.length > 0}
+            pending={pending}
+            pendingLabel="Publishing…"
+            icon={<ArrowUpFromLineIcon data-icon="inline-start" />}
+            disabled={blockingGroups.length > 0}
             onClick={onPublish}
           >
-            {pending ? (
-              <LoadingOrb />
-            ) : (
-              <ArrowUpFromLineIcon data-icon="inline-start" />
-            )}
-            {pending
-              ? 'Publishing…'
-              : recoveryPending
-                ? 'Retry original publish'
-                : error === undefined
-                  ? `Publish ${versionLabel}`
-                  : 'Try again'}
-          </Button>
+            {recoveryPending
+              ? 'Retry original publish'
+              : error === undefined
+                ? `Publish ${versionLabel}`
+                : 'Try again'}
+          </ProgressButton>
         </div>
       </DialogContent>
     </Dialog>
