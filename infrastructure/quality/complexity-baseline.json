@@ -6,7 +6,6 @@
   },
   "fileHotspots": {
     "apps/api/src/workflow-runs/use-cases.ts": 523,
-    "apps/web/src/routes/route-tree.ts": 545,
     "apps/worker/src/config/worker-config.ts": 574,
     "apps/worker/src/execution/failure-notification-delivery.ts": 519,
     "apps/worker/src/transport/outbox-dispatcher.ts": 627,
