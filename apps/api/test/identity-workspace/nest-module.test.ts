@@ -126,6 +126,78 @@ describe('identity/workspace Nest module', () => {
     }
   });
 
+  it('maps a verified OIDC login onto workspace identity persistence', async () => {
+    const nonce = 'n'.repeat(43);
+    const mapped: unknown[] = [];
+    const context = await NestFactory.createApplicationContext(
+      {
+        ...IdentityWorkspaceModule.register({
+          ...dependencies,
+          provider: {
+            authorizationUrl: () => 'https://issuer.example.test/authorize',
+            exchangeCode: () =>
+              Promise.resolve({
+                issuer: 'https://issuer.example.test',
+                subject: 'subject-1',
+                audience: 'client',
+                nonce,
+                email: 'person@example.test',
+                displayName: 'Person Example',
+              }),
+          },
+          transactions: {
+            create: () => Promise.resolve(),
+            consume: () =>
+              Promise.resolve({
+                status: 'ok' as const,
+                transaction: {
+                  stateDigest: 'a'.repeat(64),
+                  browserBindingDigest: 'b'.repeat(64),
+                  codeVerifier: 'v'.repeat(43),
+                  nonce,
+                  expiresAt: new Date(Date.now() + 60_000),
+                },
+              }),
+          },
+          persistence: {
+            ...dependencies.persistence,
+            resolveOrCreateIdentity: (input) => {
+              mapped.push(input);
+              return Promise.resolve({
+                userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              });
+            },
+          },
+        }),
+        imports: [HttpPlatformModule],
+      },
+      { logger: false, abortOnError: false },
+    );
+
+    try {
+      const login = await context
+        .get(OidcLoginService)
+        .completeLogin(
+          { state: 's'.repeat(43), code: 'authorization-code' },
+          'browser-binding',
+        );
+
+      expect(mapped).toEqual([
+        {
+          issuer: 'https://issuer.example.test',
+          providerSubject: 'subject-1',
+          email: 'person@example.test',
+          displayName: 'Person Example',
+        },
+      ]);
+      expect(login.internalIdentity).toEqual({
+        userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      });
+    } finally {
+      await context.close();
+    }
+  });
+
   it('fails closed through public use cases when optional workspace persistence is not configured', async () => {
     const context = await NestFactory.createApplicationContext(
       {

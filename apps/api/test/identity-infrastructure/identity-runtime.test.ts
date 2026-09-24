@@ -97,6 +97,45 @@ describe('identity runtime composition', () => {
     await runtime.close();
   });
 
+  it('wires legacy OIDC as migration proof beside Better Auth', async () => {
+    const runtime = await createApiIdentityRuntime(
+      {
+        ...identityConfig,
+        publicWebOrigin: 'https://app.example.test',
+        betterAuth: {
+          secret: 'migration-runtime-secret-at-least-32-characters',
+          mailMode: 'local',
+          providers: {},
+        },
+      },
+      databaseConfig,
+      {
+        persistence: {
+          database: identityDatabase(),
+          transactions: transactionStore(),
+        },
+      },
+    );
+
+    try {
+      expect(runtime.dependencies.config.allowGenericOidcLogin).toBe(false);
+      expect(runtime.dependencies.transactions).toBeDefined();
+      const response = await runtime.betterAuth?.auth.handler(
+        new Request('https://app.example.test/v1/auth/legacy-migration/start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ provider: 'google' }),
+        }),
+      );
+      expect(response?.status).toBe(404);
+      await expect(response?.json()).resolves.toEqual({
+        code: 'MIGRATION_UNAVAILABLE',
+      });
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it('blocks standalone cutover when active legacy-only users remain', async () => {
     await expect(
       createApiIdentityRuntime(
@@ -296,7 +335,8 @@ describe('identity runtime composition', () => {
       .mockResolvedValueOnce({ status: 'expired' })
       .mockResolvedValueOnce({ status: 'replayed', transaction })
       .mockResolvedValueOnce({ status: 'binding_mismatch' });
-    const databaseTransactions = { ...transactionStore(), consume };
+    const create = vi.fn().mockResolvedValue(undefined);
+    const databaseTransactions = { ...transactionStore(), create, consume };
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
@@ -308,6 +348,8 @@ describe('identity runtime composition', () => {
       },
     );
 
+    await runtime.dependencies.transactions?.create(transaction);
+    expect(create).toHaveBeenCalledExactlyOnceWith(transaction);
     await expect(
       runtime.dependencies.transactions?.consume(
         transaction.stateDigest,
