@@ -23,7 +23,7 @@ export function AuroraLoadingPanel({
   );
 }
 
-export function AuroraBorder() {
+function AuroraBorder() {
   return (
     <div data-slot="aurora-border" className="aurora-border" aria-hidden="true">
       <div className="aurora-border-glow">

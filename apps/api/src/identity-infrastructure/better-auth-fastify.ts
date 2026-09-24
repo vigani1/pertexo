@@ -67,7 +67,7 @@ export function registerAuthenticationCapabilities(
   });
 }
 
-export async function dispatchBetterAuthRequest(
+async function dispatchBetterAuthRequest(
   request: FastifyRequest,
   reply: FastifyReply,
   handler: AuthenticationHandler,
