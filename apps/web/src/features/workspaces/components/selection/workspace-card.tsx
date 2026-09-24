@@ -4,7 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { WorkspaceMark } from '../shell/workspace-mark';
-import { roleName, workspaceAvailability } from './workspace-availability';
+import {
+  roleName,
+  workspaceAvailability,
+} from '../../model/workspace-availability';
 
 /** One workspace: its mark, name, your role, its state and "last opened". */
 export function WorkspaceCard({

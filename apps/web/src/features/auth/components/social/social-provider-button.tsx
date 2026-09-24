@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { providerName, type SocialProvider } from './social-provider';
+import { providerName, type SocialProvider } from '../../model/social-provider';
 
 type SocialProviderButtonProps = Readonly<
   Omit<ComponentProps<typeof Button>, 'children'> & {

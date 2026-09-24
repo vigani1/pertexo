@@ -18,11 +18,11 @@ import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.
 import {
   failureNotificationDestinationsQueryOptions,
   type FailureNotificationDestinationList,
-} from '@/features/failure-notifications/public';
+} from '@/features/failure-notifications/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../mutations/use-notification-commands';
-import { visibleSettingsData } from '../settings-query';
+import { visibleSettingsData } from '../../model/settings-query';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();

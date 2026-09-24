@@ -8,7 +8,7 @@ import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { useUnlinkAccountMethod } from '../../account-security.mutations';
 import { ProviderMark } from '../social/social-provider-button';
-import { isSocialProvider, providerName } from '../social/social-provider';
+import { isSocialProvider, providerName } from '../../model/social-provider';
 import { accountCommandFailure } from '../../model/account-failure';
 import { AccountSection, FreshSignInLink } from './account-section';
 import { LinkProviderDialog } from './link-provider-dialog';

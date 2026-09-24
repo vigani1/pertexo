@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
-import type { EditorStore } from './editor.store';
-import { stepTitle } from './graph-adapter';
+import type { EditorStore } from './model/editor.store';
+import { stepTitle } from './model/graph-adapter';
 import {
   duplicateWorkflowNodes,
   removeWorkflowElements,
   restoreWorkflowElements,
   type RemovedElements,
-} from './graph-commands';
+} from './model/graph-commands';
 
 export type EditorFocusTarget = Readonly<{
   nodeId: string;

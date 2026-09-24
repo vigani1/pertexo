@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { EditorStore } from './editor.store';
+import type { EditorStore } from './model/editor.store';
 import {
   createSaveCoordinator,
   type SaveCoordinatorTransport,
-} from './save-coordinator';
+} from './model/save-coordinator';
 
 export function useSaveCoordinator(
   store: EditorStore,

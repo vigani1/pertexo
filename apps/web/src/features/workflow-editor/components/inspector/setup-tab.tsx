@@ -8,7 +8,7 @@ import { FieldGroup } from '@/components/ui/field';
 import { schemaFields } from '../../model/inspector-draft';
 import { ConfigJsonEditor } from './config-json-editor';
 import { ConnectionSlot } from './connection-slot';
-import type { NodeFormApi } from './node-form';
+import type { NodeFormApi } from '../../model/node-form';
 import { SchemaField } from './schema-field';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];

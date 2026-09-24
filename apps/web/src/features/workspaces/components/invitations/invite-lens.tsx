@@ -19,7 +19,7 @@ import type { InvitationCommand } from '../../mutations/use-invitation-command';
 import { RoleSelect } from '../members/role-select';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';
-import { useInviteBatch } from './use-invite-batch';
+import { useInviteBatch } from '../../use-invite-batch';
 
 /**
  * Invite several people at once, as chips, with the role they start with.

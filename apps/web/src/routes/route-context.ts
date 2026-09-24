@@ -6,9 +6,9 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
-} from '@/features/auth/session.queries.public';
+} from '@/features/auth/queries.public';
 import { publishSessionChange } from '@/features/auth/session-sync.public';
-import { authoringCatalogQueryOptions } from '@/features/catalog/public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 

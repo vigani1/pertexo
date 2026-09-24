@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   settingsQueryIsUnavailable,
   type SettingsQuery,
-} from './settings-query';
+} from '../model/settings-query';
 
 /**
  * A titled band of a hub tab: the heading and a sentence on the left, the

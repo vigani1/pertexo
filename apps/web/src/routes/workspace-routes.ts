@@ -32,11 +32,11 @@ import {
   recentWorkflowsQueryOptions,
   workflowsInfiniteQueryOptions,
 } from '@/features/workflows/queries.public';
-import { workspaceLifecycleOperationQueryOptions } from '@/features/workspaces/lifecycle.queries.public';
 import {
   parseTeamSearch,
+  workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
-} from '@/features/workspaces/members.queries.public';
+} from '@/features/workspaces/queries.public';
 import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
 import {

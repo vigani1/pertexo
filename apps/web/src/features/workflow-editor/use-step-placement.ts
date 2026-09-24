@@ -1,9 +1,9 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
-import type { EditorStore } from './editor.store';
-import { addDefinitionNode, freePosition } from './graph-commands';
-import { findDefinitionByIdentity } from './step-catalog';
+import type { EditorStore } from './model/editor.store';
+import { addDefinitionNode, freePosition } from './model/graph-commands';
+import { findDefinitionByIdentity } from './model/step-catalog';
 
 type Position = Readonly<{ x: number; y: number }>;
 

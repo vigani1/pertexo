@@ -15,9 +15,9 @@ import {
 } from '../../model/editor-store-context';
 import { stepTitle } from '../../model/graph-adapter';
 import { connectWorkflowNodes } from '../../model/graph-commands';
-import type { useEditorActions } from '../../model/use-editor-actions';
+import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
-import type { InspectorTab } from '../../model/use-inspector-navigation';
+import type { InspectorTab } from '../../use-inspector-navigation';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 

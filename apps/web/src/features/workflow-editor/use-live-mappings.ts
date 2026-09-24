@@ -7,7 +7,7 @@ import {
   validateInputMappingRows,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
-} from './input-mappings';
+} from './model/input-mappings';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

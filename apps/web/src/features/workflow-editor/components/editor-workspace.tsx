@@ -13,11 +13,11 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../model/editor-store-context';
-import type { useCanvasEffects } from '../model/use-canvas-effects';
-import type { useEditorActions } from '../model/use-editor-actions';
-import { useEditorShortcuts } from '../model/use-editor-shortcuts';
-import { useInspectorNavigation } from '../model/use-inspector-navigation';
-import { useStepPlacement } from '../model/use-step-placement';
+import type { useCanvasEffects } from '../use-canvas-effects';
+import type { useEditorActions } from '../use-editor-actions';
+import { useEditorShortcuts } from '../use-editor-shortcuts';
+import { useInspectorNavigation } from '../use-inspector-navigation';
+import { useStepPlacement } from '../use-step-placement';
 import { AddStepLens } from './add-step/add-step-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';

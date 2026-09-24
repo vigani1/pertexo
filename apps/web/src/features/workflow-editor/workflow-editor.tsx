@@ -11,8 +11,8 @@ import {
 } from '@tanstack/react-query';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useMemo, useState } from 'react';
-import { authoringCatalogQueryOptions } from '@/features/catalog/public';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import {
   useAutoValidation,
   useWorkflowCommandSession,
@@ -23,7 +23,7 @@ import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
 import {
   workflowKeys,
   workflowSummaryQueryOptions,
-} from '@/features/workflows/public';
+} from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { EditorCommandBar } from './components/chrome/editor-command-bar';
 import { ConflictBar } from './components/chrome/conflict-bar';
@@ -35,15 +35,15 @@ import {
 import { EditorPaused } from './components/chrome/editor-paused';
 import { EditorWorkspace } from './components/editor-workspace';
 import { EditorProvider } from './model/editor-provider';
-import { useCanvasEffects } from './model/use-canvas-effects';
+import { useCanvasEffects } from './use-canvas-effects';
 import {
   useEditorStore,
   useEditorStoreApi,
 } from './model/editor-store-context';
-import { useEditorActions } from './model/use-editor-actions';
-import { useEditorSavePipeline } from './model/use-editor-save-pipeline';
-import { useEditorSessionVerification } from './model/use-editor-session-verification';
-import { useLeaveGuard } from './model/use-leave-guard';
+import { useEditorActions } from './use-editor-actions';
+import { useEditorSavePipeline } from './use-editor-save-pipeline';
+import { useEditorSessionVerification } from './use-editor-session-verification';
+import { useLeaveGuard } from './use-leave-guard';
 import { workflowDraftQueryOptions } from './workflow-editor.queries';
 
 export function WorkflowEditorPage({

@@ -21,7 +21,7 @@ import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useLatestRequest } from '../../use-latest-request';
 import { SocialProviderGrid } from '../social/social-provider-grid';
-import { providerName, type SocialProvider } from '../social/social-provider';
+import { providerName, type SocialProvider } from '../../model/social-provider';
 import { Notice } from '@/components/ui/notice';
 
 type Method = AccountSecurityResponse['methods'][number];

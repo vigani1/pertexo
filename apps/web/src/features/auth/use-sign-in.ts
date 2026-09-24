@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  providerName,
-  type SocialProvider,
-} from './components/social/social-provider';
+import { providerName, type SocialProvider } from './model/social-provider';
 import {
   isEmailNotVerified,
   providerStartFailure,

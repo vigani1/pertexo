@@ -4,7 +4,7 @@ import {
   WorkflowHubBar,
   type WorkflowHubTab,
 } from '@/features/workflows/hub.public';
-import { workflowSummaryQueryOptions } from '@/features/workflows/public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import { useWorkflowHubScope } from './workflow-hub-scope';
 
 /** Layout for the scrolling hub tabs: the sticky bar, then the tab page. */

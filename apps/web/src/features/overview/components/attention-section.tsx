@@ -9,7 +9,7 @@ import {
   runAttentionItems,
   workflowAttentionItems,
 } from '../model/needs-attention';
-import { mergedBlockState, type BlockQuery } from './home-block-state';
+import { mergedBlockState, type BlockQuery } from '../model/home-block-state';
 import { NeedsAttention } from './needs-attention';
 import { useSetupReads } from '../use-setup-reads';
 

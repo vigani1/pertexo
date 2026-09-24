@@ -4,7 +4,10 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import type { WorkspaceRenameResponse } from '@pertexo/contracts/schemas/identity-workspace';
+import type {
+  WorkspaceRenameRequest,
+  WorkspaceRenameResponse,
+} from '@pertexo/contracts/schemas/identity-workspace';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
@@ -21,10 +24,12 @@ import {
   accessibleWorkspacesQueryOptions,
   workspaceKeys,
 } from '../workspaces.queries';
-import {
-  type WorkspaceRenameAttempt,
-  workspaceRenameMutationOptions,
-} from '../workspaces.mutations';
+import { renameWorkspace } from '../workspaces.api';
+
+type WorkspaceRenameAttempt = Readonly<{
+  body: WorkspaceRenameRequest;
+  idempotencyKey: string;
+}>;
 
 type RenameError = Readonly<{
   kind: 'conflict' | 'other' | 'verification';
@@ -167,9 +172,10 @@ export function useWorkspaceRename({
   onAccessLost: () => void;
 }>) {
   const queryClient = useQueryClient();
-  const mutation = useMutation(
-    workspaceRenameMutationOptions(apiClient, workspaceId),
-  );
+  const mutation = useMutation({
+    mutationFn: (attempt: WorkspaceRenameAttempt) =>
+      renameWorkspace(apiClient, workspaceId, attempt),
+  });
   const [state, setState] = useState<State>({ kind: 'idle' });
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);

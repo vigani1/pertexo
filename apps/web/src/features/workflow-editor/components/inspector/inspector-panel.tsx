@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
 import { findDefinition } from '../../model/graph-adapter';
-import type { EditorFocusTarget } from '../../model/use-editor-actions';
-import type { InspectorTab } from '../../model/use-inspector-navigation';
+import type { EditorFocusTarget } from '../../use-editor-actions';
+import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 
 /**

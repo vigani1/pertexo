@@ -11,14 +11,14 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
-import type { EditorFocusTarget } from '../../model/use-editor-actions';
-import type { InspectorTab } from '../../model/use-inspector-navigation';
+import type { EditorFocusTarget } from '../../use-editor-actions';
+import type { InspectorTab } from '../../use-inspector-navigation';
 import { updateWorkflowNode } from '../../model/graph-commands';
-import { createScratchTracker } from '../../model/use-live-field';
+import { createScratchTracker } from '../../use-live-field';
 import { AboutTab } from './about-tab';
 import { InputsTab } from './inputs-tab';
 import { InspectorHeader, type StepMenuActions } from './inspector-header';
-import { fieldControlId, type NodeFormApi } from './node-form';
+import { fieldControlId, type NodeFormApi } from '../../model/node-form';
 import { SetupTab } from './setup-tab';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];

@@ -10,8 +10,10 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { workflowSummaryQueryOptions } from '@/features/workflows/public';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import {
+  workflowsInfiniteQueryOptions,
+  workflowSummaryQueryOptions,
+} from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { LiveRunCounts } from './components/run-count';
 import { RunFilters } from './components/run-filters/run-filters';

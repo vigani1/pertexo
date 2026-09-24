@@ -6,10 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from './auth.queries';
 import { MigrationSteps } from './components/migration/migration-steps';
 import { SocialProviderGrid } from './components/social/social-provider-grid';
-import {
-  providerName,
-  type SocialProvider,
-} from './components/social/social-provider';
+import { providerName, type SocialProvider } from './model/social-provider';
 import {
   AuthLens,
   AuthLensDescription,
