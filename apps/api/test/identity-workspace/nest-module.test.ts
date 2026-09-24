@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CreateWorkspaceUseCase,
+  INVITATION_ALLOWED_ORIGIN,
   IdentityWorkspaceModule,
+  InvitationAcceptanceController,
   InvitationAcceptanceUseCase,
   OidcController,
   RenameWorkspaceUseCase,
@@ -82,6 +84,17 @@ const dependencies: IdentityWorkspaceDependencies = {
   authorization: { findAccess: () => Promise.resolve(undefined) },
 };
 
+/** Identity dependencies for a Better Auth deployment without generic OIDC. */
+function sessionAuthorityDependencies(
+  config: IdentityWorkspaceDependencies['config'],
+): IdentityWorkspaceDependencies {
+  return {
+    config,
+    persistence: dependencies.persistence,
+    authorization: dependencies.authorization,
+  };
+}
+
 const identityWorkspaceTestModule = {
   ...IdentityWorkspaceModule.register(dependencies),
   imports: [HttpPlatformModule],
@@ -103,6 +116,67 @@ describe('identity/workspace Nest module', () => {
         ]),
       );
     }
+  });
+
+  it('registers only the session authority surface without generic OIDC', async () => {
+    const dynamic = IdentityWorkspaceModule.register(
+      sessionAuthorityDependencies({
+        publicWebOrigin: 'https://app.example.test',
+      }),
+    );
+
+    expect(dynamic.controllers).not.toContain(OidcController);
+    expect(dynamic.controllers).not.toContain(InvitationAcceptanceController);
+    expect(dynamic.controllers).toContain(SessionController);
+    expect(dynamic.exports).not.toContain(OidcLoginService);
+    expect(dynamic.exports).not.toContain(InvitationAcceptanceUseCase);
+    expect(dynamic.providers).toContainEqual({
+      provide: INVITATION_ALLOWED_ORIGIN,
+      useValue: 'https://app.example.test',
+    });
+    const context = await NestFactory.createApplicationContext(
+      { ...dynamic, imports: [HttpPlatformModule] },
+      { logger: false, abortOnError: false },
+    );
+    try {
+      expect(context.get(OpaqueSessionService)).toBeInstanceOf(
+        OpaqueSessionService,
+      );
+      expect(() => context.get(OidcLoginService)).toThrow();
+    } finally {
+      await context.close();
+    }
+  });
+
+  it.each([
+    [
+      'configuration without provider or store',
+      { provider: undefined, transactions: undefined },
+    ],
+    [
+      'a provider without configuration',
+      { config: {}, transactions: undefined },
+    ],
+    [
+      'a transaction store without configuration',
+      { config: {}, provider: undefined },
+    ],
+  ])('rejects generic OIDC wiring with %s', (_name, changed) => {
+    const selected = Object.fromEntries(
+      Object.entries({ ...dependencies, ...changed }).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ) as unknown as IdentityWorkspaceDependencies;
+
+    expect(() => IdentityWorkspaceModule.register(selected)).toThrow(
+      'OIDC configuration, provider, and transaction store must be supplied together',
+    );
+  });
+
+  it('requires a browser origin when neither public origin nor OIDC is configured', () => {
+    expect(() =>
+      IdentityWorkspaceModule.register(sessionAuthorityDependencies({})),
+    ).toThrow('Identity public web origin is not configured');
   });
 
   it('resolves explicit service providers through a real Nest application context', async () => {
