@@ -42,30 +42,6 @@ export function getWorkflowsPage(
   });
 }
 
-export async function findWorkflowSummary(
-  apiClient: ApiClient,
-  workspaceId: string,
-  workflowId: string,
-  signal?: AbortSignal,
-): Promise<WorkflowSummary | null> {
-  let after: string | undefined;
-  const seen = new Set<string>();
-  for (let page = 0; page < 40; page += 1) {
-    const response = await getWorkflowsPage(apiClient, workspaceId, {
-      ...(after === undefined ? {} : { after }),
-      ...(signal === undefined ? {} : { signal }),
-    });
-    const match = response.items.find((item) => item.id === workflowId);
-    if (match !== undefined) return match;
-    if (response.nextCursor === null) return null;
-    if (seen.has(response.nextCursor))
-      throw new Error('Workflow pagination repeated a cursor.');
-    seen.add(response.nextCursor);
-    after = response.nextCursor;
-  }
-  throw new Error('Workflow lookup exceeded its bounded page limit.');
-}
-
 export async function getWorkflowSummary(
   apiClient: ApiClient,
   workspaceId: string,

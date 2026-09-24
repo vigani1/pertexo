@@ -68,7 +68,7 @@ export function useScheduleCommand({
       setError(
         settingsCommandError(
           cause,
-          `${enabled ? 'enable' : 'disable'} this schedule`,
+          `turning this schedule ${enabled ? 'on' : 'off'}`,
         ),
       );
       return false;
@@ -83,13 +83,21 @@ export function useScheduleCommand({
 
 export type IssuedWebhookCredentials = Readonly<{
   triggerId: string;
+  command: WebhookCommand;
   response: WebhookManagementCommandResponse;
 }>;
 
 export type WebhookCommandOutcome =
   'blocked' | 'complete' | 'credentials' | 'failed';
 
-type WebhookCommand = 'provision' | 'rotate-endpoint' | 'rotate-secret';
+export type WebhookCommand = 'provision' | 'rotate-endpoint' | 'rotate-secret';
+
+/** What each command does, as the noun phrase used in feedback. */
+export const WEBHOOK_ACTIONS: Readonly<Record<WebhookCommand, string>> = {
+  provision: 'creating the endpoint',
+  'rotate-endpoint': 'rotating the URL',
+  'rotate-secret': 'rotating the signing secret',
+};
 
 type WebhookCommandAttempt = Readonly<{
   triggerId: string;
@@ -118,7 +126,7 @@ export function useWebhookCommand({
   const queryClient = useQueryClient();
   const commands = useCommandAttemptKeys();
   const locked = useRef(false);
-  const [pendingTriggerId, setPendingTriggerId] = useState<string>();
+  const [pending, setPending] = useState<UncertainWebhookCommand>();
   const [credentials, setCredentials] = useState<IssuedWebhookCredentials>();
   const unresolvedAttemptRef = useRef<WebhookCommandAttempt | undefined>(
     undefined,
@@ -161,7 +169,7 @@ export function useWebhookCommand({
     locked.current = true;
     let awaitingAcknowledgement = false;
     const scope = `webhook:${attempt.triggerId}`;
-    setPendingTriggerId(attempt.triggerId);
+    setPending({ triggerId: attempt.triggerId, command: attempt.command });
     setError(undefined);
     try {
       const input =
@@ -187,7 +195,11 @@ export function useWebhookCommand({
       setUnresolvedAttempt(undefined);
       if (response.endpointKey || response.signingSecret) {
         awaitingAcknowledgement = true;
-        setCredentials({ triggerId: attempt.triggerId, response });
+        setCredentials({
+          triggerId: attempt.triggerId,
+          command: attempt.command,
+          response,
+        });
       }
       try {
         await queryClient.invalidateQueries({
@@ -199,7 +211,7 @@ export function useWebhookCommand({
         });
       } catch {
         setError(
-          'The command succeeded, but the webhook list could not be refreshed.',
+          'That worked, but the webhook list couldn’t refresh. Reload to see its latest state.',
         );
       }
       return (
@@ -217,12 +229,10 @@ export function useWebhookCommand({
         unresolvedAttemptRef.current = undefined;
         setUnresolvedAttempt(undefined);
       }
-      setError(
-        settingsCommandError(cause, attempt.command.replaceAll('-', ' ')),
-      );
+      setError(settingsCommandError(cause, WEBHOOK_ACTIONS[attempt.command]));
       return 'failed' satisfies WebhookCommandOutcome;
     } finally {
-      setPendingTriggerId(undefined);
+      setPending(undefined);
       if (!awaitingAcknowledgement) locked.current = false;
     }
   }
@@ -233,9 +243,9 @@ export function useWebhookCommand({
   }
 
   return {
-    pendingTriggerId,
+    pending,
     blocked:
-      pendingTriggerId !== undefined ||
+      pending !== undefined ||
       credentials !== undefined ||
       unresolvedAttempt !== undefined,
     credentials,

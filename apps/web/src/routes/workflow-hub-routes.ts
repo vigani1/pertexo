@@ -2,6 +2,12 @@ import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
 import { workflowIdentifierSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
+import {
+  scheduleTriggersQueryOptions,
+  webhookTriggersQueryOptions,
+  workflowVersionsQueryOptions,
+} from '@/features/workflow-settings/queries.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
 import { workflowRunsInfiniteQueryOptions } from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/public';
@@ -111,11 +117,41 @@ export const workflowRunsRoute = createRoute({
 export const workflowTriggersRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   path: 'triggers',
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace, workflowId } = context;
+    if (workflowId === null) return;
+    await settlePrefetches(context, [
+      queryClient.query(
+        webhookTriggersQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          workflowId,
+        ),
+      ),
+      queryClient.query(
+        scheduleTriggersQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          workflowId,
+        ),
+      ),
+      queryClient.query(
+        workflowVersionsQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          workflowId,
+        ),
+      ),
+    ]);
+  },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Triggers', match.context.workspace.name) }],
   }),
   component: lazyRouteComponent(
-    () => import('./workflow-settings-route'),
+    () => import('./workflow-triggers-route'),
     'WorkflowTriggersRoute',
   ),
 });
@@ -123,11 +159,25 @@ export const workflowTriggersRoute = createRoute({
 export const workflowVersionsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   path: 'versions',
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace, workflowId } = context;
+    if (workflowId === null) return;
+    await settlePrefetches(context, [
+      queryClient.query(
+        workflowVersionsQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+          workflowId,
+        ),
+      ),
+    ]);
+  },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Versions', match.context.workspace.name) }],
   }),
   component: lazyRouteComponent(
-    () => import('./workflow-settings-route'),
+    () => import('./workflow-versions-route'),
     'WorkflowVersionsRoute',
   ),
 });
@@ -135,6 +185,19 @@ export const workflowVersionsRoute = createRoute({
 export const workflowSettingsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   path: 'settings',
+  loader: async ({ context }) => {
+    const { apiClient, queryClient, user, workspace } = context;
+    if (!workspace.capabilities.includes('workflow:update')) return;
+    await settlePrefetches(context, [
+      queryClient.query(
+        failureNotificationDestinationsQueryOptions(
+          apiClient,
+          user.id,
+          workspace.id,
+        ),
+      ),
+    ]);
+  },
   head: ({ match }) => ({
     meta: [
       { title: pageTitle('Workflow settings', match.context.workspace.name) },
