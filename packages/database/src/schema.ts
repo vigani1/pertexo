@@ -1,11 +1,13 @@
 import {
-  users,
   authAccounts,
   authSessions,
   authVerifications,
   authIdentities,
   sessions,
   oidcLoginTransactions,
+} from './schema/authentication.js';
+import {
+  users,
   workspaces,
   workspaceMemberships,
   workspaceMemberRoleCommandReceipts,
@@ -78,12 +80,14 @@ import {
 } from './schema/compatibility.js';
 
 export {
-  users,
   authAccounts,
   authSessions,
   authVerifications,
   authIdentities,
   sessions,
+} from './schema/authentication.js';
+export {
+  users,
   workspaces,
   workspaceMemberships,
   workspaceRenameCommandReceipts,
