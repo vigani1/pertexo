@@ -9,7 +9,6 @@ import {
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
-import { StaleLine } from '@/components/patterns/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -18,24 +17,15 @@ import type { StartChoice } from './components/starter-choice';
 import { WorkflowLifecycleDialog } from './components/workflow-lifecycle-dialog';
 import { WorkflowListEmpty } from './components/workflow-list-empty';
 import { WorkflowListHeader } from './components/workflow-list-header';
-import {
-  WorkflowListError,
-  WorkflowListNoMatches,
-} from './components/workflow-list-states';
-import { WorkflowListToolbar } from './components/workflow-list-toolbar';
-import {
-  WorkflowListFooter,
-  WorkflowRows,
-  WorkflowRowsSkeleton,
-} from './components/workflow-rows';
+import { WorkflowListResults } from './components/workflow-list-results';
+import { WorkflowListError } from './components/workflow-list-states';
+import { WorkflowRowsSkeleton } from './components/workflow-rows';
 import {
   lifecycleIntentFor,
   type LifecycleIntent,
 } from './model/workflow-lifecycle';
 import {
   WORKFLOW_ORDER_BY_SORT,
-  countWorkflowViews,
-  filterWorkflows,
   updateWorkflowListSearch,
   type WorkflowListSearch,
 } from './model/workflow-list-view';
@@ -49,6 +39,36 @@ type LifecycleTarget = Readonly<{
   workflow: WorkflowSummary;
   intent: LifecycleIntent;
 }>;
+
+/** A refetch of pages already on screen, not the first load or a next page. */
+function refreshingInBackground(
+  query: Readonly<{
+    isFetching: boolean;
+    isPending: boolean;
+    isFetchingNextPage: boolean;
+  }>,
+): boolean {
+  return query.isFetching && !query.isPending && !query.isFetchingNextPage;
+}
+
+/** Which of the list's four states is on screen. */
+function listState(
+  pending: boolean,
+  loaded: boolean,
+  empty: boolean,
+): 'loading' | 'failed' | 'empty' | 'results' {
+  if (pending) return 'loading';
+  if (!loaded) return 'failed';
+  return empty ? 'empty' : 'results';
+}
+
+function startersFrom(
+  catalog:
+    | Readonly<{ definitions: Parameters<typeof availableStarters>[0] }>
+    | undefined,
+) {
+  return catalog === undefined ? [] : availableStarters(catalog.definitions);
+}
 
 export function WorkflowListPage({
   apiClient,
@@ -68,7 +88,6 @@ export function WorkflowListPage({
   onSearchChange: (search: WorkflowListSearch) => void;
   onCreated: (workflowId: string) => void;
 }>) {
-  const view = search.view ?? 'active';
   const sort = search.sort ?? 'updated';
   const canCreate = workspace.capabilities.includes('workflow:create');
   // Changing the sort keeps the current rows until the re-sorted pages land.
@@ -97,12 +116,14 @@ export function WorkflowListPage({
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
 
   const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
-  const visible = filterWorkflows(items, { view, query });
   const starters =
-    catalog.data === undefined || starterDraftWriter === undefined
-      ? []
-      : availableStarters(catalog.data.definitions);
+    starterDraftWriter === undefined ? [] : startersFrom(catalog.data);
   const empty = workflows.data !== undefined && items.length === 0;
+  const shown = listState(
+    workflows.isPending,
+    workflows.data !== undefined,
+    empty,
+  );
 
   function openCreate(choice: StartChoice) {
     setStartChoice(choice);
@@ -131,98 +152,46 @@ export function WorkflowListPage({
           openCreate('blank');
         }}
       />
-      {workflows.isFetching &&
-      !workflows.isPending &&
-      !workflows.isFetchingNextPage ? (
+      {refreshingInBackground(workflows) ? (
         <SkeletonThread
           role="status"
           aria-label="Refreshing workflows"
           className="-mt-3 w-full"
         />
       ) : null}
-      {workflows.isPending ? (
-        <WorkflowRowsSkeleton />
-      ) : workflows.data === undefined ? (
+      {shown === 'loading' ? <WorkflowRowsSkeleton /> : null}
+      {shown === 'failed' ? (
         <WorkflowListError
           error={workflows.error}
           retrying={workflows.isFetching}
           onRetry={() => void workflows.refetch()}
         />
-      ) : empty ? (
+      ) : null}
+      {shown === 'empty' ? (
         <WorkflowListEmpty
           canCreate={canCreate}
           starters={starters}
           onStart={openCreate}
         />
-      ) : (
-        <section
-          aria-label="Workspace workflows"
-          className="flex flex-col gap-4"
-        >
-          <WorkflowListToolbar
-            filterRef={filterRef}
-            query={query}
-            view={view}
-            sort={sort}
-            counts={countWorkflowViews(items)}
-            hasMore={workflows.hasNextPage}
-            onQueryChange={setQuery}
-            onViewChange={(next) => {
-              onSearchChange(updateWorkflowListSearch(search, { view: next }));
-            }}
-            onSortChange={(next) => {
-              onSearchChange(updateWorkflowListSearch(search, { sort: next }));
-            }}
-          />
-          {workflows.isRefetchError ? (
-            <StaleLine
-              updatedAt={workflows.dataUpdatedAt}
-              retrying={workflows.isFetching}
-              onRetry={() => void workflows.refetch()}
-            />
-          ) : null}
-          {visible.length === 0 ? (
-            <WorkflowListNoMatches
-              view={view}
-              query={query}
-              onClear={() => {
-                setQuery('');
-                if (query.trim() === '')
-                  onSearchChange(
-                    updateWorkflowListSearch(search, { view: 'all' }),
-                  );
-              }}
-            />
-          ) : (
-            <WorkflowRows
-              apiClient={apiClient}
-              userId={user.id}
-              workspace={workspace}
-              workflows={visible}
-              runs={runs}
-              onLifecycle={(workflow) => {
-                setLifecycle({
-                  workflow,
-                  intent: lifecycleIntentFor(workflow),
-                });
-              }}
-            />
-          )}
-          <WorkflowListFooter
-            hasNextPage={workflows.hasNextPage}
-            loadingNextPage={workflows.isFetchingNextPage}
-            nextPageError={workflows.isFetchNextPageError}
-            filtering={query.trim() !== '' || view !== 'all'}
-            loadedCount={items.length}
-            runCount={
-              runs.enabled && !runs.pending && !runs.failed
-                ? runs.runCount
-                : undefined
-            }
-            onLoadMore={() => void workflows.fetchNextPage()}
-          />
-        </section>
-      )}
+      ) : null}
+      {shown === 'results' ? (
+        <WorkflowListResults
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          workflows={workflows}
+          items={items}
+          search={search}
+          query={query}
+          filterRef={filterRef}
+          runs={runs}
+          onQueryChange={setQuery}
+          onSearchChange={onSearchChange}
+          onLifecycle={(workflow) => {
+            setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
+          }}
+        />
+      ) : null}
       {canCreate ? (
         <NewWorkflowSheet
           apiClient={apiClient}

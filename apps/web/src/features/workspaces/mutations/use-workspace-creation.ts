@@ -64,6 +64,8 @@ export function useWorkspaceCreation({
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
+  // The command owns the refresh: after re-verifying the identity it
+  // invalidates and re-reads the accessible workspaces (refreshDiscovery).
   const mutation = useMutation({
     mutationFn: (attempt: WorkspaceCreationAttempt) =>
       createWorkspace(apiClient, attempt),
