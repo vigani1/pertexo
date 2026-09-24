@@ -37,7 +37,7 @@ import type {
   OidcLoginTransactionStore,
   OidcProviderPort,
 } from '../../identity/index.js';
-import type { ApiIdentityConfig } from '../config/api-config.js';
+import type { ApiIdentityConfig } from '../config/identity-config.js';
 
 export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
