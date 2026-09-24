@@ -156,11 +156,7 @@ export function NodeInspector({
             {testPanel}
           </TabsContent>
           <TabsContent value="about" keepMounted>
-            <AboutTab
-              node={node}
-              definition={definition}
-              onCopyId={actions.onCopyId}
-            />
+            <AboutTab node={node} definition={definition} />
           </TabsContent>
         </div>
       </Tabs>

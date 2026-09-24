@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { CheckIcon, CopyIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { cn } from '@/lib/utils';
 
-/** A labelled value in mono with a copy button that confirms in place. */
+/**
+ * A labelled value shown in full — a secret shown once, an ID for support —
+ * so it can be selected by hand, with the shared copy button beside it.
+ */
 export function CopyField({
   label,
   value,
@@ -16,17 +17,6 @@ export function CopyField({
   display?: string;
   className?: string;
 }>) {
-  const [state, setState] = useState<'idle' | 'copied' | 'blocked'>('idle');
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setState('copied');
-    } catch {
-      setState('blocked');
-    }
-  }
-
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -34,27 +24,11 @@ export function CopyField({
         <code className="min-w-0 flex-1 rounded-md border border-border bg-black/30 px-3 py-2 font-mono text-[0.8rem] break-all text-foreground">
           {display ?? value}
         </code>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={`Copy ${label.toLowerCase()}`}
-          onClick={() => void copy()}
-        >
-          {state === 'copied' ? (
-            <CheckIcon aria-hidden="true" className="text-success" />
-          ) : (
-            <CopyIcon aria-hidden="true" />
-          )}
-        </Button>
+        <CopyButton
+          value={value}
+          label={`Copy ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+        />
       </div>
-      <span role="status" className="text-xs text-subtle-foreground">
-        {state === 'copied'
-          ? 'Copied.'
-          : state === 'blocked'
-            ? 'Your browser blocked copying. Select the text and copy it instead.'
-            : ''}
-      </span>
     </div>
   );
 }

@@ -128,9 +128,12 @@ export function WorkspaceLifecycleOperation({
         </summary>
         <dl className="mt-2 grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 font-mono">
           <dt>Request</dt>
-          <dd className="flex items-center gap-1">
-            {operation.id.slice(0, 4)}…{operation.id.slice(-3)}
-            <CopyButton value={operation.id} label="Copy request ID" />
+          <dd>
+            <CopyButton
+              value={operation.id}
+              label="Copy request ID"
+              display={`${operation.id.slice(0, 4)}…${operation.id.slice(-3)}`}
+            />
           </dd>
           <dt>Submitted</dt>
           <dd>{formatDateTime(operation.submittedAt)}</dd>

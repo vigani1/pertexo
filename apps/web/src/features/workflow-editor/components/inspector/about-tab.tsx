@@ -1,8 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import { CopyIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   describeConnectionRequirement,
   describeRetryBehaviour,
@@ -16,11 +15,9 @@ type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export function AboutTab({
   node,
   definition,
-  onCopyId,
 }: Readonly<{
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
-  onCopyId: () => void;
 }>) {
   const step = describeStep(node.definition.key, definition?.family);
   return (
@@ -56,20 +53,7 @@ export function AboutTab({
         </>
       )}
       <Row term="Step ID">
-        <span className="flex items-center gap-2">
-          <code className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-            {node.id}
-          </code>
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="ghost"
-            aria-label="Copy step ID"
-            onClick={onCopyId}
-          >
-            <CopyIcon />
-          </Button>
-        </span>
+        <CopyButton value={node.id} label="Copy step ID" display={node.id} />
       </Row>
     </dl>
   );

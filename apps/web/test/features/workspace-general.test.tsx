@@ -572,7 +572,7 @@ describe('workspace settings', () => {
     expect(screen.getByText('control-operations')).toBeVisible();
     expect(screen.getByText('Owner')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Copy workspace ID' }),
+      screen.getByRole('button', { name: /^Copy workspace ID / }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Rename workspace' }),

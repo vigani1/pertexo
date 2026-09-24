@@ -28,10 +28,7 @@ function IdentifierFact({
 }: Readonly<{ term: string; value: string; copyLabel: string }>) {
   return (
     <Fact term={term}>
-      <span className="inline-flex items-center gap-1 font-mono text-xs">
-        <span title={value}>{shortId(value)}</span>
-        <CopyButton value={value} label={copyLabel} />
-      </span>
+      <CopyButton value={value} label={copyLabel} display={shortId(value)} />
     </Fact>
   );
 }

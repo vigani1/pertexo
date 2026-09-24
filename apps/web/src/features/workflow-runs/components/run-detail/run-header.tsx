@@ -23,7 +23,7 @@ import {
   isActiveRunStatus,
   runCoreState,
 } from '../../model/run-status';
-import { CopyValueButton } from '../copy-value-button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { CancelRunDialog } from '../run-actions/cancel-run-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-run-dialog';
 
@@ -137,10 +137,10 @@ export function RunHeader({
               {name}
             </span>
           )}
-          <CopyValueButton
+          <CopyButton
             value={run.id}
             display={shortRunId(run.id)}
-            label="run ID"
+            label="Copy run ID"
           />
           <RunLiveIndicator
             status={liveStatus}

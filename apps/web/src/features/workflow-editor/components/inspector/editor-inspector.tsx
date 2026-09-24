@@ -3,7 +3,7 @@ import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections'
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
 import { useState, type Ref } from 'react';
-import { useNotifications } from '@/components/ui/use-notifications';
+import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import {
   NodeTestPanel,
   type NodeTestHandle,
@@ -62,23 +62,16 @@ export function EditorInspector({
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const store = useEditorStoreApi();
-  const notifications = useNotifications();
+  const copy = useCopyToClipboard();
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const [passedTest, setPassedTest] = useState<PassedTest>();
 
   function copyStepId() {
     if (selectedNodeId === null) return;
-    void navigator.clipboard
-      .writeText(selectedNodeId)
-      .then(() => notifications.success({ title: 'Step ID copied' }))
-      .catch(() =>
-        notifications.error({
-          title: 'The step ID couldn’t be copied',
-          description:
-            'Your browser blocked the clipboard. Copy it from About.',
-        }),
-      );
+    void copy(selectedNodeId, 'step ID', {
+      elsewhere: 'Copy it from About.',
+    });
   }
 
   return (

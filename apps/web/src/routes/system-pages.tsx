@@ -4,7 +4,7 @@ import {
   useRouter,
   type ErrorComponentProps,
 } from '@tanstack/react-router';
-import { CopyIcon } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { CoreOrb } from '@/components/patterns/core-orb';
@@ -122,15 +122,8 @@ export function ResourceNotFound({
 function ErrorReference({ reference }: Readonly<{ reference: string }>) {
   return (
     <p className="flex items-center gap-2 font-mono text-xs text-subtle-foreground">
-      Error ID {reference}
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label="Copy error ID"
-        onClick={() => void navigator.clipboard.writeText(reference)}
-      >
-        <CopyIcon aria-hidden="true" />
-      </Button>
+      Error ID
+      <CopyButton value={reference} label="Copy error ID" display={reference} />
     </p>
   );
 }
