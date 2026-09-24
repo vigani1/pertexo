@@ -70,9 +70,10 @@ wiring remains deployment-owned.
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.            |
 | `src/features/workflow-settings/`     | Versions, lifecycle, published triggers and failure-notification controls.                        |
 | `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                      |
-| `src/components/ui/`                  | Owned shadcn primitives built on Base UI. Add only components needed by a real slice.             |
-| `src/components/patterns/`            | Shared glass-panel composition and decorative aurora border.                                      |
-| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors and CSRF cookie adapter.                   |
+| `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.   |
+| `src/components/patterns/`            | Domain-independent compositions: confirm dialog, stale line, load more, Core orb, page header.    |
+| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors, CSRF cookie adapter and cursor paging.    |
+| `src/lib/`                            | Clock and countdown, time formatting, clipboard, Canvas scene and browser subscriptions.          |
 | `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                                   |
 | `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                            |
 | `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                               |
@@ -131,43 +132,30 @@ concrete product demand and existing contracts, following the
 invent discovery contracts or enable artifact uploads without the required
 real-browser signing/CORS/checksum/finalize proof.
 
-## Shared visual kit
+## Weft design system
 
-Adapted from `/Users/vigan/Projects/work/dynamic-process-v3`, without its
-Next.js or backend dependencies:
-
-- Branded translucent cyan button,
-  solid/outline/secondary/ghost/destructive/link variants and locally bundled
-  Inter/Hanken Grotesk/JetBrains Mono fonts.
-- Recessed `Input` and `Textarea`; a small presentational `Field` composition
-  for labels, descriptions and errors. Callers own validation and matching IDs.
-- `GlassSection` with header/title/description/content parts and directional
-  border tokens. No context, data fetching or domain-specific behavior.
-- `AuroraLoadingPanel`: compose a rounded surface as children and set `active`
-  to show its decorative border. It does not imply execution progress or set
-  `aria-busy`; the caller supplies appropriate real loading semantics.
-- Run detail resolves the exact immutable workflow version and renders a
-  read-only execution map. Active node state drives luminous incoming edges and
-  transfer markers; queued runs use the adapted loading wave. Reduced-motion
-  users receive the same status treatment without moving markers.
-- Container-sized CSS aurora animation, static reduced-motion/high-contrast
-  treatment, and a glass fallback where backdrop filtering is unavailable.
-
-The login, signup, recovery and account-security surfaces adapt the legacy
-glass, typography, aurora and signal-line language without copying its
-credential form, Next.js code or backend assumptions. No Motion, dropzone or 3D
-dependency was added: the selected effects use CSS, Canvas 2D and SVG animation.
-File-drop motion remains for its feature slice.
+Every page uses the Weft design system; the binding summary, the status language
+and the table of shared building blocks are in
+[ARCHITECTURE.md](ARCHITECTURE.md#weft-design-system-supersedes-the-aurora-glass-refinement).
+In short: one implementation per concept — `LabelledField` with
+`useFieldValidation` for every form, `ConfirmDialog` for every confirmation,
+`ProgressButton` for every pending command, `CopyButton` (and
+`useCopyToClipboard` in menus) for every copy, `Notice` and `StaleLine` for
+inline messages, and `useNow`/`useCountdown` for anything that ticks. Motion
+uses CSS, Canvas 2D (`CanvasScene`) and SVG only, stops off-screen and in hidden
+tabs, and renders still frames under reduced motion. No Motion, dropzone or 3D
+dependency is installed.
 
 Verification covers transport failures, browser bundle composition,
 unauthenticated redirects, OIDC start/error, workspace empty/error/deep-link
 states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
-switching, useful canvas dimensions and retained inspector scratch state. React
-Doctor's changed-file scan reports 72/100 with 28 diagnostics in existing
-editor, invitation and workspace-management surfaces; none names the new auth or
-account- security source files. The score remains a triage aid rather than a
+switching, useful canvas dimensions and retained inspector scratch state. After
+the Weft uniformity pass, React Doctor's scan of the files it changed reports
+two diagnostics, both `query-mutation-missing-invalidation` on the workspace
+creation and rename commands, whose identity-fenced refresh owns the cache (as
+documented in those hooks). The score remains a triage aid rather than a
 delivery gate. Firefox/WebKit and a live-backend journey through the controlled
 OIDC provider remain pending; the mocked Chromium lane does not prove either
 integration.
