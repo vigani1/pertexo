@@ -20,9 +20,10 @@ export function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={<ChevronDownIcon className="text-subtle-foreground" />}
-      />
+      {/* Explicit children: Base UI's default icon is a text "▼" glyph. */}
+      <SelectPrimitive.Icon className="flex text-subtle-foreground">
+        <ChevronDownIcon aria-hidden="true" />
+      </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
 }

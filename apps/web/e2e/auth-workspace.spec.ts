@@ -446,10 +446,9 @@ test('keeps workflow metadata contained and labeled at responsive widths', async
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     const surface = page.getByRole('region', { name: 'Workspace workflows' });
-    const updated = surface.getByText(/Sep 14, 2026/u);
+    const updated = surface.getByTitle(/Sep 14, 2026/u);
     await expect(page.getByRole('link', { name: longName })).toBeVisible();
-    await expect(surface.getByLabel('Lifecycle: active')).toBeVisible();
-    await expect(surface.getByLabel('Activation: active')).toBeVisible();
+    await expect(surface.getByText('Draft', { exact: true })).toBeVisible();
     const [surfaceBox, updatedBox] = await Promise.all([
       surface.boundingBox(),
       updated.boundingBox(),
@@ -539,11 +538,61 @@ test('creates a workflow from the empty index with the shared transport', async 
       { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
     ]);
   await mockIdentity(page, { authenticated: true });
+  const createdWorkflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  // After creating, the list opens the new workflow's Build tab.
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${createdWorkflowId}**`,
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      const workflow = {
+        id: createdWorkflowId,
+        workspaceId,
+        name: 'Browser verified',
+        lifecycleStatus: 'active',
+        lifecycleRevision: 1,
+        activationStatus: 'inactive',
+        publishedVersionId: null,
+        createdAt: '2026-09-14T10:00:00.000Z',
+        updatedAt: '2026-09-14T10:00:00.000Z',
+      };
+      if (path.endsWith('/draft')) {
+        await route.fulfill({
+          headers: {
+            'content-type': 'application/json',
+            etag: `"draft-v1.${'a'.repeat(43)}"`,
+          },
+          body: JSON.stringify({
+            workflowId: createdWorkflowId,
+            revision: 1,
+            schemaVersion: 1,
+            graph: { schemaVersion: 1, nodes: [], edges: [], settings: {} },
+            compatibility: {
+              compatible: true,
+              fingerprint: `wf-compat:v1:sha256:${'a'.repeat(64)}`,
+              issues: [],
+            },
+            updatedAt: workflow.updatedAt,
+          }),
+        });
+        return;
+      }
+      if (path.endsWith(createdWorkflowId)) {
+        await route.fulfill({ json: { workflow } });
+        return;
+      }
+      await route.fulfill({ json: { items: [], nextCursor: null } });
+    },
+  );
   await page.goto(`/w/${workspaceId}/workflows`);
-  await page.getByRole('button', { name: 'Create workflow' }).click();
+  await page.getByRole('button', { name: 'New workflow' }).click();
   await page.getByLabel('Workflow name').fill('Browser verified');
   await page.getByRole('button', { name: 'Create workflow' }).click();
-  await expect(page.getByText('Browser verified')).toBeVisible();
+  await expect(page).toHaveURL(
+    `/w/${workspaceId}/workflows/${createdWorkflowId}`,
+  );
+  await expect(
+    page.getByRole('heading', { name: 'Browser verified' }),
+  ).toBeVisible();
 });
 
 test('creates the first workspace inline from the keyboard', async ({

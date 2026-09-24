@@ -150,7 +150,9 @@ test('creates, versions and disables a notification destination', async ({
   await page.getByRole('option', { name: 'Incident Slack' }).click();
   await lens.getByLabel('Channel ID').fill('C0123456789');
   await lens.getByRole('button', { name: 'Add destination' }).click();
-  await expect(page.getByText('#C0123456789 via Incident Slack')).toBeVisible();
+  await expect(
+    page.getByText('#C0123456789 via Incident Slack', { exact: true }),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: /^Edit #C0123456789/u }).click();
   await expect(
@@ -158,7 +160,9 @@ test('creates, versions and disables a notification destination', async ({
   ).toBeAttached();
   await lens.getByLabel('Channel ID').fill('C9876543210');
   await lens.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText('#C9876543210 via Incident Slack')).toBeVisible();
+  await expect(
+    page.getByText('#C9876543210 via Incident Slack', { exact: true }),
+  ).toBeVisible();
 
   const toggle = page.getByRole('switch', {
     name: 'Send alerts to #C9876543210 via Incident Slack',

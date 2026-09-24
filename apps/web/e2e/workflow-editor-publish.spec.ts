@@ -149,6 +149,7 @@ test('animates active execution flow and disables the marker for reduced motion'
   );
 
   await page.goto(`/w/${workspaceId}/runs/${runId}`);
+  await page.getByRole('tab', { name: 'Graph' }).click();
   await expect(page.locator('.react-flow__node')).toHaveCount(2);
   const marker = page.locator('.workflow-transfer-marker');
   await expect(marker).toBeVisible();

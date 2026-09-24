@@ -385,6 +385,25 @@
       box-shadow: none;
     }
   }
+
+  /* Notifications step aside from an open side sheet so they never cover its
+     actions. A modal sheet makes them inert, so they must not catch clicks. */
+  body:has([data-slot='sheet-content'][data-side='right'])
+    [data-slot='toast-viewport'] {
+    right: calc(min(26rem, 100vw - 1.5rem) + 1.75rem);
+  }
+
+  body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
+    pointer-events: none;
+  }
+
+  @media (width < 48rem) {
+    body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
+      top: 1rem;
+      right: 1rem;
+      bottom: auto;
+    }
+  }
 }
 
 @keyframes live-edge-turn {

@@ -173,10 +173,10 @@ test('keeps keyboard placement usable and the narrow editor horizontally bounded
   expect(canvasBox?.width).toBeGreaterThan(360);
   expect(canvasBox?.height).toBeGreaterThan(500);
   await page.locator('.react-flow__node').click();
-  await panels.getByRole('button', { name: 'Step' }).click();
+  await panels.getByRole('button', { name: 'Step', exact: true }).click();
   await page.getByLabel('Label', { exact: true }).fill('Mobile scratch');
   await panels.getByRole('button', { name: 'Canvas' }).click();
-  await panels.getByRole('button', { name: 'Step' }).click();
+  await panels.getByRole('button', { name: 'Step', exact: true }).click();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Mobile scratch',
   );
@@ -300,7 +300,7 @@ test('confirms leaving a dirty editor before revoking the session', async ({
   await page.getByRole('button', { name: 'Stay here' }).click();
   await page
     .getByRole('navigation', { name: 'Editor panels' })
-    .getByRole('button', { name: 'Step' })
+    .getByRole('button', { name: 'Step', exact: true })
     .click();
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Unsaved logout edit',
@@ -374,7 +374,10 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
       await expect(canvas.locator('.react-flow__minimap')).toBeHidden();
     else await expect(canvas.locator('.react-flow__minimap')).toBeVisible();
     const zoomIn = page.getByRole('button', { name: 'Zoom in' });
+    // Arrive by keyboard so :focus-visible applies after earlier clicks.
     await zoomIn.focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
     const zoomFocus = await zoomIn.evaluate((element) => {
       const style = getComputedStyle(element);
       return {

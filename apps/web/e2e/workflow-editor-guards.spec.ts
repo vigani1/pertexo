@@ -215,7 +215,8 @@ test('cross-tab sign-out pauses a dirty editor without exposing its scratch to t
   // Not a number, so it stays in the field as unfinished scratch.
   await page.getByLabel('Count', { exact: true }).fill('12 private apples');
   await second.goto('/workspaces');
-  await second.getByRole('button', { name: 'Sign out' }).click();
+  await second.getByRole('button', { name: /^Account menu for/u }).click();
+  await second.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(
     page.getByRole('heading', { name: 'Editor paused' }),
   ).toBeVisible();
