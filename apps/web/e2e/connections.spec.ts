@@ -209,11 +209,11 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   await navigation.getByRole('link', { name: 'Workflows' }).click();
   await page.getByRole('link', { name: 'Slack incident alert' }).click();
   await page.getByTestId('rf__node-slack-node').click();
-  await expect(page.getByLabel('Slack bot token')).toHaveValue('');
+  const slot = page.getByRole('combobox', { name: 'Slack connection' });
+  await expect(slot).toHaveText('Choose a connection');
+  await slot.click();
   await expect(
-    page.getByLabel('Slack bot token').getByRole('option', {
-      name: 'Incident Slack',
-    }),
+    page.getByRole('option', { name: 'Incident Slack' }),
   ).toHaveCount(1);
 });
 

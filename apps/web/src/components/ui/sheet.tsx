@@ -37,6 +37,7 @@ export function SheetContent({
       <SheetPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
+        data-side={side ?? 'right'}
         className={cn(sheetContentVariants({ side }), className)}
         {...props}
       >
