@@ -6,6 +6,7 @@ import {
   numericScratchFor,
   ordinaryFieldScratchFor,
   parseJson,
+  scratchChangesFromJson,
   type NodeConfig,
   type SchemaFieldSpec,
 } from './inspector-draft';
@@ -124,25 +125,9 @@ export function useNodeConfigurationDraft(
     setJson(value);
     const candidate = parseJson(value);
     if (!isJsonObject(candidate)) return;
-    const previous = latestValidJsonConfig.current;
+    const { ordinary: ordinaryChanges, numeric: numericChanges } =
+      scratchChangesFromJson(latestValidJsonConfig.current, candidate, fields);
     latestValidJsonConfig.current = candidate;
-    const ordinaryChanges = fields.flatMap((field) => {
-      if (field.kind === 'number' || field.kind === 'integer') return [];
-      const wasPresent = Object.prototype.hasOwnProperty.call(
-        previous,
-        field.key,
-      );
-      const isPresent = Object.prototype.hasOwnProperty.call(
-        candidate,
-        field.key,
-      );
-      if (
-        wasPresent === isPresent &&
-        Object.is(previous[field.key], candidate[field.key])
-      )
-        return [];
-      return [[field.key, candidate[field.key]] as const];
-    });
     if (ordinaryChanges.length > 0) {
       const changedKeys = new Set(
         ordinaryChanges.map(([fieldKey]) => fieldKey),
@@ -160,31 +145,6 @@ export function useNodeConfigurationDraft(
         return next;
       });
     }
-    const numericChanges = fields.flatMap((field) => {
-      if (field.kind !== 'number' && field.kind !== 'integer') return [];
-      const wasPresent = Object.prototype.hasOwnProperty.call(
-        previous,
-        field.key,
-      );
-      const isPresent = Object.prototype.hasOwnProperty.call(
-        candidate,
-        field.key,
-      );
-      if (
-        wasPresent === isPresent &&
-        Object.is(previous[field.key], candidate[field.key])
-      )
-        return [];
-      const candidateValue = candidate[field.key];
-      return [
-        [
-          field.key,
-          typeof candidateValue === 'number' && Number.isFinite(candidateValue)
-            ? String(candidateValue)
-            : '',
-        ] as const,
-      ];
-    });
     for (const [fieldKey] of numericChanges)
       numericScratchOwners.current.delete(fieldKey);
     if (numericChanges.length === 0) return;

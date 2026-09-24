@@ -18,6 +18,7 @@ import {
   applyNumericScratch,
   numericScratchFor,
   schemaFields,
+  scratchChangesFromJson,
 } from '@/features/workflow-editor/model/inspector-draft';
 import {
   directPredecessorOptions,
@@ -397,6 +398,49 @@ describe('workflow editor model', () => {
         requiredCount: '',
       }),
     ).toEqual({ errors: { requiredCount: 'Required count is required.' } });
+  });
+
+  it('derives form scratch only for schema fields a raw JSON edit changed', () => {
+    const fields = schemaFields({
+      type: 'object',
+      properties: {
+        label: { type: 'string', title: 'Label' },
+        enabled: { type: 'boolean', title: 'Enabled' },
+        count: { type: 'integer', title: 'Count' },
+        ratio: { type: 'number', title: 'Ratio' },
+      },
+    });
+    const previous = {
+      label: 'a',
+      enabled: true,
+      count: 1,
+      ratio: 0.5,
+      unknown: 1,
+    };
+
+    expect(
+      scratchChangesFromJson(previous, { ...previous, unknown: 2 }, fields),
+    ).toEqual({ ordinary: [], numeric: [] });
+    expect(
+      scratchChangesFromJson(
+        previous,
+        { label: 'b', count: 2, ratio: 'fast', unknown: 1 },
+        fields,
+      ),
+    ).toEqual({
+      ordinary: [
+        ['label', 'b'],
+        ['enabled', undefined],
+      ],
+      numeric: [
+        ['count', '2'],
+        ['ratio', ''],
+      ],
+    });
+    expect(scratchChangesFromJson({}, { ratio: -0.25 }, fields)).toEqual({
+      ordinary: [],
+      numeric: [['ratio', '-0.25']],
+    });
   });
 
   it('projects unsupported nodes without mutating or dropping their contract data', () => {
