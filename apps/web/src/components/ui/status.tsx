@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import { statusToneText } from './status-tone';
 
 // One glyph, one colour, one word for every status in the product. Features
 // map their own enums onto these tones in their `model/`; this primitive knows
@@ -20,20 +21,7 @@ export type StatusTone =
 const statusVariants = cva(
   'inline-flex min-w-0 items-center gap-1.5 text-[0.8rem] leading-none font-semibold whitespace-nowrap',
   {
-    variants: {
-      tone: {
-        live: 'text-primary',
-        queued: 'text-secondary',
-        waiting: 'text-secondary',
-        success: 'text-success',
-        failure: 'text-destructive',
-        timeout: 'text-destructive',
-        attention: 'text-warning',
-        canceled: 'text-subtle-foreground',
-        skipped: 'text-subtle-foreground',
-        neutral: 'text-muted-foreground',
-      },
-    },
+    variants: { tone: statusToneText },
     defaultVariants: { tone: 'neutral' },
   },
 );

@@ -60,7 +60,7 @@ export function RevokeConnectionDialog({
               role="alert"
               className="mt-5"
               tone={
-                isUncertainOutcome(mutation.error) ? 'attention' : 'failure'
+                isUncertainOutcome(mutation.error) ? 'warning' : 'destructive'
               }
             >
               {connectionCommandError(

@@ -1,7 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
 import { Button } from '@/components/ui/button';
-import { AuthStatusLine } from '@/features/auth/auth-stage.public';
 import type { AcceptanceFailure } from '../model/acceptance-failure';
+import { Notice } from '@/components/ui/notice';
 
 /**
  * What went wrong and the safe next step. Uncertain outcomes offer a status
@@ -41,11 +41,11 @@ export function AcceptanceFailureLine({
   const hasActions =
     checkable || canSignIn || openable || journey === undefined;
   return (
-    <AuthStatusLine
+    <Notice
       tone={
         error.kind === 'uncertain' || error.kind === 'cleanup'
-          ? 'attention'
-          : 'failure'
+          ? 'warning'
+          : 'destructive'
       }
       className="mt-5"
       action={
@@ -113,6 +113,6 @@ export function AcceptanceFailureLine({
       }
     >
       {error.message}
-    </AuthStatusLine>
+    </Notice>
   );
 }

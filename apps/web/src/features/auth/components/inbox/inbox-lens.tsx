@@ -12,13 +12,13 @@ import {
   AuthLens,
   AuthLensDescription,
   AuthLensTitle,
-  AuthStatusLine,
 } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 /** How long people wait before asking for the same email again. */
 export const RESEND_COOLDOWN_SECONDS = 60;
 
-type Feedback = Readonly<{ tone: 'success' | 'failure'; text: string }>;
+type Feedback = Readonly<{ tone: 'success' | 'destructive'; text: string }>;
 
 /**
  * "Check your inbox": the address, a resend with a cooldown, and a way back.
@@ -61,7 +61,7 @@ export function InboxLens({
         cooldown.startSeconds(
           rateLimitSeconds(error) ?? RESEND_COOLDOWN_SECONDS,
         );
-      setFeedback({ tone: 'failure', text: resendFailure(error) });
+      setFeedback({ tone: 'destructive', text: resendFailure(error) });
     } finally {
       if (request.finish()) setPending(false);
     }
@@ -78,9 +78,9 @@ export function InboxLens({
       <AuthLensTitle id="inbox-title">{title}</AuthLensTitle>
       <AuthLensDescription>{children}</AuthLensDescription>
       {feedback === undefined ? null : (
-        <AuthStatusLine tone={feedback.tone} className="mt-5">
+        <Notice tone={feedback.tone} className="mt-5">
           {feedback.text}
-        </AuthStatusLine>
+        </Notice>
       )}
       <ProgressButton
         type="button"

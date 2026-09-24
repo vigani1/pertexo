@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
+import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -73,9 +74,7 @@ export function WebhooksSection({
   return (
     <>
       {webhook.error === undefined ? null : (
-        <p role="alert" className="text-sm text-destructive">
-          {webhook.error}
-        </p>
+        <Notice tone="destructive">{webhook.error}</Notice>
       )}
       {triggers.map((trigger) => (
         <WebhookCard

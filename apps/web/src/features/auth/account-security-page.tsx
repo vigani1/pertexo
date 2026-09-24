@@ -17,20 +17,20 @@ import {
   AccountRowsPending,
 } from './components/account/account-section';
 import { AccountSessionsSection } from './components/account/account-sessions-section';
-import { AuthStatusLine } from './components/stage/auth-lens';
 import { accountReadFailure } from './model/account-failure';
+import { Notice } from '@/components/ui/notice';
 
 type LinkOutcome = 'returned' | 'failed';
 
 function LinkOutcomeLine({ outcome }: Readonly<{ outcome: LinkOutcome }>) {
   return outcome === 'returned' ? (
-    <AuthStatusLine tone="live">
+    <Notice tone="info" glyph="live">
       You’re back from the provider. If it connected, it’s listed below.
-    </AuthStatusLine>
+    </Notice>
   ) : (
-    <AuthStatusLine tone="failure">
+    <Notice tone="destructive">
       Connecting didn’t finish. Your existing sign-in methods still work.
-    </AuthStatusLine>
+    </Notice>
   );
 }
 

@@ -105,7 +105,7 @@ export function ReplaceCredentialForm({
         }}
       />
       {mutation.isError ? (
-        <Notice role="alert" tone={uncertain ? 'attention' : 'failure'}>
+        <Notice role="alert" tone={uncertain ? 'warning' : 'destructive'}>
           {connectionCommandError(mutation.error, 'rotate', connection.name)}
         </Notice>
       ) : null}

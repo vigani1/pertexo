@@ -1,20 +1,7 @@
 import type { StatusTone } from '@/components/ui/status';
 
-// The status primitive's colour per tone, for run visuals drawn outside a
-// `Status` (thread bars, thread segments, graph edges). Same tokens.
-export const toneTextClass: Readonly<Record<StatusTone, string>> = {
-  live: 'text-primary',
-  queued: 'text-secondary',
-  waiting: 'text-secondary',
-  success: 'text-success',
-  failure: 'text-destructive',
-  timeout: 'text-destructive',
-  attention: 'text-warning',
-  canceled: 'text-subtle-foreground',
-  skipped: 'text-subtle-foreground',
-  neutral: 'text-muted-foreground',
-};
-
+// Run visuals drawn outside a `Status` (thread segments, graph edges) use
+// the status colours from `statusToneText`, plus these borders and lines.
 export const toneBorderClass: Readonly<Record<StatusTone, string>> = {
   live: 'border-primary/55',
   queued: 'border-secondary/35',

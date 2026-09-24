@@ -428,14 +428,16 @@ describe('alert destinations', () => {
 
     refreshFails = true;
     await queryClient.invalidateQueries();
-    expect(await lens().findByText(/list couldn’t refresh/u)).toBeVisible();
+    expect(
+      await lens().findByText(/Couldn’t refresh.*Your edits here are kept/u),
+    ).toBeVisible();
     expect(channel).toHaveValue('C9999999999');
 
     refreshFails = false;
     await actor.click(lens().getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(
-        lens().queryByText(/list couldn’t refresh/u),
+        lens().queryByText(/Couldn’t refresh.*Your edits here are kept/u),
       ).not.toBeInTheDocument();
     });
     expect(channel).toHaveValue('C9999999999');

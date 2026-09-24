@@ -2,6 +2,7 @@ import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections'
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -9,10 +10,8 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Notice } from '@/components/ui/notice';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/api-error-copy';
-import { formatClock } from '@/lib/format-time';
 import type { FailureNotificationDestinationList } from '../failure-notifications.api';
 import type { DestinationMutationScope } from '../failure-notifications.mutations';
 import { DestinationRow } from './destination-row';
@@ -99,20 +98,11 @@ export function DestinationCollection({
   return (
     <div className="flex flex-col gap-3">
       {query.isError ? (
-        <Notice role="alert" tone="attention">
-          Showing destinations from{' '}
-          {formatClock(new Date(query.dataUpdatedAt).toISOString())}. The latest
-          refresh didn’t go through.{' '}
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            disabled={query.isRefetching}
-            onClick={() => void query.refetch()}
-          >
-            {query.isRefetching ? 'Retrying…' : 'Retry'}
-          </Button>
-        </Notice>
+        <StaleLine
+          updatedAt={query.dataUpdatedAt}
+          retrying={query.isRefetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       <ul aria-label="Alert destinations" className="flex flex-col">
         {items.map((destination) => (

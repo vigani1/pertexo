@@ -7,6 +7,7 @@ import type {
   UseInfiniteQueryResult,
 } from '@tanstack/react-query';
 import { useState } from 'react';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -15,7 +16,6 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { InvitationCommand } from '../../mutations/use-invitation-command';
@@ -93,18 +93,11 @@ export function InvitationsPanel({
   return (
     <div className="flex flex-col gap-3">
       {query.isError && !query.isFetchNextPageError ? (
-        <Notice role="alert" tone="attention">
-          The latest refresh didn’t go through, so invitations may be out of
-          date.{' '}
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            onClick={() => void query.refetch()}
-          >
-            Retry
-          </Button>
-        </Notice>
+        <StaleLine
+          updatedAt={query.dataUpdatedAt}
+          retrying={query.isRefetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       {invitations.length === 0 ? (
         <Empty>

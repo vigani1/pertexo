@@ -4,8 +4,7 @@ import { TextField } from '@/components/patterns/text-field';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { StatusGlyph } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { Notice } from '@/components/ui/notice';
 import type { WorkspaceCreationCommand } from '../../mutations/use-workspace-creation';
 
 type Field = 'name' | 'slug';
@@ -38,29 +37,6 @@ function submitLabel(command: WorkspaceCreationCommand): string {
   if (command.refreshPending) return 'Opening…';
   if (command.retryAvailable) return 'Check again';
   return command.created ? 'Open workspace' : 'Create workspace';
-}
-
-function CreationNotice({
-  tone,
-  children,
-}: Readonly<{ tone: 'attention' | 'failure'; children: string }>) {
-  return (
-    <p
-      role="alert"
-      className={cn(
-        'flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[0.82rem] leading-snug',
-        tone === 'attention'
-          ? 'border-warning/25 bg-warning/6'
-          : 'border-destructive/30 bg-destructive/8',
-      )}
-    >
-      <StatusGlyph
-        tone={tone}
-        className={tone === 'attention' ? 'text-warning' : 'text-destructive'}
-      />
-      {children}
-    </p>
-  );
 }
 
 function HandlePreview({
@@ -274,13 +250,16 @@ export function WorkspaceCreationForm({
         )}
       </FieldGroup>
       {generalError === undefined ? null : (
-        <CreationNotice
+        <Notice
+          role="alert"
           tone={
-            command.retryAvailable || command.created ? 'attention' : 'failure'
+            command.retryAvailable || command.created
+              ? 'warning'
+              : 'destructive'
           }
         >
           {generalError}
-        </CreationNotice>
+        </Notice>
       )}
       <CreationActions
         command={command}

@@ -9,6 +9,7 @@ import { WorkspaceFirstRun } from './components/selection/workspace-first-run';
 import { WorkspaceGrid } from './components/selection/workspace-grid';
 import { WorkspacePickerHeader } from './components/selection/workspace-picker-header';
 import { readLastWorkspace } from './last-workspace';
+import { Notice } from '@/components/ui/notice';
 
 type WorkspaceSelectionPageProps = Readonly<{
   apiClient: ApiClient;
@@ -57,9 +58,7 @@ export function WorkspaceSelectionPage({
         className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pt-12 pb-20 sm:px-8 sm:pt-16"
       >
         {logoutError === undefined ? null : (
-          <p role="alert" className="text-sm text-destructive">
-            {logoutError}
-          </p>
+          <Notice tone="destructive">{logoutError}</Notice>
         )}
         {workspaces.length === 0 ? (
           <WorkspaceFirstRun

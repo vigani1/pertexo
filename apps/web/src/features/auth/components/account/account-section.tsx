@@ -7,7 +7,7 @@ import {
   accountCommandFailure,
   needsFreshSignIn,
 } from '../../model/account-failure';
-import { AuthStatusLine } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 /** A flat block on the account page: a title, one short line, the content. */
 export function AccountSection({
@@ -106,8 +106,8 @@ export function AccountCommandFailure({
   className?: string;
 }>) {
   return (
-    <AuthStatusLine
-      tone="failure"
+    <Notice
+      tone="destructive"
       {...(className === undefined ? {} : { className })}
       action={
         needsFreshSignIn(error) ? (
@@ -121,6 +121,6 @@ export function AccountCommandFailure({
       }
     >
       {message ?? accountCommandFailure(error, action)}
-    </AuthStatusLine>
+    </Notice>
   );
 }

@@ -1,10 +1,10 @@
 import { useId, type ReactNode } from 'react';
 import { RotateCcwIcon } from 'lucide-react';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import { StatusGlyph } from '@/components/ui/status';
+import { Notice } from '@/components/ui/notice';
 import { describeReadError } from '@/lib/api/api-error-copy';
-import { formatClock } from '@/lib/format-time';
 import { cn } from '@/lib/utils';
 import {
   settingsQueryIsUnavailable,
@@ -88,22 +88,15 @@ export function SettingsQueryState({
     );
   if (query.data === undefined)
     return (
-      <div role="alert" className="flex flex-col items-start gap-3">
-        <p className="text-sm text-destructive">
-          {describeReadError(query.error, resource)}
-        </p>
-        <RetryButton query={query} />
-      </div>
+      <Notice tone="destructive" action={<RetryButton query={query} />}>
+        {describeReadError(query.error, resource)}
+      </Notice>
     );
   return (
-    <div
-      role="status"
-      className="flex flex-wrap items-center gap-2 font-mono text-xs text-warning"
-    >
-      <StatusGlyph tone="attention" />
-      Couldn’t refresh. Showing what loaded at{' '}
-      {formatClock(new Date(query.dataUpdatedAt).toISOString())}.
-      <RetryButton query={query} />
-    </div>
+    <StaleLine
+      updatedAt={query.dataUpdatedAt}
+      retrying={query.isFetching}
+      onRetry={() => void query.refetch()}
+    />
   );
 }

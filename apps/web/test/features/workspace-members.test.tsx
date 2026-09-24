@@ -577,7 +577,7 @@ describe('team: members', () => {
       queryKey: ['identity', userId, 'workspace', workspaceId, 'members'],
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The latest refresh didn’t go through',
+      /Couldn’t refresh. Showing results from/u,
     );
     expect(screen.getByText('Ada Operator')).toBeVisible();
     fail = false;

@@ -62,7 +62,7 @@ export function InvitationActionDialog(
         {props.message === undefined ? null : (
           <Notice
             role="alert"
-            tone={props.retryAvailable ? 'attention' : 'failure'}
+            tone={props.retryAvailable ? 'warning' : 'destructive'}
             className="mt-5"
           >
             {props.message}

@@ -6,8 +6,8 @@ import { emailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '../../forms/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
-import { AuthStatusLine } from '../stage/auth-lens';
 import { AccountCommandFailure, AccountSection } from './account-section';
+import { Notice } from '@/components/ui/notice';
 
 /** Change email: confirmed at the old address, then verified at the new. */
 export function AccountEmailSection({
@@ -67,10 +67,10 @@ export function AccountEmailSection({
           />
         )}
         {mutation.isSuccess ? (
-          <AuthStatusLine tone="waiting">
+          <Notice tone="info" glyph="waiting">
             Check your current inbox to confirm the change. Then verify the new
             address.
-          </AuthStatusLine>
+          </Notice>
         ) : null}
         <ProgressButton
           type="submit"

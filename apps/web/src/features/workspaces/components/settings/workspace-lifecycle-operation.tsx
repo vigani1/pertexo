@@ -61,11 +61,15 @@ export function WorkspaceLifecycleOperation({
     );
   if (readError && operation === undefined)
     return (
-      <Notice role="alert" tone="failure">
-        The latest request couldn’t be loaded.{' '}
-        <Button type="button" size="xs" variant="ghost" onClick={onRetryRead}>
-          Try again
-        </Button>
+      <Notice
+        tone="destructive"
+        action={
+          <Button type="button" size="xs" variant="ghost" onClick={onRetryRead}>
+            Try again
+          </Button>
+        }
+      >
+        The latest request couldn’t be loaded.
       </Notice>
     );
   if (operation === undefined) return null;
@@ -101,11 +105,21 @@ export function WorkspaceLifecycleOperation({
         {sentence(operation)}
       </p>
       {readError ? (
-        <Notice role="alert" tone="attention">
-          The latest status couldn’t be loaded; this is the last one we saw.{' '}
-          <Button type="button" size="xs" variant="ghost" onClick={onRetryRead}>
-            Try again
-          </Button>
+        <Notice
+          role="alert"
+          tone="warning"
+          action={
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              onClick={onRetryRead}
+            >
+              Try again
+            </Button>
+          }
+        >
+          The latest status couldn’t be loaded; this is the last one we saw.
         </Notice>
       ) : null}
       <details className="text-xs text-subtle-foreground">

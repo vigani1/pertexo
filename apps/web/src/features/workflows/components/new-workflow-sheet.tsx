@@ -1,5 +1,6 @@
 import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import {
   Field,
@@ -209,9 +210,9 @@ export function NewWorkflowSheet({
               />
             ) : null}
             {mutation.isError ? (
-              <p role="alert" className="text-sm text-destructive">
+              <Notice tone="destructive">
                 {createErrorMessage(mutation.error)}
-              </p>
+              </Notice>
             ) : null}
           </SheetBody>
           <SheetFooter>

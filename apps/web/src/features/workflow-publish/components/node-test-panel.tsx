@@ -1,6 +1,7 @@
 import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref } from 'react';
+import { Notice } from '@/components/ui/notice';
 import { JsonTree } from '@/components/patterns/json-tree';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
@@ -144,9 +145,7 @@ export function NodeTestPanel({
         workspaceId={workspaceId}
       />
       {test.error === undefined ? null : (
-        <p role="alert" className="text-sm text-destructive">
-          {test.error}
-        </p>
+        <Notice tone="destructive">{test.error}</Notice>
       )}
     </div>
   );

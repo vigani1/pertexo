@@ -1,5 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
-import { StatusGlyph, type StatusTone } from '@/components/ui/status';
+import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -62,61 +61,5 @@ export function AuthLensFooter({ className, ...props }: ComponentProps<'p'>) {
       )}
       {...props}
     />
-  );
-}
-
-const LINE_TONE: Partial<Record<StatusTone, string>> = {
-  success: 'border-success/25 bg-success/6',
-  failure: 'border-destructive/30 bg-destructive/8',
-  timeout: 'border-destructive/25 bg-destructive/6',
-  attention: 'border-warning/25 bg-warning/6',
-  live: 'border-primary/25 bg-primary/6',
-  waiting: 'border-secondary/25 bg-secondary/6',
-};
-
-const GLYPH_TONE: Partial<Record<StatusTone, string>> = {
-  success: 'text-success',
-  failure: 'text-destructive',
-  timeout: 'text-destructive',
-  attention: 'text-warning',
-  live: 'text-primary',
-  waiting: 'text-secondary',
-};
-
-/**
- * One sentence of feedback inside the lens, led by its status glyph. Failures
- * are alerts; everything else is a polite status.
- */
-export function AuthStatusLine({
-  tone,
-  action,
-  className,
-  children,
-}: Readonly<{
-  tone: StatusTone;
-  action?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}>) {
-  return (
-    <div
-      role={tone === 'failure' ? 'alert' : 'status'}
-      data-slot="auth-status-line"
-      data-tone={tone}
-      className={cn(
-        'flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[0.82rem] leading-snug text-foreground/90',
-        LINE_TONE[tone] ?? 'border-border bg-white/[0.03]',
-        className,
-      )}
-    >
-      <StatusGlyph
-        tone={tone}
-        className={cn('mt-px', GLYPH_TONE[tone] ?? 'text-muted-foreground')}
-      />
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-        <p>{children}</p>
-        {action}
-      </div>
-    </div>
   );
 }

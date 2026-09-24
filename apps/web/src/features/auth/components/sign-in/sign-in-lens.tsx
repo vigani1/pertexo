@@ -16,8 +16,8 @@ import {
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-  AuthStatusLine,
 } from '../stage/auth-lens';
+import { Notice } from '@/components/ui/notice';
 
 const fieldRules = { email: emailProblem, password: requiredPasswordProblem };
 
@@ -69,8 +69,9 @@ export function SignInLens({
         Your workflows are where you left them.
       </AuthLensDescription>
       {notice === undefined ? null : (
-        <AuthStatusLine
+        <Notice
           tone={notice.tone}
+          glyph={notice.glyph}
           className="mt-5"
           action={
             notice.offersNewVerificationLink === true && passwordEnabled ? (
@@ -87,7 +88,7 @@ export function SignInLens({
           }
         >
           {notice.text}
-        </AuthStatusLine>
+        </Notice>
       )}
       {providers.length === 0 ? null : (
         <div className="mt-6">
@@ -140,7 +141,7 @@ export function SignInLens({
               {...fields.inputProps('password')}
             />
             {signIn.failure === undefined ? null : (
-              <AuthStatusLine tone="failure">{signIn.failure}</AuthStatusLine>
+              <Notice tone="destructive">{signIn.failure}</Notice>
             )}
             <ProgressButton
               type="submit"
@@ -159,9 +160,9 @@ export function SignInLens({
           </AuthLensFooter>
         </>
       ) : signIn.failure === undefined ? null : (
-        <AuthStatusLine tone="failure" className="mt-4">
+        <Notice tone="destructive" className="mt-4">
           {signIn.failure}
-        </AuthStatusLine>
+        </Notice>
       )}
       {capabilities.legacyMigrationAvailable ? (
         <AuthLensFooter className="mt-2">

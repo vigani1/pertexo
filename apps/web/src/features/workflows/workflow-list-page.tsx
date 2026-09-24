@@ -9,6 +9,7 @@ import {
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
+import { StaleLine } from '@/components/patterns/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import type { ApiClient } from '@/lib/api/client';
@@ -20,7 +21,6 @@ import { WorkflowListHeader } from './components/workflow-list-header';
 import {
   WorkflowListError,
   WorkflowListNoMatches,
-  WorkflowListStaleLine,
 } from './components/workflow-list-states';
 import { WorkflowListToolbar } from './components/workflow-list-toolbar';
 import {
@@ -175,7 +175,7 @@ export function WorkflowListPage({
             }}
           />
           {workflows.isRefetchError ? (
-            <WorkflowListStaleLine
+            <StaleLine
               updatedAt={workflows.dataUpdatedAt}
               retrying={workflows.isFetching}
               onRetry={() => void workflows.refetch()}

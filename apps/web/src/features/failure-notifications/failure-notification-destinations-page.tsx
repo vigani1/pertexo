@@ -158,7 +158,7 @@ export function FailureNotificationDestinationsPage({
         onEdit={open}
       />
       {canManage && connections.isError ? (
-        <Notice role="alert" tone="attention">
+        <Notice role="alert" tone="warning">
           Connections couldn’t be loaded, so destinations can’t be added or
           edited right now. Alerts keep being sent.
         </Notice>
@@ -179,6 +179,7 @@ export function FailureNotificationDestinationsPage({
             listRefresh={{
               failed: destinations.isError,
               pending: destinations.isRefetching,
+              updatedAt: destinations.dataUpdatedAt,
               reload: async () =>
                 (await destinations.refetch()).data?.items ?? [],
             }}

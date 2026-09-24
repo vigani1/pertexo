@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { LoadingOrb } from '@/components/ui/loading-orb';
@@ -129,9 +130,7 @@ export function FailureAlertsSection({
             </p>
           ) : null}
           {commands.error === undefined ? null : (
-            <p role="alert" className="text-sm text-destructive">
-              {commands.error}
-            </p>
+            <Notice tone="destructive">{commands.error}</Notice>
           )}
           {options.length === 0 ? null : (
             <div className="flex flex-wrap items-end gap-3">
