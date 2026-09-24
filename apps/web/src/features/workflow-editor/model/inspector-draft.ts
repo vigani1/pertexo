@@ -165,6 +165,49 @@ export function applyNumericScratch(
     : { errors };
 }
 
+export type JsonScratchChanges = Readonly<{
+  ordinary: readonly (readonly [string, NodeConfig[string] | undefined])[];
+  numeric: readonly (readonly [string, string])[];
+}>;
+
+/**
+ * Form scratch implied by a raw JSON edit: every schema field whose presence
+ * or value differs from the previous valid JSON config, paired with the value
+ * its control should now show. Numeric controls show text, and a missing or
+ * non-finite number shows as empty.
+ */
+export function scratchChangesFromJson(
+  previous: NodeConfig,
+  next: NodeConfig,
+  fields: readonly SchemaFieldSpec[],
+): JsonScratchChanges {
+  const ordinary: (readonly [string, NodeConfig[string] | undefined])[] = [];
+  const numeric: (readonly [string, string])[] = [];
+  for (const field of fields) {
+    const wasPresent = Object.prototype.hasOwnProperty.call(
+      previous,
+      field.key,
+    );
+    const isPresent = Object.prototype.hasOwnProperty.call(next, field.key);
+    if (
+      wasPresent === isPresent &&
+      Object.is(previous[field.key], next[field.key])
+    )
+      continue;
+    const value = next[field.key];
+    if (field.kind !== 'number' && field.kind !== 'integer')
+      ordinary.push([field.key, value]);
+    else
+      numeric.push([
+        field.key,
+        typeof value === 'number' && Number.isFinite(value)
+          ? String(value)
+          : '',
+      ]);
+  }
+  return { ordinary, numeric };
+}
+
 export function parseJson(value: string): unknown {
   try {
     return JSON.parse(value) as unknown;
