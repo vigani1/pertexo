@@ -14,6 +14,7 @@ import {
   runMutationCommand,
   validateMutationDefinitions,
 } from './verify-mutation-sensitivity.mjs';
+import { isolatedGitEnvironment } from '../support/git-environment.mjs';
 import { preserveTemporaryDirectoryFailure } from '../support/temporary-directory-cleanup.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -80,8 +81,14 @@ test('normalizes a sole non-Error temporary-directory cleanup failure', async ()
   );
 });
 
+// Fixture repositories must never inherit the caller's Git metadata: inside a
+// Git hook, GIT_DIR and friends point at the real checkout.
 function git(directory, arguments_) {
-  return execFileSync('git', arguments_, { cwd: directory, encoding: 'utf8' });
+  return execFileSync('git', arguments_, {
+    cwd: directory,
+    encoding: 'utf8',
+    env: isolatedGitEnvironment(process.env),
+  });
 }
 
 test('snapshot Git setup cannot mutate an inherited control repository', async () => {

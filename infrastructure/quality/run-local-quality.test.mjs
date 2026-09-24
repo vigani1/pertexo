@@ -31,6 +31,7 @@ import {
   sourceIdentity,
   validateQualificationManifest,
 } from './run-local-quality.mjs';
+import { isolatedGitEnvironment } from '../support/git-environment.mjs';
 import {
   OwnedProcessSupervisor,
   processGroupExists,
@@ -311,19 +312,23 @@ test('qualification rejects failed, skipped, and incomplete required reports', (
   );
 });
 
+// Fixture repositories must never inherit the caller's Git metadata: inside a
+// Git hook, GIT_DIR and friends point at the real checkout.
+function fixtureGit(directory, arguments_) {
+  return execFileSync('git', arguments_, {
+    cwd: directory,
+    encoding: 'utf8',
+    env: isolatedGitEnvironment(process.env),
+  });
+}
+
 async function initializeTestRepository(directory, fileName, contents) {
-  execFileSync('git', ['init', '--quiet'], { cwd: directory });
-  execFileSync('git', ['config', 'user.name', 'Fixture Owner'], {
-    cwd: directory,
-  });
-  execFileSync('git', ['config', 'user.email', 'fixture@invalid.test'], {
-    cwd: directory,
-  });
+  fixtureGit(directory, ['init', '--quiet']);
+  fixtureGit(directory, ['config', 'user.name', 'Fixture Owner']);
+  fixtureGit(directory, ['config', 'user.email', 'fixture@invalid.test']);
   await writeFile(path.join(directory, fileName), contents);
-  execFileSync('git', ['add', '-A'], { cwd: directory });
-  execFileSync('git', ['commit', '--quiet', '-m', 'test: fixture'], {
-    cwd: directory,
-  });
+  fixtureGit(directory, ['add', '-A']);
+  fixtureGit(directory, ['commit', '--quiet', '-m', 'test: fixture']);
 }
 
 test('source identity targets the requested checkout despite inherited Git overrides', async () => {
@@ -335,10 +340,7 @@ test('source identity targets the requested checkout despite inherited Git overr
   try {
     await initializeTestRepository(expected, 'expected.txt', 'expected\n');
     await initializeTestRepository(control, 'control.txt', 'control\n');
-    const expectedHead = execFileSync('git', ['rev-parse', 'HEAD'], {
-      cwd: expected,
-      encoding: 'utf8',
-    }).trim();
+    const expectedHead = fixtureGit(expected, ['rev-parse', 'HEAD']).trim();
     const identity = await sourceIdentity(
       {
         ...process.env,
