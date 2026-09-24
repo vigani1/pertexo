@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ApiIdentityConfig } from '../../src/platform/config/api-config.js';
+import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 const identityConfig: ApiIdentityConfig & {
