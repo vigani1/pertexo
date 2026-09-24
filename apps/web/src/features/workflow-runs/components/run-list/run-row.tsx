@@ -10,7 +10,7 @@ import {
 } from '@/lib/format-time';
 import { shortRunId, workflowLabel } from '../../model/run-list';
 import { describeRunStatus } from '../../model/run-status';
-import { CopyValueButton } from '../copy-value-button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { RunRowMenu } from '../run-actions/run-row-menu';
 import { ThreadBar } from '../thread-bar';
 import { TriggerLabel } from '../trigger-label';
@@ -85,10 +85,10 @@ export function RunRow({
         <span className="font-mono text-xs text-muted-foreground lg:col-start-5 lg:row-start-1">
           {durationMs === undefined ? '—' : formatDurationMs(durationMs)}
         </span>
-        <CopyValueButton
+        <CopyButton
           value={run.id}
           display={shortRunId(run.id)}
-          label="run ID"
+          label="Copy run ID"
           className="relative z-10 lg:col-start-7 lg:row-start-1"
         />
       </div>

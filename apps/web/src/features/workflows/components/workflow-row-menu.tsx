@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNotifications } from '@/components/ui/use-notifications';
+import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
 
 /**
@@ -37,27 +37,12 @@ export function WorkflowRowMenu({
   workflow: WorkflowSummary;
   onLifecycle: (workflow: WorkflowSummary) => void;
 }>) {
-  const notifications = useNotifications();
   const params = { workspaceId: workspace.id, workflowId: workflow.id };
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
   const archived = workflow.lifecycleStatus === 'archived';
 
-  async function copyId() {
-    try {
-      await navigator.clipboard.writeText(workflow.id);
-      notifications.success({
-        title: 'Workflow ID copied',
-        description: workflow.name,
-      });
-    } catch {
-      notifications.error({
-        title: 'Couldn’t copy the ID',
-        description:
-          'Your browser blocked clipboard access. Open Settings to copy it there.',
-      });
-    }
-  }
+  const copy = useCopyToClipboard();
 
   return (
     <DropdownMenu>
@@ -126,7 +111,14 @@ export function WorkflowRowMenu({
           Settings
         </DropdownMenuLinkItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => void copyId()}>
+        <DropdownMenuItem
+          onClick={() =>
+            void copy(workflow.id, 'workflow ID', {
+              description: workflow.name,
+              elsewhere: 'Open Settings to copy it there.',
+            })
+          }
+        >
           <CopyIcon aria-hidden="true" />
           Copy ID
         </DropdownMenuItem>

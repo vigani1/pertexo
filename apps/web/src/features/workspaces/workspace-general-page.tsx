@@ -28,21 +28,6 @@ function Fact({
   );
 }
 
-function CopyableValue({
-  value,
-  shown,
-  label,
-}: Readonly<{ value: string; shown: string; label: string }>) {
-  return (
-    <span className="inline-flex max-w-full items-center gap-1 font-mono text-sm">
-      <span className="truncate" title={value}>
-        {shown}
-      </span>
-      <CopyButton value={value} label={label} />
-    </span>
-  );
-}
-
 /**
  * Workspace settings: the name (edited in place), its address and identity,
  * then the lifecycle behind a clearly fenced danger zone.
@@ -118,16 +103,16 @@ export function WorkspaceGeneralPage({
             />
           </Fact>
           <Fact term="URL slug">
-            <CopyableValue
+            <CopyButton
               value={workspace.slug}
-              shown={workspace.slug}
+              display={workspace.slug}
               label="Copy URL slug"
             />
           </Fact>
           <Fact term="Workspace ID">
-            <CopyableValue
+            <CopyButton
               value={workspace.id}
-              shown={`${workspace.id.slice(0, 8)}…`}
+              display={`${workspace.id.slice(0, 8)}…`}
               label="Copy workspace ID"
             />
           </Fact>

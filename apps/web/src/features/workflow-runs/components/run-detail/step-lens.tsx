@@ -15,7 +15,7 @@ import {
 import type { StepStoryEntry } from '../../model/step-replay';
 import type { ThreadRow } from '../../model/thread-view';
 import { shortRunId } from '../../model/run-list';
-import { CopyValueButton } from '../copy-value-button';
+import { CopyButton } from '@/components/ui/copy-button';
 
 function LensSection({
   title,
@@ -225,20 +225,20 @@ export function StepLens({
         <dl className="mt-2 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
           <dt className="text-subtle-foreground">Step ID</dt>
           <dd className="min-w-0">
-            <CopyValueButton
+            <CopyButton
               value={row.nodeId}
               display={row.nodeId}
-              label="step ID"
+              label="Copy step ID"
             />
           </dd>
           {row.invocationKey === undefined ? null : (
             <>
               <dt className="text-subtle-foreground">Invocation</dt>
               <dd className="min-w-0">
-                <CopyValueButton
+                <CopyButton
                   value={row.invocationKey}
                   display={row.invocationKey}
-                  label="invocation key"
+                  label="Copy invocation key"
                 />
               </dd>
             </>
@@ -247,10 +247,10 @@ export function StepLens({
             <>
               <dt className="text-subtle-foreground">Step run</dt>
               <dd className="min-w-0">
-                <CopyValueButton
+                <CopyButton
                   value={row.nodeRunId}
                   display={shortRunId(row.nodeRunId)}
-                  label="step run ID"
+                  label="Copy step run ID"
                 />
               </dd>
             </>

@@ -51,7 +51,7 @@ describe('workflow settings tab', () => {
     expect(await within(identity).findByText('Daily control')).toBeVisible();
     expect(within(identity).getByText(workflowId)).toBeVisible();
     expect(
-      within(identity).getByRole('button', { name: 'Copy workflow id' }),
+      within(identity).getByRole('button', { name: 'Copy workflow ID' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('link', { name: 'Back to editor' }),

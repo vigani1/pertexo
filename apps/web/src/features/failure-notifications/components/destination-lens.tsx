@@ -61,10 +61,12 @@ function DestinationDetails({
       <p className="mt-2 flex items-center gap-2 font-mono text-xs">
         Version {version} · saving creates version {version + 1}
       </p>
-      <p className="mt-1 flex items-center gap-1 font-mono text-xs">
-        {destinationId.slice(0, 4)}…{destinationId.slice(-3)}
-        <CopyButton value={destinationId} label="Copy destination ID" />
-      </p>
+      <CopyButton
+        className="mt-1"
+        value={destinationId}
+        label="Copy destination ID"
+        display={`${destinationId.slice(0, 4)}…${destinationId.slice(-3)}`}
+      />
     </details>
   );
 }
