@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-query';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
-import { authoringCatalogQueryOptions } from '@/features/catalog/public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from './components/new-workflow-sheet';
 import type { StartChoice } from './components/starter-choice';

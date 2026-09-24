@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { SocialProviderButton } from './social-provider-button';
-import type { SocialProvider } from './social-provider';
+import type { SocialProvider } from '../../model/social-provider';
 
 /** Provider choices in two columns; an odd last one takes the full row. */
 export function SocialProviderGrid({

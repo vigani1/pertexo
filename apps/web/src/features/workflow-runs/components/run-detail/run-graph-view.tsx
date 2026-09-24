@@ -17,7 +17,7 @@ import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { projectRunGraph, type GraphStepStatus } from '../../model/run-graph';
 import type { ThreadRow } from '../../model/thread-view';
-import { toneBorderClass } from '../tone-styles';
+import { toneBorderClass } from '../../model/tone-styles';
 
 interface RunNodeData extends Record<string, unknown> {
   label: string;

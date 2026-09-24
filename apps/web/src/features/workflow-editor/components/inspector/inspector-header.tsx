@@ -20,8 +20,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import { useLiveField } from '../../model/use-live-field';
-import type { NodeFormApi } from './node-form';
+import { useLiveField } from '../../use-live-field';
+import type { NodeFormApi } from '../../model/node-form';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

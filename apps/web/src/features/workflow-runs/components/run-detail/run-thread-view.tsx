@@ -2,7 +2,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { stepTag } from '../../model/step-copy';
 import type { ThreadView } from '../../model/thread-view';
-import { toneBorderClass } from '../tone-styles';
+import { toneBorderClass } from '../../model/tone-styles';
 import { RunLoadingWave } from './run-loading-wave';
 import { ThreadTrack } from './thread-track';
 

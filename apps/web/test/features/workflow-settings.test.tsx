@@ -2,7 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { workflowKeys } from '@/features/workflows/public';
+import { workflowKeys } from '@/features/workflows/queries.public';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 import {

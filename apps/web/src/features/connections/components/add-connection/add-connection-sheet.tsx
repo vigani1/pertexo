@@ -33,7 +33,7 @@ import { CredentialFields } from '../credential/credential-fields';
 import {
   createHeaderRowId,
   useCredentialForm,
-} from '../credential/use-credential-form';
+} from '../../use-credential-form';
 import { ProviderSockets } from '../provider-sockets';
 import {
   NameStep,

@@ -1,6 +1,6 @@
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import type { LeaveReason } from '../../model/use-leave-guard';
+import type { LeaveReason } from '../../use-leave-guard';
 
 type Blocker =
   | Readonly<{ status: 'idle' }>

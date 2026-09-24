@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { ManagedRole } from '../../model/workspace-roles';
+import type { ManagedRole } from './model/workspace-roles';
 import type {
   InvitationCommand,
   InvitationOutcome,
-} from '../../mutations/use-invitation-command';
-import type { InviteRow } from './invite-results';
+} from './mutations/use-invitation-command';
+import type { InviteRow } from './components/invitations/invite-results';
 
 type Batch = Readonly<{ rows: readonly InviteRow[]; role: ManagedRole }>;
 

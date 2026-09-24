@@ -1,4 +1,14 @@
-import type { HomeBlockState } from './home-block';
+/** What a Home block shows: its loading, failure and staleness. */
+export type HomeBlockState = Readonly<{
+  pending: boolean;
+  /** The failure of the latest read, if it failed. */
+  error: unknown;
+  failed: boolean;
+  hasData: boolean;
+  retrying: boolean;
+  updatedAt: number;
+  onRetry: () => void;
+}>;
 
 /** The parts of a query (plain or infinite) a Home block reads. */
 export type BlockQuery = Readonly<{

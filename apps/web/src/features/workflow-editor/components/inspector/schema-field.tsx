@@ -16,9 +16,9 @@ import {
   type NodeConfig,
   type SchemaFieldSpec,
 } from '../../model/inspector-draft';
-import { useLiveField } from '../../model/use-live-field';
+import { useLiveField } from '../../use-live-field';
 import { ChoiceSelect } from './choice-select';
-import { fieldControlId, type NodeFormApi } from './node-form';
+import { fieldControlId, type NodeFormApi } from '../../model/node-form';
 
 type ConfigValue = NodeConfig[string] | undefined;
 

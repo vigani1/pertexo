@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FieldParseResult } from './inspector-draft';
+import type { FieldParseResult } from './model/inspector-draft';
 
 type LiveFieldState<Value> = Readonly<{
   text: string;

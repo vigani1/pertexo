@@ -1,6 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/members.queries.public';
+import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { firstThreadSteps, type FirstThreadFacts } from '../model/first-thread';
 import { FirstThread } from './first-thread';

@@ -9,7 +9,7 @@ import {
 } from '@/features/workflow-runs/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { HomeBlockBody } from './home-block';
-import { queryBlockState } from './home-block-state';
+import { queryBlockState } from '../model/home-block-state';
 
 const windows = {
   '1h': { ms: 3_600_000, label: '1 hour', phrase: 'the last hour' },

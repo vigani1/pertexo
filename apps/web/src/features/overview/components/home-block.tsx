@@ -4,17 +4,7 @@ import { Button } from '@/components/ui/button';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import { describeReadError } from '@/lib/api/api-error-copy';
-
-export type HomeBlockState = Readonly<{
-  pending: boolean;
-  /** The failure of the latest read, if it failed. */
-  error: unknown;
-  failed: boolean;
-  hasData: boolean;
-  retrying: boolean;
-  updatedAt: number;
-  onRetry: () => void;
-}>;
+import type { HomeBlockState } from '../model/home-block-state';
 
 /**
  * One Home block with its own recovery: spooling threads while it loads, a

@@ -15,8 +15,10 @@ import {
   runStatusCountsQueryOptions,
   workflowRunKeys,
 } from '@/features/workflow-runs/queries.public';
-import { workflowKeys } from '@/features/workflows/public';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import {
+  workflowKeys,
+  workflowsInfiniteQueryOptions,
+} from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { AttentionSection } from './components/attention-section';
 import { FirstThreadSection } from './components/first-thread-section';

@@ -12,14 +12,14 @@ import {
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
 } from '../../model/input-mappings';
-import { useLiveMappings } from '../../model/use-live-mappings';
+import { useLiveMappings } from '../../use-live-mappings';
 import { IncomingConnections } from './incoming-connections';
 import {
   InsertDataPicker,
   type InsertedSource,
 } from './input-mappings/insert-data-picker';
 import { MappingRow } from './input-mappings/mapping-row';
-import type { NodeFormApi } from './node-form';
+import type { NodeFormApi } from '../../model/node-form';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

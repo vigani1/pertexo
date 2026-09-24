@@ -30,7 +30,7 @@ import {
   useEditorStoreApi,
 } from '../../model/editor-store-context';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
-import { CanvasActionsContext } from './canvas-actions-context';
+import { CanvasActionsContext } from '../../model/canvas-actions-context';
 import { CanvasZoomLens } from './canvas-zoom-lens';
 import { WorkflowEdge } from './workflow-edge';
 import { WorkflowNodeCard } from './workflow-node-card';

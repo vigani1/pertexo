@@ -12,7 +12,7 @@ import {
   sanitizeWorkflowRunSearch,
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
-import { workflowSummaryQueryOptions } from '@/features/workflows/public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
 import {

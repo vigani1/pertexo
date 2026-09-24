@@ -13,9 +13,9 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { workflowSummaryQueryOptions } from '@/features/workflows/public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { visibleSettingsData } from './components/settings-query';
+import { visibleSettingsData } from './model/settings-query';
 import {
   SettingsQueryState,
   SettingsSection,

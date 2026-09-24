@@ -6,7 +6,7 @@ import { recentWorkflowsQueryOptions } from '@/features/workflows/queries.public
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { HomeBlock } from './home-block';
-import { queryBlockState } from './home-block-state';
+import { queryBlockState } from '../model/home-block-state';
 
 /** The workflows whose lifecycle or publication changed most recently. */
 export function RecentlyChanged({

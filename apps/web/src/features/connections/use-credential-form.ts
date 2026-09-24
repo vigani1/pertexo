@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { ApiProblemIssue } from '@pertexo/contracts/schemas/errors';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { ConnectionCredential } from '../../connections.api';
-import type { ProviderKey } from '../../model/connection-providers';
+import type { ConnectionCredential } from './connections.api';
+import type { ProviderKey } from './model/connection-providers';
 import {
   credentialErrors,
   credentialServerErrors,
@@ -10,7 +10,7 @@ import {
   toConnectionCredential,
   type CredentialDraft,
   type CredentialField,
-} from '../../model/credential-draft';
+} from './model/credential-draft';
 
 // The first header row needs a stable identity before anyone edits it.
 const FIRST_ROW_ID = 'first';

@@ -5,7 +5,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { describeConnectionRequirement } from '@/features/catalog/presentation.public';
 import { ChoiceSelect } from './choice-select';
-import type { NodeFormApi } from './node-form';
+import type { NodeFormApi } from '../../model/node-form';
 
 /**
  * Which workspace connection a step uses for one requirement. Only active

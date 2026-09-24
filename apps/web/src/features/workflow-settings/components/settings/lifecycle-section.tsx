@@ -14,7 +14,10 @@ import {
 } from '@/features/workflows/lifecycle.public';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowSettingsKeys } from '../../workflow-settings.queries';
-import { visibleSettingsData, type SettingsQuery } from '../settings-query';
+import {
+  visibleSettingsData,
+  type SettingsQuery,
+} from '../../model/settings-query';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
 
 /**

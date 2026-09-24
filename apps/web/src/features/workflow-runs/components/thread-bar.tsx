@@ -1,7 +1,7 @@
 import type { StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { statusToneText } from '@/components/ui/status-tone';
-import { toneLineStyle } from './tone-styles';
+import { toneLineStyle } from '../model/tone-styles';
 
 /**
  * A run's duration as a thread: its length is the run's share of the longest

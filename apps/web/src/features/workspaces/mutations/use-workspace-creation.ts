@@ -1,5 +1,6 @@
 import type {
   AccessibleWorkspace,
+  WorkspaceCreateRequest,
   WorkspaceResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,10 +17,12 @@ import {
   accessibleWorkspacesQueryOptions,
   workspaceKeys,
 } from '../workspaces.queries';
-import {
-  type WorkspaceCreationAttempt,
-  workspaceCreationMutationOptions,
-} from '../workspaces.mutations';
+import { createWorkspace } from '../workspaces.api';
+
+type WorkspaceCreationAttempt = Readonly<{
+  body: WorkspaceCreateRequest;
+  idempotencyKey: string;
+}>;
 
 type CreationError = Readonly<{
   field?: 'slug';
@@ -61,7 +64,10 @@ export function useWorkspaceCreation({
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
-  const mutation = useMutation(workspaceCreationMutationOptions(apiClient));
+  const mutation = useMutation({
+    mutationFn: (attempt: WorkspaceCreationAttempt) =>
+      createWorkspace(apiClient, attempt),
+  });
 
   useEffect(() => {
     const scope = Symbol('workspace-creation');

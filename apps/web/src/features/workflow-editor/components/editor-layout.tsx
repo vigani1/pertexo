@@ -2,7 +2,7 @@ import { LayersIcon, PlusIcon, SlidersHorizontalIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { MobilePanel } from '../model/use-inspector-navigation';
+import type { MobilePanel } from '../use-inspector-navigation';
 
 /**
  * Places the editor's layers: the canvas fills the screen, and the command

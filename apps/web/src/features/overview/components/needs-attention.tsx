@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
 import type { AttentionAction, AttentionItem } from '../model/needs-attention';
-import { HomeBlock, type HomeBlockState } from './home-block';
+import type { HomeBlockState } from '../model/home-block-state';
+import { HomeBlock } from './home-block';
 
 const MAX_ITEMS = 6;
 

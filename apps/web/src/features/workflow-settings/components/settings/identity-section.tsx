@@ -1,7 +1,10 @@
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { CopyField } from '../copy-field';
-import { visibleSettingsData, type SettingsQuery } from '../settings-query';
+import {
+  visibleSettingsData,
+  type SettingsQuery,
+} from '../../model/settings-query';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
 
 function Moment({ label, value }: Readonly<{ label: string; value: string }>) {

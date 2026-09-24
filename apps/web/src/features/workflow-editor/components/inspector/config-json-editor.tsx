@@ -7,8 +7,8 @@ import {
 } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { parseConfigJson, type NodeConfig } from '../../model/inspector-draft';
-import { useLiveField } from '../../model/use-live-field';
-import type { NodeFormApi } from './node-form';
+import { useLiveField } from '../../use-live-field';
+import type { NodeFormApi } from '../../model/node-form';
 
 export const CONFIG_JSON_FIELD = '\u0000json';
 
