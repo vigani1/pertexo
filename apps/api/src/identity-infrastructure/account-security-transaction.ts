@@ -5,6 +5,7 @@ import type { Pool } from 'pg';
 type PasswordChangeResult = 'changed' | 'invalid' | 'inactive';
 type PasswordSetupResult = 'configured' | 'already' | 'unverified' | 'inactive';
 type PasswordResetResult = 'reset' | 'invalid';
+type MethodUnlinkResult = 'unlinked' | 'last_method' | 'not_found';
 
 /** Credential changes and revocation share one database commit. */
 export async function changePasswordAndRevokeSessions(
@@ -180,6 +181,55 @@ export async function resetPasswordAndRevokeSessions(
     );
     await client.query('commit');
     return 'reset';
+  } catch (error) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** The last sign-in method cannot be removed; removal revokes every session. */
+export async function unlinkMethodAndRevokeSessions(
+  pool: Pool,
+  input: Readonly<{ userId: string; methodId: string }>,
+): Promise<MethodUnlinkResult> {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('select id from app.users where id=$1 for update', [
+      input.userId,
+    ]);
+    const accounts = await client.query<{ id: string }>(
+      `select id from app.auth_accounts
+        where user_id=$1
+        order by id
+        for update`,
+      [input.userId],
+    );
+    if (accounts.rows.length <= 1) {
+      await client.query('rollback');
+      return 'last_method';
+    }
+    const removed = await client.query(
+      `delete from app.auth_accounts
+        where id=$1 and user_id=$2
+        returning id`,
+      [input.methodId, input.userId],
+    );
+    if (removed.rowCount !== 1) {
+      await client.query('rollback');
+      return 'not_found';
+    }
+    await client.query('delete from app.auth_sessions where user_id=$1', [
+      input.userId,
+    ]);
+    await client.query(
+      `select app.record_identity_method_audit_fact($1,'method.unlinked')`,
+      [input.userId],
+    );
+    await client.query('commit');
+    return 'unlinked';
   } catch (error) {
     await client.query('rollback').catch(() => undefined);
     throw error;
