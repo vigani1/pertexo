@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { formatCountdown } from '@/lib/format-time';
+import { Button } from './button';
+import { LoadingOrb } from './loading-orb';
 
 type ProgressButtonProps = Omit<ComponentProps<typeof Button>, 'children'> &
   Readonly<{
@@ -16,8 +16,9 @@ type ProgressButtonProps = Omit<ComponentProps<typeof Button>, 'children'> &
   }>;
 
 /**
- * A button that keeps its place while work happens: the mini orb and a
- * swapped verb while pending, a live countdown while it has to wait.
+ * The standard loading treatment for a command button: while pending it
+ * shows the mini orb and swaps its verb; while it has to wait it counts down.
+ * It is disabled in both cases, so a command can't be sent twice.
  */
 export function ProgressButton({
   children,
@@ -31,7 +32,7 @@ export function ProgressButton({
   const waiting = waitSeconds > 0;
   return (
     <Button disabled={disabled === true || pending || waiting} {...props}>
-      {pending ? <LoadingOrb /> : null}
+      {pending ? <LoadingOrb data-icon="inline-start" /> : null}
       {pending ? (
         pendingLabel
       ) : waiting ? (

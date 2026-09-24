@@ -1,21 +1,16 @@
 import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { KeyRoundIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { useUnlinkAccountMethod } from '../../account-security.mutations';
-import { ProgressButton } from '../../forms/progress-button';
 import { ProviderMark } from '../social/social-provider-button';
 import { isSocialProvider, providerName } from '../social/social-provider';
-import { AccountCommandFailure, AccountSection } from './account-section';
+import { accountCommandFailure } from '../../model/account-failure';
+import { AccountSection, FreshSignInLink } from './account-section';
 import { LinkProviderDialog } from './link-provider-dialog';
 
 type Method = AccountSecurityResponse['methods'][number];
@@ -150,64 +145,38 @@ export function AccountMethodsSection({
           }}
         />
       ) : null}
-      <Dialog
+      <ConfirmDialog
         open={methodToRemove !== undefined}
         onOpenChange={(open) => {
           if (!open) closeRemoval();
         }}
-      >
-        <DialogContent>
-          <DialogTitle>Remove sign-in method?</DialogTitle>
-          <DialogDescription>
-            You won’t be able to sign in with{' '}
-            {methodToRemove === undefined ? 'it' : methodName(methodToRemove)}{' '}
-            any more. Other devices will be signed out; this one stays signed
-            in.
-          </DialogDescription>
-          {unlink.error === null ? null : (
-            <AccountCommandFailure
-              className="mt-4"
-              error={unlink.error}
-              action="removing this method"
-              message={
-                isApiError(unlink.error) &&
+        title="Remove sign-in method?"
+        description={`You won’t be able to sign in with ${
+          methodToRemove === undefined ? 'it' : methodName(methodToRemove)
+        } any more. Other devices will be signed out; this one stays signed in.`}
+        tone="destructive"
+        confirmLabel="Remove method"
+        pendingLabel="Removing…"
+        cancelLabel="Keep method"
+        pending={unlink.isPending}
+        confirmDisabled={methodToRemove === undefined}
+        error={
+          unlink.error === null
+            ? undefined
+            : isApiError(unlink.error) &&
                 (unlink.error.status === 400 || unlink.error.status === 409)
-                  ? 'This method can’t be removed. Keep at least one way to sign in.'
-                  : undefined
-              }
-            />
-          )}
-          <div className="mt-6 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={unlink.isPending}
-              onClick={closeRemoval}
-            >
-              Keep method
-            </Button>
-            <ProgressButton
-              type="button"
-              variant="destructive"
-              pending={unlink.isPending}
-              pendingLabel="Removing…"
-              disabled={methodToRemove === undefined}
-              onClick={() => {
-                if (methodToRemove === undefined) return;
-                const name = methodName(methodToRemove);
-                unlink.mutate(methodToRemove.id, {
-                  onSuccess: () => {
-                    setMethodToRemove(undefined);
-                    notifications.success({ title: `${name} removed` });
-                  },
-                });
-              }}
-            >
-              Remove method
-            </ProgressButton>
-          </div>
-        </DialogContent>
-      </Dialog>
+              ? 'This method can’t be removed. Keep at least one way to sign in.'
+              : accountCommandFailure(unlink.error, 'removing this method')
+        }
+        errorAction={<FreshSignInLink error={unlink.error} />}
+        onConfirm={async () => {
+          if (methodToRemove === undefined) return;
+          const name = methodName(methodToRemove);
+          await unlink.mutateAsync(methodToRemove.id);
+          setMethodToRemove(undefined);
+          notifications.success({ title: `${name} removed` });
+        }}
+      />
     </AccountSection>
   );
 }

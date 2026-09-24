@@ -61,6 +61,12 @@ export default tseslint.config(
           message:
             'Use the injected API transport; raw fetch is restricted to reviewed transport adapters.',
         },
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.property.name='mutate'][arguments.length>1]",
+          message:
+            'TanStack Query drops mutate() callbacks once the caller unmounts. Await mutateAsync() and act after it, or put the effect in the mutation hook.',
+        },
       ],
     },
   },

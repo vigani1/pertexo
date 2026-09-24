@@ -1,7 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts/schemas/identity-workspace';
 import { useEffect, useEffectEvent, useState, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
-import { ProgressButton } from '@/features/auth/auth-stage.public';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { InvitationHeading } from './invitation-heading';
 
 type Completed = Extract<InvitationAcceptanceJourney, { state: 'completed' }>;

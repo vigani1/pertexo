@@ -5,8 +5,8 @@ import { StatusGlyph } from '@/components/ui/status';
 import {
   AuthLensDescription,
   AuthLensTitle,
-  ProgressButton,
 } from '@/features/auth/auth-stage.public';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { currentUserQueryOptions } from '@/features/auth/session.queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { DEAD_END_COPY, type DeadEndState } from '../model/journey-copy';

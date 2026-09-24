@@ -48,6 +48,17 @@ export function useConnectionTest(
   const attempt = useRef<TestConnectionCommand | undefined>(undefined);
   const [targetName, setTargetName] = useState('This connection');
 
+  async function send(command: TestConnectionCommand, name: string) {
+    try {
+      const result = await mutation.mutateAsync(command);
+      attempt.current = undefined;
+      if (result.outcome.ok)
+        notifications.success({ title: `${name} passed its test` });
+    } catch {
+      // The mutation's error renders as the test outcome.
+    }
+  }
+
   function run(
     connection: Pick<ConnectionResponse, 'id' | 'name'>,
     request: ConnectionTestRequest,
@@ -69,15 +80,7 @@ export function useConnectionTest(
         };
     attempt.current = command;
     setTargetName(connection.name);
-    mutation.mutate(command, {
-      onSuccess: (result) => {
-        attempt.current = undefined;
-        if (result.outcome.ok)
-          notifications.success({
-            title: `${connection.name} passed its test`,
-          });
-      },
-    });
+    void send(command, connection.name);
   }
 
   return {

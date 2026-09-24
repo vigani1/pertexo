@@ -49,7 +49,7 @@ export function ReplaceCredentialForm({
     onDone();
   }
 
-  function submit() {
+  async function submit() {
     if (mutation.isPending) return;
     const value = credential.validate();
     if (value === undefined) return;
@@ -64,18 +64,17 @@ export function ReplaceCredentialForm({
             idempotencyKey: crypto.randomUUID(),
           };
     attempt.current = { signature, command };
-    mutation.mutate(command, {
-      onSuccess: () => {
-        notifications.success({
-          title: `Replaced the ${PROVIDERS[connection.providerKey].credential} for ${connection.name}`,
-        });
-        finish();
-      },
-      onError: (error) => {
-        if (isApiError(error))
-          credential.showServerIssues(error.problem?.errors ?? []);
-      },
+    try {
+      await mutation.mutateAsync(command);
+    } catch (error) {
+      if (isApiError(error))
+        credential.showServerIssues(error.problem?.errors ?? []);
+      return;
+    }
+    notifications.success({
+      title: `Replaced the ${PROVIDERS[connection.providerKey].credential} for ${connection.name}`,
     });
+    finish();
   }
 
   const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
@@ -85,7 +84,7 @@ export function ReplaceCredentialForm({
       className="flex flex-col gap-5"
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        void submit();
       }}
     >
       <p className="text-sm text-muted-foreground">

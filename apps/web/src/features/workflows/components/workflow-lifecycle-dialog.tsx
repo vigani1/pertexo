@@ -1,12 +1,4 @@
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -77,62 +69,25 @@ export function WorkflowLifecycleDialog({
   }
 
   return (
-    <Dialog
+    <ConfirmDialog
       open={intent !== undefined}
       onOpenChange={(open) => {
-        if (open || lifecycle.pending) return;
+        if (open) return;
         lifecycle.reset();
         onClose();
       }}
-    >
-      <DialogContent>
-        <DialogTitle>{copy.title}</DialogTitle>
-        <DialogDescription className="font-medium text-foreground">
-          {workflowName}
-        </DialogDescription>
-        <ul className="mt-4 flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-          {LIFECYCLE_CONSEQUENCES[action].map((line) => (
-            <li key={line} className="flex gap-2.5">
-              <span
-                aria-hidden="true"
-                className="mt-2.5 h-px w-3 shrink-0 bg-border-strong"
-              />
-              {line}
-            </li>
-          ))}
-        </ul>
-        {lifecycle.error === undefined ? null : (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {lifecycle.error}
-          </p>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
-          <DialogClose
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={lifecycle.pending}
-              />
-            }
-          >
-            Cancel
-          </DialogClose>
-          <Button
-            type="button"
-            variant={action === 'restore' ? 'default' : 'destructive'}
-            disabled={lifecycle.pending}
-            onClick={() => void confirm()}
-          >
-            {lifecycle.pending ? <LoadingOrb /> : null}
-            {lifecycle.pending
-              ? copy.pending
-              : lifecycle.exactRetry
-                ? 'Retry safely'
-                : copy.confirm}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      title={copy.title}
+      description={
+        <span className="font-medium text-foreground">{workflowName}</span>
+      }
+      consequences={LIFECYCLE_CONSEQUENCES[action]}
+      tone={action === 'restore' ? 'default' : 'destructive'}
+      confirmLabel={lifecycle.exactRetry ? 'Retry safely' : copy.confirm}
+      pendingLabel={copy.pending}
+      pending={lifecycle.pending}
+      error={lifecycle.error}
+      errorTone={lifecycle.exactRetry ? 'warning' : 'destructive'}
+      onConfirm={confirm}
+    />
   );
 }

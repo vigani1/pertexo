@@ -117,7 +117,7 @@ export function AddConnectionSheet({
     if (credential.validate() !== undefined) setStep('name');
   }
 
-  function save() {
+  async function save() {
     if (provider === undefined || create.isPending) return;
     if (!nameValidation.submit({ name: connectionNameError(name) })) return;
     if (credential.validate() === undefined) {
@@ -131,25 +131,25 @@ export function AddConnectionSheet({
         ? attempt.current.command
         : { request: body, idempotencyKey: crypto.randomUUID() };
     attempt.current = { signature, command };
-    create.mutate(command, {
-      onSuccess: (connection) => {
-        attempt.current = undefined;
-        credential.clear();
-        clearSensitiveState();
-        setCreated(connection);
-        setStep('test');
-        if (connection.providerKey === 'slack')
-          test.run(connection, { providerKey: 'slack' });
-      },
-      onError: (error) => {
-        const issues = isApiError(error) ? (error.problem?.errors ?? []) : [];
-        if (issues.some((issue) => issue.path === 'name'))
-          nameValidation.showErrors({
-            name: 'Pertexo couldn’t use this name. Try a shorter one.',
-          });
-        if (credential.showServerIssues(issues)) setStep('credential');
-      },
-    });
+    let connection: ConnectionResponse;
+    try {
+      connection = await create.mutateAsync(command);
+    } catch (error) {
+      const issues = isApiError(error) ? (error.problem?.errors ?? []) : [];
+      if (issues.some((issue) => issue.path === 'name'))
+        nameValidation.showErrors({
+          name: 'Pertexo couldn’t use this name. Try a shorter one.',
+        });
+      if (credential.showServerIssues(issues)) setStep('credential');
+      return;
+    }
+    attempt.current = undefined;
+    credential.clear();
+    clearSensitiveState();
+    setCreated(connection);
+    setStep('test');
+    if (connection.providerKey === 'slack')
+      test.run(connection, { providerKey: 'slack' });
   }
 
   const createFailed = create.isError && !isFieldProblem(create.error);
@@ -180,7 +180,7 @@ export function AddConnectionSheet({
             onSubmit={(event) => {
               event.preventDefault();
               if (step === 'credential') continueToName();
-              else if (step === 'name') save();
+              else if (step === 'name') void save();
             }}
           >
             {step === 'provider' ? (

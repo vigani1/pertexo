@@ -1,6 +1,6 @@
 import type { ReactNode, SyntheticEvent } from 'react';
 import { emailProblem } from '../../forms/field-rules';
-import { ProgressButton } from '../../forms/progress-button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { TextField } from '@/components/patterns/text-field';
 import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useAuthRequest } from '../../use-auth-request';

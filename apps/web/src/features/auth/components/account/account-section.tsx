@@ -89,6 +89,19 @@ export function AccountReadFailure({
   );
 }
 
+/** "Sign in again" when the server wants a fresh session for a change. */
+export function FreshSignInLink({ error }: Readonly<{ error: unknown }>) {
+  if (!needsFreshSignIn(error)) return null;
+  return (
+    <Link
+      to="/logout"
+      className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
+    >
+      Sign in again
+    </Link>
+  );
+}
+
 /**
  * A failed account change. When the server wants a fresh sign-in, the line
  * offers it: signing out and back in starts a new session.
@@ -109,16 +122,7 @@ export function AccountCommandFailure({
     <Notice
       tone="destructive"
       {...(className === undefined ? {} : { className })}
-      action={
-        needsFreshSignIn(error) ? (
-          <Link
-            to="/logout"
-            className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
-          >
-            Sign in again
-          </Link>
-        ) : undefined
-      }
+      action={<FreshSignInLink error={error} />}
     >
       {message ?? accountCommandFailure(error, action)}
     </Notice>

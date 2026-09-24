@@ -3,13 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { LaptopIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
@@ -18,14 +13,16 @@ import {
   useRevokeOtherAccountSessions,
 } from '../../account-security.mutations';
 import { accountSecuritySessionsQueryOptions } from '../../account-security.queries';
-import { ProgressButton } from '../../forms/progress-button';
-import { accountReadFailure } from '../../model/account-failure';
+import {
+  accountCommandFailure,
+  accountReadFailure,
+} from '../../model/account-failure';
 import { describeUserAgent } from '../../model/user-agent';
 import {
-  AccountCommandFailure,
   AccountReadFailure,
   AccountRowsPending,
   AccountSection,
+  FreshSignInLink,
 } from './account-section';
 
 type Session = AccountSecuritySessionsResponse['items'][number];
@@ -109,28 +106,23 @@ export function AccountSessionsSection({
     setEnding(undefined);
   }
 
-  function confirm() {
+  async function confirm() {
     if (ending?.kind === 'one') {
       const { label } = ending;
-      revoke.mutate(ending.id, {
-        onSuccess: () => {
-          setEnding(undefined);
-          notifications.success({ title: `Signed out of ${label}` });
-        },
+      await revoke.mutateAsync(ending.id);
+      setEnding(undefined);
+      notifications.success({ title: `Signed out of ${label}` });
+    }
+    if (ending?.kind === 'others') {
+      const result = await revokeOthers.mutateAsync();
+      setEnding(undefined);
+      notifications.success({
+        title:
+          result.revokedCount === 1
+            ? 'Signed out of 1 other device'
+            : `Signed out of ${String(result.revokedCount)} other devices`,
       });
     }
-    if (ending?.kind === 'others')
-      revokeOthers.mutate(undefined, {
-        onSuccess: (result) => {
-          setEnding(undefined);
-          notifications.success({
-            title:
-              result.revokedCount === 1
-                ? 'Signed out of 1 other device'
-                : `Signed out of ${String(result.revokedCount)} other devices`,
-          });
-        },
-      });
   }
 
   return (
@@ -192,51 +184,33 @@ export function AccountSessionsSection({
           ) : null}
         </>
       )}
-      <Dialog
+      <ConfirmDialog
         open={ending !== undefined}
         onOpenChange={(open) => {
           if (!open) close();
         }}
-      >
-        <DialogContent>
-          <DialogTitle>
-            {ending?.kind === 'others'
-              ? 'Sign out all other devices?'
-              : 'Sign out this device?'}
-          </DialogTitle>
-          <DialogDescription>
-            {ending?.kind === 'one'
-              ? `${ending.label} will need to sign in again.`
-              : 'Every other browser and device will need to sign in again. This one stays signed in.'}
-          </DialogDescription>
-          {error === null ? null : (
-            <AccountCommandFailure
-              className="mt-4"
-              error={error}
-              action="signing out"
-            />
-          )}
-          <div className="mt-6 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={close}
-            >
-              Cancel
-            </Button>
-            <ProgressButton
-              type="button"
-              variant="destructive"
-              pending={busy}
-              pendingLabel="Signing out…"
-              onClick={confirm}
-            >
-              Sign out
-            </ProgressButton>
-          </div>
-        </DialogContent>
-      </Dialog>
+        title={
+          ending?.kind === 'others'
+            ? 'Sign out all other devices?'
+            : 'Sign out this device?'
+        }
+        description={
+          ending?.kind === 'one'
+            ? `${ending.label} will need to sign in again.`
+            : 'Every other browser and device will need to sign in again. This one stays signed in.'
+        }
+        tone="destructive"
+        confirmLabel="Sign out"
+        pendingLabel="Signing out…"
+        pending={busy}
+        error={
+          error === null
+            ? undefined
+            : accountCommandFailure(error, 'signing out')
+        }
+        errorAction={<FreshSignInLink error={error} />}
+        onConfirm={confirm}
+      />
     </AccountSection>
   );
 }

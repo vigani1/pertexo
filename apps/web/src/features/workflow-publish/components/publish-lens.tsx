@@ -1,6 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { ArrowUpFromLineIcon, MonitorIcon } from 'lucide-react';
 import { useRef } from 'react';
+import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -112,9 +113,9 @@ export function PublishLens({
           </div>
         )}
         {error === undefined ? null : (
-          <p role="alert" className="mt-4 text-sm text-destructive">
+          <Notice tone="destructive" className="mt-4">
             {error}
-          </p>
+          </Notice>
         )}
         <div className="mt-6 flex justify-end gap-2">
           <DialogClose

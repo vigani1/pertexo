@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
+import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useScheduleCommand } from '../../mutations/use-trigger-commands';
-import { ConfirmDialog } from '../confirm-dialog';
 import { ScheduleCard } from './schedule-card';
 
 /**
@@ -75,18 +75,19 @@ export function SchedulesSection({
       ))}
       <ConfirmDialog
         open={pausing !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setPausing(undefined);
+        }}
         title="Turn off this schedule?"
         description="No new runs start from it until you turn it back on. Runs already in progress finish normally."
+        tone="destructive"
         confirmLabel="Turn off"
+        pendingLabel="Turning off…"
         cancelLabel="Keep it on"
-        destructive
         pending={schedule.pendingTriggerId !== undefined}
-        onConfirm={() => {
-          if (pausing !== undefined) void setEnabled(pausing, false);
-        }}
-        onClose={() => {
-          setPausing(undefined);
-        }}
+        onConfirm={() =>
+          pausing === undefined ? undefined : setEnabled(pausing, false)
+        }
       />
     </>
   );

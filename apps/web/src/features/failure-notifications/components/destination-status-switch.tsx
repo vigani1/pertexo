@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
 import { Button } from '@/components/ui/button';
-import { StatusGlyph } from '@/components/ui/status';
+import { Notice } from '@/components/ui/notice';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isUncertainOutcome } from '@/lib/api/api-error-copy';
@@ -38,19 +38,20 @@ export function DestinationStatusSwitch({
   const mutation = useSetFailureNotificationDestinationStatusMutation(scope);
   const attempt = useRef<StatusCommand | undefined>(undefined);
 
-  function send(command: StatusCommand) {
+  async function send(command: StatusCommand) {
     attempt.current = command;
-    mutation.mutate(
-      { destinationId, ...command },
-      {
-        onSuccess: (destination) => {
-          attempt.current = undefined;
-          notifications.success({
-            title: `Alerts to ${label} turned ${destination.status === 'enabled' ? 'on' : 'off'}`,
-          });
-        },
-      },
-    );
+    try {
+      const destination = await mutation.mutateAsync({
+        destinationId,
+        ...command,
+      });
+      attempt.current = undefined;
+      notifications.success({
+        title: `Alerts to ${label} turned ${destination.status === 'enabled' ? 'on' : 'off'}`,
+      });
+    } catch {
+      // The switch shows the failure and offers the exact retry.
+    }
   }
 
   const uncertain = mutation.isError && isUncertainOutcome(mutation.error);
@@ -67,7 +68,7 @@ export function DestinationStatusSwitch({
           checked={requested === 'enabled'}
           disabled={disabled || mutation.isPending || uncertain}
           onCheckedChange={(checked) => {
-            send({
+            void send({
               status: checked ? 'enabled' : 'disabled',
               idempotencyKey: crypto.randomUUID(),
             });
@@ -75,34 +76,31 @@ export function DestinationStatusSwitch({
         />
       </div>
       {mutation.isError ? (
-        <div
+        <Notice
           role="alert"
-          className="flex max-w-80 items-start gap-2 text-right text-xs text-foreground"
+          tone={uncertain ? 'warning' : 'destructive'}
+          className="max-w-80"
+          action={
+            uncertain ? (
+              <Button
+                type="button"
+                size="xs"
+                variant="default"
+                onClick={() => {
+                  const command = attempt.current;
+                  if (command !== undefined) void send(command);
+                }}
+              >
+                Try again
+              </Button>
+            ) : undefined
+          }
         >
-          <StatusGlyph
-            tone={uncertain ? 'attention' : 'failure'}
-            className={uncertain ? 'text-warning' : 'text-destructive'}
-          />
-          <span>
-            {destinationCommandError(
-              mutation.error,
-              mutation.variables.status === 'enabled' ? 'enable' : 'disable',
-            )}
-          </span>
-          {uncertain ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="default"
-              onClick={() => {
-                const command = attempt.current;
-                if (command !== undefined) send(command);
-              }}
-            >
-              Try again
-            </Button>
-          ) : null}
-        </div>
+          {destinationCommandError(
+            mutation.error,
+            mutation.variables.status === 'enabled' ? 'enable' : 'disable',
+          )}
+        </Notice>
       ) : null}
     </div>
   );
