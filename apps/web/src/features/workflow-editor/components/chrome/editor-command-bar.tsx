@@ -127,7 +127,7 @@ export function EditorCommandBar({
           <Button
             type="button"
             size="sm"
-            variant="solid"
+            variant="primary"
             disabled={
               saveStatus === 'clean' ||
               saveStatus === 'saving' ||

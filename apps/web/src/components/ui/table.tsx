@@ -4,9 +4,6 @@ import { cn } from '@/lib/utils';
 export function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
     <div className="w-full">
-      <p className="mb-2 text-xs text-muted-foreground md:hidden">
-        Scroll horizontally to view all columns and actions.
-      </p>
       <div
         data-slot="table-container"
         className="w-full overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -57,7 +54,7 @@ export function TableRow({ className, ...props }: ComponentProps<'tr'>) {
   return (
     <tr
       className={cn(
-        'border-b border-border transition-colors hover:bg-primary/[0.035]',
+        'border-b border-border transition-colors hover:bg-white/[0.03]',
         className,
       )}
       {...props}
@@ -69,7 +66,7 @@ export function TableHead({ className, ...props }: ComponentProps<'th'>) {
   return (
     <th
       className={cn(
-        'h-11 px-3 text-left align-middle font-mono text-[0.68rem] font-medium tracking-[0.13em] text-muted-foreground uppercase',
+        'h-10 px-3 text-left align-middle font-mono text-[0.68rem] font-medium tracking-[0.08em] text-subtle-foreground uppercase',
         className,
       )}
       {...props}
@@ -78,5 +75,7 @@ export function TableHead({ className, ...props }: ComponentProps<'th'>) {
 }
 
 export function TableCell({ className, ...props }: ComponentProps<'td'>) {
-  return <td className={cn('px-3 py-4 align-middle', className)} {...props} />;
+  return (
+    <td className={cn('px-3 py-3.5 align-middle', className)} {...props} />
+  );
 }

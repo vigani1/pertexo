@@ -1,5 +1,5 @@
 import '@fontsource-variable/inter/wght.css';
-import '@fontsource-variable/hanken-grotesk/wght.css';
+import '@fontsource-variable/bricolage-grotesque/opsz.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
 import './styles/globals.css';
 import { StrictMode } from 'react';

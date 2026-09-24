@@ -281,7 +281,7 @@ function RotateSlackConnectionDialog({
               </DialogClose>
               <Button
                 type="submit"
-                variant="solid"
+                variant="primary"
                 disabled={mutation.isPending}
               >
                 {mutation.isPending

@@ -21,12 +21,12 @@ const dialogViewportVariants = cva(
 );
 
 const dialogContentVariants = cva(
-  'glass-panel relative w-full overflow-y-auto shadow-2xl outline-none transition-[transform,opacity] motion-reduce:transition-none',
+  'lens relative w-full overflow-y-auto shadow-2xl outline-none transition-[transform,opacity] motion-reduce:transition-none',
   {
     variants: {
       placement: {
         center:
-          'max-h-[calc(100svh-2rem)] max-w-lg rounded-xl p-6 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
+          'max-h-[calc(100svh-2rem)] max-w-lg rounded-xl p-6 ease-unspool data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
         left: 'h-svh max-w-[min(21rem,88vw)] border-y-0 border-l-0 p-0 data-[ending-style]:-translate-x-full data-[ending-style]:opacity-0 data-[starting-style]:-translate-x-full data-[starting-style]:opacity-0',
       },
     },
@@ -42,7 +42,7 @@ export function DialogContent({
   VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
       <DialogPrimitive.Viewport
         className={dialogViewportVariants({ placement })}
       >

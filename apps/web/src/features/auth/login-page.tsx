@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
-import { LoadingOrb } from '@/components/patterns/loading-orb';
+import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   GlassSection,
   GlassSectionContent,

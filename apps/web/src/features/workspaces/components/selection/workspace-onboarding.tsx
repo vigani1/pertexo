@@ -27,7 +27,7 @@ export function WorkspaceOnboarding({
           This is where your team builds workflows, connects services, and
           follows every run from one operational home.
         </p>
-        <Button type="button" variant="solid" size="lg" onClick={onCreate}>
+        <Button type="button" variant="primary" size="lg" onClick={onCreate}>
           Create your first workspace
         </Button>
         <p className="workspace-invitation-note">

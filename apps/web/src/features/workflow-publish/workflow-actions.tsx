@@ -110,7 +110,7 @@ export function WorkflowActions({
           {canPublish ? (
             <Button
               type="button"
-              variant="secondary"
+              variant="primary"
               size="sm"
               onClick={() => {
                 clearPublishError();

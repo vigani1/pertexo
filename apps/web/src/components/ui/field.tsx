@@ -59,3 +59,48 @@ export function FieldError({ className, ...props }: ComponentProps<'p'>) {
     />
   );
 }
+
+/**
+ * Wraps a single control with Weft's validation thread: when `state` is
+ * `invalid` the line under the control frays; `corrected` ties a brief knot
+ * after a previously invalid value becomes valid. Purely visual — the caller
+ * still sets `aria-invalid` and links its error with `aria-describedby`.
+ */
+export function FieldControl({
+  state,
+  className,
+  children,
+  ...props
+}: ComponentProps<'div'> & { state?: 'invalid' | 'corrected' | undefined }) {
+  return (
+    <div
+      data-slot="field-control"
+      data-state={state}
+      className={cn('group/control relative min-w-0', className)}
+      {...props}
+    >
+      {children}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-2.5 -bottom-px h-0.5 rounded-full opacity-0 group-data-[state=corrected]/control:bg-success group-data-[state=corrected]/control:motion-safe:animate-[field-tie_1.4s_ease-out_forwards] group-data-[state=invalid]/control:right-8 group-data-[state=invalid]/control:bg-linear-to-r group-data-[state=invalid]/control:from-destructive/15 group-data-[state=invalid]/control:to-destructive group-data-[state=invalid]/control:opacity-100"
+      />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 22 16"
+        className="pointer-events-none absolute right-2 -bottom-2 h-4 w-5.5 origin-left text-destructive opacity-0 group-data-[state=invalid]/control:opacity-100 group-data-[state=invalid]/control:motion-safe:animate-fray"
+      >
+        <path
+          d="M0 8h7M7 8l13-6M7 8h15M7 8l13 6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2 -bottom-1.5 size-2.5 rounded-full bg-success opacity-0 group-data-[state=corrected]/control:motion-safe:animate-[knot-flash_1.4s_ease-out_forwards]"
+      />
+    </div>
+  );
+}
