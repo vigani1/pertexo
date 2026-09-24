@@ -13,18 +13,9 @@ import {
   isTerminalRunEvent,
   isTerminalRunStatus,
 } from './model/run-events';
+import type { LiveConnectionStatus } from './model/live-updates';
 
-type ConnectionStatus =
-  | 'connecting'
-  | 'live'
-  | 'reconnecting'
-  | 'degraded'
-  | 'rate-limited'
-  | 'authentication-required'
-  | 'access-denied'
-  | 'unavailable'
-  | 'failed'
-  | 'stopped';
+type ConnectionStatus = LiveConnectionStatus;
 
 type RunEventState = Readonly<{
   scopeKey: string;
@@ -50,7 +41,10 @@ export function useRunEvents(
   runId: string,
 ) {
   const queryClient = useQueryClient();
-  const scopeKey = `${userId}\u0000${workspaceId}\u0000${runId}`;
+  // Reconnecting after a pause starts a fresh stream that backfills from the
+  // first event, so it also starts a fresh timeline.
+  const [generation, setGeneration] = useState(0);
+  const scopeKey = `${userId}\u0000${workspaceId}\u0000${runId}\u0000${String(generation)}`;
   const [state, setState] = useState<RunEventState>(() =>
     initialRunEventState(scopeKey),
   );
@@ -224,6 +218,9 @@ export function useRunEvents(
     truncatedCount: visible.truncatedCount,
     connectionStatus: visible.connectionStatus,
     recoveryMessage: visible.recoveryMessage,
+    reconnect: () => {
+      setGeneration((current) => current + 1);
+    },
   } as const;
 }
 
@@ -249,26 +246,28 @@ function classifyStreamFailure(
       return {
         kind: 'stop',
         status: 'authentication-required',
-        message: 'Live updates stopped because authentication is required.',
+        message:
+          'Live updates paused because your session ended. Sign in again to resume them.',
       };
     if (error.status === 403)
       return {
         kind: 'stop',
         status: 'access-denied',
         message:
-          'Live updates stopped because this account cannot access them.',
+          'Live updates paused because your role can’t follow this run any more.',
       };
     if (error.status === 404)
       return {
         kind: 'stop',
         status: 'unavailable',
-        message: 'Live updates are unavailable for this run.',
+        message: 'Live updates aren’t available for this run.',
       };
     if (error.status === 429)
       return {
         kind: 'retry',
         status: 'rate-limited',
-        message: 'Live updates are rate limited and will resume automatically.',
+        message:
+          'Too many live connections right now. Updates resume on their own shortly.',
         delayMs: Math.min(
           300_000,
           error.retryAfterMs ?? transientDelay(failures),
@@ -278,7 +277,7 @@ function classifyStreamFailure(
       return {
         kind: 'stop',
         status: 'stopped',
-        message: 'Live updates were canceled.',
+        message: 'Live updates were stopped.',
       };
     if (
       error.kind !== 'network' &&
@@ -289,7 +288,7 @@ function classifyStreamFailure(
         kind: 'stop',
         status: 'failed',
         message:
-          'Live updates stopped because the event stream response was invalid.',
+          'Live updates paused because Pertexo sent an update this page couldn’t read.',
       };
   } else if (
     !(error instanceof TransientStreamDisconnect) &&
@@ -299,7 +298,7 @@ function classifyStreamFailure(
     return {
       kind: 'stop',
       status: 'failed',
-      message: 'Live updates stopped because an event could not be processed.',
+      message: 'Live updates paused because an update couldn’t be read.',
     };
   }
   return {
@@ -307,8 +306,8 @@ function classifyStreamFailure(
     status: failures >= 3 ? 'degraded' : 'reconnecting',
     message:
       failures >= 3
-        ? 'Live updates are degraded. Snapshot recovery and bounded reconnection remain active.'
-        : 'Live updates disconnected and are reconnecting.',
+        ? 'Live updates keep dropping. Pertexo still checks the run and keeps reconnecting.'
+        : 'Live updates disconnected. Reconnecting…',
     delayMs: transientDelay(failures),
   };
 }

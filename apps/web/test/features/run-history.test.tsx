@@ -1,115 +1,107 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import {
+  apiBase,
+  fixtureIds,
+  fixtureRun,
+  fixtureWorkflow,
+  identityHandlers,
+  notFoundProblem,
+  coldStart,
+} from '../support/run-fixtures';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const workflowVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const firstRunId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const secondRunId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-const timestamp = '2026-09-15T10:00:00.000Z';
-const user = {
-  id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  createdAt: timestamp,
-  updatedAt: timestamp,
-};
-const workspace = {
-  id: workspaceId,
-  name: 'Control Operations',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'viewer',
-  capabilities: ['workspace:read', 'run:read', 'workflow:read'],
-  createdAt: timestamp,
-  updatedAt: timestamp,
-};
+const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
+const { firstRun: firstRunId, secondRun: secondRunId } = fixtureIds;
+const readerCapabilities = ['workspace:read', 'run:read', 'workflow:read'];
 
-function run(id: string, status: 'failed' | 'succeeded') {
-  return {
-    id,
-    workspaceId,
-    workflowId,
-    workflowVersionId,
-    workflowName: 'Customer onboarding',
-    status,
-    triggerType: 'manual',
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    startedAt: timestamp,
-    completedAt: '2026-09-15T10:00:02.000Z',
-    deadlineAt: null,
-    cancelRequestedAt: null,
-  };
-}
-
-function identityHandlers(currentWorkspace: unknown = workspace) {
+function workflowReads() {
   return [
-    http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({ items: [currentWorkspace], nextCursor: null }),
+    http.get(`${apiBase}/workflows`, () =>
+      HttpResponse.json({ items: [fixtureWorkflow()], nextCursor: null }),
+    ),
+    http.get(`${apiBase}/workflows/${workflowId}`, () =>
+      HttpResponse.json({ workflow: fixtureWorkflow() }),
     ),
   ];
 }
 
-function unavailableCollection() {
-  return HttpResponse.json(
-    {
-      type: 'urn:pertexo:problem:resource.not_found',
-      title: 'Resource not found',
-      status: 404,
-      code: 'resource.not_found',
-      requestId: 'request-runs-not-found',
-    },
-    { status: 404, headers: { 'content-type': 'application/problem+json' } },
-  );
+/** Two pages of history; any status-filtered read is the header count. */
+function historyReads(requests: URLSearchParams[] = []) {
+  return http.get(`${apiBase}/runs`, ({ request }) => {
+    const query = new URL(request.url).searchParams;
+    if (query.get('limit') === '100' && query.get('status') !== null)
+      return HttpResponse.json({ items: [], nextCursor: null });
+    requests.push(query);
+    return HttpResponse.json(
+      query.get('after') === null
+        ? { items: [fixtureRun(firstRunId, 'succeeded')], nextCursor: 'next' }
+        : {
+            items: [
+              fixtureRun(secondRunId, 'failed', { triggerType: 'webhook' }),
+            ],
+            nextCursor: null,
+          },
+    );
+  });
 }
 
-describe('workspace run history', () => {
-  it('paginates in StrictMode and navigates from a safe summary to run detail', async () => {
+function latest(requests: readonly URLSearchParams[]) {
+  return requests.at(-1) ?? new URLSearchParams();
+}
+
+async function chooseOption(label: string, option: string) {
+  const event = userEvent.setup();
+  await event.click(screen.getByRole('combobox', { name: label }));
+  await event.click(await screen.findByRole('option', { name: option }));
+}
+
+describe('workspace runs', () => {
+  it('paginates in StrictMode and opens a run from its row', async () => {
     mockServer.use(
-      ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
-        ({ request }) =>
-          HttpResponse.json(
-            new URL(request.url).searchParams.get('after') === null
-              ? { items: [run(firstRunId, 'succeeded')], nextCursor: 'next' }
-              : { items: [run(secondRunId, 'failed')], nextCursor: null },
-          ),
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      historyReads(),
+      http.get(`${apiBase}/runs/${firstRunId}`, () =>
+        HttpResponse.json({
+          run: fixtureRun(firstRunId, 'succeeded'),
+          nodes: [],
+        }),
       ),
       http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/runs/${firstRunId}`,
-        () =>
-          HttpResponse.json({
-            run: run(firstRunId, 'succeeded'),
-            nodes: [],
-          }),
-      ),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/runs/${firstRunId}/events`,
+        `${apiBase}/runs/${firstRunId}/events`,
         () =>
           new HttpResponse('', {
             headers: { 'content-type': 'text/event-stream' },
           }),
       ),
+      http.get(`${apiBase}/workflows/${workflowId}/versions`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`, { strict: true });
-    expect(await screen.findByText(firstRunId)).toBeVisible();
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: 'Copy run ID eeee…eeee' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(firstRunId)).not.toBeInTheDocument();
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Load more' }));
-    expect(await screen.findByText(secondRunId)).toBeVisible();
-    await userEvent
-      .setup()
-      .click(screen.getByRole('link', { name: `Open run ${firstRunId}` }));
+    expect(
+      await screen.findByRole('button', { name: 'Copy run ID ffff…ffff' }),
+    ).toBeVisible();
+    const [firstLink] = screen.getAllByRole('link', {
+      name: 'Customer onboarding',
+    });
+    if (firstLink === undefined) throw new Error('Missing run link');
+    await userEvent.setup().click(firstLink);
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
         `/w/${workspaceId}/runs/${firstRunId}`,
@@ -117,142 +109,151 @@ describe('workspace run history', () => {
     });
   });
 
-  it('owns applied filters in the URL and sends their UTC boundaries', async () => {
-    let requested = new URLSearchParams();
+  it('keeps filters in the URL and sends the chosen bounds', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(
-      ...identityHandlers(),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
-        ({ request }) => {
-          requested = new URL(request.url).searchParams;
-          requests.push(requested);
-          return HttpResponse.json({
-            items: [
-              requested.get('after') === null
-                ? run(firstRunId, 'succeeded')
-                : run(secondRunId, 'failed'),
-            ],
-            nextCursor: requested.get('after') === null ? 'next' : null,
-          });
-        },
-      ),
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      historyReads(requests),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Run history' });
-    await event.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByRole('heading', { level: 1, name: 'Runs' }, coldStart);
+
+    await chooseOption('Status', 'Succeeded');
     await waitFor(() => {
-      expect(requests.some((request) => request.get('after') === 'next')).toBe(
-        true,
-      );
+      expect(latest(requests).get('status')).toBe('succeeded');
     });
-    await event.type(
-      screen.getByLabelText('Workflow name starts with'),
-      'Customer',
+    expect(router.state.location.search).toMatchObject({ status: 'succeeded' });
+
+    await event.type(screen.getByLabelText('Workflow name'), 'Cust{Enter}');
+    await waitFor(() => {
+      expect(latest(requests).get('workflowNamePrefix')).toBe('Cust');
+    });
+
+    await event.click(screen.getByRole('button', { name: 'When: Any time' }));
+    await event.type(await screen.findByLabelText('From'), '2026-09-14');
+    await event.type(screen.getByLabelText('To'), '2026-09-15');
+    await event.click(screen.getByRole('button', { name: 'Apply range' }));
+    const localFrom = new Date(2026, 8, 14)
+      .toISOString()
+      .replace('.000Z', '.000000Z');
+    const localBefore = new Date(2026, 8, 16)
+      .toISOString()
+      .replace('.000Z', '.000000Z');
+    await waitFor(() => {
+      expect(latest(requests).get('createdAtFrom')).toBe(localFrom);
+      expect(latest(requests).get('createdAtBefore')).toBe(localBefore);
+      expect(latest(requests).get('after')).toBeNull();
+    });
+    expect(router.state.location.search).toMatchObject({ range: 'custom' });
+
+    await event.click(
+      screen.getByRole('button', { name: 'Remove filter Status: Succeeded' }),
     );
-    await event.click(screen.getByRole('button', { name: 'Add filters' }));
-    await event.type(screen.getByLabelText('Workflow ID'), workflowId);
-    await event.selectOptions(screen.getByLabelText('Status'), 'succeeded');
-    await event.type(screen.getByLabelText('Created from'), '2026-09-14');
-    await event.type(screen.getByLabelText('Created before'), '2026-09-16');
-    await event.click(screen.getByRole('button', { name: 'Apply' }));
-
     await waitFor(() => {
-      expect(requested.get('workflowId')).toBe(workflowId);
-      expect(requested.get('workflowNamePrefix')).toBe('Customer');
-      expect(requested.get('status')).toBe('succeeded');
-      expect(requested.get('createdAtFrom')).toBe(
-        '2026-09-14T00:00:00.000000Z',
-      );
-      expect(requested.get('createdAtBefore')).toBe(
-        '2026-09-16T00:00:00.000000Z',
-      );
-      expect(requested.get('after')).toBeNull();
+      expect(router.state.location.search).not.toHaveProperty('status');
     });
-    expect(router.state.location.search).toMatchObject({
-      workflowId,
-      status: 'succeeded',
+    router.history.back();
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({
+        status: 'succeeded',
+      });
     });
-    expect(
-      screen.getByRole('button', {
-        name: 'Remove filter Status: succeeded',
-      }),
-    ).toBeVisible();
-
-    await event.click(screen.getByRole('button', { name: 'Clear' }));
+    await event.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => {
       expect(router.state.location.search).toEqual({});
     });
-    await event.click(screen.getByRole('button', { name: 'Add filters' }));
-    expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
-    router.history.back();
-    await waitFor(() => {
-      expect(screen.getByLabelText('Workflow ID')).toHaveValue(workflowId);
-      expect(screen.getByLabelText('Workflow name starts with')).toHaveValue(
-        'Customer',
-      );
-      expect(screen.getByLabelText('Status')).toHaveValue('succeeded');
-    });
-    router.history.forward();
-    await waitFor(() => {
-      expect(screen.getByLabelText('Workflow name starts with')).toHaveValue(
-        '',
-      );
-      expect(screen.getByLabelText('Status')).toHaveValue('');
-    });
-    await event.click(screen.getByRole('button', { name: 'Add filters' }));
-    expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
   });
 
-  it('clears unapplied values and validation even when no URL filters are applied', async () => {
+  it('picks a workflow from the typeahead and narrows by trigger locally', async () => {
+    const requests: URLSearchParams[] = [];
     mockServer.use(
-      ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
-        HttpResponse.json({ items: [], nextCursor: null }),
-      ),
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      historyReads(requests),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Run history' });
-    await event.click(screen.getByRole('button', { name: 'Add filters' }));
-    await event.type(screen.getByLabelText('Workflow ID'), 'not-a-workflow');
-    await event.type(screen.getByLabelText('Created from'), '2026-09-16');
-    await event.type(screen.getByLabelText('Created before'), '2026-09-14');
-    await event.click(screen.getByRole('button', { name: 'Apply' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The before date must be later than the from date.',
+    await event.click(
+      await screen.findByRole('button', { name: 'Load more' }, coldStart),
     );
+    await screen.findByRole('button', { name: 'Copy run ID ffff…ffff' });
 
-    await event.click(screen.getByRole('button', { name: 'Clear' }));
+    await chooseOption('Trigger', 'Webhook');
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'Copy run ID eeee…eeee' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+    ).toBeVisible();
+    expect(requests.every((query) => query.get('trigger') === null)).toBe(true);
 
-    await event.click(screen.getByRole('button', { name: 'Add filters' }));
-    expect(screen.getByLabelText('Workflow ID')).toHaveValue('');
-    expect(screen.getByLabelText('Created from')).toHaveValue('');
-    expect(screen.getByLabelText('Created before')).toHaveValue('');
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(router.state.location.search).toEqual({});
+    await event.type(screen.getByLabelText('Workflow name'), 'Custo');
+    await event.click(
+      await screen.findByRole('option', { name: 'Customer onboarding' }),
+    );
+    await waitFor(() => {
+      expect(latest(requests).get('workflowId')).toBe(workflowId);
+    });
+    expect(router.state.location.search).toMatchObject({
+      workflowId,
+      trigger: 'webhook',
+    });
+    expect(
+      await screen.findByRole('button', {
+        name: 'Remove filter Workflow: Customer onboarding',
+      }),
+    ).toBeVisible();
+  });
+
+  it('drops unknown or malformed URL keys instead of failing the page', async () => {
+    const requests: URLSearchParams[] = [];
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      historyReads(requests),
+    );
+    renderApp(
+      `/w/${workspaceId}/runs?status=sideways&createdAtFrom=yesterday&workflowId=nope&unknown=1&trigger=webhook`,
+    );
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Runs' }, coldStart),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(requests.length).toBeGreaterThan(0);
+    });
+    const [query] = requests;
+    expect(query?.get('status')).toBeNull();
+    expect(query?.get('createdAtFrom')).toBeNull();
+    expect(query?.get('workflowId')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Remove filter Trigger: Webhook' }),
+    ).toBeVisible();
   });
 
   it('keeps long applied filters inspectable and keyboard removable', async () => {
     const longPrefix = 'W'.repeat(128);
     mockServer.use(
-      ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      http.get(`${apiBase}/runs`, () =>
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
     const { router } = renderApp(
       `/w/${workspaceId}/runs?workflowNamePrefix=${longPrefix}&workflowId=${workflowId}`,
     );
-    const event = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Run history' });
-    const prefixChip = screen.getByRole('button', {
-      name: `Remove filter Name: ${longPrefix}`,
-    });
-    expect(prefixChip).toHaveAttribute('title', `Name: ${longPrefix}`);
-    prefixChip.focus();
-    await event.keyboard('{Enter}');
+    const chip = await screen.findByRole(
+      'button',
+      { name: `Remove filter Name: ${longPrefix}` },
+      coldStart,
+    );
+    expect(chip).toHaveAttribute('title', `Name: ${longPrefix}`);
+    chip.focus();
+    await userEvent.setup().keyboard('{Enter}');
     await waitFor(() => {
       expect(router.state.location.search).not.toHaveProperty(
         'workflowNamePrefix',
@@ -260,115 +261,169 @@ describe('workspace run history', () => {
     });
     expect(router.state.location.search).toMatchObject({ workflowId });
     expect(
-      screen.getByRole('button', {
-        name: `Remove filter Workflow: ${workflowId}`,
+      await screen.findByRole('button', {
+        name: 'Remove filter Workflow: Customer onboarding',
       }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'No runs match these filters' }),
     ).toBeVisible();
   });
 
-  it('reports and recovers from a failed background refresh without hiding cached runs', async () => {
+  it('keeps cached runs visible when a background refresh fails', async () => {
     let response: 'ok' | 'failed' = 'ok';
     mockServer.use(
-      ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      http.get(`${apiBase}/runs`, () =>
         response === 'ok'
           ? HttpResponse.json({
-              items: [run(firstRunId, 'succeeded')],
+              items: [fixtureRun(firstRunId, 'succeeded')],
               nextCursor: null,
             })
           : HttpResponse.error(),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/runs`);
-    expect(await screen.findByText(firstRunId)).toBeVisible();
+    const row = await screen.findByRole(
+      'button',
+      { name: 'Copy run ID eeee…eeee' },
+      coldStart,
+    );
     response = 'failed';
     await queryClient.refetchQueries({
-      queryKey: ['identity', userId, 'workspace', workspaceId, 'runs'],
+      queryKey: ['identity', fixtureIds.user, 'workspace', workspaceId, 'runs'],
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'These runs may be stale',
+      /Couldn’t refresh. Showing results from/u,
     );
-    expect(screen.getByText(firstRunId)).toBeVisible();
-
+    expect(row).toBeVisible();
     response = 'ok';
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Retry refresh' }));
+      .click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 
-  it('stops showing cached run controls when a refresh returns a nondisclosing 404', async () => {
+  it('hides cached runs when a refresh says the collection is gone', async () => {
     let unavailable = false;
     mockServer.use(
-      ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      http.get(`${apiBase}/runs`, () =>
         unavailable
-          ? unavailableCollection()
+          ? notFoundProblem()
           : HttpResponse.json({
-              items: [run(firstRunId, 'succeeded')],
+              items: [fixtureRun(firstRunId, 'succeeded')],
               nextCursor: null,
             }),
       ),
     );
     const { queryClient } = renderApp(`/w/${workspaceId}/runs`);
-    expect(await screen.findByText(firstRunId)).toBeVisible();
+    await screen.findByRole(
+      'button',
+      { name: 'Copy run ID eeee…eeee' },
+      coldStart,
+    );
     unavailable = true;
     await queryClient.refetchQueries({
-      queryKey: ['identity', userId, 'workspace', workspaceId, 'runs'],
+      queryKey: ['identity', fixtureIds.user, 'workspace', workspaceId, 'runs'],
     });
     expect(
       await screen.findByRole('heading', {
-        name: 'Run history is unavailable',
+        name: 'Runs aren’t available here',
       }),
     ).toBeVisible();
-    expect(screen.getByText(/may not exist/iu)).toBeVisible();
-    expect(screen.queryByText(firstRunId)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Apply' }),
+      screen.queryByRole('button', { name: 'Copy run ID eeee…eeee' }),
     ).not.toBeInTheDocument();
   });
 
-  it('does not request or advertise run history without read capability', async () => {
+  it('explains missing run access without reading runs', async () => {
     let reads = 0;
     mockServer.use(
-      ...identityHandlers({
-        ...workspace,
-        capabilities: ['workspace:read'],
-      }),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () => {
+      ...identityHandlers(['workspace:read']),
+      http.get(`${apiBase}/runs`, () => {
         reads += 1;
         return HttpResponse.json({ items: [], nextCursor: null });
       }),
     );
     renderApp(`/w/${workspaceId}/runs`);
     expect(
-      await screen.findByRole('heading', {
-        name: 'Run history is unavailable',
-      }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Runs aren’t available for your role' },
+        coldStart,
+      ),
     ).toBeVisible();
-    expect(
-      screen.queryByRole('link', { name: 'Run history' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Status' })).toBeNull();
     expect(reads).toBe(0);
   });
 
-  it('keeps a failed history read distinct from an empty result', async () => {
+  it('tells a failed first read apart from an empty history', async () => {
     mockServer.use(
-      ...identityHandlers(),
-      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/runs`, () =>
-        HttpResponse.error(),
-      ),
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      http.get(`${apiBase}/runs`, () => HttpResponse.error()),
     );
     renderApp(`/w/${workspaceId}/runs`);
     expect(
-      await screen.findByRole('heading', {
-        name: 'Run history could not be loaded',
-      }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Runs couldn’t be loaded' },
+        coldStart,
+      ),
     ).toBeVisible();
     expect(
-      screen.queryByRole('heading', { name: 'No matching runs' }),
+      screen.queryByRole('heading', { name: 'No runs yet' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('guides an empty workspace to its workflows', async () => {
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      http.get(`${apiBase}/runs`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/runs`);
+    const empty = await screen.findByRole(
+      'heading',
+      { name: 'No runs yet' },
+      coldStart,
+    );
+    expect(empty).toBeVisible();
+    expect(
+      within(empty.parentElement ?? document.body).getByRole('link', {
+        name: 'Go to workflows',
+      }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
+  });
+
+  it('lists a workflow’s runs in its hub tab without a workflow filter', async () => {
+    const requests: URLSearchParams[] = [];
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      historyReads(requests),
+    );
+    const { router } = renderApp(
+      `/w/${workspaceId}/workflows/${workflowId}/runs?workflowId=ignored`,
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Copy run ID eeee…eeee' }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText('Workflow name')).toBeNull();
+    expect(latest(requests).get('workflowId')).toBe(workflowId);
+    await chooseOption('Status', 'Failed');
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/w/${workspaceId}/workflows/${workflowId}/runs`,
+      );
+      expect(latest(requests).get('status')).toBe('failed');
+    });
   });
 });

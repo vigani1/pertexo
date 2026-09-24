@@ -70,8 +70,28 @@ async function installRoutes(page: Page, workflowName?: string) {
       },
     }),
   );
+  const workflow = {
+    id: workflowId,
+    workspaceId,
+    name: 'Customer onboarding',
+    lifecycleStatus: 'active',
+    lifecycleRevision: 1,
+    activationStatus: 'active',
+    publishedVersionId: workflowVersionId,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
+    route.fulfill({ json: { items: [workflow], nextCursor: null } }),
+  );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
+    (route) => route.fulfill({ json: { workflow } }),
+  );
   await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) => {
     const query = new URL(route.request().url()).searchParams;
+    if (query.get('limit') === '100' && query.get('status') !== null)
+      return route.fulfill({ json: { items: [], nextCursor: null } });
     const filtered = query.get('status') === 'succeeded';
     const after = query.get('after');
     return route.fulfill({
@@ -187,31 +207,44 @@ test('filters and paginates workspace history, then opens the exact run', async 
       .getByRole('navigation', { name: 'Workspace' })
       .getByRole('link', { name: /^Runs/u }),
   ).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText(firstRunId)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+  await expect(page.getByText(firstRunId)).toHaveCount(0);
   await page.getByRole('button', { name: 'Load more' }).click();
-  await expect(page.getByText(secondRunId)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+  ).toBeVisible();
 
-  await page.getByLabel('Status').selectOption('succeeded');
-  await page.getByLabel('Workflow name starts with').fill('Customer');
-  await page.getByRole('button', { name: 'Add filters' }).click();
-  await page.getByLabel('Created from').fill('2026-09-14');
-  await page.getByLabel('Created before').fill('2026-09-16');
-  await page.getByRole('button', { name: 'Apply' }).click();
+  await page.getByRole('combobox', { name: 'Status' }).click();
+  await page.getByRole('option', { name: 'Succeeded' }).click();
   await expect(page).toHaveURL(/status=succeeded/u);
+  await page.getByLabel('Workflow name').fill('Customer');
+  await page.getByLabel('Workflow name').press('Enter');
   await expect(page).toHaveURL(/workflowNamePrefix=Customer/u);
-  await expect(page).toHaveURL(/createdAtFrom=2026-09-14/u);
-  await expect(page.getByText(secondRunId)).not.toBeVisible();
+  await page.getByRole('button', { name: 'When: Any time' }).click();
+  await page.getByLabel('From').fill('2026-09-14');
+  await page.getByLabel('To').fill('2026-09-16');
+  await page.getByRole('button', { name: 'Apply range' }).click();
+  await expect(page).toHaveURL(/createdAtFrom=/u);
+  await expect(page).toHaveURL(/range=custom/u);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),
+  ).toHaveCount(0);
   await page
-    .getByRole('button', { name: 'Remove filter Status: succeeded' })
+    .getByRole('button', { name: 'Remove filter Status: Succeeded' })
     .click();
   await expect(page).not.toHaveURL(/status=succeeded/u);
 
-  await page.getByRole('link', { name: `Open run ${firstRunId}` }).click();
+  await page.getByRole('link', { name: 'Customer onboarding' }).first().click();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
   await expect(
-    page.getByRole('heading', { name: 'Customer onboarding' }),
+    page.getByRole('heading', { level: 1, name: /^Succeeded in/u }),
   ).toBeVisible();
-  await expect(page.getByText(workflowVersionId)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'v1' })).toHaveAttribute(
+    'href',
+    `/w/${workspaceId}/workflows/${workflowId}/versions`,
+  );
 });
 
 test('replays the exact displayed version with explicit input', async ({
@@ -224,17 +257,19 @@ test('replays the exact displayed version with explicit input', async ({
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
 
-  await page.getByRole('button', { name: 'Replay run' }).click();
+  await page.getByRole('button', { name: 'Replay' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Replay this run' });
   await expect(
-    page.getByText(
-      /does not copy hidden input or assume earlier provider effects/u,
-    ),
+    dialog.getByText(/It doesn’t copy the original input/u),
   ).toBeVisible();
-  await page.getByLabel('Replay input (JSON)').fill('{"incident":"INC-42"}');
-  await page.getByRole('button', { name: 'Replay this version' }).click();
+  await dialog.getByLabel('Replay input (JSON)').fill('{"incident":"INC-42"}');
+  await dialog.getByRole('button', { name: 'Replay this version' }).click();
 
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
-  await expect(page.getByText(replayRunId)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID 1111…1111' }),
+  ).toBeVisible();
+  await expect(page.getByText('Replay started')).toBeVisible();
 });
 
 test('keeps a maximum-length workflow identity accessible and contained on mobile', async ({
@@ -245,13 +280,17 @@ test('keeps a maximum-length workflow identity accessible and contained on mobil
   await installRoutes(page, workflowName);
   await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
 
-  const heading = page.getByRole('heading', { name: workflowName });
-  await expect(heading).toBeVisible();
-  const box = await heading.boundingBox();
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Succeeded in/u }),
+  ).toBeVisible();
+  const name = page.getByRole('link', { name: workflowName });
+  await expect(name).toBeVisible();
+  const box = await name.boundingBox();
   expect(box).not.toBeNull();
   expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
-  await expect(page.getByText(firstRunId, { exact: false })).toBeVisible();
-  await expect(page.getByText(workflowId, { exact: false })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -305,7 +344,7 @@ test('contains long applied filters and keeps keyboard removal reachable', async
   await expect(page).toHaveURL(new RegExp(`workflowId=${workflowId}`, 'u'));
   await expect(
     page.getByRole('button', {
-      name: `Remove filter Workflow: ${workflowId}`,
+      name: 'Remove filter Workflow: Customer onboarding',
     }),
   ).toBeVisible();
 });

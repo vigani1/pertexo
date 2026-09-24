@@ -5,7 +5,8 @@ import {
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { SseMessage } from '@/lib/api/sse';
 
-export const RUN_TIMELINE_LIMIT = 200;
+/** Enough for the thread view of long, retry-heavy runs; still bounded. */
+export const RUN_TIMELINE_LIMIT = 500;
 
 const terminalRunStatuses = new Set<WorkflowRunSummary['status']>([
   'succeeded',

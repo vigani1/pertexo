@@ -9,7 +9,11 @@ import {
   workflowVersionsQueryOptions,
 } from '@/features/workflow-settings/queries.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
-import { workflowRunsInfiniteQueryOptions } from '@/features/workflow-runs/queries.public';
+import {
+  filtersFromSearch,
+  sanitizeWorkflowRunSearch,
+  workflowRunsInfiniteQueryOptions,
+} from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/public';
 import { isNotFound } from '@/lib/api/api-error-copy';
 import { PagePending } from './page-pending';
@@ -93,13 +97,16 @@ export const workflowBuildRoute = createRoute({
 export const workflowRunsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   path: 'runs',
-  loader: async ({ context }) => {
+  validateSearch: (search) => sanitizeWorkflowRunSearch(search),
+  loaderDeps: ({ search }) => filtersFromSearch(search),
+  loader: async ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null || !workspace.capabilities.includes('run:read'))
       return;
     await settlePrefetches(context, [
       queryClient.infiniteQuery(
         workflowRunsInfiniteQueryOptions(apiClient, user.id, workspace.id, {
+          ...deps,
           workflowId,
         }),
       ),

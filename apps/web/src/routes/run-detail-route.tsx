@@ -34,12 +34,6 @@ export function RunDetailRoute() {
       user={user}
       workspace={workspace}
       runId={runId}
-      onBackToWorkflow={(workflowId) => {
-        void navigate({
-          to: '/w/$workspaceId/workflows/$workflowId',
-          params: { workspaceId: workspace.id, workflowId },
-        });
-      }}
       onRunAccepted={(acceptedRunId) => {
         void navigate({
           to: '/w/$workspaceId/runs/$runId',

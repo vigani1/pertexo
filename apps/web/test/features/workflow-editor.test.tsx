@@ -1863,12 +1863,10 @@ describe('workflow editor route', () => {
       screen.getByRole('button', { name: 'Start published version' }),
     );
 
-    expect(await screen.findByText('Accepted workflow version')).toBeVisible();
-    expect(screen.getByText(publishedVersionId)).toBeVisible();
-    expect(screen.getByText('succeeded')).toBeVisible();
     expect(
-      screen.getByRole('heading', { name: 'Execution map' }),
+      await screen.findByRole('heading', { level: 1, name: /^Succeeded in/u }),
     ).toBeVisible();
+    expect(await screen.findByRole('link', { name: 'v1' })).toBeVisible();
   });
 });
 

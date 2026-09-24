@@ -1,8 +1,17 @@
 export {
+  anyRunQueryOptions,
+  attentionRunsQueryOptions,
   liveRunCountQueryOptions,
-  recentWorkflowRunsQueryOptions,
+  runLoomQueryOptions,
+  runStatusCountsQueryOptions,
   workflowRunKeys,
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
+  type AttentionRuns,
+  type RunStatusCounts,
 } from './workflow-runs.queries';
-export { runHistorySearchSchema } from './run-history.types';
+export {
+  filtersFromSearch,
+  sanitizeRunSearch,
+  sanitizeWorkflowRunSearch,
+} from './model/run-search';

@@ -9,25 +9,69 @@ import {
 } from '@/components/ui/dialog';
 import {
   Field,
+  FieldControl,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Textarea } from '@/components/ui/textarea';
+import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
   useRunReplay,
   type RunReplayIntent,
-} from '../mutations/use-run-replay';
+} from '../../mutations/use-run-replay';
 
+type ReplayField = 'input' | 'deadline';
+type FieldErrors = Readonly<Partial<Record<ReplayField, string>>>;
+
+const INPUT_ERROR =
+  'The input isn’t valid JSON. Check for a missing quote, comma or brace.';
+const DEADLINE_ERROR = 'Enter the deadline as a date and time.';
+
+function inputError(value: string): string | undefined {
+  try {
+    JSON.parse(value);
+    return undefined;
+  } catch {
+    return INPUT_ERROR;
+  }
+}
+
+function deadlineError(value: string): string | undefined {
+  return value.trim() === '' || !Number.isNaN(new Date(value).getTime())
+    ? undefined
+    : DEADLINE_ERROR;
+}
+
+function withField(
+  current: FieldErrors,
+  field: ReplayField,
+  message: string | undefined,
+): FieldErrors {
+  const rest = Object.fromEntries(
+    Object.entries(current).filter(([name]) => name !== field),
+  ) as FieldErrors;
+  return message === undefined ? rest : { ...rest, [field]: message };
+}
+
+/**
+ * Replay starts a new run of this run's exact version. The input is typed
+ * explicitly (the API doesn't return the original yet), and an uncertain
+ * result can be retried with the same command so it never runs twice.
+ */
 export function ReplayRunDialog({
   apiClient,
   userId,
   workspaceId,
   sourceRunId,
   workflowVersionId,
+  versionLabel,
+  open,
+  onOpenChange,
   onRunAccepted,
 }: Readonly<{
   apiClient: ApiClient;
@@ -35,15 +79,17 @@ export function ReplayRunDialog({
   workspaceId: string;
   sourceRunId: string;
   workflowVersionId: string;
+  /** "v7" when the version number is known. */
+  versionLabel?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onRunAccepted: (runId: string) => void;
 }>) {
-  const [open, setOpen] = useState(false);
+  const notifications = useNotifications();
   const [input, setInput] = useState('{}');
   const [deadline, setDeadline] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<
-    Readonly<Partial<Record<'input' | 'deadline', string>>>
-  >({});
-  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [validated, setValidated] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const deadlineRef = useRef<HTMLInputElement>(null);
   const replay = useRunReplay({
@@ -52,223 +98,189 @@ export function ReplayRunDialog({
     workspaceId,
     sourceRunId,
     workflowVersionId,
-    onRunAccepted,
+    onRunAccepted: (runId) => {
+      notifications.success({
+        title: 'Replay started',
+        description: 'Opening the new run.',
+      });
+      onRunAccepted(runId);
+    },
   });
+
   function readIntent(): RunReplayIntent | undefined {
-    const errors: Partial<Record<'input' | 'deadline', string>> = {};
-    let value: unknown;
-    try {
-      value = JSON.parse(input) as unknown;
-    } catch {
-      errors.input = 'Replay input must be valid JSON.';
-    }
-    const normalizedDeadline = deadline.trim();
-    const timestamp =
-      normalizedDeadline === '' ? undefined : new Date(normalizedDeadline);
-    if (timestamp !== undefined && Number.isNaN(timestamp.getTime()))
-      errors.deadline = 'Enter a valid replay deadline.';
-    setFieldErrors(errors);
-    if (errors.input !== undefined) {
+    const next = withField(
+      withField({}, 'input', inputError(input)),
+      'deadline',
+      deadlineError(deadline),
+    );
+    setErrors(next);
+    if (next.input !== undefined) {
       inputRef.current?.focus();
       return undefined;
     }
-    if (errors.deadline !== undefined) {
+    if (next.deadline !== undefined) {
       deadlineRef.current?.focus();
       return undefined;
     }
+    const trimmed = deadline.trim();
     return {
-      value,
-      ...(timestamp === undefined
+      value: JSON.parse(input) as unknown,
+      ...(trimmed === ''
         ? {}
-        : { deadlineAt: timestamp.toISOString() }),
+        : { deadlineAt: new Date(trimmed).toISOString() }),
     };
   }
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    setValidationAttempted(true);
+    setValidated(true);
     const intent = readIntent();
     if (intent === undefined) return;
     const accepted = replay.retryAvailable
       ? await replay.retry(intent)
       : await replay.startNew(intent);
-    if (accepted) setOpen(false);
+    if (accepted) onOpenChange(false);
   }
 
   function changeOpen(nextOpen: boolean) {
     if (replay.pending) return;
-    setOpen(nextOpen);
+    onOpenChange(nextOpen);
     if (!nextOpen) {
       replay.dismiss();
       setInput('{}');
       setDeadline('');
-      setFieldErrors({});
-      setValidationAttempted(false);
+      setErrors({});
+      setValidated(false);
     }
   }
 
+  const version = versionLabel ?? 'the same version';
   return (
-    <>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          setOpen(true);
-        }}
-      >
-        Replay run
-      </Button>
-      <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogContent>
-          <DialogTitle>Replay this workflow version</DialogTitle>
-          <DialogDescription>
-            Replay creates a new run from immutable version {workflowVersionId}.
-            Enter the intended input explicitly; Pertexo does not copy hidden
-            input or assume earlier provider effects are safe to repeat.
-          </DialogDescription>
-          <form className="mt-6" onSubmit={(event) => void submit(event)}>
-            <FieldGroup>
-              <Field data-invalid={fieldErrors.input !== undefined}>
-                <FieldLabel htmlFor="replay-run-input">
-                  Replay input (JSON)
-                </FieldLabel>
+    <Dialog open={open} onOpenChange={changeOpen}>
+      <DialogContent>
+        <DialogTitle>Replay this run</DialogTitle>
+        <DialogDescription>
+          Pertexo starts a new run of {version} with the input you enter here.
+          It doesn’t copy the original input, and steps that call other services
+          run again, so check the input before you continue.
+        </DialogDescription>
+        <form className="mt-6" onSubmit={(event) => void submit(event)}>
+          <FieldGroup>
+            <Field data-invalid={errors.input !== undefined}>
+              <FieldLabel htmlFor="replay-run-input">
+                Replay input (JSON)
+              </FieldLabel>
+              <FieldControl
+                state={errors.input === undefined ? undefined : 'invalid'}
+              >
                 <Textarea
                   ref={inputRef}
                   id="replay-run-input"
                   name="replayInput"
                   autoComplete="off"
                   autoFocus
+                  spellCheck={false}
+                  className="font-mono text-[0.8rem]"
                   disabled={replay.pending}
                   value={input}
-                  aria-invalid={fieldErrors.input !== undefined}
+                  aria-invalid={errors.input !== undefined}
                   aria-describedby={
-                    fieldErrors.input === undefined
+                    errors.input === undefined
                       ? 'replay-run-input-description'
                       : 'replay-run-input-description replay-run-input-error'
                   }
                   onBlur={() => {
-                    setFieldErrors((current) => {
-                      try {
-                        JSON.parse(input);
-                        return withoutReplayFieldError(current, 'input');
-                      } catch {
-                        return {
-                          ...current,
-                          input: 'Replay input must be valid JSON.',
-                        };
-                      }
-                    });
-                  }}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value;
-                    setInput(value);
-                    if (validationAttempted)
-                      setFieldErrors((current) => {
-                        try {
-                          JSON.parse(value);
-                          return withoutReplayFieldError(current, 'input');
-                        } catch {
-                          return {
-                            ...current,
-                            input: 'Replay input must be valid JSON.',
-                          };
-                        }
-                      });
-                  }}
-                />
-                <FieldDescription id="replay-run-input-description">
-                  This is a new side-effecting execution. Review the input
-                  before continuing.
-                </FieldDescription>
-                {fieldErrors.input === undefined ? null : (
-                  <FieldError id="replay-run-input-error">
-                    {fieldErrors.input}
-                  </FieldError>
-                )}
-              </Field>
-              <Field data-invalid={fieldErrors.deadline !== undefined}>
-                <FieldLabel htmlFor="replay-run-deadline">
-                  Deadline (optional)
-                </FieldLabel>
-                <Input
-                  ref={deadlineRef}
-                  id="replay-run-deadline"
-                  name="replayDeadline"
-                  type="datetime-local"
-                  disabled={replay.pending}
-                  value={deadline}
-                  aria-invalid={fieldErrors.deadline !== undefined}
-                  aria-describedby={
-                    fieldErrors.deadline === undefined
-                      ? undefined
-                      : 'replay-run-deadline-error'
-                  }
-                  onBlur={() => {
-                    setFieldErrors((current) =>
-                      deadline === '' ||
-                      !Number.isNaN(new Date(deadline).getTime())
-                        ? withoutReplayFieldError(current, 'deadline')
-                        : {
-                            ...current,
-                            deadline: 'Enter a valid replay deadline.',
-                          },
+                    setErrors((current) =>
+                      withField(current, 'input', inputError(input)),
                     );
                   }}
                   onChange={(event) => {
                     const value = event.currentTarget.value;
-                    setDeadline(value);
-                    if (validationAttempted)
-                      setFieldErrors((current) =>
-                        value === '' || !Number.isNaN(new Date(value).getTime())
-                          ? withoutReplayFieldError(current, 'deadline')
-                          : {
-                              ...current,
-                              deadline: 'Enter a valid replay deadline.',
-                            },
+                    setInput(value);
+                    if (validated)
+                      setErrors((current) =>
+                        withField(current, 'input', inputError(value)),
                       );
                   }}
                 />
-                {fieldErrors.deadline === undefined ? null : (
-                  <FieldError id="replay-run-deadline-error">
-                    {fieldErrors.deadline}
-                  </FieldError>
-                )}
-              </Field>
-              {replay.error ? <FieldError>{replay.error}</FieldError> : null}
-            </FieldGroup>
-            <div className="mt-7 flex justify-end gap-2">
-              <DialogClose
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={replay.pending}
-                  />
+              </FieldControl>
+              <FieldDescription id="replay-run-input-description">
+                Use {'{}'} if the workflow doesn’t read any input.
+              </FieldDescription>
+              {errors.input === undefined ? null : (
+                <FieldError id="replay-run-input-error">
+                  {errors.input}
+                </FieldError>
+              )}
+            </Field>
+            <Field data-invalid={errors.deadline !== undefined}>
+              <FieldLabel htmlFor="replay-run-deadline">
+                Deadline (optional)
+              </FieldLabel>
+              <Input
+                ref={deadlineRef}
+                id="replay-run-deadline"
+                name="replayDeadline"
+                type="datetime-local"
+                disabled={replay.pending}
+                value={deadline}
+                aria-invalid={errors.deadline !== undefined}
+                aria-describedby={
+                  errors.deadline === undefined
+                    ? undefined
+                    : 'replay-run-deadline-error'
                 }
-              >
-                Cancel
-              </DialogClose>
-              <Button type="submit" variant="primary" disabled={replay.pending}>
-                {replay.pending
-                  ? 'Replaying…'
-                  : replay.retryAvailable
-                    ? 'Retry same replay'
-                    : 'Replay this version'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-function withoutReplayFieldError(
-  current: Readonly<Partial<Record<'input' | 'deadline', string>>>,
-  field: 'input' | 'deadline',
-) {
-  return Object.fromEntries(
-    Object.entries(current).filter(([name]) => name !== field),
+                onBlur={() => {
+                  setErrors((current) =>
+                    withField(current, 'deadline', deadlineError(deadline)),
+                  );
+                }}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setDeadline(value);
+                  if (validated)
+                    setErrors((current) =>
+                      withField(current, 'deadline', deadlineError(value)),
+                    );
+                }}
+              />
+              {errors.deadline === undefined ? null : (
+                <FieldError id="replay-run-deadline-error">
+                  {errors.deadline}
+                </FieldError>
+              )}
+            </Field>
+            {replay.error === undefined ? null : (
+              <FieldError>{replay.error}</FieldError>
+            )}
+          </FieldGroup>
+          <div className="mt-7 flex justify-end gap-2">
+            <DialogClose
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={replay.pending}
+                />
+              }
+            >
+              Cancel
+            </DialogClose>
+            <Button type="submit" variant="primary" disabled={replay.pending}>
+              {replay.pending ? (
+                <>
+                  <LoadingOrb />
+                  Replaying…
+                </>
+              ) : replay.retryAvailable ? (
+                'Retry same replay'
+              ) : (
+                'Replay this version'
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

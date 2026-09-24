@@ -13,7 +13,7 @@ import {
   type WorkflowRunStartResponse,
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
-import type { RunHistoryFilters } from './run-history.types';
+import type { RunHistoryFilters } from './model/run-search';
 
 export function getWorkflowRunsPage(
   apiClient: ApiClient,
@@ -41,6 +41,39 @@ export function getWorkflowRunsPage(
       decode: (value) => workflowRunListResponseSchema.parse(value),
     },
   });
+}
+
+/**
+ * Every run created since an instant, newest first, up to `cap` runs. Says
+ * whether more existed so callers can state the cap instead of hiding it.
+ */
+export async function getRunsSince(
+  apiClient: ApiClient,
+  workspaceId: string,
+  createdAtFrom: string,
+  input: Readonly<{ cap: number; signal?: AbortSignal }>,
+): Promise<
+  Readonly<{ runs: WorkflowRunListResponse['items']; capped: boolean }>
+> {
+  const runs: WorkflowRunListResponse['items'][number][] = [];
+  let after: string | undefined;
+  while (runs.length < input.cap) {
+    const page = await getWorkflowRunsPage(
+      apiClient,
+      workspaceId,
+      { createdAtFrom },
+      {
+        limit: Math.min(100, input.cap - runs.length),
+        ...(after === undefined ? {} : { after }),
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    runs.push(...page.items);
+    if (page.nextCursor === null || page.nextCursor === after)
+      return { runs, capped: false };
+    after = page.nextCursor;
+  }
+  return { runs, capped: true };
 }
 
 export function startWorkflowRun(

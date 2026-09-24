@@ -1,15 +1,9 @@
 import '@xyflow/react/dist/style.css';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import type {
-  WorkflowNodeRunSummary,
-  WorkflowRunSummary,
-} from '@pertexo/contracts/schemas/workflow-runs';
 import {
   BaseEdge,
-  Background,
   Controls,
   Handle,
-  MiniMap,
   Position,
   ReactFlow,
   getSmoothStepPath,
@@ -19,25 +13,27 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import { useMemo } from 'react';
-import { AuroraLoadingPanel } from '@/components/patterns/aurora-loading-panel';
-import { Badge } from '@/components/ui/badge';
+import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import { WorkflowRunLoadingWave } from './workflow-run-loading-wave';
-import { isTerminalRunStatus } from '../model/run-events';
-
-type NodeStatus = WorkflowNodeRunSummary['status'] | 'not_started';
+import { projectRunGraph, type GraphStepStatus } from '../../model/run-graph';
+import type { ThreadRow } from '../../model/thread-view';
+import { toneBorderClass } from '../tone-styles';
 
 interface RunNodeData extends Record<string, unknown> {
   label: string;
-  definition: string;
-  status: NodeStatus;
-  invocationCount: number;
+  kind: string;
+  tone: StatusTone;
+  statusLabel: string;
+  status: GraphStepStatus;
+  invocations: number;
+  selected: boolean;
   inputs: readonly string[];
   outputs: readonly string[];
 }
 
 interface RunEdgeData extends Record<string, unknown> {
-  status: NodeStatus;
+  tone: StatusTone;
+  active: boolean;
 }
 
 type RunNode = Node<RunNodeData, 'runNode'>;
@@ -45,100 +41,100 @@ type RunEdge = Edge<RunEdgeData, 'runEdge'>;
 
 const nodeTypes = Object.freeze({ runNode: WorkflowRunNode });
 const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
-const activeStatuses = new Set<NodeStatus>(['ready', 'running', 'waiting']);
-const completedStatuses = new Set<NodeStatus>(['succeeded']);
-const failedStatuses = new Set<NodeStatus>([
-  'failed',
-  'timed_out',
-  'outcome_unknown',
-]);
-const statusPriority: Readonly<Record<NodeStatus, number>> = {
-  not_started: 0,
-  pending: 1,
-  skipped: 2,
-  succeeded: 3,
-  canceled: 4,
-  timed_out: 5,
-  failed: 6,
-  outcome_unknown: 7,
-  ready: 8,
-  waiting: 9,
-  running: 10,
+
+const edgeStrokeClass: Readonly<Partial<Record<StatusTone, string>>> = {
+  live: '!stroke-primary',
+  success: '!stroke-success/55',
+  failure: '!stroke-destructive',
+  timeout: '!stroke-destructive',
+  attention: '!stroke-warning',
+  waiting: '!stroke-secondary/70',
 };
 
-export function WorkflowRunGraph({
+/**
+ * The exact version this run executes, drawn on the weave with each step's
+ * status. The running step carries the live edge; clicking a step opens it
+ * in the step lens.
+ */
+export function RunGraphView({
   graph,
-  run,
-  nodeRuns,
+  rows,
+  selectedNodeId,
+  onSelectNode,
 }: Readonly<{
   graph: WorkflowGraphContract;
-  run: WorkflowRunSummary;
-  nodeRuns: readonly WorkflowNodeRunSummary[];
+  rows: readonly ThreadRow[];
+  selectedNodeId: string | undefined;
+  onSelectNode: (nodeId: string) => void;
 }>) {
-  const projection = useMemo(
-    () => projectRunGraph(graph, nodeRuns),
-    [graph, nodeRuns],
+  const projection = useMemo(() => projectRunGraph(graph, rows), [graph, rows]);
+  const nodes = useMemo<RunNode[]>(
+    () =>
+      projection.nodes.map((node) => ({
+        id: node.id,
+        type: 'runNode',
+        position: node.position,
+        data: { ...node, selected: node.id === selectedNodeId },
+      })),
+    [projection, selectedNodeId],
   );
-  const showLoadingWave =
-    !isTerminalRunStatus(run.status) && nodeRuns.length === 0;
+  const edges = useMemo<RunEdge[]>(
+    () =>
+      projection.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        sourceHandle: edge.sourceHandle,
+        target: edge.target,
+        targetHandle: edge.targetHandle,
+        type: 'runEdge',
+        data: { tone: edge.tone, active: edge.active },
+      })),
+    [projection],
+  );
 
   return (
-    <AuroraLoadingPanel active={!isTerminalRunStatus(run.status)}>
-      <section className="glass-panel overflow-hidden rounded-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6">
-          <div>
-            <h2 className="font-heading text-xl font-semibold">
-              Execution map
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Live status for the exact workflow version accepted by this run.
-            </p>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            {String(graph.nodes.length)} nodes · {String(graph.edges.length)}{' '}
-            edges
-          </span>
-        </div>
-        <div
-          className="relative h-[28rem] bg-background/70"
-          aria-label="Workflow execution map"
-        >
-          {showLoadingWave ? <WorkflowRunLoadingWave /> : null}
-          <ReactFlow<RunNode, RunEdge>
-            nodes={projection.nodes}
-            edges={projection.edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            colorMode="dark"
-            fitView
-            fitViewOptions={{ padding: 0.24 }}
-            minZoom={0.35}
-            maxZoom={1.6}
-            deleteKeyCode={null}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={24} size={1} color="rgba(185, 214, 219, 0.12)" />
-            <MiniMap pannable zoomable position="bottom-left" />
-            <Controls position="bottom-right" showInteractive={false} />
-          </ReactFlow>
-        </div>
-      </section>
-    </AuroraLoadingPanel>
+    <div
+      className="weave relative h-[30rem] overflow-hidden rounded-xl border border-white/6"
+      aria-label="Map of the steps in this run's version"
+    >
+      <ReactFlow<RunNode, RunEdge>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        onNodeClick={(_event, node) => {
+          onSelectNode(node.id);
+        }}
+        colorMode="dark"
+        fitView
+        fitViewOptions={{ padding: 0.24 }}
+        minZoom={0.35}
+        maxZoom={1.6}
+        deleteKeyCode={null}
+        proOptions={{ hideAttribution: true }}
+        style={{ background: 'transparent' }}
+      >
+        <Controls
+          position="bottom-right"
+          showInteractive={false}
+          className="workflow-canvas-controls"
+        />
+      </ReactFlow>
+    </div>
   );
 }
 
 function WorkflowRunNode({ data }: NodeProps<RunNode>) {
-  const active = activeStatuses.has(data.status);
-  const failed = failedStatuses.has(data.status);
   return (
     <article
       className={cn(
-        'relative w-56 rounded-lg border bg-card/95 shadow-lg backdrop-blur-sm',
-        active && 'border-primary/55 shadow-glow-primary-strong',
-        failed && 'border-destructive/60',
+        'relative w-56 cursor-pointer rounded-lg border bg-card shadow-[0_18px_44px_-18px_rgb(0_0_0/90%)] transition-shadow',
+        toneBorderClass[data.tone],
+        data.tone === 'live' && 'live-edge',
+        data.selected && 'ring-2 ring-ring/60',
       )}
     >
       {data.inputs.map((port, index) => (
@@ -150,24 +146,20 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
           style={{
             top: `${String(((index + 1) / (data.inputs.length + 1)) * 100)}%`,
           }}
-          className="!size-2.5 !border-primary/60 !bg-background"
+          className="!size-2 !border-white/20 !bg-background"
         />
       ))}
-      <div className="border-b border-border px-3 py-2.5">
-        <p className="truncate font-medium">{data.label}</p>
-        <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-          {data.definition}
+      <div className="px-3 pt-2.5 pb-2">
+        <p className="truncate text-sm font-semibold">{data.label}</p>
+        <p className="mt-0.5 truncate text-xs text-subtle-foreground">
+          {data.kind}
         </p>
       </div>
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <Badge
-          variant={failed ? 'destructive' : active ? 'secondary' : 'muted'}
-        >
-          {data.status.replaceAll('_', ' ')}
-        </Badge>
-        {data.invocationCount > 1 ? (
-          <span className="text-xs text-muted-foreground">
-            {String(data.invocationCount)} invocations
+      <div className="flex items-center justify-between gap-2 border-t border-white/6 px-3 py-2">
+        <Status tone={data.tone}>{data.statusLabel}</Status>
+        {data.invocations > 1 ? (
+          <span className="font-mono text-[0.7rem] text-subtle-foreground">
+            ×{String(data.invocations)}
           </span>
         ) : null}
       </div>
@@ -180,7 +172,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
           style={{
             top: `${String(((index + 1) / (data.outputs.length + 1)) * 100)}%`,
           }}
-          className="!size-2.5 !border-primary/60 !bg-background"
+          className="!size-2 !border-white/20 !bg-background"
         />
       ))}
     </article>
@@ -205,35 +197,27 @@ function WorkflowRunEdge({
     targetX,
     targetY,
   });
-  const status = data?.status ?? 'not_started';
-  const active = activeStatuses.has(status);
-  const completed = completedStatuses.has(status);
-  const failed = failedStatuses.has(status);
+  const tone = data?.tone ?? 'neutral';
+  const marker = markerEnd === undefined ? {} : { markerEnd };
   return (
     <>
       <BaseEdge
         path={path}
-        {...(markerEnd === undefined ? {} : { markerEnd })}
-        className="!stroke-border !stroke-[3]"
+        {...marker}
+        className="!stroke-white/8 !stroke-[3]"
       />
       <BaseEdge
         path={path}
-        {...(markerEnd === undefined ? {} : { markerEnd })}
+        {...marker}
         className={cn(
           '!stroke-[1.5]',
-          failed
-            ? '!stroke-destructive'
-            : active
-              ? '!stroke-primary'
-              : completed
-                ? '!stroke-primary/45'
-                : '!stroke-muted-foreground/45',
+          edgeStrokeClass[tone] ?? '!stroke-muted-foreground/35',
         )}
       />
-      {active ? (
+      {data?.active === true ? (
         <circle
           r="2.5"
-          className="workflow-transfer-marker fill-primary [filter:drop-shadow(0_0_5px_rgb(0_229_255/70%))] motion-reduce:hidden"
+          className="workflow-transfer-marker fill-accent-foreground [filter:drop-shadow(0_0_5px_rgb(0_229_255/70%))] motion-reduce:hidden"
           aria-hidden="true"
         >
           <animate
@@ -247,79 +231,4 @@ function WorkflowRunEdge({
       ) : null}
     </>
   );
-}
-
-function projectRunGraph(
-  graph: WorkflowGraphContract,
-  nodeRuns: readonly WorkflowNodeRunSummary[],
-): Readonly<{ nodes: RunNode[]; edges: RunEdge[] }> {
-  const runsByNode = new Map<string, WorkflowNodeRunSummary[]>();
-  for (const nodeRun of nodeRuns) {
-    const current = runsByNode.get(nodeRun.nodeId);
-    if (current === undefined) runsByNode.set(nodeRun.nodeId, [nodeRun]);
-    else current.push(nodeRun);
-  }
-  const statusByNode = new Map<string, NodeStatus>();
-  const portsByNode = new Map<
-    string,
-    { inputs: Set<string>; outputs: Set<string> }
-  >();
-  for (const edge of graph.edges) {
-    const source = portsByNode.get(edge.source.nodeId) ?? {
-      inputs: new Set<string>(),
-      outputs: new Set<string>(),
-    };
-    source.outputs.add(edge.source.port);
-    portsByNode.set(edge.source.nodeId, source);
-    const target = portsByNode.get(edge.target.nodeId) ?? {
-      inputs: new Set<string>(),
-      outputs: new Set<string>(),
-    };
-    target.inputs.add(edge.target.port);
-    portsByNode.set(edge.target.nodeId, target);
-  }
-
-  const nodes = graph.nodes.map((node) => {
-    const invocations = runsByNode.get(node.id) ?? [];
-    const status = aggregateNodeStatus(invocations);
-    statusByNode.set(node.id, status);
-    const ports = portsByNode.get(node.id);
-    return {
-      id: node.id,
-      type: 'runNode',
-      position: node.position,
-      data: {
-        label: node.label ?? node.definition.key,
-        definition: `${node.definition.key}@${String(node.definition.version)}`,
-        status,
-        invocationCount: invocations.length,
-        inputs: ports === undefined ? [] : [...ports.inputs],
-        outputs: ports === undefined ? [] : [...ports.outputs],
-      },
-    } satisfies RunNode;
-  });
-  const edges = graph.edges.map(
-    (edge) =>
-      ({
-        id: edge.id,
-        source: edge.source.nodeId,
-        sourceHandle: edge.source.port,
-        target: edge.target.nodeId,
-        targetHandle: edge.target.port,
-        type: 'runEdge',
-        data: { status: statusByNode.get(edge.target.nodeId) ?? 'not_started' },
-      }) satisfies RunEdge,
-  );
-  return { nodes, edges };
-}
-
-function aggregateNodeStatus(
-  nodeRuns: readonly WorkflowNodeRunSummary[],
-): NodeStatus {
-  let status: NodeStatus = 'not_started';
-  for (const nodeRun of nodeRuns) {
-    if (statusPriority[nodeRun.status] > statusPriority[status])
-      status = nodeRun.status;
-  }
-  return status;
 }
