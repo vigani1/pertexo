@@ -123,10 +123,10 @@ export function WorkflowCanvas({
       if (selection !== undefined) {
         const requested = [...selection];
         onSelectNodes(requested);
-        const applied = store.getState().selectedNodeIds;
+        const applied = new Set(store.getState().selectedNodeIds);
         if (
-          applied.length !== requested.length ||
-          requested.some((id) => !applied.includes(id))
+          applied.size !== requested.length ||
+          requested.some((id) => !applied.has(id))
         )
           setSelectionResync((current) => current + 1);
       }

@@ -143,9 +143,10 @@ function isCurrentSelection(
   action: Extract<EditorAction, { kind: 'select' }>,
   state: ReturnType<EditorStore['getState']>,
 ): boolean {
+  const selected = new Set(state.selectedNodeIds);
   return (
-    action.nodeIds.length === state.selectedNodeIds.length &&
-    action.nodeIds.every((id) => state.selectedNodeIds.includes(id))
+    action.nodeIds.length === selected.size &&
+    action.nodeIds.every((id) => selected.has(id))
   );
 }
 

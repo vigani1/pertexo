@@ -1,7 +1,7 @@
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { localUtcOffset } from '../model/run-intent';
+import { localUtcOffset } from '@/lib/format-time';
 import type { RunInput } from '../use-run-input';
 
 /** A run's input (JSON) and optional deadline, validated as one form. */

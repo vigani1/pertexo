@@ -1,3 +1,4 @@
+import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -29,6 +30,43 @@ import {
 } from './model/run-search';
 import { useRunHistory } from './use-run-history';
 import { runStatusCountsQueryOptions } from './workflow-runs.queries';
+
+/** Pick one workflow, or filter by the start of a name. */
+function WorkflowFilter({
+  search,
+  workflowName,
+  workflows,
+  onSearchChange,
+}: Readonly<{
+  search: RunSearch;
+  workflowName: string | undefined;
+  workflows: readonly WorkflowSummary[];
+  onSearchChange: (search: RunSearch) => void;
+}>) {
+  const initialText = workflowName ?? search.workflowNamePrefix ?? '';
+  return (
+    <WorkflowPicker
+      key={`${search.workflowId ?? ''}:${search.workflowNamePrefix ?? ''}:${workflowName ?? ''}`}
+      workflows={workflows}
+      initialText={initialText}
+      onPickWorkflow={(workflow) => {
+        onSearchChange({
+          ...withoutRunFilter(search, 'workflowNamePrefix'),
+          workflowId: workflow.id,
+        });
+      }}
+      onNamePrefix={(prefix) => {
+        const rest = withoutRunFilter(
+          withoutRunFilter(search, 'workflowId'),
+          'workflowNamePrefix',
+        );
+        onSearchChange(
+          prefix === undefined ? rest : { ...rest, workflowNamePrefix: prefix },
+        );
+      }}
+    />
+  );
+}
 
 /** The workspace's run log: live counts, URL filters, List or Loom. */
 export function RunHistoryPage({
@@ -107,29 +145,13 @@ export function RunHistoryPage({
             {...(workflowName === undefined ? {} : { workflowName })}
             workflowFilter={
               canReadWorkflows ? (
-                <WorkflowPicker
-                  key={`${search.workflowId ?? ''}:${search.workflowNamePrefix ?? ''}:${workflowName ?? ''}`}
+                <WorkflowFilter
+                  search={search}
+                  workflowName={workflowName}
                   workflows={
                     workflows.data?.pages.flatMap((page) => page.items) ?? []
                   }
-                  initialText={workflowName ?? search.workflowNamePrefix ?? ''}
-                  onPickWorkflow={(workflow) => {
-                    onSearchChange({
-                      ...withoutRunFilter(search, 'workflowNamePrefix'),
-                      workflowId: workflow.id,
-                    });
-                  }}
-                  onNamePrefix={(prefix) => {
-                    const rest = withoutRunFilter(
-                      withoutRunFilter(search, 'workflowId'),
-                      'workflowNamePrefix',
-                    );
-                    onSearchChange(
-                      prefix === undefined
-                        ? rest
-                        : { ...rest, workflowNamePrefix: prefix },
-                    );
-                  }}
+                  onSearchChange={onSearchChange}
                 />
               ) : undefined
             }

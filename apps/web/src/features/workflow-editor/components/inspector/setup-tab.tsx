@@ -71,40 +71,21 @@ export function SetupTab({
           Nothing to set up for this step. Its inputs decide what it does.
         </p>
       ) : (
-        <>
-          {fields.map((field) => (
-            <SchemaField
-              key={field.key}
-              field={field}
-              config={node.config}
-              form={form}
-            />
-          ))}
-          {propertyCount > fields.length ? (
-            <p className="text-xs text-subtle-foreground">
-              Some settings can only be edited as JSON.
-            </p>
-          ) : null}
-        </>
+        <SchemaFieldList
+          fields={fields}
+          config={node.config}
+          form={form}
+          jsonOnlySettings={propertyCount > fields.length}
+        />
       )}
       {onlyJson ? null : (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="w-fit"
+        <JsonModeToggle
+          jsonMode={jsonMode}
           disabled={jsonMode && jsonScratch}
-          onClick={() => {
+          onToggle={() => {
             setJsonMode((current) => !current);
           }}
-        >
-          {jsonMode ? (
-            <ListIcon data-icon="inline-start" />
-          ) : (
-            <BracesIcon data-icon="inline-start" />
-          )}
-          {jsonMode ? 'Back to fields' : 'Edit as JSON'}
-        </Button>
+        />
       )}
       {(definition?.connectionRequirements ?? []).map((requirement) => (
         <ConnectionSlot
@@ -117,6 +98,58 @@ export function SetupTab({
         />
       ))}
     </FieldGroup>
+  );
+}
+
+function SchemaFieldList({
+  fields,
+  config,
+  form,
+  jsonOnlySettings,
+}: Readonly<{
+  fields: ReturnType<typeof schemaFields>;
+  config: WorkflowNode['config'];
+  form: NodeFormApi;
+  /** The schema has properties no field models. */
+  jsonOnlySettings: boolean;
+}>) {
+  return (
+    <>
+      {fields.map((field) => (
+        <SchemaField
+          key={field.key}
+          field={field}
+          config={config}
+          form={form}
+        />
+      ))}
+      {jsonOnlySettings ? (
+        <p className="text-xs text-subtle-foreground">
+          Some settings can only be edited as JSON.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function JsonModeToggle({
+  jsonMode,
+  disabled,
+  onToggle,
+}: Readonly<{ jsonMode: boolean; disabled: boolean; onToggle: () => void }>) {
+  const Icon = jsonMode ? ListIcon : BracesIcon;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="w-fit"
+      disabled={disabled}
+      onClick={onToggle}
+    >
+      <Icon data-icon="inline-start" />
+      {jsonMode ? 'Back to fields' : 'Edit as JSON'}
+    </Button>
   );
 }
 

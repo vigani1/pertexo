@@ -1,4 +1,5 @@
 import {
+  mutationOptions,
   useMutation,
   useQueryClient,
   type QueryClient,
@@ -129,6 +130,18 @@ async function checkSession(
   }
 }
 
+/**
+ * The rename request itself. The command owns the cache refresh: after
+ * re-verifying the identity it re-reads discovery until it shows the new
+ * revision (`catchUpDiscovery`), so the mutation carries no cache effect.
+ */
+function renameMutation(apiClient: ApiClient, workspaceId: string) {
+  return mutationOptions({
+    mutationFn: (attempt: WorkspaceRenameAttempt) =>
+      renameWorkspace(apiClient, workspaceId, attempt),
+  });
+}
+
 /** Reloads workspace discovery until it shows at least the renamed revision. */
 async function catchUpDiscovery(
   queryClient: QueryClient,
@@ -172,13 +185,7 @@ export function useWorkspaceRename({
   onAccessLost: () => void;
 }>) {
   const queryClient = useQueryClient();
-  // The command owns the refresh: after re-verifying the identity it
-  // invalidates and re-reads discovery until it shows the new revision
-  // (catchUpDiscovery).
-  const mutation = useMutation({
-    mutationFn: (attempt: WorkspaceRenameAttempt) =>
-      renameWorkspace(apiClient, workspaceId, attempt),
-  });
+  const mutation = useMutation(renameMutation(apiClient, workspaceId));
   const [state, setState] = useState<State>({ kind: 'idle' });
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);

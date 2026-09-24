@@ -9,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { localTimeZone } from '@/lib/format-time';
 import {
   presetRangeLabel,
   timeRangeLabel,
@@ -16,7 +17,6 @@ import {
 import {
   customRangeInputs,
   customRangeSearch,
-  localTimeZone,
   presetRangeSearch,
   runPresetRanges,
   withoutTimeRange,

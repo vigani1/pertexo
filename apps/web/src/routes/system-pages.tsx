@@ -53,50 +53,62 @@ export function BootPage() {
   );
 }
 
-export function NotFoundPage() {
+/** A whole-screen dead end: what happened and the one way out. */
+function FullScreenState({
+  art,
+  title,
+  description,
+  action,
+}: Readonly<{
+  art: ReactNode;
+  title: string;
+  description: string;
+  action: ReactNode;
+}>) {
   return (
     <FullScreen>
       <SystemState>
-        <SystemStateArt>
-          <LooseThread />
-        </SystemStateArt>
-        <SystemStateTitle>This page doesn’t exist</SystemStateTitle>
-        <SystemStateDescription>
-          The address doesn’t lead anywhere in Pertexo. It may have been typed
-          wrong or moved.
-        </SystemStateDescription>
-        <SystemStateActions>
-          <Link to="/" className={buttonVariants({ variant: 'primary' })}>
-            Go to Pertexo
-          </Link>
-        </SystemStateActions>
+        <SystemStateArt>{art}</SystemStateArt>
+        <SystemStateTitle>{title}</SystemStateTitle>
+        <SystemStateDescription>{description}</SystemStateDescription>
+        <SystemStateActions>{action}</SystemStateActions>
       </SystemState>
     </FullScreen>
   );
 }
 
+const goHome = (
+  <Link to="/" className={buttonVariants({ variant: 'primary' })}>
+    Go to Pertexo
+  </Link>
+);
+
+export function NotFoundPage() {
+  return (
+    <FullScreenState
+      art={<LooseThread />}
+      title="This page doesn’t exist"
+      description="The address doesn’t lead anywhere in Pertexo. It may have been typed wrong or moved."
+      action={goHome}
+    />
+  );
+}
+
 export function WorkspaceUnavailablePage() {
   return (
-    <FullScreen>
-      <SystemState>
-        <SystemStateArt>
-          <BarredThread />
-        </SystemStateArt>
-        <SystemStateTitle>This workspace isn’t available</SystemStateTitle>
-        <SystemStateDescription>
-          The link is wrong, or your account doesn’t have access to this
-          workspace. Choose one you belong to instead.
-        </SystemStateDescription>
-        <SystemStateActions>
-          <Link
-            to="/workspaces"
-            className={buttonVariants({ variant: 'primary' })}
-          >
-            Choose a workspace
-          </Link>
-        </SystemStateActions>
-      </SystemState>
-    </FullScreen>
+    <FullScreenState
+      art={<BarredThread />}
+      title="This workspace isn’t available"
+      description="The link is wrong, or your account doesn’t have access to this workspace. Choose one you belong to instead."
+      action={
+        <Link
+          to="/workspaces"
+          className={buttonVariants({ variant: 'primary' })}
+        >
+          Choose a workspace
+        </Link>
+      }
+    />
   );
 }
 
@@ -137,23 +149,12 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   }
   if (isNotFound(error))
     return (
-      <FullScreen>
-        <SystemState>
-          <SystemStateArt>
-            <LooseThread />
-          </SystemStateArt>
-          <SystemStateTitle>This doesn’t exist</SystemStateTitle>
-          <SystemStateDescription>
-            It may have been removed, or your role doesn’t give you access to
-            it.
-          </SystemStateDescription>
-          <SystemStateActions>
-            <Link to="/" className={buttonVariants({ variant: 'primary' })}>
-              Go to Pertexo
-            </Link>
-          </SystemStateActions>
-        </SystemState>
-      </FullScreen>
+      <FullScreenState
+        art={<LooseThread />}
+        title="This doesn’t exist"
+        description="It may have been removed, or your role doesn’t give you access to it."
+        action={goHome}
+      />
     );
   return (
     <FullScreen>

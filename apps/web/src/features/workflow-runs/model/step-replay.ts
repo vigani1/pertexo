@@ -184,9 +184,10 @@ class StepReplayBuilder {
     kinds: readonly StepStoryEntry['kind'][],
     update: Partial<StepStoryEntry>,
   ): boolean {
+    const wanted = new Set(kinds);
     for (let index = this.story.length - 1; index >= 0; index -= 1) {
       const entry = this.story[index];
-      if (entry === undefined || !kinds.includes(entry.kind)) continue;
+      if (entry === undefined || !wanted.has(entry.kind)) continue;
       if (entry.endedAt !== undefined) return false;
       this.story[index] = { ...entry, ...update };
       return true;

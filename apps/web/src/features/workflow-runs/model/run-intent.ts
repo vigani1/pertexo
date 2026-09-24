@@ -36,12 +36,3 @@ export function normalizeRunIntent(intent: RunIntent): string {
     value: intent.value,
   });
 }
-
-/** "UTC+2" or "UTC−3:30", from the browser's current offset. */
-export function localUtcOffset(date = new Date()): string {
-  const offsetMinutes = -date.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? '+' : '−';
-  const hours = Math.floor(Math.abs(offsetMinutes) / 60);
-  const minutes = Math.abs(offsetMinutes) % 60;
-  return `UTC${sign}${String(hours)}${minutes === 0 ? '' : `:${String(minutes).padStart(2, '0')}`}`;
-}

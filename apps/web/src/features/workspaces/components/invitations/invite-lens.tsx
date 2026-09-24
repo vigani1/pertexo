@@ -40,7 +40,7 @@ export function InviteLens({
   const notifications = useNotifications();
   const [emails, setEmails] = useState<readonly string[]>([]);
   const [draft, setDraft] = useState('');
-  const [role, setRole] = useState<ManagedRole>(roles.at(-1) ?? 'viewer');
+  const [role, setRole] = useState<ManagedRole>(() => roles.at(-1) ?? 'viewer');
   const validation = useFieldValidation<'emails'>();
   const batch = useInviteBatch(command, (sent) => {
     notifications.success({

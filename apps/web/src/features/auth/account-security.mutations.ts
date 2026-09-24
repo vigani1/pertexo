@@ -46,6 +46,10 @@ export function useUnlinkAccountMethod(apiClient: ApiClient, userId: string) {
   });
 }
 
+/**
+ * Asks to change the email. Nothing cached changes yet: the address changes
+ * only once the person confirms from both inboxes, which signs them out.
+ */
 export function useRequestAccountEmailChange(apiClient: ApiClient) {
   return useMutation({
     mutationFn: (newEmail: string) =>
