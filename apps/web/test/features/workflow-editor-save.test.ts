@@ -1,4 +1,3 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,28 +9,10 @@ import { createEditorStore } from '@/features/workflow-editor/model/editor.store
 import { createSaveCoordinator } from '@/features/workflow-editor/model/save-coordinator';
 
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/workflow-editor.api';
+import { bareSetDefinition as definition } from '../support/workflow-editor-fixtures';
 
 const etagA = `"draft-v1.${'a'.repeat(43)}"`;
 const etagB = `"draft-v1.${'b'.repeat(43)}"`;
-
-const definition = {
-  schemaVersion: 1,
-  definition: { key: 'core.set', version: 1 },
-  family: 'transform',
-  configVersion: 1,
-  configSchema: { type: 'object', properties: {} },
-  inputSchema: {},
-  outputSchema: {},
-  ports: { inputs: ['in'], outputs: ['out'] },
-  credentialRequirements: [],
-  connectionRequirements: [],
-  retryClass: 'safe',
-  resourceClass: 'cpu',
-  capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
-} satisfies NodeDefinitionCatalogItem;
 
 function emptyGraph(): WorkflowGraphContract {
   return { schemaVersion: 1, nodes: [], edges: [], settings: {} };
