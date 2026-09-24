@@ -18,7 +18,7 @@ export function LoginRoute() {
         window.location.assign(authorizationUrl);
       }}
       onAuthenticated={() => {
-        window.location.assign('/workspaces');
+        window.location.assign('/');
       }}
     />
   );

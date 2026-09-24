@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/public';
-import { WorkspaceSettingsNavigation } from '@/features/workspaces/public';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/api-error';
 import { DestinationFormDialog } from './components/destination-form-dialog';
@@ -72,7 +71,6 @@ export function FailureNotificationDestinationsPage({
   };
   return (
     <div className="flex flex-col gap-6">
-      <WorkspaceSettingsNavigation workspace={workspace} />
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">

@@ -181,9 +181,9 @@ describe('run replay', () => {
       http.get(
         `http://pertexo.test/v1/workspaces/${workspaceId}/runs`,
         ({ request }) => {
-          const failed =
-            new URL(request.url).searchParams.get('status') === 'failed';
-          if (!failed) recentReads += 1;
+          // Only the unfiltered recent list; the spine polls live statuses.
+          const status = new URL(request.url).searchParams.get('status');
+          if (status === null) recentReads += 1;
           return HttpResponse.json({
             items: [run(replayRunId, 'replay')],
             nextCursor: null,
@@ -215,7 +215,7 @@ describe('run replay', () => {
       );
     });
     await router.navigate({
-      to: '/w/$workspaceId/overview',
+      to: '/w/$workspaceId',
       params: { workspaceId },
     });
     const refreshedLinks = await screen.findAllByRole('link', {

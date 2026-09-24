@@ -13,7 +13,6 @@ import { isApiError } from '@/lib/api/api-error';
 import { WorkspaceMembersTable } from './components/members/workspace-members-table';
 import { MemberRoleDialog } from './components/members/member-role-dialog';
 import { useMemberRoleCommand } from './mutations/use-member-role-command';
-import { WorkspaceSettingsNavigation } from './components/settings/workspace-settings-navigation';
 import { WorkspaceInvitationsSection } from './components/invitations/workspace-invitations-section';
 import { workspaceMembersInfiniteQueryOptions } from './workspaces.queries';
 
@@ -72,7 +71,6 @@ export function WorkspaceMembersPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <WorkspaceSettingsNavigation workspace={workspace} />
       <header>
         <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
           Members

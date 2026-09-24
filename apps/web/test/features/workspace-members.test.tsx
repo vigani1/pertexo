@@ -140,7 +140,7 @@ describe('workspace members', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
       await screen.findByRole('button', { name: 'Invite member' }),
     );
@@ -207,7 +207,7 @@ describe('workspace members', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     await browser.click(
       await screen.findByRole('button', { name: 'Invite member' }),
     );
@@ -263,7 +263,7 @@ describe('workspace members', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
       await screen.findByRole('button', { name: 'Invite member' }),
     );
@@ -330,7 +330,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     expect(await screen.findByText('first.invite@example.test')).toBeVisible();
     await userEvent
       .setup()
@@ -374,7 +374,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     expect(
       await screen.findByText(
         'A member with a display name long enough to need truncation in narrow layouts',
@@ -403,7 +403,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
         name: 'Workspace members are unavailable',
@@ -423,7 +423,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
         name: 'Workspace members could not be loaded',
@@ -442,7 +442,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', { name: 'No workspace members' }),
     ).toBeVisible();
@@ -468,7 +468,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     await userEvent
       .setup()
@@ -494,7 +494,7 @@ describe('workspace members', () => {
               }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/settings/members`);
+    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     fail = true;
     await queryClient.refetchQueries({
@@ -528,7 +528,7 @@ describe('workspace members', () => {
               }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/settings/members`);
+    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     denied = true;
     await queryClient.refetchQueries({
@@ -562,7 +562,7 @@ describe('workspace members', () => {
               }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/settings/members`);
+    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
     await userEvent
       .setup()
       .click(await screen.findByRole('button', { name: 'Change role' }));
@@ -608,7 +608,7 @@ describe('workspace members', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
       await screen.findByRole('button', { name: 'Change role' }),
     );
@@ -662,7 +662,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
     await browser.click(
       await screen.findByRole('button', { name: 'Change role' }),
@@ -729,7 +729,7 @@ describe('workspace members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    renderApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
     const aliceRow = (await screen.findByText('Alice Member')).closest('tr');
     if (aliceRow === null) throw new Error('Alice row is unavailable');
@@ -833,7 +833,7 @@ describe('workspace members', () => {
           }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
     await browser.click(
       await screen.findByRole('button', { name: 'Change role' }),
@@ -900,7 +900,7 @@ describe('workspace members', () => {
           }),
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/settings/members`, {
+    const { router } = renderApp(`/w/${workspaceId}/team`, {
       strict: true,
     });
     const browser = userEvent.setup();
@@ -954,7 +954,7 @@ describe('workspace members', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     await screen.findByText('Another Admin');
     expect(
       screen.queryByRole('button', { name: 'Change role' }),
@@ -975,7 +975,7 @@ describe('workspace members', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     await userEvent
       .setup()
       .click(await screen.findByRole('button', { name: 'Change role' }));
@@ -1038,7 +1038,7 @@ describe('workspace members', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/members`);
+    renderApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
     await browser.click(
       await screen.findByRole('button', { name: 'Change role' }),

@@ -8,22 +8,29 @@ import {
   passwordRecoveryRoute,
   passwordResetRoute,
   signUpRoute,
-} from './authentication-routes';
+  workspacesRoute,
+} from './public-routes';
 import { rootRoute } from './root-route';
 import {
-  runDetailRoute,
-  runHistoryRoute,
-  workflowEditorRoute,
-  workflowListRoute,
+  workflowBuildRoute,
+  workflowHubRoute,
+  workflowRunsRoute,
   workflowSettingsRoute,
-} from './workflow-routes';
+  workflowTriggersRoute,
+  workflowVersionsRoute,
+} from './workflow-hub-routes';
 import {
+  alertsRoute,
   connectionsRoute,
-  overviewRoute,
-  workspaceGeneralRoute,
-  workspaceMembersRoute,
-  workspaceNotificationsRoute,
-  workspacesRoute,
+  homeRoute,
+  runDetailRoute,
+  runsRoute,
+  teamRoute,
+  workflowsRoute,
+  workspaceAccountRoute,
+  workspaceScopeRoute,
+  workspaceSettingsRoute,
+  workspaceShellRoute,
 } from './workspace-routes';
 
 export const routeTree = rootRoute.addChildren([
@@ -37,14 +44,24 @@ export const routeTree = rootRoute.addChildren([
   accountSecurityRoute,
   invitationAcceptanceRoute,
   workspacesRoute,
-  workflowListRoute,
-  overviewRoute,
-  connectionsRoute,
-  workflowEditorRoute,
-  runHistoryRoute,
-  runDetailRoute,
-  workflowSettingsRoute,
-  workspaceGeneralRoute,
-  workspaceMembersRoute,
-  workspaceNotificationsRoute,
+  workspaceScopeRoute.addChildren([
+    workspaceShellRoute.addChildren([
+      homeRoute,
+      workflowsRoute,
+      runsRoute,
+      runDetailRoute,
+      connectionsRoute,
+      teamRoute,
+      alertsRoute,
+      workspaceSettingsRoute,
+      workspaceAccountRoute,
+    ]),
+    workflowHubRoute.addChildren([
+      workflowBuildRoute,
+      workflowRunsRoute,
+      workflowTriggersRoute,
+      workflowVersionsRoute,
+      workflowSettingsRoute,
+    ]),
+  ]),
 ]);

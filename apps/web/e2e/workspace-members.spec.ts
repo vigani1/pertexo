@@ -93,12 +93,14 @@ test('opens the authorized member directory and paginates it', async ({
 }) => {
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/workflows`);
-  await page.getByRole('link', { name: 'Workspace settings' }).click();
+  const navigation = page.getByRole('navigation', { name: 'Workspace' });
+  await navigation.getByRole('link', { name: 'Team' }).click();
 
-  await expect(page).toHaveURL(`/w/${workspaceId}/settings/members`);
-  await expect(
-    page.getByRole('link', { name: 'Workspace settings' }),
-  ).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveURL(`/w/${workspaceId}/team`);
+  await expect(navigation.getByRole('link', { name: 'Team' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
   await expect(page.getByText('Ada Operator')).toBeVisible();
   await page.getByRole('button', { name: 'Load more' }).click();
   await expect(page.getByText('Lin Builder')).toBeVisible();
@@ -110,20 +112,19 @@ test('keeps the member directory reachable and bounded on mobile', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/workflows`);
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('link', { name: 'Workspace settings' }).click();
+  const bar = page.getByRole('navigation', { name: 'Workspace' });
+  await bar.getByRole('button', { name: 'More' }).click();
+  await page
+    .getByRole('dialog', { name: 'More' })
+    .getByRole('link', { name: 'Team' })
+    .click();
 
-  await expect(page).toHaveURL(`/w/${workspaceId}/settings/members`);
-  await expect(
-    page.getByRole('button', { name: 'Open navigation' }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/w/${workspaceId}/team`);
+  await expect(bar.getByRole('button', { name: 'More' })).toBeVisible();
   await expect(page.getByText('Ada Operator')).toBeVisible();
   const tableRegion = page.getByRole('region', {
     name: 'Scrollable data table',
   });
-  await expect(
-    page.getByText('Scroll horizontally to view all columns and actions.'),
-  ).toBeVisible();
   await tableRegion.focus();
   await page.keyboard.press('ArrowRight');
   await expect
@@ -205,7 +206,7 @@ test('confirms a role change and sends its exact revision and command key', asyn
     }),
   );
 
-  await page.goto(`/w/${workspaceId}/settings/members`);
+  await page.goto(`/w/${workspaceId}/team`);
   await page.getByRole('button', { name: 'Change role' }).click();
   await expect(page.getByText(/must sign in again/u)).toBeVisible();
   await page.getByLabel('New role').selectOption('operator');
@@ -280,7 +281,7 @@ test('creates an invitation and refreshes the authoritative pending list', async
     },
   );
 
-  await page.goto(`/w/${workspaceId}/settings/members`);
+  await page.goto(`/w/${workspaceId}/team`);
   await page.getByRole('button', { name: 'Invite member' }).click();
   await page.getByLabel('Recipient email').fill('new.builder@example.test');
   await page.getByLabel('Workspace role').selectOption('builder');

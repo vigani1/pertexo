@@ -138,9 +138,11 @@ test('creates, versions and disables a notification destination', async ({
     },
   );
 
-  await page.goto(`/w/${workspaceId}/settings/notifications`);
+  await page.goto(`/w/${workspaceId}/alerts`);
   await expect(
-    page.getByRole('link', { name: 'Notifications' }),
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: 'Alerts' }),
   ).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Add destination' }).click();
   await page.getByLabel('Slack connection').selectOption(connectionId);

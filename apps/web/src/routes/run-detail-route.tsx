@@ -1,47 +1,51 @@
 import {
+  Link,
   useLoaderData,
   useNavigate,
   useParams,
-  useRouteContext,
 } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { RunDetailPage } from '@/features/workflow-runs/public';
-import { WorkspaceUnavailablePage } from './root-layout';
-import { WorkspaceRouteShell } from './workspace-route-shell';
+import { ResourceNotFound } from './system-pages';
+import { useWorkspaceScope } from './use-workspace-scope';
 
 export function RunDetailRoute() {
-  const { apiClient } = useRouteContext({
-    from: '/w/$workspaceId/runs/$runId',
+  const { apiClient, user, workspace } = useWorkspaceScope();
+  const { found } = useLoaderData({
+    from: '/w/$workspaceId/shell/runs/$runId',
   });
-  const data = useLoaderData({ from: '/w/$workspaceId/runs/$runId' });
-  const params = useParams({ from: '/w/$workspaceId/runs/$runId' });
+  const { runId } = useParams({ from: '/w/$workspaceId/shell/runs/$runId' });
   const navigate = useNavigate();
-  if (data.workspace === null) return <WorkspaceUnavailablePage />;
-  const workspace = data.workspace;
+  if (!found)
+    return (
+      <ResourceNotFound resource="run">
+        <Link
+          to="/w/$workspaceId/runs"
+          params={{ workspaceId: workspace.id }}
+          className={buttonVariants({ variant: 'primary' })}
+        >
+          Back to runs
+        </Link>
+      </ResourceNotFound>
+    );
   return (
-    <WorkspaceRouteShell
+    <RunDetailPage
       apiClient={apiClient}
-      user={data.user}
+      user={user}
       workspace={workspace}
-      pageTitle="Run detail"
-    >
-      <RunDetailPage
-        apiClient={apiClient}
-        user={data.user}
-        workspace={workspace}
-        runId={params.runId}
-        onBackToWorkflow={(workflowId) => {
-          void navigate({
-            to: '/w/$workspaceId/workflows/$workflowId',
-            params: { workspaceId: workspace.id, workflowId },
-          });
-        }}
-        onRunAccepted={(runId) => {
-          void navigate({
-            to: '/w/$workspaceId/runs/$runId',
-            params: { workspaceId: workspace.id, runId },
-          });
-        }}
-      />
-    </WorkspaceRouteShell>
+      runId={runId}
+      onBackToWorkflow={(workflowId) => {
+        void navigate({
+          to: '/w/$workspaceId/workflows/$workflowId',
+          params: { workspaceId: workspace.id, workflowId },
+        });
+      }}
+      onRunAccepted={(acceptedRunId) => {
+        void navigate({
+          to: '/w/$workspaceId/runs/$runId',
+          params: { workspaceId: workspace.id, runId: acceptedRunId },
+        });
+      }}
+    />
   );
 }

@@ -160,11 +160,9 @@ describe('workspace creation', () => {
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Workflows' }),
-    ).toBeVisible();
-    expect(app.router.state.location.pathname).toBe(
-      `/w/${createdWorkspaceId}/workflows`,
-    );
+      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+    ).not.toHaveLength(0);
+    expect(app.router.state.location.pathname).toBe(`/w/${createdWorkspaceId}`);
     expect(requests).toHaveLength(1);
     expect(requests[0]?.body).toEqual({
       name: 'Signal Operations',
@@ -206,8 +204,8 @@ describe('workspace creation', () => {
       .setup()
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
     expect(
-      await screen.findByRole('heading', { name: 'Workflows' }),
-    ).toBeVisible();
+      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+    ).not.toHaveLength(0);
   });
 
   it('validates on blur and submit, focuses the first invalid field, and cancels cleanly', async () => {
@@ -342,8 +340,8 @@ describe('workspace creation', () => {
         within(dialog).getByRole('button', { name: 'Retry same workspace' }),
       );
     expect(
-      await screen.findByRole('heading', { name: 'Workflows' }),
-    ).toBeVisible();
+      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+    ).not.toHaveLength(0);
     expect(attempts).toHaveLength(2);
     expect(attempts[1]).toEqual(attempts[0]);
   });
@@ -477,8 +475,8 @@ describe('workspace creation', () => {
       }),
     );
     expect(
-      await screen.findByRole('heading', { name: 'Workflows' }),
-    ).toBeVisible();
+      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+    ).not.toHaveLength(0);
     expect(postCount).toBe(1);
   });
 });

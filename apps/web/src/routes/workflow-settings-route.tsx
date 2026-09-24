@@ -1,48 +1,38 @@
-import {
-  useLoaderData,
-  useNavigate,
-  useParams,
-  useRouteContext,
-} from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
+import type { WorkflowHubTab } from '@/features/workflows/hub.public';
 import { WorkflowSettingsPage } from '@/features/workflow-settings/public';
-import { WorkspaceUnavailablePage } from './root-layout';
-import { WorkspaceRouteShell } from './workspace-route-shell';
+import { WorkflowHubTabFrame } from './workflow-hub-frame';
+import { useWorkflowHubScope } from './workflow-hub-scope';
 
-export function WorkflowSettingsRoute() {
-  const { apiClient } = useRouteContext({
-    from: '/w/$workspaceId/workflows/$workflowId/settings',
-  });
-  const data = useLoaderData({
-    from: '/w/$workspaceId/workflows/$workflowId/settings',
-  });
-  const params = useParams({
-    from: '/w/$workspaceId/workflows/$workflowId/settings',
-  });
+function WorkflowOperationsTab({ tab }: Readonly<{ tab: WorkflowHubTab }>) {
+  const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();
   const navigate = useNavigate();
-  if (data.workspace === null) return <WorkspaceUnavailablePage />;
-  const workspace = data.workspace;
   return (
-    <WorkspaceRouteShell
-      apiClient={apiClient}
-      user={data.user}
-      workspace={workspace}
-      pageTitle="Workflow settings"
-    >
+    <WorkflowHubTabFrame tab={tab}>
       <WorkflowSettingsPage
         apiClient={apiClient}
-        user={data.user}
+        user={user}
         workspace={workspace}
-        workflowId={params.workflowId}
+        workflowId={workflowId}
         onBack={() => {
           void navigate({
             to: '/w/$workspaceId/workflows/$workflowId',
-            params: {
-              workspaceId: workspace.id,
-              workflowId: params.workflowId,
-            },
+            params: { workspaceId: workspace.id, workflowId },
           });
         }}
       />
-    </WorkspaceRouteShell>
+    </WorkflowHubTabFrame>
   );
+}
+
+export function WorkflowTriggersRoute() {
+  return <WorkflowOperationsTab tab="triggers" />;
+}
+
+export function WorkflowVersionsRoute() {
+  return <WorkflowOperationsTab tab="versions" />;
+}
+
+export function WorkflowSettingsRoute() {
+  return <WorkflowOperationsTab tab="settings" />;
 }

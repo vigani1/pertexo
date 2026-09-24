@@ -182,10 +182,11 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await installRoutes(page);
   await page.goto(`/w/${workspaceId}/runs`);
 
-  await expect(page.getByRole('link', { name: 'Run history' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: /^Runs/u }),
+  ).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText(firstRunId)).toBeVisible();
   await page.getByRole('button', { name: 'Load more' }).click();
   await expect(page.getByText(secondRunId)).toBeVisible();

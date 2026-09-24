@@ -523,7 +523,6 @@ test('confirms dirty-editor logout before revoking the session', async ({
   };
   let logoutRequests = 0;
   let signedOut = false;
-  let discoveryUnavailable = false;
   let releaseSave: (() => void) | undefined;
   const saveGate = new Promise<void>((resolve) => {
     releaseSave = resolve;
@@ -543,41 +542,12 @@ test('confirms dirty-editor logout before revoking the session', async ({
             requestId: 'request-logout-ordering',
           }),
         })
-      : discoveryUnavailable
-        ? route.fulfill({
-            status: 503,
-            contentType: 'application/problem+json',
-            body: JSON.stringify({
-              type: 'urn:pertexo:problem:service.unavailable',
-              title: 'Service unavailable',
-              status: 503,
-              code: 'service.unavailable',
-              requestId: 'request-user-discovery-unavailable',
-            }),
-          })
-        : route.fulfill({ json: user }),
+      : route.fulfill({ json: user }),
   );
   await page.route('**/v1/auth/logout', async (route) => {
     logoutRequests += 1;
     signedOut = true;
     await route.fulfill({ status: 204 });
-  });
-  await page.route('**/v1/workspaces?**', async (route) => {
-    if (!discoveryUnavailable) {
-      await route.fallback();
-      return;
-    }
-    await route.fulfill({
-      status: 503,
-      contentType: 'application/problem+json',
-      body: JSON.stringify({
-        type: 'urn:pertexo:problem:service.unavailable',
-        title: 'Service unavailable',
-        status: 503,
-        code: 'service.unavailable',
-        requestId: 'request-workspace-discovery-unavailable',
-      }),
-    });
   });
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
@@ -594,35 +564,24 @@ test('confirms dirty-editor logout before revoking the session', async ({
   await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
   await page.getByTestId('rf__node-node-a').click();
   await page.getByLabel('Label').fill('Unapplied logout scratch');
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('dialog', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Sign out' })
-    .click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Leave with unapplied changes?' }),
   ).toBeVisible();
   expect(logoutRequests).toBe(0);
   await page.getByRole('button', { name: 'Stay here' }).click();
-  await page
-    .getByRole('dialog', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Close navigation' })
-    .click();
   await expect(page.getByLabel('Label')).toHaveValue(
     'Unapplied logout scratch',
   );
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${workflowId}`);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  const drawer = page.getByRole('dialog', { name: 'Workspace navigation' });
-  await drawer.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Leave with unapplied changes?' }),
   ).toBeVisible();
   expect(logoutRequests).toBe(0);
   await page.getByRole('button', { name: 'Stay here' }).click();
-  await drawer.getByRole('button', { name: 'Close navigation' }).click();
   await page
     .getByRole('navigation', { name: 'Workflow editor panels' })
     .getByRole('button', { name: 'Inspector' })
@@ -633,17 +592,18 @@ test('confirms dirty-editor logout before revoking the session', async ({
 
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect(page.getByText('Unsaved changes')).toBeVisible();
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('dialog', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Sign out' })
-    .click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Leave with unapplied changes?' }),
   ).toBeVisible();
   expect(logoutRequests).toBe(0);
-  discoveryUnavailable = true;
   await page.getByRole('button', { name: 'Leave editor' }).click();
+  await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
+  await page.getByRole('button', { name: 'More' }).click();
+  await page
+    .getByRole('dialog', { name: 'More' })
+    .getByRole('button', { name: 'Sign out' })
+    .click();
   await expect.poll(() => logoutRequests).toBe(1);
   await expect(page).toHaveURL(/\/login$/u);
   await expect(
@@ -677,9 +637,9 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
     longWorkflowName,
   );
   await page.goto(`/w/${workspaceId}/workflows/${workflowId}`);
-  await expect(
-    page.getByRole('navigation', { name: 'Workspace navigation' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Workspace' })).toHaveCount(
+    0,
+  );
 
   for (const width of [390, 720, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -700,9 +660,6 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
     await expect(
       commandBar.getByRole('heading', { name: longWorkflowName }),
     ).toHaveAttribute('title', longWorkflowName);
-    await expect(
-      commandBar.getByRole('button', { name: 'Open navigation' }),
-    ).toBeVisible();
     await expect(canvas).toBeVisible();
     await page.getByTestId('rf__node-node-a').click();
     const toolbar = page.getByRole('toolbar', { name: 'Canvas selection' });
@@ -792,13 +749,13 @@ test('keeps editable canvas and canvas-local toolbar usable across responsive la
   }
 
   await page.emulateMedia({ forcedColors: 'active' });
-  const navigationTrigger = page.getByRole('button', {
-    name: 'Open navigation',
-  });
-  await page.getByRole('button', { name: 'Settings' }).focus();
+  const backControl = page.getByRole('button', { name: 'Back', exact: true });
+  // Reach it from the keyboard so the browser applies :focus-visible.
+  await backControl.focus();
   await page.keyboard.press('Tab');
-  await expect(navigationTrigger).toBeFocused();
-  const forcedFocus = await navigationTrigger.evaluate((element) => {
+  await page.keyboard.press('Shift+Tab');
+  await expect(backControl).toBeFocused();
+  const forcedFocus = await backControl.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
       active: document.activeElement === element,
@@ -918,20 +875,12 @@ test('guards unapplied inspector fields and applies the supported schema control
   const count = page.getByLabel('Count');
   await expect(count).toHaveValue('7');
   await count.fill('');
-  await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('dialog', { name: 'Workspace navigation' })
-    .getByRole('link', { name: 'Workflows' })
-    .click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Leave with unapplied changes?' }),
   ).toBeVisible();
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${workflowId}`);
   await page.getByRole('button', { name: 'Stay here' }).click();
-  await page
-    .getByRole('dialog', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Close navigation' })
-    .click();
   await count.fill('-');
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect(page.getByText('Count must be a valid number.')).toBeVisible();

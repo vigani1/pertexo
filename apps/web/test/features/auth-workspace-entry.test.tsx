@@ -627,22 +627,22 @@ describe('authentication and workspace entry', () => {
       name: /Control Operations/,
     });
     await userEvent.setup().click(entry);
-    expect(
-      await screen.findByRole('heading', { name: 'Workflows' }),
-    ).toBeVisible();
-    expect(app.router.state.location.pathname).toBe(
-      `/w/${workspaceId}/workflows`,
-    );
-    const navigation = screen.getByRole('navigation', {
-      name: 'Workspace navigation',
+    const [spine] = await screen.findAllByRole('navigation', {
+      name: 'Workspace',
     });
+    if (spine === undefined) throw new Error('Missing workspace navigation');
     expect(
-      within(navigation).getByRole('link', { name: 'Workflows' }),
+      await within(spine).findByRole('link', { name: 'Home' }),
     ).toHaveAttribute('aria-current', 'page');
+    expect(app.router.state.location.pathname).toBe(`/w/${workspaceId}`);
     expect(
-      within(navigation).queryByText(/connections/iu),
+      within(spine).queryByRole('link', { name: /connections/iu }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(user.email)).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: `Account menu for ${user.displayName}`,
+      }),
+    ).toBeVisible();
   });
 
   it('clears protected Query data when the authenticated account changes', async () => {
@@ -977,7 +977,7 @@ describe('authentication and workspace entry', () => {
       await screen.findByRole('heading', { name: 'General' }),
     ).toBeVisible();
     expect(app.router.state.location.pathname).toBe(
-      `/w/${workspaceId}/settings/general`,
+      `/w/${workspaceId}/settings`,
     );
   });
 
@@ -1021,29 +1021,20 @@ describe('authentication and workspace entry', () => {
     expect(entry).toHaveTextContent('Suspended');
   });
 
-  it('traps mobile navigation focus and returns it after Escape', async () => {
+  it('opens the mobile More sheet and returns focus after Escape', async () => {
     mockServer.use(...authenticatedHandlers());
     renderApp(`/w/${workspaceId}/workflows`);
     await screen.findByRole('heading', { name: 'Workflows' });
-    const trigger = screen.getByRole('button', { name: 'Open navigation' });
+    const trigger = screen.getByRole('button', { name: 'More' });
 
     await userEvent.setup().click(trigger);
-    const drawer = await screen.findByRole('dialog', {
-      name: 'Workspace navigation',
-    });
-    expect(
-      within(drawer).getByRole('link', { name: 'Workflows' }),
-    ).toBeVisible();
-    await waitFor(() => {
-      expect(
-        within(drawer).getByRole('button', { name: 'Close navigation' }),
-      ).toHaveFocus();
-    });
+    const sheet = await screen.findByRole('dialog', { name: 'More' });
+    expect(within(sheet).getByRole('link', { name: 'Settings' })).toBeVisible();
 
     await userEvent.setup().keyboard('{Escape}');
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'Workspace navigation' }),
+        screen.queryByRole('dialog', { name: 'More' }),
       ).not.toBeInTheDocument();
     });
     expect(trigger).toHaveFocus();
@@ -1080,7 +1071,7 @@ describe('authentication and workspace entry', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Pertexo could not load this screen',
+        name: 'Something broke on our side',
       }),
     ).toBeVisible();
 
@@ -1103,7 +1094,7 @@ describe('authentication and workspace entry', () => {
     const app = renderApp(`/w/${unavailableId}/workflows`);
     expect(
       await screen.findByRole('heading', {
-        name: 'This workspace is not available',
+        name: 'This workspace isn’t available',
       }),
     ).toBeVisible();
     expect(app.router.state.location.pathname).toBe(
@@ -1123,7 +1114,7 @@ describe('authentication and workspace entry', () => {
     ).toBeVisible();
     expect(
       screen.queryByRole('heading', {
-        name: 'This workspace is not available',
+        name: 'This workspace isn’t available',
       }),
     ).not.toBeInTheDocument();
   });

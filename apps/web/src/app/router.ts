@@ -22,4 +22,8 @@ declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof createAppRouter>;
   }
+  interface StaticDataRouteOption {
+    /** The page's name in the workspace breadcrumb. */
+    crumb?: string;
+  }
 }

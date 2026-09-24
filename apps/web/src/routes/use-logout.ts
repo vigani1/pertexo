@@ -10,7 +10,11 @@ import {
 } from '@/features/auth/session-actions.public';
 import type { ApiClient } from '@/lib/api/client';
 
-export function useLogout(apiClient: ApiClient) {
+export function useLogout(
+  apiClient: ApiClient,
+  options: Readonly<{ onError?: (message: string) => void }> = {},
+) {
+  const { onError } = options;
   const { queryClient } = useRouteContext({ from: '__root__' });
   const navigate = useNavigate();
   const router = useRouter();
@@ -29,10 +33,12 @@ export function useLogout(apiClient: ApiClient) {
       await router.invalidate();
     } catch (cause) {
       pendingRef.current = false;
-      setError(logoutErrorMessage(cause));
+      const message = logoutErrorMessage(cause);
+      setError(message);
       setPending(false);
+      onError?.(message);
     }
-  }, [apiClient, navigate, queryClient, router]);
+  }, [apiClient, navigate, onError, queryClient, router]);
 
   const requestLogout = useCallback(() => {
     if (router.state.location.pathname === '/logout') {

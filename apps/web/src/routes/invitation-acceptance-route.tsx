@@ -24,7 +24,7 @@ export function InvitationAcceptanceRoute() {
   const openWorkspace = useCallback(
     (workspaceId: string) => {
       void navigate({
-        to: '/w/$workspaceId/workflows',
+        to: '/w/$workspaceId',
         params: { workspaceId },
       });
     },

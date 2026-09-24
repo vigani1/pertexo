@@ -168,7 +168,7 @@ async function mockIdentity(
   );
 }
 
-test('signs in, selects a workspace, and signs out without runtime errors', async ({
+test('signs in, lands in the only workspace, and signs out without runtime errors', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -187,18 +187,14 @@ test('signs in, selects a workspace, and signs out without runtime errors', asyn
   await page.getByLabel('Email').fill('operator@example.test');
   await page.getByLabel('Password').fill('correct horse battery staple');
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/workspaces$/u);
+  await expect(page).toHaveURL(`/w/${workspaceId}`);
   expect(
     scripts.some((url) =>
       /(?:sign-up|password-reset|account-security)-page-[^/]+\.js$/u.test(url),
     ),
   ).toBe(false);
-  await page.getByRole('button', { name: /Control Operations/ }).click();
-  await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
-  await expect(
-    page.getByRole('heading', { name: 'Workflows', exact: true }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: /^Account menu for/u }).click();
+  await page.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/login$/u);
   await expect(
     page.getByRole('heading', { name: 'Sign in to continue' }),
@@ -277,7 +273,9 @@ test('shows the aurora panel and execution orb while sign-in is pending', async 
   await expect(
     pendingButton.locator('[data-slot="loading-orb"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-slot="aurora-border"]')).toBeVisible();
+  await expect(
+    page.locator('[data-slot="aurora-loading-panel"].live-edge'),
+  ).toBeVisible();
   await expect(page.locator('[aria-busy="true"]')).toBeVisible();
 
   release?.();
@@ -406,13 +404,13 @@ test('restores an authorized workspace deep link', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Workflows', exact: true }),
   ).toBeVisible();
-  const navigation = page.getByRole('navigation', {
-    name: 'Workspace navigation',
-  });
+  const navigation = page.getByRole('navigation', { name: 'Workspace' });
   await expect(
     navigation.getByRole('link', { name: 'Workflows' }),
   ).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText(user.email)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /^Account menu for/u }),
+  ).toBeVisible();
   await expect(
     navigation.getByRole('link', { name: 'Connections' }),
   ).toBeVisible();
@@ -476,7 +474,7 @@ test('keeps workflow metadata contained and labeled at responsive widths', async
   }
 });
 
-test('keeps the mobile workspace drawer bounded and keyboard accessible', async ({
+test('keeps the mobile workspace bar and More sheet bounded and keyboard accessible', async ({
   page,
 }) => {
   const longUser = {
@@ -498,18 +496,16 @@ test('keeps the mobile workspace drawer bounded and keyboard accessible', async 
   });
   await page.goto(`/w/${workspaceId}/workflows`);
 
-  const trigger = page.getByRole('button', { name: 'Open navigation' });
-  await trigger.focus();
-  await page.keyboard.press('Enter');
-  const drawer = page.getByRole('dialog', { name: 'Workspace navigation' });
-  await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole('link', { name: 'Workflows' })).toHaveAttribute(
+  const bar = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(bar.getByRole('link', { name: 'Workflows' })).toHaveAttribute(
     'aria-current',
     'page',
   );
-  await expect(
-    drawer.getByRole('button', { name: 'Close navigation' }),
-  ).toBeFocused();
+  const trigger = bar.getByRole('button', { name: 'More' });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const drawer = page.getByRole('dialog', { name: 'More' });
+  await expect(drawer).toBeVisible();
   expect(
     await drawer.evaluate(
       (element) => getComputedStyle(element).transitionProperty,
@@ -526,7 +522,7 @@ test('keeps the mobile workspace drawer bounded and keyboard accessible', async 
   await expect(trigger).toBeFocused();
 
   await trigger.press('Enter');
-  await drawer.getByRole('button', { name: 'Change workspace' }).click();
+  await drawer.getByRole('link', { name: 'All workspaces' }).click();
   await expect(page).toHaveURL(/\/workspaces$/u);
   await expect(drawer).toBeHidden();
 });
@@ -637,10 +633,12 @@ test('creates the first workspace from the keyboard-accessible empty state', asy
   );
   await dialog.getByRole('button', { name: 'Create workspace' }).click();
 
-  await expect(page).toHaveURL(`/w/${createdId}/workflows`);
+  await expect(page).toHaveURL(`/w/${createdId}`);
   await expect(
-    page.getByRole('heading', { name: 'Workflows', exact: true }),
-  ).toBeVisible();
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: 'Home' }),
+  ).toHaveAttribute('aria-current', 'page');
   expect(creationRequest).toEqual({
     body: { name: 'Signal Operations', slug: 'signal-operations' },
     csrf: csrfToken,
@@ -655,7 +653,7 @@ test('keeps an inaccessible workspace URL visible and offers recovery', async ({
   const unavailableId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
   await page.goto(`/w/${unavailableId}/workflows`);
   await expect(
-    page.getByRole('heading', { name: 'This workspace is not available' }),
+    page.getByRole('heading', { name: 'This workspace isn’t available' }),
   ).toBeVisible();
   await expect(page).toHaveURL(`/w/${unavailableId}/workflows`);
   await page.getByRole('link', { name: 'Choose a workspace' }).click();
