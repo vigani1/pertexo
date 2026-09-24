@@ -1,6 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { getAllConnections, getConnectionsPage } from './connections.api';
+import {
+  getAllConnections,
+  getConnection,
+  getConnectionsPage,
+} from './connections.api';
 
 export const connectionKeys = {
   scope: (userId: string, workspaceId: string) =>
@@ -9,6 +13,12 @@ export const connectionKeys = {
     [...connectionKeys.scope(userId, workspaceId), 'list'] as const,
   discovery: (userId: string, workspaceId: string) =>
     [...connectionKeys.scope(userId, workspaceId), 'discovery'] as const,
+  detail: (userId: string, workspaceId: string, connectionId: string) =>
+    [
+      ...connectionKeys.scope(userId, workspaceId),
+      'detail',
+      connectionId,
+    ] as const,
 };
 
 const initialConnectionPageParam: string | null = null;
@@ -39,5 +49,18 @@ export function connectionDiscoveryQueryOptions(
     queryKey: connectionKeys.discovery(userId, workspaceId),
     queryFn: ({ signal }) => getAllConnections(apiClient, workspaceId, signal),
     staleTime: 30_000,
+  });
+}
+
+export function connectionDetailQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  connectionId: string,
+) {
+  return queryOptions({
+    queryKey: connectionKeys.detail(userId, workspaceId, connectionId),
+    queryFn: ({ signal }) =>
+      getConnection(apiClient, workspaceId, connectionId, signal),
   });
 }

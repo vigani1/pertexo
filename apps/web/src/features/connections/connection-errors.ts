@@ -1,68 +1,61 @@
 import { isApiError } from '@/lib/api/api-error';
+import {
+  describeCommandError,
+  isForbidden,
+  isUncertainOutcome,
+} from '@/lib/api/api-error-copy';
 
-export function connectionListErrorMessage(error: unknown): string {
+type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test';
+
+const ACTIONS: Readonly<Record<ConnectionCommand, string>> = {
+  create: 'saving this connection',
+  rotate: 'replacing the credential',
+  revoke: 'revoking this connection',
+  test: 'testing this connection',
+};
+
+const UNCERTAIN: Readonly<Record<ConnectionCommand, (name: string) => string>> =
+  {
+    create: (name) =>
+      `We couldn’t confirm whether ${name} was saved. Try again — Pertexo recognises the repeat, so it can’t be saved twice.`,
+    rotate: () =>
+      'We couldn’t confirm whether the new credential was saved. Try again with the same values — it can’t be applied twice.',
+    revoke: (name) =>
+      `We couldn’t confirm whether ${name} was revoked. Check the list before trying again.`,
+    test: () =>
+      'We couldn’t confirm the test result. Test again — it repeats the same request.',
+  };
+
+const FORBIDDEN: Readonly<Record<ConnectionCommand, string>> = {
+  create: 'Your role can’t add connections. Admins and owners can.',
+  rotate: 'Your role can’t replace credentials. Admins and owners can.',
+  revoke: 'Your role can’t revoke connections. Admins and owners can.',
+  test: 'Your role can’t test connections.',
+};
+
+/** One sentence for a failed connection command, naming what to do next. */
+export function connectionCommandError(
+  error: unknown,
+  command: ConnectionCommand,
+  name: string,
+): string {
+  if (isUncertainOutcome(error)) return UNCERTAIN[command](name);
+  if (isForbidden(error)) return FORBIDDEN[command];
   if (isApiError(error)) {
-    if (error.status === 403)
-      return 'You no longer have access to connections in this workspace.';
-    if (error.kind === 'network')
-      return 'Connections could not be reached. Check your network and try again.';
-    if (error.kind === 'timeout')
-      return 'Connection loading took too long. Try again.';
+    switch (error.problem?.code) {
+      case 'connection.revoked':
+        return `${name} was revoked, so it can’t be used or changed.`;
+      case 'connection.reauthorization_required':
+        return `${name} needs a new credential. Replace it, then test again.`;
+      case 'connection.conflict':
+        return command === 'rotate'
+          ? 'Someone replaced this credential meanwhile. Close this and start again from the latest version.'
+          : `${name} changed meanwhile. Reload and try again.`;
+      case 'request.idempotency_conflict':
+        return 'This request was already used with different details. Start again.';
+      default:
+        break;
+    }
   }
-  return 'Connections could not be loaded. Try again.';
-}
-
-export function connectionCreateErrorMessage(error: unknown): string {
-  if (isApiError(error)) {
-    if (error.status === 403)
-      return 'Your role does not allow connection creation.';
-    if (error.status === 409)
-      return 'That request conflicts with an existing connection command.';
-    if (error.kind === 'network' || error.kind === 'timeout')
-      return 'The result is uncertain. Retry without changing these values to safely reuse this request.';
-  }
-  return 'The connection could not be created. Check the values and try again.';
-}
-
-function isUncertain(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    (error.kind === 'network' ||
-      error.kind === 'timeout' ||
-      error.kind === 'protocol')
-  );
-}
-
-export function connectionTestErrorMessage(error: unknown): string {
-  if (isUncertain(error))
-    return 'The test result is uncertain. Retry to observe the same test command.';
-  if (isApiError(error)) {
-    if (error.problem?.code === 'connection.reauthorization_required')
-      return 'This connection needs new credentials before it can be tested.';
-    if (error.status === 403)
-      return 'Your role no longer allows connection testing.';
-    if (error.status === 429)
-      return 'Connection tests are temporarily limited. Wait and try again.';
-  }
-  return 'The connection test could not be completed.';
-}
-
-export function connectionRotateErrorMessage(error: unknown): string {
-  if (isUncertain(error))
-    return 'The rotation result is uncertain. Retry without changing the token to reuse this command safely.';
-  if (isApiError(error)) {
-    if (error.status === 403)
-      return 'Your role no longer allows credential rotation.';
-    if (error.status === 409)
-      return 'The credentials changed. Close this dialog, refresh, and try again.';
-  }
-  return 'The credentials could not be rotated. Check the token and try again.';
-}
-
-export function connectionRevokeErrorMessage(error: unknown): string {
-  if (isUncertain(error))
-    return 'The revoke result is uncertain. Refresh the connection list before deciding whether to try again.';
-  if (isApiError(error) && error.status === 403)
-    return 'Your role no longer allows connection revocation.';
-  return 'The connection could not be revoked.';
+  return describeCommandError(error, ACTIONS[command]);
 }

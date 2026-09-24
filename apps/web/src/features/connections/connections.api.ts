@@ -5,11 +5,32 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
-  type ConnectionResponse,
+  type ConnectionCreateRequest,
   type ConnectionListResponse,
+  type ConnectionResponse,
+  type ConnectionRotateSecretRequest,
+  type ConnectionTestRequest,
   type ConnectionTestResponse,
 } from '@pertexo/contracts/schemas/connections';
 import type { ApiClient } from '@/lib/api/client';
+
+export type ConnectionCredential = ConnectionRotateSecretRequest['credential'];
+
+function connectionsPath(workspaceId: string): `/v1${string}` {
+  return `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections`;
+}
+
+function connectionPath(
+  workspaceId: string,
+  connectionId: string,
+): `/v1${string}` {
+  return `${connectionsPath(workspaceId)}/${encodeURIComponent(connectionId)}`;
+}
+
+const decodeConnection = {
+  kind: 'json',
+  decode: (value: unknown) => connectionResponseSchema.parse(value),
+} as const;
 
 export function getConnectionsPage(
   apiClient: ApiClient,
@@ -19,7 +40,7 @@ export function getConnectionsPage(
   const query = new URLSearchParams({ limit: '100' });
   if (input.after !== undefined) query.set('after', input.after);
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections?${query.toString()}`,
+    path: `${connectionsPath(workspaceId)}?${query.toString()}`,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
@@ -51,51 +72,50 @@ export async function getAllConnections(
   throw new Error('Connection discovery exceeded its bounded page limit.');
 }
 
-export function createSlackConnection(
+export function getConnection(
   apiClient: ApiClient,
   workspaceId: string,
-  input: Readonly<{
-    name: string;
-    botToken: string;
-    idempotencyKey: string;
-    signal?: AbortSignal;
-  }>,
+  connectionId: string,
+  signal?: AbortSignal,
 ): Promise<ConnectionResponse> {
-  const body = connectionCreateRequestSchema.parse({
-    providerKey: 'slack',
-    name: input.name,
-    credential: {
-      schemaVersion: 1,
-      type: 'slack_bot_token',
-      botToken: input.botToken,
-    },
-  });
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections`,
-    method: 'POST',
-    body,
-    headers: { 'Idempotency-Key': input.idempotencyKey },
-    ...(input.signal === undefined ? {} : { signal: input.signal }),
-    response: {
-      kind: 'json',
-      decode: (value) => connectionResponseSchema.parse(value),
-    },
+    path: connectionPath(workspaceId, connectionId),
+    ...(signal === undefined ? {} : { signal }),
+    response: decodeConnection,
   });
 }
 
-export function testSlackConnection(
+/** Creates any provider's connection; the credential never leaves this call. */
+export function createConnection(
+  apiClient: ApiClient,
+  workspaceId: string,
+  input: Readonly<{
+    request: ConnectionCreateRequest;
+    idempotencyKey: string;
+  }>,
+): Promise<ConnectionResponse> {
+  return apiClient.request({
+    path: connectionsPath(workspaceId),
+    method: 'POST',
+    body: connectionCreateRequestSchema.parse(input.request),
+    headers: { 'Idempotency-Key': input.idempotencyKey },
+    response: decodeConnection,
+  });
+}
+
+export function testConnection(
   apiClient: ApiClient,
   workspaceId: string,
   input: Readonly<{
     connectionId: string;
+    request: ConnectionTestRequest;
     idempotencyKey: string;
   }>,
 ): Promise<ConnectionTestResponse> {
-  const body = connectionTestRequestSchema.parse({ providerKey: 'slack' });
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections/${encodeURIComponent(input.connectionId)}/test`,
+    path: `${connectionPath(workspaceId, input.connectionId)}/test`,
     method: 'POST',
-    body,
+    body: connectionTestRequestSchema.parse(input.request),
     headers: { 'Idempotency-Key': input.idempotencyKey },
     response: {
       kind: 'json',
@@ -104,33 +124,25 @@ export function testSlackConnection(
   });
 }
 
-export function rotateSlackConnectionSecret(
+export function rotateConnectionSecret(
   apiClient: ApiClient,
   workspaceId: string,
   input: Readonly<{
     connectionId: string;
     expectedSecretVersionId: string;
-    botToken: string;
+    credential: ConnectionCredential;
     idempotencyKey: string;
   }>,
 ): Promise<ConnectionResponse> {
-  const body = connectionRotateSecretRequestSchema.parse({
-    expectedSecretVersionId: input.expectedSecretVersionId,
-    credential: {
-      schemaVersion: 1,
-      type: 'slack_bot_token',
-      botToken: input.botToken,
-    },
-  });
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections/${encodeURIComponent(input.connectionId)}/secret`,
+    path: `${connectionPath(workspaceId, input.connectionId)}/secret`,
     method: 'PUT',
-    body,
+    body: connectionRotateSecretRequestSchema.parse({
+      expectedSecretVersionId: input.expectedSecretVersionId,
+      credential: input.credential,
+    }),
     headers: { 'Idempotency-Key': input.idempotencyKey },
-    response: {
-      kind: 'json',
-      decode: (value) => connectionResponseSchema.parse(value),
-    },
+    response: decodeConnection,
   });
 }
 
@@ -140,11 +152,8 @@ export function revokeConnection(
   connectionId: string,
 ): Promise<ConnectionResponse> {
   return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/connections/${encodeURIComponent(connectionId)}`,
+    path: connectionPath(workspaceId, connectionId),
     method: 'DELETE',
-    response: {
-      kind: 'json',
-      decode: (value) => connectionResponseSchema.parse(value),
-    },
+    response: decodeConnection,
   });
 }

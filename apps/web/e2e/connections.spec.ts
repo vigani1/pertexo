@@ -113,6 +113,18 @@ async function installRoutes(page: Page) {
       await route.fulfill({ status: 201, json: connection });
     },
   );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/connections/${connectionId}/test`,
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ providerKey: 'slack' });
+      await route.fulfill({
+        json: {
+          connection: connections[0],
+          outcome: { ok: true, httpStatus: 200, errorCode: null },
+        },
+      });
+    },
+  );
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({ json: { items: [workflow], nextCursor: null } }),
   );
@@ -181,11 +193,17 @@ test('creates a connection and exposes its safe identity to the editor picker', 
   await expect(
     navigation.getByRole('link', { name: 'Connections' }),
   ).toHaveAttribute('aria-current', 'page');
-  await page.getByRole('button', { name: 'Add connection' }).click();
-  await page.getByLabel('Connection name').fill('Incident Slack');
-  await page.getByLabel('Slack bot token').fill(botToken);
-  await page.getByRole('button', { name: 'Add connection' }).click();
-  await expect(page.getByText('Incident Slack')).toBeVisible();
+  await page.getByRole('button', { name: 'Connect Slack' }).click();
+  const lens = page.locator('[data-slot="sheet-content"]');
+  await lens.getByLabel('Slack bot token').fill(botToken);
+  await lens.getByRole('button', { name: 'Continue' }).click();
+  await lens.getByLabel('Connection name').fill('Incident Slack');
+  await lens.getByRole('button', { name: 'Save and test' }).click();
+  await expect(lens.getByText('Slack accepted the token.')).toBeVisible();
+  await lens.getByRole('button', { name: 'Done' }).click();
+  await expect(
+    page.getByRole('button', { name: /Incident Slack, Active/u }),
+  ).toBeVisible();
   await expect(page.getByText(botToken)).toHaveCount(0);
 
   await navigation.getByRole('link', { name: 'Workflows' }).click();
@@ -271,6 +289,10 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
   await page.route(
     `**/v1/workspaces/${workspaceId}/connections/${connectionId}`,
     async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ json: currentConnection() });
+        return;
+      }
       expect(route.request().method()).toBe('DELETE');
       expect(route.request().headers()['x-csrf-token']).toBe(csrfToken);
       status = 'revoked';
@@ -279,16 +301,21 @@ test('tests, rotates and revokes a connection without exposing credentials', asy
   );
 
   await page.goto(`/w/${workspaceId}/connections`);
-  await page.getByRole('button', { name: 'Test' }).click();
-  await expect(page.getByText('Connection test passed.')).toBeVisible();
-  await page.getByRole('button', { name: 'Rotate token' }).click();
-  await page.getByLabel('New Slack bot token').fill(nextToken);
-  await page.getByRole('button', { name: 'Rotate token' }).click();
+  await page.getByRole('button', { name: /Incident Slack, Active/u }).click();
+  const lens = page.locator('[data-slot="sheet-content"]');
+  await lens.getByRole('button', { name: 'Test' }).click();
+  await lens.getByRole('button', { name: 'Test connection' }).click();
+  await expect(lens.getByText('Slack accepted the token.')).toBeVisible();
+  await lens.getByRole('button', { name: 'Back to details' }).click();
+  await lens.getByRole('button', { name: 'Replace credential' }).click();
+  await lens.getByLabel('Slack bot token').fill(nextToken);
+  await lens.getByRole('button', { name: 'Replace credential' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Rotate Incident Slack token' }),
-  ).toHaveCount(0);
+    page.getByText('Replaced the bot token for Incident Slack'),
+  ).toBeVisible();
   await expect(page.getByText(nextToken)).toHaveCount(0);
-  await page.getByRole('button', { name: 'Revoke' }).click();
+  await lens.getByRole('button', { name: 'Revoke' }).click();
   await page.getByRole('button', { name: 'Revoke connection' }).click();
-  await expect(page.getByText('revoked')).toBeVisible();
+  await expect(page.getByText('Revoked Incident Slack')).toBeVisible();
+  await expect(lens.getByText('Revoked', { exact: true })).toBeVisible();
 });
