@@ -1,6 +1,6 @@
-import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 import type { z } from 'zod';
 import {
   authenticationProviderSchema,
@@ -10,6 +10,19 @@ import {
 
 import type { OidcLoginService } from '../identity/oidc.js';
 import type { LinkProviderGateway } from './account-linking.js';
+import {
+  attachProviderMethod,
+  deriveJourneySecret,
+  inTransaction,
+  isJourneyToken,
+  isUniqueViolation,
+  journeyBindingCookie,
+  journeyDigest,
+  landWithReplacementSession,
+  newJourneyToken,
+  readCookie,
+  replaceBrowserSessions,
+} from './authentication-method-journey.js';
 
 type ProviderName = z.infer<typeof authenticationProviderSchema>;
 type Attempt = Readonly<{
@@ -70,12 +83,12 @@ export class LegacyMethodMigration {
     if (!body.success) return problem(400);
     const provider = body.data.provider;
     if (!this.input.providers.available.includes(provider)) return problem(404);
-    const browserBinding = randomBytes(32).toString('base64url');
+    const browserBinding = newJourneyToken();
     const oidc = await this.input.oidc.startLogin().catch(() => undefined);
     if (oidc === undefined) return problem(503);
     const state =
       new URL(oidc.authorizationUrl).searchParams.get('state') ?? '';
-    if (!isToken(state)) return problem(503);
+    if (!isJourneyToken(state)) return problem(503);
     const expiry = new Date(
       Math.min(oidc.expiresAt.getTime(), Date.now() + FIVE_MINUTES),
     );
@@ -83,7 +96,13 @@ export class LegacyMethodMigration {
       `insert into app.auth_legacy_method_migration_attempts
         (id,browser_digest,oidc_state_digest,target_provider,expires_at)
        values ($1,$2,$3,$4,$5)`,
-      [randomUUID(), digest(browserBinding), digest(state), provider, expiry],
+      [
+        randomUUID(),
+        journeyDigest(browserBinding),
+        journeyDigest(state),
+        provider,
+        expiry,
+      ],
     );
     const headers = new Headers({ 'content-type': 'application/json' });
     headers.append(
@@ -110,7 +129,7 @@ export class LegacyMethodMigration {
     const browserBinding = readCookie(request.headers, BROWSER_COOKIE);
     const oidcBinding = readCookie(request.headers, OIDC_COOKIE);
     if (
-      !isToken(state) ||
+      !isJourneyToken(state) ||
       code.length === 0 ||
       browserBinding === undefined ||
       oidcBinding === undefined
@@ -120,10 +139,10 @@ export class LegacyMethodMigration {
       `select * from app.auth_legacy_method_migration_attempts
         where oidc_state_digest=$1 and phase='legacy'
           and expires_at>clock_timestamp()`,
-      [digest(state)],
+      [journeyDigest(state)],
     );
     const attempt = lookup.rows[0];
-    if (!attempt?.browser_digest.equals(digest(browserBinding)))
+    if (!attempt?.browser_digest.equals(journeyDigest(browserBinding)))
       return this.landing('failed');
     // The mapper for this service is read-only: an unknown legacy subject
     // cannot create or claim a Pertexo user during proof validation.
@@ -131,7 +150,7 @@ export class LegacyMethodMigration {
       .completeLogin({ state, code }, oidcBinding)
       .catch(() => undefined);
     if (proof === undefined) return this.landing('failed');
-    const targetState = randomBytes(32).toString('base64url');
+    const targetState = newJourneyToken();
     const authorizationUrl = await this.input.providers
       .authorize({
         provider: attempt.target_provider,
@@ -142,7 +161,7 @@ export class LegacyMethodMigration {
       })
       .catch(() => undefined);
     if (authorizationUrl === undefined) return this.landing('failed');
-    const accepted = await this.transaction(async (client) => {
+    const accepted = await inTransaction(this.input.pool, async (client) => {
       const user = await client.query<{ status: string }>(
         'select status from app.users where id=$1 for update',
         [proof.internalIdentity.userId],
@@ -152,9 +171,9 @@ export class LegacyMethodMigration {
         `select * from app.auth_legacy_method_migration_attempts
           where id=$1 and phase='legacy' and oidc_state_digest=$2
             and expires_at>clock_timestamp() for update`,
-        [attempt.id, digest(state)],
+        [attempt.id, journeyDigest(state)],
       );
-      if (!locked.rows[0]?.browser_digest.equals(digest(browserBinding)))
+      if (!locked.rows[0]?.browser_digest.equals(journeyDigest(browserBinding)))
         return false;
       const identity = await client.query<{ id: string }>(
         `select id from app.auth_identities
@@ -173,7 +192,7 @@ export class LegacyMethodMigration {
           where id=$1`,
         [
           attempt.id,
-          digest(targetState),
+          journeyDigest(targetState),
           proof.internalIdentity.userId,
           identityId,
         ],
@@ -193,21 +212,26 @@ export class LegacyMethodMigration {
     const state = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code') ?? '';
     const browserBinding = readCookie(request.headers, BROWSER_COOKIE);
-    if (!isToken(state) || code.length === 0 || browserBinding === undefined)
+    if (
+      !isJourneyToken(state) ||
+      code.length === 0 ||
+      browserBinding === undefined
+    )
       return this.landing('failed');
     const lookup = await this.input.pool.query<Attempt>(
       `select * from app.auth_legacy_method_migration_attempts
         where target_state_digest=$1 and phase='target'
           and target_provider=$2 and expires_at>clock_timestamp()`,
-      [digest(state), provider],
+      [journeyDigest(state), provider],
     );
     const attempt = lookup.rows[0];
     if (
       !attempt?.user_id ||
       !attempt.legacy_identity_id ||
-      !attempt.browser_digest.equals(digest(browserBinding))
+      !attempt.browser_digest.equals(journeyDigest(browserBinding))
     )
       return this.landing('failed');
+    const userId = attempt.user_id;
     const verified = await this.input.providers
       .verify({
         provider,
@@ -224,7 +248,7 @@ export class LegacyMethodMigration {
       verified.email === null
     )
       return this.landing('failed');
-    const outcome = await this.transaction(async (client) => {
+    const outcome = await inTransaction(this.input.pool, async (client) => {
       const user = await client.query<{ status: string }>(
         'select status from app.users where id=$1 for update',
         [attempt.user_id],
@@ -234,9 +258,9 @@ export class LegacyMethodMigration {
         `select * from app.auth_legacy_method_migration_attempts
           where id=$1 and target_state_digest=$2 and phase='target'
             and expires_at>clock_timestamp() for update`,
-        [attempt.id, digest(state)],
+        [attempt.id, journeyDigest(state)],
       );
-      if (!locked.rows[0]?.browser_digest.equals(digest(browserBinding)))
+      if (!locked.rows[0]?.browser_digest.equals(journeyDigest(browserBinding)))
         return { kind: 'failed' } as const;
       const oldIdentity = await client.query(
         `select 1 from app.auth_identities
@@ -250,15 +274,12 @@ export class LegacyMethodMigration {
         [provider, verified.accountId],
       );
       if (owner.rows[0] !== undefined) return { kind: 'failed' } as const;
-      await client.query(
-        `insert into app.auth_accounts(id,account_id,provider_id,user_id)
-         values($1,$2,$3,$4)`,
-        [randomUUID(), verified.accountId, provider, attempt.user_id],
-      );
-      await client.query(
-        `select app.record_identity_method_audit_fact($1,'legacy.method_migrated')`,
-        [attempt.user_id],
-      );
+      await attachProviderMethod(client, {
+        userId,
+        providerId: provider,
+        accountId: verified.accountId,
+        auditFact: 'legacy.method_migrated',
+      });
       await client.query(
         `update app.auth_identities
             set native_method_verified_at=clock_timestamp()
@@ -270,14 +291,10 @@ export class LegacyMethodMigration {
           where user_id=$1`,
         [attempt.user_id],
       );
-      await client.query('delete from app.auth_sessions where user_id=$1', [
-        attempt.user_id,
-      ]);
-      const token = randomBytes(32).toString('base64url');
-      await client.query(
-        `insert into app.auth_sessions(id,expires_at,token,user_id)
-         values($1,clock_timestamp()+($2::integer*interval '1 second'),$3,$4)`,
-        [randomUUID(), this.input.sessionTtlSeconds, token, attempt.user_id],
+      const token = await replaceBrowserSessions(
+        client,
+        userId,
+        this.input.sessionTtlSeconds,
       );
       await client.query(
         `update app.auth_legacy_method_migration_attempts
@@ -293,38 +310,19 @@ export class LegacyMethodMigration {
         : new Error('Legacy migration failed');
     });
     if (outcome.kind === 'failed') return this.landing('failed');
-    try {
-      const cookies = await this.input.deliver(outcome.token);
-      const response = this.landing('completed');
-      for (const cookie of cookies)
-        response.headers.append('set-cookie', cookie);
-      return response;
-    } catch {
-      return this.landing('sign-in');
-    }
-  }
-
-  private async transaction<T>(
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.input.pool.connect();
-    try {
-      await client.query('begin');
-      const result = await work(client);
-      await client.query('commit');
-      return result;
-    } catch (error) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+    return landWithReplacementSession(
+      (token) => this.input.deliver(token),
+      outcome.token,
+      () => this.landing('completed'),
+      () => this.landing('sign-in'),
+    );
   }
 
   private derived(id: string, purpose: string): string {
-    return createHmac('sha256', this.input.secret)
-      .update(`pertexo-legacy-migration:${id}:${purpose}`)
-      .digest('base64url');
+    return deriveJourneySecret(
+      this.input.secret,
+      `pertexo-legacy-migration:${id}:${purpose}`,
+    );
   }
 
   private providerCallbackUrl(provider: ProviderName): string {
@@ -335,7 +333,12 @@ export class LegacyMethodMigration {
   }
 
   private cookie(name: string, value: string, path: string): string {
-    return `${name}=${value}; Path=${path}; HttpOnly; SameSite=Lax; Max-Age=300${this.input.secureCookies ? '; Secure' : ''}`;
+    return journeyBindingCookie({
+      name,
+      value,
+      path,
+      secure: this.input.secureCookies,
+    });
   }
 
   private landing(outcome: 'completed' | 'failed' | 'sign-in'): Response {
@@ -353,32 +356,6 @@ export class LegacyMethodMigration {
   }
 }
 
-function digest(value: string): Buffer {
-  return createHash('sha256').update(value).digest();
-}
-
-function isToken(value: string): boolean {
-  return /^[A-Za-z0-9_-]{43}$/u.test(value);
-}
-
-function readCookie(headers: Headers, name: string): string | undefined {
-  return headers
-    .get('cookie')
-    ?.split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`))
-    ?.slice(name.length + 1);
-}
-
 function problem(status: number): Response {
   return Response.json({ code: 'MIGRATION_UNAVAILABLE' }, { status });
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }

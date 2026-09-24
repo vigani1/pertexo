@@ -1,9 +1,23 @@
-import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 import { accountSecurityLinkStartRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import type { authenticationProviderSchema } from '@pertexo/contracts/schemas/identity-workspace';
+
+import {
+  attachProviderMethod,
+  deriveJourneySecret,
+  inTransaction,
+  isJourneyToken,
+  isUniqueViolation,
+  journeyBindingCookie,
+  journeyDigest,
+  landWithReplacementSession,
+  newJourneyToken,
+  readCookie,
+  replaceBrowserSessions,
+} from './authentication-method-journey.js';
 
 type ProviderName = z.infer<typeof authenticationProviderSchema>;
 type BrowserSession = Readonly<{
@@ -131,8 +145,8 @@ export class AccountLinking {
     if (alreadyLinked.rowCount !== 0) return problem(409);
 
     const attemptId = randomUUID();
-    const binding = randomBytes(32).toString('base64url');
-    const state = randomBytes(32).toString('base64url');
+    const binding = newJourneyToken();
+    const state = newJourneyToken();
     const phase = sourceProvider === 'credential' ? 'target' : 'source';
     const activeProvider =
       phase === 'target' ? provider : (sourceProvider as ProviderName);
@@ -152,11 +166,11 @@ export class AccountLinking {
         attemptId,
         session.userId,
         session.sessionId,
-        digest(binding),
+        journeyDigest(binding),
         sourceProvider,
         provider,
         phase,
-        digest(state),
+        journeyDigest(state),
       ],
     );
     const headers = new Headers({ 'content-type': 'application/json' });
@@ -175,7 +189,7 @@ export class AccountLinking {
     const state = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code') ?? '';
     const binding = readCookie(request.headers, LINK_COOKIE);
-    if (!isToken(state) || code.length === 0 || binding === undefined)
+    if (!isJourneyToken(state) || code.length === 0 || binding === undefined)
       return this.landing('failed');
     const session = await this.input.authenticate(request);
     if (session === undefined) return this.landing('sign-in');
@@ -184,13 +198,13 @@ export class AccountLinking {
               target_provider,phase,expires_at
          from app.auth_method_link_attempts
         where state_digest=$1 and expires_at>clock_timestamp()`,
-      [digest(state)],
+      [journeyDigest(state)],
     );
     const attempt = found.rows[0];
     if (
       attempt?.user_id !== session.userId ||
       attempt.session_id !== session.sessionId ||
-      !digest(binding).equals(attempt.browser_digest) ||
+      !journeyDigest(binding).equals(attempt.browser_digest) ||
       (attempt.phase === 'source'
         ? attempt.source_provider
         : attempt.target_provider) !== provider
@@ -209,7 +223,7 @@ export class AccountLinking {
     if (identity === undefined) return this.landing('failed');
 
     if (attempt.phase === 'source') {
-      const nextState = randomBytes(32).toString('base64url');
+      const nextState = newJourneyToken();
       const nextUrl = await this.authorizationUrl(
         attempt.id,
         'target',
@@ -236,17 +250,12 @@ export class AccountLinking {
     );
     if (outcome.kind === 'failed') return this.landing('failed');
     if (outcome.kind === 'already') return this.landing('returned');
-    try {
-      const cookies = await this.input.deliver(outcome.token);
-      const response = this.landing('returned');
-      for (const cookie of cookies)
-        response.headers.append('set-cookie', cookie);
-      return response;
-    } catch {
-      // The provider identity was attached transactionally. The browser must
-      // recover through ordinary sign-in; a callback retry cannot repeat it.
-      return this.landing('sign-in');
-    }
+    return landWithReplacementSession(
+      (token) => this.input.deliver(token),
+      outcome.token,
+      () => this.landing('returned'),
+      () => this.landing('sign-in'),
+    );
   }
 
   private async updateSource(
@@ -256,7 +265,7 @@ export class AccountLinking {
     identity: ProviderIdentity,
     nextState: string,
   ): Promise<boolean> {
-    return this.transaction(async (client) => {
+    return inTransaction(this.input.pool, async (client) => {
       const user = await client.query(
         'select id from app.users where id=$1 and status=$2 for update',
         [attempt.user_id, 'active'],
@@ -279,7 +288,7 @@ export class AccountLinking {
         `update app.auth_method_link_attempts
             set phase='target',state_digest=$2
           where id=$1`,
-        [attempt.id, digest(nextState)],
+        [attempt.id, journeyDigest(nextState)],
       );
       return true;
     });
@@ -293,7 +302,7 @@ export class AccountLinking {
   ): Promise<LinkCompletion> {
     if (!identity.emailVerified || identity.email === null)
       return { kind: 'failed' };
-    return this.transaction<LinkCompletion>(async (client) => {
+    return inTransaction<LinkCompletion>(this.input.pool, async (client) => {
       const user = await client.query<{ status: string }>(
         'select status from app.users where id=$1 for update',
         [attempt.user_id],
@@ -321,29 +330,16 @@ export class AccountLinking {
         );
         return { kind: 'already' };
       }
-      await client.query(
-        `insert into app.auth_accounts
-          (id,account_id,provider_id,user_id)
-         values ($1,$2,$3,$4)`,
-        [
-          randomUUID(),
-          identity.accountId,
-          attempt.target_provider,
-          attempt.user_id,
-        ],
-      );
-      await client.query(
-        `select app.record_identity_method_audit_fact($1,'method.linked')`,
-        [attempt.user_id],
-      );
-      await client.query('delete from app.auth_sessions where user_id=$1', [
+      await attachProviderMethod(client, {
+        userId: attempt.user_id,
+        providerId: attempt.target_provider,
+        accountId: identity.accountId,
+        auditFact: 'method.linked',
+      });
+      const token = await replaceBrowserSessions(
+        client,
         attempt.user_id,
-      ]);
-      const token = randomBytes(32).toString('base64url');
-      await client.query(
-        `insert into app.auth_sessions (id,expires_at,token,user_id)
-         values ($1,clock_timestamp()+($2::integer*interval '1 second'),$3,$4)`,
-        [randomUUID(), this.input.sessionTtlSeconds, token, attempt.user_id],
+        this.input.sessionTtlSeconds,
       );
       await client.query(
         `update app.auth_method_link_attempts
@@ -385,33 +381,16 @@ export class AccountLinking {
          from app.auth_method_link_attempts
         where id=$1 and state_digest=$2 and expires_at>clock_timestamp()
         for update`,
-      [attempt.id, digest(state)],
+      [attempt.id, journeyDigest(state)],
     );
     const locked = result.rows[0];
     if (
       locked?.user_id !== attempt.user_id ||
       locked.session_id !== attempt.session_id ||
-      !locked.browser_digest.equals(digest(binding))
+      !locked.browser_digest.equals(journeyDigest(binding))
     )
       return undefined;
     return locked;
-  }
-
-  private async transaction<T>(
-    work: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.input.pool.connect();
-    try {
-      await client.query('begin');
-      const result = await work(client);
-      await client.query('commit');
-      return result;
-    } catch (error) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 
   private async authorizationUrl(
@@ -430,9 +409,10 @@ export class AccountLinking {
   }
 
   private derived(id: string, phase: string, purpose: string): string {
-    return createHmac('sha256', this.input.secret)
-      .update(`pertexo-link:${id}:${phase}:${purpose}`)
-      .digest('base64url');
+    return deriveJourneySecret(
+      this.input.secret,
+      `pertexo-link:${id}:${phase}:${purpose}`,
+    );
   }
 
   private callbackUrl(provider: ProviderName): string {
@@ -443,7 +423,12 @@ export class AccountLinking {
   }
 
   private bindingCookie(binding: string): string {
-    return `${LINK_COOKIE}=${binding}; Path=${LINK_PATH}; HttpOnly; SameSite=Lax; Max-Age=300${this.input.secureCookies ? '; Secure' : ''}`;
+    return journeyBindingCookie({
+      name: LINK_COOKIE,
+      value: binding,
+      path: LINK_PATH,
+      secure: this.input.secureCookies,
+    });
   }
 
   private landing(outcome: 'returned' | 'failed' | 'sign-in'): Response {
@@ -465,23 +450,6 @@ export class AccountLinking {
   }
 }
 
-function digest(value: string): Buffer {
-  return createHash('sha256').update(value).digest();
-}
-
-function isToken(value: string): boolean {
-  return /^[A-Za-z0-9_-]{43}$/u.test(value);
-}
-
-function readCookie(headers: Headers, name: string): string | undefined {
-  return headers
-    .get('cookie')
-    ?.split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`))
-    ?.slice(name.length + 1);
-}
-
 function validCsrf(headers: Headers): boolean {
   const token = headers.get('x-csrf-token');
   const cookie = readCookie(headers, 'pertexo_csrf');
@@ -495,13 +463,4 @@ function validCsrf(headers: Headers): boolean {
 
 function problem(status: number): Response {
   return Response.json({ code: 'LINK_ATTEMPT_UNAVAILABLE' }, { status });
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }
