@@ -414,8 +414,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-model
       cron-parser:
-        specifier: 5.10.0
-        version: 5.10.0
+        specifier: 5.10.1
+        version: 5.10.1
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.0)(@types/pg@8.21.0)(kysely@0.29.6)(pg@8.23.0)
@@ -475,8 +475,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-model
       cron-parser:
-        specifier: 5.10.0
-        version: 5.10.0
+        specifier: 5.10.1
+        version: 5.10.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -2538,6 +2538,10 @@ packages:
 
   cron-parser@5.10.0:
     resolution: {integrity: sha512-izNAxJyRWUP8ljBoDSub5WyrVOUlT4SLGShswE7eoRBpp6QUsSycYxLBMJlbshgPBMcPT/nrfgjNY2918ayv2A==}
+    engines: {node: '>=18'}
+
+  cron-parser@5.10.1:
+    resolution: {integrity: sha512-pKRrRagItwk9rGIStcUyMxFX34x56zoX3KDf9HJ4ttwkXIK1qxK63EvXvEDmlxI9AdPJ+Y7TEKRftRlW5eSS7A==}
     engines: {node: '>=18'}
 
   cross-spawn@7.0.6:
@@ -6305,6 +6309,10 @@ snapshots:
   cookie@1.1.1: {}
 
   cron-parser@5.10.0:
+    dependencies:
+      luxon: 3.7.2
+
+  cron-parser@5.10.1:
     dependencies:
       luxon: 3.7.2
 

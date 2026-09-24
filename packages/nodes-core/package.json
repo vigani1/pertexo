@@ -29,7 +29,7 @@
   "dependencies": {
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "cron-parser": "5.10.0",
+    "cron-parser": "5.10.1",
     "zod": "4.4.3"
   }
 }
