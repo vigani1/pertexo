@@ -1,6 +1,5 @@
+import { ProgressButton } from '@/components/ui/progress-button';
 import { CoreOrb } from '@/components/patterns/core-orb';
-import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { cn } from '@/lib/utils';
 import { Wordmark } from './components/stage/wordmark';
 
@@ -53,17 +52,17 @@ export function SignOutPage({
               <p role="alert" className="text-sm text-muted-foreground">
                 {error}
               </p>
-              <Button
+              <ProgressButton
                 type="button"
                 variant="primary"
                 size="lg"
                 className="mt-2 min-w-40"
-                disabled={pending}
+                pending={pending}
+                pendingLabel="Signing out…"
                 onClick={onRetry}
               >
-                {pending ? <LoadingOrb /> : null}
-                {pending ? 'Signing out…' : 'Try again'}
-              </Button>
+                Try again
+              </ProgressButton>
             </section>
           ) : (
             <p

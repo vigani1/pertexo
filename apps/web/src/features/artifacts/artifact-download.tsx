@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { DownloadIcon, FileTextIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { formatClock } from '@/lib/format-time';
@@ -125,16 +124,17 @@ function ArtifactDownloadScope({
               : `${details.mediaType} · ${formatByteLength(details.byteLength)}`}
           </p>
         </div>
-        <Button
+        <ProgressButton
           type="button"
           size="sm"
           variant="outline"
-          disabled={pending}
+          pending={pending}
+          pendingLabel="Preparing…"
+          icon={<DownloadIcon data-icon="inline-start" aria-hidden="true" />}
           onClick={() => void prepare()}
         >
-          {pending ? <LoadingOrb /> : <DownloadIcon aria-hidden="true" />}
-          {pending ? 'Preparing…' : 'Download'}
-        </Button>
+          Download
+        </ProgressButton>
       </div>
       {download === undefined ? null : (
         <p className="mt-2 text-xs text-muted-foreground">

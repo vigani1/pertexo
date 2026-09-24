@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { CheckIcon, RefreshCwIcon } from 'lucide-react';
 import { useRef } from 'react';
-import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
@@ -86,20 +86,17 @@ export function IssuesChip({
           </div>
         ) : null}
         <div className="mt-4 flex justify-end">
-          <Button
+          <ProgressButton
             type="button"
             size="sm"
             variant="outline"
-            disabled={state.checking}
+            pending={state.checking}
+            pendingLabel="Checking…"
+            icon={<RefreshCwIcon data-icon="inline-start" />}
             onClick={onCheckAgain}
           >
-            {state.checking ? (
-              <LoadingOrb />
-            ) : (
-              <RefreshCwIcon data-icon="inline-start" />
-            )}
-            {state.checking ? 'Checking…' : 'Check again'}
-          </Button>
+            Check again
+          </ProgressButton>
         </div>
       </PopoverContent>
     </Popover>

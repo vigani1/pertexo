@@ -1,9 +1,8 @@
-import type { ReactNode } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
 import { KeyRoundIcon, RefreshCwIcon, WebhookIcon } from 'lucide-react';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { describeTriggerState } from '../../model/trigger-state';
@@ -90,8 +89,10 @@ export function WebhookCard({
         <div className="flex flex-wrap gap-2">
           {trigger.endpointReady ? (
             <>
-              <CommandButton
-                label="Rotate URL"
+              <ProgressButton
+                type="button"
+                variant="outline"
+                size="sm"
                 pendingLabel="Rotating…"
                 icon={
                   <RefreshCwIcon aria-hidden="true" data-icon="inline-start" />
@@ -101,9 +102,13 @@ export function WebhookCard({
                 onClick={() => {
                   onCommand('rotate-endpoint');
                 }}
-              />
-              <CommandButton
-                label="Rotate secret"
+              >
+                Rotate URL
+              </ProgressButton>
+              <ProgressButton
+                type="button"
+                variant="outline"
+                size="sm"
                 pendingLabel="Rotating…"
                 icon={
                   <KeyRoundIcon aria-hidden="true" data-icon="inline-start" />
@@ -113,51 +118,28 @@ export function WebhookCard({
                 onClick={() => {
                   onCommand('rotate-secret');
                 }}
-              />
+              >
+                Rotate secret
+              </ProgressButton>
             </>
           ) : (
-            <CommandButton
-              label="Create endpoint"
+            <ProgressButton
+              type="button"
+              variant="outline"
+              size="sm"
               pendingLabel="Creating…"
               pending={pendingCommand === 'provision'}
               disabled={blocked}
               onClick={() => {
                 onCommand('provision');
               }}
-            />
+            >
+              Create endpoint
+            </ProgressButton>
           )}
         </div>
       ) : null}
       <WebhookGuide />
     </article>
-  );
-}
-
-function CommandButton({
-  label,
-  pendingLabel,
-  icon,
-  pending,
-  disabled,
-  onClick,
-}: Readonly<{
-  label: string;
-  pendingLabel: string;
-  icon?: ReactNode;
-  pending: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}>) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {pending ? <LoadingOrb /> : icon}
-      {pending ? pendingLabel : label}
-    </Button>
   );
 }

@@ -1,8 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { ShieldAlertIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   SystemState,
   SystemStateActions,
@@ -44,10 +43,14 @@ export function EditorPaused({
           are still here.
         </SystemStateDescription>
         <SystemStateActions>
-          <Button type="button" disabled={verifying} onClick={onVerify}>
-            {verifying ? <LoadingOrb /> : null}
-            {verifying ? 'Verifying…' : 'Verify original account'}
-          </Button>
+          <ProgressButton
+            type="button"
+            pending={verifying}
+            pendingLabel="Verifying…"
+            onClick={onVerify}
+          >
+            Verify original account
+          </ProgressButton>
           <Link
             to="/w/$workspaceId/workflows"
             params={{ workspaceId }}

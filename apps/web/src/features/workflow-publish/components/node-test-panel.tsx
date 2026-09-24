@@ -1,6 +1,7 @@
 import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
 import { FlaskConicalIcon, ListChecksIcon } from 'lucide-react';
 import { useImperativeHandle, useState, type Ref } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { JsonTree } from '@/components/patterns/json-tree';
 import { Button } from '@/components/ui/button';
@@ -106,20 +107,18 @@ export function NodeTestPanel({
         </Field>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button
+        <ProgressButton
           type="button"
           size="sm"
           variant="outline"
+          pending={test.pending === 'check'}
+          pendingLabel="Checking…"
+          icon={<ListChecksIcon data-icon="inline-start" />}
           disabled={test.pending !== undefined}
           onClick={() => void test.checkSetup(input)}
         >
-          {test.pending === 'check' ? (
-            <LoadingOrb />
-          ) : (
-            <ListChecksIcon data-icon="inline-start" />
-          )}
-          {test.pending === 'check' ? 'Checking…' : 'Check setup'}
-        </Button>
+          Check setup
+        </ProgressButton>
       </div>
       <SetupCheck check={test.check} />
       <Field>

@@ -1,7 +1,7 @@
 import { useId, useRef } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
@@ -117,14 +117,14 @@ export function ReplaceCredentialForm({
         >
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={mutation.isPending}>
-          {mutation.isPending ? <LoadingOrb data-icon="inline-start" /> : null}
-          {mutation.isPending
-            ? 'Replacing…'
-            : uncertain
-              ? 'Try again'
-              : 'Replace credential'}
-        </Button>
+        <ProgressButton
+          type="submit"
+          variant="primary"
+          pending={mutation.isPending}
+          pendingLabel="Replacing…"
+        >
+          {uncertain ? 'Try again' : 'Replace credential'}
+        </ProgressButton>
       </div>
     </form>
   );

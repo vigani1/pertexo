@@ -6,8 +6,7 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
 import type {
   AttentionRuns,
@@ -57,15 +56,16 @@ export function HomeHeader({
         </PageHeaderMeta>
       </div>
       <PageHeaderActions>
-        <Button
+        <ProgressButton
           type="button"
           variant="ghost"
-          disabled={refreshing}
+          pending={refreshing}
+          pendingLabel="Refreshing…"
+          icon={<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />}
           onClick={onRefresh}
         >
-          {refreshing ? <LoadingOrb /> : <RefreshCwIcon aria-hidden="true" />}
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </Button>
+          Refresh
+        </ProgressButton>
       </PageHeaderActions>
     </PageHeader>
   );

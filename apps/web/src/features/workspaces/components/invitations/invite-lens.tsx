@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   Sheet,
   SheetBody,
@@ -177,15 +177,16 @@ export function InviteLens({
                 </Button>
               </>
             ) : (
-              <Button
+              <ProgressButton
                 type="button"
                 variant="primary"
-                disabled={batch.sending || command.locked}
+                pending={batch.sending}
+                pendingLabel="Sending…"
+                disabled={command.locked}
                 onClick={close}
               >
-                {batch.sending ? <LoadingOrb data-icon="inline-start" /> : null}
-                {batch.sending ? 'Sending…' : 'Done'}
-              </Button>
+                Done
+              </ProgressButton>
             )}
           </SheetFooter>
         </form>

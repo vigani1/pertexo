@@ -1,9 +1,9 @@
 import { workspaceCreateRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { WorkspaceCreationCommand } from '../../mutations/use-workspace-creation';
@@ -75,7 +75,6 @@ function CreationActions({
   onStartOver: () => void;
   onCancel: (() => void) | undefined;
 }>) {
-  const busy = command.pending || command.refreshPending;
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {command.retryAvailable ? (
@@ -100,10 +99,14 @@ function CreationActions({
           Cancel
         </Button>
       )}
-      <Button type="submit" variant="primary" disabled={busy}>
-        {busy ? <LoadingOrb /> : null}
+      <ProgressButton
+        type="submit"
+        variant="primary"
+        pending={command.pending || command.refreshPending}
+        pendingLabel={submitLabel(command)}
+      >
         {submitLabel(command)}
-      </Button>
+      </ProgressButton>
     </div>
   );
 }

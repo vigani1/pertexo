@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   Sheet,
   SheetBody,
@@ -309,10 +309,15 @@ function AddConnectionFooter({
           Continue
         </Button>
       ) : (
-        <Button type="submit" form={formId} variant="primary" disabled={saving}>
-          {saving ? <LoadingOrb data-icon="inline-start" /> : null}
-          {saving ? 'Saving…' : retrying ? 'Try again' : 'Save and test'}
-        </Button>
+        <ProgressButton
+          type="submit"
+          form={formId}
+          variant="primary"
+          pending={saving}
+          pendingLabel="Saving…"
+        >
+          {retrying ? 'Try again' : 'Save and test'}
+        </ProgressButton>
       )}
     </>
   );

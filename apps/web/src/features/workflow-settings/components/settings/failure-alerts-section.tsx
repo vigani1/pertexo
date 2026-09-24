@@ -2,10 +2,10 @@ import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   Select,
   SelectContent,
@@ -157,16 +157,17 @@ export function FailureAlertsSection({
                   </SelectContent>
                 </Select>
               </Field>
-              <Button
+              <ProgressButton
                 type="button"
-                disabled={commands.pending || selected === undefined}
+                pending={commands.pending}
+                pendingLabel="Saving…"
+                disabled={selected === undefined}
                 onClick={() => {
                   if (selected !== undefined) void update(selected.value);
                 }}
               >
-                {commands.pending ? <LoadingOrb /> : null}
                 Save destination
-              </Button>
+              </ProgressButton>
               <Button
                 type="button"
                 variant="outline"
