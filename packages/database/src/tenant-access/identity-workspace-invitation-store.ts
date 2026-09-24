@@ -12,6 +12,7 @@ import type {
   WorkspaceInvitationRecord,
 } from './identity-workspace-contracts.js';
 import { WorkspaceInvitationCommandConflictError } from './identity-workspace-errors.js';
+import { cancelOpenInvitationDeliveries } from './identity-workspace-invitation-deliveries.js';
 import {
   parseIdentityUuid,
   readIdentityDatabaseErrorCode,
@@ -609,15 +610,7 @@ async function changeInvitation(
           where workspace_id=$1 and invitation_id=$2 and status in ('pending','verified','wrong_account')`,
         [workspaceId, invitationId],
       );
-      await client.query(
-        `update app.workspace_invitation_delivery_attempts
-            set status=case when status in ('queued','failed') then 'canceled' else status end,
-                token_ciphertext=null,token_nonce=null,token_tag=null,
-                token_key_version=null,updated_at=clock_timestamp()
-          where workspace_id=$1 and invitation_id=$2
-            and status in ('queued','failed','unknown')`,
-        [workspaceId, invitationId],
-      );
+      await cancelOpenInvitationDeliveries(client, workspaceId, invitationId);
       const updated = await client.query<InvitationRow>(
         operation === 'resend'
           ? `update app.workspace_invitations

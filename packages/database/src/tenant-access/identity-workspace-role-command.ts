@@ -10,6 +10,7 @@ import type {
   WorkspaceMemberRoleChangeResult,
 } from './identity-workspace-contracts.js';
 import { WorkspaceMemberRoleCommandConflictError } from './identity-workspace-errors.js';
+import { revokeUserSessions } from './identity-workspace-session-store.js';
 import { parseIdentityUuid } from './identity-workspace-support.js';
 import { canChangeWorkspaceMemberRole } from './workspace-policy.js';
 import { withTenantScopedClient } from './workspace.js';
@@ -211,15 +212,7 @@ export function createIdentityWorkspaceRoleCommandStore(
                where workspace_id=$1 and user_id=$2`,
               [workspaceId, targetUserId, role, nextRevision],
             );
-            await client.query(
-              `update app.sessions set revoked_at=coalesce(revoked_at,clock_timestamp())
-               where user_id=$1 and revoked_at is null`,
-              [targetUserId],
-            );
-            await client.query(
-              `delete from app.auth_sessions where user_id=$1`,
-              [targetUserId],
-            );
+            await revokeUserSessions(client, targetUserId);
             await client.query(
               `insert into app.audit_events
                  (id,workspace_id,actor_user_id,action,target_type,target_id,
