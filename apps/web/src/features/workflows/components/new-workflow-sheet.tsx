@@ -2,13 +2,7 @@ import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts/schemas/workflow-authoring';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
@@ -21,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import {
@@ -49,8 +44,10 @@ function createErrorMessage(error: unknown): string {
   return describeCommandError(error, 'creating workflows');
 }
 
-function isValidName(value: string): boolean {
-  return workflowCreateRequestSchema.safeParse({ name: value }).success;
+function nameProblem(value: string): string | undefined {
+  return workflowCreateRequestSchema.safeParse({ name: value }).success
+    ? undefined
+    : 'Give the workflow a name your team will recognize.';
 }
 
 /**
@@ -82,9 +79,8 @@ export function NewWorkflowSheet({
   onCreated: (workflowId: string) => void;
 }>) {
   const notifications = useNotifications();
-  const nameRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
-  const [validation, setValidation] = useState<'invalid' | 'corrected'>();
+  const validation = useFieldValidation<'name'>();
   const attempt = useRef<Attempt | undefined>(undefined);
   const mutation = useCreateWorkflow(apiClient, userId, workspaceId);
   const starter = starters.find((candidate) => candidate.id === choice);
@@ -93,8 +89,7 @@ export function NewWorkflowSheet({
     if (mutation.isPending) return;
     setName(nextName);
     mutation.reset();
-    if (validation !== undefined)
-      setValidation(isValidName(nextName) ? 'corrected' : 'invalid');
+    validation.change('name', nameProblem(nextName));
     if (attempt.current?.name !== nextName.trim()) attempt.current = undefined;
   }
 
@@ -120,16 +115,12 @@ export function NewWorkflowSheet({
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = workflowCreateRequestSchema.safeParse({ name });
-    if (!parsed.success) {
-      setValidation('invalid');
-      nameRef.current?.focus();
-      return;
-    }
+    if (!validation.submit({ name: nameProblem(name) })) return;
+    const parsed = workflowCreateRequestSchema.parse({ name });
     const current =
-      attempt.current?.name === parsed.data.name
+      attempt.current?.name === parsed.name
         ? attempt.current
-        : { name: parsed.data.name, idempotencyKey: crypto.randomUUID() };
+        : { name: parsed.name, idempotencyKey: crypto.randomUUID() };
     attempt.current = current;
     const seed =
       starter === undefined || writer === undefined
@@ -146,12 +137,11 @@ export function NewWorkflowSheet({
     }
     attempt.current = undefined;
     setName('');
-    setValidation(undefined);
+    validation.reset();
     announce(result);
     onCreated(result.created.body.workflow.id);
   }
 
-  const invalid = validation === 'invalid';
   return (
     <Sheet
       open={open}
@@ -172,37 +162,32 @@ export function NewWorkflowSheet({
             </SheetDescription>
           </SheetHeader>
           <SheetBody className="flex flex-col gap-6">
-            <Field data-invalid={invalid}>
-              <FieldLabel htmlFor="workflow-name">Workflow name</FieldLabel>
-              <FieldControl state={validation}>
+            <LabelledField
+              id="workflow-name"
+              label="Workflow name"
+              description="For example “Invoice intake” or “Nightly CRM sync”."
+              error={validation.error('name')}
+              thread={validation.thread('name')}
+            >
+              {(control) => (
                 <Input
-                  ref={nameRef}
-                  id="workflow-name"
+                  {...control}
+                  ref={validation.register('name')}
                   name="name"
                   autoComplete="off"
                   autoFocus
                   maxLength={128}
                   disabled={mutation.isPending}
                   value={name}
-                  aria-invalid={invalid}
-                  aria-describedby={
-                    invalid ? 'workflow-name-error' : 'workflow-name-help'
-                  }
                   onChange={(event) => {
                     changeName(event.target.value);
                   }}
+                  onBlur={() => {
+                    validation.blur('name', nameProblem(name));
+                  }}
                 />
-              </FieldControl>
-              {invalid ? (
-                <FieldError id="workflow-name-error">
-                  Give the workflow a name your team will recognize.
-                </FieldError>
-              ) : (
-                <FieldDescription id="workflow-name-help">
-                  For example “Invoice intake” or “Nightly CRM sync”.
-                </FieldDescription>
               )}
-            </Field>
+            </LabelledField>
             {starters.length > 0 && writer !== undefined ? (
               <StarterChoice
                 starters={starters}

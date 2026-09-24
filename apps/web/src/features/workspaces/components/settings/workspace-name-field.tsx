@@ -2,13 +2,13 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import { workspaceRenameRequestSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import { PencilIcon } from 'lucide-react';
 import { useId, useState } from 'react';
+import { LabelledField } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { ValidatedField } from '@/components/ui/validated-field';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceRename } from '../../mutations/use-workspace-rename';
 
@@ -133,7 +133,7 @@ export function WorkspaceNameField({
         if (event.key === 'Escape' && !locked) stopEditing();
       }}
     >
-      <ValidatedField
+      <LabelledField
         id={`${id}-name`}
         label="Workspace name"
         error={validation.error('name')}
@@ -159,7 +159,7 @@ export function WorkspaceNameField({
             }}
           />
         )}
-      </ValidatedField>
+      </LabelledField>
       {command.error === undefined ? null : (
         <Notice
           role="alert"

@@ -1,7 +1,6 @@
-import { FieldGroup } from '@/components/ui/field';
+import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import { ValidatedField } from '@/components/ui/validated-field';
 import { CREDENTIAL_STEPS } from '../../model/connection-providers';
 import {
   credentialErrors,
@@ -49,7 +48,7 @@ function CredentialInput({
   onChange,
 }: SecretFieldProps) {
   return (
-    <ValidatedField
+    <LabelledField
       id={`${idPrefix}-${field}`}
       label={label}
       {...(description === undefined ? {} : { description })}
@@ -78,7 +77,7 @@ function CredentialInput({
           }}
         />
       )}
-    </ValidatedField>
+    </LabelledField>
   );
 }
 

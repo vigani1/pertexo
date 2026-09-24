@@ -1,6 +1,7 @@
 import type { AccountSecurityResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type SyntheticEvent } from 'react';
+import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
@@ -17,7 +18,6 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useValidatedFields } from '../../forms/use-validated-fields';
 import { useLatestRequest } from '../../use-latest-request';
 import { AccountCommandFailure, AccountSection } from './account-section';
 
@@ -40,7 +40,7 @@ export function AccountPasswordSection({
   const hasPassword = security.methods.some(
     (method) => method.kind === 'password',
   );
-  const fields = useValidatedFields(
+  const fields = useFieldValues(
     {
       current: (value) =>
         hasPassword ? requiredPasswordProblem(value) : undefined,
@@ -59,7 +59,7 @@ export function AccountPasswordSection({
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
-    const values = fields.validateAll();
+    const values = fields.validate();
     if (values === undefined) return;
     const request = requests.begin();
     const { current, password } = values;
@@ -110,9 +110,8 @@ export function AccountPasswordSection({
             label="Current password"
             autoComplete="current-password"
             disabled={pending}
-            error={fields.errors.current}
-            state={fields.threadState('current')}
-            {...fields.inputProps('current')}
+            {...fields.field('current')}
+            {...fields.control('current')}
           />
         ) : null}
         <PasswordField
@@ -121,18 +120,16 @@ export function AccountPasswordSection({
           autoComplete="new-password"
           minimumLength={MINIMUM_LENGTH}
           disabled={pending}
-          error={fields.errors.password}
-          state={fields.threadState('password')}
-          {...fields.inputProps('password')}
+          {...fields.field('password')}
+          {...fields.control('password')}
         />
         <PasswordField
           id="account-confirm-password"
           label="Confirm new password"
           autoComplete="new-password"
           disabled={pending}
-          error={fields.errors.confirmation}
-          state={fields.threadState('confirmation')}
-          {...fields.inputProps('confirmation')}
+          {...fields.field('confirmation')}
+          {...fields.control('confirmation')}
         />
         {failure === undefined ? null : (
           <AccountCommandFailure

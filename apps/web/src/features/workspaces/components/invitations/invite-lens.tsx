@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FieldGroup } from '@/components/ui/field';
+import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import {
   Sheet,
@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/sheet';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { ValidatedField } from '@/components/ui/validated-field';
 import { absorbAddresses } from '../../model/invite-addresses';
 import type { ManagedRole } from '../../model/workspace-roles';
 import type { InvitationCommand } from '../../mutations/use-invitation-command';
@@ -135,7 +134,7 @@ export function InviteLens({
                     );
                   }}
                 />
-                <ValidatedField
+                <LabelledField
                   id={`${id}-role`}
                   label="Role"
                   description="You can change it later from the Members tab."
@@ -150,7 +149,7 @@ export function InviteLens({
                       triggerProps={control}
                     />
                   )}
-                </ValidatedField>
+                </LabelledField>
               </FieldGroup>
             ) : (
               <InviteResults

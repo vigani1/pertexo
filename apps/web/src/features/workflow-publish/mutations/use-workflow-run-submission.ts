@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { startWorkflowRun } from '@/features/workflow-runs/commands.public';
+import {
+  normalizeRunIntent,
+  startWorkflowRun,
+  type RunIntent,
+} from '@/features/workflow-runs/commands.public';
 import type { ApiClient } from '@/lib/api/client';
-import { canonicalizeJson } from '@/lib/canonical-json';
 import { commandErrorMessage, isUncertainCommandError } from './command-utils';
 
-export type WorkflowRunIntent = Readonly<{
-  value: unknown;
-  deadlineAt?: string;
-}>;
-
 type RunAttempt = Readonly<{
-  intent: WorkflowRunIntent;
+  intent: RunIntent;
   normalizedIntent: string;
   idempotencyKey: string;
 }>;
@@ -52,7 +50,7 @@ export function useWorkflowRunSubmission({
     };
   }, [apiClient, workspaceId, workflowId]);
 
-  async function startNew(intent: WorkflowRunIntent) {
+  async function startNew(intent: RunIntent) {
     if (pending || acceptedRunId !== undefined || isSessionPaused())
       return false;
     const command = {
@@ -152,11 +150,4 @@ export function useWorkflowRunSubmission({
     retry,
     startNew,
   };
-}
-
-export function normalizeRunIntent(intent: WorkflowRunIntent): string {
-  return canonicalizeJson({
-    deadlineAt: intent.deadlineAt ?? null,
-    value: intent.value,
-  });
 }

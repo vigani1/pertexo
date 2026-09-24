@@ -6,17 +6,12 @@ import {
   describeCommandError,
   isUncertainOutcome,
 } from '@/lib/api/api-error-copy';
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { normalizeRunIntent, type RunIntent } from '../model/run-intent';
 import { replayWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../workflow-runs.queries';
 
-export type RunReplayIntent = Readonly<{
-  value: unknown;
-  deadlineAt?: string;
-}>;
-
 type RunReplayAttempt = Readonly<{
-  intent: RunReplayIntent;
+  intent: RunIntent;
   normalizedIntent: string;
   idempotencyKey: string;
 }>;
@@ -92,19 +87,19 @@ export function useRunReplay({
     }
   }
 
-  function startNew(intent: RunReplayIntent) {
+  function startNew(intent: RunIntent) {
     if (pending || retryAvailable) return Promise.resolve(false);
     return submit({
       intent,
-      normalizedIntent: normalizeReplayIntent(intent),
+      normalizedIntent: normalizeRunIntent(intent),
       idempotencyKey: crypto.randomUUID(),
     });
   }
 
-  function retry(intent: RunReplayIntent) {
+  function retry(intent: RunIntent) {
     const current = attempt.current;
     if (pending || current === undefined) return Promise.resolve(false);
-    if (normalizeReplayIntent(intent) !== current.normalizedIntent) {
+    if (normalizeRunIntent(intent) !== current.normalizedIntent) {
       setError(
         'The values changed since the unconfirmed replay. Restore them to retry it, or close this dialog to start over.',
       );
@@ -121,13 +116,6 @@ export function useRunReplay({
   }
 
   return { dismiss, error, pending, retry, retryAvailable, startNew };
-}
-
-function normalizeReplayIntent(intent: RunReplayIntent): string {
-  return canonicalizeJson({
-    deadlineAt: intent.deadlineAt ?? null,
-    value: intent.value,
-  });
 }
 
 function runReplayError(error: unknown): string {

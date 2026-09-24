@@ -5,10 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 import { useWorkflowPublication } from '@/features/workflow-publish/mutations/use-workflow-publication';
-import {
-  normalizeRunIntent,
-  useWorkflowRunSubmission,
-} from '@/features/workflow-publish/mutations/use-workflow-run-submission';
+import { useWorkflowRunSubmission } from '@/features/workflow-publish/mutations/use-workflow-run-submission';
+import { normalizeRunIntent } from '@/features/workflow-runs/model/run-intent';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

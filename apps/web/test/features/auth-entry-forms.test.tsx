@@ -150,7 +150,7 @@ describe('sign-in family forms', () => {
     expect(screen.getByText(/Add your name/u)).toBeVisible();
 
     await actor.type(name, 'Ada');
-    expect(name).not.toHaveAttribute('aria-invalid');
+    expect(name).toHaveAttribute('aria-invalid', 'false');
     expect(threadState('Your name')).toBe('corrected');
 
     const email = screen.getByLabelText('Email');
@@ -159,7 +159,7 @@ describe('sign-in family forms', () => {
     expect(email).toHaveFocus();
     expect(screen.getByText(/missing the end of the domain/u)).toBeVisible();
     await actor.type(email, '.dev');
-    expect(email).not.toHaveAttribute('aria-invalid');
+    expect(email).toHaveAttribute('aria-invalid', 'false');
 
     const password = screen.getByLabelText('Password');
     const meter = () => document.querySelector('[data-slot="password-meter"]');
