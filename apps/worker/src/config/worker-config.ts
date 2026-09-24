@@ -11,6 +11,15 @@ import {
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
 
+import {
+  parseAuthenticationMailDeliveryConfig,
+  type AuthenticationMailDeliveryConfig,
+} from './authentication-mail-config.js';
+import {
+  parseInvitationDeliveryConfig,
+  type InvitationDeliveryConfig,
+} from './invitation-delivery-config.js';
+
 const workerEnvironments = [
   'development',
   'test',
@@ -358,26 +367,8 @@ export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     artifactStore?: DualRegionArtifactStoreConfig;
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
-    invitationDelivery?: Readonly<{
-      apiKey: string;
-      fromEmail: string;
-      webOrigin: string;
-      timeoutMillis: number;
-      tokenEncryption: Readonly<{
-        current: Readonly<{ version: string; key: string }>;
-        previous: readonly Readonly<{ version: string; key: string }>[];
-      }>;
-    }>;
-    authenticationMailDelivery?: Readonly<{
-      apiKey: string;
-      timeoutMillis: number;
-      pollIntervalMillis: number;
-      workerId: string;
-      encryption: Readonly<{
-        current: Readonly<{ version: string; key: string }>;
-        previous: readonly Readonly<{ version: string; key: string }>[];
-      }>;
-    }>;
+    invitationDelivery?: InvitationDeliveryConfig;
+    authenticationMailDelivery?: AuthenticationMailDeliveryConfig;
   }
 >;
 
@@ -461,135 +452,6 @@ function artifactStoreConfig(
   return parsed;
 }
 
-function invitationDeliveryConfig(
-  environment: Readonly<Record<string, string | undefined>>,
-  enabled: boolean,
-  deployed: boolean,
-): WorkerConfig['invitationDelivery'] {
-  const names = [
-    'INVITATION_EMAIL_API_KEY',
-    'INVITATION_EMAIL_FROM',
-    'INVITATION_TOKEN_KEY',
-    'INVITATION_TOKEN_KEY_VERSION',
-    'PUBLIC_WEB_ORIGIN',
-  ] as const;
-  if (!enabled && names.every((name) => environment[name] === undefined))
-    return undefined;
-  const parsed = z
-    .object({
-      apiKey: z.string().min(1).max(512),
-      fromEmail: z.email().max(320),
-      webOrigin: z.url(),
-      timeoutMillis: z.coerce
-        .number()
-        .int()
-        .min(100)
-        .max(30_000)
-        .default(5_000),
-      key: z.string().min(1),
-      version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
-      previous: z.string().optional(),
-    })
-    .strict()
-    .parse({
-      apiKey: environment.INVITATION_EMAIL_API_KEY,
-      fromEmail: environment.INVITATION_EMAIL_FROM,
-      webOrigin: environment.PUBLIC_WEB_ORIGIN,
-      timeoutMillis: environment.INVITATION_EMAIL_TIMEOUT_MILLIS,
-      key: environment.INVITATION_TOKEN_KEY,
-      version: environment.INVITATION_TOKEN_KEY_VERSION,
-      previous: environment.INVITATION_TOKEN_PREVIOUS_KEYS,
-    });
-  const url = new URL(parsed.webOrigin);
-  if (url.pathname !== '/' || url.search !== '' || url.hash !== '')
-    throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
-  if (deployed && url.protocol !== 'https:')
-    throw new Error('HTTPS public web origin is required when deployed');
-  const previous = parseApplicationPreviousKeys(parsed.previous);
-  return Object.freeze({
-    apiKey: parsed.apiKey,
-    fromEmail: parsed.fromEmail,
-    webOrigin: url.origin,
-    timeoutMillis: parsed.timeoutMillis,
-    tokenEncryption: Object.freeze({
-      current: Object.freeze({ version: parsed.version, key: parsed.key }),
-      previous,
-    }),
-  });
-}
-
-function authenticationMailDeliveryConfig(
-  environment: Readonly<Record<string, string | undefined>>,
-  enabled: boolean,
-): WorkerConfig['authenticationMailDelivery'] {
-  const names = [
-    'AUTH_MAIL_EMAIL_API_KEY',
-    'AUTH_MAIL_KEY',
-    'AUTH_MAIL_KEY_VERSION',
-  ] as const;
-  if (!enabled && names.every((name) => environment[name] === undefined))
-    return undefined;
-  if (!enabled)
-    throw new Error('Authentication mail delivery configuration is inactive');
-  const parsed = z
-    .object({
-      apiKey: z.string().min(1).max(512),
-      key: z.string().min(1),
-      version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
-      previous: z.string().optional(),
-      timeoutMillis: z.coerce
-        .number()
-        .int()
-        .min(100)
-        .max(30_000)
-        .default(5_000),
-      pollIntervalMillis: z.coerce
-        .number()
-        .int()
-        .min(100)
-        .max(60_000)
-        .default(1_000),
-      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-    })
-    .strict()
-    .parse({
-      apiKey: environment.AUTH_MAIL_EMAIL_API_KEY,
-      key: environment.AUTH_MAIL_KEY,
-      version: environment.AUTH_MAIL_KEY_VERSION,
-      previous: environment.AUTH_MAIL_PREVIOUS_KEYS,
-      timeoutMillis: environment.AUTH_MAIL_EMAIL_TIMEOUT_MILLIS,
-      pollIntervalMillis: environment.AUTH_MAIL_POLL_MILLIS,
-      workerId: `auth-mail:${environment.WORKER_INSTANCE_ID ?? 'worker-local'}`,
-    });
-  return Object.freeze({
-    apiKey: parsed.apiKey,
-    timeoutMillis: parsed.timeoutMillis,
-    pollIntervalMillis: parsed.pollIntervalMillis,
-    workerId: parsed.workerId,
-    encryption: Object.freeze({
-      current: Object.freeze({ version: parsed.version, key: parsed.key }),
-      previous: parseApplicationPreviousKeys(parsed.previous),
-    }),
-  });
-}
-
-function parseApplicationPreviousKeys(input: string | undefined) {
-  if (input === undefined) return Object.freeze([]);
-  return Object.freeze(
-    z
-      .array(
-        z
-          .object({
-            version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
-            key: z.string().min(1),
-          })
-          .strict(),
-      )
-      .max(8)
-      .parse(JSON.parse(input) as unknown),
-  );
-}
-
 export function parseWorkerConfig(
   environment: Readonly<Record<string, unknown>> = process.env,
 ): WorkerConfig {
@@ -604,18 +466,16 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
-    const invitationDelivery = invitationDeliveryConfig(
+    const invitationDelivery = parseInvitationDeliveryConfig(
       raw,
       result.data.outboxDispatcher.enabledJobNames.includes(
         JOB_NAME.deliverWorkspaceInvitation,
       ),
       deployed,
     );
-    if (deployed && raw.AUTH_MAIL_DELIVERY_ENABLED !== 'true')
-      throw new Error('Deployed workers require authentication mail delivery');
-    const authenticationMailDelivery = authenticationMailDeliveryConfig(
+    const authenticationMailDelivery = parseAuthenticationMailDeliveryConfig(
       raw,
-      raw.AUTH_MAIL_DELIVERY_ENABLED === 'true',
+      deployed,
     );
     if (
       platformServingReleaseRequiresHttpCapabilities(
