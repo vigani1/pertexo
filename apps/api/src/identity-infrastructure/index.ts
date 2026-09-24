@@ -5,7 +5,6 @@ export {
 export { createOidcSecretEncryptionAdapter } from './oidc-secret-encryption.js';
 export {
   createBetterAuthRuntime,
-  type AuthenticationMail,
   type BetterAuthRuntime,
 } from './better-auth.js';
 export { BetterAuthSessionService } from './better-auth-session.js';
@@ -13,4 +12,5 @@ export {
   DurableAuthenticationMail,
   LocalAuthenticationMailSink,
   disabledAuthenticationMail,
+  type AuthenticationMail,
 } from './authentication-mail.js';

@@ -1,23 +1,81 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
+import { z } from 'zod';
 
-import type {
-  AuthenticationMail,
-  PreparedAuthenticationProofMail,
-} from './better-auth.js';
-import { disabledAuthenticationMail } from './authentication-mail.js';
+import {
+  disabledAuthenticationMail,
+  type AuthenticationMail,
+  type PreparedAuthenticationProofMail,
+} from './authentication-mail.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
 
-/** Browser links carry only random proof material; mutations stay in SQL. */
+const SIGN_UP_PATH = '/v1/auth/sign-up/email';
+const VERIFY_EMAIL_PATH = '/v1/auth/verify-email';
+const signUpResponseSchema = z.object({
+  user: z.object({ id: z.uuid(), email: z.email(), name: z.string() }),
+});
+
+/**
+ * Pertexo owns email proofs end to end: browser links carry only random proof
+ * material, consumption and the protected mutations stay in SQL, and Better
+ * Auth's stateless native verification route is never reached.
+ */
 export class OwnedEmailProofs {
   public constructor(
     private readonly pool: Pool,
     private readonly mail: AuthenticationMail,
     private readonly baseUrl: string,
   ) {}
+
+  /** Serves the verification link and lands the browser on sign-in. */
+  public async handle(request: Request): Promise<Response | undefined> {
+    const url = new URL(request.url);
+    if (url.pathname !== VERIFY_EMAIL_PATH) return undefined;
+    const outcome =
+      request.method === 'GET'
+        ? await this.consume(url.searchParams.get('token') ?? '')
+        : 'invalid';
+    const landing = new URL('/login', this.baseUrl);
+    if (outcome === 'initial_verification')
+      landing.searchParams.set('verified', 'true');
+    else if (outcome === 'change_old')
+      landing.searchParams.set('emailChangePending', 'true');
+    else if (outcome === 'change_new')
+      landing.searchParams.set('emailChanged', 'true');
+    else landing.searchParams.set('error', 'verification_invalid');
+    return Response.redirect(landing, 302);
+  }
+
+  /** Better Auth's verification hook; native sign-up waits for its commit. */
+  public async issueVerification(
+    user: ProofUser,
+    request: Request | undefined,
+  ): Promise<void> {
+    if (request !== undefined && new URL(request.url).pathname === SIGN_UP_PATH)
+      return;
+    await this.issue(user, 'initial_verification');
+  }
+
+  /** Issues the first proof once native sign-up has committed the user. */
+  public async issueAfterSignUp(
+    request: Request,
+    response: Response,
+  ): Promise<void> {
+    if (
+      new URL(request.url).pathname !== SIGN_UP_PATH ||
+      request.method !== 'POST' ||
+      !response.ok
+    )
+      return;
+    const parsed = signUpResponseSchema.safeParse(
+      await response.clone().json(),
+    );
+    if (parsed.success)
+      await this.issue(parsed.data.user, 'initial_verification');
+  }
 
   public async issue(
     user: ProofUser,
@@ -138,7 +196,7 @@ export class OwnedEmailProofs {
   }
 
   private url(token: string): string {
-    const url = new URL('/v1/auth/verify-email', this.baseUrl);
+    const url = new URL(VERIFY_EMAIL_PATH, this.baseUrl);
     url.searchParams.set('token', token);
     return url.toString();
   }

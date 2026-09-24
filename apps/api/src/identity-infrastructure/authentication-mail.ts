@@ -1,12 +1,52 @@
 import { randomUUID } from 'node:crypto';
 
-import type { AuthenticationMailEnqueueStore } from '@pertexo/database/api';
+import type {
+  AuthenticationMailEnqueueStore,
+  SealedAuthenticationMailPayload,
+} from '@pertexo/database/api';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
-import type {
-  AuthenticationMail,
-  PreparedAuthenticationProofMail,
-} from './better-auth.js';
+export type PreparedAuthenticationProofMail = Readonly<{
+  id: string;
+  purpose: 'verification' | 'email_change_confirmation' | 'password_reset';
+  expiresAt: Date;
+  sealedPayload: SealedAuthenticationMailPayload;
+}>;
+
+export type AuthenticationMail = Readonly<{
+  prepareProof?(
+    input: Readonly<{
+      purpose: 'verification' | 'email_change_confirmation';
+      recipient: string;
+      displayName: string;
+      url: string;
+      expiresAt: Date;
+      newEmail?: string;
+    }>,
+  ): PreparedAuthenticationProofMail;
+  sendVerification(
+    input: Readonly<{
+      recipient: string;
+      displayName: string;
+      url: string;
+    }>,
+  ): Promise<void>;
+  sendPasswordReset(
+    input: Readonly<{
+      recipient: string;
+      displayName: string;
+      url: string;
+    }>,
+  ): Promise<void>;
+  sendEmailChangeConfirmation(
+    input: Readonly<{
+      recipient: string;
+      displayName: string;
+      newEmail: string;
+      url: string;
+    }>,
+  ): Promise<void>;
+}>;
 
 export type LocalAuthenticationMailMessage = Readonly<{
   purpose: 'verification' | 'password_reset' | 'email_change_confirmation';

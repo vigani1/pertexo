@@ -6,10 +6,8 @@ import type {
   SessionIssueResult,
 } from '../identity/ports.js';
 import type { SafeClientMetadata } from '../identity/types.js';
-import type {
-  BetterAuthRuntime,
-  BetterAuthSessionDelivery,
-} from './better-auth.js';
+import type { BetterAuthRuntime } from './better-auth.js';
+import type { BetterAuthSessionDelivery } from './better-auth-trusted-sessions.js';
 
 type BetterAuthCookieOptions = Readonly<{
   secure: boolean;
