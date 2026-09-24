@@ -1,4 +1,3 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import {
   workflowGraphSchema,
   type WorkflowGraphContract,
@@ -25,25 +24,7 @@ import {
   nodeUsesRunInputDirectly,
   validateInputMappingRows,
 } from '@/features/workflow-editor/model/input-mappings';
-
-const definition = {
-  schemaVersion: 1,
-  definition: { key: 'core.set', version: 1 },
-  family: 'transform',
-  configVersion: 1,
-  configSchema: { type: 'object', properties: {} },
-  inputSchema: {},
-  outputSchema: {},
-  ports: { inputs: ['in'], outputs: ['out'] },
-  credentialRequirements: [],
-  connectionRequirements: [],
-  retryClass: 'safe',
-  resourceClass: 'cpu',
-  capabilities: [],
-  lifecycle: 'active',
-  available: true,
-  publishable: true,
-} satisfies NodeDefinitionCatalogItem;
+import { bareSetDefinition as definition } from '../support/workflow-editor-fixtures';
 
 function emptyGraph(): WorkflowGraphContract {
   return { schemaVersion: 1, nodes: [], edges: [], settings: {} };

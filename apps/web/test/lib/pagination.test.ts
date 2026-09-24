@@ -37,9 +37,10 @@ describe('pagination', () => {
     const repeated = collectPages(pages(['b', 'b']), {
       read: 'Test discovery',
     });
-    await expect(repeated).rejects.toThrow(
-      'Test discovery returned an invalid cursor sequence.',
-    );
+    // `rejects.toThrow` breaks under jest-dom's matchers with vitest 4.1.11.
+    await expect(repeated).rejects.toMatchObject({
+      message: 'Test discovery returned an invalid cursor sequence.',
+    });
     const unbounded = collectPages(pages(['b', 'c', 'd']), {
       read: 'Test discovery',
       maxPages: 2,

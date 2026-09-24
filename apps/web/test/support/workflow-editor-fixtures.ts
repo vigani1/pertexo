@@ -84,6 +84,11 @@ export const setDefinition = {
   available: true,
   publishable: true,
 } satisfies NodeDefinitionCatalogItem;
+/** The Set step with no configurable fields, for pure graph and save tests. */
+export const bareSetDefinition = {
+  ...setDefinition,
+  configSchema: { type: 'object', properties: {} },
+} satisfies NodeDefinitionCatalogItem;
 export const manualDefinition = {
   ...setDefinition,
   definition: { key: 'core.manual', version: 1 },
