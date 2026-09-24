@@ -1030,9 +1030,9 @@ of visual extraction.
 Status: **in progress on `feat/weft-redesign`**. Weft replaces the earlier
 "aurora glass and workflow-first layouts" refinement and the legacy-layout
 targets above wherever they conflict. The visual reference is the Weft blueprint
-(the "Pertexo Redesign Blueprint" artifact); this section is the binding summary
-for code. The palette, the particle orb, the aurora edge and glass stay — each
-with one job.
+([`docs/design/weft-blueprint.html`](../../docs/design/weft-blueprint.html),
+open it in a browser); this section is the binding summary for code. The
+palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Five materials, one rule each
 
