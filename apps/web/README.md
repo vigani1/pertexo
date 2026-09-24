@@ -83,9 +83,13 @@ directory in advance. Extract a shared pattern only when real repetition
 demonstrates its interface.
 
 The current router is code-based, so there is no generated route-tree file or
-router build plugin. Add routes in `src/routes/route-tree.ts`. Editor, settings
-and run pages use explicit lazy route modules; loader/query public interfaces
-remain separate so static loader imports do not collapse those chunks.
+router build plugin. Define a route in its area module
+(`src/routes/authentication-routes.ts`, `workspace-routes.ts` or
+`workflow-routes.ts`), using the shared session and workspace loaders in
+`route-loaders.ts`, and register it in `src/routes/route-tree.ts`. Editor,
+settings and run pages use explicit lazy route modules; loader/query public
+interfaces remain separate so static loader imports do not collapse those
+chunks.
 
 ## Browser contract and transport foundation
 
