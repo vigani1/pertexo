@@ -3,7 +3,11 @@ import type {
   WorkspaceCreateRequest,
   WorkspaceResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  mutationOptions,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
   assertSessionIdentity,
@@ -48,6 +52,35 @@ type RecoveryState = Extract<State, { kind: 'uncertain' | 'created' }>;
 
 export type WorkspaceCreationCommand = ReturnType<typeof useWorkspaceCreation>;
 
+/**
+ * The create request itself. The command owns the cache refresh: after
+ * re-verifying the identity it invalidates and re-reads the accessible
+ * workspaces (`refreshDiscovery`), so the mutation carries no cache effect.
+ */
+function creationMutation(apiClient: ApiClient) {
+  return mutationOptions({
+    mutationFn: (attempt: WorkspaceCreationAttempt) =>
+      createWorkspace(apiClient, attempt),
+  });
+}
+
+/** What the form reads from the command's state. */
+function describeState(state: State) {
+  return {
+    created: state.kind === 'created',
+    error:
+      state.kind === 'idle' ||
+      state.kind === 'uncertain' ||
+      state.kind === 'created'
+        ? state.error
+        : undefined,
+    locked: state.kind === 'executing' || state.kind === 'uncertain',
+    pending: state.kind === 'executing',
+    refreshPending: state.kind === 'created' && state.refreshing,
+    retryAvailable: state.kind === 'uncertain',
+  };
+}
+
 export function useWorkspaceCreation({
   apiClient,
   userId,
@@ -64,12 +97,7 @@ export function useWorkspaceCreation({
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
-  // The command owns the refresh: after re-verifying the identity it
-  // invalidates and re-reads the accessible workspaces (refreshDiscovery).
-  const mutation = useMutation({
-    mutationFn: (attempt: WorkspaceCreationAttempt) =>
-      createWorkspace(apiClient, attempt),
-  });
+  const mutation = useMutation(creationMutation(apiClient));
 
   useEffect(() => {
     const scope = Symbol('workspace-creation');
@@ -211,17 +239,7 @@ export function useWorkspaceCreation({
   }
 
   return {
-    created: state.kind === 'created',
-    error:
-      state.kind === 'idle' ||
-      state.kind === 'uncertain' ||
-      state.kind === 'created'
-        ? state.error
-        : undefined,
-    locked: state.kind === 'executing' || state.kind === 'uncertain',
-    pending: state.kind === 'executing',
-    refreshPending: state.kind === 'created' && state.refreshing,
-    retryAvailable: state.kind === 'uncertain',
+    ...describeState(state),
     start: (attempt: WorkspaceCreationAttempt) =>
       stateRef.current.kind === 'idle'
         ? execute(attempt)

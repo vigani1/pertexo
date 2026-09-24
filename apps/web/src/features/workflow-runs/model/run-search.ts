@@ -286,8 +286,3 @@ export function customRangeInputs(
         : localDateValue(Date.parse(search.createdAtBefore) - 1),
   };
 }
-
-/** The person's IANA time zone, e.g. `Europe/Berlin`. */
-export function localTimeZone(): string {
-  return new Intl.DateTimeFormat().resolvedOptions().timeZone;
-}

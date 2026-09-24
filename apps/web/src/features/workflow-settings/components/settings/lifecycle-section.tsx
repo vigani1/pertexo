@@ -20,6 +20,63 @@ import {
 } from '../../model/settings-query';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
 
+/** Where the workflow is now, what archiving or restoring does, and the button. */
+function LifecycleCard({
+  workflow,
+  canManage,
+  onStart,
+}: Readonly<{
+  workflow: WorkflowSummary;
+  canManage: boolean;
+  onStart: () => void;
+}>) {
+  const archived = workflow.lifecycleStatus === 'archived';
+  const state = describeWorkflowState(workflow);
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Now</span>
+        <Status tone={state.tone}>{state.label}</Status>
+      </div>
+      <p className="text-sm font-medium">
+        {archived ? 'If you restore it:' : 'If you archive it:'}
+      </p>
+      <ul className="-mt-2 flex flex-col gap-1.5 text-sm text-muted-foreground">
+        {LIFECYCLE_CONSEQUENCES[archived ? 'restore' : 'archive'].map(
+          (line) => (
+            <li key={line}>{line}</li>
+          ),
+        )}
+      </ul>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant={archived ? 'default' : 'destructive'}
+          disabled={!canManage}
+          aria-describedby={canManage ? undefined : 'lifecycle-permission'}
+          onClick={onStart}
+        >
+          {archived ? (
+            <ArchiveRestoreIcon aria-hidden="true" data-icon="inline-start" />
+          ) : (
+            <ArchiveIcon aria-hidden="true" data-icon="inline-start" />
+          )}
+          {archived ? 'Restore workflow' : 'Archive workflow'}
+        </Button>
+        {canManage ? null : (
+          <p
+            id="lifecycle-permission"
+            className="text-xs text-subtle-foreground"
+          >
+            Archiving and restoring need permission to publish workflows. Ask an
+            admin or owner.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Archive or restore, with what each does spelled out. People who can't
  * publish see the button disabled and why.
@@ -41,10 +98,6 @@ export function LifecycleSection({
   const [intent, setIntent] = useState<LifecycleIntent>();
   const workflow = visibleSettingsData(query);
   const canManage = workspace.capabilities.includes('workflow:publish');
-  const archived = workflow?.lifecycleStatus === 'archived';
-  const action = archived ? 'restore' : 'archive';
-  const state =
-    workflow === undefined ? undefined : describeWorkflowState(workflow);
 
   return (
     <SettingsSection
@@ -52,51 +105,14 @@ export function LifecycleSection({
       description="Archive a workflow you no longer need. Nothing is deleted."
     >
       <SettingsQueryState query={query} resource="This workflow" />
-      {workflow === undefined || state === undefined ? null : (
-        <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Now</span>
-            <Status tone={state.tone}>{state.label}</Status>
-          </div>
-          <p className="text-sm font-medium">
-            {archived ? 'If you restore it:' : 'If you archive it:'}
-          </p>
-          <ul className="-mt-2 flex flex-col gap-1.5 text-sm text-muted-foreground">
-            {LIFECYCLE_CONSEQUENCES[action].map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant={archived ? 'default' : 'destructive'}
-              disabled={!canManage}
-              aria-describedby={canManage ? undefined : 'lifecycle-permission'}
-              onClick={() => {
-                setIntent(lifecycleIntentFor(workflow));
-              }}
-            >
-              {archived ? (
-                <ArchiveRestoreIcon
-                  aria-hidden="true"
-                  data-icon="inline-start"
-                />
-              ) : (
-                <ArchiveIcon aria-hidden="true" data-icon="inline-start" />
-              )}
-              {archived ? 'Restore workflow' : 'Archive workflow'}
-            </Button>
-            {canManage ? null : (
-              <p
-                id="lifecycle-permission"
-                className="text-xs text-subtle-foreground"
-              >
-                Archiving and restoring need permission to publish workflows.
-                Ask an admin or owner.
-              </p>
-            )}
-          </div>
-        </div>
+      {workflow === undefined ? null : (
+        <LifecycleCard
+          workflow={workflow}
+          canManage={canManage}
+          onStart={() => {
+            setIntent(lifecycleIntentFor(workflow));
+          }}
+        />
       )}
       <WorkflowLifecycleDialog
         key={

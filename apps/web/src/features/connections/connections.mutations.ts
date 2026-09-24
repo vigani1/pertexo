@@ -102,6 +102,8 @@ function useSecretConnectionMutation<Command, Result>(
       secretMutationKey(scope.userId, scope.workspaceId, operation, ownerId),
     [operation, ownerId, scope.userId, scope.workspaceId],
   );
+  // Each command passes its cache update (storing the returned connection)
+  // as `onSettledResult`.
   const mutation = useMutation({
     mutationKey,
     mutationFn: execute,

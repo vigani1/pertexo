@@ -11,8 +11,8 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { UnavailablePage } from '@/components/patterns/unavailable-page';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isUnauthenticated } from '@/features/auth/session-identity.public';
@@ -32,20 +32,73 @@ import {
 
 type AccessLoss = 'authentication' | 'permission';
 
-function Blocked({
-  title,
-  description,
-}: Readonly<{ title: string; description: string }>) {
+/** Why the page can't show the team, if it can't. */
+function blockedCopy(
+  canRead: boolean,
+  losses: readonly (AccessLoss | undefined)[],
+): Readonly<{ title: string; description: string }> | undefined {
+  if (!canRead)
+    return {
+      title: 'Workspace members are unavailable',
+      description: 'Your role can’t see who’s in this workspace.',
+    };
+  if (losses.includes('authentication'))
+    return {
+      title: 'Your session is no longer available',
+      description: 'Sign in again to see or manage this workspace’s members.',
+    };
+  if (losses.includes('permission'))
+    return {
+      title: 'Member access was removed',
+      description: 'Your role no longer lets you see this workspace’s members.',
+    };
+  return undefined;
+}
+
+/** The title, how many people and pending invitations, and Invite. */
+function TeamHeader({
+  memberCount,
+  oneMember,
+  pendingInvitations,
+  canManage,
+  onInvite,
+}: Readonly<{
+  /** "12" or "50+" once the members have loaded. */
+  memberCount: string | undefined;
+  oneMember: boolean;
+  pendingInvitations: number;
+  canManage: boolean;
+  onInvite: () => void;
+}>) {
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader>
+    <PageHeader>
+      <div>
         <PageHeaderTitle>Team</PageHeaderTitle>
-      </PageHeader>
-      <Empty>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
-      </Empty>
-    </div>
+        {memberCount === undefined ? null : (
+          <PageHeaderMeta>
+            <span>
+              <b className="text-foreground">{memberCount}</b>{' '}
+              {oneMember ? 'member' : 'members'}
+            </span>
+            {pendingInvitations > 0 ? (
+              <Status tone="queued">
+                {pendingInvitations}{' '}
+                {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
+                pending
+              </Status>
+            ) : null}
+          </PageHeaderMeta>
+        )}
+      </div>
+      {canManage ? (
+        <PageHeaderActions>
+          <Button type="button" variant="primary" onClick={onInvite}>
+            <PlusIcon data-icon="inline-start" aria-hidden="true" />
+            Invite people
+          </Button>
+        </PageHeaderActions>
+      ) : null}
+    </PageHeader>
   );
 }
 
@@ -115,27 +168,9 @@ export function WorkspaceMembersPage({
     invitations.isError ? lossOf(invitations.error, true) : undefined,
   ];
 
-  if (!canRead)
-    return (
-      <Blocked
-        title="Workspace members are unavailable"
-        description="Your role can’t see who’s in this workspace."
-      />
-    );
-  if (losses.includes('authentication'))
-    return (
-      <Blocked
-        title="Your session is no longer available"
-        description="Sign in again to see or manage this workspace’s members."
-      />
-    );
-  if (losses.includes('permission'))
-    return (
-      <Blocked
-        title="Member access was removed"
-        description="Your role no longer lets you see this workspace’s members."
-      />
-    );
+  const blocked = blockedCopy(canRead, losses);
+  if (blocked !== undefined)
+    return <UnavailablePage heading="Team" {...blocked} />;
 
   const tab =
     canManage && search.tab === 'invitations' ? 'invitations' : 'members';
@@ -146,34 +181,13 @@ export function WorkspaceMembersPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader>
-        <div>
-          <PageHeaderTitle>Team</PageHeaderTitle>
-          {members.isSuccess ? (
-            <PageHeaderMeta>
-              <span>
-                <b className="text-foreground">{memberCount}</b>{' '}
-                {memberItems.length === 1 ? 'member' : 'members'}
-              </span>
-              {pendingInvitations > 0 ? (
-                <Status tone="queued">
-                  {pendingInvitations}{' '}
-                  {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
-                  pending
-                </Status>
-              ) : null}
-            </PageHeaderMeta>
-          ) : null}
-        </div>
-        {canManage ? (
-          <PageHeaderActions>
-            <Button type="button" variant="primary" onClick={openInvite}>
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-              Invite people
-            </Button>
-          </PageHeaderActions>
-        ) : null}
-      </PageHeader>
+      <TeamHeader
+        memberCount={members.isSuccess ? memberCount : undefined}
+        oneMember={memberItems.length === 1}
+        pendingInvitations={pendingInvitations}
+        canManage={canManage}
+        onInvite={openInvite}
+      />
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Tabs

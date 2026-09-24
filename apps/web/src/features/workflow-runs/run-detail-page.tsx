@@ -38,8 +38,11 @@ function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
     'failed',
     'timed_out',
   ];
+  const firstByStatus = new Map<string, ThreadRow>();
+  for (const row of rows)
+    if (!firstByStatus.has(row.status)) firstByStatus.set(row.status, row);
   for (const status of order) {
-    const row = rows.find((candidate) => candidate.status === status);
+    const row = firstByStatus.get(status);
     if (row !== undefined) return row;
   }
   for (let index = rows.length - 1; index >= 0; index -= 1) {

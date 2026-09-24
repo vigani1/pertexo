@@ -1,4 +1,4 @@
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,7 +28,6 @@ export function LiteralEditor({
   disabled: boolean;
   onChange: (row: LiteralRow) => void;
 }>) {
-  const errorId = `${controlId}-error`;
   const parsed = parseLiteral(row.literalJson);
   const mode = editorMode(type, parsed);
   if (mode === 'boolean')
@@ -47,63 +46,64 @@ export function LiteralEditor({
         </div>
       </Field>
     );
+  const thread = error === undefined ? undefined : 'invalid';
   if (mode === 'string' || mode === 'number')
     return (
-      <Field data-invalid={error !== undefined}>
-        <FieldLabel htmlFor={controlId}>Value</FieldLabel>
-        <Input
-          id={controlId}
-          name={`inputMapping.${row.id}.value`}
-          autoComplete="off"
-          inputMode={mode === 'number' ? 'decimal' : undefined}
-          className={mode === 'number' ? 'font-mono' : undefined}
-          value={
-            mode === 'string'
-              ? typeof parsed.value === 'string'
-                ? parsed.value
-                : ''
-              : row.literalJson === 'null'
-                ? ''
-                : row.literalJson
-          }
-          disabled={disabled}
-          aria-invalid={error !== undefined}
-          aria-describedby={error === undefined ? undefined : errorId}
-          onChange={(event) => {
-            const text = event.currentTarget.value;
-            onChange({
-              ...row,
-              literalJson: mode === 'string' ? JSON.stringify(text) : text,
-            });
-          }}
-        />
-        {error === undefined ? null : (
-          <FieldError id={errorId}>{error}</FieldError>
+      <LabelledField id={controlId} label="Value" error={error} thread={thread}>
+        {(control) => (
+          <Input
+            {...control}
+            name={`inputMapping.${row.id}.value`}
+            autoComplete="off"
+            inputMode={mode === 'number' ? 'decimal' : undefined}
+            className={mode === 'number' ? 'font-mono' : undefined}
+            value={literalText(mode, parsed, row.literalJson)}
+            disabled={disabled}
+            onChange={(event) => {
+              const text = event.currentTarget.value;
+              onChange({
+                ...row,
+                literalJson: mode === 'string' ? JSON.stringify(text) : text,
+              });
+            }}
+          />
         )}
-      </Field>
+      </LabelledField>
     );
   return (
-    <Field data-invalid={error !== undefined}>
-      <FieldLabel htmlFor={controlId}>JSON value</FieldLabel>
-      <Textarea
-        id={controlId}
-        name={`inputMapping.${row.id}.literal`}
-        autoComplete="off"
-        spellCheck={false}
-        className="min-h-20 font-mono text-[0.8rem]"
-        value={row.literalJson}
-        disabled={disabled}
-        aria-invalid={error !== undefined}
-        aria-describedby={error === undefined ? undefined : errorId}
-        onChange={(event) => {
-          onChange({ ...row, literalJson: event.currentTarget.value });
-        }}
-      />
-      {error === undefined ? null : (
-        <FieldError id={errorId}>{error}</FieldError>
+    <LabelledField
+      id={controlId}
+      label="JSON value"
+      error={error}
+      thread={thread}
+    >
+      {(control) => (
+        <Textarea
+          {...control}
+          name={`inputMapping.${row.id}.literal`}
+          autoComplete="off"
+          spellCheck={false}
+          className="min-h-20 font-mono text-[0.8rem]"
+          value={row.literalJson}
+          disabled={disabled}
+          onChange={(event) => {
+            onChange({ ...row, literalJson: event.currentTarget.value });
+          }}
+        />
       )}
-    </Field>
+    </LabelledField>
   );
+}
+
+/** The text a typed editor shows for the stored JSON value. */
+function literalText(
+  mode: 'string' | 'number',
+  parsed: ParsedLiteral,
+  literalJson: string,
+): string {
+  if (mode === 'string')
+    return typeof parsed.value === 'string' ? parsed.value : '';
+  return literalJson === 'null' ? '' : literalJson;
 }
 
 type ParsedLiteral = Readonly<{ ok: boolean; value: unknown }>;

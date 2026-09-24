@@ -11,8 +11,8 @@ import {
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { UnavailablePage } from '@/components/patterns/unavailable-page';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { Notice } from '@/components/ui/notice';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
@@ -29,20 +29,6 @@ type Lens = Readonly<{
   destinationId: string | undefined;
   session: number;
 }>;
-
-function Unavailable({ description }: Readonly<{ description: string }>) {
-  return (
-    <div className="flex flex-col gap-8">
-      <PageHeader>
-        <PageHeaderTitle>Alerts</PageHeaderTitle>
-      </PageHeader>
-      <Empty>
-        <EmptyTitle>Alerts are unavailable</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
-      </Empty>
-    </div>
-  );
-}
 
 function isHidden(error: unknown): boolean {
   return (
@@ -88,11 +74,19 @@ export function FailureNotificationDestinationsPage({
 
   if (!canRead)
     return (
-      <Unavailable description="Your role can’t manage alerts. Builders, admins and owners can." />
+      <UnavailablePage
+        heading="Alerts"
+        title="Alerts are unavailable"
+        description="Your role can’t manage alerts. Builders, admins and owners can."
+      />
     );
   if (destinations.isError && isHidden(destinations.error))
     return (
-      <Unavailable description="This workspace’s alert destinations don’t exist, or you don’t have access to them." />
+      <UnavailablePage
+        heading="Alerts"
+        title="Alerts are unavailable"
+        description="This workspace’s alert destinations don’t exist, or you don’t have access to them."
+      />
     );
 
   const items = destinations.data?.items ?? [];

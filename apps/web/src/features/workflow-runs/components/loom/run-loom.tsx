@@ -150,6 +150,8 @@ function LoomCanvas({
       }
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
+      // Pointer shortcut only: every run on the Loom is also a link in the
+      // run list beside it, which is the keyboard path.
       onClick={onClick}
     />
   );

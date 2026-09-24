@@ -12,6 +12,41 @@ import type { WorkflowFlowNode } from '../../model/graph-adapter';
 const handleClass =
   '!size-2.5 !border-[1.5px] !border-primary !bg-background !shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_50%,transparent)]';
 
+function nodeLabel(title: string, type: string, issueCount: number): string {
+  return issueCount > 0
+    ? `${title}, ${type}, ${String(issueCount)} issues`
+    : `${title}, ${type}`;
+}
+
+function cardClassName(
+  hasIssues: boolean,
+  selected: boolean,
+  disabled: boolean,
+): string {
+  return cn(
+    'relative w-56 rounded-lg border border-white/9 border-t-white/15 bg-[linear-gradient(160deg,rgb(255_255_255/5.5%),rgb(255_255_255/1.5%)),var(--card)] px-3 py-2.5 text-card-foreground shadow-[0_18px_44px_-18px_rgb(0_0_0/90%)] transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
+    hasIssues &&
+      'border-destructive/50 shadow-[0_0_0_1px_color-mix(in_srgb,var(--destructive)_20%,transparent),0_0_26px_-6px_color-mix(in_srgb,var(--destructive)_45%,transparent)]',
+    selected &&
+      'border-primary/55 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_25%,transparent),0_0_30px_-4px_color-mix(in_srgb,var(--primary)_35%,transparent)]',
+    selected &&
+      'after:pointer-events-none after:absolute after:inset-[-1px] after:rounded-[inherit] after:border after:border-transparent after:bg-[linear-gradient(90deg,transparent,var(--primary),transparent)_border-box] after:bg-[length:240%_100%] after:[mask-composite:exclude] after:[mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] motion-safe:after:animate-[workflow-node-scan_3s_linear_infinite]',
+    disabled && 'opacity-55',
+  );
+}
+
+function IssueBadge({ count }: Readonly<{ count: number }>) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-[0.68rem] font-bold text-background shadow-[0_0_0_3px_var(--background)]"
+    >
+      {count}
+    </span>
+  );
+}
+
 /**
  * A step on the canvas: family tile, title and human type, the port labels
  * of branching steps, and marks for issues, missing connections and steps
@@ -32,17 +67,8 @@ export function WorkflowNodeCard({
   return (
     <article
       data-selected={selected}
-      aria-label={`${title}, ${type}${data.issueCount > 0 ? `, ${String(data.issueCount)} issues` : ''}`}
-      className={cn(
-        'relative w-56 rounded-lg border border-white/9 border-t-white/15 bg-[linear-gradient(160deg,rgb(255_255_255/5.5%),rgb(255_255_255/1.5%)),var(--card)] px-3 py-2.5 text-card-foreground shadow-[0_18px_44px_-18px_rgb(0_0_0/90%)] transition-[border-color,box-shadow,opacity] duration-150 motion-reduce:transition-none',
-        data.issueCount > 0 &&
-          'border-destructive/50 shadow-[0_0_0_1px_color-mix(in_srgb,var(--destructive)_20%,transparent),0_0_26px_-6px_color-mix(in_srgb,var(--destructive)_45%,transparent)]',
-        selected &&
-          'border-primary/55 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_25%,transparent),0_0_30px_-4px_color-mix(in_srgb,var(--primary)_35%,transparent)]',
-        selected &&
-          'after:pointer-events-none after:absolute after:inset-[-1px] after:rounded-[inherit] after:border after:border-transparent after:bg-[linear-gradient(90deg,transparent,var(--primary),transparent)_border-box] after:bg-[length:240%_100%] after:[mask-composite:exclude] after:[mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] motion-safe:after:animate-[workflow-node-scan_3s_linear_infinite]',
-        data.disabled && 'opacity-55',
-      )}
+      aria-label={nodeLabel(title, type, data.issueCount)}
+      className={cardClassName(data.issueCount > 0, selected, data.disabled)}
     >
       {branchingIn || data.inputPorts[0] === undefined ? null : (
         <Handle
@@ -80,14 +106,7 @@ export function WorkflowNodeCard({
           className={handleClass}
         />
       )}
-      {data.issueCount > 0 ? (
-        <span
-          aria-hidden="true"
-          className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-[0.68rem] font-bold text-background shadow-[0_0_0_3px_var(--background)]"
-        >
-          {data.issueCount}
-        </span>
-      ) : null}
+      <IssueBadge count={data.issueCount} />
     </article>
   );
 }

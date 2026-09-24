@@ -194,7 +194,8 @@ export function duplicateWorkflowNodes(
   createId: () => string = () => crypto.randomUUID(),
   offset: Position = { x: 48, y: 48 },
 ): Readonly<{ graph: WorkflowGraphContract; nodeIds: readonly string[] }> {
-  const sources = graph.nodes.filter((node) => nodeIds.includes(node.id));
+  const wanted = new Set(nodeIds);
+  const sources = graph.nodes.filter((node) => wanted.has(node.id));
   if (sources.length === 0) return { graph, nodeIds: [] };
   const idMap = new Map(sources.map((node) => [node.id, createId()]));
   const copies = sources.map((node) => ({

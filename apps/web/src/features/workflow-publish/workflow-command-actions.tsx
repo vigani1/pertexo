@@ -20,6 +20,92 @@ import type { PublicationReceipt } from './mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from './use-workflow-command-session';
 import { latestVersionQueryOptions } from './workflow-publish.queries';
 
+/** "v4 live", and "· edited since" once the draft moved on. */
+function LiveVersionNote({
+  receipt,
+  draft,
+}: Readonly<{
+  receipt: PublicationReceipt;
+  draft: Readonly<{ generation: number; revision: number }>;
+}>) {
+  const edited =
+    receipt.generation !== draft.generation ||
+    receipt.revision !== draft.revision;
+  return (
+    <span className="hidden font-mono text-[0.7rem] whitespace-nowrap text-subtle-foreground sm:inline">
+      v{receipt.versionNumber} live
+      {edited ? ' · edited since' : ''}
+    </span>
+  );
+}
+
+/**
+ * What publishing would change and the version it would make, once the
+ * latest version (or that there is none) and the workflow are known.
+ */
+function usePublishPreview({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  workflow,
+  graph,
+  receipt,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  workflow: WorkflowSummary | undefined;
+  graph: WorkflowGraphContract;
+  receipt: PublicationReceipt | undefined;
+}>) {
+  const everPublished =
+    receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
+  const latest = useQuery({
+    ...latestVersionQueryOptions(apiClient, userId, workspaceId, workflowId),
+    enabled: everPublished,
+  });
+  const latestVersion = everPublished ? latest.data : null;
+  const known = workflow !== undefined || receipt !== undefined;
+  const summary =
+    latestVersion === undefined || !known
+      ? undefined
+      : summarizePublish(graph, latestVersion);
+  return {
+    everPublished,
+    summary,
+    versionLabel:
+      summary === undefined
+        ? undefined
+        : `v${String(summary.nextVersionNumber)}`,
+    summaryState: summaryState(
+      summary !== undefined,
+      everPublished && latest.isPending,
+    ),
+  } as const;
+}
+
+function summaryState(
+  ready: boolean,
+  loading: boolean,
+): 'ready' | 'loading' | 'error' {
+  if (ready) return 'ready';
+  return loading ? 'loading' : 'error';
+}
+
+function PublishButton({
+  versionLabel,
+  onClick,
+}: Readonly<{ versionLabel: string | undefined; onClick: () => void }>) {
+  return (
+    <Button type="button" size="sm" variant="primary" onClick={onClick}>
+      <ArrowUpFromLineIcon data-icon="inline-start" />
+      {versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`}
+    </Button>
+  );
+}
+
 /**
  * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
  * one filled action, Publish vN. Each opens its own lens; the published stamp
@@ -59,20 +145,16 @@ export function WorkflowCommandActions({
   const [stamp, setStamp] = useState<PublicationReceipt>();
   const { publication, runSubmission } = commandSession;
   const receipt = publication.publicationReceipt;
-  const everPublished =
-    receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
-  const latest = useQuery({
-    ...latestVersionQueryOptions(apiClient, userId, workspace.id, workflowId),
-    enabled: everPublished,
-  });
-  const latestVersion = everPublished ? latest.data : null;
-  const summary =
-    latestVersion === undefined ||
-    (workflow === undefined && receipt === undefined)
-      ? undefined
-      : summarizePublish(graph, latestVersion);
-  const versionLabel =
-    summary === undefined ? undefined : `v${String(summary.nextVersionNumber)}`;
+  const { everPublished, summary, versionLabel, ...preview } =
+    usePublishPreview({
+      apiClient,
+      userId,
+      workspaceId: workspace.id,
+      workflowId,
+      workflow,
+      graph,
+      receipt,
+    });
   const canPublish = workspace.capabilities.includes('workflow:publish');
   const canRun = workspace.capabilities.includes('run:start');
   const blockingGroups =
@@ -114,40 +196,23 @@ export function WorkflowCommandActions({
         />
       ) : null}
       {receipt === undefined ? null : (
-        <span className="hidden font-mono text-[0.7rem] whitespace-nowrap text-subtle-foreground sm:inline">
-          v{receipt.versionNumber} live
-          {receipt.generation !== draft.generation ||
-          receipt.revision !== draft.revision
-            ? ' · edited since'
-            : ''}
-        </span>
+        <LiveVersionNote receipt={receipt} draft={draft} />
       )}
       {canPublish ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
+        <PublishButton
+          versionLabel={versionLabel}
           onClick={() => {
             publication.clearPublishError();
             setPublishOpen(true);
           }}
-        >
-          <ArrowUpFromLineIcon data-icon="inline-start" />
-          {versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`}
-        </Button>
+        />
       ) : null}
       <PublishLens
         open={publishOpen}
         onOpenChange={setPublishOpen}
         versionLabel={versionLabel ?? 'this draft'}
         summary={summary}
-        summaryState={
-          summary !== undefined
-            ? 'ready'
-            : everPublished && latest.isPending
-              ? 'loading'
-              : 'error'
-        }
+        summaryState={preview.summaryState}
         graph={graph}
         stage={publication.publishStage}
         error={publication.publishError}

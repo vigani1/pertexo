@@ -5,12 +5,14 @@ import type {
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
   PageHeaderMeta,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
+import { UnavailablePage } from '@/components/patterns/unavailable-page';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -40,17 +42,90 @@ function countByStatus(items: readonly ConnectionResponse[]) {
   return { active, reconnect, revoked } as const;
 }
 
-function Unavailable({ description }: Readonly<{ description: string }>) {
+/** The title, how many connections work, and Add for people who manage them. */
+function ConnectionsHeader({
+  counts,
+  hasConnections,
+  canManage,
+  onAdd,
+}: Readonly<{
+  counts: ReturnType<typeof countByStatus>;
+  hasConnections: boolean;
+  canManage: boolean;
+  onAdd: () => void;
+}>) {
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader>
+    <PageHeader>
+      <div>
         <PageHeaderTitle>Connections</PageHeaderTitle>
-      </PageHeader>
+        {hasConnections ? (
+          <PageHeaderMeta>
+            <span>
+              <b className="text-foreground">{counts.active}</b> active
+            </span>
+            {counts.reconnect > 0 ? (
+              <Status tone="attention">
+                {counts.reconnect} needs reconnecting
+              </Status>
+            ) : null}
+          </PageHeaderMeta>
+        ) : null}
+      </div>
+      {canManage ? (
+        <PageHeaderActions>
+          <Button type="button" variant="primary" onClick={onAdd}>
+            <PlusIcon data-icon="inline-start" aria-hidden="true" />
+            Add connection
+          </Button>
+        </PageHeaderActions>
+      ) : null}
+    </PageHeader>
+  );
+}
+
+/** The list, or why there is none: it failed to load, or nothing is connected. */
+function ConnectionsBody({
+  connections,
+  items,
+  canManage,
+  ...collection
+}: Readonly<
+  Omit<ComponentProps<typeof ConnectionCollection>, 'query'> & {
+    connections: ComponentProps<typeof ConnectionCollection>['query'];
+    canManage: boolean;
+  }
+>) {
+  if (connections.isError && items.length === 0)
+    return (
       <Empty>
-        <EmptyTitle>Connections are unavailable</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
+        <EmptyTitle>Connections couldn’t be loaded</EmptyTitle>
+        <EmptyDescription>
+          {describeReadError(connections.error, 'Connections')}
+        </EmptyDescription>
+        <EmptyActions>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void connections.refetch()}
+          >
+            Try again
+          </Button>
+        </EmptyActions>
       </Empty>
-    </div>
+    );
+  if (connections.isSuccess && items.length === 0)
+    return (
+      <Empty>
+        <EmptyTitle>Nothing connected yet</EmptyTitle>
+        <EmptyDescription>
+          {canManage
+            ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
+            : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
+        </EmptyDescription>
+      </Empty>
+    );
+  return (
+    <ConnectionCollection query={connections} items={items} {...collection} />
   );
 }
 
@@ -85,11 +160,19 @@ export function ConnectionsPage({
 
   if (!canRead)
     return (
-      <Unavailable description="Your role can’t see this workspace’s connections." />
+      <UnavailablePage
+        heading="Connections"
+        title="Connections are unavailable"
+        description="Your role can’t see this workspace’s connections."
+      />
     );
   if (connections.isError && isNotFound(connections.error))
     return (
-      <Unavailable description="This workspace’s connections don’t exist, or you don’t have access to them." />
+      <UnavailablePage
+        heading="Connections"
+        title="Connections are unavailable"
+        description="This workspace’s connections don’t exist, or you don’t have access to them."
+      />
     );
 
   const openAdd = (add: NonNullable<ConnectionsSearch['add']>) => {
@@ -101,79 +184,30 @@ export function ConnectionsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader>
-        <div>
-          <PageHeaderTitle>Connections</PageHeaderTitle>
-          {items.length > 0 ? (
-            <PageHeaderMeta>
-              <span>
-                <b className="text-foreground">{counts.active}</b> active
-              </span>
-              {counts.reconnect > 0 ? (
-                <Status tone="attention">
-                  {counts.reconnect} needs reconnecting
-                </Status>
-              ) : null}
-            </PageHeaderMeta>
-          ) : null}
-        </div>
-        {canManage ? (
-          <PageHeaderActions>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => {
-                openAdd('any');
-              }}
-            >
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-              Add connection
-            </Button>
-          </PageHeaderActions>
-        ) : null}
-      </PageHeader>
+      <ConnectionsHeader
+        counts={counts}
+        hasConnections={items.length > 0}
+        canManage={canManage}
+        onAdd={() => {
+          openAdd('any');
+        }}
+      />
 
       {canManage ? <ProviderSockets onConnect={openAdd} /> : null}
 
-      {connections.isError && items.length === 0 ? (
-        <Empty>
-          <EmptyTitle>Connections couldn’t be loaded</EmptyTitle>
-          <EmptyDescription>
-            {describeReadError(connections.error, 'Connections')}
-          </EmptyDescription>
-          <EmptyActions>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void connections.refetch()}
-            >
-              Try again
-            </Button>
-          </EmptyActions>
-        </Empty>
-      ) : connections.isSuccess && items.length === 0 ? (
-        <Empty>
-          <EmptyTitle>Nothing connected yet</EmptyTitle>
-          <EmptyDescription>
-            {canManage
-              ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
-              : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
-          </EmptyDescription>
-        </Empty>
-      ) : (
-        <ConnectionCollection
-          query={connections}
-          items={items}
-          revokedCount={counts.revoked}
-          view={search.view === 'revoked' ? 'revoked' : 'current'}
-          onViewChange={(view) => {
-            onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
-          }}
-          onOpen={(connection) => {
-            onSearchChange({ ...withoutLens, connection });
-          }}
-        />
-      )}
+      <ConnectionsBody
+        connections={connections}
+        items={items}
+        revokedCount={counts.revoked}
+        canManage={canManage}
+        view={search.view === 'revoked' ? 'revoked' : 'current'}
+        onViewChange={(view) => {
+          onSearchChange(view === 'revoked' ? { view: 'revoked' } : {});
+        }}
+        onOpen={(connection) => {
+          onSearchChange({ ...withoutLens, connection });
+        }}
+      />
 
       <ConnectionDetailSheet
         scope={scope}
