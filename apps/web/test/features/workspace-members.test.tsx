@@ -169,6 +169,122 @@ describe('workspace members', () => {
     expect(commandRequests[0]?.key).toBeTruthy();
   });
 
+  it('does not submit an invitation after the authenticated identity changes', async () => {
+    let currentUser = user;
+    let commands = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(currentUser),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...workspace,
+              role: 'owner',
+              capabilities: ['workspace:read', 'member:read', 'member:manage'],
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
+        HttpResponse.json({
+          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
+          nextCursor: null,
+        }),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        () => HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        () => {
+          commands += 1;
+          return HttpResponse.error();
+        },
+      ),
+    );
+    const browser = userEvent.setup();
+    renderApp(`/w/${workspaceId}/settings/members`);
+    await browser.click(
+      await screen.findByRole('button', { name: 'Invite member' }),
+    );
+    await browser.type(
+      screen.getByLabelText('Recipient email'),
+      'new.member@example.test',
+    );
+    currentUser = { ...user, id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' };
+    await browser.click(
+      screen.getByRole('button', { name: 'Send invitation' }),
+    );
+    expect(
+      await screen.findByText('Your session is no longer available'),
+    ).toBeVisible();
+    expect(commands).toBe(0);
+  });
+
+  it('blocks an exact uncertain retry after the authenticated identity changes', async () => {
+    let currentUser = user;
+    let commands = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(currentUser),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...workspace,
+              role: 'owner',
+              capabilities: ['workspace:read', 'member:read', 'member:manage'],
+            },
+          ],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
+        HttpResponse.json({
+          items: [member(firstMemberId, 'Ada Operator', 'viewer')],
+          nextCursor: null,
+        }),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        () => HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/invitations`,
+        () => {
+          commands += 1;
+          return HttpResponse.error();
+        },
+      ),
+    );
+    const browser = userEvent.setup();
+    renderApp(`/w/${workspaceId}/settings/members`, { strict: true });
+    await browser.click(
+      await screen.findByRole('button', { name: 'Invite member' }),
+    );
+    await browser.type(
+      screen.getByLabelText('Recipient email'),
+      'new.member@example.test',
+    );
+    await browser.click(
+      screen.getByRole('button', { name: 'Send invitation' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('uncertain');
+    currentUser = { ...user, id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' };
+    await browser.click(
+      screen.getByRole('button', { name: 'Retry same invitation' }),
+    );
+    expect(
+      await screen.findByText('Your session is no longer available'),
+    ).toBeVisible();
+    expect(commands).toBe(1);
+  });
+
   it('paginates pending invitations independently from members', async () => {
     const requestedCursors: (string | null)[] = [];
     mockServer.use(
@@ -798,7 +914,9 @@ describe('workspace members', () => {
     });
 
     await router.navigate({ to: '/workspaces' });
-    expect(await screen.findByText('Choose your workspace')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Workspaces' }),
+    ).toBeVisible();
     refreshedMembers.resolve(
       Response.json({
         items: [

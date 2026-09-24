@@ -56,7 +56,7 @@ export function MemberRoleDialog(
         </label>
         <select
           id="member-role"
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-base sm:text-sm"
           value={selectedRole ?? ''}
           disabled={props.pending || props.retryAvailable}
           onChange={(event) => {

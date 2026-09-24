@@ -58,16 +58,13 @@ export function ConnectionsPage({
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-xs tracking-[0.2em] text-secondary">
-            CREDENTIAL VAULT
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
             Connections
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Manage the external accounts workflow nodes can use in{' '}
             {workspace.name}. Stored credentials are never displayed here.
           </p>
@@ -87,7 +84,7 @@ export function ConnectionsPage({
       !connections.isFetchNextPageError ? (
         <div
           role="alert"
-          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
         >
           <p className="text-sm text-destructive">
             These connections may be stale because the latest refresh failed.
@@ -103,14 +100,6 @@ export function ConnectionsPage({
           </Button>
         </div>
       ) : null}
-
-      <div className="mt-9 flex flex-wrap gap-x-5 gap-y-2 border-y border-border py-3 font-mono text-[0.68rem] tracking-[0.1em] text-muted-foreground uppercase">
-        <span>{items.length} loaded</span>
-        <span>Safe metadata only</span>
-        <span>
-          {canManage ? 'Slack creation available' : 'Read-only access'}
-        </span>
-      </div>
 
       {connections.isPending ? (
         <p role="status" className="py-16 text-sm text-muted-foreground">
@@ -152,14 +141,16 @@ export function ConnectionsPage({
         </Empty>
       ) : (
         <>
-          <ConnectionTable
-            connections={items}
-            apiClient={apiClient}
-            userId={user.id}
-            workspaceId={workspace.id}
-            canTest={canTest}
-            canManage={canManage}
-          />
+          <div className="glass-panel overflow-hidden rounded-xl">
+            <ConnectionTable
+              connections={items}
+              apiClient={apiClient}
+              userId={user.id}
+              workspaceId={workspace.id}
+              canTest={canTest}
+              canManage={canManage}
+            />
+          </div>
           {connections.hasNextPage ? (
             <div className="mt-6 flex justify-center">
               <Button

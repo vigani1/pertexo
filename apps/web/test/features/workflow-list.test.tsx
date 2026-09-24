@@ -154,6 +154,79 @@ describe('workflow list and create', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the first page and retries only the failed next page', async () => {
+    let nextPageAttempts = 0;
+    mockServer.use(
+      ...discoveryHandlers(),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows`,
+        ({ request }) => {
+          const after = new URL(request.url).searchParams.get('after');
+          if (after === null)
+            return HttpResponse.json({
+              items: [summary(workflowId, 'Daily intake')],
+              nextCursor: 'page-two',
+            });
+          nextPageAttempts += 1;
+          if (nextPageAttempts === 1) return HttpResponse.error();
+          return HttpResponse.json({
+            items: [
+              summary(
+                'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+                'Incident response',
+              ),
+            ],
+            nextCursor: null,
+          });
+        },
+      ),
+    );
+
+    renderApp(`/w/${workspaceId}/workflows`);
+    const event = userEvent.setup();
+    expect(await screen.findByText('Daily intake')).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The next workflow page could not be loaded',
+    );
+    expect(screen.getByText('Daily intake')).toBeVisible();
+    expect(
+      screen.queryByText(/Showing the last loaded workflows/u),
+    ).not.toBeInTheDocument();
+
+    await event.click(screen.getByRole('button', { name: 'Retry next page' }));
+    expect(await screen.findByText('Incident response')).toBeVisible();
+    expect(nextPageAttempts).toBe(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('labels lifecycle and activation independently without the desktop header', async () => {
+    mockServer.use(
+      ...discoveryHandlers(),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/workflows`,
+        () =>
+          HttpResponse.json({
+            items: [
+              {
+                ...summary(workflowId, 'Always-on intake'),
+                activationStatus: 'active',
+              },
+            ],
+            nextCursor: null,
+          }),
+      ),
+    );
+
+    renderApp(`/w/${workspaceId}/workflows`);
+    expect(await screen.findByText('Always-on intake')).toBeVisible();
+    expect(screen.getAllByText('Lifecycle')).toHaveLength(2);
+    expect(screen.getAllByText('Activation')).toHaveLength(2);
+    expect(screen.getByLabelText('Lifecycle: active')).toBeVisible();
+    expect(screen.getByLabelText('Activation: active')).toBeVisible();
+    expect(screen.getAllByText('active')).toHaveLength(2);
+  });
+
   it('validates the name and reuses one idempotency key for an uncertain retry', async () => {
     const keys: string[] = [];
     let created = false;

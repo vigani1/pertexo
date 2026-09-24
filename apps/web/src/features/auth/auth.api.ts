@@ -1,6 +1,8 @@
 import {
+  authenticationCapabilitiesResponseSchema,
   oidcStartResponseSchema,
   userProfileResponseSchema,
+  type AuthenticationCapabilitiesResponse,
   type UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
 import type { ApiClient } from '@/lib/api/client';
@@ -23,6 +25,20 @@ export function startOidcLogin(apiClient: ApiClient, signal?: AbortSignal) {
     response: {
       kind: 'json',
       decode: decodeOidcStart,
+    },
+  });
+}
+
+export function getAuthenticationCapabilities(
+  apiClient: ApiClient,
+  signal?: AbortSignal,
+): Promise<AuthenticationCapabilitiesResponse> {
+  return apiClient.request({
+    path: '/v1/auth/capabilities',
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => authenticationCapabilitiesResponseSchema.parse(value),
     },
   });
 }

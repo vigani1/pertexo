@@ -71,21 +71,18 @@ export function WorkspaceGeneralPage({
   ]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <WorkspaceSettingsNavigation workspace={workspace} />
       <header>
-        <p className="font-mono text-xs tracking-[0.2em] text-secondary">
-          WORKSPACE CONTROL
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+        <h1 className="sr-only text-3xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-4xl">
           General
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           Review workspace details and manage its lifecycle.
         </p>
       </header>
 
-      <div className="mt-8 grid gap-6">
+      <div className="grid gap-6">
         <WorkspaceNameSection
           apiClient={apiClient}
           userId={user.id}

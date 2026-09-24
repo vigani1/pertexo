@@ -67,6 +67,9 @@ async function installRoutes(page: Page) {
             },
     });
   });
+  await page.route(`**/v1/workspaces/${workspaceId}/invitations?**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );

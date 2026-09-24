@@ -192,6 +192,7 @@ test('filters and paginates workspace history, then opens the exact run', async 
 
   await page.getByLabel('Status').selectOption('succeeded');
   await page.getByLabel('Workflow name starts with').fill('Customer');
+  await page.getByRole('button', { name: 'Add filters' }).click();
   await page.getByLabel('Created from').fill('2026-09-14');
   await page.getByLabel('Created before').fill('2026-09-16');
   await page.getByRole('button', { name: 'Apply' }).click();
@@ -199,6 +200,10 @@ test('filters and paginates workspace history, then opens the exact run', async 
   await expect(page).toHaveURL(/workflowNamePrefix=Customer/u);
   await expect(page).toHaveURL(/createdAtFrom=2026-09-14/u);
   await expect(page.getByText(secondRunId)).not.toBeVisible();
+  await page
+    .getByRole('button', { name: 'Remove filter Status: succeeded' })
+    .click();
+  await expect(page).not.toHaveURL(/status=succeeded/u);
 
   await page.getByRole('link', { name: `Open run ${firstRunId}` }).click();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${firstRunId}`);
@@ -251,4 +256,55 @@ test('keeps a maximum-length workflow identity accessible and contained on mobil
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('contains long applied filters and keeps keyboard removal reachable', async ({
+  page,
+}, testInfo) => {
+  const longPrefix = 'W'.repeat(128);
+  await installRoutes(page);
+  await page.goto(
+    `/w/${workspaceId}/runs?workflowNamePrefix=${longPrefix}&workflowId=${workflowId}`,
+  );
+
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const chip = page.getByRole('button', {
+      name: `Remove filter Name: ${longPrefix}`,
+    });
+    await expect(chip).toHaveAttribute('title', `Name: ${longPrefix}`);
+    const box = await chip.boundingBox();
+    expect(box?.x).toBeGreaterThanOrEqual(0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    if (width === 390) {
+      const screenshot = await page.screenshot({ fullPage: true });
+      await testInfo.attach('long-applied-filter-390', {
+        body: screenshot,
+        contentType: 'image/png',
+      });
+      if (process.env.PERTEXO_VISUAL_EVIDENCE_DIR !== undefined)
+        await page.screenshot({
+          path: `${process.env.PERTEXO_VISUAL_EVIDENCE_DIR}/long-applied-filter-390.png`,
+          fullPage: true,
+        });
+    }
+  }
+
+  const prefixChip = page.getByRole('button', {
+    name: `Remove filter Name: ${longPrefix}`,
+  });
+  await prefixChip.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).not.toHaveURL(/workflowNamePrefix=/u);
+  await expect(page).toHaveURL(new RegExp(`workflowId=${workflowId}`, 'u'));
+  await expect(
+    page.getByRole('button', {
+      name: `Remove filter Workflow: ${workflowId}`,
+    }),
+  ).toBeVisible();
 });

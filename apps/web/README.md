@@ -51,31 +51,31 @@ wiring remains deployment-owned.
 
 ## Small structure, clear ownership
 
-| Location                              | Responsibility                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `src/main.tsx`                        | Create one router, query cache and browser API client for the application lifetime.         |
-| `src/app/`                            | Router factory and server-cache defaults.                                                   |
-| `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                       |
-| `src/features/auth/`                  | OIDC start, current session, login presentation and logout cleanup.                         |
-| `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.      |
-| `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.              |
-| `src/features/workflows/`             | Workflow list/create transport, cache ownership, recovery and presentation.                 |
-| `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                              |
-| `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.         |
-| `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references. |
-| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.     |
-| `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                            |
-| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                          |
-| `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                          |
-| `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.      |
-| `src/features/workflow-settings/`     | Versions, lifecycle, published triggers and failure-notification controls.                  |
-| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                |
-| `src/components/ui/`                  | Owned shadcn primitives built on Base UI. Add only components needed by a real slice.       |
-| `src/components/patterns/`            | Shared glass-panel composition and decorative aurora border.                                |
-| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors and CSRF cookie adapter.             |
-| `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                             |
-| `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                      |
-| `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                         |
+| Location                              | Responsibility                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/main.tsx`                        | Create one router, query cache and browser API client for the application lifetime.               |
+| `src/app/`                            | Router factory and server-cache defaults.                                                         |
+| `src/routes/`                         | Session-aware routes, workspace shell composition and route recovery.                             |
+| `src/features/auth/`                  | Email/password and configured social entry, current session, account security and logout cleanup. |
+| `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.            |
+| `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.                    |
+| `src/features/workflows/`             | Workflow list/create transport, cache ownership, recovery and presentation.                       |
+| `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                    |
+| `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.               |
+| `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.       |
+| `src/features/workflow-editor/`       | Route-scoped graph/config/input-mapping editing, history, saving and conflict recovery.           |
+| `src/features/workflow-drafts/`       | Shared browser-owned draft snapshot and ETag decoding interface.                                  |
+| `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                |
+| `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                |
+| `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.            |
+| `src/features/workflow-settings/`     | Versions, lifecycle, published triggers and failure-notification controls.                        |
+| `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                      |
+| `src/components/ui/`                  | Owned shadcn primitives built on Base UI. Add only components needed by a real slice.             |
+| `src/components/patterns/`            | Shared glass-panel composition and decorative aurora border.                                      |
+| `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors and CSRF cookie adapter.                   |
+| `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                                   |
+| `src/styles/`                         | Semantic Tailwind tokens and original visual identity.                                            |
+| `test/`, `e2e/`                       | Component/unit checks and real-browser smoke tests.                                               |
 
 Routes compose features; features keep their API calls, queries and UI together
 and depend only on shared UI and reviewed contracts. Do not create every future
@@ -149,11 +149,11 @@ Next.js or backend dependencies:
 - Container-sized CSS aurora animation, static reduced-motion/high-contrast
   treatment, and a glass fallback where backdrop filtering is unavailable.
 
-The login and workspace entry adapt the legacy glass, typography and signal-line
-language without copying its credential form, Next.js code or backend
-assumptions. No Motion, dropzone or 3D dependency was added: the selected
-effects use CSS, Canvas 2D and SVG animation. File-drop motion remains for its
-feature slice.
+The login, signup, recovery and account-security surfaces adapt the legacy
+glass, typography, aurora and signal-line language without copying its
+credential form, Next.js code or backend assumptions. No Motion, dropzone or 3D
+dependency was added: the selected effects use CSS, Canvas 2D and SVG animation.
+File-drop motion remains for its feature slice.
 
 Verification covers transport failures, browser bundle composition,
 unauthenticated redirects, OIDC start/error, workspace empty/error/deep-link
@@ -161,11 +161,12 @@ states, confirmed logout cleanup, late-response cancellation, keyboard focus,
 narrow layout and reduced motion. Mocked-boundary Chromium journeys inspect the
 desktop shell and the 390-pixel editor fallback, including keyboard panel
 switching, useful canvas dimensions and retained inspector scratch state. React
-Doctor's changed-and-untracked scan reports 72/100 with 51 pre-existing or
-out-of-scope diagnostics; none names the workspace creation, rename or Overview
-source files. The score remains a triage aid rather than a delivery gate.
-Firefox/WebKit and a live-backend journey through the controlled OIDC provider
-remain pending; the mocked Chromium lane does not prove either integration.
+Doctor's changed-file scan reports 72/100 with 28 diagnostics in existing
+editor, invitation and workspace-management surfaces; none names the new auth or
+account- security source files. The score remains a triage aid rather than a
+delivery gate. Firefox/WebKit and a live-backend journey through the controlled
+OIDC provider remain pending; the mocked Chromium lane does not prove either
+integration.
 
 React Compiler was evaluated with the documented Babel/Vite integration and was
 not adopted: the controlled trial increased build work and emitted bundle size

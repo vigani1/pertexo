@@ -1,7 +1,7 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/public';
+import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import { changeWorkspaceMemberRole } from '../workspaces.api';

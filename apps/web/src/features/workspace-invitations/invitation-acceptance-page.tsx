@@ -427,7 +427,7 @@ export function InvitationAcceptancePage(
                 </Button>
               </div>
             ) : null}
-            {journey === undefined && tokenAvailable ? (
+            {journey === undefined ? (
               <Button
                 className="mt-4"
                 type="button"
@@ -437,7 +437,9 @@ export function InvitationAcceptancePage(
                   startBootstrap();
                 }}
               >
-                Retry invitation link
+                {tokenAvailable
+                  ? 'Retry invitation link'
+                  : 'Retry invitation status'}
               </Button>
             ) : null}
           </div>

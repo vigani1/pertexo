@@ -15,18 +15,21 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
-} from '@/features/auth/public';
-import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/public';
+} from '@/features/auth/session.queries.public';
+import { publishSessionChange } from '@/features/auth/session-sync.public';
+import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/members.queries.public';
 import { workspaceLifecycleOperationQueryOptions } from '@/features/workspaces/lifecycle.queries.public';
 import { authoringCatalogQueryOptions } from '@/features/catalog/public';
 import {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
-} from '@/features/connections/public';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/public';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/public';
-import { recentWorkflowsQueryOptions } from '@/features/workflows/public';
+} from '@/features/connections/queries.public';
+import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
+import {
+  recentWorkflowsQueryOptions,
+  workflowsInfiniteQueryOptions,
+} from '@/features/workflows/queries.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
 import {
   recentWorkflowRunsQueryOptions,
@@ -34,12 +37,6 @@ import {
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
-import {
-  LoginRoute,
-  LogoutRoute,
-  WorkspaceRoute,
-  WorkspaceSelectionRoute,
-} from './route-components';
 import {
   NotFoundPage,
   PendingPage,
@@ -64,16 +61,27 @@ function rethrowError(error: unknown): never {
   throw new Error('An unexpected route failure occurred.', { cause: error });
 }
 
+async function clearAuthenticatedQueries(
+  context: RouterContext,
+): Promise<void> {
+  await context.queryClient.cancelQueries();
+  context.queryClient.clear();
+}
+
 async function loadCurrentUser(context: RouterContext) {
+  const options = currentUserQueryOptions(context.apiClient);
+  const previous = context.queryClient.getQueryData(options.queryKey);
   try {
-    return await context.queryClient.query(
-      currentUserQueryOptions(context.apiClient),
-    );
+    const current = await context.queryClient.query(options);
+    if (previous !== undefined && previous.id !== current.id) {
+      await clearAuthenticatedQueries(context);
+      context.queryClient.setQueryData(options.queryKey, current);
+      publishSessionChange();
+    }
+    return current;
   } catch (error) {
     if (isUnauthenticated(error)) {
-      context.queryClient.removeQueries({
-        queryKey: currentUserQueryOptions(context.apiClient).queryKey,
-      });
+      await clearAuthenticatedQueries(context);
       redirect({ to: '/login', throw: true });
     }
     rethrowError(error);
@@ -86,7 +94,10 @@ async function loadWorkspaces(context: RouterContext, userId: string) {
       accessibleWorkspacesQueryOptions(context.apiClient, userId),
     );
   } catch (error) {
-    if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+    if (isUnauthenticated(error)) {
+      await clearAuthenticatedQueries(context);
+      redirect({ to: '/login', throw: true });
+    }
     rethrowError(error);
   }
 }
@@ -117,24 +128,112 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...(search.verified === true || search.verified === 'true'
+      ? { verified: true as const }
+      : {}),
+    ...(search.emailChanged === true || search.emailChanged === 'true'
+      ? { emailChanged: true as const }
+      : {}),
+    ...(search.emailChangePending === true ||
+    search.emailChangePending === 'true'
+      ? { emailChangePending: true as const }
+      : {}),
+    ...(search.error === 'verification_invalid'
+      ? { verificationInvalid: true as const }
+      : {}),
+    ...(search.error === 'link_reauthenticate'
+      ? { linkReauthenticate: true as const }
+      : {}),
+    ...(search.error === 'migration_reauthenticate'
+      ? { migrationReauthenticate: true as const }
+      : {}),
+    ...(search.error === 'migration_failed'
+      ? { migrationFailed: true as const }
+      : {}),
+    ...(search.socialError === true || search.socialError === 'true'
+      ? { socialError: true as const }
+      : {}),
+  }),
   beforeLoad: async ({ context }) => {
     try {
       await context.queryClient.query(
         currentUserQueryOptions(context.apiClient),
       );
     } catch (error) {
-      if (isUnauthenticated(error)) return;
+      if (isUnauthenticated(error)) {
+        await clearAuthenticatedQueries(context);
+        return;
+      }
       rethrowError(error);
     }
     redirect({ to: '/workspaces', throw: true });
   },
-  component: LoginRoute,
+  component: lazyRouteComponent(() => import('./login-route'), 'LoginRoute'),
+});
+
+const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-up',
+  component: lazyRouteComponent(() => import('./sign-up-route'), 'SignUpRoute'),
+});
+
+const legacyMigrationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/account/migrate',
+  component: lazyRouteComponent(
+    () => import('./legacy-migration-route'),
+    'LegacyMigrationRoute',
+  ),
+});
+
+const passwordRecoveryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  component: lazyRouteComponent(
+    () => import('./password-recovery-route'),
+    'PasswordRecoveryRoute',
+  ),
+});
+
+const passwordResetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password',
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === 'string' ? search.token : undefined,
+  }),
+  loaderDeps: ({ search }) => ({
+    token: search.token,
+  }),
+  loader: ({ deps }) => deps,
+  component: lazyRouteComponent(
+    () => import('./password-reset-route'),
+    'PasswordResetRoute',
+  ),
 });
 
 const logoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/logout',
-  component: LogoutRoute,
+  component: lazyRouteComponent(() => import('./logout-route'), 'LogoutRoute'),
+});
+
+const accountSecurityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/account/security',
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...(search.linked === true || search.linked === 'true'
+      ? { linked: true as const }
+      : {}),
+    ...(search.linkError === true || search.linkError === 'true'
+      ? { linkError: true as const }
+      : {}),
+  }),
+  loader: async ({ context }) => loadCurrentUser(context),
+  component: lazyRouteComponent(
+    () => import('./account-security-route'),
+    'AccountSecurityRoute',
+  ),
 });
 
 const invitationAcceptanceRoute = createRoute({
@@ -154,7 +253,10 @@ const workspacesRoute = createRoute({
     const workspaces = await loadWorkspaces(context, user.id);
     return { user, workspaces };
   },
-  component: WorkspaceSelectionRoute,
+  component: lazyRouteComponent(
+    () => import('./workspace-selection-route'),
+    'WorkspaceSelectionRoute',
+  ),
 });
 
 const workspaceRoute = createRoute({
@@ -190,15 +292,16 @@ const workspaceRoute = createRoute({
             isUnauthenticated(result.reason as unknown),
         )
       ) {
-        context.queryClient.removeQueries({
-          queryKey: currentUserQueryOptions(context.apiClient).queryKey,
-        });
+        await clearAuthenticatedQueries(context);
         redirect({ to: '/login', throw: true });
       }
     }
     return { user, workspace };
   },
-  component: WorkspaceRoute,
+  component: lazyRouteComponent(
+    () => import('./workflow-list-route'),
+    'WorkflowListRoute',
+  ),
 });
 
 const overviewRoute = createRoute({
@@ -245,8 +348,10 @@ const overviewRoute = createRoute({
             result.status === 'rejected' &&
             isUnauthenticated(result.reason as unknown),
         )
-      )
+      ) {
+        await clearAuthenticatedQueries(context);
         redirect({ to: '/login', throw: true });
+      }
     }
     return { user, workspace };
   },
@@ -273,9 +378,7 @@ const connectionsRoute = createRoute({
         );
       } catch (error) {
         if (isUnauthenticated(error)) {
-          context.queryClient.removeQueries({
-            queryKey: currentUserQueryOptions(context.apiClient).queryKey,
-          });
+          await clearAuthenticatedQueries(context);
           redirect({ to: '/login', throw: true });
         }
       }
@@ -322,9 +425,7 @@ const workflowEditorRoute = createRoute({
         ]);
       } catch (error) {
         if (isUnauthenticated(error)) {
-          context.queryClient.removeQueries({
-            queryKey: currentUserQueryOptions(context.apiClient).queryKey,
-          });
+          await clearAuthenticatedQueries(context);
           redirect({ to: '/login', throw: true });
         }
         rethrowError(error);
@@ -357,7 +458,10 @@ const runDetailRoute = createRoute({
           ),
         );
       } catch (error) {
-        if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+        if (isUnauthenticated(error)) {
+          await clearAuthenticatedQueries(context);
+          redirect({ to: '/login', throw: true });
+        }
         rethrowError(error);
       }
     }
@@ -388,7 +492,10 @@ const runHistoryRoute = createRoute({
           ),
         );
       } catch (error) {
-        if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+        if (isUnauthenticated(error)) {
+          await clearAuthenticatedQueries(context);
+          redirect({ to: '/login', throw: true });
+        }
       }
     }
     return { user, workspace };
@@ -433,7 +540,10 @@ const workspaceMembersRoute = createRoute({
           ),
         );
       } catch (error) {
-        if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+        if (isUnauthenticated(error)) {
+          await clearAuthenticatedQueries(context);
+          redirect({ to: '/login', throw: true });
+        }
       }
     }
     return { user, workspace };
@@ -471,7 +581,10 @@ const workspaceGeneralRoute = createRoute({
           ),
         );
       } catch (error) {
-        if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+        if (isUnauthenticated(error)) {
+          await clearAuthenticatedQueries(context);
+          redirect({ to: '/login', throw: true });
+        }
       }
     }
     return { user, workspace };
@@ -514,7 +627,10 @@ const workspaceNotificationsRoute = createRoute({
       try {
         await Promise.all(reads);
       } catch (error) {
-        if (isUnauthenticated(error)) redirect({ to: '/login', throw: true });
+        if (isUnauthenticated(error)) {
+          await clearAuthenticatedQueries(context);
+          redirect({ to: '/login', throw: true });
+        }
       }
     }
     return { user, workspace };
@@ -528,7 +644,12 @@ const workspaceNotificationsRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  signUpRoute,
+  legacyMigrationRoute,
+  passwordRecoveryRoute,
+  passwordResetRoute,
   logoutRoute,
+  accountSecurityRoute,
   invitationAcceptanceRoute,
   workspacesRoute,
   workspaceRoute,

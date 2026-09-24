@@ -133,6 +133,25 @@ test('offers reconciliation and reauthentication when completion loses its sessi
   ).toBeVisible();
 });
 
+test('recovers a tokenless continuation after its initial status read fails', async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route(/\/v1\/invitation-acceptance$/, async (route) => {
+    reads += 1;
+    if (reads === 1) {
+      await route.abort('failed');
+      return;
+    }
+    await route.fulfill({ json: { state: 'unavailable' } });
+  });
+
+  await page.goto('/invitations/accept');
+  await page.getByRole('button', { name: 'Retry invitation status' }).click();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  expect(reads).toBe(2);
+});
+
 test('reload recovery exposes sign-in or a completed receipt without replaying acceptance', async ({
   page,
 }) => {

@@ -23,13 +23,13 @@ export function WorkspaceSidebarContent({
   onLogout: () => void;
 }>) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 p-4">
+    <div className="flex h-full min-h-0 flex-col gap-2 p-3">
       <Link
         to="/w/$workspaceId/workflows"
         params={{ workspaceId: workspace.id }}
-        className="flex min-w-0 items-center gap-3 rounded-lg px-2 py-3 hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-2.5 hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <span className="relative grid size-11 shrink-0 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary shadow-glow-primary">
+        <span className="relative grid size-9 shrink-0 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary shadow-glow-primary">
           <span className="font-heading text-lg font-bold" translate="no">
             P
           </span>
@@ -41,7 +41,7 @@ export function WorkspaceSidebarContent({
         <span className="min-w-0">
           <span
             translate="no"
-            className="block truncate font-heading text-2xl font-semibold tracking-tight text-primary"
+            className="block truncate font-heading text-xl font-semibold tracking-tight text-primary"
           >
             Pertexo<span className="text-secondary">.</span>
           </span>

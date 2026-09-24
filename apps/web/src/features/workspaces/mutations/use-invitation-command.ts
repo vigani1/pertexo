@@ -1,7 +1,12 @@
 import type { WorkspaceInvitation } from '@pertexo/contracts/schemas/identity-workspace';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/public';
+import {
+  assertSessionIdentity,
+  isSessionIdentityChangedError,
+  isSessionIdentityUnverifiedError,
+  isUnauthenticated,
+} from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -64,6 +69,27 @@ export function useInvitationCommand(
     inFlight.current = true;
     transition({ kind: 'executing', attempt });
     try {
+      try {
+        await assertSessionIdentity(input.apiClient, input.userId);
+      } catch (error) {
+        if (owner.current !== scope) return false;
+        if (isSessionIdentityChangedError(error) || isUnauthenticated(error)) {
+          transition({ kind: 'idle' });
+          input.onAuthenticationLost();
+          return false;
+        }
+        if (isSessionIdentityUnverifiedError(error)) {
+          transition({
+            kind: 'uncertain',
+            attempt,
+            message:
+              'Your session could not be verified. Retry keeps this exact command and key.',
+          });
+          return false;
+        }
+        throw error;
+      }
+      if (owner.current !== scope) return false;
       await mutation.mutateAsync(attempt);
       if (owner.current !== scope) return false;
       await queryClient.invalidateQueries({

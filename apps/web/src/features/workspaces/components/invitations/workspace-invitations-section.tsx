@@ -5,7 +5,7 @@ import type {
 } from '@pertexo/contracts/schemas/identity-workspace';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/public';
+import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import { isApiError } from '@/lib/api/api-error';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';

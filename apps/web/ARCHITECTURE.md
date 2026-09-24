@@ -17,6 +17,14 @@ Update this document when a decision changes; do not create parallel audit logs.
 Existing backend contracts, [domain vocabulary](../../CONTEXT.md) and accepted
 ADRs remain authoritative. This plan does not change backend behavior.
 
+Approved next slice (2026-09-22): follow the
+[Better Auth authentication and account-linking plan](../../docs/authentication-and-account-linking-plan.md)
+for replacing the provider-only login with email/password, social sign-in and
+account-security flows. Its A0 ADR/compatibility gate precedes implementation.
+Existing OIDC descriptions below describe the current baseline, not the target
+authentication stack; all other frontend ownership and quality rules still
+apply.
+
 Reading guide: start with [architecture](#1-the-architecture-in-one-minute),
 [folders](#2-folders-and-dependency-direction), the
 [unified implementation standard](#unified-frontend-implementation-standard) and
@@ -1012,6 +1020,319 @@ of visual extraction.
   motion; compare with old design screenshots. Keep readable prose
   sentence-case, technical mono/uppercase for metadata, and visible non-glow
   focus indicators.
+
+### Approved visual refinement — aurora glass and workflow-first layouts
+
+Status: **implemented and verified with mocked Chromium fixtures; live-backend,
+Firefox and WebKit visual verification remain open**. This section refines
+section 11's visual direction. It does not reopen the architecture, introduce
+backend features, or supersede correctness requirements. Preserve the existing
+uncommitted invitation-hardening changes. No commit, push or merge is authorized
+by this design increment.
+
+#### Design intent and reference hierarchy
+
+Pertexo is a workspace for building and operating workflows, not a generic
+analytics dashboard. Its memorable quality should be precise workflow content on
+luminous glass surfaces: clear names, connected steps, execution outcomes and
+obvious next actions. Creativity belongs in composition, hierarchy and useful
+interaction, not invented metrics or ornament around every element.
+
+Use `/Users/vigan/Projects/work/dynamic-process-v3` as the visual reference:
+inspect its `src/app/globals.css`, `components/patterns/glass-section.tsx`,
+`components/patterns/aurora-loading-panel.tsx`, shell and relevant workflow
+components. Capture an actual reference surface if runnable; otherwise
+explicitly record source-only comparison. Do not claim screenshot fidelity from
+source inspection. Keep its cyan glass, fine luminous rim, soft inner spill,
+recessed controls and node geometry; do not copy its generic dashboard
+composition, Next.js code, stores, network hooks or backend assumptions.
+
+Research references: [Linear filters](https://linear.app/docs/filters) for
+progressively revealed filtering, and
+[n8n execution search](https://blog.n8n.io/introducing-execution-search-and-global-variables-new-features-to-streamline-your-n8n-workflows/)
+for task-oriented run discovery. These inspire interactions, not visual clones
+or authorization to add their features.
+
+#### Visual system and restraint
+
+- Retain the existing palette: graphite `#111316`, glass base `#1a1c1f`,
+  readable text `#e2e2e6`, cyan `#00e5ff`, ice `#c3f5ff`, violet `#d0bcff`.
+  Reference semantic tokens in components; these are anchors, not permission for
+  repeated hex values.
+- Keep locally served Hanken Grotesk for headings, Inter for controls/body, and
+  JetBrains Mono only for code/identifiers. Do not introduce another font. Use
+  sentence-case headings, restrained weight contrast, 14–16px ordinary content
+  and secondary metadata that remains readable. Avoid decorative uppercase
+  eyebrows, gradient words, artificial section numbers and marketing copy.
+- Three surface roles: quiet page base; one glass working surface per meaningful
+  content region; recessed controls inside it. Tables are grouped rows inside a
+  surface, not cards inside cards. Align titles, toolbars and row content to a
+  shared gutter. Allow density appropriate to the task rather than identical
+  card padding on every screen.
+- Restore aurora's fine edge plus subtle inner glow using the existing shared
+  primitives. Idle surfaces have a quiet static rim. Animate only while the
+  owning surface is genuinely pending or execution is actually active. Retained
+  data stays visible during refresh; no skeleton replacement on every refetch.
+  Aurora is decoration, not proof of progress or the sole loading indicator.
+- Do not wrap every row or node in an animated layer. Keep effects
+  container-sized, non-interactive and out of layout. No legacy `150vmax`
+  layers, unbounded blur, timers/state solely to animate decoration, or new
+  motion dependency. Preserve reduced-motion, forced-color and
+  opaque/backdrop-filter fallbacks.
+- Color does not substitute for status text/icons; cyan is brand/focus, not
+  success. Visible focus must remain distinguishable from the decorative edge.
+
+#### Page compositions and exact scope
+
+**V0 — Space and navigation, before visual polish.** This explicit refinement
+supersedes the earlier requirement to preserve legacy shell proportions wherever
+they waste working space. Current `WorkspaceShell` renders a full desktop
+sidebar and a 64px workspace header even for `layout="editor"`, above the
+editor's own command bar. Remove this duplication rather than simply restyling
+it.
+
+- Workflow list, runs, overview and administration keep workspace navigation on
+  desktop. Use a compact labeled sidebar (roughly 208–224px at ordinary desktop
+  widths); do not automatically expand it to 280px on larger screens. Workspace
+  identity/switching and account actions already belong there. Do not add a
+  collapse preference or icon-only rail unless needed to solve a verified layout
+  issue; neither is a prerequisite for this increment.
+- Ordinary desktop pages have ONE page-heading/action row in their content, not
+  a sticky workspace header repeating the page title plus another heading
+  beneath. Remove the redundant desktop header. Keep meaningful breadcrumbs only
+  for hierarchy that actually helps navigation. Reduce excessive top padding; do
+  not replace the removed header with another empty band.
+- The workflow EDITOR is a dedicated full-width workspace: no permanent global
+  sidebar and no separate workspace header. Its single command bar owns Back to
+  workflows, workflow name, save state and primary editing/run actions. Keep
+  existing secondary commands accessible in appropriate menus/disclosures, not
+  hidden or deleted. Back/settings/workspace navigation must preserve dirty-edit
+  and in-flight command protections. Never infer editor layout from broad URL
+  prefixes; use the existing explicit route composition/layout boundary.
+- Editor palette and inspector are tools, not duplicate global navigation. Keep
+  their existing responsive panel modes; the canvas uses all remaining height
+  and width. Aim for a 48–56px desktop command bar in its normal state, but
+  allow readable errors and zoomed text to expand it. Use a viewport flex/grid
+  layout with `min-h-0` rather than a stale subtraction of the removed header's
+  height. Avoid fixed minimum heights that force unnecessary page scrolling.
+- Mobile still needs reachable workspace navigation, identity and account
+  actions. Compose its navigation trigger with the page's title/action region
+  instead of stacking two headers. The editor has its own compact Back/title
+  controls and existing panel switcher; secondary actions can use an accessible
+  menu. Never shrink controls/text merely to fit everything on one line.
+- Run detail keeps workspace navigation but uses one identity/status/action
+  region, not a large generic page header followed by another run header.
+  Settings use one heading and their meaningful section navigation. Do not
+  remove labels, recovery actions, permission explanations or semantic headings
+  just to make a screenshot sparse.
+
+Before each V1–V4 slice, inventory visible
+shell/header/title/toolbar/filter/status bands and ask what unique user job each
+performs. Merge or remove repeated content, decorative subtitles and redundant
+containers. Put advanced details behind disclosure only when discovery,
+validation and keyboard access survive. Do not hide safety-critical
+save/conflict/live-connection states. Every remaining region should help
+navigation, understanding, editing, filtering or recovery. This is a usability
+and space-allocation pass, not a goal of maximizing density.
+
+V0 acceptance: at 1440×900 and 1024×768 the editor has no global sidebar or
+duplicate workspace header, and ordinary pages have one title/action region.
+Record before/after usable canvas dimensions and screenshots (not an invented
+percentage target). At 390×844, 320px and 200% zoom, verify navigation, primary
+actions, focus order and scroll reachability. Test Back with a dirty editor,
+settings navigation, mobile menu focus return and logout/workspace switching
+from normal pages. Preserve one main landmark/skip-link target and a meaningful
+page h1 after shell changes. Do not remount or lose editor state on panel
+changes.
+
+**V1 — Workflows, the reference implementation.** Use a calm page heading with
+one capability-gated Create workflow action, then one glass collection surface.
+Make workflow names the primary scan target, lifecycle and activation separate
+and plainly labeled, and supported row actions secondary. Use spacing and row
+rhythm rather than identical oversized cards or arbitrary statistics. Keep
+native links and accessible action menus; do not make nested interactive rows
+ambiguous.
+
+```text
+Workflows                                      Create workflow
+┌─ subtle glass edge ──────────────────────────────────────┐
+│ Existing supported discovery controls                    │
+├─────────────────────────────────────────────────────────┤
+│ Workflow name                 Lifecycle   Activation  …  │
+│ Secondary real metadata                                  │
+│ Next workflow name            …                          │
+├─────────────────────────────────────────────────────────┤
+│ Existing pagination / recovery                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+Do not add workflow search/sorting/grouping unless supported across the actual
+paginated contract. Do not filter just the loaded page and imply global results.
+Node-sequence previews are optional only if already available in list data: no
+per-row draft/catalog fetching, fake graph thumbnails or linearization of a
+branching graph. If data is absent, omit the preview; typography and composition
+must stand on their own. On mobile, use a compact stacked row presentation that
+preserves name, statuses and actions without squeezing desktop columns.
+
+**V2 — Runs and run details.** Replace the permanently expanded filter form with
+a compact toolbar: workflow name discovery, status and Add filter for supported
+dates/exact IDs. Applied filters remain visible as removable chips; advanced
+filters must not disappear semantically when the popover closes. Keep existing
+apply/validation semantics, exact date precision, URL ownership,
+reload/back/forward behavior and cursor reset rules. Chip removal/reset must use
+the same route search model, not a second filter state. Avoid applying partial
+invalid input. Preserve accessible labels and errors inside the disclosure.
+
+Run rows emphasize workflow name, textual outcome and real timing, with IDs
+secondary and copyable only through existing safe patterns. Do not add duration,
+trend sparklines or aggregate counts where the response lacks the data. Run
+detail should read as execution: identity/status/actions, existing execution
+map, then invocation details and output. Keep authoritative version, retry
+attempts, event connection state and recovery distinguishable. Do not flatten
+branches or retries into a misleading single progress bar or claim completed
+steps from missing events. Restyle existing map/timeline; no new visualization
+engine.
+
+**V3 — Overview.** Replace the equal-card dashboard rhythm with an asymmetric
+workspace briefing: a wider Recent workflows region for resuming work, and a
+narrower Recent failed runs region; recent run activity follows as a readable
+list. Stack in meaningful reading order on mobile. Use existing bounded queries
+and capability gates. Label recent failures as recent failures, not unresolved
+incidents; do not assert health, uptime, totals or "all clear" from sampled
+data. Preserve independent errors/retries and freshness semantics. Empty states
+offer only supported actions; no invented charts, fake tasks or dashboard
+filler.
+
+**V4 — Editor and supporting surfaces.** Refine existing canvas nodes, palette,
+inspector and command bar with the same surface hierarchy; do not replace their
+logic or change graph geometry just to decorate. Group ordinary configuration
+first; raw JSON can move into an Advanced disclosure only if collapsing does not
+discard scratch edits, validation errors, focus recovery or discoverability of
+fields with no structured control. Preserve existing narrow-screen panel modes.
+Connections, members, notifications and settings receive the shared surface,
+toolbar and typography treatment where applicable, not invented grids or new
+routes. Keep danger zones and destructive confirmations visually distinct.
+Auth/selection receive only consistency fixes, not a fresh redesign.
+
+#### Component and state ownership
+
+Evolve existing `components/patterns/glass-section.tsx` and
+`aurora-loading-panel.tsx`; do not create competing GlassCard/AuroraTable kits.
+Shared primitives own only presentation. Workflow rows, run filters/chips,
+overview regions and editor sections remain separate meaningful modules inside
+their respective feature `components/` folders. Routes stay small compositions.
+Extract a shared toolbar/disclosure pattern only after two real uses demonstrate
+the same interface; no configurable universal dashboard/table framework.
+
+Tailwind handles layout/spacing/variants. Keep only tokens, necessary masks and
+keyframes in shared CSS. Do not add feature stylesheets for ordinary utilities.
+TanStack Query remains server-state owner, Router owns applied filters, local
+state owns disclosure/scratch input, and the scoped editor store owns draft
+state. No mirrored arrays, decorative useEffects, new global store, speculative
+memo wrappers or backend/API changes are part of this increment.
+
+#### Delivery order and acceptance gates
+
+Implement V0 → V1 → V2 → V3 → V4 sequentially. Before V0, record baseline
+screenshots of actual current screens and a concise contract/field inventory for
+each page. Build V1 as a real production page, not a permanent demo route, then
+inspect and self-critique it before spreading the visual system. Continue
+without requiring user approval at every step; ask only for a consequential
+scope/contract choice. Reject a pass that merely adds gradients to the unchanged
+generic layout.
+
+For each slice inspect 1440×900, 1024×768 and 390×844, with a 320px reflow
+check. Capture populated, initial-loading, refresh-with-data, empty,
+error/retry, permission-restricted and long-name states where applicable. Use
+realistic contract-valid fixtures, never production UI mock data. Verify
+keyboard focus, menus/dialog focus return, filter chips, browser history,
+reduced motion and forced colors. No whole-page horizontal overflow; intentional
+canvas/table overflow stays local, keyboard-accessible and signposted. Text
+truncation must offer a usable way to inspect the full name. Preserve controls
+at 200% zoom.
+
+Check text contrast on composited glass, not just token pairs (4.5:1 ordinary
+text, 3:1 large text; 3:1 meaningful control boundaries/focus). Inspect dense
+data and active aurora in the browser for scroll/input responsiveness; record a
+representative before/after trace if effects introduce visible jank. Keep large
+blur animations off repeated rows/nodes. Do not claim performance improvements
+without measurement.
+
+Run web build, typecheck, lint, unit tests and Chromium journeys after the final
+pass; targeted behavior tests accompany each changed interaction. Run React
+Doctor and triage changed-file diagnostics. Preserve invitation identity/retry
+tests, editor save/conflict/dirty-navigation tests, run filter/pagination tests,
+permission gates and lazy route boundaries. Report visual evidence separately
+from mocked API verification; do not claim live backend/provider coverage.
+
+Completion evidence belongs here: slice status, changed owners, screenshots,
+commands/results and remaining limitations. No new audit-document collection.
+Leave changes uncommitted for independent review. Optional refinements must not
+delay correctness or expand into billing, AI features, templates or backend
+work.
+
+#### Visual-refinement delivery evidence (2026-09-22)
+
+- V0 is implemented: ordinary pages use the compact 13.5rem labeled workspace
+  sidebar without a second desktop header; the editor uses a dedicated
+  full-width route shell with its own command bar and an accessible
+  workspace/account menu. Dirty-editor logout, navigation and panel behavior
+  remain covered. Chromium bounds checks keep the editable canvas wider than
+  350px at 390px, 990px at 1024px, 680px at 1280px and 830px at 1440px. No
+  pre-change pixel baseline was captured, so this records final usable bounds
+  rather than an invented gain.
+- V1 is implemented in `features/workflows/components/workflow-collection.tsx`:
+  one glass collection surface, a single responsive semantic row composition,
+  names as the sole primary navigation target, separate lifecycle/activation
+  labels, retained-data refresh feedback and existing pagination/recovery. The
+  previous duplicated desktop/mobile interactive markup was rejected during the
+  self-critique and replaced rather than shipped.
+- V2 is implemented in the workflow-runs feature: common filters stay visible,
+  exact identifiers/dates use an accessible disclosure, applied URL filters are
+  removable chips, and run rows prioritize workflow, outcome and time. Run
+  detail consolidates identity metadata and retains the exact accepted-version
+  label. Browser inspection found the six-column layout clipping at 1024px; its
+  wide breakpoint now begins at 1280px.
+- V3 is implemented as an asymmetric briefing: recent workflows occupy the wider
+  region, recent failed runs the narrower region, and recent run activity
+  follows. Each query keeps independent loading, retained-data error and retry
+  behavior; no aggregate or health claim was added.
+- V4 is implemented without editor-state rewrites: the command bar and palette
+  are denser, advanced JSON is a disclosure that remains mounted, active
+  execution and actual pending surfaces reuse `AuroraLoadingPanel`, and
+  connections, members, notifications and workspace settings receive the shared
+  typography/surface treatment. Aurora is deliberately absent from stable rows
+  and cards.
+- Rendered Chromium inspection used contract-valid local fixtures at 1440×900,
+  1024×768, 390×844 and 320px. It covered populated workflows, runs, overview
+  and editor composition, long names and final responsive reflow. The visual
+  reference comparison to `dynamic-process-v3` was source-only because that
+  application was not run; no screenshot-fidelity claim is made.
+  Initial/refresh/error/permission behaviors have component and browser
+  coverage, but every state was not manually captured as a screenshot.
+- Verification: `pnpm --filter @pertexo/web test` passed 25 files / 227 tests;
+  `pnpm --filter @pertexo/web test:e2e` passed 43 Chromium journeys; the E2E
+  command also completed web typecheck and production build. Standalone web
+  typecheck and lint passed. Responsive regressions cover contained workflow
+  metadata at 320/390/768/1024/1440px, a single next-page failure/retry action,
+  long removable run-filter chips, the editor command bar, keyboard focus and
+  forced colors. React Doctor (`--scope changed`) reported 28 diagnostics and
+  score 72; the design scan reported 3 advisory diagnostics. Changed-surface
+  findings for tiny identifiers, the editor shadow and native-select text were
+  corrected. Remaining complexity warnings reflect explicit recovery/state
+  branches, two input-mapping label findings predate this visual slice, and
+  invitation diagnostics remain owned by the separate invitation work; no
+  warning was suppressed.
+- Composited glass contrast was checked for the changed tokens: foreground
+  13.50:1, muted foreground 10.23:1, cyan focus 12.10:1 and control boundary
+  3.30:1. Chromium forced-colors behavior and a 720-CSS-pixel 200%-zoom
+  equivalent were inspected with keyboard focus; actual browser zoom was not
+  manually driven.
+- Remaining gates: live backend/OIDC inspection, Firefox/WebKit, actual browser
+  zoom and a representative interaction performance trace were not executed. The
+  dynamic reference was not run. These limitations prevent a cross-browser/live-
+  system visual-completion claim but do not invalidate the executed Chromium
+  regressions.
 
 ## 12. Other web concerns we must not leave implicit
 
@@ -2612,9 +2933,9 @@ current user/workspace discovery, and navigate only on explicit user action.
 ##### Delivery status and evidence
 
 - ADR 038, shared schemas/OpenAPI, migration `0094` plus forward corrective
-  migrations `0095`, `0096` and `0097`, forced-RLS invitation, receipt, delivery
-  and acceptance records, current-state authorization, generation fencing, exact
-  command replay, audit and session rotation are implemented.
+  migrations `0095`, `0096`, `0097` and `0100`, forced-RLS invitation, receipt,
+  delivery and acceptance records, current-state authorization, generation
+  fencing, exact command replay, audit and session rotation are implemented.
 - The API owns manager commands and browser-bound acceptance. The durable worker
   uses a dedicated application credential, fixed template and provider
   idempotency per delivery attempt; no workflow/customer credential
@@ -2706,6 +3027,32 @@ current user/workspace discovery, and navigate only on explicit user action.
   because `API_IDENTITY_INTEGRATION=true` and an explicitly provisioned
   API/Redis integration environment were unavailable; these updated assertions
   are therefore not claimed as newly executed full-stack evidence.
+- The 2026-09-22 invitation-hardening pass verifies the original authenticated
+  user before every manager command dispatch, including exact uncertain retries;
+  a changed identity cannot submit the retained body/key. Tokenless acceptance
+  bootstrap failures now expose a working status-read retry. Parsed provider 5xx
+  errors and concurrent-idempotency responses retain the sealed delivery
+  attempt, while definite 4xx rejection remains terminal. Forward migration
+  `0100` snapshots the workspace display name on each delivery attempt so an
+  uncertain provider retry renders the same subject/body under the same provider
+  key after a workspace rename. Unexpired completed receipt intents now remain
+  live replacement-lineage descendants and fence delayed stale ancestors as
+  specified above.
+- Executed 2026-09-22 evidence: web component/unit 25 files / 224 tests; worker
+  unit 60 files / 752 tests, including the real Resend-client-to-worker
+  classification seam and repeat-render equality; database unit 113 files / 768
+  tests; disposable PostgreSQL identity/workspace 60/60, including stable
+  delivery snapshots and completed-successor fencing; migration execution and
+  retained-repair 4/4; transient-retention 8/8, including the snapshotted
+  delivery-attempt fixture; mocked-boundary Chromium 41/41, including tokenless
+  failure/retry. Web/worker/database typechecks and builds, repository lint,
+  schema ownership 5/5, architecture 19/19, contract generation check (with the
+  existing identity-workspace OpenAPI 2XX warning) and `git diff --check`
+  passed. Changed-scope React Doctor ran with untracked files included and all
+  uploads disabled; its 26 advisory findings are pre-existing broad-component or
+  heuristic diagnostics, including a false-positive cache-invalidation warning
+  where the invitation hook explicitly invalidates after the awaited mutation.
+  No finding established a regression in this pass.
 - Controlled managed-provider email delivery, production sender/domain
   verification and Firefox/WebKit remain explicit environment gates until run;
   the slice is implemented and locally verified but is not fully

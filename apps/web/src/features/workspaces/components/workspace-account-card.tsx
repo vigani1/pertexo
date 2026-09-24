@@ -2,8 +2,10 @@ import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
-import { LogOutIcon, PanelsTopLeftIcon } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { LogOutIcon, PanelsTopLeftIcon, ShieldCheckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 
 export function WorkspaceAccountCard({
   user,
@@ -56,6 +58,16 @@ export function WorkspaceAccountCard({
         <PanelsTopLeftIcon data-icon="inline-start" aria-hidden="true" />
         Change workspace
       </Button>
+      <Link
+        to="/account/security"
+        className={buttonVariants({
+          variant: 'ghost',
+          className: 'justify-start',
+        })}
+      >
+        <ShieldCheckIcon data-icon="inline-start" aria-hidden="true" />
+        Account security
+      </Link>
       <Button
         type="button"
         variant="ghost"

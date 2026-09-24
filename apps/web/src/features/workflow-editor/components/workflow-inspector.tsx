@@ -4,6 +4,7 @@ import {
   workflowGraphSchema,
   type WorkflowGraphContract,
 } from '@pertexo/contracts/schemas/workflow-authoring';
+import { ChevronDownIcon } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -24,23 +25,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useEditorStore } from '../model/editor-store-context';
-import {
-  removeWorkflowNode,
-  connectWorkflowNodes,
-  updateWorkflowNode,
-} from '../model/graph-adapter';
-import {
-  isJsonObject,
-  applyOrdinaryFieldScratch,
-  applyNumericScratch,
-  numericScratchFor,
-  ordinaryFieldScratchFor,
-  parseJson,
-  persistedNodeState,
-  schemaFields,
-  type NodeConfig,
-  type SchemaFieldSpec,
-} from '../model/inspector-draft';
+import { removeWorkflowNode, updateWorkflowNode } from '../model/graph-adapter';
+import { persistedNodeState, schemaFields } from '../model/inspector-draft';
+import { useNodeConfigurationDraft } from '../model/use-node-configuration-draft';
 import {
   directPredecessorOptions,
   inputKeySuggestions,
@@ -55,19 +42,21 @@ import {
   type InputMappingRowErrors,
 } from '../model/input-mappings';
 import { InputMappingsSection } from './inspector/input-mappings/input-mappings-section';
+import { GraphEdgeControls } from './inspector/graph-edge-controls';
 import { NodeInspectorHeader } from './inspector/node-inspector-header';
+import { SchemaField } from './inspector/schema-field';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 export type WorkflowInspectorHandle = Readonly<{
   apply: () => boolean;
+  isDirty: () => boolean;
 }>;
 
 export function WorkflowInspector({
   definitions,
   connections,
   editable,
-  onFormDirtyChange,
   actionRef,
   scratchVersion,
   focusTarget,
@@ -75,7 +64,6 @@ export function WorkflowInspector({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   editable: boolean;
-  onFormDirtyChange: (dirty: boolean) => void;
   actionRef: Ref<WorkflowInspectorHandle>;
   scratchVersion: number;
   focusTarget?: Readonly<{
@@ -99,12 +87,7 @@ export function WorkflowInspector({
         className="border-l border-white/8 bg-card/65 p-5 backdrop-blur-xl"
         aria-label="Node inspector"
       >
-        <p className="font-mono text-[0.64rem] tracking-[0.14em] text-primary/75 uppercase">
-          Inspector
-        </p>
-        <h2 className="mt-2 font-heading text-lg font-semibold">
-          Nothing selected
-        </h2>
+        <h2 className="font-heading text-lg font-semibold">Nothing selected</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Select a node on the canvas to edit its label and configuration.
         </p>
@@ -119,7 +102,6 @@ export function WorkflowInspector({
       connections={connections}
       editable={editable}
       {...(definition === undefined ? {} : { definition })}
-      onFormDirtyChange={onFormDirtyChange}
       actionRef={actionRef}
       {...(focusTarget === undefined ? {} : { focusTarget })}
     />
@@ -133,7 +115,6 @@ function NodeInspectorForm({
   connections,
   editable,
   definition,
-  onFormDirtyChange,
   actionRef,
   focusTarget,
 }: Readonly<{
@@ -143,7 +124,6 @@ function NodeInspectorForm({
   connections: readonly ConnectionResponse[];
   editable: boolean;
   definition?: NodeDefinitionCatalogItem;
-  onFormDirtyChange: (dirty: boolean) => void;
   actionRef: Ref<WorkflowInspectorHandle>;
   focusTarget?: Readonly<{
     nodeId: string;
@@ -155,18 +135,14 @@ function NodeInspectorForm({
   const transact = useEditorStore((state) => state.transact);
   const selectNode = useEditorStore((state) => state.selectNode);
   const [label, setLabel] = useState(node.label ?? '');
-  const [json, setJson] = useState(() => JSON.stringify(node.config, null, 2));
   const [connectionRefs, setConnectionRefs] = useState(node.connectionRefs);
-  const [error, setError] = useState<string>();
-  const [fieldErrors, setFieldErrors] = useState<
-    Readonly<Record<string, string>>
-  >({});
-  const [sourceNodeId, setSourceNodeId] = useState('');
-  const [sourcePort, setSourcePort] = useState('');
-  const [targetPort, setTargetPort] = useState('');
   const fields = useMemo(
     () => schemaFields(definition?.configSchema),
     [definition?.configSchema],
+  );
+  const configuration = useNodeConfigurationDraft(node.config, fields);
+  const [advancedOpen, setAdvancedOpen] = useState(
+    definition === undefined || fields.length === 0,
   );
   const mappingSectionEnabled = !nodeUsesRunInputDirectly(node.definition);
   const initialMappingRows = useMemo(
@@ -188,56 +164,12 @@ function NodeInspectorForm({
     liveMappingErrors,
     mappingErrors,
   );
-  const parsedConfig = parseJson(json);
-  const config = isJsonObject(parsedConfig) ? parsedConfig : node.config;
-  const initialNumericScratch = useMemo(
-    () => numericScratchFor(node.config, fields),
-    [fields, node.config],
-  );
-  const [numericScratch, setNumericScratch] = useState(initialNumericScratch);
-  const numericScratchOwners = useRef(new Set<string>());
-  const initialOrdinaryScratch = useMemo(
-    () => ordinaryFieldScratchFor(node.config, fields),
-    [fields, node.config],
-  );
-  const [ordinaryScratch, setOrdinaryScratch] = useState(
-    initialOrdinaryScratch,
-  );
-  const [ordinaryScratchOwners, setOrdinaryScratchOwners] = useState<
-    ReadonlySet<string>
-  >(new Set());
-  const latestValidJsonConfig = useRef<NodeConfig>(node.config);
-  const sourceNode = graph.nodes.find(
-    (candidate) => candidate.id === sourceNodeId,
-  );
-  const sourceDefinition = definitions.find(
-    (candidate) =>
-      candidate.definition.key === sourceNode?.definition.key &&
-      candidate.definition.version === sourceNode.definition.version,
-  );
-  const initial = useMemo(
-    () =>
-      JSON.stringify({
-        label: node.label ?? '',
-        config: node.config,
-        connectionRefs: node.connectionRefs,
-      }),
-    [node.config, node.connectionRefs, node.label],
-  );
   const dirty =
-    JSON.stringify({ label, config: parseJson(json), connectionRefs }) !==
-      initial ||
+    label !== (node.label ?? '') ||
+    JSON.stringify(connectionRefs) !== JSON.stringify(node.connectionRefs) ||
+    configuration.dirty ||
     (mappingSectionEnabled &&
-      JSON.stringify(mappingRows) !== JSON.stringify(initialMappingRows)) ||
-    JSON.stringify(numericScratch) !== JSON.stringify(initialNumericScratch) ||
-    JSON.stringify(ordinaryScratch) !== JSON.stringify(initialOrdinaryScratch);
-
-  useEffect(() => {
-    onFormDirtyChange(dirty);
-    return () => {
-      onFormDirtyChange(false);
-    };
-  }, [dirty, onFormDirtyChange]);
+      JSON.stringify(mappingRows) !== JSON.stringify(initialMappingRows));
 
   useEffect(() => {
     if (focusTarget?.nodeId !== node.id) return;
@@ -257,30 +189,15 @@ function NodeInspectorForm({
   }, [focusTarget, initialMappingRows, node.id]);
 
   const apply = useCallback(() => {
-    const parsed = parseJson(json);
-    if (parsed === undefined || !isJsonObject(parsed)) {
-      setError('Configuration must be a valid JSON object.');
+    const validated = configuration.validate();
+    if (validated.kind === 'json') {
+      setAdvancedOpen(true);
       return false;
     }
-    const reconciled = applyOrdinaryFieldScratch(
-      parsed,
-      ordinaryScratch,
-      ordinaryScratchOwners,
-    );
-    const numeric = applyNumericScratch(
-      reconciled,
-      fields,
-      numericScratch,
-      numericScratchOwners.current,
-    );
-    if (numeric.config === undefined) {
-      setFieldErrors(numeric.errors);
-      const firstInvalid = fields.find(
-        (field) => numeric.errors[field.key] !== undefined,
-      );
-      if (firstInvalid !== undefined)
+    if (validated.kind === 'field') {
+      if (validated.firstInvalidKey !== undefined)
         document
-          .getElementById(`config-${node.id}-${firstInvalid.key}`)
+          .getElementById(`config-${node.id}-${validated.firstInvalidKey}`)
           ?.focus();
       return false;
     }
@@ -295,7 +212,7 @@ function NodeInspectorForm({
     }
     const nextGraph = updateWorkflowNode(graph, node.id, {
       label: label.trim() === '' ? undefined : label.trim(),
-      config: numeric.config,
+      config: validated.config,
       inputMappings: mappings.inputMappings,
       connectionRefs,
     });
@@ -306,143 +223,26 @@ function NodeInspectorForm({
       return false;
     }
     transact(nextGraph);
-    setError(undefined);
-    setFieldErrors({});
+    configuration.clearErrors();
     setMappingErrors({});
     setMappingSectionError(undefined);
     return true;
   }, [
+    configuration,
     connectionRefs,
-    fields,
     graph,
-    json,
     label,
     mappingRows,
     mappingSectionEnabled,
     node.inputMappings,
     node.id,
-    numericScratch,
-    ordinaryScratch,
-    ordinaryScratchOwners,
     transact,
   ]);
 
-  useImperativeHandle(actionRef, () => ({ apply }), [apply]);
-
-  function updateConfigValue(key: string, value: NodeConfig[string]) {
-    setOrdinaryScratch((current) => ({ ...current, [key]: value }));
-    const parsed = parseJson(json);
-    if (!isJsonObject(parsed)) {
-      setOrdinaryScratchOwners((current) => new Set(current).add(key));
-      return;
-    }
-    setOrdinaryScratchOwners(
-      (current) => new Set([...current].filter((fieldKey) => fieldKey !== key)),
-    );
-    const next = { ...parsed, [key]: value };
-    latestValidJsonConfig.current = next;
-    setJson(JSON.stringify(next, null, 2));
-  }
-
-  function updateNumericScratch(field: SchemaFieldSpec, value: string) {
-    setNumericScratch((current) => ({ ...current, [field.key]: value }));
-    const parsed = parseJson(json);
-    if (!isJsonObject(parsed)) {
-      numericScratchOwners.current.add(field.key);
-      return;
-    }
-    const applied = applyNumericScratch(parsed, [field], {
-      [field.key]: value,
-    });
-    if (applied.config === undefined) {
-      numericScratchOwners.current.add(field.key);
-      return;
-    }
-    numericScratchOwners.current.delete(field.key);
-    latestValidJsonConfig.current = applied.config;
-    setJson(JSON.stringify(applied.config, null, 2));
-  }
-
-  function updateAdvancedJson(value: string) {
-    setJson(value);
-    const parsed = parseJson(value);
-    if (!isJsonObject(parsed)) return;
-    const previous = latestValidJsonConfig.current;
-    latestValidJsonConfig.current = parsed;
-    const ordinaryChanges = fields.flatMap((field) => {
-      if (field.kind === 'number' || field.kind === 'integer') return [];
-      const wasPresent = Object.prototype.hasOwnProperty.call(
-        previous,
-        field.key,
-      );
-      const isPresent = Object.prototype.hasOwnProperty.call(parsed, field.key);
-      if (
-        wasPresent === isPresent &&
-        Object.is(previous[field.key], parsed[field.key])
-      )
-        return [];
-      return [[field.key, parsed[field.key]] as const];
-    });
-    if (ordinaryChanges.length > 0) {
-      const changedKeys = new Set(
-        ordinaryChanges.map(([fieldKey]) => fieldKey),
-      );
-      setOrdinaryScratchOwners(
-        (current) =>
-          new Set(
-            [...current].filter((fieldKey) => !changedKeys.has(fieldKey)),
-          ),
-      );
-    }
-    if (ordinaryChanges.length > 0)
-      setOrdinaryScratch((current) => {
-        const next = { ...current };
-        for (const [fieldKey, scratchValue] of ordinaryChanges)
-          next[fieldKey] = scratchValue;
-        return next;
-      });
-    const numericChanges = fields.flatMap((field) => {
-      if (field.kind !== 'number' && field.kind !== 'integer') return [];
-      const wasPresent = Object.prototype.hasOwnProperty.call(
-        previous,
-        field.key,
-      );
-      const isPresent = Object.prototype.hasOwnProperty.call(parsed, field.key);
-      if (
-        wasPresent === isPresent &&
-        Object.is(previous[field.key], parsed[field.key])
-      )
-        return [];
-      const parsedValue = parsed[field.key];
-      return [
-        [
-          field.key,
-          typeof parsedValue === 'number' && Number.isFinite(parsedValue)
-            ? String(parsedValue)
-            : '',
-        ] as const,
-      ];
-    });
-    for (const [fieldKey] of numericChanges)
-      numericScratchOwners.current.delete(fieldKey);
-    if (numericChanges.length === 0) return;
-    setNumericScratch((current) => {
-      const next = { ...current };
-      for (const [fieldKey, scratchValue] of numericChanges)
-        next[fieldKey] = scratchValue;
-      return next;
-    });
-  }
-
-  function connect() {
-    const next = connectWorkflowNodes(graph, {
-      source: sourceNodeId,
-      sourceHandle: sourcePort,
-      target: node.id,
-      targetHandle: targetPort,
-    });
-    if (next !== null) transact(next);
-  }
+  useImperativeHandle(actionRef, () => ({ apply, isDirty: () => dirty }), [
+    apply,
+    dirty,
+  ]);
 
   function updateMappingRows(rows: readonly InputMappingDraftRow[]) {
     setMappingRows(rows);
@@ -482,31 +282,25 @@ function NodeInspectorForm({
               key={field.key}
               field={field}
               value={
-                ordinaryScratchOwners.has(field.key)
-                  ? ordinaryScratch[field.key]
-                  : config[field.key]
+                configuration.ordinaryScratchOwners.has(field.key)
+                  ? configuration.ordinaryScratch[field.key]
+                  : configuration.config[field.key]
               }
               nodeId={node.id}
               {...(field.kind === 'number' || field.kind === 'integer'
-                ? { scratchValue: numericScratch[field.key] ?? '' }
+                ? {
+                    scratchValue: configuration.numericScratch[field.key] ?? '',
+                  }
                 : {})}
-              {...(fieldErrors[field.key] === undefined
+              {...(configuration.fieldErrors[field.key] === undefined
                 ? {}
-                : { error: fieldErrors[field.key] })}
+                : { error: configuration.fieldErrors[field.key] })}
               disabled={!editable}
               onChange={(value) => {
-                updateConfigValue(field.key, value);
+                configuration.updateField(field.key, value);
               }}
               onScratchChange={(value) => {
-                updateNumericScratch(field, value);
-                setFieldErrors((current) => {
-                  if (current[field.key] === undefined) return current;
-                  return Object.fromEntries(
-                    Object.entries(current).filter(
-                      ([key]) => key !== field.key,
-                    ),
-                  );
-                });
+                configuration.updateNumber(field, value);
               }}
             />
           ))}
@@ -557,29 +351,48 @@ function NodeInspectorForm({
               </Field>
             );
           })}
-          <Field data-invalid={error !== undefined}>
-            <FieldLabel htmlFor={`node-config-${node.id}`}>
-              Configuration
-            </FieldLabel>
-            <Textarea
-              id={`node-config-${node.id}`}
-              name="nodeConfiguration"
-              autoComplete="off"
-              className="min-h-64 font-mono text-base"
-              value={json}
-              disabled={!editable}
-              aria-invalid={error !== undefined}
-              onChange={(event) => {
-                updateAdvancedJson(event.currentTarget.value);
-              }}
-            />
-            <FieldDescription>
-              {definition === undefined
-                ? 'This definition is not in the current catalog. Its complete configuration is preserved.'
-                : 'JSON Schema fields are preserved exactly. Advanced JSON covers schemas beyond the first form renderer.'}
-            </FieldDescription>
-            {error === undefined ? null : <FieldError>{error}</FieldError>}
-          </Field>
+          <details
+            open={advancedOpen}
+            onToggle={(event) => {
+              setAdvancedOpen(event.currentTarget.open);
+            }}
+            className="rounded-lg border border-white/8 bg-black/10"
+          >
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-3 text-sm font-medium hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              Advanced configuration
+              <ChevronDownIcon
+                aria-hidden="true"
+                className={advancedOpen ? 'rotate-180' : undefined}
+              />
+            </summary>
+            <div className="border-t border-white/8 p-3">
+              <Field data-invalid={configuration.error !== undefined}>
+                <FieldLabel htmlFor={`node-config-${node.id}`}>
+                  Configuration
+                </FieldLabel>
+                <Textarea
+                  id={`node-config-${node.id}`}
+                  name="nodeConfiguration"
+                  autoComplete="off"
+                  className="min-h-64 font-mono text-base"
+                  value={configuration.json}
+                  disabled={!editable}
+                  aria-invalid={configuration.error !== undefined}
+                  onChange={(event) => {
+                    configuration.updateJson(event.currentTarget.value);
+                  }}
+                />
+                <FieldDescription>
+                  {definition === undefined
+                    ? 'This definition is not in the current catalog. Its complete configuration is preserved.'
+                    : 'JSON Schema fields are preserved exactly. Use JSON for properties without a structured control.'}
+                </FieldDescription>
+                {configuration.error === undefined ? null : (
+                  <FieldError>{configuration.error}</FieldError>
+                )}
+              </Field>
+            </div>
+          </details>
           {mappingSectionEnabled ? (
             <InputMappingsSection
               nodeId={node.id}
@@ -607,89 +420,12 @@ function NodeInspectorForm({
             </p>
           )}
           {editable && graph.nodes.length > 1 ? (
-            <FieldGroup className="rounded-lg border border-white/8 bg-black/15 p-3">
-              <Field>
-                <FieldLabel htmlFor={`source-node-${node.id}`}>
-                  Connect from node
-                </FieldLabel>
-                <select
-                  id={`source-node-${node.id}`}
-                  name="sourceNode"
-                  autoComplete="off"
-                  className="recessed-control h-10 rounded-lg border px-3 text-base"
-                  value={sourceNodeId}
-                  onChange={(event) => {
-                    setSourceNodeId(event.currentTarget.value);
-                    setSourcePort('');
-                  }}
-                >
-                  <option value="">Choose a source node</option>
-                  {graph.nodes
-                    .filter((candidate) => candidate.id !== node.id)
-                    .map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label ?? candidate.definition.key}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={`source-port-${node.id}`}>
-                  Source output
-                </FieldLabel>
-                <select
-                  id={`source-port-${node.id}`}
-                  name="sourcePort"
-                  autoComplete="off"
-                  className="recessed-control h-10 rounded-lg border px-3 text-base"
-                  value={sourcePort}
-                  onChange={(event) => {
-                    setSourcePort(event.currentTarget.value);
-                  }}
-                >
-                  <option value="">Choose an output</option>
-                  {(sourceDefinition?.ports.outputs ?? []).map((port) => (
-                    <option key={port} value={port}>
-                      {port}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={`target-port-${node.id}`}>
-                  Target input
-                </FieldLabel>
-                <select
-                  id={`target-port-${node.id}`}
-                  name="targetPort"
-                  autoComplete="off"
-                  className="recessed-control h-10 rounded-lg border px-3 text-base"
-                  value={targetPort}
-                  onChange={(event) => {
-                    setTargetPort(event.currentTarget.value);
-                  }}
-                >
-                  <option value="">Choose an input</option>
-                  {(
-                    definition?.ports.inputs ?? Object.keys(node.inputMappings)
-                  ).map((port) => (
-                    <option key={port} value={port}>
-                      {port}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={
-                  sourceNodeId === '' || sourcePort === '' || targetPort === ''
-                }
-                onClick={connect}
-              >
-                Connect nodes
-              </Button>
-            </FieldGroup>
+            <GraphEdgeControls
+              node={node}
+              graph={graph}
+              definitions={definitions}
+              {...(definition === undefined ? {} : { definition })}
+            />
           ) : null}
           {editable ? (
             <div className="flex flex-wrap gap-2">
@@ -702,16 +438,9 @@ function NodeInspectorForm({
                 disabled={!dirty}
                 onClick={() => {
                   setLabel(node.label ?? '');
-                  setJson(JSON.stringify(node.config, null, 2));
                   setConnectionRefs(node.connectionRefs);
                   setMappingRows(initialMappingRows);
-                  setNumericScratch(initialNumericScratch);
-                  setOrdinaryScratch(initialOrdinaryScratch);
-                  numericScratchOwners.current.clear();
-                  setOrdinaryScratchOwners(new Set());
-                  latestValidJsonConfig.current = node.config;
-                  setError(undefined);
-                  setFieldErrors({});
+                  configuration.discard();
                   setMappingErrors({});
                   setMappingSectionError(undefined);
                 }}
@@ -733,113 +462,6 @@ function NodeInspectorForm({
         </FieldGroup>
       </div>
     </aside>
-  );
-}
-
-function SchemaField({
-  field,
-  value,
-  nodeId,
-  scratchValue,
-  error,
-  disabled,
-  onChange,
-  onScratchChange,
-}: Readonly<{
-  field: SchemaFieldSpec;
-  value: NodeConfig[string] | undefined;
-  nodeId: string;
-  scratchValue?: string;
-  error?: string;
-  disabled: boolean;
-  onChange: (value: NodeConfig[string]) => void;
-  onScratchChange: (value: string) => void;
-}>) {
-  if (field.kind === 'boolean')
-    return (
-      <Field>
-        <label className="flex items-center gap-3 text-sm">
-          <input
-            id={`config-${nodeId}-${field.key}`}
-            type="checkbox"
-            name={`config.${field.key}`}
-            checked={value === true}
-            disabled={disabled}
-            onChange={(event) => {
-              onChange(event.currentTarget.checked);
-            }}
-          />
-          {field.label}
-        </label>
-      </Field>
-    );
-  if (field.options !== undefined)
-    return (
-      <Field>
-        <FieldLabel htmlFor={`config-${nodeId}-${field.key}`}>
-          {field.label}
-        </FieldLabel>
-        <select
-          id={`config-${nodeId}-${field.key}`}
-          name={`config.${field.key}`}
-          autoComplete="off"
-          className="recessed-control h-10 rounded-lg border px-3 text-base"
-          value={typeof value === 'string' ? value : ''}
-          disabled={disabled}
-          onChange={(event) => {
-            onChange(event.currentTarget.value);
-          }}
-        >
-          <option value="">Choose a value</option>
-          {field.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </Field>
-    );
-  return (
-    <Field data-invalid={error !== undefined}>
-      <FieldLabel htmlFor={`config-${nodeId}-${field.key}`}>
-        {field.label}
-      </FieldLabel>
-      <Input
-        id={`config-${nodeId}-${field.key}`}
-        name={`config.${field.key}`}
-        autoComplete="off"
-        type="text"
-        inputMode={
-          field.kind === 'number' || field.kind === 'integer'
-            ? 'decimal'
-            : undefined
-        }
-        value={
-          field.kind === 'number' || field.kind === 'integer'
-            ? scratchValue
-            : typeof value === 'string' || typeof value === 'number'
-              ? String(value)
-              : ''
-        }
-        disabled={disabled}
-        aria-invalid={error !== undefined}
-        aria-describedby={
-          error === undefined
-            ? undefined
-            : `config-${nodeId}-${field.key}-error`
-        }
-        onChange={(event) => {
-          if (field.kind === 'number' || field.kind === 'integer')
-            onScratchChange(event.currentTarget.value);
-          else onChange(event.currentTarget.value);
-        }}
-      />
-      {error === undefined ? null : (
-        <FieldError id={`config-${nodeId}-${field.key}-error`}>
-          {error}
-        </FieldError>
-      )}
-    </Field>
   );
 }
 

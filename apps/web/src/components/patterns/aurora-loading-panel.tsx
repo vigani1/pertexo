@@ -17,14 +17,23 @@ export function AuroraLoadingPanel({
       className={cn('relative isolate min-w-0 rounded-xl', className)}
       {...props}
     >
+      {active ? <AuroraBorder /> : null}
       {children}
-      {active ? (
-        <div
-          data-slot="aurora-border"
-          className="aurora-border"
-          aria-hidden="true"
-        />
-      ) : null}
+    </div>
+  );
+}
+
+export function AuroraBorder() {
+  return (
+    <div data-slot="aurora-border" className="aurora-border" aria-hidden="true">
+      <div className="aurora-border-glow">
+        <div className="aurora-border-glow-gradient" />
+      </div>
+      <div className="aurora-border-ring">
+        <div className="aurora-border-ring-mask">
+          <div className="aurora-border-ring-gradient" />
+        </div>
+      </div>
     </div>
   );
 }

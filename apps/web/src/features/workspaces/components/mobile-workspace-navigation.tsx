@@ -23,6 +23,7 @@ export function MobileWorkspaceNavigation({
   logoutError,
   onChangeWorkspace,
   onLogout,
+  triggerVisibility = 'mobile',
 }: Readonly<{
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
@@ -30,6 +31,7 @@ export function MobileWorkspaceNavigation({
   logoutError?: string;
   onChangeWorkspace: () => void;
   onLogout: () => void;
+  triggerVisibility?: 'mobile' | 'always';
 }>) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -50,7 +52,7 @@ export function MobileWorkspaceNavigation({
             variant="ghost"
             size="icon-lg"
             aria-label="Open navigation"
-            className="lg:hidden"
+            className={triggerVisibility === 'mobile' ? 'lg:hidden' : undefined}
           />
         }
       >

@@ -333,6 +333,38 @@ describe('invitation acceptance', () => {
     expect(openWorkspaceDiscovery).toHaveBeenCalledOnce();
   });
 
+  it('retries a tokenless continuation read after a transient bootstrap failure', async () => {
+    let reads = 0;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/invitation-acceptance', () => {
+        reads += 1;
+        if (reads === 1) return HttpResponse.error();
+        return HttpResponse.json({ state: 'unavailable' });
+      }),
+    );
+    const browser = userEvent.setup();
+    render(
+      <InvitationAcceptancePage
+        apiClient={componentApiClient()}
+        clearFragment={vi.fn()}
+        navigateToProvider={vi.fn()}
+        openWorkspace={vi.fn()}
+        openSignIn={vi.fn()}
+        openWorkspaceDiscovery={vi.fn()}
+      />,
+    );
+
+    await browser.click(
+      await screen.findByRole('button', {
+        name: 'Retry invitation status',
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Sign in' }),
+    ).toBeVisible();
+    expect(reads).toBe(2);
+  });
+
   it('boots the same invitation link when it is reopened on the mounted route', async () => {
     let resolveRequests = 0;
     mockServer.use(

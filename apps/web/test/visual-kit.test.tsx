@@ -14,6 +14,7 @@ import {
   FieldLabel,
 } from '../src/components/ui/field';
 import { AuroraLoadingPanel } from '../src/components/patterns/aurora-loading-panel';
+import { LoadingOrb } from '../src/components/patterns/loading-orb';
 
 describe('ported visual primitives', () => {
   it('keeps destructive actions disabled and styled links semantic', async () => {
@@ -93,5 +94,19 @@ describe('ported visual primitives', () => {
     expect(screen.getByRole('textbox')).toHaveValue('Keep me');
     rerender(<AuroraLoadingPanel active={false}>{content}</AuroraLoadingPanel>);
     expect(screen.getByRole('textbox')).toHaveValue('Keep me');
+  });
+
+  it('keeps the compact loading orb decorative', () => {
+    const { container } = render(
+      <button type="button">
+        <LoadingOrb />
+        Signing in…
+      </button>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Signing in…' })).toBeVisible();
+    expect(
+      container.querySelector('[data-slot="loading-orb"]'),
+    ).toHaveAttribute('aria-hidden', 'true');
   });
 });

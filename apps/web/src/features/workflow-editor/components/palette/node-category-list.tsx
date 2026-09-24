@@ -14,7 +14,7 @@ export function NodeCategoryList({
     <section aria-labelledby={`palette-${family}`}>
       <h3
         id={`palette-${family}`}
-        className="px-2.5 font-mono text-[0.64rem] font-semibold tracking-[0.14em] text-primary/75 uppercase"
+        className="px-2.5 font-mono text-xs font-semibold tracking-[0.14em] text-primary/75 uppercase"
       >
         {family}
       </h3>
