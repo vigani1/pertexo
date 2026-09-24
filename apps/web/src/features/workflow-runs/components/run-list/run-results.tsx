@@ -13,7 +13,7 @@ import {
   type RunSearch,
 } from '../../model/run-search';
 import type { RunHistoryQuery } from '../../use-run-history';
-import { useNow } from '../../use-now';
+import { useNow } from '@/lib/use-now';
 import { RunLoom } from '../loom/run-loom';
 import { RunList } from './run-list';
 import {

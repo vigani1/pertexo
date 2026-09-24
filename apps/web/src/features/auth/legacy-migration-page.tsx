@@ -23,7 +23,8 @@ import {
   startLegacyMethodMigration,
   type LegacyMigrationStart,
 } from './legacy-migration.api';
-import { formatCountdown, useCountdown } from './use-countdown';
+import { formatCountdown } from '@/lib/format-time';
+import { useCountdown } from '@/lib/use-countdown';
 import { useLatestRequest } from './use-latest-request';
 
 const WINDOW_MS = 5 * 60_000;

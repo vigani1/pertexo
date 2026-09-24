@@ -17,7 +17,7 @@ import {
 } from './components/stage/lens-states';
 import { recoveryFailure } from './model/auth-failure';
 import { requestPasswordReset } from './native-auth.api';
-import { useCountdown } from './use-countdown';
+import { useCountdown } from '@/lib/use-countdown';
 
 const backToSignIn = (
   <AuthLensFooter>

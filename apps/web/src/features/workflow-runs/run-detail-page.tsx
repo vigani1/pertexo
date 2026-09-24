@@ -20,7 +20,7 @@ import { StepLens } from './components/run-detail/step-lens';
 import { describeRunSentence } from './model/run-sentence';
 import { isActiveRunStatus } from './model/run-status';
 import { buildThreadView, type ThreadRow } from './model/thread-view';
-import { useNow } from './use-now';
+import { useNow } from '@/lib/use-now';
 import { useRunEvents } from './use-run-events';
 import {
   workflowRunQueryOptions,

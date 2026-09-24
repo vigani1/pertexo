@@ -15,7 +15,7 @@ import {
   PasswordUnavailableLens,
 } from './components/stage/lens-states';
 import { resendVerificationEmail } from './native-auth.api';
-import { useCountdown } from './use-countdown';
+import { useCountdown } from '@/lib/use-countdown';
 
 export function SignUpPage({ apiClient }: Readonly<{ apiClient: ApiClient }>) {
   const capabilities = useQuery(

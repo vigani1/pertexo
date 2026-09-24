@@ -92,6 +92,13 @@ export function formatDurationMs(
   return `${String(minutes)}m ${String(seconds).padStart(2, '0')}s`;
 }
 
+/** "0:24", "4:59" — the instrument voice for a countdown in whole seconds. */
+export function formatCountdown(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 /** Duration between two instants; `end` defaults to now for live work. */
 export function elapsedMs(
   start: string | null | undefined,
