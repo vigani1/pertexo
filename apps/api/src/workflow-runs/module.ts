@@ -19,6 +19,7 @@ import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
 } from './ports.js';
+import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
 import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
   CancelWorkflowRunUseCase,
@@ -87,6 +88,13 @@ export class WorkflowRunsModule {
         ),
       },
       {
+        provide: GetWorkflowRunStatisticsUseCase,
+        useValue: new GetWorkflowRunStatisticsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
         provide: StreamRunEventsUseCase,
         useValue: new StreamRunEventsUseCase(
           dependencies.persistence,
@@ -112,6 +120,7 @@ export class WorkflowRunsModule {
         ReplayWorkflowRunUseCase,
         GetWorkflowRunUseCase,
         ListWorkflowRunsUseCase,
+        GetWorkflowRunStatisticsUseCase,
         StreamRunEventsUseCase,
         CancelWorkflowRunUseCase,
       ],

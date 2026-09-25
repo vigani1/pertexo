@@ -87,6 +87,9 @@ function controller() {
   const list = {
     execute: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   };
+  const statistics = {
+    execute: vi.fn().mockResolvedValue({ current: {} }),
+  };
   const cancel = {
     execute: vi.fn().mockResolvedValue({ run: {}, alreadyRequested: false }),
   };
@@ -113,6 +116,7 @@ function controller() {
       replay as never,
       get as never,
       list as never,
+      statistics as never,
       stream as never,
       cancel as never,
     ),
@@ -120,6 +124,7 @@ function controller() {
     replay,
     get,
     list,
+    statistics,
     stream,
     cancel,
   };
@@ -131,6 +136,7 @@ function streamController(
   drainState = new ApiDrainState(),
 ) {
   return new WorkflowRunsController(
+    { execute: vi.fn() } as never,
     { execute: vi.fn() } as never,
     { execute: vi.fn() } as never,
     { execute: vi.fn() } as never,
@@ -168,6 +174,44 @@ describe('workflow runs controller public seam', () => {
       fixture.instance.listRuns(request(), { workspaceId }, { unknown: true }),
     ).rejects.toBeDefined();
     expect(fixture.list.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('strictly parses a fixed statistics window and optional breakdown', async () => {
+    const fixture = controller();
+    await fixture.instance.getRunStatistics(
+      request(),
+      { workspaceId },
+      { window: '7d', breakdown: 'workflow' },
+    );
+    await fixture.instance.getRunStatistics(
+      request(),
+      { workspaceId },
+      undefined,
+    );
+    expect(fixture.statistics.execute).toHaveBeenNthCalledWith(1, {
+      actor: expect.objectContaining({ actorId, workspaceId }) as unknown,
+      routeWorkspaceId: workspaceId,
+      window: '7d',
+      breakdown: 'workflow',
+    });
+    expect(fixture.statistics.execute.mock.calls[1]?.[0]).not.toHaveProperty(
+      'window',
+    );
+    for (const query of [
+      { window: '30d' },
+      { createdAtFrom: '2026-08-20T00:00:00.000Z' },
+    ])
+      await expect(
+        fixture.instance.getRunStatistics(request(), { workspaceId }, query),
+      ).rejects.toBeDefined();
+    await expect(
+      fixture.instance.getRunStatistics(
+        request(),
+        { workspaceId: 'not-a-workspace' },
+        {},
+      ),
+    ).rejects.toBeDefined();
+    expect(fixture.statistics.execute).toHaveBeenCalledTimes(2);
   });
 
   it('forwards distinct sub-millisecond run-history boundaries', async () => {

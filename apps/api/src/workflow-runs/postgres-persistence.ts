@@ -89,6 +89,15 @@ export function createPostgresWorkflowRunPersistence(
         return mapPersistenceError(error);
       }
     },
+    statistics: async (
+      input: Parameters<WorkflowRunPersistence['statistics']>[0],
+    ) => {
+      try {
+        return await database.statistics(input);
+      } catch (error: unknown) {
+        return mapPersistenceError(error);
+      }
+    },
     cancel: async (input: CancelWorkflowRunCommand) => {
       try {
         const result = await database.cancel(input);

@@ -351,6 +351,30 @@ function run() {
   };
 }
 
+function statisticsRecord() {
+  const byStatus = {
+    queued: 1,
+    running: 2,
+    waiting: 0,
+    succeeded: 5,
+    failed: 1,
+    canceled: 0,
+    timed_out: 0,
+    outcome_unknown: 0,
+  };
+  return {
+    asOf: '2026-08-21T12:00:00.000000Z',
+    current: { queued: 1, running: 2, waiting: 0 },
+    window: {
+      duration: '24h' as const,
+      createdAtFrom: '2026-08-20T12:00:00.000000Z',
+      createdAtBefore: '2026-08-21T12:00:00.000000Z',
+      total: 9,
+      byStatus,
+    },
+  };
+}
+
 function databaseWith(
   overrides: Partial<WorkflowRunDatabase> = {},
 ): WorkflowRunDatabase {
@@ -370,6 +394,9 @@ function databaseWith(
     list: vi.fn<WorkflowRunDatabase['list']>().mockResolvedValue({
       items: [run()],
     }),
+    statistics: vi
+      .fn<WorkflowRunDatabase['statistics']>()
+      .mockResolvedValue(statisticsRecord()),
     cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
       run: run(),
       alreadyRequested: false,
@@ -386,8 +413,15 @@ const adapterConfig = parseDatabaseConfig({
 
 async function invokePersistence(
   adapter: ReturnType<typeof createPostgresWorkflowRunPersistence>,
-  operation: 'start' | 'replay' | 'get' | 'cancel',
+  operation: 'start' | 'replay' | 'get' | 'cancel' | 'statistics',
 ): Promise<unknown> {
+  if (operation === 'statistics')
+    return adapter.persistence.statistics({
+      workspaceId,
+      window: '24h',
+      includeWorkflows: false,
+      includeWorkflowName: true,
+    });
   if (operation === 'start')
     return adapter.persistence.start({
       actorId,
@@ -502,7 +536,27 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     );
   });
 
-  it.each(['start', 'replay', 'get', 'cancel'] as const)(
+  it('forwards a statistics read and returns its snapshot unchanged', async () => {
+    const statistics = vi
+      .fn<WorkflowRunDatabase['statistics']>()
+      .mockResolvedValue(statisticsRecord());
+    const adapter = createPostgresWorkflowRunPersistence(
+      adapterConfig,
+      databaseWith({ statistics }),
+    );
+
+    await expect(invokePersistence(adapter, 'statistics')).resolves.toEqual(
+      statisticsRecord(),
+    );
+    expect(statistics).toHaveBeenCalledWith({
+      workspaceId,
+      window: '24h',
+      includeWorkflows: false,
+      includeWorkflowName: true,
+    });
+  });
+
+  it.each(['start', 'replay', 'get', 'cancel', 'statistics'] as const)(
     'preserves an unknown %s persistence failure by identity',
     async (operation) => {
       const failure = Object.freeze({ operation, reason: 'unknown' });
@@ -586,6 +640,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       list: vi
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
+      statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
@@ -624,6 +679,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       list: vi
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
+      statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
       close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
     } satisfies WorkflowRunDatabase;
@@ -968,6 +1024,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
       list: vi
         .fn<WorkflowRunDatabase['list']>()
         .mockResolvedValue({ items: [] }),
+      statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
       cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
         run: run(),
         alreadyRequested: false,

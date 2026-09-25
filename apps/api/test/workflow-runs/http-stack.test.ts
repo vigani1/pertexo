@@ -93,6 +93,7 @@ function persistenceFixture() {
   const replay = vi.fn<WorkflowRunPersistence['replay']>();
   const get = vi.fn<WorkflowRunPersistence['get']>();
   const list = vi.fn<WorkflowRunPersistence['list']>();
+  const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
   const cancel = vi.fn<WorkflowRunPersistence['cancel']>();
   return {
     persistence: {
@@ -100,12 +101,14 @@ function persistenceFixture() {
       replay,
       get,
       list,
+      statistics,
       cancel,
     } satisfies WorkflowRunPersistence,
     start,
     replay,
     get,
     list,
+    statistics,
     cancel,
   };
 }
@@ -230,6 +233,74 @@ describe('workflow runs real Nest HTTP stack', () => {
     });
     expect(invalid.statusCode).toBe(400);
     expect(fixture.list).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads exact run statistics behind the run-read guards', async () => {
+    const { application, fixture } = await start('viewer');
+    const byStatus = {
+      queued: 1,
+      running: 2,
+      waiting: 0,
+      succeeded: 4,
+      failed: 1,
+      canceled: 0,
+      timed_out: 0,
+      outcome_unknown: 0,
+    };
+    const snapshot = {
+      asOf: '2026-08-21T12:00:00.000123Z',
+      current: { queued: 1, running: 2, waiting: 3 },
+      window: {
+        duration: '1h' as const,
+        createdAtFrom: '2026-08-21T11:00:00.000123Z',
+        createdAtBefore: '2026-08-21T12:00:00.000123Z',
+        total: 8,
+        byStatus,
+      },
+      workflows: {
+        items: [{ workflowId, workflowName: 'Intake', total: 8, byStatus }],
+        truncated: false,
+      },
+    };
+    fixture.statistics.mockResolvedValue(snapshot);
+
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/run-statistics`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${runId}/run-statistics`,
+      headers: authHeaders,
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.json()).toMatchObject({ code: 'resource.not_found' });
+    const invalid = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/run-statistics?window=30d`,
+      headers: authHeaders,
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json()).toMatchObject({
+      code: 'request.invalid',
+      detail: 'The workflow run request is invalid.',
+    });
+    expect(fixture.statistics).not.toHaveBeenCalled();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/run-statistics?window=1h&breakdown=workflow`,
+      headers: authHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(snapshot);
+    expect(fixture.statistics).toHaveBeenCalledExactlyOnceWith({
+      workspaceId,
+      window: '1h',
+      includeWorkflows: true,
+      includeWorkflowName: true,
+    });
   });
 
   it('maps workflow domain failures to exact public status and problem bodies', async () => {

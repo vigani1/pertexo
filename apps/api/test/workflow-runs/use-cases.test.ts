@@ -77,6 +77,7 @@ function persistence() {
   const list = vi
     .fn<WorkflowRunPersistence['list']>()
     .mockResolvedValue({ items: [run()] });
+  const statistics = vi.fn<WorkflowRunPersistence['statistics']>();
   const cancel = vi
     .fn<WorkflowRunPersistence['cancel']>()
     .mockResolvedValue({ run: run(), alreadyRequested: false });
@@ -86,6 +87,7 @@ function persistence() {
       replay,
       get,
       list,
+      statistics,
       cancel,
     } satisfies WorkflowRunPersistence,
     start,

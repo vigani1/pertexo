@@ -21,6 +21,7 @@ import {
   workflowRunReplayRequestSchema,
   workflowRunStartParamsSchema,
   workflowRunStartRequestSchema,
+  workflowRunStatisticsQuerySchema,
 } from '@pertexo/contracts/workflow-runs';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import type { FastifyReply } from 'fastify';
@@ -57,6 +58,7 @@ import {
   WorkflowRunReadGuard,
   WorkflowRunStartGuard,
 } from './guards.js';
+import { GetWorkflowRunStatisticsUseCase } from './statistics-use-case.js';
 import { streamCleanupCompletion } from './stream-cleanup.js';
 import { writeSseFrames } from './sse-transport.js';
 import {
@@ -95,6 +97,7 @@ export class WorkflowRunsController {
     private readonly replayWorkflowRun: ReplayWorkflowRunUseCase,
     private readonly getWorkflowRun: GetWorkflowRunUseCase,
     private readonly listWorkflowRuns: ListWorkflowRunsUseCase,
+    private readonly getWorkflowRunStatistics: GetWorkflowRunStatisticsUseCase,
     private readonly streamEvents: StreamRunEventsUseCase,
     private readonly cancelWorkflowRun: CancelWorkflowRunUseCase,
     @Optional()
@@ -208,6 +211,24 @@ export class WorkflowRunsController {
       ...(input.createdAtBefore === undefined
         ? {}
         : { createdAtBefore: input.createdAtBefore }),
+    });
+  }
+
+  @Get('run-statistics')
+  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  public async getRunStatistics(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = workflowRunListParamsSchema.parse(params);
+    const input = workflowRunStatisticsQuerySchema.parse(query ?? {});
+    return this.getWorkflowRunStatistics.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      ...(input.window === undefined ? {} : { window: input.window }),
+      ...(input.breakdown === undefined ? {} : { breakdown: input.breakdown }),
     });
   }
 
