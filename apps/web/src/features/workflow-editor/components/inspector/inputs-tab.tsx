@@ -74,28 +74,7 @@ export function InputsTab({
     },
     reportScratch: form.reportScratch,
   });
-  const [disclosure, setDisclosure] = useState<RowDisclosure>(() => ({
-    open: new Set(Object.keys(mappings.errors)),
-  }));
-  let rowsShown = disclosure;
-  if (
-    focusTarget?.nodeId === node.id &&
-    focusTarget.mappingKey !== undefined &&
-    focusTarget.requestId !== disclosure.request
-  ) {
-    const fixed = mappings.rows.find(
-      (row) => row.destinationKey === focusTarget.mappingKey,
-    );
-    rowsShown = {
-      ...disclosure,
-      open:
-        fixed === undefined
-          ? disclosure.open
-          : new Set(disclosure.open).add(fixed.id),
-      request: focusTarget.requestId,
-    };
-    setDisclosure(rowsShown);
-  }
+  const rowsShown = useRowDisclosure(mappings, node.id, focusTarget);
   const editable = form.editable && definition !== undefined;
   const suggestions = inputKeySuggestions(definition?.inputSchema);
   const predecessors = directPredecessorOptions(graph, node.id);
@@ -122,24 +101,7 @@ export function InputsTab({
 
   function openRow(rowId: string, focusKey: boolean) {
     activeRowId.current = rowId;
-    setDisclosure((current) => ({
-      ...current,
-      open: new Set(current.open).add(rowId),
-      focusKeyOf: focusKey ? rowId : current.focusKeyOf,
-    }));
-  }
-
-  function toggleRow(rowId: string) {
-    setDisclosure((current) => {
-      const open = new Set(current.open);
-      if (!open.delete(rowId)) open.add(rowId);
-      return {
-        ...current,
-        open,
-        focusKeyOf:
-          current.focusKeyOf === rowId ? undefined : current.focusKeyOf,
-      };
-    });
+    rowsShown.openRow(rowId, focusKey);
   }
 
   /** Fills the open row you were editing, or adds one named after the field. */
@@ -183,7 +145,7 @@ export function InputsTab({
                 open={rowsShown.open.has(row.id)}
                 focusKey={rowsShown.focusKeyOf === row.id}
                 onToggle={() => {
-                  toggleRow(row.id);
+                  rowsShown.toggleRow(row.id);
                 }}
                 suggestions={suggestions}
                 predecessors={predecessors}
@@ -241,4 +203,65 @@ export function InputsTab({
       {connections}
     </div>
   );
+}
+
+/**
+ * Which rows show their editor. Rows that need attention start open; a Fix
+ * request naming a row's field opens it during the render that receives it,
+ * so the inspector can focus the field right after.
+ */
+function useRowDisclosure(
+  mappings: Readonly<{
+    rows: readonly InputMappingDraftRow[];
+    errors: Readonly<Record<string, unknown>>;
+  }>,
+  nodeId: string,
+  focusTarget:
+    (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined,
+) {
+  const [disclosure, setDisclosure] = useState<RowDisclosure>(() => ({
+    open: new Set(Object.keys(mappings.errors)),
+  }));
+  let shown = disclosure;
+  if (
+    focusTarget?.nodeId === nodeId &&
+    focusTarget.mappingKey !== undefined &&
+    focusTarget.requestId !== disclosure.request
+  ) {
+    const fixed = mappings.rows.find(
+      (row) => row.destinationKey === focusTarget.mappingKey,
+    );
+    shown = {
+      ...disclosure,
+      open:
+        fixed === undefined
+          ? disclosure.open
+          : new Set(disclosure.open).add(fixed.id),
+      request: focusTarget.requestId,
+    };
+    setDisclosure(shown);
+  }
+  return {
+    open: shown.open,
+    focusKeyOf: shown.focusKeyOf,
+    openRow: (rowId: string, focusKey: boolean) => {
+      setDisclosure((current) => ({
+        ...current,
+        open: new Set(current.open).add(rowId),
+        focusKeyOf: focusKey ? rowId : current.focusKeyOf,
+      }));
+    },
+    toggleRow: (rowId: string) => {
+      setDisclosure((current) => {
+        const open = new Set(current.open);
+        if (!open.delete(rowId)) open.add(rowId);
+        return {
+          ...current,
+          open,
+          focusKeyOf:
+            current.focusKeyOf === rowId ? undefined : current.focusKeyOf,
+        };
+      });
+    },
+  } as const;
 }
