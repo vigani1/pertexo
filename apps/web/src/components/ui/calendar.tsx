@@ -137,7 +137,7 @@ export function Calendar({
                       type="button"
                       tabIndex={day === focused ? 0 : -1}
                       disabled={beforeMin(day)}
-                      aria-label={formatCalendarDay(date, 'long')}
+                      aria-label={formatCalendarDay(date)}
                       aria-pressed={day === value}
                       aria-current={day === today ? 'date' : undefined}
                       className={cn(

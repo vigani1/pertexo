@@ -1,7 +1,6 @@
-import { DateTimeField } from '@/components/ui/date-time-field';
+import { DeadlineField } from '@/components/ui/deadline-field';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { localUtcOffset } from '@/lib/format-time';
 import type { RunInput } from '../use-run-input';
 
 /** A run's input (JSON) and optional deadline, validated as one form. */
@@ -46,25 +45,15 @@ export function RunInputFields({
           />
         )}
       </LabelledField>
-      <LabelledField
-        id={`${idPrefix}-deadline`}
-        label="Deadline (optional)"
-        description={`In your time zone (${localUtcOffset()}). The run stops if it isn’t finished by then.`}
+      <DeadlineField
+        value={runInput.deadline}
         error={validation.error('deadline')}
         thread={validation.thread('deadline')}
-      >
-        {(control) => (
-          <DateTimeField
-            {...control}
-            ref={validation.register('deadline')}
-            timeLabel="Deadline time"
-            disabled={disabled}
-            value={runInput.deadline}
-            onValueChange={runInput.changeDeadline}
-            onBlur={runInput.blurDeadline}
-          />
-        )}
-      </LabelledField>
+        disabled={disabled}
+        register={validation.register('deadline')}
+        onChange={runInput.changeDeadline}
+        onBlur={runInput.blurDeadline}
+      />
     </FieldGroup>
   );
 }
