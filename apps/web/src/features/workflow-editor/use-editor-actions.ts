@@ -14,6 +14,8 @@ export type EditorFocusTarget = Readonly<{
   nodeId: string;
   fieldKey?: string;
   mappingKey?: string;
+  /** The result of the step's last test, on its Test tab. */
+  testOutput?: boolean;
 }>;
 
 export type EditorAction =

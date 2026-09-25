@@ -4,6 +4,7 @@ export {
   NodeTestPanel,
   type NodeTestHandle,
 } from './components/node-test-panel';
+export { describePreviewStatus } from './model/preview-observation';
 export {
   workflowIssuesView,
   type WorkflowIssuesView,

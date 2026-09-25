@@ -11,6 +11,7 @@ import { Status, StatusGlyph } from '@/components/ui/status';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ArtifactDownload } from '@/features/artifacts/public';
+import { shortStepError } from '@/features/workflow-runs/failure.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
@@ -33,7 +34,9 @@ export function NodeTestPanel({
   nodeId,
   stepSideEffect,
   priorPreview,
+  rememberedPreview,
   ensureSaved,
+  onFinished,
   onSucceeded,
   actionRef,
 }: Readonly<{
@@ -44,7 +47,10 @@ export function NodeTestPanel({
   stepSideEffect: string | undefined;
   /** A passed test of the step right before this one. */
   priorPreview: Readonly<{ id: string; stepName: string }> | undefined;
+  /** This step's last finished test, shown again when the panel reopens. */
+  rememberedPreview?: PreviewRunSummary | undefined;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
+  onFinished?: (preview: PreviewRunSummary) => void;
   onSucceeded?: (preview: PreviewRunSummary) => void;
   actionRef?: Ref<NodeTestHandle>;
 }>) {
@@ -57,6 +63,8 @@ export function NodeTestPanel({
     workflowId,
     nodeId,
     ensureSaved,
+    initialPreview: rememberedPreview,
+    ...(onFinished === undefined ? {} : { onFinished }),
     ...(onSucceeded === undefined ? {} : { onSucceeded }),
   });
   const priorId = usePrior ? priorPreview?.id : undefined;
@@ -197,10 +205,24 @@ function TestResult({
   if (preview === undefined) return null;
   const status = describePreviewStatus(preview.status);
   return (
-    <section aria-label="Test result" className="flex flex-col gap-2">
+    <section
+      aria-label="Test result"
+      // The editor's "View output" brings this section into view.
+      data-slot="test-result"
+      tabIndex={-1}
+      className="flex scroll-mt-4 flex-col gap-2 outline-none"
+    >
       <p role="status">
         <Status tone={status.tone}>{status.label}</Status>
       </p>
+      {preview.safeErrorCode === null ? null : (
+        <p className="text-xs text-muted-foreground">
+          {`The step reported: ${shortStepError(preview.safeErrorCode)} `}
+          <code className="font-mono text-[0.7rem] text-subtle-foreground">
+            {preview.safeErrorCode}
+          </code>
+        </p>
+      )}
       {preview.output?.kind === 'inline' ? (
         <JsonTree value={preview.output.value} label="Test output" />
       ) : null}
