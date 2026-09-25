@@ -57,7 +57,6 @@ export function NodeInspector({
   definitions,
   connections,
   channelLookup,
-  workspaceId,
   editable,
   tab,
   onTabChange,
@@ -74,7 +73,6 @@ export function NodeInspector({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
-  workspaceId: string;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -167,7 +165,6 @@ export function NodeInspector({
                 node={node}
                 definition={definition}
                 connections={connections}
-                workspaceId={workspaceId}
                 form={form}
               />
               {isSlackStep(node) ? (

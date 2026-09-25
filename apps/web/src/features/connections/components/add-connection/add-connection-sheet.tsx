@@ -64,17 +64,21 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
 /**
  * The add lens: credential, name, then a test that runs straight away. The
  * connection is saved before its test, so a failed test can still be kept.
+ * A lens opened from elsewhere (a step's connection slot) hears about the
+ * saved connection through `onCreated` as it closes, to select it.
  */
 export function AddConnectionSheet({
   scope,
   workspaceName,
   request,
   onClose,
+  onCreated,
 }: Readonly<{
   scope: ConnectionMutationScope;
   workspaceName: string;
   request: AddConnectionRequest | undefined;
   onClose: () => void;
+  onCreated?: (connection: ConnectionResponse) => void;
 }>) {
   const id = useId();
   const notifications = useNotifications();
@@ -102,8 +106,10 @@ export function AddConnectionSheet({
 
   function close() {
     if (create.isPending) return;
-    if (created !== undefined)
+    if (created !== undefined) {
       notifications.success(savedMessage(created.name, test.phase === 'ok'));
+      onCreated?.(created);
+    }
     attempt.current = undefined;
     setChosen(undefined);
     setStep(undefined);

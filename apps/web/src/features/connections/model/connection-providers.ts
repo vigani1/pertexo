@@ -45,6 +45,26 @@ export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
   },
 };
 
+const PROVIDER_BY_CREDENTIAL: Readonly<
+  Record<ConnectionResponse['authType'], ProviderKey>
+> = {
+  slack_bot_token: 'slack',
+  http_headers: 'http',
+  resend_api_key: 'email',
+};
+
+/**
+ * The provider whose connections hold a credential type, such as a step's
+ * `slack_bot_token` requirement → Slack; undefined for an unknown type.
+ */
+export function providerForCredential(
+  credential: string,
+): ProviderKey | undefined {
+  return Object.entries(PROVIDER_BY_CREDENTIAL).find(
+    ([type]) => type === credential,
+  )?.[1];
+}
+
 export function isProviderKey(value: unknown): value is ProviderKey {
   return PROVIDER_KEYS.some((key) => key === value);
 }

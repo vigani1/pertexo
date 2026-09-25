@@ -20,7 +20,6 @@ export function InspectorPanel({
   definitions,
   connections,
   channelLookup,
-  workspaceId,
   editable,
   scratchVersion,
   tab,
@@ -34,7 +33,6 @@ export function InspectorPanel({
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   channelLookup: ChannelLookupScope;
-  workspaceId: string;
   editable: boolean;
   scratchVersion: number;
   tab: InspectorTab;
@@ -64,7 +62,6 @@ export function InspectorPanel({
         definitions={definitions}
         connections={connections}
         channelLookup={channelLookup}
-        workspaceId={workspaceId}
         editable={editable}
         tab={tab}
         onTabChange={onTabChange}

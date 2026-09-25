@@ -11,6 +11,10 @@ import {
 import { SchedulePreviewScope } from '@/features/workflow-publish/schedule-preview.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  AddConnectionContext,
+  type AddConnectionScope,
+} from '../../model/add-connection-context';
+import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
@@ -33,11 +37,13 @@ type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 export function EditorInspector({
   apiClient,
   workspaceId,
+  workspaceName,
   workflowId,
   definitions,
   connections,
   userId,
   lookUpChannels,
+  addConnections,
   editable,
   tab,
   onTabChange,
@@ -54,12 +60,15 @@ export function EditorInspector({
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
+  workspaceName: string;
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   userId: string;
   /** Slack channel names are looked up for people who can use connections. */
   lookUpChannels: boolean;
+  /** People who manage connections can add one from a step's slot. */
+  addConnections: boolean;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -87,6 +96,13 @@ export function EditorInspector({
     () => ({ apiClient, workspaceId, workflowId }),
     [apiClient, workspaceId, workflowId],
   );
+  const connectionScope = useMemo<AddConnectionScope | null>(
+    () =>
+      addConnections
+        ? { scope: { apiClient, userId, workspaceId }, workspaceName }
+        : null,
+    [addConnections, apiClient, userId, workspaceId, workspaceName],
+  );
 
   function copyStepId() {
     if (selectedNodeId === null) return;
@@ -100,7 +116,6 @@ export function EditorInspector({
       definitions={definitions}
       connections={connections}
       channelLookup={channelLookup}
-      workspaceId={workspaceId}
       editable={editable}
       scratchVersion={actions.scratchVersion}
       tab={tab}
@@ -156,9 +171,14 @@ export function EditorInspector({
       )}
     />
   );
-  // The Schedule step's builder previews its rule against this workflow.
+  // The Schedule step's builder previews its rule against this workflow, and
+  // connection slots add connections to this workspace.
   return (
-    <SchedulePreviewScope value={previewScope}>{panel}</SchedulePreviewScope>
+    <SchedulePreviewScope value={previewScope}>
+      <AddConnectionContext value={connectionScope}>
+        {panel}
+      </AddConnectionContext>
+    </SchedulePreviewScope>
   );
 }
 

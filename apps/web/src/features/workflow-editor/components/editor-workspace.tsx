@@ -210,11 +210,13 @@ export function EditorWorkspace({
         <EditorInspector
           apiClient={apiClient}
           workspaceId={workspace.id}
+          workspaceName={workspace.name}
           workflowId={workflowId}
           definitions={definitions}
           connections={connections}
           userId={userId}
           lookUpChannels={workspace.capabilities.includes('connection:use')}
+          addConnections={workspace.capabilities.includes('connection:manage')}
           editable={editable}
           tab={navigation.tab}
           onTabChange={navigation.setTab}
