@@ -157,9 +157,14 @@ export function WorkspaceCreationForm({
       void command.refresh();
       return;
     }
+    const nameProblem = fieldProblem('name', name);
+    // A handle that follows a missing name isn't a second problem to fix.
     const errors = {
-      name: fieldProblem('name', name),
-      slug: fieldProblem('slug', slug),
+      name: nameProblem,
+      slug:
+        slugEdited || nameProblem === undefined
+          ? fieldProblem('slug', slug)
+          : undefined,
     };
     if (!validation.submit(errors)) {
       if (errors.name === undefined && slugRef.current === null)
@@ -191,7 +196,11 @@ export function WorkspaceCreationForm({
                 const nextName = event.target.value;
                 setName(nextName);
                 command.clearError();
-                if (!slugEdited) setSlug(suggestWorkspaceSlug(nextName));
+                if (!slugEdited) {
+                  const nextSlug = suggestWorkspaceSlug(nextName);
+                  setSlug(nextSlug);
+                  validation.change('slug', fieldProblem('slug', nextSlug));
+                }
                 validation.change('name', fieldProblem('name', nextName));
               }}
             />
