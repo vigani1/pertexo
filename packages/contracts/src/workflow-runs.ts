@@ -28,6 +28,9 @@ import {
   workflowRunStartRequestSchema,
   workflowRunStartParamsSchema,
   workflowRunStartResponseSchema,
+  workflowRunStatisticsBreakdownSchema,
+  workflowRunStatisticsResponseSchema,
+  workflowRunStatisticsWindowSchema,
   workflowRunSummarySchema,
   workflowRunReadSummarySchema,
 } from './http/workflow-runs.js';
@@ -45,6 +48,10 @@ const schemas = Object.freeze({
   WorkflowRunSummary: jsonSchema(workflowRunSummarySchema, 'output'),
   WorkflowRunReadSummary: jsonSchema(workflowRunReadSummarySchema, 'output'),
   WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
+  WorkflowRunStatisticsResponse: jsonSchema(
+    workflowRunStatisticsResponseSchema,
+    'output',
+  ),
   WorkflowNodeRunSummary: jsonSchema(workflowNodeRunSummarySchema, 'output'),
   WorkflowRunResponse: jsonSchema(workflowRunResponseSchema, 'output'),
   WorkflowRunCancelRequest: jsonSchema(workflowRunCancelRequestSchema, 'input'),
@@ -119,6 +126,28 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         ],
         responses: {
           '200': jsonResponse('Workflow runs', 'WorkflowRunListResponse'),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/run-statistics': {
+      get: {
+        operationId: 'getWorkflowRunStatistics',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          queryParameter('window', workflowRunStatisticsWindowSchema),
+          queryParameter('breakdown', workflowRunStatisticsBreakdownSchema),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Exact run counts for one snapshot',
+            'WorkflowRunStatisticsResponse',
+          ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
