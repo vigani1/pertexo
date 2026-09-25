@@ -406,7 +406,7 @@
           "branchType": "if",
           "line": 70,
           "column": 4,
-          "sourceFingerprint": "sha256:24a1ad9d3b5f67421ddb7d62487cc0e4e6f75cc9e1ac0bf1d4989e42e7a05974",
+          "sourceFingerprint": "sha256:825024d7dbb0fe2089714db0e921d5063d3ffc5dc7984b49776bb0701969c42c",
           "classification": "defensive",
           "justification": "This residual contract arm rejects malformed transport material before it crosses the public API boundary."
         }
@@ -4092,7 +4092,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:878169bcf4b8acd954587cd781cd9377f6d79a38bc5750ee7edbea85868d7fa4",
+          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
           "classification": "generated",
           "justification": "V8 reports this implicit fallthrough arm without an executable source coordinate; adjacent source-level decisions are reviewed separately and exercised through the module public boundary."
         },
@@ -4100,9 +4100,9 @@
           "branchId": "8",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 139,
+          "line": 144,
           "column": 2,
-          "sourceFingerprint": "sha256:878169bcf4b8acd954587cd781cd9377f6d79a38bc5750ee7edbea85868d7fa4",
+          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
           "classification": "defensive",
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         },
@@ -4110,7 +4110,7 @@
           "branchId": "36",
           "locationIndex": 1,
           "branchType": "binary-expr",
-          "line": 411,
+          "line": 439,
           "column": 74,
           "sourceFingerprint": "sha256:4da6eb6edc98114c2d06a27f02e49a1970142b1034fd07b112dd486c10e05f73",
           "classification": "defensive",
@@ -4120,9 +4120,9 @@
           "branchId": "42",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 458,
+          "line": 486,
           "column": 2,
-          "sourceFingerprint": "sha256:878169bcf4b8acd954587cd781cd9377f6d79a38bc5750ee7edbea85868d7fa4",
+          "sourceFingerprint": "sha256:4ac280422efef3372e1de408566e37f04c83535a062b991cfeeeb9285ed8b489",
           "classification": "defensive",
           "justification": "This fail-closed API boundary arm handles malformed provider material, cryptographic contract drift, missing durable identity state, optional module metadata, cleanup failure shape, or impossible transport metadata."
         }
