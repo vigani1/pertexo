@@ -16,10 +16,11 @@ import type { ApiClient } from '@/lib/api/client';
 import { OutcomeUnknownCard } from './components/run-detail/outcome-unknown-card';
 import { RunDetailTabs } from './components/run-detail/run-detail-tabs';
 import { RunHeader } from './components/run-detail/run-header';
-import { StepLens } from './components/run-detail/step-lens';
+import { StepError, StepLens } from './components/run-detail/step-lens';
 import { describeRunSentence } from './model/run-sentence';
 import { isActiveRunStatus } from './model/run-status';
 import { buildThreadView, type ThreadRow } from './model/thread-view';
+import { useMediaQuery } from '@/lib/use-media-query';
 import { useNow } from '@/lib/use-now';
 import { useRunEvents } from './use-run-events';
 import {
@@ -28,6 +29,7 @@ import {
 } from './workflow-runs.queries';
 
 const LENS_MEDIA_QUERY = '(min-width: 80rem)';
+const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
 
 /** The step worth opening first: what's running, waiting or went wrong. */
 function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
@@ -50,6 +52,22 @@ function focusRow(rows: readonly ThreadRow[]): ThreadRow | undefined {
     if (row !== undefined && row.status !== 'not_started') return row;
   }
   return rows[0];
+}
+
+/** The step whose error explains a failed run, for the phone's notice. */
+function failureRow(
+  status: string,
+  rows: readonly ThreadRow[],
+): (ThreadRow & { safeErrorCode: string }) | undefined {
+  if (status !== 'failed' && status !== 'timed_out') return undefined;
+  const explained = rows.filter(
+    (row): row is ThreadRow & { safeErrorCode: string } =>
+      row.safeErrorCode !== undefined,
+  );
+  const failed = explained.filter(
+    (row) => row.status === 'failed' || row.status === 'timed_out',
+  );
+  return failed.at(-1) ?? explained.at(-1);
 }
 
 function lensFitsBeside(): boolean {
@@ -102,6 +120,7 @@ export function RunDetailPage({
       }),
     [run, snapshot.nodes, events.timeline, version.data, nowMs],
   );
+  const compact = useMediaQuery(PHONE_MEDIA_QUERY);
   const [selectedKey, setSelectedKey] = useState<string>();
   const [sheetOpen, setSheetOpen] = useState(false);
   const selected =
@@ -153,9 +172,17 @@ export function RunDetailPage({
           nowMs={nowMs}
           versionNumber={version.data?.versionNumber}
           liveStatus={events.connectionStatus}
+          compact={compact}
           onReconnect={events.reconnect}
           onRunAccepted={onRunAccepted}
         />
+        {compact ? (
+          <PhoneFailureNotice
+            run={run}
+            rows={view.rows}
+            workspace={workspace}
+          />
+        ) : null}
         {run.status === 'outcome_unknown' ? (
           <OutcomeUnknownCard
             stepLabel={
@@ -185,14 +212,17 @@ export function RunDetailPage({
           recoveryMessage={events.recoveryMessage}
           stepLabel={stepLabel}
           runStartMs={view.startMs}
+          compact={compact}
         />
+        {/* Room for the phone's action bar above the bottom navigation. */}
+        {compact ? <div aria-hidden="true" className="h-14" /> : null}
       </div>
       <aside
         aria-label="Step details"
         className="lens sticky top-6 hidden max-h-[calc(100svh-3rem)] self-start overflow-y-auto rounded-xl p-5 xl:block"
       >
         {selected === undefined ? null : (
-          <h2 className="mb-1 text-xl leading-tight font-semibold">
+          <h2 className="mb-1 font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]">
             {selected.label}
           </h2>
         )}
@@ -207,5 +237,27 @@ export function RunDetailPage({
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+/**
+ * Phones: why a failed run failed, right under the header, since the step
+ * lens only opens on tap there.
+ */
+function PhoneFailureNotice({
+  run,
+  rows,
+  workspace,
+}: Readonly<{
+  run: Readonly<{ status: string }>;
+  rows: readonly ThreadRow[];
+  workspace: AccessibleWorkspace;
+}>) {
+  const row = failureRow(run.status, rows);
+  if (row === undefined) return null;
+  return (
+    <section aria-label={`Why ${row.label} failed`} className="-mt-3">
+      <StepError code={row.safeErrorCode} workspace={workspace} />
+    </section>
   );
 }

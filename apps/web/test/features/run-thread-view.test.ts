@@ -11,7 +11,6 @@ import { describeStepError } from '@/features/workflow-runs/model/step-error-cop
 import { stepTag } from '@/features/workflow-runs/model/step-copy';
 import {
   buildThreadView,
-  humanizeDefinitionKey,
   segmentPlacement,
 } from '@/features/workflow-runs/model/thread-view';
 
@@ -87,7 +86,7 @@ const graph = {
     {
       id: 'post-erp',
       label: 'Post to ERP',
-      definition: { key: 'core.http_request', version: 1 },
+      definition: { key: 'http.request', version: 1 },
       position: { x: 0, y: 0 },
       configVersion: 1,
       config: {},
@@ -97,7 +96,7 @@ const graph = {
     {
       id: 'send-receipt',
       label: 'Send receipt',
-      definition: { key: 'email.send_message', version: 1 },
+      definition: { key: 'email.send_notification', version: 1 },
       position: { x: 200, y: 0 },
       configVersion: 1,
       config: {},
@@ -106,7 +105,7 @@ const graph = {
     },
     {
       id: 'done',
-      definition: { key: 'core.stop_run', version: 1 },
+      definition: { key: 'core.terminate', version: 1 },
       position: { x: 400, y: 0 },
       configVersion: 1,
       config: {},
@@ -145,6 +144,12 @@ describe('thread view', () => {
       'Post to ERP',
       'Send receipt',
       'Stop run',
+    ]);
+    // Step types read the way Build names them.
+    expect(view.rows.map((row) => row.kindLabel)).toEqual([
+      'HTTP request',
+      'Send email',
+      undefined,
     ]);
     const [erp, receipt, done] = view.rows;
     expect(erp?.segments).toEqual([
@@ -298,6 +303,5 @@ describe('run copy', () => {
       tone: 'waiting',
       rawType: 'node.retry_scheduled',
     });
-    expect(humanizeDefinitionKey('core.http_request')).toBe('Http request');
   });
 });

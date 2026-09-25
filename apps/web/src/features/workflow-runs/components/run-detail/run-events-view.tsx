@@ -6,7 +6,7 @@ import { describeRunEvent } from '../../model/event-copy';
 
 /**
  * A readable log of the run's events: offset from the start, the step's name
- * and what happened. The raw event type stays in mono for support.
+ * and what happened. The raw event type shows in mono on hover, for support.
  */
 export function RunEventsView({
   events,
@@ -58,7 +58,7 @@ export function RunEventsView({
                   )}
                   {line.sentence}
                 </span>
-                <span className="block font-mono text-[0.68rem] text-subtle-foreground/80">
+                <span className="block font-mono text-[0.68rem] text-subtle-foreground/80 opacity-0 transition-opacity duration-150 group-focus-within/event:opacity-100 group-hover/event:opacity-100 motion-reduce:transition-none">
                   {line.rawType}
                 </span>
               </span>

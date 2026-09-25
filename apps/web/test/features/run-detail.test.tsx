@@ -1,7 +1,7 @@
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 import {
@@ -130,7 +130,58 @@ const retryEvents = () => [
   }),
 ];
 
+/** Pretend the screen is a phone for the run page's layout queries. */
+function emulatePhoneScreen() {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      matches: query === '(max-width: 47.999rem)',
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }),
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(window, 'matchMedia');
+});
+
 describe('run page', () => {
+  it('puts a failure first and the actions at thumb height on phones', async () => {
+    emulatePhoneScreen();
+    installRun({
+      run: fixtureRun(runId, 'failed'),
+      nodes: [
+        node('failed', {
+          currentAttemptNumber: 3,
+          completedAt: secondsAgo(5),
+          safeErrorCode: 'provider.unavailable',
+        }),
+      ],
+    });
+    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    expect(
+      await screen.findByRole(
+        'region',
+        { name: 'Why Send receipt failed' },
+        coldStart,
+      ),
+    ).toHaveTextContent(
+      'The service this step calls was unavailable, so the step didn’t finish.',
+    );
+    const steps = screen.getByRole('region', { name: 'Steps' });
+    expect(
+      within(steps).getByRole('button', {
+        name: 'Send receipt: Failed, 3 attempts',
+      }),
+    ).toBeVisible();
+    const actions = screen.getByRole('group', { name: 'Run actions' });
+    expect(
+      within(actions).getByRole('link', { name: 'Open workflow' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
+  });
+
   it('tells a retrying run’s story in a sentence, a thread and the step lens', async () => {
     installRun({
       run: retryingRun(),

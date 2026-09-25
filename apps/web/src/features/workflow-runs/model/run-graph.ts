@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { StatusTone } from '@/components/ui/status';
 import type { ThreadRow, ThreadStepStatus } from './thread-view';
-import { humanizeDefinitionKey } from './thread-view';
+import { describeStep } from '@/features/catalog/presentation.public';
 
 export type GraphStepStatus = ThreadStepStatus;
 
@@ -100,7 +100,7 @@ export function projectRunGraph(
     const status = strongest?.status ?? 'not_started';
     const tone = strongest?.tone ?? 'neutral';
     looks.set(node.id, { status, tone });
-    const kind = humanizeDefinitionKey(node.definition.key);
+    const kind = describeStep(node.definition.key).name;
     const custom = node.label?.trim();
     const nodePorts = ports.get(node.id);
     return {

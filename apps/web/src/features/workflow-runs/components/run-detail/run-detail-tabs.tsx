@@ -8,6 +8,7 @@ import type { ThreadView } from '../../model/thread-view';
 import { RunEventsView } from './run-events-view';
 import { RunLoadingWave } from './run-loading-wave';
 import { RunOutputsView } from './run-outputs-view';
+import { RunStepList } from './run-step-list';
 import { RunThreadView } from './run-thread-view';
 
 type RunTab = 'thread' | 'graph' | 'events' | 'io';
@@ -55,6 +56,7 @@ export function RunDetailTabs({
   recoveryMessage,
   stepLabel,
   runStartMs,
+  compact,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -71,6 +73,8 @@ export function RunDetailTabs({
   recoveryMessage: string | undefined;
   stepLabel: (event: WorkflowRunEvent) => string | undefined;
   runStartMs: number;
+  /** Phones read the thread as a list of steps. */
+  compact: boolean;
 }>) {
   const [tab, setTab] = useState<RunTab>('thread');
   const selectedNodeId = view.rows.find(
@@ -95,13 +99,22 @@ export function RunDetailTabs({
         <TabsTrigger value="io">Input &amp; output</TabsTrigger>
       </TabsList>
       <TabsContent value="thread" className="pt-5">
-        <RunThreadView
-          view={view}
-          nowMs={nowMs}
-          active={active}
-          selectedKey={selectedKey}
-          onSelectStep={onSelectStep}
-        />
+        {compact ? (
+          <RunStepList
+            rows={view.rows}
+            active={active}
+            selectedKey={selectedKey}
+            onSelectStep={onSelectStep}
+          />
+        ) : (
+          <RunThreadView
+            view={view}
+            nowMs={nowMs}
+            active={active}
+            selectedKey={selectedKey}
+            onSelectStep={onSelectStep}
+          />
+        )}
       </TabsContent>
       <TabsContent value="graph" className="pt-5">
         {graph === undefined ? (
