@@ -26,6 +26,7 @@ import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
 import type { ChannelLookupScope } from './slack-channel-field';
 import type { InspectorTab } from '../../use-inspector-navigation';
+import type { FinishedTest } from '../../use-last-test';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 
@@ -50,6 +51,8 @@ export function EditorInspector({
   actions,
   ensureSaved,
   testRef,
+  rememberedTest,
+  onTestFinished,
   onTestPassed,
   onClose,
   onAddStepAfter,
@@ -75,6 +78,9 @@ export function EditorInspector({
   actions: ReturnType<typeof useEditorActions>;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
   testRef: Ref<NodeTestHandle>;
+  /** The test that finished last, shown again on its step's Test tab. */
+  rememberedTest: FinishedTest | undefined;
+  onTestFinished: (test: FinishedTest) => void;
   onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
   onClose: () => void;
   onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
@@ -161,8 +167,16 @@ export function EditorInspector({
           nodeId={nodeId}
           stepSideEffect={stepSideEffect}
           priorPreview={priorTestFor(graph, passedTest, nodeId)}
+          rememberedPreview={
+            rememberedTest?.nodeId === nodeId
+              ? rememberedTest.preview
+              : undefined
+          }
           ensureSaved={ensureSaved}
           actionRef={testRef}
+          onFinished={(preview) => {
+            onTestFinished({ nodeId, preview });
+          }}
           onSucceeded={(preview) => {
             setPassedTest({ previewId: preview.id, nodeId });
             onTestPassed(nodeId, inlineOutputBytes(preview.output));

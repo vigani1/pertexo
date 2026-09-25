@@ -7,8 +7,8 @@ export type MobilePanel = 'none' | 'add' | 'inspector';
 
 /**
  * Where the inspector is and how commands jump into it: the open tab, the
- * small-screen panel, and "Fix", which selects the step, opens the tab that
- * owns the field and focuses it.
+ * small-screen panel, "Fix", which selects the step, opens the tab that
+ * owns the field and focuses it, and "View output" for a step's last test.
  */
 export function useInspectorNavigation(
   request: (action: EditorAction) => void,
@@ -29,6 +29,16 @@ export function useInspectorNavigation(
     request({ kind: 'select', nodeIds: [target.nodeId], focusTarget: target });
   }
 
+  /** "View output": the step's Test tab, at its last test's result. */
+  function showTestOutput(nodeId: string) {
+    openTab('test');
+    request({
+      kind: 'select',
+      nodeIds: [nodeId],
+      focusTarget: { nodeId, testOutput: true },
+    });
+  }
+
   return {
     tab,
     setTab,
@@ -36,5 +46,6 @@ export function useInspectorNavigation(
     setMobilePanel,
     openTab,
     fix,
+    showTestOutput,
   } as const;
 }

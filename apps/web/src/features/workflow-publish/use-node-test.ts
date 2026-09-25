@@ -40,6 +40,8 @@ export function useNodeTest({
   workflowId,
   nodeId,
   ensureSaved,
+  initialPreview,
+  onFinished,
   onSucceeded,
 }: Readonly<{
   apiClient: ApiClient;
@@ -47,11 +49,17 @@ export function useNodeTest({
   workflowId: string;
   nodeId: string;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
+  /** A finished test of this step to show until the next one. */
+  initialPreview?: PreviewRunSummary | undefined;
+  /** Any test that finished, passed or not. */
+  onFinished?: (preview: PreviewRunSummary) => void;
   onSucceeded?: (preview: PreviewRunSummary) => void;
 }>) {
   const [pending, setPending] = useState<'check' | 'run'>();
   const [check, setCheck] = useState<NodeValidationResponse>();
-  const [preview, setPreview] = useState<PreviewRunSummary>();
+  const [preview, setPreview] = useState<PreviewRunSummary | undefined>(
+    initialPreview,
+  );
   const [error, setError] = useState<string>();
   const [recoveryPending, setRecoveryPending] = useState(false);
   const attempt = useRef<TestAttempt | undefined>(undefined);
@@ -131,6 +139,7 @@ export function useNodeTest({
       : await observePreview(apiClient, workspaceId, accepted.id, signal);
     if (!isCurrent()) return;
     setPreview(observed);
+    onFinished?.(observed);
     if (observed.status === 'succeeded') onSucceeded?.(observed);
   }
 

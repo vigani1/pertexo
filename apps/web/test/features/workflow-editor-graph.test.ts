@@ -26,6 +26,7 @@ import {
   isStartTrigger,
   placeableDefinitions,
 } from '@/features/workflow-editor/model/step-catalog';
+import { describeTestPath } from '@/features/workflow-editor/model/test-path';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -208,6 +209,52 @@ describe('editor graph commands', () => {
     ]);
     expect([...upstreamEdgeIds(graph, 'post')].sort()).toEqual(['e1', 'e3']);
     expect(upstreamEdgeIds(graph, 'trigger').size).toBe(0);
+  });
+
+  it('reads the path into a tested step from the graph, naming branch ports', () => {
+    const labelled: WorkflowGraphContract = {
+      ...branchingGraph(),
+      nodes: branchingGraph().nodes.map((step) => ({
+        ...step,
+        label:
+          { trigger: 'New invoice', check: 'Over 5,000?' }[step.id] ?? step.id,
+      })),
+    };
+    expect(describeTestPath(labelled, 'post')).toBe(
+      'New invoice → Over 5,000? (false) → post',
+    );
+    expect(describeTestPath(labelled, 'trigger')).toBe('New invoice');
+
+    // Two connections lead into the join: the path starts there with "…".
+    const joined: WorkflowGraphContract = {
+      ...labelled,
+      nodes: [...labelled.nodes, node('join', { label: 'Join' })],
+      edges: [
+        ...labelled.edges,
+        edge('e4', 'finance', 'join'),
+        edge('e5', 'post', 'join'),
+      ],
+    };
+    expect(describeTestPath(joined, 'join')).toBe('… → Join');
+
+    // Long paths keep the last few steps; loops stop where they close.
+    const chain: WorkflowGraphContract = {
+      ...labelled,
+      nodes: ['a', 'b', 'c', 'd', 'e'].map((id) => node(id, { label: id })),
+      edges: [
+        edge('ab', 'a', 'b'),
+        edge('bc', 'b', 'c'),
+        edge('cd', 'c', 'd'),
+        edge('de', 'd', 'e'),
+      ],
+    };
+    expect(describeTestPath(chain, 'e')).toBe('… → b → c → d → e');
+    expect(
+      describeTestPath(
+        { ...chain, edges: [edge('ab', 'a', 'b'), edge('ba', 'b', 'a')] },
+        'b',
+      ),
+    ).toBe('… → a → b');
   });
 
   it('marks issues, missing connections and disabled steps on the canvas projection', () => {

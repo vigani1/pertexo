@@ -11,7 +11,7 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
 /**
  * Places the editor's layers: the canvas fills the screen, and the command
  * bar, add-step lens, inspector lens and the bottom lens (the issues
- * lens) float above it. Under 1024px the two
+ * lens, or the last test's bar) float above it. Under 1024px the two
  * lenses become bottom panels behind buttons. They stay mounted either way,
  * so unfinished edits and navigation guards survive switching panels.
  */
@@ -91,7 +91,8 @@ export function EditorLayout({
           </aside>
           {overlay}
           {bottomLens === null ? null : (
-            <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-center lg:bottom-0 lg:left-[calc(var(--editor-left-inset)+10.25rem)] lg:right-[calc(var(--editor-right-inset)-0.75rem)]">
+            // Clear of the zoom lens in the bottom-left corner at every size.
+            <div className="pointer-events-none absolute right-0 bottom-14 left-12 z-30 flex justify-center sm:left-52 lg:bottom-0 lg:left-[calc(var(--editor-left-inset)+10.25rem)] lg:right-[calc(var(--editor-right-inset)-0.75rem)]">
               <div className="w-full max-w-xl">{bottomLens}</div>
             </div>
           )}

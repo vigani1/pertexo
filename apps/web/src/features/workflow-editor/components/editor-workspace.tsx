@@ -24,12 +24,14 @@ import type { useCanvasEffects } from '../use-canvas-effects';
 import type { useEditorActions } from '../use-editor-actions';
 import { useEditorShortcuts } from '../use-editor-shortcuts';
 import { useInspectorNavigation } from '../use-inspector-navigation';
+import { useLastTest } from '../use-last-test';
 import { useQuickAdd } from '../use-quick-add';
 import { useStepPlacement } from '../use-step-placement';
 import { AddStepLens } from './add-step/add-step-lens';
 import { QuickAddLens } from './add-step/quick-add-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
+import { TestResultBar } from './chrome/test-result-bar';
 import { ValidationSweep } from './canvas/validation-sweep';
 import { WorkflowCanvas } from './canvas/workflow-canvas';
 import { EditorLayout } from './editor-layout';
@@ -101,6 +103,7 @@ export function EditorWorkspace({
   const [issuesOpen, setIssuesOpen] = useState(false);
   const { request } = actions;
   const navigation = useInspectorNavigation(request);
+  const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
   const { placement, quickAdd, addAfter, addToBody } = useStepAdding({
     store,
@@ -156,7 +159,17 @@ export function EditorWorkspace({
   return (
     <EditorLayout
       bar={bar(chrome)}
-      bottomLens={bottomLens(chrome)}
+      bottomLens={
+        <>
+          {bottomLens(chrome)}
+          {issuesOpen ? null : (
+            <TestResultBar
+              test={lastTest.last}
+              onViewOutput={navigation.showTestOutput}
+            />
+          )}
+        </>
+      }
       banner={banner}
       editable={canUpdate}
       addStepCollapsed={collapsed}
@@ -214,6 +227,8 @@ export function EditorWorkspace({
           actions={actions}
           ensureSaved={ensureSaved}
           testRef={testRef}
+          rememberedTest={lastTest.last}
+          onTestFinished={lastTest.record}
           onTestPassed={effects.showTestPath}
           onClose={() => {
             setMobilePanel('none');
