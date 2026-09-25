@@ -317,13 +317,15 @@ describe('workspace home', () => {
 
   it('keeps blocks independent and recovers one failed read', async () => {
     let failedReads = 0;
+    let failing = true;
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       workflowHandlers(),
       ...runHandlers({
+        // The warm-up read and any mount retry fail until Try again.
         failed: () => {
           failedReads += 1;
-          return failedReads <= 2
+          return failing
             ? HttpResponse.json(
                 {
                   type: 'urn:pertexo:problem:unexpected',
@@ -345,18 +347,19 @@ describe('workspace home', () => {
       { name: 'Needs attention' },
       coldStart,
     );
-    await userEvent
-      .setup()
-      .click(
-        await within(attention).findByRole('button', { name: 'Try again' }),
-      );
+    const retry = await within(attention).findByRole('button', {
+      name: 'Try again',
+    });
+    const readsBeforeRetry = failedReads;
+    failing = false;
+    await userEvent.setup().click(retry);
     expect(screen.getByRole('link', { name: 'Daily intake' })).toBeVisible();
     expect(
       await within(attention).findByText(
         'Daily intake failed once in the last 24 hours',
       ),
     ).toBeVisible();
-    expect(failedReads).toBe(3);
+    expect(failedReads).toBe(readsBeforeRetry + 1);
   });
 
   it('does not read or show runs without run access', async () => {

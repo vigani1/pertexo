@@ -65,8 +65,8 @@ export function WorkspaceShellRoute() {
   useCommandShortcut(openSearch);
 
   useEffect(() => {
-    rememberLastWorkspace(user.id, workspace.id);
-  }, [user.id, workspace.id]);
+    rememberLastWorkspace(user.id, { id: workspace.id, name: workspace.name });
+  }, [user.id, workspace.id, workspace.name]);
 
   return (
     <WorkspaceShell

@@ -479,25 +479,25 @@ describe('workflow list', () => {
   });
 
   it('explains a failed first load and recovers on retry', async () => {
-    let reads = 0;
+    let failing = true;
     mockServer.use(
       ...discoveryHandlers(),
       draftHandler(),
-      http.get(`${api}/workflows`, () => {
-        reads += 1;
-        // The route's read and the page's mount retry both fail.
-        return reads <= 2
+      // The route's warm-up read and any mount retry fail until Try again.
+      http.get(`${api}/workflows`, () =>
+        failing
           ? HttpResponse.json({}, { status: 500 })
           : HttpResponse.json({
               items: [summary(workflowId, 'Daily intake')],
               nextCursor: null,
-            });
-      }),
+            }),
+      ),
     );
     renderApp(`/w/${workspaceId}/workflows`);
     expect(
       await screen.findByRole('heading', { name: 'Workflows didn’t load' }),
     ).toBeVisible();
+    failing = false;
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Try again' }));

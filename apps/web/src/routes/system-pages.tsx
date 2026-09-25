@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Link,
+  useParams,
   useRouter,
   type ErrorComponentProps,
 } from '@tanstack/react-router';
@@ -19,6 +21,7 @@ import {
   BarredThread,
   LooseThread,
 } from '@/components/patterns/thread-illustrations';
+import { knownWorkspaceName } from '@/features/workspaces/last-workspace.public';
 import { isNotFound, supportReference } from '@/lib/api/api-error-copy';
 
 function FullScreen({ children }: Readonly<{ children: ReactNode }>) {
@@ -33,8 +36,28 @@ function FullScreen({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
-/** Cold start: the Core gathers itself while the session is confirmed. */
-export function BootPage() {
+const STILL_CONNECTING_MS = 2_000;
+
+/** True once a cold start has taken long enough to say so. */
+function useTakingLong(afterMs: number): boolean {
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLong(true);
+    }, afterMs);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [afterMs]);
+  return long;
+}
+
+/**
+ * Cold start: the Core gathers itself while the session is confirmed. After
+ * two seconds the line under it admits it's still connecting.
+ */
+function Boot({ message }: Readonly<{ message: string }>) {
+  const long = useTakingLong(STILL_CONNECTING_MS);
   return (
     <FullScreen>
       <div
@@ -42,15 +65,36 @@ export function BootPage() {
         className="mx-auto flex flex-col items-center gap-4 text-center"
       >
         <CoreOrb assemble state="idle" className="size-44" />
-        <p className="font-heading text-2xl font-semibold tracking-[-0.03em]">
+        <p className="font-display text-2xl tracking-[-0.03em] [--display-optical-size:24] [--display-width:80%]">
           Pertexo<span className="text-secondary">.</span>
         </p>
         <p className="font-mono text-xs text-subtle-foreground">
-          Opening your workspace…
+          {long ? 'Still connecting…' : message}
         </p>
       </div>
     </FullScreen>
   );
+}
+
+/** The app root and public pages while the session is checked. */
+export function BootPage() {
+  return <Boot message="Checking your session…" />;
+}
+
+/** A public page that needs no session check, still loading. */
+export function OpeningPage() {
+  return <Boot message="Opening Pertexo…" />;
+}
+
+/** A workspace opening cold: named when this browser already knows it. */
+export function WorkspaceBootPage() {
+  const queryClient = useQueryClient();
+  const { workspaceId } = useParams({ strict: false });
+  const name =
+    workspaceId === undefined
+      ? undefined
+      : knownWorkspaceName(queryClient, workspaceId);
+  return <Boot message={`Opening ${name ?? 'your workspace'}…`} />;
 }
 
 /** A whole-screen dead end: what happened and the one way out. */

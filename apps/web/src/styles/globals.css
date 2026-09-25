@@ -172,6 +172,23 @@
   font-variation-settings: 'opsz' var(--display-optical-size, 72);
 }
 
+/* Skeletons stay invisible for their first 150 ms, so a fast load never
+   flashes one. The router's pending page has already waited and sets
+   `--skeleton-wait` to 0. */
+@utility skeleton-wait {
+  animation: skeleton-wait var(--skeleton-wait, 150ms) step-end;
+}
+
+@utility skeleton-blink {
+  animation: skeleton-wait var(--skeleton-wait, 150ms) step-end;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation:
+      skeleton-wait var(--skeleton-wait, 150ms) step-end,
+      blink 1.8s ease-in-out infinite;
+  }
+}
+
 @utility recessed-control {
   background: var(--control-background);
   border-color: var(--control-border);
@@ -457,6 +474,13 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes skeleton-wait {
+  from,
+  to {
+    visibility: hidden;
   }
 }
 

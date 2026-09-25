@@ -17,6 +17,7 @@ import {
   loadWorkspaces,
 } from './route-context';
 import { rootRoute } from './root-route';
+import { BootPage, OpeningPage } from './system-pages';
 
 function flag(value: unknown): boolean {
   return value === true || value === 'true';
@@ -25,6 +26,7 @@ function flag(value: unknown): boolean {
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  pendingComponent: BootPage,
   loader: async ({ context }) => {
     const user = await loadCurrentUser(context);
     const workspaces = await loadWorkspaces(context, user.id);
@@ -42,6 +44,7 @@ export const indexRoute = createRoute({
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  pendingComponent: BootPage,
   validateSearch: (search: Record<string, unknown>) => ({
     ...(flag(search.verified) ? { verified: true as const } : {}),
     ...(flag(search.emailChanged) ? { emailChanged: true as const } : {}),
@@ -78,6 +81,7 @@ export const loginRoute = createRoute({
 export const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-up',
+  pendingComponent: OpeningPage,
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(returnPathFrom(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Create account') }] }),
@@ -87,6 +91,7 @@ export const signUpRoute = createRoute({
 export const legacyMigrationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/account/migrate',
+  pendingComponent: OpeningPage,
   head: () => ({ meta: [{ title: pageTitle('Move your sign-in') }] }),
   component: lazyRouteComponent(
     () => import('./legacy-migration-route'),
@@ -97,6 +102,7 @@ export const legacyMigrationRoute = createRoute({
 export const passwordRecoveryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/forgot-password',
+  pendingComponent: OpeningPage,
   head: () => ({ meta: [{ title: pageTitle('Reset password') }] }),
   component: lazyRouteComponent(
     () => import('./password-recovery-route'),
@@ -107,6 +113,7 @@ export const passwordRecoveryRoute = createRoute({
 export const passwordResetRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reset-password',
+  pendingComponent: OpeningPage,
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
   }),
@@ -122,6 +129,7 @@ export const passwordResetRoute = createRoute({
 export const logoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/logout',
+  pendingComponent: OpeningPage,
   validateSearch: (search: Record<string, unknown>) =>
     returnToSearch(returnPathFrom(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Signing out') }] }),
@@ -132,6 +140,7 @@ export const logoutRoute = createRoute({
 export const accountSecurityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/account/security',
+  pendingComponent: BootPage,
   validateSearch: (search: Record<string, unknown>) => ({
     ...(flag(search.linked) ? { linked: true as const } : {}),
     ...(flag(search.linkError) ? { linkError: true as const } : {}),
@@ -147,6 +156,7 @@ export const accountSecurityRoute = createRoute({
 export const invitationAcceptanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invitations/accept',
+  pendingComponent: BootPage,
   // Unreadable capabilities fall back to the session authority's sign-in.
   loader: async ({ context }) => ({
     signInMethod: invitationSignInMethod(
@@ -165,6 +175,7 @@ export const invitationAcceptanceRoute = createRoute({
 export const workspacesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workspaces',
+  pendingComponent: BootPage,
   loader: async ({ context }) => {
     const user = await loadCurrentUser(context);
     const workspaces = await loadWorkspaces(context, user.id);

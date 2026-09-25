@@ -1,35 +1,71 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import type { QueryClient } from '@tanstack/react-query';
 
 // A per-browser convenience: open the workspace someone used last. Storage can
 // be missing or blocked, so every access is guarded and failure is harmless.
 const STORAGE_KEY = 'pertexo:last-workspace:v1';
 
-export function rememberLastWorkspace(userId: string, workspaceId: string) {
+export function rememberLastWorkspace(
+  userId: string,
+  workspace: Pick<AccessibleWorkspace, 'id' | 'name'>,
+) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, workspaceId }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        userId,
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+      }),
+    );
   } catch {
     // Storage unavailable: the picker remains the fallback.
   }
 }
 
-/** The workspace this person opened last in this browser, if remembered. */
-export function readLastWorkspace(userId: string): string | undefined {
+function readRemembered(): Record<string, unknown> | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw === null) return undefined;
     const parsed: unknown = JSON.parse(raw);
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      Reflect.get(parsed, 'userId') === userId
-    ) {
-      const workspaceId: unknown = Reflect.get(parsed, 'workspaceId');
-      return typeof workspaceId === 'string' ? workspaceId : undefined;
-    }
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : undefined;
   } catch {
     // Unreadable storage behaves like a first visit.
+    return undefined;
   }
-  return undefined;
+}
+
+/**
+ * The name to show while a workspace opens, before the session is confirmed:
+ * from workspaces already loaded in this tab, else the one opened last in
+ * this browser. Undefined when neither knows it.
+ */
+export function knownWorkspaceName(
+  queryClient: QueryClient,
+  workspaceId: string,
+): string | undefined {
+  const cached = queryClient
+    .getQueriesData<readonly AccessibleWorkspace[]>({
+      predicate: (query) => query.queryKey[2] === 'accessible-workspaces',
+    })
+    .flatMap(([, workspaces]) => workspaces ?? [])
+    .find((workspace) => workspace.id === workspaceId);
+  if (cached !== undefined) return cached.name;
+  const remembered = readRemembered();
+  const name = remembered?.workspaceName;
+  return remembered?.workspaceId === workspaceId && typeof name === 'string'
+    ? name
+    : undefined;
+}
+
+/** The workspace this person opened last in this browser, if remembered. */
+export function readLastWorkspace(userId: string): string | undefined {
+  const remembered = readRemembered();
+  if (remembered?.userId !== userId) return undefined;
+  const workspaceId = remembered.workspaceId;
+  return typeof workspaceId === 'string' ? workspaceId : undefined;
 }
 
 function isOpenable(workspace: AccessibleWorkspace): boolean {

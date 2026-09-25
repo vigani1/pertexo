@@ -1,6 +1,7 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import { PagePending } from '../routes/page-pending';
 import { routeTree } from '../routes/route-tree';
 
 export function createAppRouter(
@@ -8,14 +9,33 @@ export function createAppRouter(
   apiClient: ApiClient,
   history?: RouterHistory,
 ) {
-  return createRouter({
+  let revalidate: () => void = () => undefined;
+  const router = createRouter({
     routeTree,
-    context: { queryClient, apiClient },
+    context: {
+      queryClient,
+      apiClient,
+      onSessionExpired: () => {
+        revalidate();
+      },
+    },
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    // A page's skeleton appears only if loading takes longer than 150 ms,
+    // and once shown it stays at least 300 ms, so it never flashes.
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 300,
+    defaultPendingComponent: PagePending,
     scrollRestoration: true,
     ...(history ? { history } : {}),
   });
+  // A read warmed without holding navigation found the session gone:
+  // reloading the current matches re-runs the workspace's session check,
+  // which signs out and sends the person to sign in.
+  revalidate = () => {
+    void router.invalidate();
+  };
+  return router;
 }
 
 declare module '@tanstack/react-router' {
