@@ -1,19 +1,26 @@
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
-import { describeDestination } from '../../model/destination-label';
+import type { ChannelNames } from '@/features/failure-notifications/channel-names.public';
+import {
+  channelNameNote,
+  describeDestination,
+} from '../../model/destination-label';
 
 /**
- * The workflow's current failure-alert choice in words. A destination that
- * was turned off stays the choice, but nothing is sent until it is replaced
- * or turned back on, so that is said plainly.
+ * The workflow's current failure-alert choice in words, with the Slack
+ * channel's name when it resolves and why not when it doesn't. A
+ * destination that was turned off stays the choice, but nothing is sent
+ * until it is replaced or turned back on, so that is said plainly.
  */
 export function CurrentAlertDestination({
   destination,
   connectionNames,
+  channelNames,
 }: Readonly<{
   destination: FailureNotificationDestinationResponse | null;
   connectionNames: ReadonlyMap<string, string>;
+  channelNames: ChannelNames;
 }>) {
   if (destination === null)
     return (
@@ -22,7 +29,8 @@ export function CurrentAlertDestination({
         Failures of this workflow aren’t announced anywhere.
       </p>
     );
-  const label = describeDestination(destination, connectionNames);
+  const label = describeDestination(destination, connectionNames, channelNames);
+  const note = channelNameNote(destination, channelNames);
   if (destination.status === 'disabled')
     return (
       <Notice tone="warning" title={`Failures go to: ${label}`}>
@@ -31,10 +39,15 @@ export function CurrentAlertDestination({
       </Notice>
     );
   return (
-    <p className="flex flex-wrap items-center gap-2 text-sm">
-      <Status tone="success">On</Status>
-      <span className="text-muted-foreground">Failures go to</span>
-      <span className="min-w-0 font-medium break-words">{label}</span>
-    </p>
+    <div className="flex flex-col gap-1">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        <Status tone="success">On</Status>
+        <span className="text-muted-foreground">Failures go to</span>
+        <span className="min-w-0 font-medium break-words">{label}</span>
+      </p>
+      {note === undefined ? null : (
+        <p className="text-xs text-muted-foreground">{note}</p>
+      )}
+    </div>
   );
 }

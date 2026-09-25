@@ -4,6 +4,7 @@ import {
   channelLookups,
   channelNamesFrom,
   describeChannel,
+  destinationChannels,
 } from '@/features/failure-notifications/model/channel-names';
 import { describeDestination } from '@/features/failure-notifications/model/destination-copy';
 
@@ -17,18 +18,20 @@ describe('Slack channel names on alert destinations', () => {
       slack('b', `C${String(index).padStart(2, '0')}`),
     );
     expect(
-      channelLookups([
-        ...many,
-        slack('a', 'G1'),
-        slack('a', 'G1'),
-        {
-          config: {
-            kind: 'email' as const,
-            connectionId: 'a',
-            toEmail: 'ops@example.test',
+      channelLookups(
+        destinationChannels([
+          ...many,
+          slack('a', 'G1'),
+          slack('a', 'G1'),
+          {
+            config: {
+              kind: 'email' as const,
+              connectionId: 'a',
+              toEmail: 'ops@example.test',
+            },
           },
-        },
-      ]),
+        ]),
+      ),
     ).toEqual([
       { connectionId: 'a', channelIds: ['G1'] },
       {
