@@ -1,3 +1,4 @@
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
@@ -80,6 +81,28 @@ describe('workflow authoring error mapping', () => {
       {
         code: 'request.invalid',
         safeDetail: 'The workflow graph is invalid.',
+      },
+    ],
+    [
+      'executable compile failure',
+      new WorkflowEngineError(
+        'executable_invalid',
+        'workflow edge source port is not configured',
+      ),
+      {
+        code: 'workflow.invalid',
+        safeDetail:
+          'A step’s setup is incomplete, so the workflow can’t be published yet.',
+        details: {
+          issues: [
+            {
+              path: '$.nodes',
+              code: 'executable_invalid',
+              message:
+                'A Switch or Parallel step has a connection from a branch it doesn’t define. Add that branch in its setup, or remove the connection.',
+            },
+          ],
+        },
       },
     ],
     [

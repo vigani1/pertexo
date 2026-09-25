@@ -26,8 +26,15 @@ export function commandErrorMessage(error: unknown, action: string): string {
     return `We couldn’t confirm whether ${action} went through. Retrying is safe: it won’t happen twice.`;
   if (isApiError(error) && (error.status === 409 || error.status === 412))
     return 'The draft changed after it was saved. Check the latest changes and try again.';
-  if (isApiError(error) && error.status === 422)
-    return `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`;
+  if (isApiError(error) && error.status === 422) {
+    // A setup problem only compiling finds comes with its own sentence.
+    const setup = error.problem?.errors?.find(
+      (issue) => issue.code === 'executable_invalid',
+    );
+    return setup === undefined
+      ? `${capitalize(action)} was stopped by issues in the workflow. Fix them and try again.`
+      : setup.message;
+  }
   return describeCommandError(error, action);
 }
 
