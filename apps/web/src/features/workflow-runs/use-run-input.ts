@@ -32,8 +32,9 @@ export function useRunInput() {
     blurInput: () => {
       validation.blur('input', runInputProblem(input));
     },
-    blurDeadline: () => {
-      validation.blur('deadline', runDeadlineProblem(deadline));
+    /** Pass the text the field settled on when it differs from state. */
+    blurDeadline: (settled: string = deadline) => {
+      validation.blur('deadline', runDeadlineProblem(settled));
     },
     /** The intent to send, or undefined after focusing the first problem. */
     read: (): RunIntent | undefined =>

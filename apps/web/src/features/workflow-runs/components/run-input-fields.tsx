@@ -1,5 +1,5 @@
+import { DateTimeField } from '@/components/ui/date-time-field';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { localUtcOffset } from '@/lib/format-time';
 import type { RunInput } from '../use-run-input';
@@ -54,16 +54,13 @@ export function RunInputFields({
         thread={validation.thread('deadline')}
       >
         {(control) => (
-          <Input
+          <DateTimeField
             {...control}
             ref={validation.register('deadline')}
-            name={`${idPrefix}-deadline`}
-            type="datetime-local"
+            timeLabel="Deadline time"
             disabled={disabled}
             value={runInput.deadline}
-            onChange={(event) => {
-              runInput.changeDeadline(event.currentTarget.value);
-            }}
+            onValueChange={runInput.changeDeadline}
             onBlur={runInput.blurDeadline}
           />
         )}
