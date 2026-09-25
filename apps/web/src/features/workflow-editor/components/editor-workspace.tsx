@@ -145,27 +145,7 @@ export function EditorWorkspace({
     () => paused,
   );
 
-  const checked =
-    issues.groups !== undefined &&
-    !issues.stale &&
-    !issues.checking &&
-    issues.error === undefined;
-  const overlays = useMemo(
-    () => ({
-      issuesByNode: issues.countsByNode,
-      flowingEdgeIds: effects.flowingEdgeIds,
-      weaveOrder: effects.weaveOrder,
-      checked,
-      testOutputBytes: effects.testOutputBytes,
-    }),
-    [
-      checked,
-      effects.flowingEdgeIds,
-      effects.testOutputBytes,
-      effects.weaveOrder,
-      issues.countsByNode,
-    ],
-  );
+  const overlays = useCanvasOverlays(issues, effects);
   const chrome: EditorChrome = {
     shortcutsOpen,
     onShortcutsOpenChange: setShortcutsOpen,
@@ -265,6 +245,38 @@ export function EditorWorkspace({
         </>
       }
     />
+  );
+}
+
+/**
+ * What the canvas draws over the steps: issue counts, a passed test's path
+ * and output size, the publish weave, and whether the latest check
+ * describes the draft on screen (so cards can say "valid").
+ */
+function useCanvasOverlays(
+  issues: WorkflowIssuesView,
+  effects: ReturnType<typeof useCanvasEffects>,
+) {
+  const checked =
+    issues.groups !== undefined &&
+    !issues.stale &&
+    !issues.checking &&
+    issues.error === undefined;
+  return useMemo(
+    () => ({
+      issuesByNode: issues.countsByNode,
+      flowingEdgeIds: effects.flowingEdgeIds,
+      weaveOrder: effects.weaveOrder,
+      checked,
+      testOutputBytes: effects.testOutputBytes,
+    }),
+    [
+      checked,
+      effects.flowingEdgeIds,
+      effects.testOutputBytes,
+      effects.weaveOrder,
+      issues.countsByNode,
+    ],
   );
 }
 

@@ -98,96 +98,14 @@ export function WorkflowCanvas({
   children?: ReactNode;
 }>) {
   const store = useEditorStoreApi();
-  const graph = useEditorStore((state) => state.graph);
-  const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
-  const selectedEdgeIds = useEditorStore((state) => state.selectedEdgeIds);
   const { screenToFlowPosition } = useReactFlow();
   const fit = useCanvasFraming(containerRef);
-  const [dragPositions, setDragPositions] = useState<
-    ReadonlyMap<string, Position>
-  >(() => new Map());
-  // React Flow marks its own copy of a node selected before asking us. When
-  // the editor's guard declines a selection, fresh node objects re-sync it.
-  const [selectionResync, setSelectionResync] = useState(0);
-  // Measured sizes go back into every projection: React Flow's overview map
-  // draws the nodes we pass it, and a node without a size isn't drawn.
-  const [measuredSizes, setMeasuredSizes] = useState<ReadonlyMap<string, Size>>(
-    () => new Map(),
-  );
-
-  const projection = useMemo(
-    () =>
-      projectWorkflowGraph(graph, definitions, {
-        ...overlays,
-        selectedNodeIds,
-        selectedEdgeIds,
-        dragPositions,
-        bodyIssues: forEachBodyIssues(graph),
-        measuredSizes,
-      }),
-    // selectionResync only forces fresh node objects for React Flow.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      definitions,
-      dragPositions,
-      graph,
-      measuredSizes,
-      overlays,
-      selectedEdgeIds,
-      selectedNodeIds,
-      selectionResync,
-    ],
-  );
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange<WorkflowFlowNode>[]) => {
-      const moving = new Map<string, Position>();
-      const settled = new Map<string, Position>();
-      const sized = new Map<string, Size>();
-      let selection: Set<string> | undefined;
-      for (const change of changes) {
-        if (change.type === 'dimensions') {
-          if (change.dimensions !== undefined)
-            sized.set(change.id, change.dimensions);
-        } else if (change.type === 'select') {
-          selection ??= new Set(store.getState().selectedNodeIds);
-          if (change.selected) selection.add(change.id);
-          else selection.delete(change.id);
-        } else if (change.type === 'position' && editable) {
-          const position = change.position ?? dragPositions.get(change.id);
-          if (position === undefined) continue;
-          if (change.dragging === true) moving.set(change.id, position);
-          else settled.set(change.id, position);
-        }
-      }
-      if (selection !== undefined) {
-        const requested = [...selection];
-        onSelectNodes(requested);
-        const applied = new Set(store.getState().selectedNodeIds);
-        if (
-          applied.size !== requested.length ||
-          requested.some((id) => !applied.has(id))
-        )
-          setSelectionResync((current) => current + 1);
-      }
-      if (sized.size > 0)
-        setMeasuredSizes((current) => new Map([...current, ...sized]));
-      if (moving.size > 0)
-        setDragPositions((current) => new Map([...current, ...moving]));
-      if (settled.size === 0) return;
-      const state = store.getState();
-      state.transact(
-        moveWorkflowNodes(state.graph, levelPositions(state.graph, settled)),
-        { coalesceKey: `move:${[...settled.keys()].join(',')}` },
-      );
-      setDragPositions((current) => {
-        const next = new Map(current);
-        for (const id of settled.keys()) next.delete(id);
-        return next;
-      });
-    },
-    [dragPositions, editable, onSelectNodes, store],
-  );
+  const { projection, onNodesChange } = useCanvasProjection({
+    definitions,
+    overlays,
+    editable,
+    onSelectNodes,
+  });
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange<WorkflowFlowEdge>[]) => {
@@ -277,6 +195,115 @@ export function WorkflowCanvas({
       {children}
     </div>
   );
+}
+
+/**
+ * The graph as React Flow draws it, and the node changes React Flow reports
+ * back: drags move steps as one change when they end, selection goes
+ * through the editor's guard, and measured sizes return with each
+ * projection.
+ */
+function useCanvasProjection({
+  definitions,
+  overlays,
+  editable,
+  onSelectNodes,
+}: Readonly<{
+  definitions: readonly NodeDefinitionCatalogItem[];
+  overlays: CanvasOverlays;
+  editable: boolean;
+  onSelectNodes: (nodeIds: readonly string[]) => void;
+}>) {
+  const store = useEditorStoreApi();
+  const graph = useEditorStore((state) => state.graph);
+  const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
+  const selectedEdgeIds = useEditorStore((state) => state.selectedEdgeIds);
+  const [dragPositions, setDragPositions] = useState<
+    ReadonlyMap<string, Position>
+  >(() => new Map());
+  // React Flow marks its own copy of a node selected before asking us. When
+  // the editor's guard declines a selection, fresh node objects re-sync it.
+  const [selectionResync, setSelectionResync] = useState(0);
+  // Measured sizes go back into every projection: React Flow's overview map
+  // draws the nodes we pass it, and a node without a size isn't drawn.
+  const [measuredSizes, setMeasuredSizes] = useState<ReadonlyMap<string, Size>>(
+    () => new Map(),
+  );
+
+  const projection = useMemo(
+    () =>
+      projectWorkflowGraph(graph, definitions, {
+        ...overlays,
+        selectedNodeIds,
+        selectedEdgeIds,
+        dragPositions,
+        bodyIssues: forEachBodyIssues(graph),
+        measuredSizes,
+      }),
+    // selectionResync only forces fresh node objects for React Flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      definitions,
+      dragPositions,
+      graph,
+      measuredSizes,
+      overlays,
+      selectedEdgeIds,
+      selectedNodeIds,
+      selectionResync,
+    ],
+  );
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<WorkflowFlowNode>[]) => {
+      const moving = new Map<string, Position>();
+      const settled = new Map<string, Position>();
+      const sized = new Map<string, Size>();
+      let selection: Set<string> | undefined;
+      for (const change of changes) {
+        if (change.type === 'dimensions') {
+          if (change.dimensions !== undefined)
+            sized.set(change.id, change.dimensions);
+        } else if (change.type === 'select') {
+          selection ??= new Set(store.getState().selectedNodeIds);
+          if (change.selected) selection.add(change.id);
+          else selection.delete(change.id);
+        } else if (change.type === 'position' && editable) {
+          const position = change.position ?? dragPositions.get(change.id);
+          if (position === undefined) continue;
+          if (change.dragging === true) moving.set(change.id, position);
+          else settled.set(change.id, position);
+        }
+      }
+      if (selection !== undefined) {
+        const requested = [...selection];
+        onSelectNodes(requested);
+        const applied = new Set(store.getState().selectedNodeIds);
+        if (
+          applied.size !== requested.length ||
+          requested.some((id) => !applied.has(id))
+        )
+          setSelectionResync((current) => current + 1);
+      }
+      if (sized.size > 0)
+        setMeasuredSizes((current) => new Map([...current, ...sized]));
+      if (moving.size > 0)
+        setDragPositions((current) => new Map([...current, ...moving]));
+      if (settled.size === 0) return;
+      const state = store.getState();
+      state.transact(
+        moveWorkflowNodes(state.graph, levelPositions(state.graph, settled)),
+        { coalesceKey: `move:${[...settled.keys()].join(',')}` },
+      );
+      setDragPositions((current) => {
+        const next = new Map(current);
+        for (const id of settled.keys()) next.delete(id);
+        return next;
+      });
+    },
+    [dragPositions, editable, onSelectNodes, store],
+  );
+  return { projection, onNodesChange } as const;
 }
 
 /**

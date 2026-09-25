@@ -1,4 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type {
   AccessibleWorkspace,
@@ -175,23 +176,7 @@ function WorkflowEditorSession({
     revision,
     generation,
   });
-  const { validation, validationPending, validationError } = publication;
-  const issues = useMemo(
-    () =>
-      workflowIssuesView(
-        { validation, validationPending, validationError },
-        graph,
-        { generation, revision },
-      ),
-    [
-      generation,
-      graph,
-      revision,
-      validation,
-      validationError,
-      validationPending,
-    ],
-  );
+  const issues = useIssuesView(publication, graph, { generation, revision });
   const actions = useEditorActions({ store, isPaused: verification.isPaused });
   const effects = useCanvasEffects(graph);
   const triggersAvailable = definitions.some(isStartTrigger);
@@ -218,7 +203,7 @@ function WorkflowEditorSession({
           canUpdate={canUpdate}
           paused={paused}
           issues={issues}
-          checking={validationPending}
+          checking={publication.validationPending}
           actions={actions}
           ensureSaved={ensureSaved}
           flushSave={flushSave}
@@ -302,5 +287,31 @@ function WorkflowEditorSession({
         onSaveAndLeave={() => void guard.saveAndLeave()}
       />
     </>
+  );
+}
+
+/** The latest check as the editor shows it, dated against the draft. */
+function useIssuesView(
+  publication: ReturnType<typeof useWorkflowCommandSession>['publication'],
+  graph: WorkflowGraphContract,
+  draft: Readonly<{ generation: number; revision: number }>,
+) {
+  const { validation, validationPending, validationError } = publication;
+  const { generation, revision } = draft;
+  return useMemo(
+    () =>
+      workflowIssuesView(
+        { validation, validationPending, validationError },
+        graph,
+        { generation, revision },
+      ),
+    [
+      generation,
+      graph,
+      revision,
+      validation,
+      validationError,
+      validationPending,
+    ],
   );
 }
