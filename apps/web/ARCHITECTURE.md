@@ -1583,11 +1583,14 @@ value. Commit only when separately authorized under root Git instructions.
   the create lens, the latest workflow's Build tab, `connections?add=any`,
   Alerts and `team?invite=true`. Each page still gates its lens by capability.
 - Verification: contracts 76/76; API 1,404/1,404 plus the real-PostgreSQL API
-  journey; database unit 769/769; the disposable-database statistics integration
-  and plan budget; web 433/433 in 58 files. Build, typecheck, lint, knip,
-  architecture, schema, contracts, complexity and duplication checks pass.
-  Playwright was not run in this change; the mocked Chromium journeys were
-  updated to serve the statistics read.
+  journey on a throwaway database; database unit 769/769 and the full
+  disposable-database integration suite 578/578 in 88 files, including the
+  statistics integration and plan budget; web 433/433 in 58 files. Coverage
+  thresholds pass, and the risk report records 0 unreviewed and 406 reviewed
+  branches. Build, typecheck, lint, format, docs, knip, architecture, schema,
+  contracts, complexity and duplication checks pass. Playwright was not run in
+  this change; the mocked Chromium journeys were updated to serve the statistics
+  read.
 
 ### Post-baseline frontend slice evidence
 
