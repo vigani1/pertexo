@@ -237,7 +237,8 @@
       :disabled,
       :focus-visible,
       :has(:focus-visible),
-      [aria-invalid='true']
+      [aria-invalid='true'],
+      :has([aria-invalid='true'])
     ) {
     border-color: rgb(255 255 255 / 17%);
   }
@@ -254,7 +255,9 @@
   & :focus-visible {
     outline: none;
   }
-  &[aria-invalid='true'] {
+  /* A composite is invalid when the input inside it is. */
+  &[aria-invalid='true'],
+  &:has([aria-invalid='true']) {
     --focus-ring-color: var(--destructive);
     border-color: color-mix(in srgb, var(--destructive) 55%, transparent);
   }
