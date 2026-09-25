@@ -212,10 +212,7 @@ function ConfigNumberField(props: LiveFieldProps) {
         )}
       </FieldLabel>
       <div className="flex items-center gap-1.5">
-        <FieldControl
-          state={live.error === undefined ? undefined : 'invalid'}
-          className="flex-1"
-        >
+        <FieldControl className="flex-1">
           <Input
             id={id}
             name={`config.${field.key}`}
@@ -236,6 +233,7 @@ function ConfigNumberField(props: LiveFieldProps) {
             onChange={(event) => {
               live.change(event.currentTarget.value);
             }}
+            onBlur={live.blur}
           />
           {unit === undefined ? null : (
             <span

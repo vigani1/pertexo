@@ -71,8 +71,7 @@ export function InviteLens({
     const absorbed = absorbAddresses(emails, text);
     setEmails(absorbed.emails);
     setDraft(absorbed.rest);
-    if (absorbed.error === undefined) validation.change('emails', undefined);
-    else validation.blur('emails', absorbed.error);
+    validation.report('emails', absorbed.error);
   }
 
   function submit() {
@@ -120,7 +119,6 @@ export function InviteLens({
                   draft={draft}
                   disabled={command.locked}
                   error={validation.error('emails')}
-                  thread={validation.thread('emails')}
                   inputRef={validation.register('emails')}
                   onDraftChange={(next) => {
                     setDraft(next);

@@ -12,20 +12,16 @@ import { DeadlineField } from '../../src/components/ui/deadline-field';
 
 function Harness({ initial = '' }: Readonly<{ initial?: string }>) {
   const [value, setValue] = useState(initial);
-  const [left, setLeft] = useState<string>();
   return (
     <>
       <DeadlineField
         value={value}
         error={undefined}
-        thread={undefined}
         disabled={false}
         register={() => undefined}
         onChange={setValue}
-        onBlur={setLeft}
       />
       <output data-testid="value">{value}</output>
-      <output data-testid="left">{left}</output>
     </>
   );
 }
@@ -77,7 +73,6 @@ describe('DeadlineField', () => {
     await event.type(screen.getByLabelText('Deadline time'), '930');
     await event.tab();
     expect(screen.getByTestId('value')).toHaveTextContent('2030-03-04T09:30');
-    expect(screen.getByTestId('left')).toHaveTextContent('2030-03-04T09:30');
   });
 
   it('picks the date from a calendar, from the keyboard too', async () => {

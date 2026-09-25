@@ -128,7 +128,6 @@ export function RenameForm({
         id={`${id}-name`}
         label={label}
         error={validation.error('name')}
-        thread={validation.thread('name')}
       >
         {(control) => (
           <Input
@@ -144,9 +143,6 @@ export function RenameForm({
               setDraft(next);
               command.clearError();
               validation.change('name', validate(next));
-            }}
-            onBlur={() => {
-              validation.blur('name', validate(draft));
             }}
           />
         )}

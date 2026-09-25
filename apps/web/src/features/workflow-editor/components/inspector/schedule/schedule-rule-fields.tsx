@@ -46,7 +46,6 @@ export function EveryField({
       id={fieldControlId(nodeId, 'intervalMinutes')}
       label="Every"
       error={messageFor(issue, 'every')}
-      thread={messageFor(issue, 'every') === undefined ? undefined : 'invalid'}
     >
       {(control) => (
         <div className="flex items-center gap-2">
@@ -94,7 +93,6 @@ export function TimeField({
       id={fieldControlId(nodeId, 'expression')}
       label="At"
       error={error}
-      thread={error === undefined ? undefined : 'invalid'}
     >
       {(control) => (
         <Input
@@ -181,7 +179,6 @@ export function CronField({
       label="Cron rule"
       description="Minute, hour, day of month, month and day of week, like 0 9 * * 1-5."
       error={error}
-      thread={error === undefined ? undefined : 'invalid'}
     >
       {(control) => (
         <Input
@@ -215,7 +212,6 @@ export function TimezoneField({
       id={fieldControlId(nodeId, 'timezone')}
       label="Timezone"
       error={error}
-      thread={error === undefined ? undefined : 'invalid'}
     >
       {(control) => (
         <ChoiceSelect

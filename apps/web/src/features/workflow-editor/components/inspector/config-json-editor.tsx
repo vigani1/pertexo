@@ -37,7 +37,7 @@ export function ConfigJsonEditor({
   return (
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>Setup as JSON</FieldLabel>
-      <FieldControl state={live.error === undefined ? undefined : 'invalid'}>
+      <FieldControl>
         <Textarea
           id={id}
           name="nodeConfiguration"
@@ -51,6 +51,7 @@ export function ConfigJsonEditor({
           onChange={(event) => {
             live.change(event.currentTarget.value);
           }}
+          onBlur={live.blur}
         />
       </FieldControl>
       <FieldDescription id={`${id}-hint`}>{description}</FieldDescription>

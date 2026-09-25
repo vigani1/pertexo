@@ -17,13 +17,7 @@ import {
   normalizeClock,
   splitDateTime,
 } from './date-time-parts';
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  type FieldThread,
-} from './field';
+import { Field, FieldControl, FieldDescription, FieldError } from './field';
 import { Input } from './input';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
@@ -58,21 +52,16 @@ function localDateTime(ms: number): string {
 export function DeadlineField({
   value,
   error,
-  thread,
   disabled,
   register,
   onChange,
-  onBlur,
 }: Readonly<{
   value: string;
   error: string | undefined;
-  thread: FieldThread;
   disabled: boolean;
   /** Lets a failed submit focus the date when it's the first problem. */
   register: RefCallback<HTMLElement>;
   onChange: (text: string) => void;
-  /** Leaving the date or time, with the value as it now stands. */
-  onBlur: (value: string) => void;
 }>) {
   const id = useId();
   const [choice, setChoice] = useState<Choice>(
@@ -102,7 +91,6 @@ export function DeadlineField({
     const settled =
       clock === undefined || clock === time ? value : joinDateTime(date, clock);
     if (settled !== value) onChange(settled);
-    onBlur(settled);
   }
 
   return (
@@ -130,10 +118,7 @@ export function DeadlineField({
         ))}
       </ToggleGroup>
       {choice === 'custom' ? (
-        <FieldControl
-          state={thread}
-          className="grid grid-cols-[minmax(0,1fr)_auto_6.5rem] gap-2"
-        >
+        <FieldControl className="grid grid-cols-[minmax(0,1fr)_auto_6.5rem] gap-2">
           <Input
             ref={register}
             aria-label="Deadline date"
@@ -148,9 +133,6 @@ export function DeadlineField({
             value={date}
             onChange={(event) => {
               changePart(event.currentTarget.value, time);
-            }}
-            onBlur={() => {
-              onBlur(value);
             }}
           />
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>

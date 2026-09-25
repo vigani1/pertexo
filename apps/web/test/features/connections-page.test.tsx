@@ -269,14 +269,15 @@ describe('connections page', () => {
     const tokenInput = lens().getByLabelText('Slack bot token');
     await event.click(tokenInput);
     await event.tab();
+    expect(tokenInput).toHaveAttribute('aria-invalid', 'false');
+    await event.click(lens().getByRole('button', { name: 'Continue' }));
+    expect(tokenInput).toHaveFocus();
     expect(
       await lens().findByText('Paste the bot token from your Slack app.'),
     ).toBeVisible();
     await event.type(tokenInput, 'wrong');
     expect(lens().getByText(/start with xoxb-/u)).toBeVisible();
     await event.clear(tokenInput);
-    await event.click(lens().getByRole('button', { name: 'Continue' }));
-    expect(tokenInput).toHaveFocus();
     expect(tokenInput).toHaveAttribute('aria-invalid', 'true');
     await event.type(tokenInput, token);
     expect(tokenInput).toHaveAttribute('aria-invalid', 'false');

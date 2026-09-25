@@ -61,6 +61,7 @@ export function MappingRow({
   focusKey,
   onToggle,
   onFocusRow,
+  onLeaveRow,
   ...props
 }: RowProps &
   Readonly<{
@@ -69,6 +70,7 @@ export function MappingRow({
     focusKey: boolean;
     onToggle: () => void;
     onFocusRow: () => void;
+    onLeaveRow: () => void;
   }>) {
   const { nodeId, row, errors } = props;
   const keyId = inputMappingKeyControlId(nodeId, row.id);
@@ -83,6 +85,7 @@ export function MappingRow({
     <li
       className="rounded-lg border border-white/7 bg-black/18 p-3"
       onFocus={onFocusRow}
+      onBlur={onLeaveRow}
     >
       <MappingSummary
         row={row}

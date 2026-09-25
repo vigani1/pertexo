@@ -57,13 +57,6 @@ function apiClient() {
   return createApiClient({ fetch: testFetch, readCsrfToken: () => undefined });
 }
 
-function threadState(label: string) {
-  return screen
-    .getByLabelText(label)
-    .closest('[data-slot="field-control"]')
-    ?.getAttribute('data-state');
-}
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -138,26 +131,26 @@ describe('sign-in family forms', () => {
     expect(screen.getByLabelText('Email')).toHaveValue('');
   });
 
-  it('checks sign-up fields on blur, then live, and ties the password knot at the server minimum', async () => {
+  it('checks sign-up fields on submit, clears them as they’re fixed, and fills the meter to the server minimum', async () => {
     mockServer.use(signedOut, capabilities({ minimumLength: 10 }));
     renderApp('/sign-up');
     const actor = userEvent.setup();
     const name = await screen.findByLabelText('Your name');
     await actor.click(name);
     await actor.tab();
-    expect(name).toHaveAttribute('aria-invalid', 'true');
-    expect(threadState('Your name')).toBe('invalid');
-    expect(screen.getByText(/Add your name/u)).toBeVisible();
-
-    await actor.type(name, 'Ada');
+    // Moving through the form says nothing yet.
     expect(name).toHaveAttribute('aria-invalid', 'false');
-    expect(threadState('Your name')).toBe('corrected');
+    expect(screen.queryByText(/Add your name/u)).not.toBeInTheDocument();
 
     const email = screen.getByLabelText('Email');
     await actor.type(email, 'ada@northwind');
     await actor.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(email).toHaveFocus();
+    expect(name).toHaveFocus();
+    expect(screen.getByText(/Add your name/u)).toBeVisible();
     expect(screen.getByText(/missing the end of the domain/u)).toBeVisible();
+
+    await actor.type(name, 'Ada');
+    expect(name).toHaveAttribute('aria-invalid', 'false');
     await actor.type(email, '.dev');
     expect(email).toHaveAttribute('aria-invalid', 'false');
 

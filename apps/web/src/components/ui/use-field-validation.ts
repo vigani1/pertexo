@@ -5,7 +5,6 @@ import {
   type ChangeEvent,
   type RefCallback,
 } from 'react';
-import type { FieldThread } from './field';
 
 /** Field name → message; an undefined message means the field is valid. */
 export type FieldErrors<Name extends string> = Readonly<
@@ -14,13 +13,12 @@ export type FieldErrors<Name extends string> = Readonly<
 
 export type FieldValidation<Name extends string> = Readonly<{
   error: (name: Name) => string | undefined;
-  thread: (name: Name) => FieldThread;
   /** Ref for the control that receives focus when its field is invalid. */
   register: (name: Name) => RefCallback<HTMLElement>;
-  /** Leaving a field shows (or clears) its message. */
-  blur: (name: Name, message: string | undefined) => void;
-  /** Typing re-checks live once the field shows a message or after a submit. */
+  /** Typing re-checks a field that already shows a message. */
   change: (name: Name, message: string | undefined) => void;
+  /** Shows one field's message now, for an explicit action like adding a chip. */
+  report: (name: Name, message: string | undefined) => void;
   /** Shows every message and focuses the first invalid control. */
   submit: (errors: FieldErrors<Name>) => boolean;
   /** Places server-reported field messages (`errors[].path`) and focuses the first. */
@@ -53,34 +51,23 @@ function withMessage<Name extends string>(
   return next;
 }
 
-function withCorrected<Name extends string>(
-  corrected: ReadonlySet<Name>,
-  name: Name,
-  recovered: boolean,
-): ReadonlySet<Name> {
-  if (recovered === corrected.has(name)) return corrected;
-  const next = new Set(corrected);
-  if (recovered) next.add(name);
-  else next.delete(name);
-  return next;
-}
-
 /**
- * Weft's one validation timing, for every form. A field is checked when
- * people leave it, then live while they correct it (or everywhere after a
- * failed submit); a submit focuses the first invalid control in document
- * order; server field errors land on the same fields; and a field that goes
- * from invalid to valid ties a brief knot. The caller owns values and rules —
- * this owns only which messages show and when.
+ * Weft's one validation timing, for every form. Messages appear when people
+ * submit (or take an explicit action like adding a chip), never while they
+ * type or move between fields, so the form doesn't shift under them. A
+ * field showing a message is then re-checked as they type, so the message
+ * updates and goes away once it's fixed. A submit focuses the first invalid
+ * control in document order, and server field errors land on the same
+ * fields. The caller owns values and rules — this owns only which messages
+ * show and when.
  */
 export function useFieldValidation<
   Name extends string,
 >(): FieldValidation<Name> {
   const [messages, setMessages] = useState<Messages<Name>>(() => new Map());
-  const [corrected, setCorrected] = useState<ReadonlySet<Name>>(
-    () => new Set(),
-  );
-  const [submitted, setSubmitted] = useState(false);
+  // Fields that showed a message since the last submit stay live, so one
+  // that's fixed and then broken again says so before the next submit.
+  const [live, setLive] = useState<ReadonlySet<Name>>(() => new Set());
   const controls = useRef(new Map<Name, HTMLElement>());
   const refs = useRef(new Map<Name, RefCallback<HTMLElement>>());
 
@@ -98,32 +85,20 @@ export function useFieldValidation<
     }
 
     function show(name: Name, message: string | undefined) {
-      // The knot stays tied until the field frays again or the form resets.
-      if (message === undefined && messages.has(name))
-        setCorrected((current) => withCorrected(current, name, true));
-      if (message !== undefined)
-        setCorrected((current) => withCorrected(current, name, false));
       setMessages((current) => withMessage(current, name, message));
+      if (message !== undefined && !live.has(name))
+        setLive((current) => new Set(current).add(name));
     }
 
     function place(errors: FieldErrors<Name>) {
       const next = toMessages(errors);
       setMessages(next);
-      setCorrected((current) => {
-        const kept = new Set(current);
-        for (const name of next.keys()) kept.delete(name);
-        for (const name of messages.keys()) if (!next.has(name)) kept.add(name);
-        return kept;
-      });
+      setLive(new Set(next.keys()));
       return next;
     }
 
     return {
       error: (name) => messages.get(name),
-      thread: (name) => {
-        if (messages.has(name)) return 'invalid';
-        return corrected.has(name) ? 'corrected' : undefined;
-      },
       register: (name) => {
         const existing = refs.current.get(name);
         if (existing !== undefined) return existing;
@@ -134,12 +109,11 @@ export function useFieldValidation<
         refs.current.set(name, ref);
         return ref;
       },
-      blur: show,
       change: (name, message) => {
-        if (submitted || messages.has(name)) show(name, message);
+        if (live.has(name)) show(name, message);
       },
+      report: show,
       submit: (errors) => {
-        setSubmitted(true);
         const next = place(errors);
         if (next.size === 0) return true;
         focusFirst(next);
@@ -154,11 +128,10 @@ export function useFieldValidation<
       },
       reset: () => {
         setMessages(new Map());
-        setCorrected(new Set());
-        setSubmitted(false);
+        setLive(new Set());
       },
     };
-  }, [corrected, messages, submitted]);
+  }, [live, messages]);
 }
 
 type Values<Name extends string> = Readonly<Record<Name, string>>;
@@ -172,8 +145,8 @@ export type FieldRule<Name extends string> = (
 /**
  * A thin convenience over `useFieldValidation` for forms of plain text
  * values checked by rules. It owns the values; the timing stays the
- * engine's. A change re-checks the field and any field already showing a
- * message, so a confirmation follows the password it repeats.
+ * engine's. A change re-checks every field already showing a message, so a
+ * confirmation follows the password it repeats.
  */
 export function useFieldValues<Name extends string>(
   rules: Readonly<Record<Name, FieldRule<Name>>>,
@@ -192,19 +165,14 @@ export function useFieldValues<Name extends string>(
     latest.current = next;
     setValues(next);
     for (const candidate of names)
-      if (candidate === name || validation.error(candidate) !== undefined)
-        validation.change(candidate, check(candidate, next));
+      validation.change(candidate, check(candidate, next));
   }
 
   return {
     values,
     error: validation.error,
-    thread: validation.thread,
-    /** The message and thread for a `LabelledField`. */
-    field: (name: Name) => ({
-      error: validation.error(name),
-      thread: validation.thread(name),
-    }),
+    /** The message for a `LabelledField`. */
+    field: (name: Name) => ({ error: validation.error(name) }),
     showErrors: validation.showErrors,
     setValue,
     /** Every rule checked: the values to send, or undefined after focusing a problem. */
@@ -219,7 +187,7 @@ export function useFieldValues<Name extends string>(
       setValues(next);
       validation.reset();
     },
-    /** Value, change, blur and focus wiring for the field's text control. */
+    /** Value, change and focus wiring for the field's text control. */
     control: (name: Name) => ({
       ref: validation.register(name),
       value: values[name],
@@ -227,9 +195,6 @@ export function useFieldValues<Name extends string>(
         event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
       ) => {
         setValue(name, event.target.value);
-      },
-      onBlur: () => {
-        validation.blur(name, check(name, latest.current));
       },
     }),
   };

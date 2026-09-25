@@ -99,7 +99,6 @@ export function WorkspaceDeletionDialog({
           id={`${id}-confirmation`}
           label={`Type ${workspaceName} to confirm`}
           error={validation.error('confirmation')}
-          thread={validation.thread('confirmation')}
         >
           {(control) => (
             <Input
@@ -114,12 +113,6 @@ export function WorkspaceDeletionDialog({
                 setConfirmation(next);
                 validation.change('confirmation', confirmationError(next));
               }}
-              onBlur={() => {
-                validation.blur(
-                  'confirmation',
-                  confirmationError(confirmation),
-                );
-              }}
             />
           )}
         </LabelledField>
@@ -128,7 +121,6 @@ export function WorkspaceDeletionDialog({
           label="Reason"
           description="Recorded with the request so other owners know why."
           error={validation.error('reason')}
-          thread={validation.thread('reason')}
         >
           {(control) => (
             <Textarea
@@ -143,9 +135,6 @@ export function WorkspaceDeletionDialog({
                 const next = event.currentTarget.value;
                 setReason(next);
                 validation.change('reason', reasonError(next));
-              }}
-              onBlur={() => {
-                validation.blur('reason', reasonError(reason));
               }}
             />
           )}

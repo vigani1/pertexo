@@ -85,7 +85,6 @@ export function DisplayNameForm({
         label="Your name"
         description="Teammates see it in every workspace you belong to."
         error={validation.error('name')}
-        thread={validation.thread('name')}
       >
         {(control) => (
           <Input
@@ -100,9 +99,6 @@ export function DisplayNameForm({
               const next = event.currentTarget.value;
               setName(next);
               validation.change('name', nameProblem(next));
-            }}
-            onBlur={() => {
-              validation.blur('name', nameProblem(name));
             }}
           />
         )}

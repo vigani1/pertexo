@@ -178,7 +178,6 @@ export function WorkspaceCreationForm({
           id={`${idPrefix}-name`}
           label="Workspace name"
           error={validation.error('name')}
-          thread={validation.thread('name')}
         >
           {(control) => (
             <Input
@@ -188,9 +187,6 @@ export function WorkspaceCreationForm({
               maxLength={128}
               disabled={locked}
               value={name}
-              onBlur={() => {
-                validation.blur('name', fieldProblem('name', name));
-              }}
               onChange={(event) => {
                 const nextName = event.target.value;
                 setName(nextName);
@@ -207,9 +203,6 @@ export function WorkspaceCreationForm({
             label="Handle"
             description="Lowercase letters, numbers and single hyphens. It identifies the workspace in references."
             error={slugError}
-            thread={
-              slugError === undefined ? validation.thread('slug') : 'invalid'
-            }
           >
             {(control) => (
               <Input
@@ -227,9 +220,6 @@ export function WorkspaceCreationForm({
                 maxLength={64}
                 disabled={locked}
                 value={slug}
-                onBlur={() => {
-                  validation.blur('slug', fieldProblem('slug', slug));
-                }}
                 onChange={(event) => {
                   setSlug(event.target.value);
                   setSlugEdited(true);

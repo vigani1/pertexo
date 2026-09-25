@@ -67,9 +67,6 @@ export function DestinationFields({
     onChange(next);
     if (field !== undefined) validation.change(field, errorsFor(next)[field]);
   };
-  const blurTarget = () => {
-    validation.blur('target', errorsFor(values).target);
-  };
 
   return (
     <>
@@ -110,7 +107,6 @@ export function DestinationFields({
             : undefined
         }
         error={validation.error('connection')}
-        thread={validation.thread('connection')}
         // Beside the label, so the validation thread sits under the Select.
         labelAction={
           <Link
@@ -158,7 +154,6 @@ export function DestinationFields({
             : 'Pertexo emails this address whenever a run fails.'
         }
         error={validation.error('target')}
-        thread={validation.thread('target')}
       >
         {(control) => (
           <Input
@@ -178,7 +173,6 @@ export function DestinationFields({
                 'target',
               );
             }}
-            onBlur={blurTarget}
           />
         )}
       </LabelledField>

@@ -119,7 +119,6 @@ function ChannelIdField({
       label="Channel ID"
       description="The channel the message is posted to, like C0123456789. Find it in the channel’s details in Slack."
       error={live.error}
-      thread={live.error === undefined ? undefined : 'invalid'}
       describedBy={nameId}
       feedback={
         <ChannelNote
@@ -142,6 +141,7 @@ function ChannelIdField({
             disabled={!form.editable}
             onBlur={() => {
               setEditing(false);
+              live.blur();
             }}
             onChange={(event) => {
               // Only a changed value waits for the field to be left; a
