@@ -97,6 +97,8 @@ export function WorkspaceBootPage() {
   return <Boot message={`Opening ${name ?? 'your workspace'}…`} />;
 }
 
+const CENTRED = 'items-center text-center';
+
 /** A whole-screen dead end: what happened and the one way out. */
 function FullScreenState({
   art,
@@ -111,7 +113,7 @@ function FullScreenState({
 }>) {
   return (
     <FullScreen>
-      <SystemState>
+      <SystemState className={CENTRED}>
         <SystemStateArt>{art}</SystemStateArt>
         <SystemStateTitle>{title}</SystemStateTitle>
         <SystemStateDescription>{description}</SystemStateDescription>
@@ -202,9 +204,9 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     );
   return (
     <FullScreen>
-      <SystemState role="alert">
+      <SystemState role="alert" className={CENTRED}>
         <SystemStateArt>
-          <CoreOrb state="failed" className="size-24" />
+          <CoreOrb state="failed" className="size-36" />
         </SystemStateArt>
         <SystemStateTitle>Something broke on our side</SystemStateTitle>
         <SystemStateDescription>

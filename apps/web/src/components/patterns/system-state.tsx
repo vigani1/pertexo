@@ -3,7 +3,8 @@ import { cn } from '@/lib/utils';
 
 // Full-screen or in-shell state for missing, forbidden and failed screens.
 // Compose: SystemState > SystemStateArt, SystemStateTitle,
-// SystemStateDescription, SystemStateActions.
+// SystemStateDescription, SystemStateActions. In the shell it reads from
+// the left like the page around it; a full screen centres it.
 export function SystemState({
   className,
   ...props
@@ -25,7 +26,8 @@ export function SystemStateArt({ className, ...props }: ComponentProps<'div'>) {
     <div
       data-slot="system-state-art"
       className={cn(
-        'mb-2 grid h-28 w-full max-w-60 place-items-center rounded-lg bg-black/25',
+        // The art sits on the page itself, never in a frame of its own.
+        'mb-1 flex min-h-24 items-center',
         className,
       )}
       {...props}
