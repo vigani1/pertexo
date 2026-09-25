@@ -21,7 +21,10 @@ import {
   type IdentityWorkspaceDatabase,
 } from '@pertexo/database/testing';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
-import { workflowRunListResponseSchema } from '@pertexo/contracts/workflow-runs';
+import {
+  workflowRunListResponseSchema,
+  workflowRunStatisticsResponseSchema,
+} from '@pertexo/contracts/workflow-runs';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -504,6 +507,34 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
           id === startedBody.run.id && workflowName === 'Inbound automation',
       ),
     ).toBe(true);
+    const statistics = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspace.id}/run-statistics?window=1h&breakdown=workflow`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(statistics.statusCode).toBe(200);
+    expect(
+      workflowRunStatisticsResponseSchema.parse(statistics.json()),
+    ).toMatchObject({
+      current: { queued: 2, running: 0, waiting: 0 },
+      window: { duration: '1h', total: 2, byStatus: { queued: 2 } },
+      workflows: {
+        truncated: false,
+        items: [
+          {
+            workflowId: createdBody.workflow.id,
+            workflowName: 'Inbound automation',
+            total: 2,
+          },
+        ],
+      },
+    });
+    const hiddenStatistics = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${randomUUID()}/run-statistics`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expectProblem(hiddenStatistics, 404, 'resource.not_found');
 
     const canceled = await application.inject({
       method: 'POST',
