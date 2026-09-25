@@ -146,12 +146,16 @@ function describeDays(
 function describeTimes(minute: Field, hour: Field): string | undefined {
   if (minute.any && hour.any) return 'Every minute';
   if (minute.step !== undefined && hour.any)
-    return `Every ${String(minute.step)} minutes`;
+    return minute.step === 1
+      ? 'Every minute'
+      : `Every ${String(minute.step)} minutes`;
   const [onlyMinute] = minute.values;
   if (minute.values.length !== 1 || onlyMinute === undefined) return undefined;
   if (hour.any) return `Every hour at :${pad(onlyMinute)}`;
   if (hour.step !== undefined)
-    return `Every ${String(hour.step)} hours at :${pad(onlyMinute)}`;
+    return hour.step === 1
+      ? `Every hour at :${pad(onlyMinute)}`
+      : `Every ${String(hour.step)} hours at :${pad(onlyMinute)}`;
   if (hour.values.length > 4) return undefined;
   return `at ${listWords(hour.values.map((value) => `${pad(value)}:${pad(onlyMinute)}`))}`;
 }

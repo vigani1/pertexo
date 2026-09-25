@@ -38,7 +38,7 @@ export function nodeLabel(
   issueCount: number,
 ): string {
   return issueCount > 0
-    ? `${title}, ${type}, ${String(issueCount)} issues`
+    ? `${title}, ${type}, ${issueCount === 1 ? '1 issue' : `${String(issueCount)} issues`}`
     : `${title}, ${type}`;
 }
 

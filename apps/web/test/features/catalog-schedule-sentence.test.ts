@@ -12,8 +12,10 @@ describe('schedule sentences', () => {
   it.each([
     ['* * * * *', 'Every minute'],
     ['*/15 * * * *', 'Every 15 minutes'],
+    ['*/1 * * * *', 'Every minute'],
     ['5 * * * *', 'Every hour at :05'],
     ['0 */2 * * *', 'Every 2 hours at :00'],
+    ['0 */1 * * *', 'Every hour at :00'],
     ['0 9 * * *', 'Every day at 09:00'],
     ['0 9 * * 1-5', 'Every weekday at 09:00'],
     ['30 7 * * MON-FRI', 'Every weekday at 07:30'],
