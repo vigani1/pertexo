@@ -59,6 +59,11 @@ export function describeCommandError(error: unknown, action: string): string {
   if (isWritePaused(error))
     return 'Pertexo is in read-only maintenance. Try again shortly.';
   if (isForbidden(error)) return `Your role doesn’t allow ${action}.`;
+  if (
+    isApiError(error) &&
+    error.problem?.code === 'request.idempotency_conflict'
+  )
+    return 'This request was already used with different details. Try again.';
   const seconds = retryAfterSeconds(error);
   if (isApiError(error) && error.status === 429 && seconds !== undefined)
     return `Too many attempts. Try again in ${String(seconds)} s.`;

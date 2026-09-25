@@ -87,7 +87,10 @@ function lifecycleErrorMessage(error: unknown, action: LifecycleAction) {
   const verb = action === 'archive' ? 'archiving' : 'restoring';
   if (isUncertainOutcome(error))
     return `We couldn’t confirm whether ${verb} went through. Retrying is safe — it won’t be applied twice.`;
-  if (isApiError(error) && error.status === 409)
+  if (
+    isApiError(error) &&
+    error.problem?.code === 'workflow.lifecycle_conflict'
+  )
     return 'This workflow changed since you opened this. Close it and check the workflow’s current state.';
   return describeCommandError(error, `${verb} this workflow`);
 }
@@ -178,12 +181,6 @@ const RENAME_UNCERTAIN: InlineRenameError = {
 function renameError(error: unknown): InlineRenameError {
   const code = isApiError(error) ? error.problem?.code : undefined;
   if (code === 'workflow.name_conflict') return RENAME_CONFLICT;
-  if (code === 'request.idempotency_conflict')
-    return {
-      kind: 'other',
-      message:
-        'This request was already used with different details. Try again.',
-    };
   if (isApiError(error) && error.status === 404)
     return {
       kind: 'other',
