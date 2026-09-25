@@ -1,3 +1,4 @@
+import { usableConnections } from '../model/destination-copy';
 import { useId, useRef, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts/schemas/failure-notifications';
@@ -330,6 +331,9 @@ export function DestinationForm({
           variant="primary"
           pending={mutation.isPending}
           pendingLabel="Saving…"
+          disabled={
+            !editing && usableConnections(connections, values.kind).length === 0
+          }
         >
           {submitLabel(uncertain, editing)}
         </ProgressButton>
