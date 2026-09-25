@@ -422,7 +422,7 @@
           "branchType": "if",
           "line": 67,
           "column": 2,
-          "sourceFingerprint": "sha256:e03931de997d389cd2eed31f483a23a56a9f8965c21fa673c4fb6bf5e4c160ec",
+          "sourceFingerprint": "sha256:09c509764f5b3183606e79fb1b71a8263ed873d8818222fea96c3eeec29a2537",
           "classification": "defensive",
           "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
         },
@@ -432,7 +432,7 @@
           "branchType": "if",
           "line": 70,
           "column": 2,
-          "sourceFingerprint": "sha256:e03931de997d389cd2eed31f483a23a56a9f8965c21fa673c4fb6bf5e4c160ec",
+          "sourceFingerprint": "sha256:09c509764f5b3183606e79fb1b71a8263ed873d8818222fea96c3eeec29a2537",
           "classification": "defensive",
           "justification": "This residual contract arm rejects malformed workflow-run pagination material at the public boundary."
         },
