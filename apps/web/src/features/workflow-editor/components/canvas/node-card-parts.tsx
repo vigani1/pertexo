@@ -9,20 +9,23 @@ import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../model/graph-adapter';
 import { handleClass } from './node-card-style';
 
-/** Family tile, title and human type: the top of every step card. */
+/**
+ * Family tile, title and human type: the top of every step card. Sized so
+ * the canvas stays readable at the editor's lowest fitted zoom.
+ */
 export function CardHeading({
   step,
   title,
   type,
 }: Readonly<{ step: StepPresentation; title: string; type: string }>) {
   return (
-    <div className="flex items-center gap-2.5">
-      <StepTile step={step} />
+    <div className="flex items-center gap-3">
+      <StepTile step={step} size="lg" />
       <div className="min-w-0">
-        <h2 className="truncate text-[0.84rem] leading-tight font-semibold">
+        <h2 className="truncate text-base leading-tight font-semibold">
           {title}
         </h2>
-        <p className="mt-0.5 truncate text-[0.72rem] text-subtle-foreground">
+        <p className="mt-0.5 truncate text-[0.8125rem] text-subtle-foreground">
           {type}
         </p>
       </div>

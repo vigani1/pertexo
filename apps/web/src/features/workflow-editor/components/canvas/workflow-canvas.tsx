@@ -14,7 +14,7 @@ import {
   useState,
   type DragEvent,
   type ReactNode,
-  type Ref,
+  type RefObject,
 } from 'react';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import { levelPositions } from '../../model/body-layout';
@@ -38,6 +38,7 @@ import { canConnectSteps } from '../../model/graph-scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
+import { useCanvasFraming } from '../../use-canvas-framing';
 import { CanvasZoomLens } from './canvas-zoom-lens';
 import { ForEachNodeCard } from './for-each-node-card';
 import { WorkflowEdge } from './workflow-edge';
@@ -83,7 +84,7 @@ export function WorkflowCanvas({
   definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   overlays: CanvasOverlays;
-  containerRef: Ref<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   onSelectNodes: (nodeIds: readonly string[]) => void;
   onRemoveEdge: (edgeId: string) => void;
   onDropStep: (identity: string, position: Position) => void;
@@ -97,6 +98,7 @@ export function WorkflowCanvas({
   const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
   const selectedEdgeIds = useEditorStore((state) => state.selectedEdgeIds);
   const { screenToFlowPosition } = useReactFlow();
+  const fit = useCanvasFraming(containerRef);
   const [dragPositions, setDragPositions] = useState<
     ReadonlyMap<string, Position>
   >(() => new Map());
@@ -251,8 +253,6 @@ export function WorkflowCanvas({
               .closest<HTMLElement>('[data-workflow-canvas]')
               ?.focus();
           }}
-          fitView
-          fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
           minZoom={0.2}
           maxZoom={1.8}
           deleteKeyCode={null}
@@ -263,7 +263,11 @@ export function WorkflowCanvas({
           proOptions={{ hideAttribution: true }}
           className="!bg-transparent [--xy-edge-stroke-default:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke-default:var(--primary)] [--xy-selection-background-color-default:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border-default:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
         >
-          <CanvasZoomLens />
+          <CanvasZoomLens
+            onFit={() => {
+              fit(true);
+            }}
+          />
         </ReactFlow>
       </CanvasActionsContext>
       {children}
