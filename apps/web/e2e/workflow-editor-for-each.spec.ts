@@ -78,7 +78,7 @@ test('draws For each as a container and inspects it from the keyboard', async ({
     'Each order',
   );
   await expect(
-    page.getByRole('region', { name: 'Runs once per item' }),
+    page.getByRole('region', { name: 'Runs once per item', exact: true }),
   ).toContainText('up to 100 items and 5 at a time');
   expect(remote.revision).toBe(1);
 });
