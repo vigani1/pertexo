@@ -39,9 +39,13 @@ function phaseOf(
 /**
  * Tests one connection. An unconfirmed attempt repeats with the same key, so
  * the provider is not called twice for one test; anything else starts fresh.
+ * A pass is also confirmed with a toast, unless `toastOnPass` is false: the
+ * add flow's last step already shows the result in place, above the button
+ * a toast would cover.
  */
 export function useConnectionTest(
   scope: ConnectionMutationScope,
+  { toastOnPass = true }: Readonly<{ toastOnPass?: boolean }> = {},
 ): ConnectionTest {
   const notifications = useNotifications();
   const mutation = useTestConnectionMutation(scope);
@@ -52,7 +56,7 @@ export function useConnectionTest(
     try {
       const result = await mutation.mutateAsync(command);
       attempt.current = undefined;
-      if (result.outcome.ok)
+      if (result.outcome.ok && toastOnPass)
         notifications.success({ title: `${name} passed its test` });
     } catch {
       // The mutation's error renders as the test outcome.

@@ -51,14 +51,14 @@ export function RunEventsView({
                 {line.offset}
               </span>
               <StatusGlyph tone={line.tone} className="mt-0.5" />
+              {/* The raw type trails the sentence on hover or focus without
+                  taking a line of its own, so rows keep one line's height. */}
               <span className="min-w-0">
-                <span className="block">
-                  {line.step === undefined ? null : (
-                    <b className="font-semibold">{line.step} · </b>
-                  )}
-                  {line.sentence}
-                </span>
-                <span className="block font-mono text-[0.68rem] text-subtle-foreground/80 opacity-0 transition-opacity duration-150 group-focus-within/event:opacity-100 group-hover/event:opacity-100 motion-reduce:transition-none">
+                {line.step === undefined ? null : (
+                  <b className="font-semibold">{line.step} · </b>
+                )}
+                {line.sentence}{' '}
+                <span className="ml-1.5 font-mono text-[0.68rem] break-all text-subtle-foreground/80 opacity-0 transition-opacity duration-150 group-focus-within/event:opacity-100 group-hover/event:opacity-100 motion-reduce:transition-none">
                   {line.rawType}
                 </span>
               </span>
