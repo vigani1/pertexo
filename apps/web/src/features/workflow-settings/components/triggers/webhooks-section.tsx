@@ -11,6 +11,7 @@ import {
 import { RotateSecretDialog } from './rotate-secret-dialog';
 import { SecretRevealDialog } from './secret-reveal-dialog';
 import { WebhookCard } from './webhook-card';
+import { WebhookDeliveries } from './webhook-deliveries';
 
 const DONE: Readonly<Record<WebhookCommand, string>> = {
   provision: 'Endpoint created',
@@ -98,6 +99,16 @@ export function WebhooksSection({
             else setConfirming({ triggerId: trigger.id, command });
           }}
           onRetryUnresolved={() => void retry()}
+          deliveries={
+            <WebhookDeliveries
+              apiClient={apiClient}
+              userId={userId}
+              workspaceId={workspaceId}
+              workflowId={workflowId}
+              triggerId={trigger.id}
+              endpointReady={trigger.endpointReady}
+            />
+          }
         />
       ))}
       <ConfirmDialog

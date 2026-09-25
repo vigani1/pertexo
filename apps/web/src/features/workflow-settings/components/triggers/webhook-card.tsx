@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
 import { KeyRoundIcon, RefreshCwIcon, WebhookIcon } from 'lucide-react';
 import { Notice } from '@/components/ui/notice';
@@ -23,6 +24,7 @@ export function WebhookCard({
   unresolved,
   onCommand,
   onRetryUnresolved,
+  deliveries,
 }: Readonly<{
   trigger: WebhookTriggerHealthResponse;
   stepName: string;
@@ -32,6 +34,8 @@ export function WebhookCard({
   unresolved: UncertainWebhookCommand | undefined;
   onCommand: (command: WebhookCommand) => void;
   onRetryUnresolved: () => void;
+  /** The recent delivery log, composed by the section that can read it. */
+  deliveries?: ReactNode;
 }>) {
   const state = describeTriggerState(trigger);
   return (
@@ -139,6 +143,7 @@ export function WebhookCard({
           )}
         </div>
       ) : null}
+      {deliveries}
       <WebhookGuide />
     </article>
   );

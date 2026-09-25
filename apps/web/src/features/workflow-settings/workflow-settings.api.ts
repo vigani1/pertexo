@@ -9,12 +9,15 @@ import {
   type ScheduleManagementCommandResponse,
 } from '@pertexo/contracts/schemas/schedules';
 import {
+  webhookDeliveryListResponseSchema,
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
   webhookTriggerListResponseSchema,
+  type WebhookDeliveryListResponse,
   type WebhookManagementCommandResponse,
 } from '@pertexo/contracts/schemas/webhooks';
 import type { ApiClient } from '@/lib/api/client';
+import { searchParams } from '@/lib/api/pagination';
 
 function workflowPath(workspaceId: string, workflowId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}`;
@@ -68,6 +71,25 @@ export function getWebhookTriggers(
     response: {
       kind: 'json',
       decode: (value) => webhookTriggerListResponseSchema.parse(value),
+    },
+  });
+}
+
+/** One page of a webhook's retained delivery metadata, newest first. */
+export function getWebhookDeliveriesPage(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+): Promise<WebhookDeliveryListResponse> {
+  const query = searchParams({ limit: 10, after: input.after });
+  return apiClient.request({
+    path: `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}/webhook/deliveries?${query}`,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => webhookDeliveryListResponseSchema.parse(value),
     },
   });
 }
