@@ -1,7 +1,11 @@
 import { sql } from 'drizzle-orm';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import {
+  withWorkspaceReadTransaction,
+  type WorkspaceTransaction,
+} from '../tenant-access/workspace.js';
 import {
   toWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
@@ -66,7 +70,39 @@ const rowSchema = z
   .object({ created_at_cursor: timestampCursorSchema })
   .loose();
 
-export async function listWorkflowRunsInTransaction(
+/** One newest-first page, read in a workspace-scoped snapshot. */
+export async function readWorkflowRunListPage(
+  pool: Pool,
+  input: ListWorkflowRunsDatabaseInput,
+): Promise<WorkflowRunListPage> {
+  const parsed = inputSchema.parse(input);
+  return withWorkspaceReadTransaction(
+    pool,
+    parsed.workspaceId,
+    async (transaction) =>
+      listWorkflowRunsInTransaction(transaction, {
+        limit: parsed.limit,
+        ...(parsed.workflowId === undefined
+          ? {}
+          : { workflowId: parsed.workflowId }),
+        ...(parsed.workflowNamePrefix === undefined
+          ? {}
+          : { workflowNamePrefix: parsed.workflowNamePrefix }),
+        includeWorkflowName: parsed.includeWorkflowName,
+        ...(parsed.status === undefined ? {} : { status: parsed.status }),
+        ...(parsed.createdAtFrom === undefined
+          ? {}
+          : { createdAtFrom: parsed.createdAtFrom }),
+        ...(parsed.createdAtBefore === undefined
+          ? {}
+          : { createdAtBefore: parsed.createdAtBefore }),
+        ...(parsed.after === undefined ? {} : { after: parsed.after }),
+      }),
+    parsed.signal === undefined ? {} : { signal: parsed.signal },
+  );
+}
+
+async function listWorkflowRunsInTransaction(
   transaction: WorkspaceTransaction,
   input: Omit<ListWorkflowRunsDatabaseInput, 'workspaceId' | 'signal'>,
 ): Promise<WorkflowRunListPage> {
@@ -153,10 +189,4 @@ function escapeLikePattern(value: string): string {
     .replaceAll('\\', '\\\\')
     .replaceAll('%', '\\%')
     .replaceAll('_', '\\_');
-}
-
-export function parseWorkflowRunListInput(
-  input: ListWorkflowRunsDatabaseInput,
-): z.output<typeof inputSchema> {
-  return inputSchema.parse(input);
 }

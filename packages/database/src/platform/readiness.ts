@@ -18,8 +18,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0107_legacy_method_migration_attempts.sql';
+export const EXPECTED_MIGRATION_HEAD = '0113_workflow_run_statistics_index.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

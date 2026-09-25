@@ -94,6 +94,7 @@ describe('Better Auth cutover migration rehearsal', () => {
         '0105_owned_auth_email_proofs.sql',
         '0106_auth_method_link_attempts.sql',
         '0107_legacy_method_migration_attempts.sql',
+        '0113_workflow_run_statistics_index.sql',
       ]);
 
       const verifier = new Pool({

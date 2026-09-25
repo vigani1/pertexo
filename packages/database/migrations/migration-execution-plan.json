@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0107_legacy_method_migration_attempts.sql",
+  "transactionalThrough": "0113_workflow_run_statistics_index.sql",
   "migrations": {}
 }

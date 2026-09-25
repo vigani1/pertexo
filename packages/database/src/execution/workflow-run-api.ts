@@ -42,11 +42,15 @@ import type {
 } from './workflow-run-persistence-support.js';
 import { replayWorkflowRunInTransaction } from './workflow-run-replay.js';
 import {
-  listWorkflowRunsInTransaction,
-  parseWorkflowRunListInput,
+  readWorkflowRunListPage,
   type ListWorkflowRunsDatabaseInput,
   type WorkflowRunListPage,
 } from './workflow-run-list.js';
+import {
+  readWorkflowRunStatistics,
+  type WorkflowRunStatisticsDatabaseInput,
+  type WorkflowRunStatisticsRecord,
+} from './workflow-run-statistics.js';
 
 export {
   WorkflowRunNotExecutableError,
@@ -201,6 +205,9 @@ export interface WorkflowRunDatabase {
   >;
   get(input: GetWorkflowRunInput): Promise<WorkflowRunReadModel | undefined>;
   list(input: ListWorkflowRunsDatabaseInput): Promise<WorkflowRunListPage>;
+  statistics(
+    input: WorkflowRunStatisticsDatabaseInput,
+  ): Promise<WorkflowRunStatisticsRecord>;
   cancel(input: CancelWorkflowRunInput): Promise<
     Readonly<{
       run: WorkflowRunRecord;
@@ -259,33 +266,10 @@ export function createWorkflowRunDatabase(
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
-    list: async (input: ListWorkflowRunsDatabaseInput) => {
-      const parsed = parseWorkflowRunListInput(input);
-      return withWorkspaceReadTransaction(
-        pool,
-        parsed.workspaceId,
-        async (transaction) =>
-          listWorkflowRunsInTransaction(transaction, {
-            limit: parsed.limit,
-            ...(parsed.workflowId === undefined
-              ? {}
-              : { workflowId: parsed.workflowId }),
-            ...(parsed.workflowNamePrefix === undefined
-              ? {}
-              : { workflowNamePrefix: parsed.workflowNamePrefix }),
-            includeWorkflowName: parsed.includeWorkflowName,
-            ...(parsed.status === undefined ? {} : { status: parsed.status }),
-            ...(parsed.createdAtFrom === undefined
-              ? {}
-              : { createdAtFrom: parsed.createdAtFrom }),
-            ...(parsed.createdAtBefore === undefined
-              ? {}
-              : { createdAtBefore: parsed.createdAtBefore }),
-            ...(parsed.after === undefined ? {} : { after: parsed.after }),
-          }),
-        parsed.signal === undefined ? {} : { signal: parsed.signal },
-      );
-    },
+    list: (input: ListWorkflowRunsDatabaseInput) =>
+      readWorkflowRunListPage(pool, input),
+    statistics: (input: WorkflowRunStatisticsDatabaseInput) =>
+      readWorkflowRunStatistics(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
       const parsed = cancelInputSchema.parse(input);
       return withWorkspaceTransaction(

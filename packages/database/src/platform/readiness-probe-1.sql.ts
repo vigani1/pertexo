@@ -334,6 +334,7 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and exists (select 1 from pg_constraint where conrelid = to_regclass('app.workflow_versions') and conname = 'workflow_versions_checksum_format')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_created_idx' and indexdef like '%workspace_id, created_at, id%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_updated_idx' and indexdef like '%workspace_id, updated_at DESC, id DESC%')
+        and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflow_runs' and indexname = 'workflow_runs_workspace_created_statistics_idx' and indexdef like '%(workspace_id, created_at) INCLUDE (status, workflow_id)%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflows' and indexname = 'workflows_workspace_name_idx' and indexdef like '%workspace_id, name, id%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflow_drafts' and indexname = 'workflow_drafts_workspace_idx' and indexdef like '%workspace_id, workflow_id%')
         and exists (select 1 from pg_indexes where schemaname = 'app' and tablename = 'workflow_versions' and indexname = 'workflow_versions_workspace_workflow_idx' and indexdef like '%workspace_id, workflow_id, version_number DESC%')

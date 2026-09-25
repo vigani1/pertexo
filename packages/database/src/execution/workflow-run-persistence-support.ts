@@ -9,7 +9,7 @@ import {
 } from './execution-acceptance.js';
 import { WorkflowRunNotFoundError } from './workflow-run-errors.js';
 
-const runStatusSchema = z.enum([
+export const runStatusSchema = z.enum([
   'queued',
   'running',
   'waiting',
