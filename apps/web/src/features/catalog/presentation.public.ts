@@ -12,6 +12,7 @@ export {
   describeRetryBehaviour,
   describeStep,
   familyWord,
+  portName,
   prettifyDefinitionKey,
   stepGroups,
   type StepFamily,

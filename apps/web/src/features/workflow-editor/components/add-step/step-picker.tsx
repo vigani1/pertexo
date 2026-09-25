@@ -66,14 +66,6 @@ export function StepSearch({
   );
 }
 
-/** The first step a search lists, which Enter adds. */
-export function firstStepChoice(
-  definitions: readonly NodeDefinitionCatalogItem[],
-  query: string,
-): StepChoice | undefined {
-  return groupStepChoices(definitions, query)[0]?.choices[0];
-}
-
 /**
  * Placeable steps under their human group names, filtered by `query`. While
  * browsing, Switch, Parallel and Merge share one row that opens in place.

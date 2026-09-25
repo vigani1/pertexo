@@ -4,7 +4,8 @@ import { useDeferredValue, useState, type Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import type { StepChoice } from '../../model/step-catalog';
-import { firstStepChoice, StepChoiceList, StepSearch } from './step-picker';
+import { firstStepChoice } from '../../model/step-catalog';
+import { StepChoiceList, StepSearch } from './step-picker';
 
 /**
  * The add-step lens: search with "/", steps under human group names, click
