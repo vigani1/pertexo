@@ -10,6 +10,7 @@ import {
   type BodyFrame,
 } from './body-layout';
 import type { BodyIssue } from './body-rules';
+import { portLinks, shownPorts, stepSummary } from './step-card';
 import { levelSinks } from './graph-order';
 import {
   indexGraph,
@@ -49,8 +50,22 @@ interface WorkflowNodeData extends Record<string, unknown> {
   definitionVersion: number;
   family: NodeDefinitionCatalogItem['family'] | 'unknown';
   lifecycle: NodeDefinitionCatalogItem['lifecycle'] | undefined;
+  /** The ports the card draws (branching steps: only the configured ones). */
   inputPorts: readonly string[];
   outputPorts: readonly string[];
+  /** The step can have several inputs or outputs, so its ports are labelled. */
+  branching: Readonly<{ inputs: boolean; outputs: boolean }>;
+  /** Titles of the steps each port connects to, by port. */
+  links: Readonly<{
+    inputs: Readonly<Record<string, readonly string[]>>;
+    outputs: Readonly<Record<string, readonly string[]>>;
+  }>;
+  /** A few words from the step's setup, e.g. "6 rules". */
+  summary: string | undefined;
+  /** Output size of this step's last passed test here, when it's known. */
+  testOutputBytes: number | undefined;
+  /** The latest check describes the draft on screen. */
+  checked: boolean;
   issueCount: number;
   missingConnections: number;
   disabled: boolean;
@@ -98,6 +113,10 @@ export type CanvasDecorations = Readonly<{
    * overview map (which reads the projected nodes) can draw them.
    */
   measuredSizes?: ReadonlyMap<string, Size>;
+  /** The latest check describes the draft on screen. */
+  checked?: boolean;
+  /** Output size of each step's last passed test, when known. */
+  testOutputBytes?: ReadonlyMap<string, number>;
 }>;
 
 const noCanvasDecorations: CanvasDecorations = Object.freeze({
@@ -192,7 +211,13 @@ function projectLevel(
       ? bodyFrame(body, draggedInBody(body, projection.decorations))
       : undefined;
     projection.nodes.push(
-      projectNode(node, parent, frame, node.id === result, projection),
+      projectNode(
+        node,
+        level,
+        { parent, frame },
+        node.id === result,
+        projection,
+      ),
     );
     if (frame !== undefined && body !== undefined)
       projectLevel(body, { id: node.id, frame }, projection);
@@ -216,12 +241,18 @@ function draggedInBody(
 
 function projectNode(
   node: WorkflowNode,
-  parent: Parent | undefined,
-  frame: BodyFrame | undefined,
+  level: GraphLevel,
+  {
+    parent,
+    frame,
+  }: Readonly<{
+    parent: Parent | undefined;
+    frame: BodyFrame | undefined;
+  }>,
   bodyResult: boolean,
   projection: Projection,
 ): WorkflowFlowNode {
-  const { decorations } = projection;
+  const { decorations, labels } = projection;
   const definition = projection.definitions.get(
     definitionIdentity(node.definition.key, node.definition.version),
   );
@@ -245,8 +276,19 @@ function projectNode(
       definitionVersion: node.definition.version,
       family: definition?.family ?? 'unknown',
       lifecycle: definition?.lifecycle,
-      inputPorts: definition?.ports.inputs ?? Object.keys(node.inputMappings),
-      outputPorts: definition?.ports.outputs ?? [],
+      inputPorts: shownPorts(node, definition, level, 'inputs'),
+      outputPorts: shownPorts(node, definition, level, 'outputs'),
+      branching: {
+        inputs: (definition?.ports.inputs.length ?? 0) > 1,
+        outputs: (definition?.ports.outputs.length ?? 0) > 1,
+      },
+      links: {
+        inputs: portLinks(node, level, 'inputs', labels),
+        outputs: portLinks(node, level, 'outputs', labels),
+      },
+      summary: stepSummary(node),
+      testOutputBytes: decorations.testOutputBytes?.get(node.id),
+      checked: decorations.checked === true,
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition?.connectionRequirements ?? []).filter(
         (requirement) => node.connectionRefs[requirement] === undefined,

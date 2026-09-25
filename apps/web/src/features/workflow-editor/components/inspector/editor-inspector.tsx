@@ -17,6 +17,7 @@ import {
 import { stepTitle } from '../../model/graph-adapter';
 import { connectWorkflowNodes } from '../../model/graph-commands';
 import { findStep, levelOf } from '../../model/graph-scopes';
+import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
 import type { ChannelLookupScope } from './slack-channel-field';
@@ -65,7 +66,7 @@ export function EditorInspector({
   actions: ReturnType<typeof useEditorActions>;
   ensureSaved: () => Promise<Readonly<{ revision: number }>>;
   testRef: Ref<NodeTestHandle>;
-  onTestPassed: (nodeId: string) => void;
+  onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
   onClose: () => void;
   onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
   onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
@@ -149,7 +150,7 @@ export function EditorInspector({
           actionRef={testRef}
           onSucceeded={(preview) => {
             setPassedTest({ previewId: preview.id, nodeId });
-            onTestPassed(nodeId);
+            onTestPassed(nodeId, inlineOutputBytes(preview.output));
           }}
         />
       )}
