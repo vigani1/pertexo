@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import { describeDelivery } from '@/features/workflow-settings/model/delivery-outcome';
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
 import { extractEndpointKey } from '@/features/workflow-settings/model/endpoint-key';
 import { describeTriggerState } from '@/features/workflow-settings/model/trigger-state';
@@ -128,4 +129,46 @@ describe('alert destinations', () => {
       ),
     ).toBe('Email to ops@example.test');
   });
+});
+
+describe('webhook delivery outcomes', () => {
+  it.each([
+    ['accepted', 'verified', 'new', 'success', 'Accepted'],
+    ['replayed', 'verified', 'duplicate', 'neutral', 'Duplicate'],
+    [
+      'authentication_failed',
+      'mismatch',
+      'not_checked',
+      'failure',
+      'Signature didn’t match',
+    ],
+    [
+      'authentication_failed',
+      'not_checked',
+      'stale_timestamp',
+      'failure',
+      'Too old',
+    ],
+    ['authentication_failed', 'verified', 'new', 'attention', 'Not accepting'],
+    [
+      'invalid_request',
+      'verified',
+      'not_checked',
+      'failure',
+      'Invalid request',
+    ],
+    ['conflict', 'verified', 'conflict', 'attention', 'Key reused'],
+    ['rate_limited', 'verified', 'new', 'attention', 'Held back'],
+  ] as const)(
+    'reads %s (%s, %s) as a %s “%s”',
+    (outcome, signatureCheck, replayCheck, tone, label) => {
+      const described = describeDelivery({
+        outcome,
+        signatureCheck,
+        replayCheck,
+      });
+      expect(described).toMatchObject({ tone, label });
+      expect(described.detail).not.toMatch(/_/u);
+    },
+  );
 });

@@ -1,9 +1,10 @@
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllWorkflowVersions } from '@/features/workflow-versions/public';
 import {
   getFailureNotificationPolicy,
   getScheduleTriggers,
+  getWebhookDeliveriesPage,
   getWebhookTriggers,
 } from './workflow-settings.api';
 
@@ -38,7 +39,45 @@ export const workflowSettingsKeys = {
       ...workflowSettingsKeys.root(userId, workspaceId, workflowId),
       'failure-policy',
     ] as const,
+  webhookDeliveries: (
+    userId: string,
+    workspaceId: string,
+    workflowId: string,
+    triggerId: string,
+  ) =>
+    [
+      ...workflowSettingsKeys.webhooks(userId, workspaceId, workflowId),
+      triggerId,
+      'deliveries',
+    ] as const,
 };
+
+const initialDeliveryPageParam: string | null = null;
+
+/** A webhook's retained delivery log, one page of ten at a time. */
+export function webhookDeliveriesInfiniteQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+) {
+  return infiniteQueryOptions({
+    queryKey: workflowSettingsKeys.webhookDeliveries(
+      userId,
+      workspaceId,
+      workflowId,
+      triggerId,
+    ),
+    queryFn: ({ pageParam, signal }) =>
+      getWebhookDeliveriesPage(apiClient, workspaceId, workflowId, triggerId, {
+        ...(pageParam === null ? {} : { after: pageParam }),
+        signal,
+      }),
+    initialPageParam: initialDeliveryPageParam,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
+}
 
 /** Every published version, newest first. */
 export function workflowVersionsQueryOptions(

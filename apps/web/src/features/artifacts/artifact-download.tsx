@@ -5,14 +5,11 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
+import { formatByteLength } from '@/lib/format-bytes';
 import { formatClock } from '@/lib/format-time';
 import { getArtifactMetadata, prepareArtifactDownload } from './artifacts.api';
 import { artifactMetadataQueryOptions } from './artifacts.queries';
-import {
-  describeFileKind,
-  formatByteLength,
-  shortArtifactId,
-} from './model/artifact-labels';
+import { describeFileKind, shortArtifactId } from './model/artifact-labels';
 
 type PreparedDownload = Awaited<ReturnType<typeof prepareArtifactDownload>>;
 

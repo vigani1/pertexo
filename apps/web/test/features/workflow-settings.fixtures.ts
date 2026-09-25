@@ -189,6 +189,9 @@ export function installQueries(
     http.get(`${workflowApi}/triggers`, () =>
       HttpResponse.json({ items: [webhook] }),
     ),
+    http.get(`${workflowApi}/triggers/:triggerId/webhook/deliveries`, () =>
+      HttpResponse.json({ items: [], nextCursor: null }),
+    ),
     http.get(`${api}/failure-notification-destinations`, () =>
       HttpResponse.json({ items: [destination] }),
     ),
