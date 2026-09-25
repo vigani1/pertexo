@@ -426,5 +426,26 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     expect(input).toHaveAccessibleDescription(/isn’t valid JSON/u);
     fireEvent.change(input, { target: { value: '{}' } });
     expect(input).toHaveAttribute('aria-invalid', 'false');
+
+    // The deadline uses Weft's control, never the browser's picker.
+    const deadline = screen.getByRole('group', { name: 'Deadline (optional)' });
+    expect(deadline).toHaveTextContent('Without one, the run has no deadline.');
+    await event.click(
+      within(deadline).getByRole('button', { name: 'In 1 hour' }),
+    );
+    expect(deadline).toHaveTextContent(
+      /The run stops at .+ if it isn’t finished/u,
+    );
+    await event.click(
+      within(deadline).getByRole('button', { name: 'Pick a time' }),
+    );
+    const date = within(deadline).getByLabelText('Deadline date');
+    await event.clear(date);
+    await event.click(
+      screen.getByRole('button', { name: 'Start published version' }),
+    );
+    expect(date).toHaveFocus();
+    expect(date).toHaveAccessibleDescription(/Enter the deadline as a date/u);
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
   });
 });

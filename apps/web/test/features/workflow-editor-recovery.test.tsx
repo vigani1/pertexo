@@ -59,9 +59,17 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     fireEvent.change(screen.getByLabelText('Run input (JSON)'), {
       target: { value: '{"customerId":"customer-7"}' },
     });
-    fireEvent.change(screen.getByLabelText('Deadline (optional)'), {
-      target: { value: '2026-09-20T12:30' },
+    // The deadline is picked in Weft's control, on the person's own clock.
+    await event.click(screen.getByRole('button', { name: 'Pick a time' }));
+    fireEvent.change(screen.getByLabelText('Deadline date'), {
+      target: { value: '2026-09-20' },
     });
+    fireEvent.change(screen.getByLabelText('Deadline time'), {
+      target: { value: '12:30' },
+    });
+    expect(
+      screen.getByRole('group', { name: 'Deadline (optional)' }),
+    ).toHaveTextContent(/The run stops at/u);
     await event.click(
       screen.getByRole('button', { name: 'Start published version' }),
     );
