@@ -5,15 +5,17 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  slackChannelLookupResponseSchema,
   type ConnectionCreateRequest,
   type ConnectionListResponse,
   type ConnectionResponse,
   type ConnectionRotateSecretRequest,
   type ConnectionTestRequest,
   type ConnectionTestResponse,
+  type SlackChannelLookupResponse,
 } from '@pertexo/contracts/schemas/connections';
 import type { ApiClient } from '@/lib/api/client';
-import { collectPages } from '@/lib/api/pagination';
+import { collectPages, searchParams } from '@/lib/api/pagination';
 
 export type ConnectionCredential = ConnectionRotateSecretRequest['credential'];
 
@@ -137,6 +139,25 @@ export function rotateConnectionSecret(
     }),
     headers: { 'Idempotency-Key': input.idempotencyKey },
     response: decodeConnection,
+  });
+}
+
+/** ADR 046: display names for up to ten Slack channel IDs. */
+export function getSlackChannelNames(
+  apiClient: ApiClient,
+  workspaceId: string,
+  connectionId: string,
+  channelIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<SlackChannelLookupResponse> {
+  const query = searchParams({ channelIds: channelIds.join(',') });
+  return apiClient.request({
+    path: `${connectionPath(workspaceId, connectionId)}/slack/channels?${query}`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => slackChannelLookupResponseSchema.parse(value),
+    },
   });
 }
 

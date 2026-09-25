@@ -43,6 +43,7 @@ export function DestinationFields({
   editing,
   disabled,
   connections,
+  channelHint,
   validation,
   errorsFor,
   onChange,
@@ -53,6 +54,8 @@ export function DestinationFields({
   editing: boolean;
   disabled: boolean;
   connections: readonly ConnectionResponse[];
+  /** The saved channel's name, or why it isn't shown. */
+  channelHint?: string | undefined;
   validation: FieldValidation<DestinationField>;
   errorsFor: (
     values: DestinationValues,
@@ -157,7 +160,7 @@ export function DestinationFields({
         label={values.kind === 'slack' ? 'Channel ID' : 'Recipient email'}
         description={
           values.kind === 'slack'
-            ? 'In Slack, open the channel’s details: the ID starting with C is at the bottom. Invite the bot to the channel too.'
+            ? `${channelHint === undefined ? '' : `${channelHint} `}In Slack, open the channel’s details: the ID starting with C is at the bottom. Invite the bot to the channel too.`
             : 'Pertexo emails this address whenever a run fails.'
         }
         error={validation.error('target')}

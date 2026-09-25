@@ -28,6 +28,11 @@ import {
   type DestinationMutationScope,
 } from '../failure-notifications.mutations';
 import {
+  channelKey,
+  describeChannel,
+  type ChannelNames,
+} from '../model/channel-names';
+import {
   describeDestination,
   destinationErrors,
   destinationServerErrors,
@@ -84,6 +89,29 @@ function initialValues(
   };
 }
 
+/**
+ * The saved channel's name, or why it isn't shown, while the form still
+ * points at that channel through the same connection.
+ */
+function savedChannelHint(
+  destination: FailureNotificationDestinationResponse | undefined,
+  values: DestinationValues,
+  names: ChannelNames,
+): string | undefined {
+  const config = destination?.config;
+  if (
+    config?.kind !== 'slack' ||
+    values.connectionId !== config.connectionId ||
+    values.target.trim().replace(/^#/u, '') !== config.channelId
+  )
+    return undefined;
+  const { target, note } = describeChannel(
+    config.channelId,
+    names.get(channelKey(config.connectionId, config.channelId)),
+  );
+  return note ?? `Posts to ${target}.`;
+}
+
 function submitLabel(uncertain: boolean, editing: boolean): string {
   if (uncertain) return 'Try again';
   return editing ? 'Save changes' : 'Add destination';
@@ -138,6 +166,7 @@ export function DestinationForm({
   scope,
   destination,
   connections,
+  channelNames,
   listRefresh,
   onDone,
   onCancel,
@@ -145,6 +174,7 @@ export function DestinationForm({
   scope: DestinationMutationScope;
   destination: FailureNotificationDestinationResponse | undefined;
   connections: readonly ConnectionResponse[];
+  channelNames: ChannelNames;
   listRefresh: ListRefresh;
   onDone: () => void;
   onCancel: () => void;
@@ -167,7 +197,7 @@ export function DestinationForm({
 
   function succeed(saved: FailureNotificationDestinationResponse) {
     attempt.current = undefined;
-    const { label } = describeDestination(saved, connections);
+    const { label } = describeDestination(saved, connections, channelNames);
     notifications.success({
       title: editing ? `Saved alerts to ${label}` : `Alerts now go to ${label}`,
     });
@@ -262,6 +292,7 @@ export function DestinationForm({
             editing={editing}
             disabled={mutation.isPending}
             connections={connections}
+            channelHint={savedChannelHint(destination, values, channelNames)}
             validation={validation}
             errorsFor={errorsFor}
             onChange={(next) => {

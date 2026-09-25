@@ -23,6 +23,7 @@ import { DestinationCollection } from './components/destination-collection';
 import { DestinationForm } from './components/destination-lens';
 import { destinationEditMutationKey } from './failure-notifications.mutations';
 import { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
+import { useSlackChannelNames } from './use-slack-channel-names';
 
 type Lens = Readonly<{
   open: boolean;
@@ -51,6 +52,7 @@ export function FailureNotificationDestinationsPage({
   const canRead = workspace.capabilities.includes('workflow:update');
   const canManage = workspace.capabilities.includes('connection:manage');
   const canReadConnections = workspace.capabilities.includes('connection:read');
+  const canUseConnections = workspace.capabilities.includes('connection:use');
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const destinations = useQuery({
     ...failureNotificationDestinationsQueryOptions(
@@ -66,6 +68,13 @@ export function FailureNotificationDestinationsPage({
   });
   const saving =
     useIsMutating({ mutationKey: destinationEditMutationKey(scope) }) > 0;
+  const channelNames = useSlackChannelNames({
+    apiClient,
+    userId: user.id,
+    workspaceId: workspace.id,
+    destinations: destinations.data?.items ?? [],
+    enabled: canRead && canUseConnections,
+  });
   const [lens, setLens] = useState<Lens>({
     open: false,
     destinationId: undefined,
@@ -144,6 +153,7 @@ export function FailureNotificationDestinationsPage({
         query={destinations}
         items={items}
         connections={connections.data?.items ?? []}
+        channelNames={channelNames}
         scope={scope}
         canManage={canManage}
         onAdd={() => {
@@ -170,6 +180,7 @@ export function FailureNotificationDestinationsPage({
             scope={scope}
             destination={items.find((item) => item.id === lens.destinationId)}
             connections={connections.data?.items ?? []}
+            channelNames={channelNames}
             listRefresh={{
               failed: destinations.isError,
               pending: destinations.isRefetching,

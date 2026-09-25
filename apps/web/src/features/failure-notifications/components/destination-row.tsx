@@ -6,6 +6,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import { ProviderTile } from '@/features/connections/provider.public';
 import { formatRelativeTime } from '@/lib/format-time';
 import type { DestinationMutationScope } from '../failure-notifications.mutations';
+import type { ChannelNames } from '../model/channel-names';
 import { describeDestination } from '../model/destination-copy';
 import { DestinationStatusSwitch } from './destination-status-switch';
 
@@ -13,18 +14,21 @@ export function DestinationRow({
   scope,
   destination,
   connections,
+  channelNames,
   canManage,
   onEdit,
 }: Readonly<{
   scope: DestinationMutationScope;
   destination: FailureNotificationDestinationResponse;
   connections: readonly ConnectionResponse[];
+  channelNames: ChannelNames;
   canManage: boolean;
   onEdit: (destinationId: string) => void;
 }>) {
-  const { label, connectionProblem } = describeDestination(
+  const { label, connectionProblem, channelNote } = describeDestination(
     destination,
     connections,
+    channelNames,
   );
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 border-t border-border py-3.5 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
@@ -40,6 +44,9 @@ export function DestinationRow({
             <StatusGlyph tone="attention" />
             {connectionProblem}
           </p>
+        )}
+        {channelNote === undefined ? null : (
+          <p className="mt-1 text-xs text-muted-foreground">{channelNote}</p>
         )}
       </div>
       <DestinationStatusSwitch

@@ -13,6 +13,7 @@ import {
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/api-error-copy';
 import type { FailureNotificationDestinationList } from '../failure-notifications.api';
+import type { ChannelNames } from '../model/channel-names';
 import type { DestinationMutationScope } from '../failure-notifications.mutations';
 import { DestinationRow } from './destination-row';
 
@@ -21,6 +22,7 @@ export function DestinationCollection({
   query,
   items,
   connections,
+  channelNames,
   scope,
   canManage,
   onAdd,
@@ -29,6 +31,7 @@ export function DestinationCollection({
   query: UseQueryResult<FailureNotificationDestinationList>;
   items: readonly FailureNotificationDestinationResponse[];
   connections: readonly ConnectionResponse[];
+  channelNames: ChannelNames;
   scope: DestinationMutationScope;
   canManage: boolean;
   onAdd: () => void;
@@ -88,6 +91,7 @@ export function DestinationCollection({
             scope={scope}
             destination={destination}
             connections={connections}
+            channelNames={channelNames}
             canManage={canManage}
             onEdit={onEdit}
           />

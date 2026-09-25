@@ -137,6 +137,108 @@ describe('alert destinations', () => {
     expect(screen.queryByText(/Version 1/u)).not.toBeInTheDocument();
   });
 
+  it('shows channel names from one bounded lookup per connection, and the ID with why when a name is unknown', async () => {
+    const lookups: string[] = [];
+    const second = {
+      ...destination('C0404'),
+      id: '12121212-1212-4212-8212-121212121212',
+    };
+    const direct = {
+      ...destination('D0999'),
+      id: '34343434-3434-4434-8434-343434343434',
+    };
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        capabilities: [...workspace.capabilities, 'connection:use'],
+      }),
+      connectionHandler(),
+      destinationsOf(() => [destination(), second, direct]),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/connections/${connectionId}/slack/channels`,
+        ({ request }) => {
+          const channelIds =
+            new URL(request.url).searchParams.get('channelIds') ?? '';
+          lookups.push(channelIds);
+          return HttpResponse.json({
+            items: channelIds.split(',').map((channelId) =>
+              channelId === 'C0123456789'
+                ? { channelId, status: 'resolved', name: 'ops-alerts' }
+                : {
+                    channelId,
+                    status: 'unresolved',
+                    reason:
+                      channelId === 'C0404' ? 'missing_scope' : 'not_a_channel',
+                  },
+            ),
+          });
+        },
+      ),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+
+    expect(
+      await screen.findByText('#ops-alerts via Incident Slack'),
+    ).toBeVisible();
+    expect(screen.getByText('#C0404 via Incident Slack')).toBeVisible();
+    expect(
+      screen.getByText(
+        /Showing the channel ID\. The Slack app needs the channels:read scope/u,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Showing the channel ID. Direct messages don’t have channel names.',
+      ),
+    ).toBeVisible();
+    expect(lookups).toEqual(['C0123456789,C0404,D0999']);
+
+    const actor = userEvent.setup();
+    await actor.click(
+      screen.getByRole('button', {
+        name: 'Edit #ops-alerts via Incident Slack',
+      }),
+    );
+    const channel = lens().getByLabelText('Channel ID');
+    expect(channel).toHaveValue('C0123456789');
+    expect(channel).toHaveAccessibleDescription(
+      expect.stringMatching(/^Posts to #ops-alerts\. In Slack/u),
+    );
+    await actor.clear(channel);
+    await actor.type(channel, 'C0000000001');
+    expect(channel).not.toHaveAccessibleDescription(
+      expect.stringContaining('#ops-alerts'),
+    );
+  });
+
+  it('keeps the page and channel IDs when the name lookup fails', async () => {
+    mockServer.use(
+      ...identityHandlers({
+        ...workspace,
+        capabilities: [...workspace.capabilities, 'connection:use'],
+      }),
+      connectionHandler(),
+      destinationsOf(() => [destination()]),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/connections/${connectionId}/slack/channels`,
+        () => problem(429, 'rate_limit.exceeded'),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/alerts`);
+
+    expect(
+      await screen.findByText(
+        'Showing the channel ID. Channel names couldn’t be looked up right now.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByText('#C0123456789 via Incident Slack')).toBeVisible();
+    expect(
+      screen.getByRole('switch', {
+        name: 'Send alerts to #C0123456789 via Incident Slack',
+      }),
+    ).toBeChecked();
+  });
+
   it('offers Add destination from the empty state and validates fields in order', async () => {
     mockServer.use(
       ...identityHandlers(),
