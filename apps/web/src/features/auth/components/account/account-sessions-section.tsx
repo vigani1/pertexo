@@ -17,6 +17,7 @@ import {
   accountCommandFailure,
   accountReadFailure,
 } from '../../model/account-failure';
+import { orderSessions } from '../../model/sessions';
 import { describeUserAgent } from '../../model/user-agent';
 import {
   AccountReadFailure,
@@ -31,6 +32,8 @@ type Ending =
   | Readonly<{ kind: 'others' }>;
 
 const MOBILE = /\b(?:iPhone|iPad|Android|Mobile)\b/u;
+/** Sessions shown before "Show all": this device and the latest others. */
+const SHOWN_SESSIONS = 6;
 
 function SessionRow({
   session,
@@ -59,6 +62,9 @@ function SessionRow({
               {session.current
                 ? 'Active now'
                 : `Last active ${formatRelativeTime(session.updatedAt)}`}
+            </span>
+            <span title={formatDateTime(session.createdAt)}>
+              Signed in {formatRelativeTime(session.createdAt)}
             </span>
             {session.ipAddress === null ? null : (
               <span className="font-mono">{session.ipAddress}</span>
@@ -94,6 +100,7 @@ export function AccountSessionsSection({
   const revokeOthers = useRevokeOtherAccountSessions(apiClient, userId);
   const notifications = useNotifications();
   const [ending, setEnding] = useState<Ending>();
+  const [showAll, setShowAll] = useState(false);
   const busy = revoke.isPending || revokeOthers.isPending;
   const others =
     sessions.data?.items.filter((session) => !session.current) ?? [];
@@ -161,22 +168,37 @@ export function AccountSessionsSection({
             aria-label="Signed-in devices"
             className="divide-y divide-border rounded-lg border border-border"
           >
-            {sessions.data.items.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                busy={busy}
-                onEnd={() => {
-                  revoke.reset();
-                  setEnding({
-                    kind: 'one',
-                    id: session.id,
-                    label: describeUserAgent(session.userAgent),
-                  });
-                }}
-              />
-            ))}
+            {orderSessions(sessions.data.items)
+              .slice(0, showAll ? undefined : SHOWN_SESSIONS)
+              .map((session) => (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  busy={busy}
+                  onEnd={() => {
+                    revoke.reset();
+                    setEnding({
+                      kind: 'one',
+                      id: session.id,
+                      label: describeUserAgent(session.userAgent),
+                    });
+                  }}
+                />
+              ))}
           </ul>
+          {!showAll && sessions.data.items.length > SHOWN_SESSIONS ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="self-start"
+              onClick={() => {
+                setShowAll(true);
+              }}
+            >
+              Show all {sessions.data.items.length} sessions
+            </Button>
+          ) : null}
           {others.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No other devices are signed in.
