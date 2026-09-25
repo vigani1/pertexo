@@ -2,6 +2,15 @@
 
 - **Status:** accepted
 - **Date:** 2026-08-25
+- **Amended:** 2026-09-25 by [ADR 049](049-skip-misfire-on-time-window.md)
+
+> **Amendment note (2026-09-25).** [ADR 049](049-skip-misfire-on-time-window.md)
+> clarifies `skip`: it drops only occurrences that were missed. When the
+> scanner's database-time observation is within the worker's on-time window
+> (default five minutes) of the greatest due occurrence, `skip` admits that
+> occurrence exactly as `catch_up_once` does. Only a later occurrence is
+> recorded skipped, and the sentence below that `skip` "creates no run" applies
+> to that case. The rest of this record is unchanged.
 
 ## Context
 
