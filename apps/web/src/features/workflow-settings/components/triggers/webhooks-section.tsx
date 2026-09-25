@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts/schemas/webhooks';
 import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
-import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -74,9 +73,6 @@ export function WebhooksSection({
 
   return (
     <>
-      {webhook.error === undefined ? null : (
-        <Notice tone="destructive">{webhook.error}</Notice>
-      )}
       {triggers.map((trigger) => (
         <WebhookCard
           key={trigger.id}
@@ -99,6 +95,11 @@ export function WebhooksSection({
             else setConfirming({ triggerId: trigger.id, command });
           }}
           onRetryUnresolved={() => void retry()}
+          failure={
+            webhook.error?.triggerId === trigger.id
+              ? webhook.error.message
+              : undefined
+          }
           deliveries={
             <WebhookDeliveries
               apiClient={apiClient}
