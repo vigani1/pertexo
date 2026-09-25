@@ -179,7 +179,10 @@ export function WorkflowCanvas({
           nodesDraggable={editable}
           nodesConnectable={editable}
           proOptions={{ hideAttribution: true }}
-          className="!bg-transparent [--xy-edge-stroke-default:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke-default:var(--primary)] [--xy-selection-background-color-default:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border-default:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
+          // React Flow's own stylesheet sets the *-default variables and
+          // isn't layered, so it outranks utilities; the plain variables it
+          // reads first are ours to set.
+          className="!bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
         >
           <CanvasZoomLens
             onFit={() => {

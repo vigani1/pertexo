@@ -149,6 +149,12 @@
     outline-offset: 2px;
   }
 
+  /* Search fields clear with Escape; the browser's own bold ✕ doesn't
+     match the fields around it. */
+  input[type='search']::-webkit-search-cancel-button {
+    appearance: none;
+  }
+
   ::selection {
     color: var(--action-foreground);
     background: var(--action);
@@ -509,6 +515,15 @@
 
   body:has([data-slot='sheet-content']) [data-slot='toast-viewport'] {
     pointer-events: none;
+  }
+
+  /* In the editor, toasts sit left of an open step panel, not on its
+     footer. Below 64rem the panel is a bottom sheet instead. */
+  @media (width >= 64rem) {
+    body:has(#editor-panel-inspector[data-open='true'])
+      [data-slot='toast-viewport'] {
+      right: 23rem;
+    }
   }
 
   @media (width < 48rem) {

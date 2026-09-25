@@ -15,7 +15,7 @@ import { findStep } from '../../model/graph-scopes';
 import { followingSteps } from '../../model/quick-add';
 import type { QuickAddRequest } from '../../use-quick-add';
 import { ChoiceSelect } from '../inspector/choice-select';
-import { StepChoiceList, StepSearch } from './step-picker';
+import { firstStepChoice, StepChoiceList, StepSearch } from './step-picker';
 
 /**
  * Quick add: the add-step search and list in a lens at the drop point (or
@@ -114,6 +114,10 @@ function QuickAddContent({
       <StepSearch
         query={query}
         onQueryChange={setQuery}
+        onPickFirst={() => {
+          const first = firstStepChoice(followingSteps(definitions), query);
+          if (first !== undefined) onChoose(first.definition);
+        }}
         inputRef={searchRef}
         className="flex-none"
       />

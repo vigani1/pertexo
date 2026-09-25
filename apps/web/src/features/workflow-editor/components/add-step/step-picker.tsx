@@ -7,18 +7,21 @@ import { AddStepBundle } from './add-step-bundle';
 import { AddStepItem } from './add-step-item';
 
 /**
- * The step search field shared by the add-step lens and quick add. Escape
- * clears a query before it closes anything around it.
+ * The step search field shared by the add-step lens and quick add. Enter
+ * adds the first match; Escape clears a query before it closes anything
+ * around it.
  */
 export function StepSearch({
   query,
   onQueryChange,
+  onPickFirst,
   inputRef,
   className,
   children,
 }: Readonly<{
   query: string;
   onQueryChange: (query: string) => void;
+  onPickFirst: () => void;
   inputRef?: Ref<HTMLInputElement>;
   className?: string;
   /** Trailing hint inside the field, such as its shortcut. */
@@ -48,6 +51,10 @@ export function StepSearch({
           onQueryChange(event.target.value);
         }}
         onKeyDown={(event) => {
+          if (event.key === 'Enter' && query.trim() !== '') {
+            event.preventDefault();
+            onPickFirst();
+          }
           if (event.key === 'Escape' && query !== '') {
             event.stopPropagation();
             onQueryChange('');
@@ -57,6 +64,14 @@ export function StepSearch({
       {children}
     </label>
   );
+}
+
+/** The first step a search lists, which Enter adds. */
+export function firstStepChoice(
+  definitions: readonly NodeDefinitionCatalogItem[],
+  query: string,
+): StepChoice | undefined {
+  return groupStepChoices(definitions, query)[0]?.choices[0];
 }
 
 /**

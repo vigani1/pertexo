@@ -79,6 +79,7 @@ export function EditorLayout({
           <aside
             id="editor-panel-inspector"
             aria-label="Step panel"
+            data-open={inspectorOpen}
             {...covers}
             className={cn(
               'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 h-[68svh] flex-col rounded-xl',

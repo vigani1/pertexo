@@ -4,7 +4,7 @@ import { useDeferredValue, useState, type Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import type { StepChoice } from '../../model/step-catalog';
-import { StepChoiceList, StepSearch } from './step-picker';
+import { firstStepChoice, StepChoiceList, StepSearch } from './step-picker';
 
 /**
  * The add-step lens: search with "/", steps under human group names, click
@@ -43,7 +43,15 @@ export function AddStepLens({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-1.5 px-3 pt-3">
-        <StepSearch query={query} onQueryChange={setQuery} inputRef={searchRef}>
+        <StepSearch
+          query={query}
+          onQueryChange={setQuery}
+          onPickFirst={() => {
+            const first = firstStepChoice(definitions, query);
+            if (first !== undefined) onAdd(first);
+          }}
+          inputRef={searchRef}
+        >
           <Kbd>/</Kbd>
         </StepSearch>
         <Button
