@@ -26,6 +26,15 @@ distinguishes these post-cleanup checks from the earlier full local-service
 qualification and its three AWS-only exclusions. Neither establishes
 production readiness.
 
+The identity and team follow-up (2026-09-25) adds member removal
+([ADR 042](./adr/042-workspace-member-removal.md)), self-service display names,
+invitation acceptance under the active session authority and allowlisted
+sign-in return paths
+([ADR 043](./adr/043-self-service-profile-and-session-authority-journeys.md)),
+with migrations `0110` and `0111`. Their contract, database, API and web
+evidence is recorded in the
+[web architecture plan](../apps/web/ARCHITECTURE.md#implemented-slice-member-removal-display-names-and-return-paths).
+
 ## Open production evidence
 
 - AWS IAM admission, immutable image/task invocation, versioned tenant buckets,

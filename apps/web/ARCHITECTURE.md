@@ -1989,9 +1989,10 @@ infer that every listed action is already implemented.
 Registration, password reset and MFA are owned by the configured identity
 provider unless a separate product requirement changes that arrangement. Do not
 design local password/signup forms against nonexistent Pertexo credential
-endpoints. Backend OIDC callback is not a React page. A profile summary may use
-`/v1/users/me`; editable profile/preferences need their own explicit contract or
-local-only scope.
+endpoints. Backend OIDC callback is not a React page. The Profile tab reads
+`/v1/users/me` and edits the display name through `PATCH /v1/users/me` (ADR
+043); other profile preferences need their own explicit contract or local-only
+scope.
 
 ### Further surfaces, attached to their owning feature
 
@@ -2025,7 +2026,7 @@ existing section 14 baseline; it does not reopen completed architecture work.
 | 1 — Delivered                            | Connections, `B/connections`                                            | Safe paginated list, Slack bot-token create/test/rotate and generic revocation; confirmed results refresh editor discovery.     | Separate read/use/manage capability gates; transient token forms and explicit MutationCache eviction; exact uncertain create/test/rotate retries; expected-secret-version rotation; historical-reference-safe revocation wording; component coverage and Chromium create → picker plus test/rotate/revoke journeys. Additional auth types remain gated.      |
 | 2 — Delivered                            | Run history, `B/runs`                                                   | Workspace run list with supported status/workflow/date filters and links to existing run detail.                                | Shared bounded contract, exact-precision filter-bound cursor, workspace RLS, URL-owned filters, capability/empty/error states, component coverage and history → detail Chromium journey. No remembered-ID substitute.                                                                                                                                        |
 | 3 — Delivered                            | Notification destinations, `B/settings/notifications`                   | Workspace destination list/create, configuration-version append and enable/disable against existing Slack or email connections. | `workflow:update` read and `connection:manage` mutation gates remain distinct; forms store references rather than credentials; uncertain commands retain exact bodies, preconditions and keys from the opened editing snapshot; component and Chromium coverage pass.                                                                                        |
-| 4 — Partially delivered                  | Workspace administration, `B/settings/members` and `B/settings/general` | Member listing, bounded existing-member role changes, invitations and lifecycle controls are delivered; rename remains gated.   | Role and invitation commands are identity/workspace scoped, capability gated and transactionally authorized. Controlled full-stack role-change evidence includes target-session and SSE revocation. Invitation-specific evidence and remaining provider limitations are recorded below. Eligible pending-deletion workspaces route only to General recovery. |
+| 4 — Partially delivered                  | Workspace administration, `B/settings/members` and `B/settings/general` | Member listing, bounded role changes and removal, invitations and lifecycle controls are delivered; rename remains gated.       | Role and invitation commands are identity/workspace scoped, capability gated and transactionally authorized. Controlled full-stack role-change evidence includes target-session and SSE revocation. Invitation-specific evidence and remaining provider limitations are recorded below. Eligible pending-deletion workspaces route only to General recovery. |
 | 5 — Implemented; verification incomplete | Workspace invitations, member page plus `/invitations/accept`           | Manager list/create/resend/revoke and OIDC-bound, single-use recipient acceptance.                                              | ADR 038 is accepted. Contracts, database, API, dedicated system delivery, frontend and mocked Chromium are implemented. Disposable PostgreSQL concurrency/RLS and controlled OIDC session/SSE evidence pass; controlled provider email delivery, production sender/domain, Firefox and WebKit remain completion gates.                                       |
 | 6 — Planned, data-gated                  | Overview, `B/overview`                                                  | Recent workflow activity, recent runs and failures needing attention, with links into existing pages.                           | Real scoped summary/list data, defined time windows/freshness and authorized visibility. No fabricated metrics, fetching all history to calculate totals, or infrastructure-monitoring dashboard. Keep workflow list as landing page unless separately changed.                                                                                              |
 
@@ -2175,10 +2176,12 @@ capability. Proposed route: `GET /v1/workspaces/:workspaceId/runs`.
 #### 4. Workspace administration: separate existing reads from new authority
 
 Existing APIs include workspace discovery, member listing, existing-member role
-changes, workspace creation, deletion request/cancel and lifecycle-operation
-reads. Invitation management and recipient-bound OIDC continuation are now
-implemented under ADR 038; production provider evidence remains a separate
-deployment gate rather than an application-code prerequisite.
+changes and removal (ADR 037, ADR 042), workspace creation, deletion
+request/cancel and lifecycle-operation reads. Invitation management and
+recipient-bound acceptance are implemented under ADR 038 and, for deployments
+whose only session authority is Better Auth, ADR 043; production provider
+evidence remains a separate deployment gate rather than an application-code
+prerequisite.
 
 - The authorized, paginated member read is delivered using the existing safe
   member projection and role vocabulary. Its query is scoped by authenticated
@@ -2186,7 +2189,7 @@ deployment gate rather than an application-code prerequisite.
   `member:read`. Component coverage verifies StrictMode pagination, denied
   request suppression and distinct read failure; the browser journey verifies
   navigation, active state and the second cursor page. No owner/admin hierarchy
-  or editable profile/rename fields were invented.
+  was invented; the display name is edited only by its owner (ADR 043).
 - The role-management slice below is delivered. Its transaction remains the
   reference for fresh database authorization, workspace-first lock ordering,
   exact command receipts, audit and session effects; invitations must not route
@@ -2401,6 +2404,67 @@ editor-specific machinery.
   schema ownership/readiness and documentation checks. Run React Doctor as
   diagnostics, not proof. Report unavailable integration checks explicitly; do
   not mark the slice complete with unproven required concurrency gates.
+
+#### Implemented slice: member removal, display names and return paths
+
+**Status:** implemented and locally verified on 2026-09-25 under
+[ADR 042](../../docs/adr/042-workspace-member-removal.md) and
+[ADR 043](../../docs/adr/043-self-service-profile-and-session-authority-journeys.md).
+Playwright journeys were not run for this slice; the component and real-API
+suites below are its evidence.
+
+- **Member removal.**
+  `POST /v1/workspaces/{workspaceId}/members/{userId}/remove` (`member:manage`,
+  `ordinary_mutation`) mirrors the role change: strict
+  `{ expectedRoleRevision }`, `Idempotency-Key`, receipt
+  `{ userId, roleRevision, replayed }`. Owners remove any non-owner, admins
+  remove builders, operators and viewers; nobody removes themselves or the
+  owner. The removal, a `workspace.member_removed` audit fact, the receipt and
+  revocation of the removed person's sessions commit together (migration
+  `0110`). Invitations the person created stay pending; a later invitation may
+  reactivate a removed (never a suspended) membership. In the Team page, rows
+  the actor may remove get an actions menu; the shared `ConfirmDialog` lists the
+  consequences, a toast confirms, and role change and removal share one
+  feature-local member-command state machine (`useMemberCommand`) so an
+  unconfirmed removal stays on its member and repeats with its exact key. A
+  stale revision refreshes the list with row feedback; an already removed member
+  refreshes the list and says so.
+- **Display name.** `PATCH /v1/users/me` (`actor_mutation`, CSRF,
+  `Idempotency-Key`) with `{ displayName, expectedRevision }`; the profile read
+  now returns `revision` (migration `0111`). The contract owns the limits:
+  trimmed, 1–128 characters, no control characters. The Profile tab edits the
+  name in place, keeps an unconfirmed save for an exact retry, and reloads a
+  name changed elsewhere (`412 user.profile_revision_conflict`) before saving
+  again. Success refreshes the router so the shell and member lists agree.
+- **Invitations under Better Auth.** Acceptance routes no longer depend on
+  legacy OIDC. In a deployment whose own sign-in is available
+  (`/v1/auth/capabilities`), `POST /v1/invitation-acceptance/session` proves the
+  recipient from a sign-in issued at most five minutes earlier; the page tries
+  it silently after loading the journey, sends people without a session to sign
+  in and back, and signs an older session out and in again first.
+- **Return paths.** `returnTo` is limited to `/invitations/accept`,
+  `/account/security` and `/w/{workspaceId}/account`
+  (`authenticationReturnPathSchema`). The sign-in, sign-up and sign-out route
+  search schemas validate it and every use site checks it again, because the
+  router keeps unvalidated raw keys in route search. Social sign-in uses it as
+  the callback, sign-up and verification resends keep it through the
+  verification link, and Account & security's "Sign in again" returns to the
+  page it came from.
+- **Polish.** `RoleSelect` and `RoleSelectWithSummaries` replace the
+  `withSummaries` flag; the roles matrix names every role in full and uses whole
+  short words on phones, and sits beside the members only from `xl`; Account &
+  security starts from the spine like other pages, and the standalone page
+  aligns with its wordmark.
+- **Evidence.** Contract tests, API unit tests including controllers, use cases,
+  error mapping, capabilities and the session proof, database integration suites
+  for removal and profile against disposable PostgreSQL, and the Better
+  Auth-only real-API suite (sign-up with return path, profile, invitation
+  acceptance from a fresh session, removal and rejoining) pass, together with
+  the existing OIDC real-API and Better Auth suites. Web component coverage:
+  `workspace-member-removal`, `account-profile`, `invitation-session-acceptance`
+  and `sign-in-return-path`.
+- **Not included:** leaving a workspace, suspension, ownership transfer, avatars
+  or other profile fields, and a sign-up name limit matching the profile limit.
 
 #### Implemented slice: workspace invitations
 
