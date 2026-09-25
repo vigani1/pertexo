@@ -2,7 +2,7 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import type { ConnectionResponse } from '@pertexo/contracts/schemas/connections';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
-import { useState, type Ref } from 'react';
+import { useMemo, useState, type Ref } from 'react';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import {
   NodeTestPanel,
@@ -18,6 +18,7 @@ import { connectWorkflowNodes } from '../../model/graph-commands';
 import { findStep, levelOf } from '../../model/graph-scopes';
 import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
+import type { ChannelLookupScope } from './slack-channel-field';
 import type { InspectorTab } from '../../use-inspector-navigation';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
@@ -33,6 +34,8 @@ export function EditorInspector({
   workflowId,
   definitions,
   connections,
+  userId,
+  lookUpChannels,
   editable,
   tab,
   onTabChange,
@@ -52,6 +55,9 @@ export function EditorInspector({
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
+  userId: string;
+  /** Slack channel names are looked up for people who can use connections. */
+  lookUpChannels: boolean;
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
@@ -71,6 +77,10 @@ export function EditorInspector({
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const [passedTest, setPassedTest] = useState<PassedTest>();
+  const channelLookup = useMemo<ChannelLookupScope>(
+    () => ({ apiClient, userId, workspaceId, enabled: lookUpChannels }),
+    [apiClient, lookUpChannels, userId, workspaceId],
+  );
 
   function copyStepId() {
     if (selectedNodeId === null) return;
@@ -83,6 +93,7 @@ export function EditorInspector({
     <InspectorPanel
       definitions={definitions}
       connections={connections}
+      channelLookup={channelLookup}
       workspaceId={workspaceId}
       editable={editable}
       scratchVersion={actions.scratchVersion}

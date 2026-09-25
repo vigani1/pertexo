@@ -208,6 +208,7 @@ function WorkflowEditorSession({
       <div hidden={paused} inert={paused}>
         <EditorWorkspace
           apiClient={apiClient}
+          userId={userId}
           workspace={workspace}
           workflowId={workflowId}
           definitions={definitions}

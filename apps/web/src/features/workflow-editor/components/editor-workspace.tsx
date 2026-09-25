@@ -48,6 +48,7 @@ export type EditorChrome = Readonly<{
  */
 export function EditorWorkspace({
   apiClient,
+  userId,
   workspace,
   workflowId,
   definitions,
@@ -64,6 +65,7 @@ export function EditorWorkspace({
   banner,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -198,6 +200,8 @@ export function EditorWorkspace({
           workflowId={workflowId}
           definitions={definitions}
           connections={connections}
+          userId={userId}
+          lookUpChannels={workspace.capabilities.includes('connection:use')}
           editable={editable}
           tab={navigation.tab}
           onTabChange={navigation.setTab}
