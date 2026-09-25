@@ -19,6 +19,7 @@ import {
 import type { RecentRunTicks } from '../use-recent-run-ticks';
 import { WorkflowListNoMatches } from './workflow-list-states';
 import { WorkflowListToolbar } from './workflow-list-toolbar';
+import type { WorkflowRowActions } from './workflow-row-actions';
 import { WorkflowListFooter, WorkflowRows } from './workflow-rows';
 
 /**
@@ -38,8 +39,7 @@ export function WorkflowListResults({
   runs,
   onQueryChange,
   onSearchChange,
-  onRename,
-  onLifecycle,
+  actions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -52,8 +52,7 @@ export function WorkflowListResults({
   runs: RecentRunTicks;
   onQueryChange: (query: string) => void;
   onSearchChange: (search: WorkflowListSearch) => void;
-  onRename: (workflow: WorkflowSummary) => void;
-  onLifecycle: (workflow: WorkflowSummary) => void;
+  actions: WorkflowRowActions;
 }>) {
   const view = search.view ?? 'active';
   const sort = search.sort ?? 'updated';
@@ -99,8 +98,7 @@ export function WorkflowListResults({
           workspace={workspace}
           workflows={visible}
           runs={runs}
-          onRename={onRename}
-          onLifecycle={onLifecycle}
+          actions={actions}
         />
       )}
       <WorkflowListFooter

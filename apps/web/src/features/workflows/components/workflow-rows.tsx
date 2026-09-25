@@ -5,6 +5,7 @@ import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import type { RecentRunTicks } from '../use-recent-run-ticks';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
+import type { WorkflowRowActions } from './workflow-row-actions';
 
 const SKELETON_WIDTHS = [62, 44, 78, 36, 58, 70] as const;
 
@@ -49,16 +50,14 @@ export function WorkflowRows({
   workspace,
   workflows,
   runs,
-  onRename,
-  onLifecycle,
+  actions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowSummary[];
   runs: RecentRunTicks;
-  onRename: (workflow: WorkflowSummary) => void;
-  onLifecycle: (workflow: WorkflowSummary) => void;
+  actions: WorkflowRowActions;
 }>) {
   return (
     <div>
@@ -83,8 +82,7 @@ export function WorkflowRows({
             workspace={workspace}
             workflow={workflow}
             runs={runs}
-            onRename={onRename}
-            onLifecycle={onLifecycle}
+            actions={actions}
           />
         ))}
       </ul>
