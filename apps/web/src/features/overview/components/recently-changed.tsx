@@ -41,11 +41,11 @@ function VersionLine({
   });
   const live = version.data;
   return (
-    <p className="mt-1 flex min-w-0 items-baseline gap-1.5 text-xs">
-      <Status tone={state.tone} className="shrink-0 font-normal">
+    <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
+      <Status tone={state.tone} className="shrink-0 text-[0.75rem] font-medium">
         {state.label}
       </Status>
-      <span className="min-w-0 font-mono text-[0.7rem] text-subtle-foreground">
+      <span className="min-w-0 truncate font-mono text-[0.7rem] leading-none text-subtle-foreground">
         {published === null
           ? '· never published'
           : live === undefined

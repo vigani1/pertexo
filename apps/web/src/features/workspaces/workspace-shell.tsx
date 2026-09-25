@@ -72,7 +72,9 @@ export function WorkspaceShell({
         }
       />
       <div className="relative md:pl-21">
-        <header className="flex items-center gap-2 px-4 pt-4 sm:px-6 md:px-8 md:pt-5">
+        {/* The breadcrumb, banners and page share one column, so on a wide
+            screen the breadcrumb lines up with the title under it. */}
+        <header className="mx-auto flex w-full max-w-368 items-center gap-2 px-4 pt-4 sm:px-6 md:px-8 md:pt-5">
           <ShellBreadcrumb
             root={
               <WorkspaceSwitcher
@@ -92,7 +94,7 @@ export function WorkspaceShell({
             <SearchIcon aria-hidden="true" />
           </Button>
         </header>
-        <div className="mt-3 px-4 empty:hidden sm:px-6 md:px-8">
+        <div className="mx-auto mt-3 w-full max-w-368 px-4 empty:hidden sm:px-6 md:px-8">
           <WorkspaceBanners workspace={workspace} />
         </div>
         <main

@@ -397,14 +397,7 @@ describe('team: members', () => {
       within(matrix)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual([
-      'Ability',
-      'OwnerOwner',
-      'AdminAdmin',
-      'BuildBuilder',
-      'OpsOperator',
-      'ViewViewer',
-    ]);
+    ).toEqual(['Ability', 'Owner', 'Admin', 'Builder', 'Operator', 'Viewer']);
     expect(
       within(matrix).getByRole('columnheader', { name: 'Operator' }),
     ).toBeInTheDocument();

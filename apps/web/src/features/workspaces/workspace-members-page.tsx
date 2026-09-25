@@ -198,7 +198,9 @@ export function WorkspaceMembersPage({
         onInvite={openInvite}
       />
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_26rem]">
+      {/* The roles matrix reads below the list at full width: squeezed
+          into a side column its abilities wrapped to three lines. */}
+      <div className="grid items-start gap-8">
         <Tabs
           value={tab}
           onValueChange={(next) => {
@@ -245,7 +247,7 @@ export function WorkspaceMembersPage({
             </TabsContent>
           ) : null}
         </Tabs>
-        <RolesMatrix yourRole={workspace.role} />
+        <RolesMatrix yourRole={workspace.role} className="max-w-3xl" />
       </div>
 
       {canManage ? (
