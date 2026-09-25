@@ -254,6 +254,22 @@ describe('first thread', () => {
       ['connection', true],
       ['invite', false],
     ]);
+    expect(steps.map((step) => step.destination)).toEqual([
+      { to: 'workflows', create: true },
+      { to: 'workflows' },
+      { to: 'workflows' },
+    ]);
+    expect(
+      firstThreadSteps({
+        destinationCount: 0,
+        connectionCount: 0,
+        memberCount: 1,
+      }).map((step) => step.destination),
+    ).toEqual([
+      { to: 'connections', add: 'any' },
+      { to: 'alerts' },
+      { to: 'team', invite: true },
+    ]);
     expect(isNewWorkspace({ hasRun: false })).toBe(true);
     expect(isNewWorkspace({ hasRun: true, workflows: [] })).toBe(false);
     expect(isNewWorkspace({ workflows: [] })).toBe(true);

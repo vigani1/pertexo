@@ -2,14 +2,15 @@ import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-author
 
 // The "First thread" checklist for a new workspace. Each step is derived from
 // real reads; a step the person's role can't check is left out rather than
-// shown as undone.
+// shown as undone. Each step links to where it is done, opening that page's
+// lens where one exists (the page ignores a lens the role can't use).
 
 export type FirstThreadDestination =
-  | Readonly<{ to: 'workflows' }>
+  | Readonly<{ to: 'workflows'; create?: true }>
   | Readonly<{ to: 'workflow'; workflowId: string }>
-  | Readonly<{ to: 'connections' }>
+  | Readonly<{ to: 'connections'; add: 'any' }>
   | Readonly<{ to: 'alerts' }>
-  | Readonly<{ to: 'team' }>;
+  | Readonly<{ to: 'team'; invite: true }>;
 
 export type FirstThreadStep = Readonly<{
   key: string;
@@ -46,7 +47,7 @@ function workflowSteps(
       label: 'Create a workflow',
       hint: 'Start from a blank canvas and add a trigger.',
       done: first !== undefined,
-      destination: { to: 'workflows' },
+      destination: { to: 'workflows', create: true },
     },
     {
       key: 'publish',
@@ -80,7 +81,7 @@ export function firstThreadSteps(
       label: 'Add a connection',
       hint: 'Connect Slack, email or an HTTP service your steps can use.',
       done: facts.connectionCount > 0,
-      destination: { to: 'connections' },
+      destination: { to: 'connections', add: 'any' },
     });
   if (facts.destinationCount !== undefined)
     steps.push({
@@ -96,7 +97,7 @@ export function firstThreadSteps(
       label: 'Invite a teammate',
       hint: 'Share the workspace with the people who run it with you.',
       done: facts.memberCount > 1,
-      destination: { to: 'team' },
+      destination: { to: 'team', invite: true },
     });
   return steps;
 }
