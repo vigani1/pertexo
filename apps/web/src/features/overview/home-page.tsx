@@ -35,10 +35,13 @@ export function HomePage({
   apiClient,
   user,
   workspace,
+  onOpenSearch,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
+  /** Opens the workspace shell's command palette. */
+  onOpenSearch: () => void;
 }>) {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -86,6 +89,7 @@ export function HomePage({
           statistics={undefined}
           refreshing={false}
           onRefresh={refresh}
+          onOpenSearch={onOpenSearch}
         />
         <Empty>
           <EmptyTitle>Nothing to show for your role</EmptyTitle>
@@ -104,6 +108,7 @@ export function HomePage({
         statistics={statistics.data}
         refreshing={refreshing}
         onRefresh={refresh}
+        onOpenSearch={onOpenSearch}
       />
       {isNewWorkspace(facts) ? (
         <FirstThreadSection

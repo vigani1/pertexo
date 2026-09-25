@@ -295,6 +295,26 @@ describe('workspace home', () => {
     expect(Date.now() - (weekStart ?? 0)).toBeGreaterThan(6.9 * 86_400_000);
   });
 
+  it('opens the command palette and a new workflow from the header', async () => {
+    mockServer.use(
+      ...identityHandlers([...readerCapabilities, 'workflow:create']),
+      workflowHandlers(),
+      ...runHandlers(),
+    );
+
+    renderApp(`/w/${workspaceId}`);
+    const main = await screen.findByRole('main', undefined, coldStart);
+    expect(
+      await within(main).findByRole('link', { name: 'New workflow' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows?create=true`);
+    await userEvent
+      .setup()
+      .click(within(main).getByRole('button', { name: 'Search' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Search Pertexo' }),
+    ).toBeVisible();
+  });
+
   it('keeps blocks independent and recovers one failed read', async () => {
     let failedReads = 0;
     mockServer.use(
@@ -491,6 +511,9 @@ describe('workspace home', () => {
     ).toBeVisible();
     expect(
       within(checklist).getByRole('link', { name: 'Create a workflow' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows?create=true`);
+    expect(
+      within(checklist).getByRole('link', { name: 'Publish it' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
     expect(
       within(checklist).getByRole('link', { name: 'Run it' }),
@@ -499,5 +522,54 @@ describe('workspace home', () => {
       within(checklist).queryByRole('link', { name: 'Invite a teammate' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /Timeline/u })).toBeNull();
+  });
+
+  it('links every first-thread step to where it is done', async () => {
+    const empty = { items: [], nextCursor: null };
+    mockServer.use(
+      ...identityHandlers([
+        ...readerCapabilities,
+        'connection:read',
+        'workflow:update',
+        'member:read',
+      ]),
+      workflowHandlers([workflow({ publishedVersionId: null })]),
+      ...runHandlers({ problems: [], any: [] }),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/connections`,
+        () => HttpResponse.json(empty),
+      ),
+      http.get(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/failure-notification-destinations`,
+        () => HttpResponse.json({ items: [] }),
+      ),
+      http.get(`http://pertexo.test/v1/workspaces/${workspaceId}/members`, () =>
+        HttpResponse.json(empty),
+      ),
+    );
+
+    renderApp(`/w/${workspaceId}`);
+    const checklist = await screen.findByRole(
+      'region',
+      { name: 'Your first thread' },
+      coldStart,
+    );
+    expect(
+      await within(checklist).findByText('1 of 6 done.', { exact: false }),
+    ).toBeVisible();
+    const hrefs = Object.fromEntries(
+      within(checklist)
+        .getAllByRole('link')
+        .map((link) => [link.textContent, link.getAttribute('href')]),
+    );
+    const base = `/w/${workspaceId}`;
+    expect(hrefs).toEqual({
+      'Create a workflow': `${base}/workflows?create=true`,
+      'Publish it': `${base}/workflows/${workflowId}`,
+      'Run it': `${base}/workflows/${workflowId}`,
+      'Add a connection': `${base}/connections?add=any`,
+      'Set a failure alert': `${base}/alerts`,
+      'Invite a teammate': `${base}/team?invite=true`,
+    });
   });
 });

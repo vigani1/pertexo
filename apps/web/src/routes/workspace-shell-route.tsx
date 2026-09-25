@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Outlet, useMatches } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -6,6 +6,7 @@ import { liveRunCountQueryOptions } from '@/features/workflow-runs/queries.publi
 import { rememberLastWorkspace } from '@/features/workspaces/last-workspace.public';
 import { WorkspaceShell } from '@/features/workspaces/public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
+import { CommandPaletteContext } from './command-palette-context';
 import { useLogout } from './use-logout';
 import { useWorkspaceScope } from './use-workspace-scope';
 import { WorkspaceCommandPalette } from './workspace-command-palette';
@@ -57,9 +58,11 @@ export function WorkspaceShellRoute() {
       ),
   });
 
-  useCommandShortcut(() => {
+  // Stable, so pages that receive it through context don't re-render.
+  const openSearch = useCallback(() => {
     setSearchOpen(true);
-  });
+  }, []);
+  useCommandShortcut(openSearch);
 
   useEffect(() => {
     rememberLastWorkspace(user.id, workspace.id);
@@ -74,11 +77,11 @@ export function WorkspaceShellRoute() {
       crumbs={crumbs.filter((crumb) => crumb !== 'Home')}
       logoutPending={logout.pending}
       onLogout={logout.requestLogout}
-      onOpenSearch={() => {
-        setSearchOpen(true);
-      }}
+      onOpenSearch={openSearch}
     >
-      <Outlet />
+      <CommandPaletteContext value={openSearch}>
+        <Outlet />
+      </CommandPaletteContext>
       <WorkspaceCommandPalette
         open={searchOpen}
         onOpenChange={setSearchOpen}
