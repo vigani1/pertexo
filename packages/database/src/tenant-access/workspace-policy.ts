@@ -135,6 +135,23 @@ export function canChangeWorkspaceMemberRole(
   );
 }
 
+/**
+ * ADR 042 removal policy: owners remove any non-owner member, admins remove
+ * only builder, operator or viewer members. Self-removal is decided by the
+ * caller, which knows both identities.
+ */
+export function canRemoveWorkspaceMember(
+  actorRole: Role,
+  targetRole: Role,
+): boolean {
+  if (targetRole === 'owner') return false;
+  if (actorRole === 'owner') return true;
+  return (
+    actorRole === 'admin' &&
+    delegatedRoles.includes(targetRole as (typeof delegatedRoles)[number])
+  );
+}
+
 /** ADR 038 invitation policy. Current database state remains authoritative. */
 export function canInviteWorkspaceRole(
   actorRole: Role,

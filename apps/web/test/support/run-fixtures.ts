@@ -28,6 +28,7 @@ export const fixtureUser = {
   email: 'operator@example.test',
   displayName: 'Pertexo Operator',
   status: 'active',
+  revision: 1,
   createdAt: fixtureTimestamp,
   updatedAt: fixtureTimestamp,
 };

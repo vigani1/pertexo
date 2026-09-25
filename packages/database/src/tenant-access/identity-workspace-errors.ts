@@ -62,6 +62,43 @@ export class WorkspaceMemberRoleCommandConflictError extends Error {
   }
 }
 
+export type WorkspaceMemberRemovalCommandConflictReason =
+  | 'actor_inactive'
+  | 'target_missing'
+  | 'target_inactive'
+  | 'self_removal'
+  | 'owner_removal'
+  | 'removal_forbidden'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class WorkspaceMemberRemovalCommandConflictError extends Error {
+  public override readonly name = 'WorkspaceMemberRemovalCommandConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceMemberRemovalCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
+export type UserProfileCommandConflictReason =
+  'user_inactive' | 'revision_conflict' | 'idempotency_conflict';
+
+export class UserProfileCommandConflictError extends Error {
+  public override readonly name = 'UserProfileCommandConflictError';
+
+  public constructor(
+    public readonly reason: UserProfileCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export type WorkspaceInvitationCommandConflictReason =
   | 'actor_inactive'
   | 'role_forbidden'

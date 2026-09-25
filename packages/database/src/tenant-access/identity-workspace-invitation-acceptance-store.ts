@@ -553,6 +553,15 @@ export function createIdentityWorkspaceInvitationAcceptanceStore(
   });
 }
 
+const CREATE_MEMBERSHIP = `insert into app.workspace_memberships
+    (workspace_id,user_id,role,status) values($1,$2,$3,'active')`;
+// ADR 042: a removed membership restarts at the invited role, and its
+// revision advances so no command fenced before the removal can apply.
+const REJOIN_MEMBERSHIP = `update app.workspace_memberships
+    set role=$3,status='active',role_revision=role_revision+1,
+        updated_at=clock_timestamp()
+  where workspace_id=$1 and user_id=$2`;
+
 async function completeAcceptance(
   pool: Pool,
   raw: CompleteInvitationAcceptanceInput,
@@ -706,19 +715,24 @@ async function completeAcceptance(
           'The verified recipient does not match',
         );
       const existing = membership.rows[0];
-      if (existing !== undefined && existing.status !== 'active')
+      // ADR 042: a removal ends the membership, so a later invitation starts
+      // a new one at the invited role. Suspension stays a conflict.
+      const rejoining = existing?.status === 'removed';
+      if (existing !== undefined && existing.status !== 'active' && !rejoining)
         throw new InvitationAcceptanceConflictError(
           'member_inactive',
           'Inactive membership cannot be restored by invitation',
         );
-      const membershipCreated = existing === undefined;
-      const assignedRole = existing?.role ?? delegatedRole.parse(current.role);
+      const membershipCreated = existing === undefined || rejoining;
+      const assignedRole = membershipCreated
+        ? delegatedRole.parse(current.role)
+        : existing.role;
       if (membershipCreated) {
-        await client.query(
-          `insert into app.workspace_memberships(workspace_id,user_id,role,status)
-           values($1,$2,$3,'active')`,
-          [workspaceId, actorUserId, assignedRole],
-        );
+        await client.query(rejoining ? REJOIN_MEMBERSHIP : CREATE_MEMBERSHIP, [
+          workspaceId,
+          actorUserId,
+          assignedRole,
+        ]);
         await replaceUserSessions(client, actorUserId, raw.replacementSession);
       }
       const receipt = acceptanceReceiptSchema.parse({

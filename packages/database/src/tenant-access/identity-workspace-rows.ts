@@ -17,6 +17,7 @@ const userRowSchema = z
     email: z.string().trim().min(3).max(320),
     display_name: z.string().trim().min(1).max(256),
     status: z.enum(['active', 'suspended', 'deleted']),
+    profile_revision: z.number().int().positive(),
     created_at: z.coerce.date(),
     updated_at: z.coerce.date(),
   })
@@ -89,6 +90,7 @@ export function mapUser(row: Record<string, unknown>): UserRecord {
     email: parsed.email,
     displayName: parsed.display_name,
     status: parsed.status,
+    profileRevision: parsed.profile_revision,
     createdAt: parsed.created_at,
     updatedAt: parsed.updated_at,
   });

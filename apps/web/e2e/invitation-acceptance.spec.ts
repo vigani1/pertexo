@@ -352,6 +352,7 @@ test('keeps ordinary workspace discovery available when a replacement binding re
         email: 'builder@example.test',
         displayName: 'Pertexo Builder',
         status: 'active',
+        revision: 1,
         createdAt: '2026-09-19T10:00:00.000Z',
         updatedAt: '2026-09-19T10:00:00.000Z',
       },

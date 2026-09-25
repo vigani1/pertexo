@@ -16,6 +16,7 @@ async function installRoutes(page: Page, renameName = 'Incident Operations') {
         email: 'owner@example.test',
         displayName: 'Workspace Owner',
         status: 'active',
+        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
       },

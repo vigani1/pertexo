@@ -16,6 +16,29 @@ type WorkspaceMemberRolePersistence = Pick<
   'changeWorkspaceMemberRole'
 >;
 
+/** The authorized route, body and delivery identifiers of a member command. */
+export type WorkspaceMemberCommandInput = Readonly<{
+  actor: ActorContext;
+  routeWorkspaceId: string;
+  targetUserId: string;
+  request: unknown;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+
+/** The persistence fields every existing-member command shares. */
+export function memberCommandFields(input: WorkspaceMemberCommandInput) {
+  return {
+    workspaceId: input.routeWorkspaceId,
+    actorUserId: input.actor.actorId,
+    targetUserId: input.targetUserId,
+    idempotencyKey: input.idempotencyKey,
+    ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+  };
+}
+
 export class ChangeWorkspaceMemberRoleUseCase {
   public constructor(
     private readonly persistence: WorkspaceMemberRolePersistence,
@@ -23,15 +46,7 @@ export class ChangeWorkspaceMemberRoleUseCase {
   ) {}
 
   public execute(
-    input: Readonly<{
-      actor: ActorContext;
-      routeWorkspaceId: string;
-      targetUserId: string;
-      request: unknown;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
+    input: WorkspaceMemberCommandInput,
   ): Promise<WorkspaceMemberRoleChangeResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberRoleChange,
@@ -40,16 +55,9 @@ export class ChangeWorkspaceMemberRoleUseCase {
           input.request,
         );
         const result = await this.persistence.changeWorkspaceMemberRole({
-          workspaceId: input.routeWorkspaceId,
-          actorUserId: input.actor.actorId,
-          targetUserId: input.targetUserId,
+          ...memberCommandFields(input),
           role: request.role,
           expectedRoleRevision: request.expectedRoleRevision,
-          idempotencyKey: input.idempotencyKey,
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
         });
         return workspaceMemberRoleChangeResponseSchema.parse(result);
       },

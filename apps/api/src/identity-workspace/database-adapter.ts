@@ -34,16 +34,14 @@ export class DatabaseIdentityWorkspaceAdapter
     userId: string,
   ): Promise<UserProfilePersistenceRecord | null> {
     const user = await this.database.findUserById(userId);
-    return user === null
-      ? null
-      : Object.freeze({
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-          status: user.status,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        });
+    return user === null ? null : mapUserProfile(user);
+  }
+
+  public async updateUserProfile(
+    input: Parameters<IdentityWorkspaceDatabase['updateUserProfile']>[0],
+  ) {
+    const result = await this.database.updateUserProfile(input);
+    return Object.freeze({ ...result, user: mapUserProfile(result.user) });
   }
 
   public async createWorkspaceWithOwner(
@@ -98,6 +96,12 @@ export class DatabaseIdentityWorkspaceAdapter
     >[0],
   ) {
     return this.database.changeWorkspaceMemberRole(input);
+  }
+
+  public removeWorkspaceMember(
+    input: Parameters<IdentityWorkspaceDatabase['removeWorkspaceMember']>[0],
+  ) {
+    return this.database.removeWorkspaceMember(input);
   }
 
   public listWorkspaceInvitations(
@@ -233,6 +237,20 @@ function mapSession(record: DatabaseSessionRecord): SessionRecord {
       ...(record.userAgent === null ? {} : { userAgent: record.userAgent }),
       ...(record.ipAddress === null ? {} : { ipAddress: record.ipAddress }),
     }),
+  });
+}
+
+function mapUserProfile(
+  user: UserProfilePersistenceRecord,
+): UserProfilePersistenceRecord {
+  return Object.freeze({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    status: user.status,
+    profileRevision: user.profileRevision,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   });
 }
 

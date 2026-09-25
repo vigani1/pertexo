@@ -67,14 +67,37 @@ export const workspaceResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
+export const userProfileRevisionSchema = z.number().int().positive();
 export const userProfileResponseSchema = z
   .object({
     id: z.uuid(),
     email: z.string().trim().min(3).max(320),
     displayName: z.string().trim().min(1).max(256),
     status: z.enum(['active', 'suspended', 'deleted']),
+    revision: userProfileRevisionSchema,
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
+  })
+  .strict();
+/** ADR 043: the name teammates see; printable text, 1–128 characters. */
+export const USER_DISPLAY_NAME_MAX_LENGTH = 128;
+export const userDisplayNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(USER_DISPLAY_NAME_MAX_LENGTH)
+  .regex(/^[^\p{Cc}]+$/u);
+export const userProfileUpdateRequestSchema = z
+  .object({
+    displayName: userDisplayNameSchema,
+    expectedRevision: userProfileRevisionSchema,
+  })
+  .strict();
+export const userProfileUpdateResponseSchema = z
+  .object({
+    profile: userProfileResponseSchema,
+    changed: z.boolean(),
+    replayed: z.boolean(),
   })
   .strict();
 export const workspaceRoleSchema = z.enum([
@@ -111,6 +134,17 @@ export const workspaceMemberRoleChangeResponseSchema = z
     role: delegatedWorkspaceRoleSchema,
     roleRevision: z.number().int().positive(),
     changed: z.boolean(),
+    replayed: z.boolean(),
+  })
+  .strict();
+/** ADR 042: removal is fenced by the membership's role revision. */
+export const workspaceMemberRemovalRequestSchema = z
+  .object({ expectedRoleRevision: z.number().int().positive() })
+  .strict();
+export const workspaceMemberRemovalResponseSchema = z
+  .object({
+    userId: z.uuid(),
+    roleRevision: z.number().int().positive(),
     replayed: z.boolean(),
   })
   .strict();
@@ -171,6 +205,7 @@ export const invitationAcceptanceResolveRequestSchema = z
   .object({ token: z.string().min(1).max(1_024) })
   .strict();
 export const invitationAcceptanceOidcRequestSchema = z.object({}).strict();
+export const invitationAcceptanceSessionRequestSchema = z.object({}).strict();
 export const invitationAcceptanceCompleteRequestSchema = z
   .object({
     intentId: z.uuid(),
@@ -332,12 +367,24 @@ export type WorkspaceRenameResponse = z.output<
   typeof workspaceRenameResponseSchema
 >;
 export type UserProfileResponse = z.output<typeof userProfileResponseSchema>;
+export type UserProfileUpdateRequest = z.input<
+  typeof userProfileUpdateRequestSchema
+>;
+export type UserProfileUpdateResponse = z.output<
+  typeof userProfileUpdateResponseSchema
+>;
 export type WorkspaceMember = z.output<typeof workspaceMemberSchema>;
 export type WorkspaceMemberRoleChangeRequest = z.input<
   typeof workspaceMemberRoleChangeRequestSchema
 >;
 export type WorkspaceMemberRoleChangeResponse = z.output<
   typeof workspaceMemberRoleChangeResponseSchema
+>;
+export type WorkspaceMemberRemovalRequest = z.input<
+  typeof workspaceMemberRemovalRequestSchema
+>;
+export type WorkspaceMemberRemovalResponse = z.output<
+  typeof workspaceMemberRemovalResponseSchema
 >;
 export type WorkspaceInvitation = z.output<typeof workspaceInvitationSchema>;
 export type WorkspaceInvitationCreateRequest = z.input<

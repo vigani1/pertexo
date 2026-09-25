@@ -6,6 +6,7 @@ import {
   INVITATION_ALLOWED_ORIGIN,
   IdentityWorkspaceModule,
   InvitationAcceptanceController,
+  InvitationAcceptanceOidcController,
   InvitationAcceptanceUseCase,
   OidcController,
   RenameWorkspaceUseCase,
@@ -118,7 +119,7 @@ describe('identity/workspace Nest module', () => {
     }
   });
 
-  it('registers only the session authority surface without generic OIDC', async () => {
+  it('registers invitation acceptance under the session authority without generic OIDC', async () => {
     const dynamic = IdentityWorkspaceModule.register(
       sessionAuthorityDependencies({
         publicWebOrigin: 'https://app.example.test',
@@ -126,10 +127,13 @@ describe('identity/workspace Nest module', () => {
     );
 
     expect(dynamic.controllers).not.toContain(OidcController);
-    expect(dynamic.controllers).not.toContain(InvitationAcceptanceController);
+    expect(dynamic.controllers).not.toContain(
+      InvitationAcceptanceOidcController,
+    );
+    expect(dynamic.controllers).toContain(InvitationAcceptanceController);
     expect(dynamic.controllers).toContain(SessionController);
     expect(dynamic.exports).not.toContain(OidcLoginService);
-    expect(dynamic.exports).not.toContain(InvitationAcceptanceUseCase);
+    expect(dynamic.exports).toContain(InvitationAcceptanceUseCase);
     expect(dynamic.providers).toContainEqual({
       provide: INVITATION_ALLOWED_ORIGIN,
       useValue: 'https://app.example.test',
@@ -141,6 +145,9 @@ describe('identity/workspace Nest module', () => {
     try {
       expect(context.get(OpaqueSessionService)).toBeInstanceOf(
         OpaqueSessionService,
+      );
+      expect(context.get(InvitationAcceptanceUseCase)).toBeInstanceOf(
+        InvitationAcceptanceUseCase,
       );
       expect(() => context.get(OidcLoginService)).toThrow();
     } finally {

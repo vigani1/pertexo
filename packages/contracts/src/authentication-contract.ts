@@ -1,8 +1,10 @@
 import {
   csrfHeaderParameter,
+  idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
+  problemResponse,
   queryParameter,
   responseReference,
 } from './openapi-primitives.js';
@@ -116,6 +118,25 @@ export const authenticationContractPaths = Object.freeze({
       responses: {
         '200': jsonResponse('Current user profile', 'UserProfileResponse'),
         '401': responseReference('Unauthenticated'),
+        '429': responseReference('RateLimited'),
+        '500': responseReference('Unexpected'),
+      },
+    },
+    patch: {
+      operationId: 'updateCurrentUserProfile',
+      security: [{ cookieSession: [] }],
+      parameters: [csrfHeaderParameter(), idempotencyHeaderParameter()],
+      requestBody: jsonRequest('UserProfileUpdateRequest'),
+      responses: {
+        '200': jsonResponse(
+          'Current user display-name change receipt',
+          'UserProfileUpdateResponse',
+        ),
+        '400': responseReference('BadRequest'),
+        '401': responseReference('Unauthenticated'),
+        '403': responseReference('Forbidden'),
+        '409': responseReference('Conflict'),
+        '412': problemResponse('Profile revision changed'),
         '429': responseReference('RateLimited'),
         '500': responseReference('Unexpected'),
       },

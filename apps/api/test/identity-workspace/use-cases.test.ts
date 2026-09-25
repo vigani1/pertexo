@@ -59,6 +59,7 @@ function user() {
     email: 'person@example.test',
     displayName: 'Person',
     status: 'active' as const,
+    profileRevision: 3,
     createdAt: new Date('2026-08-20T12:00:00.000Z'),
     updatedAt: new Date('2026-08-20T12:00:00.000Z'),
   };
@@ -152,6 +153,7 @@ describe('identity/workspace application use cases', () => {
       email: 'person@example.test',
       displayName: 'Person',
       status: 'active',
+      revision: 3,
       createdAt: '2026-08-20T12:00:00.000Z',
       updatedAt: '2026-08-20T12:00:00.000Z',
     });

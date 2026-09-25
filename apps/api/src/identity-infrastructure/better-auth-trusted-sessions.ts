@@ -11,6 +11,15 @@ export type BetterAuthTrustedSessions = Readonly<{
   ): Promise<BetterAuthAuthenticatedSession | undefined>;
   revoke(cookieValue: string): Promise<void>;
   revokeToken(token: string): Promise<void>;
+  /** The active user's verified email and when this session was issued. */
+  evidence(cookieValue: string): Promise<BetterAuthSignInEvidence | undefined>;
+}>;
+
+type BetterAuthSignInEvidence = Readonly<{
+  userId: string;
+  email: string;
+  emailVerified: boolean;
+  signedInAt: Date;
 }>;
 
 type BetterAuthAuthenticatedSession = Readonly<{
@@ -81,6 +90,20 @@ export function createTrustedSessions(
     revokeToken: async (token: string) => {
       const context = await auth.$context;
       await context.internalAdapter.deleteSession(token);
+    },
+    evidence: async (cookieValue: string) => {
+      const session = await auth.api.getSession({
+        headers: sessionHeaders(cookieValue),
+        query: { disableCookieCache: true },
+      });
+      if (session === null || !(await isActiveUser(pool, session.user.id)))
+        return undefined;
+      return Object.freeze({
+        userId: session.user.id,
+        email: session.user.email,
+        emailVerified: session.user.emailVerified,
+        signedInAt: new Date(session.session.createdAt),
+      });
     },
   });
 }

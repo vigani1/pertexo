@@ -7,6 +7,7 @@ import type {
   SessionIssueResult,
 } from '../identity/ports.js';
 import type { SafeClientMetadata } from '../identity/types.js';
+import type { SignInEvidence } from '../identity/ports.js';
 import type { BetterAuthRuntime } from './better-auth.js';
 import type { BetterAuthSessionDelivery } from './better-auth-trusted-sessions.js';
 
@@ -82,6 +83,17 @@ export class BetterAuthSessionService {
       if (error instanceof IdentityError) throw error;
       throw new IdentityError('identity.session_invalid');
     }
+  }
+
+  /**
+   * Better Auth verifies email before a password sign-in and records when
+   * the session was issued, so the session is fresh sign-in evidence.
+   */
+  public async signInEvidence(cookieValue: string): Promise<SignInEvidence> {
+    const evidence = await this.runtime.sessions.evidence(cookieValue);
+    if (evidence === undefined)
+      throw new IdentityError('identity.session_invalid');
+    return evidence;
   }
 
   public async revoke(cookieValue: string): Promise<void> {

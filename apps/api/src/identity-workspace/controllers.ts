@@ -31,6 +31,9 @@ import {
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
+import { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
+import type { WorkspaceMemberCommandInput } from './member-role-use-case.js';
+import { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 import {
   accessibleWorkspacesQuerySchema,
   idempotencyKeySchema,
@@ -50,7 +53,10 @@ import {
 
 @Controller('v1/users')
 export class UserController {
-  public constructor(private readonly currentUser: GetCurrentUserUseCase) {}
+  public constructor(
+    private readonly currentUser: GetCurrentUserUseCase,
+    private readonly profile: UpdateUserProfileUseCase,
+  ) {}
 
   @Get('me')
   @RateLimit('authenticated_read')
@@ -61,6 +67,23 @@ export class UserController {
   ) {
     response.header('Cache-Control', 'private, no-store');
     return this.currentUser.execute(authenticatedSession(request).userId);
+  }
+
+  @Patch('me')
+  @HttpCode(200)
+  @RateLimit('actor_mutation')
+  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  public async updateMe(
+    @Req() request: IdentityWorkspaceRequest,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ) {
+    response.header('Cache-Control', 'private, no-store');
+    return this.profile.execute({
+      actorUserId: authenticatedSession(request).userId,
+      request: body,
+      idempotencyKey: requestIdempotencyKey(request),
+    });
   }
 }
 
@@ -92,6 +115,7 @@ export class WorkspaceMembersController {
   public constructor(
     private readonly members: ListWorkspaceMembersUseCase,
     private readonly roleChange: ChangeWorkspaceMemberRoleUseCase,
+    private readonly removal: RemoveWorkspaceMemberUseCase,
   ) {}
 
   @Get(':workspaceId/members')
@@ -129,19 +153,43 @@ export class WorkspaceMembersController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    const { workspaceId, userId } =
-      workspaceMemberRoleParamsSchema.parse(params);
-    const actor = lifecycleActorFrom(request, workspaceId);
-    return this.roleChange.execute({
-      actor,
-      routeWorkspaceId: workspaceId,
-      targetUserId: userId,
-      request: body,
-      idempotencyKey: requestIdempotencyKey(request),
-      requestId: actor.requestId,
-      ...traceFields(actor.traceId),
-    });
+    return this.roleChange.execute(memberCommand(request, params, body));
   }
+
+  @Post(':workspaceId/members/:userId/remove')
+  @HttpCode(200)
+  @RateLimit('ordinary_mutation')
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceMemberManageGuard,
+  )
+  public async remove(
+    @Req() request: IdentityWorkspaceRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    return this.removal.execute(memberCommand(request, params, body));
+  }
+}
+
+/** The authorized actor, target and exact delivery of a member command. */
+function memberCommand(
+  request: IdentityWorkspaceRequest,
+  params: unknown,
+  body: unknown,
+): WorkspaceMemberCommandInput {
+  const { workspaceId, userId } = workspaceMemberRoleParamsSchema.parse(params);
+  const actor = lifecycleActorFrom(request, workspaceId);
+  return {
+    actor,
+    routeWorkspaceId: workspaceId,
+    targetUserId: userId,
+    request: body,
+    idempotencyKey: requestIdempotencyKey(request),
+    requestId: actor.requestId,
+    ...traceFields(actor.traceId),
+  };
 }
 
 @Controller('v1/workspaces')

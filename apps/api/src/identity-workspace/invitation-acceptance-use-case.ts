@@ -8,6 +8,7 @@ import {
   type IdentityClock,
   type IdentityCrypto,
   type OidcLoginResult,
+  type SignInEvidence,
   IdentityError,
 } from '../identity/index.js';
 import type { OidcLoginPort } from './use-cases.js';
@@ -28,6 +29,7 @@ import {
 } from './types.js';
 
 const INTENT_TTL_MILLIS = 15 * 60_000;
+const PROOF_TTL_MILLIS = 5 * 60_000;
 const DEFAULT_SESSION_TTL_MILLIS = 8 * 60 * 60_000;
 const TOKEN_PATTERN =
   /^wi1\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/u;
@@ -52,7 +54,8 @@ type AcceptancePersistence = Required<
 export class InvitationAcceptanceUseCase {
   public constructor(
     private readonly persistence: AcceptancePersistence,
-    private readonly oidc: OidcLoginPort,
+    /** Legacy OIDC verification; absent when the deployment has none. */
+    private readonly oidc: OidcLoginPort | undefined,
     private readonly crypto: IdentityCrypto,
     private readonly clock: IdentityClock,
     private readonly config: IdentityWorkspaceConfig,
@@ -151,6 +154,8 @@ export class InvitationAcceptanceUseCase {
     binding: string | undefined,
     csrfToken: string | undefined,
   ) {
+    if (this.oidc === undefined)
+      throw new IdentityError('identity.provider_unavailable');
     const selected = await this.requireBoundJourney(binding, csrfToken);
     const result = await this.oidc.startLogin({
       kind: 'invitation_acceptance',
@@ -187,6 +192,47 @@ export class InvitationAcceptanceUseCase {
         'unavailable',
         'Invitation acceptance is unavailable',
       );
+  }
+
+  /**
+   * Records the signed-in account as the journey's verified recipient. The
+   * sign-in must have verified its email and be at most five minutes old,
+   * the same bound as a fresh OIDC result (ADR 038, ADR 043).
+   */
+  public async recordSessionProof(
+    input: Readonly<{
+      binding: string | undefined;
+      csrfToken: string | undefined;
+      evidence: SignInEvidence;
+    }>,
+  ): Promise<InvitationAcceptanceJourney> {
+    const selected = await this.requireBoundJourney(
+      input.binding,
+      input.csrfToken,
+    );
+    const { evidence } = input;
+    if (!evidence.emailVerified)
+      throw new IdentityError('identity.callback_rejected');
+    const now = this.clock.now();
+    if (now.getTime() - evidence.signedInAt.getTime() > PROOF_TTL_MILLIS)
+      throw new InvitationAcceptanceConflictError(
+        'proof_expired',
+        'A fresh sign-in is required',
+      );
+    const recorded = await this.persistence.recordInvitationAcceptanceProof({
+      workspaceId: selected.workspaceId,
+      intentId: selected.intentId,
+      bindingDigest: digestSha256Hex(selected.bindingSecret, this.crypto),
+      userId: evidence.userId,
+      verifiedEmail: evidence.email,
+      verifiedAt: evidence.signedInAt,
+    });
+    if (recorded === null)
+      throw new InvitationAcceptanceConflictError(
+        'unavailable',
+        'Invitation acceptance is unavailable',
+      );
+    return journey(recorded, selected.csrfToken, evidence.userId, now);
   }
 
   public async complete(

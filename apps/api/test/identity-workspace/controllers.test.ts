@@ -145,6 +145,7 @@ describe('identity workspace-route controllers', () => {
       email: 'person@example.test',
       displayName: 'Person',
       status: 'active' as const,
+      profileRevision: 4,
       createdAt: new Date('2026-08-20T12:00:00.000Z'),
       updatedAt: new Date('2026-08-20T12:00:00.000Z'),
     };
@@ -152,11 +153,14 @@ describe('identity workspace-route controllers', () => {
       new GetCurrentUserUseCase({
         findUserById: vi.fn().mockResolvedValue(profile),
       }),
+      { execute: vi.fn() } as never,
     );
     const request = workspaceRequest() satisfies IdentityWorkspaceRequest;
 
+    const { profileRevision, ...projected } = profile;
     await expect(controller.me(request, response)).resolves.toEqual({
-      ...profile,
+      ...projected,
+      revision: profileRevision,
       createdAt: '2026-08-20T12:00:00.000Z',
       updatedAt: '2026-08-20T12:00:00.000Z',
     });
@@ -186,6 +190,7 @@ describe('identity workspace-route controllers', () => {
       new ChangeWorkspaceMemberRoleUseCase({
         changeWorkspaceMemberRole: vi.fn(),
       }),
+      { execute: vi.fn() } as never,
     );
 
     await controller.list(
@@ -227,6 +232,7 @@ describe('identity workspace-route controllers', () => {
         { findAccess: vi.fn() },
       ),
       new ChangeWorkspaceMemberRoleUseCase({ changeWorkspaceMemberRole }),
+      { execute: vi.fn() } as never,
     );
     await controller.changeRole(
       workspaceRequest(),

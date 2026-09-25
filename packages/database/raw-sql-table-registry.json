@@ -1,5 +1,19 @@
 [
   {
+    "name": "user_profile_command_receipts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "not_applicable",
+    "reason": "Identity-scoped display-name command receipts are keyed by the acting user outside any workspace and replay exact self-profile retries."
+  },
+  {
+    "name": "workspace_member_removal_command_receipts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Workspace-scoped member removal receipts replay exact uncertain retries and are purged with the workspace tenant rows."
+  },
+  {
     "name": "auth_legacy_method_migration_attempts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role", "maintenance_role"],

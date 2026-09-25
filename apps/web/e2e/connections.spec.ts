@@ -13,6 +13,7 @@ const user = {
   email: 'operator@example.test',
   displayName: 'Pertexo Operator',
   status: 'active',
+  revision: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
 };
