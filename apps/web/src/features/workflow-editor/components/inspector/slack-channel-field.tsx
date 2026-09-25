@@ -140,19 +140,18 @@ function ChannelIdField({
             className="flex-1 font-mono"
             value={live.text}
             disabled={!form.editable}
-            onFocus={() => {
-              setEditing(true);
-            }}
             onBlur={() => {
               setEditing(false);
             }}
             onChange={(event) => {
+              // Only a changed value waits for the field to be left; a
+              // focused but unchanged channel keeps showing its name.
+              setEditing(true);
               live.change(event.currentTarget.value);
             }}
           />
-          <output
+          <span
             id={nameId}
-            htmlFor={id}
             aria-live="polite"
             className="max-w-[45%] shrink-0 truncate font-mono text-xs text-muted-foreground"
           >
@@ -161,7 +160,7 @@ function ChannelIdField({
             ) : pending ? (
               'Looking up…'
             ) : null}
-          </output>
+          </span>
         </div>
       )}
     </LabelledField>
