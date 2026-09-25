@@ -67,5 +67,15 @@ export function describeCommandError(error: unknown, action: string): string {
   const seconds = retryAfterSeconds(error);
   if (isApiError(error) && error.status === 429 && seconds !== undefined)
     return `Too many attempts. Try again in ${String(seconds)} s.`;
-  return `${action.charAt(0).toUpperCase()}${action.slice(1)} didn’t work. Try again.`;
+  const Action = `${action.charAt(0).toUpperCase()}${action.slice(1)}`;
+  if (isApiError(error) && error.status === 503)
+    return `${Action} isn’t available right now. Nothing was changed; try again in a few minutes.`;
+  const reference = supportReference(error);
+  if (
+    isApiError(error) &&
+    (error.status ?? 0) >= 500 &&
+    reference !== undefined
+  )
+    return `${Action} didn’t work on our side. Try again; if it keeps happening, quote reference ${reference.slice(0, 8)}.`;
+  return `${Action} didn’t work. Try again.`;
 }
