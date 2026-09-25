@@ -146,20 +146,12 @@ export function localUtcOffset(date = new Date()): string {
   return `UTC${sign}${String(hours)}${minutes === 0 ? '' : `:${String(minutes).padStart(2, '0')}`}`;
 }
 
-const calendarDayFormatters = {
-  short: new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }),
-  long: new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }),
-} as const;
+const calendarDayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
 const monthYearFormatter = new Intl.DateTimeFormat(undefined, {
   month: 'long',
   year: 'numeric',
@@ -168,12 +160,9 @@ const weekdayFormatter = new Intl.DateTimeFormat(undefined, {
   weekday: 'short',
 });
 
-/** A calendar day: "Thu, 25 Sep 2026" or, for screen readers, spelled out. */
-export function formatCalendarDay(
-  date: Date,
-  style: keyof typeof calendarDayFormatters = 'short',
-): string {
-  return calendarDayFormatters[style].format(date);
+/** A calendar day spelled out: "Friday, 25 September 2026". */
+export function formatCalendarDay(date: Date): string {
+  return calendarDayFormatter.format(date);
 }
 
 /** A calendar's month heading: "September 2026". */
