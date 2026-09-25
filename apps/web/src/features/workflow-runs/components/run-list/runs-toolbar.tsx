@@ -18,7 +18,7 @@ export function RunsToolbar({
     <>
       <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
         <Switch checked={live} onCheckedChange={onLiveChange} />
-        Live
+        Auto-refresh
       </label>
       <ToggleGroup
         aria-label="View"

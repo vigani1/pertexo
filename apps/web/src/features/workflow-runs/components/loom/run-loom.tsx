@@ -101,7 +101,7 @@ export function RunLoom({
             className="size-16 @min-[640px]:size-36"
           />
           <p className="absolute bottom-3 font-mono text-[0.7rem] font-semibold text-accent-foreground/90 @max-[639px]:hidden">
-            {String(model.liveCount)} live
+            {String(model.liveCount)} running
           </p>
         </div>
         {model.runCount === 0 ? (

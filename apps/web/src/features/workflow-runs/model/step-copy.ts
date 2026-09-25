@@ -43,10 +43,13 @@ export function stepTag(row: ThreadRow, nowMs: number): string {
       const took = attempt === undefined ? undefined : spanMs(attempt);
       return took === undefined ? 'done' : formatDurationMs(took);
     }
-    case 'failed':
-      return row.attempts > 1
-        ? `failed after ${String(row.attempts)} attempts`
-        : 'failed';
+    case 'failed': {
+      // The status beside it already says failed: how long, or how often.
+      if (row.attempts > 1) return `after ${String(row.attempts)} attempts`;
+      const attempt = lastAttempt(row);
+      const took = attempt === undefined ? undefined : spanMs(attempt);
+      return took === undefined ? '' : formatDurationMs(took);
+    }
     case 'skipped':
       return 'skipped · not taken';
     case 'pending':

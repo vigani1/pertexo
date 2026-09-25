@@ -169,14 +169,18 @@ export function StepLens({
     );
   return (
     <div className="text-sm">
-      <p className="text-xs text-subtle-foreground">
-        {[
-          row.kindLabel,
-          row.attempts > 1 ? `attempt ${String(row.attempts)}` : undefined,
-        ]
-          .filter((part): part is string => part !== undefined)
-          .join(' · ') || 'Step'}
-      </p>
+      {/* The step's type under a custom name, and which attempt; nothing
+          when the title already is the type. */}
+      {row.kindLabel === undefined && row.attempts <= 1 ? null : (
+        <p className="text-xs text-subtle-foreground">
+          {[
+            row.kindLabel,
+            row.attempts > 1 ? `attempt ${String(row.attempts)}` : undefined,
+          ]
+            .filter((part): part is string => part !== undefined)
+            .join(' · ')}
+        </p>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
         <Status tone={row.tone}>{row.statusLabel}</Status>
         <span className="font-mono text-xs text-subtle-foreground">

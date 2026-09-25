@@ -59,7 +59,8 @@ export function SelectContent({
           data-slot="select-content"
           className={cn(
             popupSurface,
-            'max-h-(--available-height) w-(--anchor-width) min-w-40 overflow-y-auto p-1',
+            // At least as wide as its trigger, wider when an option needs it.
+            'max-h-(--available-height) w-max max-w-[min(24rem,var(--available-width))] min-w-(--anchor-width) overflow-y-auto p-1',
             className,
           )}
           {...props}

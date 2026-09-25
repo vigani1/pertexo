@@ -43,18 +43,18 @@ export function CancelRunDialog({
       onOpenChange(false);
       if (response.alreadyRequested)
         notifications.info({
-          title: 'This run is already stopping',
-          description: `${workflowName} will stop after its current step.`,
+          title: 'This run is already being canceled',
+          description: `${workflowName} stops after its current step.`,
         });
       else
         notifications.success({
-          title: 'Stopping the run',
+          title: 'Canceling the run',
           description: `${workflowName} stops after its current step.`,
         });
     } catch (error) {
       onOpenChange(false);
       notifications.error({
-        title: 'The run didn’t stop',
+        title: 'The run wasn’t canceled',
         description: runCancellationError(error),
       });
     }
@@ -64,11 +64,11 @@ export function CancelRunDialog({
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Stop this run?"
+      title="Cancel this run?"
       description={`Steps that already finished aren’t undone. ${workflowName} stops after the step it’s on now.`}
       tone="destructive"
-      confirmLabel="Stop run"
-      pendingLabel="Stopping…"
+      confirmLabel="Cancel run"
+      pendingLabel="Canceling…"
       cancelLabel="Keep running"
       pending={cancellation.isPending}
       onConfirm={stop}
