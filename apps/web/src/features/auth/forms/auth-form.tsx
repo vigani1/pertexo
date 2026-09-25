@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
  */
 export function AuthForm({
   failure,
+  failureAction,
   pending,
   pendingLabel,
   submitLabel,
@@ -20,6 +21,8 @@ export function AuthForm({
   children,
 }: Readonly<{
   failure: string | undefined;
+  /** One way out of the failure, e.g. a link to reset the password. */
+  failureAction?: ReactNode;
   pending: boolean;
   pendingLabel: string;
   submitLabel: string;
@@ -41,7 +44,9 @@ export function AuthForm({
     >
       {children}
       {failure === undefined ? null : (
-        <Notice tone="destructive">{failure}</Notice>
+        <Notice tone="destructive" action={failureAction}>
+          {failure}
+        </Notice>
       )}
       <ProgressButton
         type="submit"

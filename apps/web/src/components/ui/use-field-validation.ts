@@ -23,6 +23,8 @@ export type FieldValidation<Name extends string> = Readonly<{
   submit: (errors: FieldErrors<Name>) => boolean;
   /** Places server-reported field messages (`errors[].path`) and focuses the first. */
   showErrors: (errors: FieldErrors<Name>) => void;
+  /** Puts focus back on a field, e.g. the password after a refused sign-in. */
+  focus: (name: Name) => void;
   reset: () => void;
 }>;
 
@@ -126,6 +128,9 @@ export function useFieldValidation<
           focusFirst(next);
         });
       },
+      focus: (name) => {
+        controls.current.get(name)?.focus();
+      },
       reset: () => {
         setMessages(new Map());
         setLive(new Set());
@@ -151,6 +156,8 @@ export type FieldRule<Name extends string> = (
 export function useFieldValues<Name extends string>(
   rules: Readonly<Record<Name, FieldRule<Name>>>,
   initial: Values<Name>,
+  /** Called on every edit, e.g. to clear a failure the old values caused. */
+  onEdit?: () => void,
 ) {
   const validation = useFieldValidation<Name>();
   const [values, setValues] = useState<Values<Name>>(initial);
@@ -166,6 +173,7 @@ export function useFieldValues<Name extends string>(
     setValues(next);
     for (const candidate of names)
       validation.change(candidate, check(candidate, next));
+    onEdit?.();
   }
 
   return {
@@ -174,6 +182,7 @@ export function useFieldValues<Name extends string>(
     /** The message for a `LabelledField`. */
     field: (name: Name) => ({ error: validation.error(name) }),
     showErrors: validation.showErrors,
+    focus: validation.focus,
     setValue,
     /** Every rule checked: the values to send, or undefined after focusing a problem. */
     validate: (): Values<Name> | undefined => {

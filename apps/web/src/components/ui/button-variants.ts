@@ -17,7 +17,7 @@ export const buttonVariants = cva(
           'text-muted-foreground hover:bg-white/[0.05] hover:text-foreground aria-expanded:bg-white/[0.05] aria-expanded:text-foreground',
         destructive:
           'border-destructive/30 bg-destructive/6 text-destructive hover:border-destructive/60 hover:bg-destructive/14 focus-visible:ring-destructive/40',
-        link: 'h-auto px-0 text-accent-foreground underline decoration-accent-foreground/35 underline-offset-4 hover:decoration-accent-foreground',
+        link: 'inline-link h-auto px-0',
       },
       size: {
         default:
