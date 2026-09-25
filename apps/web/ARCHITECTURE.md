@@ -632,7 +632,15 @@ it can't write back exactly as a custom cron rule, and applies live like any
 other field. Its cron checks are advisory; the server parses the rule in its
 timezone. The preview sentence, DST and missed-run wording (ADR 014) come from
 the catalog feature's `schedule-sentence.ts`, shared with the published trigger
-cards. An unrecognised schedule schema falls back to JSON.
+cards. An unrecognised schedule schema falls back to JSON. Under the sentence,
+`draft-next-runs.tsx` lists the next three run times the server's scheduler
+works out for the unsaved rule (ADR 048), through the public
+`useSchedulePreview` hook in `workflow-publish/schedule-preview.public.ts`:
+debounced by 500 ms, asked again once the first time passes, with a loading
+line, one failure line with Retry (an unschedulable rule, rate limiting or a
+failed read) and nothing at all for an unfinished rule. The editor inspector
+provides the hook's `SchedulePreviewScope` (API client and workflow) once, so no
+inspector layer threads it through; without that scope nothing is shown.
 
 The initial renderer provides advisory required/type feedback and preserves
 data; the backend validates the saved graph. A full browser JSON Schema
@@ -1128,6 +1136,8 @@ their own:
 | Notice         | `components/ui/notice.tsx`                                                | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes             |
 | Stale data     | `components/patterns/stale-line.tsx`                                      | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                      |
 | Lists          | `components/patterns/load-more.tsx`, `components/ui/skeleton.tsx`         | `LoadMore` (next page, retry, one failure line); `Skeleton`, `SkeletonThread`, `SkeletonRows` (a list loading in its row shape)                                                                |
+| Recent log     | `components/patterns/recent-log.tsx`                                      | `RecentLog` (heading, note, loading rows, one failure owner, empty sentence, "Load older") and `RecentLogEntry` (glyph, words, action, time) for trigger logs                                  |
+| Read failure   | `components/patterns/read-failure.tsx`                                    | `ReadFailure`: a read's one failure owner: a `Notice` with Retry, or `StaleLine` while earlier data stays on screen                                                                            |
 | Clock          | `lib/use-now.ts`, `lib/use-countdown.ts`, `lib/format-time.ts`            | `useNow(intervalMs, enabled, untilMs?)` ticks only while needed and pauses in hidden tabs; `useCountdown` (cooldowns, `Retry-After`, windows) is built on it; `formatCountdown` renders "0:24" |
 | Canvas         | `lib/canvas-scene.ts`, `lib/use-canvas-renderer.ts`                       | `CanvasScene` (sized, cleared, token colours) for the Core, sign-in threads, Loom and loading wave; the hook owns the loop                                                                     |
 | Status colour  | `components/ui/status.tsx`, `components/ui/status-tone.ts`                | `Status`/`StatusGlyph` and `statusToneText`, the one colour per tone                                                                                                                           |
@@ -1143,8 +1153,9 @@ and `track` for progress → result), loading-orb, dialog (`center`, `top`). Oth
 patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
 line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
 illustrations. Other libraries (`lib`): `format-time.ts` (all date/time/duration
-text — no feature-local `Intl.DateTimeFormat`), `format-bytes.ts` (byte sizes
-for files and payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic
+text — no feature-local `Intl.DateTimeFormat`; `formatDateTimeInZone` reads a
+time on a named clock with its zone name), `format-bytes.ts` (byte sizes for
+files and payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic
 read/command failure sentences, uncertain outcome, forbidden, rate-limit and
 support reference helpers), `use-prefers-reduced-motion.ts`,
 `use-online-status.ts`.
@@ -1715,6 +1726,21 @@ value. Commit only when separately authorized under root Git instructions.
   Settings label. The web suite passes 71 files with 530 tests; the For each and
   Slack channel Chromium journeys were updated by reading them and weren't run
   here.
+- Schedule runs follow-up (2026-09-25, ADR 048). Each schedule card on the
+  Triggers tab shows **Next runs** (`schedule-next-runs.tsx`: the next three
+  times from the scheduler, on the schedule's clock with its zone name and in
+  local time through the catalog's shared `ScheduleRunTimes`, or "Paused") and
+  **Recent runs of this schedule** (`schedule-occurrences.tsx`: Started a run,
+  on time or caught up late, with Open run, or Skipped by the missed-run
+  setting; ten per page with "Load older run times"). The webhook "Recent
+  deliveries" list and this one now share `RecentLog`, `RecentLogEntry`,
+  `ReadFailure` and the feature's `RunLink` instead of two copies. Runs held
+  back by workspace capacity or a failed start never become a run time, so the
+  card explains them from the schedule's health (`model/occurrence-outcome.ts`).
+  The editor's Schedule step previews an unsaved rule's next three runs (see
+  section 7). Component, hook and model tests cover the lists, DST zone names,
+  paging, empty, paused, held-back, failure, debounce, refresh and rate-limit
+  states; the web suite passes 70 files with 510 tests.
 
 Order 2's visual kit includes the old colors/type/glass/button language, not
 every legacy component. Aurora and canvas details land where their real states
@@ -2006,7 +2032,7 @@ without a concrete new reason.
 | Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline, including For each bodies edited in place on the canvas                                                                  |
 | Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                                                      |
 | Run history                                                     | Implemented safe cursor list with workflow/status/UTC date filters and detail navigation                                                               |
-| Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, schedule toggles, webhook operations, the webhook delivery log and the current failure policy |
+| Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, schedules with next and recent runs, webhooks with their delivery log, failure policy         |
 | Connections                                                     | Implemented safe cursor list plus Slack bot-token create/test/rotate and generic revocation; additional auth types remain gated                        |
 | Notification destinations                                       | Implemented safe list/create/version/status management using existing Slack or email connection references, with Slack channel names when they resolve |
 | Workspace members                                               | Implemented capability-gated list, cursor pagination, bounded existing-member role changes and invitation management                                   |
