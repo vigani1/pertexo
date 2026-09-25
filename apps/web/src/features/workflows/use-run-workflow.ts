@@ -78,5 +78,3 @@ export function useRunWorkflow({
 
   return { pendingId, run };
 }
-
-export type WorkflowRunner = ReturnType<typeof useRunWorkflow>;
