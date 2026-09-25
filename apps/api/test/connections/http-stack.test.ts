@@ -316,6 +316,8 @@ function connectionRuntime(
           return Promise.resolve(testResult);
         },
         abandonConnectionTest: () => Promise.resolve(),
+        resolveConnectionLookupSecret: () =>
+          Promise.reject(new Error('not used')),
       },
       destinationPersistence,
     },

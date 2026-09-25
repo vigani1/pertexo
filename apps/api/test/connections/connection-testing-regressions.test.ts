@@ -353,7 +353,7 @@ describe('connection testing security and cleanup regressions', () => {
       const authTest = vi.fn();
       const sendNotification = vi.fn();
       const store = persistence();
-      const slackClient: ConnectionSlackClient | undefined =
+      const slackClient: Pick<ConnectionSlackClient, 'authTest'> | undefined =
         clients === 'slack' ? { authTest } : undefined;
       const emailClient: ConnectionEmailClient | undefined =
         clients === 'email' ? { sendNotification } : undefined;
@@ -550,7 +550,7 @@ describe('connection provider outcome projection', () => {
           botToken: 'xoxb-123456789-secret',
         }),
       );
-      const slackClient: ConnectionSlackClient = {
+      const slackClient: Pick<ConnectionSlackClient, 'authTest'> = {
         authTest: vi.fn(
           async (input: Parameters<ConnectionSlackClient['authTest']>[0]) => {
             await input.beforeDispatch();

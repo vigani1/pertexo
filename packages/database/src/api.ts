@@ -10,6 +10,7 @@ export {
 } from './connections/connections.js';
 export type {
   ApiConnectionDatabase,
+  ConnectionLookupDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
   ConnectionTestDatabase,
@@ -19,6 +20,7 @@ export type {
   ConnectionTestResult,
   ListConnectionsInput,
   ReadConnectionInput,
+  ResolvedConnectionSecretRecord,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
 export { createAuthenticationMailEnqueueStore } from './identity/authentication-mail.js';

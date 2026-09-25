@@ -12,10 +12,15 @@ export {
   connectionTestResponseSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
+  slackChannelLookupQuerySchema,
+  slackChannelLookupResponseSchema,
   resendApiKeyCredentialSchema,
   type ConnectionResponse,
   type ConnectionListResponse,
   type ConnectionTestResponse,
+  type SlackChannelLookupItem,
+  type SlackChannelLookupResponse,
+  type SlackChannelUnresolvedReason,
 } from '@pertexo/contracts/connections';
 
 export const connectionWorkspaceParamSchema = z

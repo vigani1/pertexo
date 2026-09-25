@@ -9,7 +9,7 @@ import { createDatabaseRuntime } from '../src/platform/database-runtime.js';
 import type {
   ApiConnectionDatabase,
   WorkerConnectionResolutionDatabase,
-} from '../src/connections/connection-persistence.js';
+} from '../src/connections/connections.js';
 
 const supportedSurfaces = [
   'api',
@@ -125,6 +125,7 @@ describe('@pertexo/database package contract', () => {
         'listConnections',
         'markConnectionTestDispatched',
         'readConnection',
+        'resolveConnectionLookupSecret',
         'resolveConnectionTestSecret',
         'revokeConnection',
         'rotateConnectionSecret',

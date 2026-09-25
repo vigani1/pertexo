@@ -377,16 +377,6 @@ export type ConnectionResolutionDatabase = Pick<
   'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
 >;
 
-/** API capability plus the lifecycle operation owned by its runtime factory. */
-export type ApiConnectionDatabase = ConnectionManagementDatabase &
-  ConnectionReadDatabase &
-  ConnectionTestDatabase &
-  Pick<ConnectionDatabase, 'close'>;
-
-/** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
-export type WorkerConnectionResolutionDatabase = ConnectionResolutionDatabase &
-  Pick<ConnectionDatabase, 'close'>;
-
 export class ConnectionNotFoundError extends Error {
   public override readonly name = 'ConnectionNotFoundError';
 }

@@ -32,6 +32,7 @@ import {
 
 export { TestConnectionUseCase } from './connection-testing.js';
 export type { TestConnectionCommand } from './connection-testing.js';
+export { LookupSlackChannelsUseCase } from './slack-channel-lookup.js';
 
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{

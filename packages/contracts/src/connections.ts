@@ -7,6 +7,7 @@ import {
   jsonResponse,
   jsonSchema,
   problemResponse,
+  queryParameter as requiredQueryParameter,
   responseReference,
 } from './openapi-primitives.js';
 import {
@@ -19,6 +20,8 @@ import {
   connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  slackChannelLookupChannelIdsSchema,
+  slackChannelLookupResponseSchema,
 } from './http/connections.js';
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
@@ -45,6 +48,10 @@ const schemas = Object.freeze({
   ),
   ConnectionTestRequest: jsonSchema(connectionTestRequestSchema, 'input'),
   ConnectionTestResponse: jsonSchema(connectionTestResponseSchema, 'output'),
+  SlackChannelLookupResponse: jsonSchema(
+    slackChannelLookupResponseSchema,
+    'output',
+  ),
   FailureNotificationDestinationAppendVersionRequest: jsonSchema(
     failureNotificationDestinationAppendVersionRequestSchema,
     'input',
@@ -87,6 +94,7 @@ const problemResponses = Object.freeze({
   NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
   ReauthorizationRequired: problemResponse('Reauthorization required'),
+  RateLimited: problemResponse('Rate limited'),
   ServiceUnavailable: problemResponse('Key or provider service unavailable'),
   Unexpected: problemResponse('Unexpected server error'),
 });
@@ -231,6 +239,36 @@ export const connectionsOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '409': responseReference('Conflict'),
+          '503': responseReference('ServiceUnavailable'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels': {
+      get: {
+        operationId: 'lookupSlackChannels',
+        description:
+          'Resolves up to ten Slack channel IDs to names with the connection bot token (ADR 046). Channels that cannot be resolved are returned as unresolved with a reason.',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          connectionParameter,
+          requiredQueryParameter(
+            'channelIds',
+            slackChannelLookupChannelIdsSchema,
+            true,
+          ),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Channel names, in request order',
+            'SlackChannelLookupResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '429': responseReference('RateLimited'),
           '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
         },

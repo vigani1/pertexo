@@ -920,6 +920,81 @@
       ],
       "additionalProperties": false
     },
+    "SlackChannelLookupResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "items": {
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "channelId": {
+                    "type": "string",
+                    "pattern": "^[CDGU][A-Z0-9]{1,79}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "resolved"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "channelId",
+                  "status",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "channelId": {
+                    "type": "string",
+                    "pattern": "^[CDGU][A-Z0-9]{1,79}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "unresolved"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "missing_scope",
+                      "not_found",
+                      "connection_unavailable",
+                      "rate_limited",
+                      "provider_unavailable",
+                      "not_a_channel"
+                    ]
+                  }
+                },
+                "required": [
+                  "channelId",
+                  "status",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
     "FailureNotificationDestinationAppendVersionRequest": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

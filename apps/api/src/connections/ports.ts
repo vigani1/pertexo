@@ -1,4 +1,5 @@
 import type {
+  ConnectionLookupDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
   ConnectionTestDatabase,
@@ -21,9 +22,12 @@ export type ConnectionReadPersistence = ConnectionReadDatabase;
 
 export type ConnectionTestPersistence = ConnectionTestDatabase;
 
+export type ConnectionLookupPersistence = ConnectionLookupDatabase;
+
 export type ConnectionPersistence = ConnectionCommandPersistence &
   ConnectionReadPersistence &
-  ConnectionTestPersistence;
+  ConnectionTestPersistence &
+  ConnectionLookupPersistence;
 
 export interface ConnectionSecretEncryptionPort {
   seal(
@@ -39,7 +43,10 @@ export interface ConnectionSecretEncryptionPort {
 }
 
 export type ConnectionHttpClient = Pick<SecureHttpClient, 'execute'>;
-export type ConnectionSlackClient = Pick<SlackClient, 'authTest'>;
+export type ConnectionSlackClient = Pick<
+  SlackClient,
+  'authTest' | 'lookupChannel'
+>;
 export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 
 export type ConnectionDependencies = Readonly<{

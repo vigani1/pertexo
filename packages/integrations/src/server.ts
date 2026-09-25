@@ -63,7 +63,11 @@ export {
   HTTP_SIDE_EFFECT_CLASS,
 } from './http/outcome-policy.js';
 export { createSlackClient, SLACK_API_ENDPOINTS } from './slack/client.js';
-export type { SlackApiResult, SlackClient } from './slack/client.js';
+export type {
+  SlackApiResult,
+  SlackChannelLookupResult,
+  SlackClient,
+} from './slack/client.js';
 export { createResendClient, RESEND_API_ENDPOINT } from './email/client.js';
 export type { ResendApiResult, ResendClient } from './email/client.js';
 export {

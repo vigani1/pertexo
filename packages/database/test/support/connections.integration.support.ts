@@ -17,6 +17,7 @@ import {
   ConnectionUnavailableError,
   createConnectionDatabase,
   type ConnectionDatabase,
+  type ConnectionLookupDatabase,
   type CreateConnectionInput,
 } from '../../src/connections/connections.js';
 import {
@@ -67,7 +68,7 @@ export const historicalOutboxByIntent = new Map(
 );
 
 export type CurrentConnectionsFixture = Readonly<{
-  api: ConnectionDatabase;
+  api: ConnectionDatabase & ConnectionLookupDatabase;
   worker: ConnectionDatabase;
   destinations: FailureNotificationDestinationDatabase;
 }>;
@@ -338,7 +339,7 @@ export function createInput(
 }
 
 export function registerCurrentConnectionsFixture(): CurrentConnectionsFixture {
-  let api: ConnectionDatabase | undefined;
+  let api: (ConnectionDatabase & ConnectionLookupDatabase) | undefined;
   let worker: ConnectionDatabase | undefined;
   let destinations: FailureNotificationDestinationDatabase | undefined;
   const resources: { close(): Promise<void> }[] = [];
