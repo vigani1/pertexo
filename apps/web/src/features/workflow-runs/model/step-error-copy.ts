@@ -88,3 +88,31 @@ export function describeStepError(code: string): StepErrorCopy {
   if (code.startsWith('connection.')) return credentialsRejected;
   return fallback;
 }
+
+const SHORT_REASONS: Readonly<Record<string, string>> = {
+  'provider.unavailable': 'service unavailable',
+  'connection.provider_unavailable': 'service unavailable',
+  'provider.rate_limited': 'rate limited by the service',
+  'connection.provider_rate_limited': 'rate limited by the service',
+  'connection.reauthorization_required': 'connection needs reconnecting',
+  'connection.revoked': 'connection revoked',
+  'connection.provider_rejected': 'credentials rejected',
+  'connection.credential_rejected': 'credentials rejected',
+  'connection.provider_invalid_response': 'unreadable response',
+  'run.outcome_unknown': 'outcome unknown',
+  'node.outcome_unknown': 'outcome unknown',
+  'execution.deadline_exceeded': 'deadline reached',
+  'execution.canceled': 'stopped',
+  'artifact.unavailable': 'file unavailable',
+};
+
+/** A few words for a step's error, for one-line summaries such as Home's. */
+export function shortStepError(code: string): string {
+  const known = SHORT_REASONS[code];
+  if (known !== undefined) return known;
+  const words = (code.split('.').at(-1) ?? '')
+    .replaceAll(/[_-]+/gu, ' ')
+    .trim()
+    .toLowerCase();
+  return /^[a-z ]+$/u.test(words) ? words : 'stopped with an error';
+}

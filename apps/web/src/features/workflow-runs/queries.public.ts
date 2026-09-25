@@ -7,6 +7,7 @@ export {
   runStatisticsQueryOptions,
   workflowRunKeys,
   workflowRunQueryOptions,
+  workflowRunVersionQueryOptions,
   workflowRunsInfiniteQueryOptions,
   type RunStatistics,
 } from './workflow-runs.queries';

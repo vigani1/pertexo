@@ -7,10 +7,12 @@ import {
   connectionAttentionItems,
   destinationAttentionItems,
   runAttentionItems,
+  withRunFailure,
   workflowAttentionItems,
 } from '../model/needs-attention';
 import { mergedBlockState, type BlockQuery } from '../model/home-block-state';
-import { NeedsAttention } from './needs-attention';
+import { NEEDS_ATTENTION_LIMIT, NeedsAttention } from './needs-attention';
+import { useRunFailures } from '../use-run-failures';
 import { useSetupReads } from '../use-setup-reads';
 
 /** Reads everything "Needs attention" is derived from, per capability. */
@@ -41,8 +43,6 @@ export function AttentionSection({
     ...(setup.canReadConnections ? [connections] : []),
     ...(setup.canReadDestinations ? [destinations] : []),
   ];
-  const [main, ...others] = reads;
-  if (main === undefined) return null;
   const items = [
     ...(runs.data === undefined
       ? []
@@ -63,10 +63,26 @@ export function AttentionSection({
     ),
     ...destinationAttentionItems(destinations.data?.items ?? []),
   ];
+  const failures = useRunFailures({
+    apiClient,
+    userId,
+    workspace,
+    runIds: items
+      .slice(0, NEEDS_ATTENTION_LIMIT)
+      .flatMap((item) =>
+        item.action?.kind === 'run' ? [item.action.runId] : [],
+      ),
+  });
+  const [main, ...others] = reads;
+  if (main === undefined) return null;
   return (
     <NeedsAttention
       workspace={workspace}
-      items={items}
+      items={items.map((item) =>
+        item.action?.kind === 'run'
+          ? withRunFailure(item, failures.get(item.action.runId))
+          : item,
+      )}
       state={mergedBlockState(main, others)}
       moreFailedRuns={
         runs.data !== undefined &&
