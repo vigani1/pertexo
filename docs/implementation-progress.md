@@ -194,23 +194,28 @@ changes and removal (ADR 037, ADR 042), invitations (ADR 038), the
 signed-in person's own display-name change (ADR 043), and leaving,
 suspension, reactivation and ownership transfer (ADR 047).
 
-## Weft follow-up reads: delivery log and Slack channel names
+## Weft follow-up reads
 
-Two post-plan read surfaces close gaps the Weft frontend recorded, each behind
-its own ADR and implemented through contracts, database, API, integrations and
+Post-plan read surfaces close gaps the Weft frontend recorded, each behind its
+own ADR and implemented through contracts, database, API, integrations and
 web:
 
 | Surface | Route, authority and rate class | Decision and storage |
 | --- | --- | --- |
 | Webhook delivery log | `GET /v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/deliveries`; `workflow:read` guard plus the owner/admin/builder trigger-read check; `authenticated_read` | [ADR 045](./adr/045-webhook-delivery-log.md). Migration `0115_webhook_delivery_log.sql` adds outcome, HTTP status, signature and replay checks and body size to `app.webhook_trigger_deliveries`. Post-allowance rejections are recorded best effort in their own transaction; the 90-day retention class, RLS and purge are unchanged, and expired rows are never served. |
 | Slack channel names | `GET /v1/workspaces/:workspaceId/connections/:connectionId/slack/channels?channelIds=…`; `connection:use` guard and database check; `provider_test` | [ADR 046](./adr/046-slack-channel-name-resolution.md), extending ADR 023. Up to ten IDs per request resolve through `conversations.info` with the connection's bot token under the `connection.credential_accessed` audit fact; names are never stored and unresolved channels return a reason instead of an error. No migration. |
+| Schedule run history | `GET /v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/occurrences`; `workflow:read` guard plus the active-member schedule-read check; `authenticated_read` | [ADR 048](./adr/048-schedule-fire-history-and-next-runs.md). Pages the occurrences the scanner already records (`accepted` with its run, or `skipped`), newest first, with a trigger-bound cursor; occurrences past the 90-day trigger-summary cutoff are never served. Throttled or failed claims stay trigger health. No migration: the existing occurrence index serves the keyset. |
+| Schedule next runs and draft preview | `GET …/triggers/:triggerId/schedule/next-runs?count=` (`authenticated_read`) and `POST …/triggers/schedules/preview` (`workflow_compile`, CSRF); same authority | [ADR 048](./adr/048-schedule-fire-history-and-next-runs.md) on ADR 014. The persisted next fire, then the instants the scanner would persist, 1–10 (default 3), from the scheduler's own engine, timezone and DST rules and database time. The preview checks an unsaved Schedule step setup with the scheduler's parser and runs in a read-only transaction. The engine caches one `Intl.DateTimeFormat` per canonical timezone. |
 
 Evidence: database integration tests on disposable databases
-(`webhook-triggers`, `webhook-trigger-prior-head`, `connection-lookup`), the
+(`webhook-triggers`, `webhook-trigger-prior-head`, `connection-lookup`,
+`schedule-trigger-reads`), DST-boundary projection tests
+(`schedule-fire-projection`), the
 direct-webhook HTTP integration test, API unit and coverage suites (the delivery
 recorder joins the priority cohort and the channel lookup the orchestration
-cohort), the Slack client tested against a mocked HTTP boundary, regenerated
-webhook and connection OpenAPI artifacts, and web component tests. Live Slack
+cohort), the API bootstrap HTTP test for the schedule routes, the Slack client
+tested against a mocked HTTP boundary, regenerated webhook, connection and
+schedule OpenAPI artifacts, and web component and hook tests. Live Slack
 workspaces and deployed traffic were not exercised.
 
 ## Update protocol

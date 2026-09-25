@@ -91,8 +91,9 @@ and [`operations/external-platform-contract.md`](./operations/external-platform-
 - All accepted architecture decisions remain under [`adr/`](./adr/). They are
   governing contracts, not proof that external obligations have been run.
 - Post-plan read surfaces added for the web product, currently the webhook
-  delivery log (ADR 045) and Slack channel names (ADR 046), are summarized in
-  the [implementation progress follow-ups](./implementation-progress.md#weft-follow-up-reads-delivery-log-and-slack-channel-names).
+  delivery log (ADR 045), Slack channel names (ADR 046) and schedule run
+  history, next runs and draft previews (ADR 048), are summarized in the
+  [implementation progress follow-ups](./implementation-progress.md#weft-follow-up-reads).
 
 The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the database
 readiness contract, with execution modes in the
