@@ -188,6 +188,50 @@ describe('route loading', () => {
     expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
   });
 
+  it('draws a progress thread while a page change waits on the session check', async () => {
+    let checks = 0;
+    let release: () => void = () => undefined;
+    mockServer.use(
+      ...identityHandlers(readerCapabilities).slice(1),
+      http.get('http://pertexo.test/v1/users/me', async () => {
+        checks += 1;
+        if (checks > 1)
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        return HttpResponse.json(fixtureUser);
+      }),
+      noWorkflows,
+      statisticsHandler(),
+      http.get(`${apiBase}/runs`, pending),
+    );
+    const { router } = renderApp(`/w/${workspaceId}/runs`);
+    await screen.findByRole('heading', { level: 1, name: 'Runs' }, coldStart);
+    expect(screen.queryByRole('progressbar')).toBeNull();
+
+    void router.navigate({
+      to: '/w/$workspaceId/workflows',
+      params: { workspaceId },
+    });
+    expect(
+      await screen.findByRole('progressbar', { name: 'Loading the page' }),
+    ).toBeInTheDocument();
+    // The page stays as it was until the check answers.
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Runs' }),
+    ).toBeVisible();
+
+    release();
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Workflows' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
   it('names a known workspace while it opens and admits a slow connection', async () => {
     localStorage.setItem(
       'pertexo:last-workspace:v1',
