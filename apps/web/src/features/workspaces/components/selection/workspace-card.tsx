@@ -29,7 +29,7 @@ export function WorkspaceCard({
       disabled={!availability.openable}
       className={cn(
         'group/card flex h-full w-full min-w-0 flex-col gap-5 rounded-xl border border-border bg-card/60 p-5 text-left transition-[border-color,background-color,transform] duration-200 ease-unspool outline-none',
-        'enabled:hover:-translate-y-px enabled:hover:border-primary/35 enabled:hover:bg-card focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none motion-reduce:enabled:hover:translate-y-0',
+        'enabled:hover:-translate-y-px enabled:hover:border-primary/35 enabled:hover:bg-card focus-ring motion-reduce:transition-none motion-reduce:enabled:hover:translate-y-0',
         'disabled:cursor-not-allowed disabled:opacity-70',
       )}
       onClick={() => {

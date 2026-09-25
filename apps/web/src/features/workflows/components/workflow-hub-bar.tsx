@@ -61,7 +61,7 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
 }
 
 const TITLE_CLASS =
-  'truncate font-display text-lg leading-tight tracking-[-0.01em] [--display-optical-size:19] [--display-width:84%]';
+  'truncate font-display text-lg leading-tight [--display-optical-size:19] [--display-width:84%]';
 
 /**
  * The floating command bar shared by every tab of a workflow: identity on
@@ -142,7 +142,7 @@ export function WorkflowHubBar({
             aria-current={link.tab === activeTab ? 'page' : undefined}
             className={cn(
               // Equal segments on a phone, so every tab fits without scrolling.
-              'flex-1 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 sm:flex-none sm:px-3 sm:py-1.5',
+              'flex-1 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
               link.tab === activeTab &&
                 'bg-action/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]',
             )}

@@ -111,7 +111,7 @@ export function WorkflowEdge({
           <button
             type="button"
             aria-label={`Remove connection from ${data?.sourceLabel ?? 'a step'} to ${data?.targetLabel ?? 'a step'}`}
-            className="nodrag nopan lens pointer-events-auto absolute grid size-6 place-items-center rounded-full text-muted-foreground outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/60 [&_svg]:size-3.5"
+            className="nodrag nopan lens pointer-events-auto absolute grid size-6 place-items-center rounded-full text-muted-foreground outline-none hover:text-destructive focus-ring [&_svg]:size-3.5"
             style={{
               transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)`,
             }}

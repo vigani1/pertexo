@@ -50,7 +50,7 @@ export function LoopBodySection({
             <li key={step.id}>
               <button
                 type="button"
-                className="w-full truncate rounded-sm border border-white/6 bg-white/4 px-2 py-1 text-left text-[0.8rem] outline-none hover:border-white/12 focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="w-full truncate rounded-sm border border-white/6 bg-white/4 px-2 py-1 text-left text-[0.8rem] outline-none hover:border-white/12 focus-ring"
                 onClick={() => {
                   onSelectStep(step.id);
                 }}

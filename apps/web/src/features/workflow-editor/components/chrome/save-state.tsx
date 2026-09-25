@@ -106,7 +106,7 @@ function InlineAction({
       {label} ·{' '}
       <button
         type="button"
-        className="underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/60"
+        className="underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-ring"
         onClick={onClick}
       >
         {action}

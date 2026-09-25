@@ -135,7 +135,7 @@ export function ForEachNodeCard({
             <button
               type="button"
               aria-label={`Add a step to ${title}’s body`}
-              className="nodrag nopan ml-auto inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[0.7rem] font-medium text-accent-foreground outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-ring/60 [&_svg]:size-3"
+              className="nodrag nopan ml-auto inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[0.7rem] font-medium text-accent-foreground outline-none hover:bg-white/5 focus-ring [&_svg]:size-3"
               onClick={(event) => {
                 event.stopPropagation();
                 addToBody(id, event.currentTarget);

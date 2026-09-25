@@ -27,7 +27,7 @@ export function WorkspaceSwitcher({
 }>) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex max-w-60 items-center gap-2 rounded-md border border-white/6 bg-white/4 py-1 pr-2 pl-1 text-sm font-semibold text-foreground outline-none hover:bg-white/7 focus-visible:ring-2 focus-visible:ring-ring/60">
+      <DropdownMenuTrigger className="inline-flex max-w-60 items-center gap-2 rounded-md border border-white/6 bg-white/4 py-1 pr-2 pl-1 text-sm font-semibold text-foreground outline-none hover:bg-white/7 focus-ring">
         <WorkspaceMark name={workspace.name} />
         <span className="truncate">{workspace.name}</span>
         <ChevronsUpDownIcon

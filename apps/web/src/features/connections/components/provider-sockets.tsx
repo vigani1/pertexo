@@ -29,7 +29,7 @@ export function ProviderSockets({
           <button
             type="button"
             aria-label={`Connect ${PROVIDERS[provider].name}`}
-            className="group/socket flex w-full items-center gap-3 rounded-lg border border-border bg-linear-135 from-white/[0.03] to-transparent p-3.5 text-left transition-colors outline-none hover:border-primary/35 focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="group/socket flex w-full items-center gap-3 rounded-lg border border-border bg-linear-135 from-white/[0.03] to-transparent p-3.5 text-left transition-colors outline-none hover:border-primary/35 focus-ring"
             onClick={() => {
               onConnect(provider);
             }}

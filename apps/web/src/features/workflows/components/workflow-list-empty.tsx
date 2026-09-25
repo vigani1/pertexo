@@ -60,7 +60,7 @@ export function WorkflowListEmpty({
               <li key={starter.id}>
                 <button
                   type="button"
-                  className="group/starter flex h-full w-full flex-col items-start gap-3 rounded-lg border border-border bg-white/[0.02] p-3 text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
+                  className="group/starter flex h-full w-full flex-col items-start gap-3 rounded-lg border border-border bg-white/[0.02] p-3 text-left transition-colors duration-150 outline-none hover:border-primary/35 hover:bg-primary/[0.04] focus-ring motion-reduce:transition-none"
                   onClick={() => {
                     onStart(starter.id);
                   }}

@@ -74,7 +74,7 @@ export function RunThreadView({
                 aria-pressed={selected}
                 aria-label={`${row.label}: ${row.statusLabel}, ${stepTag(row, nowMs)}`}
                 className={cn(
-                  'grid h-12 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-md border-t border-white/5 text-left outline-none hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-ring/60 sm:grid-cols-[13rem_minmax(0,1fr)]',
+                  'grid h-12 w-full grid-cols-[9rem_minmax(0,1fr)] items-center rounded-md border-t border-white/5 text-left outline-none hover:bg-white/[0.03] focus-ring sm:grid-cols-[13rem_minmax(0,1fr)]',
                   selected && 'bg-primary/[0.05] hover:bg-primary/[0.07]',
                 )}
                 onClick={() => {

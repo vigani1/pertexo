@@ -17,7 +17,7 @@ export function LoomRunList({
   if (model.runCount === 0) return null;
   return (
     <details className="group text-sm">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-sm text-xs text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-sm text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronDownIcon
           aria-hidden="true"
           className="size-3.5 transition-transform group-open:rotate-180"
@@ -49,7 +49,7 @@ export function LoomRunList({
                     <Link
                       to="/w/$workspaceId/runs/$runId"
                       params={{ workspaceId, runId: run.id }}
-                      className="flex items-center justify-between gap-3 rounded-sm py-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none"
+                      className="flex items-center justify-between gap-3 rounded-sm py-1 text-muted-foreground hover:text-foreground focus-ring focus-visible:outline-none"
                     >
                       <Status tone={look.tone}>{look.label}</Status>
                       <span className="font-mono text-xs text-subtle-foreground">

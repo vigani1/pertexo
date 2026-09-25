@@ -3,20 +3,22 @@ import { cva } from 'class-variance-authority';
 // `primary` is the one filled action per screen; `default` is the tinted
 // everyday action. Destructive intent keeps its own variant everywhere.
 export const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-transparent motion-safe:active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 outline-none select-none focus-ring motion-safe:active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-pending:disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
+        // Unavailable, it turns solid grey rather than a see-through cyan;
+        // while its request runs (data-pending) it keeps its fill.
         primary:
-          'bg-action text-action-foreground shadow-action hover:bg-action-hover',
+          'bg-action text-action-foreground shadow-action not-aria-disabled:hover:bg-action-hover disabled:bg-white/9 disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 aria-disabled:bg-white/9 aria-disabled:text-muted-foreground aria-disabled:shadow-none aria-disabled:opacity-100 data-pending:disabled:bg-action data-pending:disabled:text-action-foreground',
         default:
-          'border-action/25 bg-action/8 text-accent-foreground hover:border-action/45 hover:bg-action/13 aria-expanded:bg-action/13',
+          'border-action/25 bg-action/8 text-accent-foreground not-aria-disabled:hover:border-action/45 not-aria-disabled:hover:bg-action/13 aria-expanded:bg-action/13',
         outline:
-          'border-white/8 bg-white/[0.035] text-muted-foreground hover:border-white/14 hover:bg-white/[0.06] hover:text-foreground aria-expanded:bg-white/[0.06] aria-expanded:text-foreground',
+          'border-white/8 bg-white/[0.035] text-muted-foreground not-aria-disabled:hover:border-white/14 not-aria-disabled:hover:bg-white/[0.06] not-aria-disabled:hover:text-foreground aria-expanded:bg-white/[0.06] aria-expanded:text-foreground',
         ghost:
-          'text-muted-foreground hover:bg-white/[0.05] hover:text-foreground aria-expanded:bg-white/[0.05] aria-expanded:text-foreground',
+          'text-muted-foreground not-aria-disabled:hover:bg-white/[0.05] not-aria-disabled:hover:text-foreground aria-expanded:bg-white/[0.05] aria-expanded:text-foreground',
         destructive:
-          'border-destructive/30 bg-destructive/6 text-destructive hover:border-destructive/60 hover:bg-destructive/14 focus-visible:ring-destructive/40',
+          'border-destructive/30 bg-destructive/6 text-destructive hover:border-destructive/60 hover:bg-destructive/14 [--focus-ring-color:var(--destructive)]',
         link: 'inline-link h-auto px-0',
       },
       size: {

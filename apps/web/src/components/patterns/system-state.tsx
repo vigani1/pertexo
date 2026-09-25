@@ -42,10 +42,7 @@ export function SystemStateTitle({
   return (
     <h1
       data-slot="system-state-title"
-      className={cn(
-        'font-display text-4xl leading-none tracking-[-0.03em]',
-        className,
-      )}
+      className={cn('font-display text-4xl leading-none', className)}
       {...props}
     />
   );

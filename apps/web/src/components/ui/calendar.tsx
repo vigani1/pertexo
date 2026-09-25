@@ -141,7 +141,7 @@ export function Calendar({
                       aria-pressed={day === value}
                       aria-current={day === today ? 'date' : undefined}
                       className={cn(
-                        'grid size-8 place-items-center rounded-md font-mono text-[0.78rem] outline-none transition-colors hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-30',
+                        'grid size-8 place-items-center rounded-md font-mono text-[0.78rem] outline-none transition-colors hover:bg-white/8 focus-ring disabled:pointer-events-none disabled:opacity-30',
                         outside && 'text-subtle-foreground',
                         day === today &&
                           'text-accent-foreground underline decoration-primary/60 underline-offset-4',

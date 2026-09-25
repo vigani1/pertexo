@@ -49,7 +49,7 @@ export function WorkspaceGrid({
           <button
             type="button"
             onClick={onCreate}
-            className="flex h-full min-h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-strong p-5 text-sm font-semibold text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
+            className="flex h-full min-h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-strong p-5 text-sm font-semibold text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-foreground focus-ring motion-reduce:transition-none"
           >
             <span className="grid size-10 place-items-center rounded-full border border-primary/30 bg-primary/8 text-accent-foreground">
               <PlusIcon aria-hidden="true" className="size-4" />
