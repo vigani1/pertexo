@@ -65,7 +65,6 @@ interface WorkflowNodeData extends Record<string, unknown> {
   /** Output size of this step's last passed test here, when it's known. */
   testOutputBytes: number | undefined;
   /** The latest check describes the draft on screen. */
-  checked: boolean;
   issueCount: number;
   missingConnections: number;
   disabled: boolean;
@@ -113,8 +112,6 @@ export type CanvasDecorations = Readonly<{
    * overview map (which reads the projected nodes) can draw them.
    */
   measuredSizes?: ReadonlyMap<string, Size>;
-  /** The latest check describes the draft on screen. */
-  checked?: boolean;
   /** Output size of each step's last passed test, when known. */
   testOutputBytes?: ReadonlyMap<string, number>;
 }>;
@@ -288,7 +285,6 @@ function projectNode(
       },
       summary: stepSummary(node),
       testOutputBytes: decorations.testOutputBytes?.get(node.id),
-      checked: decorations.checked === true,
       issueCount: decorations.issuesByNode.get(node.id) ?? 0,
       missingConnections: (definition?.connectionRequirements ?? []).filter(
         (requirement) => node.connectionRefs[requirement] === undefined,

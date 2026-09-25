@@ -57,11 +57,7 @@ type Size = Readonly<{ width: number; height: number }>;
 
 export type CanvasOverlays = Pick<
   CanvasDecorations,
-  | 'issuesByNode'
-  | 'flowingEdgeIds'
-  | 'weaveOrder'
-  | 'checked'
-  | 'testOutputBytes'
+  'issuesByNode' | 'flowingEdgeIds' | 'weaveOrder' | 'testOutputBytes'
 >;
 
 /**
