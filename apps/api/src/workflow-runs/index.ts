@@ -1,5 +1,6 @@
 export type * from './ports.js';
 export * from './use-cases.js';
+export * from './statistics-use-case.js';
 export * from './controllers.js';
 export * from './errors.js';
 export * from './event-streamer.js';

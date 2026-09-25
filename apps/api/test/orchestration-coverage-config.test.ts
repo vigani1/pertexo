@@ -12,7 +12,7 @@ describe('API orchestration coverage inventory', () => {
     expect(config.test?.coverage?.include).toEqual([
       'src/application-error-mappers.ts',
       'src/connections/connection-testing.ts',
-      'src/workflow-runs/{sse-authorization-lifetime,use-cases}.ts',
+      'src/workflow-runs/{sse-authorization-lifetime,statistics-use-case,use-cases}.ts',
     ]);
     expect(config.test?.coverage?.thresholds).toEqual({
       branches: 92,

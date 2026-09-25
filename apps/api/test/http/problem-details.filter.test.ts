@@ -322,6 +322,10 @@ describe('RFC 9457 problem details filter', () => {
       'The workflow run request is invalid.',
     ],
     [
+      '/v1/workspaces/workspace-a/run-statistics',
+      'The workflow run request is invalid.',
+    ],
+    [
       '/v1/workspaces/workspace-a/workflows/workflow-a/draft/nodes/node-a/test',
       'The workflow graph is invalid.',
     ],

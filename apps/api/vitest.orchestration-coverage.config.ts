@@ -16,7 +16,7 @@ export default defineConfig({
       include: [
         'src/application-error-mappers.ts',
         'src/connections/connection-testing.ts',
-        'src/workflow-runs/{sse-authorization-lifetime,use-cases}.ts',
+        'src/workflow-runs/{sse-authorization-lifetime,statistics-use-case,use-cases}.ts',
       ],
       thresholds: {
         branches: 92,

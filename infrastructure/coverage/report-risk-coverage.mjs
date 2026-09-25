@@ -60,6 +60,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'apps/api/src/application-error-mappers.ts',
     'apps/api/src/connections/connection-testing.ts',
     'apps/api/src/workflow-runs/sse-authorization-lifetime.ts',
+    'apps/api/src/workflow-runs/statistics-use-case.ts',
     'apps/api/src/workflow-runs/use-cases.ts',
   ],
   'api-priority': [

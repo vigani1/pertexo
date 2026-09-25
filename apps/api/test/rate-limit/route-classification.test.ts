@@ -80,6 +80,7 @@ const routes: readonly (readonly [
   [WorkflowRunsController, 'replayRun', 'run_admission'],
   [WorkflowRunsController, 'getRun', 'authenticated_read'],
   [WorkflowRunsController, 'listRuns', 'authenticated_read'],
+  [WorkflowRunsController, 'getRunStatistics', 'authenticated_read'],
   [WorkflowRunsController, 'streamRunEvents', 'authenticated_read'],
   [WorkflowRunsController, 'cancelRun', 'ordinary_mutation'],
   [NodeTestingController, 'status', 'authenticated_read'],

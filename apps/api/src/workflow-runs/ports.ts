@@ -73,6 +73,41 @@ export type ListWorkflowRunsQuery = Readonly<{
   after?: WorkflowRunListPosition;
 }>;
 
+export type WorkflowRunStatisticsWindow = '1h' | '6h' | '24h' | '7d';
+
+export type WorkflowRunStatisticsQuery = Readonly<{
+  workspaceId: string;
+  window: WorkflowRunStatisticsWindow;
+  includeWorkflows: boolean;
+  includeWorkflowName: boolean;
+}>;
+
+type WorkflowRunStatusCounts = Readonly<
+  Record<WorkflowRunRecord['status'], number>
+>;
+
+/** Exact counts for one workspace snapshot at `asOf` (ADR 044). */
+export type WorkflowRunStatisticsRecord = Readonly<{
+  asOf: string;
+  current: Readonly<Record<'queued' | 'running' | 'waiting', number>>;
+  window: Readonly<{
+    duration: WorkflowRunStatisticsWindow;
+    createdAtFrom: string;
+    createdAtBefore: string;
+    total: number;
+    byStatus: WorkflowRunStatusCounts;
+  }>;
+  workflows?: Readonly<{
+    items: readonly Readonly<{
+      workflowId: string;
+      workflowName: string | null;
+      total: number;
+      byStatus: WorkflowRunStatusCounts;
+    }>[];
+    truncated: boolean;
+  }>;
+}>;
+
 export type StartWorkflowRunCommand = Readonly<{
   actorId: string;
   workspaceId: string;
@@ -138,6 +173,9 @@ export interface WorkflowRunPersistence {
       nextCursor?: WorkflowRunListPosition;
     }>
   >;
+  statistics(
+    input: WorkflowRunStatisticsQuery,
+  ): Promise<WorkflowRunStatisticsRecord>;
   cancel(input: CancelWorkflowRunCommand): Promise<
     Readonly<{
       run: WorkflowRunRecord;
