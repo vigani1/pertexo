@@ -1,10 +1,11 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useEditorStoreApi } from '../../model/editor-store-context';
+import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { GraphLevel, WorkflowNode } from '../../model/graph-scopes';
 import {
   directPredecessorOptions,
@@ -21,10 +22,21 @@ import {
 import { MappingRow } from './input-mappings/mapping-row';
 import type { NodeFormApi } from '../../model/node-form';
 
+type RowDisclosure = Readonly<{
+  /** Rows whose editor is open. */
+  open: ReadonlySet<string>;
+  /** A row just created here, whose field name takes focus. */
+  focusKeyOf?: string | undefined;
+  /** The last Fix request this tab has opened a row for. */
+  request?: number | undefined;
+}>;
+
 /**
- * Inputs: each row reads `field ← source`. Rows apply as soon as they're
- * complete; removing one is an ordinary edit, so ⌘Z brings it back. Inside
- * a For each body, rows can also read the item the body runs for.
+ * Inputs: each row reads `field ← source` and opens its editor in place.
+ * Rows apply as soon as they're complete; removing one is an ordinary edit,
+ * so ⌘Z brings it back. Rows that need attention start open, as do rows
+ * made here; Fix opens the row it names. Inside a For each body, rows can
+ * also read the item the body runs for.
  */
 export function InputsTab({
   node,
@@ -33,6 +45,7 @@ export function InputsTab({
   definition,
   definitions,
   form,
+  focusTarget,
   onConnect,
   onRemoveEdge,
 }: Readonly<{
@@ -44,6 +57,8 @@ export function InputsTab({
   definition: NodeDefinitionCatalogItem | undefined;
   definitions: readonly NodeDefinitionCatalogItem[];
   form: NodeFormApi;
+  focusTarget:
+    (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
   onConnect: (connection: Connection) => void;
   onRemoveEdge: (edgeId: string) => void;
 }>) {
@@ -59,6 +74,28 @@ export function InputsTab({
     },
     reportScratch: form.reportScratch,
   });
+  const [disclosure, setDisclosure] = useState<RowDisclosure>(() => ({
+    open: new Set(Object.keys(mappings.errors)),
+  }));
+  let rowsShown = disclosure;
+  if (
+    focusTarget?.nodeId === node.id &&
+    focusTarget.mappingKey !== undefined &&
+    focusTarget.requestId !== disclosure.request
+  ) {
+    const fixed = mappings.rows.find(
+      (row) => row.destinationKey === focusTarget.mappingKey,
+    );
+    rowsShown = {
+      ...disclosure,
+      open:
+        fixed === undefined
+          ? disclosure.open
+          : new Set(disclosure.open).add(fixed.id),
+      request: focusTarget.requestId,
+    };
+    setDisclosure(rowsShown);
+  }
   const editable = form.editable && definition !== undefined;
   const suggestions = inputKeySuggestions(definition?.inputSchema);
   const predecessors = directPredecessorOptions(graph, node.id);
@@ -83,8 +120,33 @@ export function InputsTab({
       </div>
     );
 
+  function openRow(rowId: string, focusKey: boolean) {
+    activeRowId.current = rowId;
+    setDisclosure((current) => ({
+      ...current,
+      open: new Set(current.open).add(rowId),
+      focusKeyOf: focusKey ? rowId : current.focusKeyOf,
+    }));
+  }
+
+  function toggleRow(rowId: string) {
+    setDisclosure((current) => {
+      const open = new Set(current.open);
+      if (!open.delete(rowId)) open.add(rowId);
+      return {
+        ...current,
+        open,
+        focusKeyOf:
+          current.focusKeyOf === rowId ? undefined : current.focusKeyOf,
+      };
+    });
+  }
+
+  /** Fills the open row you were editing, or adds one named after the field. */
   function insert(source: InsertedSource, fieldName: string) {
-    const active = mappings.rows.find((row) => row.id === activeRowId.current);
+    const active = mappings.rows.find(
+      (row) => row.id === activeRowId.current && rowsShown.open.has(row.id),
+    );
     const withSource = (
       base: Pick<InputMappingDraftRow, 'id' | 'destinationKey'>,
     ): InputMappingDraftRow => ({ ...base, ...source });
@@ -95,9 +157,11 @@ export function InputsTab({
       return;
     }
     const taken = mappings.rows.some((row) => row.destinationKey === fieldName);
-    activeRowId.current = mappings.addRow((id) =>
-      withSource({ id, destinationKey: taken ? '' : fieldName }),
+    const key = taken ? '' : fieldName;
+    const id = mappings.addRow((rowId) =>
+      withSource({ id: rowId, destinationKey: key }),
     );
+    openRow(id, key === '');
   }
 
   return (
@@ -115,6 +179,12 @@ export function InputsTab({
                 key={row.id}
                 nodeId={node.id}
                 row={row}
+                graph={graph}
+                open={rowsShown.open.has(row.id)}
+                focusKey={rowsShown.focusKeyOf === row.id}
+                onToggle={() => {
+                  toggleRow(row.id);
+                }}
                 suggestions={suggestions}
                 predecessors={predecessors}
                 loopPorts={loopPorts}
@@ -151,7 +221,7 @@ export function InputsTab({
               size="sm"
               variant="outline"
               onClick={() => {
-                activeRowId.current = mappings.addRow();
+                openRow(mappings.addRow(), true);
               }}
             >
               <PlusIcon data-icon="inline-start" />

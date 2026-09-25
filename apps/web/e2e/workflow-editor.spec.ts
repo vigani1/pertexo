@@ -75,18 +75,25 @@ test('edits typed input mappings live, saves them and restores rendered controls
   await page.getByTestId('rf__node-target').click();
   await page.getByRole('tab', { name: 'Inputs' }).click();
   const restored = page.getByRole('region', { name: 'Inputs' });
-  await expect(restored.getByRole('listitem')).toHaveCount(3);
+  const restoredRows = restored.getByRole('listitem');
+  await expect(restoredRows).toHaveCount(3);
+  // Saved inputs read as compact `field ← source` rows until opened.
+  const customerRow = restoredRows.nth(0).getByRole('button', {
+    name: 'customer from Manual input › customer',
+  });
+  await expect(customerRow).toHaveAttribute('aria-expanded', 'false');
+  await customerRow.click();
   await expect(
-    restored.getByRole('listitem').nth(0).getByLabel('Field', { exact: true }),
+    restoredRows.nth(0).getByLabel('Field', { exact: true }),
   ).toHaveValue('customer');
   await expect(
-    restored
-      .getByRole('listitem')
-      .nth(0)
-      .getByLabel('Output path', { exact: true }),
+    restoredRows.nth(0).getByLabel('Output path', { exact: true }),
   ).toHaveValue('$.customer');
-  const restoredLiteral = await restored
-    .getByRole('listitem')
+  await restoredRows
+    .nth(2)
+    .getByRole('button', { name: /^payload from \{3 fields\}/u })
+    .click();
+  const restoredLiteral = await restoredRows
     .nth(2)
     .getByLabel('JSON value', { exact: true })
     .inputValue();
@@ -483,6 +490,8 @@ test('gives a read-only actor the canvas and a read-only step panel', async ({
   await expect(inputs.getByRole('button', { name: 'Add input' })).toHaveCount(
     0,
   );
+  // A read-only actor can still open an input to read how it's set up.
+  await inputs.getByRole('button', { name: /^customer from/u }).click();
   await expect(inputs.getByLabel('Field', { exact: true })).toBeDisabled();
   await expect(inputs.getByLabel('JSON value', { exact: true })).toBeDisabled();
   expect(remote.revision).toBe(1);

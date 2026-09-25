@@ -160,6 +160,14 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
     ).toBeVisible();
     fireEvent.click(canvas.getByText('Target'));
     const restored = screen.getByRole('region', { name: 'Inputs' });
+    // A saved input reads as one compact row until it's opened.
+    const summary = within(restored).getByRole('button', {
+      name: 'draft from null',
+    });
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    expect(within(restored).queryByLabelText('Field')).toBeNull();
+    await event.click(summary);
+    expect(summary).toHaveAttribute('aria-expanded', 'true');
     expect(within(restored).getByLabelText('Field')).toHaveValue('draft');
     expect(within(restored).getByLabelText('JSON value')).toHaveValue('null');
     pressSave();
@@ -168,6 +176,70 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
         draft: { kind: 'literal', value: null },
       });
     });
+  });
+});
+
+describe('workflow editor input rows', { timeout: 30_000 }, () => {
+  it('reads each input as field ← source and opens its editor from the keyboard', async () => {
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: graphWithMappingNodes({
+          customer: {
+            kind: 'node_output',
+            nodeId: 'manual',
+            path: '$.customer',
+          },
+          active: { kind: 'literal', value: true },
+          score: {
+            kind: 'expression',
+            language: 'jsonata',
+            expression: 'amount > 5000',
+            policyVersion: 1,
+          },
+        }),
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Target'));
+    await event.click(screen.getByRole('tab', { name: 'Inputs' }));
+    const inputs = within(screen.getByRole('region', { name: 'Inputs' }));
+    const rows = inputs
+      .getAllByRole('listitem')
+      .map((row) => within(row).getByRole('button').textContent);
+    expect(rows).toEqual([
+      'customer ←from Manual input › customer string',
+      'active ←from true boolean',
+      'score ←from ƒ expression amount > 5000',
+    ]);
+    expect(inputs.queryByLabelText('Field')).toBeNull();
+
+    const customer = inputs.getByRole('button', {
+      name: 'customer from Manual input › customer string',
+    });
+    customer.focus();
+    await event.keyboard('{Enter}');
+    expect(customer).toHaveAttribute('aria-expanded', 'true');
+    await event.tab();
+    expect(inputs.getByLabelText('Field')).toHaveFocus();
+    expect(inputs.getByLabelText('Field')).toHaveValue('customer');
+    expect(inputs.getByLabelText('Output path')).toHaveValue('$.customer');
+    customer.focus();
+    await event.keyboard(' ');
+    expect(inputs.queryByLabelText('Field')).toBeNull();
+
+    // Insert data adds a row named after the field, opened to adjust it.
+    await event.click(inputs.getByRole('button', { name: 'Insert data' }));
+    const picker = await screen.findByRole('dialog', { name: 'Insert data' });
+    await event.click(
+      within(picker).getByRole('button', { name: /Whole output/u }),
+    );
+    expect(inputs.getByLabelText('Field')).toHaveFocus();
+    expect(inputs.getByLabelText('Field')).toHaveValue('');
+    expect(
+      inputs.getByRole('button', { name: 'Unnamed input from Manual input' }),
+    ).toHaveAttribute('aria-expanded', 'true');
   });
 });
 

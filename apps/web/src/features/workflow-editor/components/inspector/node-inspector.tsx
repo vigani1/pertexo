@@ -184,6 +184,7 @@ export function NodeInspector({
               definition={definition}
               definitions={definitions}
               form={form}
+              focusTarget={focusTarget}
               onConnect={actions.onConnect}
               onRemoveEdge={actions.onRemoveEdge}
             />

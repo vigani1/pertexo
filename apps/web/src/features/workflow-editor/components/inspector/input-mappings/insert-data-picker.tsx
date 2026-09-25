@@ -144,6 +144,7 @@ export function InsertDataPicker({
             <p className="text-[0.8rem] font-semibold">Run input</p>
             <FieldList
               fields={[]}
+              wholeLabel="Whole input"
               onPick={(path, name) => {
                 pick({ kind: 'run_input', path }, name);
               }}
@@ -162,16 +163,18 @@ export function InsertDataPicker({
 
 function FieldList({
   fields,
+  wholeLabel = 'Whole output',
   onPick,
 }: Readonly<{
   fields: readonly OutputField[];
+  wholeLabel?: string;
   onPick: (path: string, fieldName: string) => void;
 }>) {
   return (
     <ul className="mt-1 ml-3 flex flex-col border-l border-white/8 pl-2">
       <li>
         <PickButton
-          label="Whole output"
+          label={wholeLabel}
           type="object"
           onClick={() => {
             onPick('$', '');
