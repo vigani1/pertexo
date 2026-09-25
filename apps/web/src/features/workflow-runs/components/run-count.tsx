@@ -1,32 +1,30 @@
 import { Status, type StatusTone } from '@/components/ui/status';
-import { countLabel } from '../model/run-list';
-import type { RunStatusCounts, StatusSample } from '../workflow-runs.queries';
+import type { RunStatistics } from '../workflow-runs.queries';
 
-/** One live count in a page header's mono line, e.g. "3 running". */
+/** One exact count in a page header's mono line, e.g. "3 running". */
 export function RunCount({
   tone,
-  sample,
+  count,
   label,
-}: Readonly<{ tone: StatusTone; sample: StatusSample; label: string }>) {
+}: Readonly<{ tone: StatusTone; count: number; label: string }>) {
   return (
     <Status tone={tone} className="font-mono text-xs font-normal">
       <span className="text-subtle-foreground">
-        <b className="font-medium text-foreground">{countLabel(sample)}</b>{' '}
-        {label}
+        <b className="font-medium text-foreground">{String(count)}</b> {label}
       </span>
     </Status>
   );
 }
 
-/** Running, waiting and queued counts, for the Home and Runs headers. */
+/** Running, waiting and queued runs right now, for the Home and Runs headers. */
 export function LiveRunCounts({
-  counts,
-}: Readonly<{ counts: RunStatusCounts }>) {
+  current,
+}: Readonly<{ current: RunStatistics['current'] }>) {
   return (
     <>
-      <RunCount tone="live" sample={counts.running} label="running" />
-      <RunCount tone="waiting" sample={counts.waiting} label="waiting" />
-      <RunCount tone="queued" sample={counts.queued} label="queued" />
+      <RunCount tone="live" count={current.running} label="running" />
+      <RunCount tone="waiting" count={current.waiting} label="waiting" />
+      <RunCount tone="queued" count={current.queued} label="queued" />
     </>
   );
 }

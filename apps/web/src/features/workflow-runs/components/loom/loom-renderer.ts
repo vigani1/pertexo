@@ -34,6 +34,8 @@ const TOKENS = {
 type Palette = Record<keyof typeof TOKENS, Rgb>;
 
 const KNOT_PULSE_MS = 900;
+const MONO_FONT = '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
+const LABEL_FONT = '500 12px "Inter Variable", system-ui, sans-serif';
 
 function toneColor(palette: Palette, tone: StatusTone): Rgb {
   switch (tone) {
@@ -118,8 +120,7 @@ export class LoomRenderer extends CanvasScene {
   #drawGrid(layout: LoomLayout, nowMs: number): void {
     const context = this.context;
     const palette = this.#palette;
-    context.font =
-      '500 10px "JetBrains Mono Variable", ui-monospace, monospace';
+    context.font = MONO_FONT;
     context.textAlign = 'center';
     const { ticks, windowMs } = this.#model;
     const stepMs = (ticks[1]?.offsetMs ?? windowMs) - (ticks[0]?.offsetMs ?? 0);
@@ -148,21 +149,30 @@ export class LoomRenderer extends CanvasScene {
         layout.bottom + 18,
       );
     }
-    context.textAlign = 'left';
-    context.font = '500 12px "Inter Variable", system-ui, sans-serif';
     this.#model.lanes.forEach((lane, index) => {
       const y = loomLaneY(layout, index);
+      // The lane's exact window total sits at the end of its label column.
+      const total = lane.total === undefined ? '' : String(lane.total);
+      context.font = MONO_FONT;
+      const totalWidth =
+        total === '' ? 0 : context.measureText(total).width + 8;
+      context.textAlign = 'left';
+      context.font = LABEL_FONT;
       context.fillStyle = rgba(palette.label, 0.9);
       // Narrow canvases have no label column: names sit above their lane.
-      if (layout.labelRight > 0)
+      if (layout.labelRight > 0) {
         context.fillText(
-          this.#fit(lane.label, layout.labelRight - 16),
+          this.#fit(lane.label, layout.labelRight - 16 - totalWidth),
           16,
           y + 4,
         );
-      else
+        this.#drawTotal(total, layout.labelRight - 4, y + 4);
+      } else
         context.fillText(
-          this.#fit(lane.label, layout.right - layout.left),
+          this.#fit(
+            total === '' ? lane.label : `${lane.label} · ${total}`,
+            layout.right - layout.left,
+          ),
           layout.left,
           y - 7,
         );
@@ -181,6 +191,17 @@ export class LoomRenderer extends CanvasScene {
     context.moveTo(layout.right, layout.top - 10);
     context.lineTo(layout.right, layout.bottom + 4);
     context.stroke();
+  }
+
+  #drawTotal(total: string, right: number, y: number): void {
+    if (total === '') return;
+    const context = this.context;
+    context.font = MONO_FONT;
+    context.textAlign = 'right';
+    context.fillStyle = rgba(this.#palette.muted, 0.85);
+    context.fillText(total, right, y);
+    context.textAlign = 'left';
+    context.font = LABEL_FONT;
   }
 
   #fit(label: string, maxWidth: number): string {

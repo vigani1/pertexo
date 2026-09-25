@@ -12,7 +12,8 @@ import { describeRunStatus } from '../../model/run-status';
 export function LoomRunList({
   model,
   workspaceId,
-}: Readonly<{ model: LoomModel; workspaceId: string }>) {
+  windowLabel,
+}: Readonly<{ model: LoomModel; workspaceId: string; windowLabel: string }>) {
   if (model.runCount === 0) return null;
   return (
     <details className="group text-sm">
@@ -32,6 +33,12 @@ export function LoomRunList({
             <h3 className="truncate font-sans text-sm font-semibold">
               {lane.label}
             </h3>
+            {lane.total === undefined ? null : (
+              <p className="font-mono text-xs text-subtle-foreground">
+                {String(lane.total)} {lane.total === 1 ? 'run' : 'runs'} in{' '}
+                {windowLabel}
+              </p>
+            )}
             <ul className="mt-1.5 flex flex-col">
               {[...lane.runs].reverse().map((run) => {
                 const look = describeRunStatus(run.status);

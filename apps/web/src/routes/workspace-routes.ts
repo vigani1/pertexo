@@ -18,8 +18,9 @@ import {
   anyRunQueryOptions,
   attentionRunsQueryOptions,
   filtersFromSearch,
+  loomStatisticsQueryOptions,
   runLoomQueryOptions,
-  runStatusCountsQueryOptions,
+  runStatisticsQueryOptions,
   sanitizeRunSearch,
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
@@ -99,12 +100,18 @@ export const homeRoute = createRoute({
     const warm = (read: Promise<unknown>) => {
       read.catch(() => undefined);
     };
-    if (can('run:read'))
+    if (can('run:read')) {
       warm(
         queryClient.query(
           runLoomQueryOptions(apiClient, user.id, workspace.id, 3_600_000),
         ),
       );
+      warm(
+        queryClient.query(
+          loomStatisticsQueryOptions(apiClient, user.id, workspace.id, '1h'),
+        ),
+      );
+    }
     if (can('connection:read'))
       warm(
         queryClient.query(
@@ -125,7 +132,7 @@ export const homeRoute = createRoute({
       ...(can('run:read')
         ? [
             queryClient.query(
-              runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
+              runStatisticsQueryOptions(apiClient, user.id, workspace.id),
             ),
             queryClient.query(
               attentionRunsQueryOptions(apiClient, user.id, workspace.id),
@@ -205,7 +212,7 @@ export const runsRoute = createRoute({
         ),
       ),
       queryClient.query(
-        runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
+        runStatisticsQueryOptions(apiClient, user.id, workspace.id),
       ),
     ]);
   },

@@ -11,6 +11,20 @@ const timestamp = '2026-09-21T10:00:00.000Z';
 async function installRoutes(page: Page) {
   const workflowQueries: string[] = [];
   const runQueries: URLSearchParams[] = [];
+  const statisticsQueries: URLSearchParams[] = [];
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/run-statistics?**`,
+    async (route) => {
+      const query = new URL(route.request().url()).searchParams;
+      statisticsQueries.push(query);
+      await route.fulfill({
+        json: statistics(
+          query.get('window'),
+          query.get('breakdown') === 'workflow',
+        ),
+      });
+    },
+  );
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
       json: {
@@ -84,7 +98,40 @@ async function installRoutes(page: Page) {
       },
     });
   });
-  return { workflowQueries, runQueries };
+  return { workflowQueries, runQueries, statisticsQueries };
+}
+
+/** A run-statistics snapshot: one running run and two finished in the window. */
+function statistics(duration: string | null, breakdown: boolean) {
+  const byStatus = {
+    queued: 0,
+    running: 1,
+    waiting: 0,
+    succeeded: 1,
+    failed: 1,
+    canceled: 0,
+    timed_out: 0,
+    outcome_unknown: 0,
+  };
+  return {
+    asOf: '2026-09-21T10:00:00.000000Z',
+    current: { queued: 0, running: 1, waiting: 0 },
+    window: {
+      duration: duration ?? '24h',
+      createdAtFrom: '2026-09-20T10:00:00.000000Z',
+      createdAtBefore: '2026-09-21T10:00:00.000000Z',
+      total: 3,
+      byStatus,
+    },
+    workflows: breakdown
+      ? {
+          items: [
+            { workflowId, workflowName: 'Daily intake', total: 3, byStatus },
+          ],
+          truncated: false,
+        }
+      : null,
+  };
 }
 
 function run(id: string, status: 'failed' | 'succeeded') {
@@ -138,6 +185,10 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
       .find((query) => query.get('status') === 'failed')
       ?.get('createdAtFrom'),
   ).toBeTruthy();
+  await expect(page.getByText('3 runs in the last hour.')).toBeVisible();
+  expect(queries.statisticsQueries.map(String)).toEqual(
+    expect.arrayContaining(['window=24h', 'window=1h&breakdown=workflow']),
+  );
 
   await expect(
     page

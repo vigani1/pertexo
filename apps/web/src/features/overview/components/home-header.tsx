@@ -8,28 +8,22 @@ import {
 } from '@/components/patterns/page-header';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
-import type {
-  AttentionRuns,
-  RunStatusCounts,
-} from '@/features/workflow-runs/queries.public';
+import type { RunStatistics } from '@/features/workflow-runs/queries.public';
 import { formatClock } from '@/lib/format-time';
 
 /**
- * The workspace's name and, in mono, what is happening right now: running,
- * waiting and queued runs, failures in the last day and when that was read.
+ * The workspace's name and, in mono, exact figures from one statistics
+ * snapshot: running, waiting and queued runs, failures in the last day and
+ * when the server read them.
  */
 export function HomeHeader({
   workspace,
-  counts,
-  attention,
-  countsUpdatedAt,
+  statistics,
   refreshing,
   onRefresh,
 }: Readonly<{
   workspace: AccessibleWorkspace;
-  counts: RunStatusCounts | undefined;
-  attention: AttentionRuns | undefined;
-  countsUpdatedAt: number;
+  statistics: RunStatistics | undefined;
   refreshing: boolean;
   onRefresh: () => void;
 }>) {
@@ -39,21 +33,17 @@ export function HomeHeader({
         <PageHeaderTitle className="break-words sm:text-5xl">
           {workspace.name}
         </PageHeaderTitle>
-        <PageHeaderMeta>
-          {counts === undefined ? null : <LiveRunCounts counts={counts} />}
-          {attention === undefined ? null : (
+        {statistics === undefined ? null : (
+          <PageHeaderMeta>
+            <LiveRunCounts current={statistics.current} />
             <RunCount
               tone="failure"
-              sample={attention.failed}
+              count={statistics.window.byStatus.failed}
               label="failed in 24 h"
             />
-          )}
-          {countsUpdatedAt > 0 ? (
-            <span>
-              as of {formatClock(new Date(countsUpdatedAt).toISOString())}
-            </span>
-          ) : null}
-        </PageHeaderMeta>
+            <span>as of {formatClock(statistics.asOf)}</span>
+          </PageHeaderMeta>
+        )}
       </div>
       <PageHeaderActions>
         <ProgressButton

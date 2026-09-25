@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import { statisticsHandler } from '../support/run-fixtures';
 import {
   api,
   discoveryHandlers,
@@ -255,10 +256,9 @@ describe('workflow list', () => {
         ],
         nextCursor: null,
       })),
-      http.get(`${api}/runs`, ({ request }) => {
-        if (new URL(request.url).searchParams.has('status'))
-          return HttpResponse.json({ items: [], nextCursor: null });
-        return HttpResponse.json({
+      statisticsHandler(),
+      http.get(`${api}/runs`, () =>
+        HttpResponse.json({
           items: [
             run(
               '11111111-1111-4111-8111-111111111111',
@@ -280,8 +280,8 @@ describe('workflow list', () => {
             ),
           ],
           nextCursor: null,
-        });
-      }),
+        }),
+      ),
     );
     renderApp(`/w/${workspaceId}/workflows`);
     expect(

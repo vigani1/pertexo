@@ -29,7 +29,7 @@ import {
   type RunSearch,
 } from './model/run-search';
 import { useRunHistory } from './use-run-history';
-import { runStatusCountsQueryOptions } from './workflow-runs.queries';
+import { runStatisticsQueryOptions } from './workflow-runs.queries';
 
 /** Pick one workflow, or filter by the start of a name. */
 function WorkflowFilter({
@@ -90,8 +90,8 @@ export function RunHistoryPage({
     filters: filtersFromSearch(search),
     live,
   });
-  const counts = useQuery({
-    ...runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
+  const statistics = useQuery({
+    ...runStatisticsQueryOptions(apiClient, user.id, workspace.id),
     enabled: canRead,
   });
   const canReadWorkflows = workspace.capabilities.includes('workflow:read');
@@ -117,10 +117,10 @@ export function RunHistoryPage({
         <div className="min-w-0">
           <PageHeaderTitle>Runs</PageHeaderTitle>
           <PageHeaderMeta>
-            {counts.data === undefined ? (
+            {statistics.data === undefined ? (
               <span>Every run in {workspace.name}</span>
             ) : (
-              <LiveRunCounts counts={counts.data} />
+              <LiveRunCounts current={statistics.data.current} />
             )}
           </PageHeaderMeta>
         </div>

@@ -4,17 +4,19 @@ import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { RunLoom } from '@/features/workflow-runs/loom.public';
 import {
+  loomStatisticsQueryOptions,
   runLoomQueryOptions,
-  type RunStatusCounts,
 } from '@/features/workflow-runs/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { HomeBlockBody } from './home-block';
 import { queryBlockState } from '../model/home-block-state';
+import { loomCaption } from '../model/loom-caption';
 
 const windows = {
   '1h': { ms: 3_600_000, label: '1 hour', phrase: 'the last hour' },
   '6h': { ms: 21_600_000, label: '6 hours', phrase: 'the last 6 hours' },
   '24h': { ms: 86_400_000, label: '24 hours', phrase: 'the last 24 hours' },
+  '7d': { ms: 604_800_000, label: '7 days', phrase: 'the last 7 days' },
 } as const;
 
 type LoomWindow = keyof typeof windows;
@@ -27,42 +29,52 @@ const legend: readonly (readonly [StatusTone, string])[] = [
 ];
 
 function isLoomWindow(value: string | undefined): value is LoomWindow {
-  return value === '1h' || value === '6h' || value === '24h';
+  return value !== undefined && Object.hasOwn(windows, value);
 }
 
 /**
- * Home's hero: the Loom over the last 1, 6 or 24 hours. Runs still active
- * from before the window are added from the live counts so every running
- * thread reaches the Core.
+ * Home's hero: the Loom over the last hour, 6 or 24 hours, or 7 days. It
+ * draws individual runs, while its caption and lane totals come from the
+ * exact statistics read, so a capped drawing never passes for the whole.
  */
 export function HomeLoom({
   apiClient,
   userId,
   workspaceId,
-  counts,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
-  counts: RunStatusCounts | undefined;
 }>) {
   const [windowKey, setWindowKey] = useState<LoomWindow>('1h');
+  const selected = windows[windowKey];
   const loom = useQuery(
-    runLoomQueryOptions(apiClient, userId, workspaceId, windows[windowKey].ms),
+    runLoomQueryOptions(apiClient, userId, workspaceId, selected.ms),
   );
-  const runs = useMemo(
-    () => [
-      ...(loom.data?.runs ?? []),
-      ...(counts?.running.runs ?? []),
-      ...(counts?.waiting.runs ?? []),
-      ...(counts?.queued.runs ?? []),
-    ],
-    [loom.data, counts],
+  const statistics = useQuery(
+    loomStatisticsQueryOptions(apiClient, userId, workspaceId, windowKey),
   );
+  const laneTotals = useMemo(
+    () =>
+      statistics.data?.workflows === undefined ||
+      statistics.data.workflows === null
+        ? undefined
+        : new Map(
+            statistics.data.workflows.items.map(
+              (workflow) => [workflow.workflowId, workflow.total] as const,
+            ),
+          ),
+    [statistics.data],
+  );
+  const caption = loomCaption({
+    phrase: selected.phrase,
+    capped: loom.data?.capped === true,
+    total: statistics.data?.window.total,
+  });
   return (
     <section aria-labelledby="home-loom-title" className="flex flex-col gap-3">
       <h2 id="home-loom-title" className="sr-only">
-        Runs over {windows[windowKey].phrase}
+        Runs over {selected.phrase}
       </h2>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ToggleGroup
@@ -93,17 +105,15 @@ export function HomeLoom({
       </div>
       <HomeBlockBody title="Recent runs" state={queryBlockState(loom)}>
         <RunLoom
-          runs={runs}
-          windowMs={windows[windowKey].ms}
-          windowLabel={windows[windowKey].phrase}
+          runs={loom.data?.runs ?? []}
+          windowMs={selected.ms}
+          windowLabel={selected.phrase}
           workspaceId={workspaceId}
+          laneTotals={laneTotals}
         />
-        {loom.data?.capped === true ? (
-          <p className="text-xs text-subtle-foreground">
-            Showing the latest 300 runs in {windows[windowKey].phrase}. Narrow
-            the window to see every run.
-          </p>
-        ) : null}
+        {caption === undefined ? null : (
+          <p className="text-xs text-subtle-foreground">{caption}</p>
+        )}
       </HomeBlockBody>
     </section>
   );

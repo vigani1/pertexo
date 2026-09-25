@@ -90,10 +90,3 @@ export function workflowLabel(
 ): string {
   return run.workflowName ?? 'Workflow name unavailable';
 }
-
-/** "100+" once a status has more runs than one bounded page holds. */
-export function countLabel(
-  sample: Readonly<{ count: number; more: boolean }>,
-): string {
-  return sample.more ? `${String(sample.count)}+` : String(sample.count);
-}

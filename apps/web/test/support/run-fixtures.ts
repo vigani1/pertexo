@@ -74,6 +74,72 @@ export function fixtureRun(
   };
 }
 
+const noRuns = {
+  queued: 0,
+  running: 0,
+  waiting: 0,
+  succeeded: 0,
+  failed: 0,
+  canceled: 0,
+  timed_out: 0,
+  outcome_unknown: 0,
+};
+
+/** A contract-valid run-statistics snapshot with exact counts. */
+export function fixtureStatistics(
+  input: Readonly<{
+    window?: string;
+    current?: Partial<Record<'queued' | 'running' | 'waiting', number>>;
+    byStatus?: Partial<typeof noRuns>;
+    workflows?: readonly Readonly<{
+      workflowId: string;
+      workflowName: string | null;
+      total: number;
+    }>[];
+  }> = {},
+) {
+  const byStatus = { ...noRuns, ...input.byStatus };
+  return {
+    asOf: '2026-09-15T10:00:00.000000Z',
+    current: { queued: 0, running: 0, waiting: 0, ...input.current },
+    window: {
+      duration: input.window ?? '24h',
+      createdAtFrom: '2026-09-14T10:00:00.000000Z',
+      createdAtBefore: '2026-09-15T10:00:00.000000Z',
+      total: Object.values(byStatus).reduce((sum, count) => sum + count, 0),
+      byStatus,
+    },
+    workflows:
+      input.workflows === undefined
+        ? null
+        : {
+            items: input.workflows.map((workflow) => ({
+              ...workflow,
+              byStatus: { ...noRuns, succeeded: workflow.total },
+            })),
+            truncated: false,
+          },
+  };
+}
+
+/** Answers run-statistics reads, recording each query it saw. */
+export function statisticsHandler(
+  respond: (query: URLSearchParams) => ReturnType<typeof fixtureStatistics> = (
+    query,
+  ) =>
+    fixtureStatistics({
+      window: query.get('window') ?? '24h',
+      ...(query.get('breakdown') === 'workflow' ? { workflows: [] } : {}),
+    }),
+  seen: URLSearchParams[] = [],
+) {
+  return http.get(`${apiBase}/run-statistics`, ({ request }) => {
+    const query = new URL(request.url).searchParams;
+    seen.push(query);
+    return HttpResponse.json(respond(query));
+  });
+}
+
 export function fixtureWorkflow(overrides: Record<string, unknown> = {}) {
   return {
     id: fixtureIds.workflow,
