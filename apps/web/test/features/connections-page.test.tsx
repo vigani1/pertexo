@@ -306,6 +306,8 @@ describe('connections page', () => {
     expect(testKeys).toHaveLength(1);
     expect(screen.queryByDisplayValue(token)).not.toBeInTheDocument();
     expect(mutationVariables(queryClient)).not.toContain(token);
+    // The result shows in place, so no toast covers the lens's Done.
+    expect(screen.queryByText(/passed its test/u)).toBeNull();
 
     await event.click(lens().getByRole('button', { name: 'Done' }));
     expect(await screen.findByText('Connected Operations Slack')).toBeVisible();

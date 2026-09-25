@@ -115,7 +115,7 @@ export function NeedsAttention({
                 <p className="line-clamp-2 text-sm font-semibold">
                   {item.title}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-subtle-foreground">
+                <p className="mt-0.5 line-clamp-2 text-xs text-subtle-foreground">
                   {item.detail}
                 </p>
               </div>

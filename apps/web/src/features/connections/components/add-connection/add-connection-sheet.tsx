@@ -96,7 +96,7 @@ export function AddConnectionSheet({
   const nameValidation = useFieldValidation<'name'>();
   const { mutation: create, clearSensitiveState } =
     useCreateConnectionMutation(scope);
-  const test = useConnectionTest(scope);
+  const test = useConnectionTest(scope, { toastOnPass: false });
   const attempt = useRef<
     | Readonly<{ signature: string; command: CreateConnectionCommand }>
     | undefined

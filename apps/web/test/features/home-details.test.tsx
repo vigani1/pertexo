@@ -1,8 +1,13 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
-import { screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { renderHook, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { createQueryClient } from '@/app/query-client';
+import { useRunFailures } from '@/features/overview/use-run-failures';
+import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { renderApp, testFetch } from '../support/render-app';
 import {
   apiBase,
   coldStart,
@@ -11,6 +16,7 @@ import {
   fixtureRun,
   fixtureVersion,
   fixtureWorkflow,
+  fixtureWorkspace,
   identityHandlers,
   minutesAgo,
   statisticsHandler,
@@ -134,5 +140,66 @@ describe('home details', () => {
     expect(
       recent.querySelector('[data-slot="pattern-glyph"]'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('home run failures', () => {
+  it('reads a version once for every failed run that ran it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let versionReads = 0;
+    const runs = [fixtureIds.firstRun, fixtureIds.secondRun];
+    mockServer.use(
+      ...runs.map((runId) =>
+        http.get(`${apiBase}/runs/${runId}`, () =>
+          HttpResponse.json({
+            run: fixtureRun(runId, 'failed'),
+            nodes: [],
+          }),
+        ),
+      ),
+      http.get(`${apiBase}/workflows/${workflowId}/versions`, () => {
+        versionReads += 1;
+        return HttpResponse.json({
+          items: [fixtureVersion(graph)],
+          nextCursor: null,
+        });
+      }),
+    );
+    const queryClient = createQueryClient();
+    const apiClient = createApiClient({
+      fetch: testFetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    });
+    const { result } = renderHook(
+      () =>
+        useRunFailures({
+          apiClient,
+          userId: fixtureIds.user,
+          workspace: fixtureWorkspace(capabilities) as Parameters<
+            typeof useRunFailures
+          >[0]['workspace'],
+          runIds: runs,
+        }),
+      {
+        wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        ),
+      },
+    );
+    await waitFor(() => {
+      expect(result.current.size).toBe(2);
+    });
+    await waitFor(() => {
+      expect(versionReads).toBe(1);
+    });
+    expect(
+      warn.mock.calls.some(([message]) =>
+        String(message).includes('Duplicate Queries'),
+      ),
+    ).toBe(false);
+    warn.mockRestore();
   });
 });
