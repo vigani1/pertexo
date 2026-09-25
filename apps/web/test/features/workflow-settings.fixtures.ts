@@ -50,6 +50,7 @@ export const summary = {
   id: workflowId,
   workspaceId,
   name: 'Daily control',
+  nameRevision: 1,
   lifecycleStatus: 'active',
   lifecycleRevision: 7,
   activationStatus: 'active',

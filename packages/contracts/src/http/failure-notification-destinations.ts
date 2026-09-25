@@ -48,6 +48,12 @@ export const failureNotificationDestinationListResponseSchema = z
 export const workflowFailureNotificationPolicyRequestSchema = z
   .object({ destinationId: z.uuid() })
   .strict();
+/** The workflow's current failure-alert destination, or null when none is set. */
+export const workflowFailureNotificationPolicyResponseSchema = z
+  .object({
+    destination: failureNotificationDestinationResponseSchema.nullable(),
+  })
+  .strict();
 export const failureNotificationDestinationStatusRequestSchema = z
   .object({ status: failureNotificationDestinationStatusSchema })
   .strict();
@@ -55,4 +61,7 @@ export const failureNotificationDestinationStatusRequestSchema = z
 export type { FailureNotificationDestinationConfig };
 export type FailureNotificationDestinationResponse = z.output<
   typeof failureNotificationDestinationResponseSchema
+>;
+export type WorkflowFailureNotificationPolicyResponse = z.output<
+  typeof workflowFailureNotificationPolicyResponseSchema
 >;

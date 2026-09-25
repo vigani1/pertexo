@@ -20,6 +20,7 @@ export const workflows = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     name: varchar('name', { length: 128 }).notNull(),
+    nameRevision: integer('name_revision').default(1).notNull(),
     lifecycleStatus: varchar('lifecycle_status', { length: 32 })
       .default('active')
       .notNull(),

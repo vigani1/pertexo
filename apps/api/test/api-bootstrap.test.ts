@@ -194,6 +194,7 @@ function workflowAuthoringDatabase(
     publishWorkflow: () => Promise.reject(new Error('not used')),
     restoreWorkflowVersion: () => Promise.reject(new Error('not used')),
     transitionWorkflowLifecycle: () => Promise.reject(new Error('not used')),
+    renameWorkflow: () => Promise.reject(new Error('not used')),
     close,
   };
 }

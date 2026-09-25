@@ -60,6 +60,7 @@
             "workspace.invitation_delivery_unavailable",
             "workflow.revision_conflict",
             "workflow.lifecycle_conflict",
+            "workflow.name_conflict",
             "workflow.invalid",
             "workflow.not_published",
             "workflow.activation_failed",
@@ -171,6 +172,11 @@
               "minLength": 1,
               "maxLength": 128
             },
+            "nameRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
             "lifecycleStatus": {
               "type": "string",
               "enum": [
@@ -221,6 +227,7 @@
             "id",
             "workspaceId",
             "name",
+            "nameRevision",
             "lifecycleStatus",
             "lifecycleRevision",
             "activationStatus",
@@ -323,6 +330,210 @@
         "code",
         "requestId",
         "currentLifecycleRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowRenameRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expectedNameRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "name",
+        "expectedNameRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowRenameResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "workflow": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "workspaceId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "nameRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "lifecycleStatus": {
+              "type": "string",
+              "enum": [
+                "active",
+                "archived"
+              ]
+            },
+            "lifecycleRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "activationStatus": {
+              "type": "string",
+              "enum": [
+                "inactive",
+                "activating",
+                "active",
+                "deactivating",
+                "degraded",
+                "error"
+              ]
+            },
+            "publishedVersionId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            }
+          },
+          "required": [
+            "id",
+            "workspaceId",
+            "name",
+            "nameRevision",
+            "lifecycleStatus",
+            "lifecycleRevision",
+            "activationStatus",
+            "publishedVersionId",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workflow",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowNameConflictProblem": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "type": "number",
+          "const": 409
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "code": {
+          "type": "string",
+          "const": "workflow.name_conflict"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "errors": {
+          "readOnly": true,
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "maxLength": 1024
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "path",
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "currentNameRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "requestId",
+        "currentNameRevision"
       ],
       "additionalProperties": false
     },
@@ -454,6 +665,11 @@
               "minLength": 1,
               "maxLength": 128
             },
+            "nameRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
             "lifecycleStatus": {
               "type": "string",
               "enum": [
@@ -504,6 +720,7 @@
             "id",
             "workspaceId",
             "name",
+            "nameRevision",
             "lifecycleStatus",
             "lifecycleRevision",
             "activationStatus",
@@ -1103,6 +1320,11 @@
           "minLength": 1,
           "maxLength": 128
         },
+        "nameRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
         "lifecycleStatus": {
           "type": "string",
           "enum": [
@@ -1153,6 +1375,7 @@
         "id",
         "workspaceId",
         "name",
+        "nameRevision",
         "lifecycleStatus",
         "lifecycleRevision",
         "activationStatus",
@@ -1183,6 +1406,11 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 128
+            },
+            "nameRevision": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "lifecycleStatus": {
               "type": "string",
@@ -1234,6 +1462,7 @@
             "id",
             "workspaceId",
             "name",
+            "nameRevision",
             "lifecycleStatus",
             "lifecycleRevision",
             "activationStatus",
@@ -1273,6 +1502,11 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 128
+              },
+              "nameRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               },
               "lifecycleStatus": {
                 "type": "string",
@@ -1324,6 +1558,7 @@
               "id",
               "workspaceId",
               "name",
+              "nameRevision",
               "lifecycleStatus",
               "lifecycleRevision",
               "activationStatus",

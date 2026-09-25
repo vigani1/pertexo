@@ -11,6 +11,7 @@ export type WorkflowRecord = Readonly<{
   id: string;
   workspaceId: string;
   name: string;
+  nameRevision: number;
   lifecycleStatus: WorkflowLifecycleStatus;
   lifecycleRevision: number;
   activationStatus: WorkflowActivationStatus;

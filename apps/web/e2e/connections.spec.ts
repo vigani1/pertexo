@@ -38,6 +38,7 @@ const workflow = {
   id: workflowId,
   workspaceId,
   name: 'Slack incident alert',
+  nameRevision: 1,
   lifecycleStatus: 'active',
   lifecycleRevision: 1,
   activationStatus: 'inactive',

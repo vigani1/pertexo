@@ -74,6 +74,7 @@ describe('workflow-authoring public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/rename',
       '/v1/workspaces/{workspaceId}/workflows',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft',

@@ -17,11 +17,12 @@ import type {
 } from './workflow-authoring-records.js';
 
 const uuidSchema = z.uuid();
+const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
 export const workflowVersionRowSelection =
   'id,workspace_id,workflow_id,version_number,schema_version,graph_json,checksum,published_by,published_at';
 export const workflowRowSelection =
-  'id,workspace_id,name,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at';
+  'id,workspace_id,name,name_revision,lifecycle_status,lifecycle_revision,activation_status,published_version_id,created_by,created_at,updated_at';
 export const checksumSchema = z.union([
   retainedChecksumSchema,
   z.string().regex(/^wf:v2:sha256:[0-9a-f]{64}$/u),
@@ -31,12 +32,9 @@ const workflowRowSchema = z
     id: uuidSchema,
     workspace_id: uuidSchema,
     name: z.string().trim().min(1).max(128),
+    name_revision: revisionSchema,
     lifecycle_status: workflowLifecycleStatusSchema,
-    lifecycle_revision: z
-      .number()
-      .int()
-      .positive()
-      .max(Number.MAX_SAFE_INTEGER),
+    lifecycle_revision: revisionSchema,
     activation_status: workflowActivationStatusSchema,
     published_version_id: uuidSchema.nullable(),
     created_by: uuidSchema,
@@ -78,6 +76,7 @@ export function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
     id: parsed.id,
     workspaceId: parsed.workspace_id,
     name: parsed.name,
+    nameRevision: parsed.name_revision,
     lifecycleStatus: parsed.lifecycle_status,
     lifecycleRevision: parsed.lifecycle_revision,
     activationStatus: parsed.activation_status,

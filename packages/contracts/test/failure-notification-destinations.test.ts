@@ -5,6 +5,7 @@ import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
   failureNotificationDestinationListResponseSchema,
+  workflowFailureNotificationPolicyResponseSchema,
 } from '../src/http/failure-notification-destinations.js';
 import {
   connectionsClientContract,
@@ -108,6 +109,58 @@ describe('failure notification destination contracts', () => {
     expect(policy.delete.responses).toHaveProperty('204');
     expect(connectionsClientContract.schemas).toHaveProperty(
       'FailureNotificationDestinationResponse',
+    );
+  });
+
+  it('reads the current policy through the safe destination projection', () => {
+    const destination = {
+      id: '11111111-1111-4111-8111-111111111111',
+      workspaceId: '22222222-2222-4222-8222-222222222222',
+      kind: 'email' as const,
+      status: 'disabled' as const,
+      currentVersion: 2,
+      config: {
+        kind: 'email' as const,
+        connectionId: '33333333-3333-4333-8333-333333333333',
+        toEmail: 'ops@example.test',
+      },
+      createdAt: '2026-09-05T00:00:00.000Z',
+      updatedAt: '2026-09-06T00:00:00.000Z',
+    };
+    expect(
+      workflowFailureNotificationPolicyResponseSchema.parse({ destination }),
+    ).toEqual({ destination });
+    expect(
+      workflowFailureNotificationPolicyResponseSchema.parse({
+        destination: null,
+      }),
+    ).toEqual({ destination: null });
+    expect(
+      workflowFailureNotificationPolicyResponseSchema.safeParse({
+        destination: {
+          ...destination,
+          config: { ...destination.config, apiKey: 're_secret' },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      workflowFailureNotificationPolicyResponseSchema.safeParse({}).success,
+    ).toBe(false);
+
+    const read =
+      connectionsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/failure-notification-policy'
+      ].get;
+    expect(read.operationId).toBe('getWorkflowFailureNotificationPolicy');
+    expect(read.parameters.map(({ name }) => name)).toEqual([
+      'workspaceId',
+      'workflowId',
+    ]);
+    expect(read.responses['200'].content['application/json'].schema).toEqual({
+      $ref: '#/components/schemas/WorkflowFailureNotificationPolicyResponse',
+    });
+    expect(connectionsClientContract.schemas).toHaveProperty(
+      'WorkflowFailureNotificationPolicyResponse',
     );
   });
 

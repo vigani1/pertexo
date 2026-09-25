@@ -100,6 +100,20 @@ export type TransitionWorkflowLifecycleResult = Readonly<{
   workflow: WorkflowRecord;
   replayed: boolean;
 }>;
+export type RenameWorkflowInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  actorId: string;
+  name: string;
+  expectedNameRevision: number;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+export type RenameWorkflowResult = Readonly<{
+  workflow: WorkflowRecord;
+  replayed: boolean;
+}>;
 
 export type WorkflowAuthoringDatabase = Readonly<{
   acceptPreview(
@@ -142,5 +156,6 @@ export type WorkflowAuthoringDatabase = Readonly<{
   transitionWorkflowLifecycle(
     input: TransitionWorkflowLifecycleInput,
   ): Promise<TransitionWorkflowLifecycleResult>;
+  renameWorkflow(input: RenameWorkflowInput): Promise<RenameWorkflowResult>;
   close(): Promise<void>;
 }>;

@@ -137,8 +137,25 @@ describe('connection persistence', () => {
       idempotencyKey: `policy-set-${workflowId}`,
       requestHash: '4'.repeat(64),
     };
+    const readPolicy = { workspaceId: workspaceA, actorId: ownerA, workflowId };
+    await expect(
+      connections.destinations.getWorkflowPolicy(readPolicy),
+    ).resolves.toBeNull();
     await connections.destinations.setWorkflowPolicy(setPolicy);
     await connections.destinations.setWorkflowPolicy(setPolicy);
+    await expect(
+      connections.destinations.getWorkflowPolicy(readPolicy),
+    ).resolves.toEqual(appended);
+    await expect(
+      connections.destinations.getWorkflowPolicy({
+        workspaceId: workspaceB,
+        actorId: ownerB,
+        workflowId,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
     const statusNoop = {
       workspaceId: workspaceA,
       actorId: ownerA,
@@ -164,6 +181,10 @@ describe('connection persistence', () => {
     ).resolves.toMatchObject({
       status: 'disabled',
     });
+    // A disabled destination stays the workflow's current choice until changed.
+    await expect(
+      connections.destinations.getWorkflowPolicy(readPolicy),
+    ).resolves.toMatchObject({ id: destinationId, status: 'disabled' });
     await expect(
       connections.destinations.list({
         workspaceId: workspaceB,
@@ -179,6 +200,9 @@ describe('connection persistence', () => {
     };
     await connections.destinations.clearWorkflowPolicy(clearPolicy);
     await connections.destinations.clearWorkflowPolicy(clearPolicy);
+    await expect(
+      connections.destinations.getWorkflowPolicy(readPolicy),
+    ).resolves.toBeNull();
     await expect(
       connections.destinations.clearWorkflowPolicy({
         ...clearPolicy,
@@ -228,6 +252,9 @@ describe('connection persistence', () => {
       code: 'not_found',
       name: 'FailureNotificationDestinationError',
     });
+    await expect(
+      connections.destinations.getWorkflowPolicy(readPolicy),
+    ).rejects.toMatchObject({ code: 'not_found' });
 
     const audit = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
     let auditClient: PoolClient | undefined;
@@ -452,10 +479,23 @@ describe('connection persistence', () => {
         idempotencyKey: `role-policy-${role}-${workflowId}`,
         requestHash: 'b'.repeat(64),
       };
+      const read = connections.destinations.getWorkflowPolicy({
+        workspaceId: workspaceA,
+        actorId,
+        workflowId,
+      });
       if (readable) {
+        await expect(read).resolves.toBeNull();
         await expect(
           connections.destinations.setWorkflowPolicy(policy),
         ).resolves.toBeUndefined();
+        await expect(
+          connections.destinations.getWorkflowPolicy({
+            workspaceId: workspaceA,
+            actorId,
+            workflowId,
+          }),
+        ).resolves.toEqual(destination);
         await expect(
           connections.destinations.clearWorkflowPolicy({
             ...policy,
@@ -464,6 +504,7 @@ describe('connection persistence', () => {
           }),
         ).resolves.toBeUndefined();
       } else {
+        await expect(read).rejects.toMatchObject({ code: 'not_found' });
         await expect(
           connections.destinations.setWorkflowPolicy(policy),
         ).rejects.toMatchObject({ code: 'not_found' });
@@ -539,6 +580,13 @@ describe('connection persistence', () => {
         workspaceId: workspaceB,
         actorId: ownerB,
         destinationId,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    await expect(
+      connections.destinations.getWorkflowPolicy({
+        workspaceId: workspaceA,
+        actorId: builderId,
+        workflowId: otherWorkspaceWorkflowId,
       }),
     ).rejects.toMatchObject({ code: 'not_found' });
 

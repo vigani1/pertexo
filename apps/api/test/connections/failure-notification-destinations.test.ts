@@ -65,6 +65,7 @@ function persistence(): FailureNotificationDestinationDatabase {
     setStatus: vi.fn().mockResolvedValue(record),
     setWorkflowPolicy: vi.fn(),
     clearWorkflowPolicy: vi.fn(),
+    getWorkflowPolicy: vi.fn().mockResolvedValue(record),
     close: vi.fn(),
   };
 }

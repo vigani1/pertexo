@@ -49,6 +49,7 @@ export function summary(
     id,
     workspaceId,
     name,
+    nameRevision: 1,
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'inactive',

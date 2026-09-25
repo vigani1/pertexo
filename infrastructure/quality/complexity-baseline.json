@@ -13,7 +13,6 @@
     "packages/artifact-store/src/store.ts": 950,
     "packages/database/src/connections/connection-persistence.ts": 643,
     "packages/database/src/execution/coordinator-run-store-observations.ts": 754,
-    "packages/database/src/execution/failure-notification-destinations.ts": 613,
     "packages/database/src/execution/preview-execution-acceptance.ts": 511,
     "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1027,
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 545,
@@ -66,10 +65,6 @@
     "packages/database/src/execution/execution-acceptance.ts#acceptWorkflowRun": {
       "branches": 16,
       "lines": 201
-    },
-    "packages/database/src/execution/failure-notification-destinations.ts#createFailureNotificationDestinationDatabase": {
-      "branches": 0,
-      "lines": 268
     },
     "packages/database/src/execution/node-attempt-run-store-claim.ts#claimNodeAttemptDelivery": {
       "branches": 3,

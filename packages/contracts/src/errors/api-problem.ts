@@ -27,6 +27,7 @@ export const API_PROBLEM_CODES = [
   'workspace.invitation_delivery_unavailable',
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
+  'workflow.name_conflict',
   'workflow.invalid',
   'workflow.not_published',
   'workflow.activation_failed',
@@ -242,6 +243,12 @@ const apiProblemDetails = {
   'workflow.lifecycle_conflict': {
     status: 409,
     title: 'Workflow lifecycle conflict',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.name_conflict': {
+    status: 409,
+    title: 'Workflow name conflict',
     severity: 'warn',
     exposeDetail: true,
   },
