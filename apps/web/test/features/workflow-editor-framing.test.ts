@@ -29,14 +29,17 @@ describe('editor canvas framing', () => {
     ).toEqual({ x: 0, y: 0, width: 1440, height: 900 });
   });
 
-  it('fits a workflow into the area, centred, but never below a readable zoom', () => {
+  it('fits a workflow into the area, but never below a readable zoom', () => {
     const area = { x: 264, y: 74, width: 1176, height: 826 };
     const small = framedViewport(
       { x: 0, y: 0, width: 600, height: 200 },
       area,
       { minZoom: 0.75, maxZoom: 1 },
     );
-    expect(small).toEqual({ x: 552, y: 387, zoom: 1 });
+    expect(small.zoom).toBe(1);
+    expect(small.x).toBe(552);
+    // A third of the spare height above it, two thirds below.
+    expect(small.y).toBeCloseTo(74 + (826 - 200) / 3);
 
     const wide = framedViewport(
       { x: 100, y: 40, width: 4000, height: 400 },
