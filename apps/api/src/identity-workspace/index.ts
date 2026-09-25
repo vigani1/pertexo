@@ -29,6 +29,8 @@ export {
   InvitationAcceptanceOidcController,
 } from './invitation-acceptance-controller.js';
 export { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
+export { WorkspaceMembershipLifecycleUseCase } from './membership-lifecycle-use-case.js';
+export { WorkspaceMembershipController } from './membership-lifecycle-controller.js';
 export { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 export { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 export { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';

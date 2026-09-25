@@ -747,7 +747,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0115_webhook_delivery_log.sql',
+        migrationHead: '0118_workspace_ownership_transfer.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -946,7 +946,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0115_webhook_delivery_log.sql',
+        migrationHead: '0118_workspace_ownership_transfer.sql',
       });
     } finally {
       await pool.end();

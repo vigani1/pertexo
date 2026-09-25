@@ -116,6 +116,35 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
   ): Promise<
     Readonly<{ userId: string; roleRevision: number; replayed: boolean }>
   >;
+  leaveWorkspace?(
+    input: Readonly<{
+      workspaceId: string;
+      actorUserId: string;
+      idempotencyKey: string;
+      requestId?: string;
+      traceId?: string;
+    }>,
+  ): Promise<
+    Readonly<{ userId: string; roleRevision: number; replayed: boolean }>
+  >;
+  suspendWorkspaceMember?(
+    input: MemberRevisionCommand,
+  ): Promise<MemberStatusReceipt>;
+  reactivateWorkspaceMember?(
+    input: MemberRevisionCommand,
+  ): Promise<MemberStatusReceipt>;
+  transferWorkspaceOwnership?(
+    input: MemberRevisionCommand &
+      Readonly<{ expectedOwnerRoleRevision: number }>,
+  ): Promise<
+    Readonly<{
+      ownerUserId: string;
+      ownerRoleRevision: number;
+      previousOwnerUserId: string;
+      previousOwnerRoleRevision: number;
+      replayed: boolean;
+    }>
+  >;
   updateUserProfile?(
     input: Readonly<{
       actorUserId: string;
@@ -321,6 +350,24 @@ export interface InvitationTokenProtector {
     associatedData: string,
   ): Promise<SealedInvitationToken> | SealedInvitationToken;
 }
+
+/** An existing-member command fenced by the target's role revision. */
+type MemberRevisionCommand = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  targetUserId: string;
+  expectedRoleRevision: number;
+  idempotencyKey: string;
+  requestId?: string;
+  traceId?: string;
+}>;
+
+type MemberStatusReceipt = Readonly<{
+  userId: string;
+  roleRevision: number;
+  membershipStatus: 'active' | 'suspended';
+  replayed: boolean;
+}>;
 
 export type UserProfilePersistenceRecord = Readonly<{
   id: string;

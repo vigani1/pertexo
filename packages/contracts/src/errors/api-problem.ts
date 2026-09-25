@@ -6,6 +6,7 @@ export const API_PROBLEM_CODES = [
   'auth.email_not_verified',
   'auth.reset_link_invalid',
   'auth.conflict',
+  'auth.session_not_fresh',
   'resource.not_found',
   'request.invalid',
   'request.precondition_required',
@@ -20,6 +21,7 @@ export const API_PROBLEM_CODES = [
   'workspace.member_role_revision_conflict',
   'workspace.member_role_transition_conflict',
   'workspace.member_removal_conflict',
+  'workspace.member_status_conflict',
   'workspace.invitation_conflict',
   'workspace.invitation_proof_expired',
   'workspace.invitation_revision_conflict',
@@ -122,6 +124,12 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: false,
   },
+  'auth.session_not_fresh': {
+    status: 403,
+    title: 'Recent sign-in required',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'resource.not_found': {
     status: 404,
     title: 'Resource not found',
@@ -203,6 +211,12 @@ const apiProblemDetails = {
   'workspace.member_removal_conflict': {
     status: 409,
     title: 'Workspace member removal conflict',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workspace.member_status_conflict': {
+    status: 409,
+    title: 'Workspace member status conflict',
     severity: 'warn',
     exposeDetail: true,
   },

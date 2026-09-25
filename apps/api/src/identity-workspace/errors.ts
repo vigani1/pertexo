@@ -5,6 +5,7 @@ import {
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
+  WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   WorkspaceInvitationCommandConflictError,
   InvitationAcceptanceConflictError,
@@ -71,6 +72,8 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       }),
       forbidden: 'This member cannot be removed by you.',
     });
+  if (error instanceof WorkspaceMembershipCommandConflictError)
+    return mapMembershipConflict(error);
   if (error instanceof UserProfileCommandConflictError)
     return mapProfileConflict(error);
   if (error instanceof WorkspaceRenameCommandConflictError) {
@@ -187,6 +190,40 @@ function mapMemberCommandConflict(
   return applicationError('auth.forbidden', { safeDetail: copy.forbidden });
 }
 
+/** ADR 047 leave, suspend, reactivate and ownership transfer. */
+function mapMembershipConflict(
+  error: WorkspaceMembershipCommandConflictError,
+): ApplicationError {
+  switch (error.reason) {
+    case 'target_missing':
+      return applicationError('resource.not_found');
+    case 'revision_conflict':
+      return applicationError('workspace.member_role_revision_conflict', {
+        safeDetail: 'A membership changed since it was loaded.',
+      });
+    case 'idempotency_conflict':
+      return applicationError('request.idempotency_conflict', {
+        safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
+      });
+    case 'target_removed':
+      return applicationError('workspace.member_removal_conflict', {
+        safeDetail: 'The member is no longer in this workspace.',
+      });
+    case 'target_inactive':
+      return applicationError('workspace.member_status_conflict', {
+        safeDetail: 'The member is not in a state that allows this.',
+      });
+    case 'owner_departure':
+      return applicationError('auth.forbidden', {
+        safeDetail: 'The owner must transfer ownership before leaving.',
+      });
+    default:
+      return applicationError('auth.forbidden', {
+        safeDetail: 'This membership change is not allowed.',
+      });
+  }
+}
+
 function mapProfileConflict(
   error: UserProfileCommandConflictError,
 ): ApplicationError {
@@ -209,6 +246,10 @@ function mapIdentityError(error: IdentityError): ApplicationError {
   ) {
     return applicationError('auth.unauthenticated');
   }
+  if (error.code === 'identity.session_not_fresh')
+    return applicationError('auth.session_not_fresh', {
+      safeDetail: 'Sign in again, then retry within five minutes.',
+    });
   if (error.code === 'identity.csrf_failed') {
     return applicationError('auth.forbidden', {
       safeDetail: 'The request could not be verified.',

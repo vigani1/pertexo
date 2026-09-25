@@ -24,6 +24,8 @@ import {
 } from './invitation-acceptance-controller.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 import { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
+import { WorkspaceMembershipController } from './membership-lifecycle-controller.js';
+import { WorkspaceMembershipLifecycleUseCase } from './membership-lifecycle-use-case.js';
 import { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 import {
@@ -32,6 +34,7 @@ import {
   WorkspaceManageGuard,
   WorkspaceMemberManageGuard,
   WorkspaceMemberReadGuard,
+  WorkspaceMembershipGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
@@ -50,6 +53,7 @@ import {
   acceptancePersistence,
   invitationPersistence,
   memberRemovalPersistence,
+  membershipLifecyclePersistence,
   missingInvitationTokenProtector,
   profilePersistence,
   renamePersistence,
@@ -220,6 +224,7 @@ export class IdentityWorkspaceModule {
       WorkspaceManageGuard,
       WorkspaceMemberManageGuard,
       WorkspaceMemberReadGuard,
+      WorkspaceMembershipGuard,
     ];
     return {
       module: IdentityWorkspaceModule,
@@ -228,6 +233,7 @@ export class IdentityWorkspaceModule {
         UserController,
         WorkspaceDiscoveryController,
         WorkspaceMembersController,
+        WorkspaceMembershipController,
         WorkspaceInvitationsController,
         WorkspaceController,
         InvitationAcceptanceController,
@@ -248,6 +254,7 @@ export class IdentityWorkspaceModule {
         ListWorkspaceMembersUseCase,
         ChangeWorkspaceMemberRoleUseCase,
         RemoveWorkspaceMemberUseCase,
+        WorkspaceMembershipLifecycleUseCase,
         UpdateUserProfileUseCase,
         WorkspaceInvitationManagementUseCase,
         InvitationAcceptanceUseCase,
@@ -256,6 +263,7 @@ export class IdentityWorkspaceModule {
         WorkspaceManageGuard,
         WorkspaceMemberManageGuard,
         WorkspaceMemberReadGuard,
+        WorkspaceMembershipGuard,
         ...(oidc === undefined ? [] : [OidcLoginService]),
       ],
     };
@@ -399,6 +407,24 @@ function identityReadProviders(): Provider[] {
           telemetry,
         ),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: WorkspaceMembershipLifecycleUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        clock: IdentityClock,
+        telemetry: IdentityWorkspaceTelemetry,
+      ) =>
+        new WorkspaceMembershipLifecycleUseCase(
+          membershipLifecyclePersistence(persistence),
+          clock,
+          telemetry,
+        ),
+      inject: [
+        IDENTITY_WORKSPACE_PERSISTENCE,
+        IDENTITY_CLOCK,
+        IDENTITY_WORKSPACE_TELEMETRY,
+      ],
     },
     {
       provide: UpdateUserProfileUseCase,

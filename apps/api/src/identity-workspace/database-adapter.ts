@@ -104,6 +104,34 @@ export class DatabaseIdentityWorkspaceAdapter
     return this.database.removeWorkspaceMember(input);
   }
 
+  public leaveWorkspace(
+    input: Parameters<IdentityWorkspaceDatabase['leaveWorkspace']>[0],
+  ) {
+    return this.database.leaveWorkspace(input);
+  }
+
+  public suspendWorkspaceMember(
+    input: Parameters<IdentityWorkspaceDatabase['suspendWorkspaceMember']>[0],
+  ) {
+    return this.database.suspendWorkspaceMember(input);
+  }
+
+  public reactivateWorkspaceMember(
+    input: Parameters<
+      IdentityWorkspaceDatabase['reactivateWorkspaceMember']
+    >[0],
+  ) {
+    return this.database.reactivateWorkspaceMember(input);
+  }
+
+  public transferWorkspaceOwnership(
+    input: Parameters<
+      IdentityWorkspaceDatabase['transferWorkspaceOwnership']
+    >[0],
+  ) {
+    return this.database.transferWorkspaceOwnership(input);
+  }
+
   public listWorkspaceInvitations(
     ...input: Parameters<IdentityWorkspaceDatabase['listWorkspaceInvitations']>
   ) {

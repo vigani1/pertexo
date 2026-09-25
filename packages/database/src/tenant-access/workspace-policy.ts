@@ -152,6 +152,30 @@ export function canRemoveWorkspaceMember(
   );
 }
 
+/**
+ * ADR 047 suspension policy, for suspending and reactivating: the removal
+ * matrix. Self-suspension is decided by the caller.
+ */
+export function canSuspendWorkspaceMember(
+  actorRole: Role,
+  targetRole: Role,
+): boolean {
+  return canRemoveWorkspaceMember(actorRole, targetRole);
+}
+
+/** ADR 047: only the owner hands the workspace to another member. */
+export function canTransferWorkspaceOwnership(
+  actorRole: Role,
+  targetRole: Role,
+): boolean {
+  return actorRole === 'owner' && targetRole !== 'owner';
+}
+
+/** ADR 047: every member except the owner may leave. */
+export function canLeaveWorkspace(role: Role): boolean {
+  return role !== 'owner';
+}
+
 /** ADR 038 invitation policy. Current database state remains authoritative. */
 export function canInviteWorkspaceRole(
   actorRole: Role,

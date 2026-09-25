@@ -4,28 +4,20 @@ import { z } from 'zod';
 import type {
   IdentityWorkspaceDatabase,
   RemoveWorkspaceMemberInput,
-  WorkspaceMemberRemovalResult,
 } from './identity-workspace-contracts.js';
 import { WorkspaceMemberRemovalCommandConflictError } from './identity-workspace-errors.js';
 import {
-  claimMemberCommandReceipt,
-  completeMemberCommandReceipt,
-  isActiveMemberManager,
-  lockMemberCommandParticipants,
-  commandKeyHash,
-  commandKeySchema,
-  commandRequestHash,
   commandRevisionSchema,
+  executeMemberCommand,
+  isActiveMemberManager,
   recordMemberCommandAudit,
+  updateMembership,
 } from './identity-workspace-member-command.js';
 import { revokeUserSessions } from './identity-workspace-session-store.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
 import { canRemoveWorkspaceMember } from './workspace-policy.js';
-import { withTenantScopedClient } from './workspace.js';
 
 type RemovalStore = Pick<IdentityWorkspaceDatabase, 'removeWorkspaceMember'>;
 
-const RECEIPTS = 'workspace_member_removal_command_receipts';
 const durableResult = z
   .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })
   .strict();
@@ -48,69 +40,35 @@ export function createIdentityWorkspaceMemberRemovalStore(
   pool: Pool,
 ): RemovalStore {
   return Object.freeze({
-    removeWorkspaceMember: async (raw: RemoveWorkspaceMemberInput) => {
-      const workspaceId = parseIdentityUuid(raw.workspaceId);
-      const actorUserId = parseIdentityUuid(raw.actorUserId);
-      const targetUserId = parseIdentityUuid(raw.targetUserId);
+    removeWorkspaceMember: (raw: RemoveWorkspaceMemberInput) => {
       const expectedRoleRevision = commandRevisionSchema.parse(
         raw.expectedRoleRevision,
       );
-      const keyHash = commandKeyHash(
-        commandKeySchema.parse(raw.idempotencyKey),
-      );
-      const commandHash = commandRequestHash({
-        actorUserId,
-        expectedRoleRevision,
-        operation: 'remove',
-        targetUserId,
-        workspaceId,
-      });
-
-      return withTenantScopedClient(
-        pool,
-        { workspaceId, actorId: actorUserId },
-        async (client): Promise<WorkspaceMemberRemovalResult> => {
-          const { workspaceActive, actor, target } =
-            await lockMemberCommandParticipants(
-              client,
-              workspaceId,
-              actorUserId,
-              targetUserId,
-            );
-          if (!workspaceActive)
-            throw conflict('actor_inactive', 'The workspace is not active');
+      return executeMemberCommand(pool, {
+        table: 'workspace_member_removal_command_receipts',
+        workspaceId: raw.workspaceId,
+        actorUserId: raw.actorUserId,
+        targetUserId: raw.targetUserId,
+        idempotencyKey: raw.idempotencyKey,
+        request: { expectedRoleRevision, operation: 'remove' },
+        result: durableResult,
+        conflict,
+        admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))
             throw conflict(
               'actor_inactive',
               'The actor is no longer allowed to manage members',
             );
-          if (actorUserId === targetUserId)
+          if (scope.actorUserId === scope.targetUserId)
             throw conflict('self_removal', 'Members cannot remove themselves');
           if (target === undefined)
             throw conflict(
               'target_missing',
               'The workspace member was not found',
             );
-
-          const receipt = await claimMemberCommandReceipt(client, RECEIPTS, {
-            workspaceId,
-            actorUserId,
-            targetUserId,
-            keyHash,
-            requestHash: commandHash,
-          });
-          if (!('claimId' in receipt)) {
-            if (receipt.requestHash !== commandHash)
-              throw conflict(
-                'idempotency_conflict',
-                'The idempotency key belongs to another member removal',
-              );
-            const parsed = durableResult.safeParse(receipt.resultRef);
-            if (receipt.status !== 'completed' || !parsed.success)
-              throw new Error('Workspace member removal receipt is incomplete');
-            return Object.freeze({ ...parsed.data, replayed: true });
-          }
-
+          return { actor, target };
+        },
+        apply: async (client, { actor, target }, scope) => {
           if (target.status === 'removed')
             throw conflict(
               'target_inactive',
@@ -133,17 +91,15 @@ export function createIdentityWorkspaceMemberRemovalStore(
             );
 
           const nextRevision = target.role_revision + 1;
-          await client.query(
-            `update app.workspace_memberships
-             set status='removed',role_revision=$3,updated_at=clock_timestamp()
-             where workspace_id=$1 and user_id=$2`,
-            [workspaceId, targetUserId, nextRevision],
-          );
-          await revokeUserSessions(client, targetUserId);
+          await updateMembership(client, scope.workspaceId, {
+            userId: target.user_id,
+            role: target.role,
+            status: 'removed',
+            roleRevision: nextRevision,
+          });
+          await revokeUserSessions(client, target.user_id);
           await recordMemberCommandAudit(client, {
-            workspaceId,
-            actorUserId,
-            targetUserId,
+            ...scope,
             action: 'workspace.member_removed',
             requestId: raw.requestId,
             traceId: raw.traceId,
@@ -154,19 +110,9 @@ export function createIdentityWorkspaceMemberRemovalStore(
               toRevision: nextRevision,
             },
           });
-          const result = durableResult.parse({
-            userId: targetUserId,
-            roleRevision: nextRevision,
-          });
-          await completeMemberCommandReceipt(
-            client,
-            RECEIPTS,
-            receipt.claimId,
-            result,
-          );
-          return Object.freeze({ ...result, replayed: false });
+          return { userId: target.user_id, roleRevision: nextRevision };
         },
-      );
+      });
     },
   });
 }

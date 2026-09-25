@@ -39,6 +39,7 @@
             "auth.email_not_verified",
             "auth.reset_link_invalid",
             "auth.conflict",
+            "auth.session_not_fresh",
             "resource.not_found",
             "request.invalid",
             "request.precondition_required",
@@ -53,6 +54,7 @@
             "workspace.member_role_revision_conflict",
             "workspace.member_role_transition_conflict",
             "workspace.member_removal_conflict",
+            "workspace.member_status_conflict",
             "workspace.invitation_conflict",
             "workspace.invitation_proof_expired",
             "workspace.invitation_revision_conflict",
@@ -779,6 +781,143 @@
       "required": [
         "userId",
         "roleRevision",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceLeaveRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WorkspaceLeaveResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "roleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "userId",
+        "roleRevision",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceMemberStatusRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "expectedRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expectedRoleRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceMemberStatusResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "roleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "membershipStatus": {
+          "type": "string",
+          "enum": [
+            "active",
+            "suspended"
+          ]
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "userId",
+        "roleRevision",
+        "membershipStatus",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceOwnershipTransferRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "expectedRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expectedOwnerRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "expectedRoleRevision",
+        "expectedOwnerRoleRevision"
+      ],
+      "additionalProperties": false
+    },
+    "WorkspaceOwnershipTransferResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ownerUserId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "ownerRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "previousOwnerUserId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "previousOwnerRoleRevision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ownerUserId",
+        "ownerRoleRevision",
+        "previousOwnerUserId",
+        "previousOwnerRoleRevision",
         "replayed"
       ],
       "additionalProperties": false

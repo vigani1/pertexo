@@ -144,6 +144,27 @@ export type WorkspaceMemberRemovalResult = Readonly<{
   roleRevision: number;
   replayed: boolean;
 }>;
+/** ADR 047: leaving names only the actor; the owner check runs under lock. */
+export type LeaveWorkspaceInput = Omit<
+  RemoveWorkspaceMemberInput,
+  'targetUserId' | 'expectedRoleRevision'
+>;
+export type WorkspaceMemberStatusCommandInput = RemoveWorkspaceMemberInput;
+export type WorkspaceMemberStatusResult = Readonly<{
+  userId: string;
+  roleRevision: number;
+  membershipStatus: 'active' | 'suspended';
+  replayed: boolean;
+}>;
+export type TransferWorkspaceOwnershipInput = RemoveWorkspaceMemberInput &
+  Readonly<{ expectedOwnerRoleRevision: number }>;
+export type WorkspaceOwnershipTransferResult = Readonly<{
+  ownerUserId: string;
+  ownerRoleRevision: number;
+  previousOwnerUserId: string;
+  previousOwnerRoleRevision: number;
+  replayed: boolean;
+}>;
 export type WorkspaceMembersPage = Readonly<{
   items: readonly WorkspaceMemberRecord[];
   nextCursor?: Readonly<{ createdAt: string; userId: string }>;
@@ -373,6 +394,18 @@ export type IdentityWorkspaceDatabase = Readonly<{
   removeWorkspaceMember(
     input: RemoveWorkspaceMemberInput,
   ): Promise<WorkspaceMemberRemovalResult>;
+  leaveWorkspace(
+    input: LeaveWorkspaceInput,
+  ): Promise<WorkspaceMemberRemovalResult>;
+  suspendWorkspaceMember(
+    input: WorkspaceMemberStatusCommandInput,
+  ): Promise<WorkspaceMemberStatusResult>;
+  reactivateWorkspaceMember(
+    input: WorkspaceMemberStatusCommandInput,
+  ): Promise<WorkspaceMemberStatusResult>;
+  transferWorkspaceOwnership(
+    input: TransferWorkspaceOwnershipInput,
+  ): Promise<WorkspaceOwnershipTransferResult>;
   updateUserProfile(
     input: UpdateUserProfileInput,
   ): Promise<UserProfileUpdateResult>;

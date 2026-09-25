@@ -4,6 +4,7 @@ import {
   acceptancePersistence,
   invitationPersistence,
   memberRemovalPersistence,
+  membershipLifecyclePersistence,
   missingInvitationTokenProtector,
   profilePersistence,
   renamePersistence,
@@ -26,12 +27,20 @@ const acceptanceMethods = [
   'abandonInvitationAcceptance',
 ] as const;
 
+const lifecycleMethods = [
+  'leaveWorkspace',
+  'suspendWorkspaceMember',
+  'reactivateWorkspaceMember',
+  'transferWorkspaceOwnership',
+] as const;
+
 const configuredMethods = [
   'renameWorkspace',
   'removeWorkspaceMember',
   'updateUserProfile',
   ...invitationMethods,
   ...acceptanceMethods,
+  ...lifecycleMethods,
 ];
 
 function persistenceWith(
@@ -86,13 +95,25 @@ describe('identity-workspace persistence capabilities', () => {
       acceptancePersistence(persistence),
       'Invitation acceptance persistence is not configured',
     );
+    await expectEveryCapabilityRejects(
+      membershipLifecyclePersistence(persistence),
+      'Workspace membership lifecycle persistence is not configured',
+    );
   });
 
   it('treats a partially configured group as unconfigured', async () => {
     const calls: string[] = [];
     const persistence = persistenceWith(
-      [...invitationMethods.slice(1), ...acceptanceMethods.slice(0, -1)],
+      [
+        ...invitationMethods.slice(1),
+        ...acceptanceMethods.slice(0, -1),
+        ...lifecycleMethods.slice(0, -1),
+      ],
       calls,
+    );
+    await expectEveryCapabilityRejects(
+      membershipLifecyclePersistence(persistence),
+      'Workspace membership lifecycle persistence is not configured',
     );
 
     await expectEveryCapabilityRejects(
@@ -115,6 +136,7 @@ describe('identity-workspace persistence capabilities', () => {
       profilePersistence(persistence),
       invitationPersistence(persistence),
       acceptancePersistence(persistence),
+      membershipLifecyclePersistence(persistence),
     ];
 
     for (const capability of capabilities) {

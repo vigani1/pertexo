@@ -20,7 +20,11 @@ import type {
   IdentityWorkspaceRequest,
   AuthenticatedRequestSession,
 } from './types.js';
-import type { WorkspaceAuthorizationSource } from './ports.js';
+import type {
+  IdentitySessionAuthority,
+  WorkspaceAuthorizationSource,
+} from './ports.js';
+import type { SignInEvidence } from '../identity/index.js';
 import { mapIdentityWorkspaceError } from './errors.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
 import { WORKSPACE_AUTHORIZATION } from './tokens.js';
@@ -153,6 +157,19 @@ export class WorkspaceMemberReadGuard extends WorkspaceCapabilityGuard {
   }
 }
 
+/** Any active member of an active workspace, e.g. to leave it (ADR 047). */
+@Injectable()
+export class WorkspaceMembershipGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKSPACE_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    @Inject(RequestContextStore)
+    contexts: RequestContextStore,
+  ) {
+    super('workspace:read', authorization, contexts, 'forbidden', ['active']);
+  }
+}
+
 /** Coarse route guard; persistence rechecks current roles and the transition. */
 @Injectable()
 export class WorkspaceMemberManageGuard extends WorkspaceCapabilityGuard {
@@ -234,4 +251,24 @@ export function authenticatedSession(
     return throwApplicationError(applicationError('auth.unauthenticated'));
   }
   return request.identitySession;
+}
+
+/**
+ * When the requesting session's own user signed in (ADR 043, ADR 047). An
+ * authority that cannot say answers 404; evidence for another user is a 401.
+ */
+export async function requireSignInEvidence(
+  request: IdentityWorkspaceRequest,
+  sessions: Pick<IdentitySessionAuthority, 'signInEvidence'>,
+): Promise<SignInEvidence> {
+  const evidence = await sessions.signInEvidence?.(
+    readCookie(request, SESSION_COOKIE_NAME) ?? '',
+  );
+  if (evidence?.userId !== authenticatedSession(request).userId)
+    return throwApplicationError(
+      applicationError(
+        evidence === undefined ? 'resource.not_found' : 'auth.unauthenticated',
+      ),
+    );
+  return evidence;
 }
