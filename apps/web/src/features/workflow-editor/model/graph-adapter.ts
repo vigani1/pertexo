@@ -20,6 +20,7 @@ import {
 } from './graph-scopes';
 
 type Position = Readonly<{ x: number; y: number }>;
+type Size = Readonly<{ width: number; height: number }>;
 
 /**
  * A For each step's body in summary (ADR 020): the steps that run once per
@@ -92,6 +93,11 @@ export type CanvasDecorations = Readonly<{
   dragPositions: ReadonlyMap<string, Position>;
   /** Client-side body issues by For each ID. */
   bodyIssues: ReadonlyMap<string, readonly BodyIssue[]>;
+  /**
+   * Sizes React Flow measured, handed back on each projection so the
+   * overview map (which reads the projected nodes) can draw them.
+   */
+  measuredSizes?: ReadonlyMap<string, Size>;
 }>;
 
 const noCanvasDecorations: CanvasDecorations = Object.freeze({
@@ -223,10 +229,12 @@ function projectNode(
     parent === undefined
       ? node.position
       : fromBodyPosition(parent.frame.positions.get(node.id) ?? node.position);
+  const measured = decorations.measuredSizes?.get(node.id);
   return {
     id: node.id,
     type: isForEach(node) ? 'forEach' : 'workflow',
     position: decorations.dragPositions.get(node.id) ?? shown,
+    ...(measured === undefined ? {} : { measured }),
     ...(parent === undefined
       ? {}
       : { parentId: parent.id, extent: BODY_EXTENT }),
