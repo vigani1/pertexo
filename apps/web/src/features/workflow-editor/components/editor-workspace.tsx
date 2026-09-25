@@ -23,7 +23,10 @@ import {
 import type { useCanvasEffects } from '../use-canvas-effects';
 import type { useEditorActions } from '../use-editor-actions';
 import { useEditorShortcuts } from '../use-editor-shortcuts';
-import { useInspectorNavigation } from '../use-inspector-navigation';
+import {
+  useInspectorNavigation,
+  type MobilePanel,
+} from '../use-inspector-navigation';
 import { useLastTest } from '../use-last-test';
 import { useQuickAdd } from '../use-quick-add';
 import { useStepPlacement } from '../use-step-placement';
@@ -96,15 +99,14 @@ export function EditorWorkspace({
   );
   const editable = canUpdate && !inConflict;
   const canvasRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const testRef = useRef<NodeTestHandle>(null);
-  const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const { request } = actions;
   const navigation = useInspectorNavigation(request);
   const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
+  const addStep = useAddStepFold(editable, setMobilePanel);
   const { placement, quickAdd, addAfter, addToBody } = useStepAdding({
     store,
     definitions,
@@ -124,17 +126,8 @@ export function EditorWorkspace({
       },
       deleteSelection,
       duplicateSelection,
-      focusAddStep: () => {
-        if (!editable) return;
-        flushSync(() => {
-          setCollapsed(false);
-          setMobilePanel('add');
-        });
-        searchRef.current?.focus();
-      },
-      toggleAddStep: () => {
-        setCollapsed((current) => !current);
-      },
+      focusAddStep: addStep.focus,
+      toggleAddStep: addStep.toggle,
       testSelectedStep: () => {
         if (store.getState().selectedNodeId === null) return;
         navigation.openTab('test');
@@ -172,7 +165,7 @@ export function EditorWorkspace({
       }
       banner={banner}
       editable={canUpdate}
-      addStepCollapsed={collapsed}
+      addStepCollapsed={addStep.collapsed}
       mobilePanel={navigation.mobilePanel}
       onMobilePanelChange={setMobilePanel}
       inspectorOpen={inspectorOpen}
@@ -199,11 +192,9 @@ export function EditorWorkspace({
       addStep={
         <AddStepLens
           definitions={definitions}
-          collapsed={collapsed}
-          searchRef={searchRef}
-          onToggleCollapsed={() => {
-            setCollapsed((current) => !current);
-          }}
+          collapsed={addStep.collapsed}
+          searchRef={addStep.searchRef}
+          onToggleCollapsed={addStep.toggle}
           onAdd={(choice) => {
             placement.addAtCentre(choice.definition);
             setMobilePanel('none');
@@ -261,6 +252,30 @@ export function EditorWorkspace({
       }
     />
   );
+}
+
+/** The add-step lens's fold and its search field, which "/" focuses. */
+function useAddStepFold(
+  editable: boolean,
+  setMobilePanel: (panel: MobilePanel) => void,
+) {
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  return {
+    searchRef,
+    collapsed,
+    toggle: () => {
+      setCollapsed((current) => !current);
+    },
+    focus: () => {
+      if (!editable) return;
+      flushSync(() => {
+        setCollapsed(false);
+        setMobilePanel('add');
+      });
+      searchRef.current?.focus();
+    },
+  } as const;
 }
 
 /**

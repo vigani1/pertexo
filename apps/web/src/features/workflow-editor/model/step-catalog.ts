@@ -29,7 +29,7 @@ export type StepChoiceBundle = Readonly<{
 }>;
 
 /** One row of the add-step list: a step, or a bundle of related steps. */
-export type StepListEntry =
+type StepListEntry =
   | Readonly<{ kind: 'step'; choice: StepChoice }>
   | Readonly<{ kind: 'bundle'; bundle: StepChoiceBundle }>;
 
