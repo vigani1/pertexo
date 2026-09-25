@@ -53,7 +53,9 @@ describe('member removal, self profile and return path contracts', () => {
   });
 
   it('bounds display names and requires the profile revision', () => {
-    expect(userDisplayNameSchema.parse('  Ada Lovelace  ')).toBe('Ada Lovelace');
+    expect(userDisplayNameSchema.parse('  Ada Lovelace  ')).toBe(
+      'Ada Lovelace',
+    );
     expect(userDisplayNameSchema.parse('x'.repeat(128))).toHaveLength(128);
     for (const name of ['', '   ', 'x'.repeat(129), 'Line\nBreak', 'Nul\u0000'])
       expect(userDisplayNameSchema.safeParse(name).success).toBe(false);
@@ -67,9 +69,9 @@ describe('member removal, self profile and return path contracts', () => {
         email: 'other@example.test',
       }).success,
     ).toBe(false);
-    expect(
-      userProfileResponseSchema.shape.revision.safeParse(0).success,
-    ).toBe(false);
+    expect(userProfileResponseSchema.shape.revision.safeParse(0).success).toBe(
+      false,
+    );
     const patch = identityWorkspaceOpenApiDocument.paths['/v1/users/me'].patch;
     expect(patch.operationId).toBe('updateCurrentUserProfile');
     expect(patch.responses).toHaveProperty('412');

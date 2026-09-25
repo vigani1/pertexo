@@ -6,6 +6,7 @@ import {
   capabilitiesForRole,
   canChangeWorkspaceMemberRole,
   canInviteWorkspaceRole,
+  canRemoveWorkspaceMember,
   hasCapability,
   rolesForCapability,
   type AuthorizationCapability,
@@ -113,6 +114,21 @@ describe('workspace authorization policy', () => {
             `${actor}: ${current} -> ${next}`,
           ).toBe(expected);
         }
+      }
+    }
+  });
+
+  it('encodes the complete approved member removal matrix', () => {
+    const delegated = new Set<Role>(['builder', 'operator', 'viewer']);
+    for (const actor of ROLES) {
+      for (const target of ROLES) {
+        const expected =
+          target !== 'owner' &&
+          (actor === 'owner' || (actor === 'admin' && delegated.has(target)));
+        expect(
+          canRemoveWorkspaceMember(actor, target),
+          `${actor} removes ${target}`,
+        ).toBe(expected);
       }
     }
   });

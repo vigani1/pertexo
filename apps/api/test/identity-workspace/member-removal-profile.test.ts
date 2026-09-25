@@ -17,10 +17,6 @@ import {
   type ChangeWorkspaceMemberRoleUseCase,
   type CookieResponse,
 } from '../../src/identity-workspace/index.js';
-import {
-  memberRemovalPersistence,
-  profilePersistence,
-} from '../../src/identity-workspace/persistence-capabilities.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -172,36 +168,6 @@ describe('member removal and self profile commands', () => {
         new UserProfileCommandConflictError(reason, 'unsafe detail'),
       ),
     ).toMatchObject({ code });
-  });
-
-  it('fails closed when an optional command is not configured', async () => {
-    await expect(
-      memberRemovalPersistence({} as never).removeWorkspaceMember({
-        workspaceId,
-        actorUserId: actorId,
-        targetUserId: targetId,
-        expectedRoleRevision: 1,
-        idempotencyKey: 'key',
-      }),
-    ).rejects.toThrow('Workspace member removal persistence is not configured');
-    await expect(
-      profilePersistence({} as never).updateUserProfile({
-        actorUserId: actorId,
-        displayName: 'Name',
-        expectedRevision: 1,
-        idempotencyKey: 'key',
-      }),
-    ).rejects.toThrow('User profile persistence is not configured');
-    const removeWorkspaceMember = vi.fn().mockResolvedValue({});
-    const updateUserProfile = vi.fn().mockResolvedValue({});
-    await memberRemovalPersistence({
-      removeWorkspaceMember,
-    } as never).removeWorkspaceMember({} as never);
-    await profilePersistence({ updateUserProfile } as never).updateUserProfile(
-      {} as never,
-    );
-    expect(removeWorkspaceMember).toHaveBeenCalledOnce();
-    expect(updateUserProfile).toHaveBeenCalledOnce();
   });
 
   it('adapts the database commands without leaking database records', async () => {

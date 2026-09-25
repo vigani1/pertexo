@@ -24,7 +24,6 @@ export {
   type WorkspaceMemberRoleCommandConflictReason,
   type WorkspaceMemberRemovalCommandConflictReason,
   type WorkspaceRenameCommandConflictReason,
-  type UserProfileCommandConflictReason,
 } from './identity-workspace-errors.js';
 import {
   IDEMPOTENCY_STATUS,
