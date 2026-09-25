@@ -405,9 +405,9 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     });
     const [before, gap, after] = within(list).getAllByRole('listitem');
     // New York's clocks spring forward on 14 March 2027.
-    expect(before).toHaveTextContent(/02:30.*EST/u);
-    expect(gap).toHaveTextContent(/03:00.*EDT/u);
-    expect(after).toHaveTextContent(/02:30.*EDT/u);
+    expect(before).toHaveTextContent(/\b0?2:30.*EST/u);
+    expect(gap).toHaveTextContent(/\b0?3:00.*EDT/u);
+    expect(after).toHaveTextContent(/\b0?2:30.*EDT/u);
     expect(sent).toEqual([
       {
         config: {

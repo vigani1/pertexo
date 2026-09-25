@@ -9,7 +9,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
 });
 const clockFormatter = new Intl.DateTimeFormat(undefined, {
-  hour: '2-digit',
+  hour: 'numeric',
   minute: '2-digit',
   second: '2-digit',
 });
@@ -22,7 +22,7 @@ const dayHeadingFormatter = new Intl.DateTimeFormat(undefined, {
 });
 const relativeFormatter = new Intl.RelativeTimeFormat(undefined, {
   numeric: 'auto',
-  style: 'short',
+  style: 'narrow',
 });
 
 const MISSING = '—';
@@ -43,7 +43,7 @@ export function formatDate(value: string | null | undefined): string {
   return date === undefined ? MISSING : dateFormatter.format(date);
 }
 
-/** Wall-clock time with seconds, e.g. 14:31:02. */
+/** Wall-clock time with seconds, e.g. 14:31:02 or 2:31:02 PM: for logs. */
 export function formatClock(value: string | null | undefined): string {
   const date = toDate(value);
   return date === undefined ? MISSING : clockFormatter.format(date);
@@ -72,7 +72,7 @@ export function formatDayHeading(value: string, now = Date.now()): string {
   return dayHeadingFormatter.format(date);
 }
 
-/** "12 min ago", "in 3 hr". */
+/** "12m ago", "in 3h", "yesterday". */
 export function formatRelativeTime(
   value: string | null | undefined,
   now = Date.now(),
@@ -89,14 +89,17 @@ export function formatRelativeTime(
   return relativeFormatter.format(Math.round(seconds / 86_400), 'day');
 }
 
-/** Compact duration: 0.12 s, 4.2 s, 1m 12s, 2h 05m. */
+/** Compact duration, one style everywhere: 0.12s, 4.2s, 15s, 1m 12s, 2h 05m. */
 export function formatDurationMs(
   durationMs: number | null | undefined,
 ): string {
   if (durationMs === null || durationMs === undefined || durationMs < 0)
     return MISSING;
-  if (durationMs < 1_000) return `${(durationMs / 1_000).toFixed(2)} s`;
-  if (durationMs < 60_000) return `${(durationMs / 1_000).toFixed(1)} s`;
+  if (durationMs === 0) return '0s';
+  if (durationMs < 1_000)
+    return `${(durationMs / 1_000).toFixed(2).replace(/0$/u, '')}s`;
+  if (durationMs < 60_000)
+    return `${(durationMs / 1_000).toFixed(1).replace(/\.0$/u, '')}s`;
   const totalSeconds = Math.floor(durationMs / 1_000);
   const hours = Math.floor(totalSeconds / 3_600);
   const minutes = Math.floor((totalSeconds % 3_600) / 60);
@@ -133,7 +136,7 @@ export function formatDateTimeInZone(
         weekday: 'short',
         day: 'numeric',
         month: 'short',
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
         timeZoneName: 'short',
         timeZone,

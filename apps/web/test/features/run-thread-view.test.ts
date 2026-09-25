@@ -199,7 +199,7 @@ describe('thread view', () => {
       'Retrying Send receipt',
     );
     expect(receipt === undefined ? '' : stepTag(receipt, nowMs)).toBe(
-      'retry in 15.0 s',
+      'retry in 15s',
     );
     expect(view.endMs).toBe(start + 35_000);
   });
@@ -258,7 +258,7 @@ describe('thread view', () => {
 describe('run copy', () => {
   it('describes finished runs in one sentence', () => {
     const done = runSummary('succeeded', { completedAt: at(4.2) });
-    expect(describeRunSentence(done, [], start)).toBe('Succeeded in 4.2 s');
+    expect(describeRunSentence(done, [], start)).toBe('Succeeded in 4.2s');
     expect(
       describeRunSentence(
         runSummary('running', { cancelRequestedAt: at(3) }),
@@ -297,9 +297,9 @@ describe('run copy', () => {
       () => 'Send receipt',
     );
     expect(line).toMatchObject({
-      offset: '+5.0 s',
+      offset: '+5s',
       step: 'Send receipt',
-      sentence: 'retry scheduled in 30.0 s · attempt 2',
+      sentence: 'retry scheduled in 30s · attempt 2',
       tone: 'waiting',
       rawType: 'node.retry_scheduled',
     });

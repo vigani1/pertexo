@@ -141,9 +141,9 @@ describe('schedule card on the Triggers tab', () => {
     const card = await scheduleCard();
     const list = await within(card).findByRole('list', { name: 'Next runs' });
     const [before, gap, after] = within(list).getAllByRole('listitem');
-    expect(before).toHaveTextContent(/02:30.*EST/u);
-    expect(gap).toHaveTextContent(/03:00.*EDT/u);
-    expect(after).toHaveTextContent(/02:30.*EDT/u);
+    expect(before).toHaveTextContent(/\b0?2:30.*EST/u);
+    expect(gap).toHaveTextContent(/\b0?3:00.*EDT/u);
+    expect(after).toHaveTextContent(/\b0?2:30.*EDT/u);
     if (localTimeZone() !== 'America/New_York')
       expect(within(list).getAllByText(/your time/u)).toHaveLength(3);
   });
