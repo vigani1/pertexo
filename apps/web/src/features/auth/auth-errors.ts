@@ -10,8 +10,8 @@ export function isUnauthenticated(error: unknown): boolean {
 
 export function logoutErrorMessage(error: unknown): string {
   if (isApiError(error) && error.kind === 'network')
-    return 'Pertexo could not confirm sign out. Check your connection and try again.';
+    return 'Pertexo couldn’t be reached, so you may still be signed in. Check your connection and try again.';
   if (isApiError(error) && error.kind === 'timeout')
-    return 'Sign out took too long to confirm. Try again.';
-  return 'Pertexo could not confirm sign out. Try again.';
+    return 'Pertexo didn’t answer in time, so you may still be signed in. Try again.';
+  return 'You may still be signed in on this device. Try again.';
 }
