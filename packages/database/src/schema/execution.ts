@@ -99,6 +99,12 @@ export const workflowRuns = appSchema.table(
       table.createdAt,
       table.id,
     ),
+    // Migration 0113 also covers (status, workflow_id) with INCLUDE, which
+    // Drizzle cannot declare; the statistics read relies on that coverage.
+    index('workflow_runs_workspace_created_statistics_idx').on(
+      table.workspaceId,
+      table.createdAt,
+    ),
     index('workflow_runs_workflow_version_idx').on(
       table.workspaceId,
       table.workflowVersionId,

@@ -69,7 +69,7 @@ const startupRow = Object.freeze({
 describe('steady database serving readiness', () => {
   it('pins the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0107_legacy_method_migration_attempts.sql',
+      '0113_workflow_run_statistics_index.sql',
     );
   });
 

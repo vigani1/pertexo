@@ -57,7 +57,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0107_legacy_method_migration_attempts.sql',
+          migrationHead: '0113_workflow_run_statistics_index.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -132,7 +132,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0107_legacy_method_migration_attempts.sql',
+          migrationHead: '0113_workflow_run_statistics_index.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -202,7 +202,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0107_legacy_method_migration_attempts.sql',
+        migrationHead: '0113_workflow_run_statistics_index.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -441,7 +441,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0107_legacy_method_migration_attempts.sql',
+        migrationHead: '0113_workflow_run_statistics_index.sql',
       });
     } finally {
       await readinessPool.end();

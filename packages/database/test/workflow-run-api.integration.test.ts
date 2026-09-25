@@ -19,6 +19,7 @@ import {
 import type { ExecutionStateConflictError } from '../src/execution/execution-state.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
+import { explainDocument, explainWork } from './support/query-plan.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -211,71 +212,6 @@ async function apiQueryWithIndexPreference(
   } finally {
     client.release();
   }
-}
-
-type ExplainNode = Readonly<{
-  'Node Type': string;
-  'Actual Rows': number;
-  'Actual Loops': number;
-  'Rows Removed by Filter'?: number;
-  'Rows Removed by Join Filter'?: number;
-  'Rows Removed by Index Recheck'?: number;
-  'Shared Hit Blocks'?: number;
-  'Shared Read Blocks'?: number;
-  Plans?: readonly ExplainNode[];
-}>;
-
-type ExplainDocument = Readonly<{
-  Plan: ExplainNode;
-  'Execution Time'?: number;
-  Settings?: Readonly<Record<string, string>>;
-}>;
-
-function explainDocument(result: QueryResult): ExplainDocument {
-  const row = result.rows[0] as Record<string, unknown> | undefined;
-  const documents = row?.['QUERY PLAN'];
-  if (!Array.isArray(documents) || documents.length !== 1)
-    throw new Error('expected one PostgreSQL JSON plan');
-  return documents[0] as ExplainDocument;
-}
-
-type ExplainWork = Readonly<{
-  outputRowInstances: number;
-  rejectedRowInstances: number;
-  summedNodeRowWork: number;
-  rootSharedBufferTouches: number;
-  nodeTypes: readonly string[];
-}>;
-
-function explainWork(node: ExplainNode): ExplainWork {
-  const childWork = (node.Plans ?? []).map(explainWork);
-  const loops = node['Actual Loops'];
-  const outputRowInstances = node['Actual Rows'] * loops;
-  const rejectedRowInstances =
-    ((node['Rows Removed by Filter'] ?? 0) +
-      (node['Rows Removed by Join Filter'] ?? 0) +
-      (node['Rows Removed by Index Recheck'] ?? 0)) *
-    loops;
-  return {
-    outputRowInstances:
-      outputRowInstances +
-      childWork.reduce((total, child) => total + child.outputRowInstances, 0),
-    rejectedRowInstances:
-      rejectedRowInstances +
-      childWork.reduce((total, child) => total + child.rejectedRowInstances, 0),
-    summedNodeRowWork:
-      outputRowInstances +
-      rejectedRowInstances +
-      childWork.reduce((total, child) => total + child.summedNodeRowWork, 0),
-    // PostgreSQL reports aggregate buffer use at the plan root. Do not add the
-    // child counters again because that would double-count the same blocks.
-    rootSharedBufferTouches:
-      (node['Shared Hit Blocks'] ?? 0) + (node['Shared Read Blocks'] ?? 0),
-    nodeTypes: [
-      node['Node Type'],
-      ...childWork.flatMap((child) => child.nodeTypes),
-    ],
-  };
 }
 
 async function resetFixture(): Promise<void> {

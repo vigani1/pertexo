@@ -17,7 +17,7 @@ describe('retained migration history fixture', () => {
       .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/u.test(name))
       .sort();
     expect(expected).toEqual(current.slice(current.indexOf(expected[0] ?? '')));
-    expect(expected.at(-1)).toBe('0107_legacy_method_migration_attempts.sql');
+    expect(expected.at(-1)).toBe('0113_workflow_run_statistics_index.sql');
   });
 
   it('returns an exact suffix and rejects a missing start', async () => {
@@ -46,6 +46,7 @@ describe('retained migration history fixture', () => {
       '0105_owned_auth_email_proofs.sql',
       '0106_auth_method_link_attempts.sql',
       '0107_legacy_method_migration_attempts.sql',
+      '0113_workflow_run_statistics_index.sql',
     ]);
     await expect(
       expectedMigrationHistoryFrom('9999_missing.sql'),
