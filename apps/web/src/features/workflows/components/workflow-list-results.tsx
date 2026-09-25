@@ -38,6 +38,7 @@ export function WorkflowListResults({
   runs,
   onQueryChange,
   onSearchChange,
+  onRename,
   onLifecycle,
 }: Readonly<{
   apiClient: ApiClient;
@@ -51,6 +52,7 @@ export function WorkflowListResults({
   runs: RecentRunTicks;
   onQueryChange: (query: string) => void;
   onSearchChange: (search: WorkflowListSearch) => void;
+  onRename: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
 }>) {
   const view = search.view ?? 'active';
@@ -97,6 +99,7 @@ export function WorkflowListResults({
           workspace={workspace}
           workflows={visible}
           runs={runs}
+          onRename={onRename}
           onLifecycle={onLifecycle}
         />
       )}

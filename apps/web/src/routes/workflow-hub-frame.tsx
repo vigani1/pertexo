@@ -25,6 +25,8 @@ export function WorkflowHubTabFrame({
     <>
       <div className="sticky top-0 z-30 px-3 pt-3">
         <WorkflowHubBar
+          apiClient={apiClient}
+          userId={user.id}
           workspace={workspace}
           workflowId={workflowId}
           workflow={summary.data}

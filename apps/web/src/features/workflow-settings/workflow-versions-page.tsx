@@ -6,6 +6,8 @@ import type {
 import type { WorkflowVersionResponse } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { GitCompareArrowsIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   Empty,
@@ -21,11 +23,12 @@ import {
   SettingsSection,
 } from './components/settings-section';
 import { RestoreVersionDialog } from './components/versions/restore-version-dialog';
+import { VersionCompareSheet } from './components/versions/version-compare-sheet';
 import { VersionPreviewSheet } from './components/versions/version-preview-sheet';
 import { VersionTimeline } from './components/versions/version-timeline';
 import { workflowVersionsQueryOptions } from './workflow-settings.queries';
 
-/** Every published version on one thread, with preview and restore. */
+/** Every published version on one thread, with preview, compare and restore. */
 export function WorkflowVersionsPage({
   apiClient,
   user,
@@ -45,6 +48,7 @@ export function WorkflowVersionsPage({
   );
   const [previewing, setPreviewing] = useState<WorkflowVersionResponse>();
   const [restoring, setRestoring] = useState<WorkflowVersionResponse>();
+  const [comparing, setComparing] = useState(false);
   const canRestore = workspace.capabilities.includes('workflow:update');
   const items = visibleSettingsData(versions)?.items;
   const live = items?.find(
@@ -92,6 +96,20 @@ export function WorkflowVersionsPage({
             </EmptyActions>
           </Empty>
         ) : null}
+        {items === undefined || items.length < 2 ? null : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => {
+              setComparing(true);
+            }}
+          >
+            <GitCompareArrowsIcon aria-hidden="true" data-icon="inline-start" />
+            Compare versions
+          </Button>
+        )}
         {items === undefined || items.length === 0 ? null : (
           <VersionTimeline
             versions={items}
@@ -105,6 +123,13 @@ export function WorkflowVersionsPage({
           />
         )}
       </SettingsSection>
+      <VersionCompareSheet
+        open={comparing && items !== undefined}
+        versions={items ?? []}
+        onClose={() => {
+          setComparing(false);
+        }}
+      />
       <VersionPreviewSheet
         version={items === undefined ? undefined : previewing}
         previous={previewing === undefined ? undefined : previous(previewing)}

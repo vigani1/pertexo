@@ -7,6 +7,7 @@ import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 import {
   api,
+  destination,
   destinationId,
   installQueries,
   problem,
@@ -227,15 +228,20 @@ describe('workflow settings tab', () => {
     ).toBeVisible();
   });
 
-  it('sends failure alerts to a destination chosen by its human label', async () => {
+  it('shows the current choice, then sends alerts to a destination chosen by its human label', async () => {
     const keys: (string | null)[] = [];
+    let current: typeof destination | null = null;
     installQueries();
     mockServer.use(
+      http.get(`${workflowApi}/failure-notification-policy`, () =>
+        HttpResponse.json({ destination: current }),
+      ),
       http.put(
         `${workflowApi}/failure-notification-policy`,
         async ({ request }) => {
           keys.push(request.headers.get('idempotency-key'));
           expect(await request.json()).toEqual({ destinationId });
+          current = destination;
           return new HttpResponse(null, { status: 204 });
         },
       ),
@@ -246,8 +252,14 @@ describe('workflow settings tab', () => {
       name: 'Failure alerts',
     });
     expect(
-      within(alerts).getByText(/can’t show the current choice yet/u),
+      await within(alerts).findByText(/aren’t announced anywhere/u),
     ).toBeVisible();
+    expect(
+      within(alerts).queryByText(/can’t show the current choice/u),
+    ).not.toBeInTheDocument();
+    expect(
+      within(alerts).getByRole('button', { name: 'Turn alerts off' }),
+    ).toBeDisabled();
     expect(
       within(alerts).getByRole('link', { name: 'Manage alert destinations' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/alerts`);
@@ -266,6 +278,36 @@ describe('workflow settings tab', () => {
     );
     expect(await screen.findByText('Failure alerts updated')).toBeVisible();
     expect(keys).toEqual([expect.any(String)]);
+    const now = await within(alerts).findByText('Failures go to');
+    expect(now.parentElement).toHaveTextContent(
+      'Failures go toEmail to alerts@example.test',
+    );
+    expect(
+      within(alerts).getByRole('button', { name: 'Turn alerts off' }),
+    ).toBeEnabled();
+  });
+
+  it('says plainly when the current alert destination is turned off', async () => {
+    installQueries();
+    mockServer.use(
+      http.get(`${workflowApi}/failure-notification-policy`, () =>
+        HttpResponse.json({
+          destination: { ...destination, status: 'disabled' },
+        }),
+      ),
+    );
+    renderApp(settingsPath);
+    const alerts = await screen.findByRole('region', {
+      name: 'Failure alerts',
+    });
+    expect(
+      await within(alerts).findByText(
+        'Failures go to: Email to alerts@example.test',
+      ),
+    ).toBeVisible();
+    expect(
+      within(alerts).getByText(/turned off, so nothing is sent/u),
+    ).toBeVisible();
   });
 
   it('blocks a conflicting alert change until the exact uncertain attempt resolves', async () => {
@@ -273,6 +315,9 @@ describe('workflow settings tab', () => {
     const setKeys: string[] = [];
     const clearKeys: string[] = [];
     mockServer.use(
+      http.get(`${workflowApi}/failure-notification-policy`, () =>
+        HttpResponse.json({ destination }),
+      ),
       http.put(`${workflowApi}/failure-notification-policy`, ({ request }) => {
         setKeys.push(request.headers.get('idempotency-key') ?? '');
         return setKeys.length === 1

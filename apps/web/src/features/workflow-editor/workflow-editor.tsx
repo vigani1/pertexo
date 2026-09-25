@@ -222,6 +222,8 @@ function WorkflowEditorSession({
           effects={effects}
           bar={(chrome) => (
             <EditorCommandBar
+              apiClient={apiClient}
+              userId={userId}
               workspace={workspace}
               workflowId={workflowId}
               workflow={workflow.data}

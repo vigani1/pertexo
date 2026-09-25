@@ -49,6 +49,7 @@ export function WorkflowRows({
   workspace,
   workflows,
   runs,
+  onRename,
   onLifecycle,
 }: Readonly<{
   apiClient: ApiClient;
@@ -56,6 +57,7 @@ export function WorkflowRows({
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowSummary[];
   runs: RecentRunTicks;
+  onRename: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
 }>) {
   return (
@@ -81,6 +83,7 @@ export function WorkflowRows({
             workspace={workspace}
             workflow={workflow}
             runs={runs}
+            onRename={onRename}
             onLifecycle={onLifecycle}
           />
         ))}
@@ -91,7 +94,8 @@ export function WorkflowRows({
 
 /**
  * Loading more pages, plus honest notes on what the filter and the run strips
- * can see: only loaded workflows, and only the workspace's latest runs.
+ * can see: only loaded workflows, and only the workspace's latest runs (once
+ * there are any).
  */
 export function WorkflowListFooter({
   hasNextPage,
@@ -125,7 +129,7 @@ export function WorkflowListFooter({
           Load more to include the rest.
         </p>
       ) : null}
-      {runCount === undefined ? null : (
+      {runCount === undefined || runCount === 0 ? null : (
         <p className="font-mono text-[0.7rem] text-subtle-foreground">
           Run strips show each workflow among the latest {String(runCount)} runs
           in this workspace.

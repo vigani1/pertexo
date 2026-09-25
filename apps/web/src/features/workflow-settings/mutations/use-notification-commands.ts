@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {
   clearFailureNotificationPolicy,
   setFailureNotificationPolicy,
 } from '../workflow-settings.api';
+import { workflowSettingsKeys } from '../workflow-settings.queries';
 import {
   settingsCommandError,
   isUncertainSettingsCommand,
@@ -12,18 +14,22 @@ import {
 } from './settings-command';
 
 /**
- * Sets or clears where failure alerts go. An unconfirmed attempt must be
- * retried exactly (same key) before a different choice is sent.
+ * Sets or clears where failure alerts go, then re-reads the current choice.
+ * An unconfirmed attempt must be retried exactly (same key) before a
+ * different choice is sent.
  */
 export function useFailureNotificationCommands({
   apiClient,
+  userId,
   workspaceId,
   workflowId,
 }: Readonly<{
   apiClient: ApiClient;
+  userId: string;
   workspaceId: string;
   workflowId: string;
 }>) {
+  const queryClient = useQueryClient();
   const commands = useCommandAttemptKeys();
   const pendingRef = useRef(false);
   const [pending, setPending] = useState(false);
@@ -72,6 +78,15 @@ export function useFailureNotificationCommands({
     } finally {
       pendingRef.current = false;
       setPending(false);
+      // The current choice is authoritative after success and shows whether
+      // an unconfirmed attempt went through.
+      void queryClient.invalidateQueries({
+        queryKey: workflowSettingsKeys.failurePolicy(
+          userId,
+          workspaceId,
+          workflowId,
+        ),
+      });
     }
   }
 

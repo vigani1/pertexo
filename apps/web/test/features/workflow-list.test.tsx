@@ -159,6 +159,10 @@ describe('workflow list', () => {
     expect(within(list).getAllByText('Degraded')[0]).toBeInTheDocument();
     expect(within(list).getAllByText('Draft')[0]).toBeInTheDocument();
     expect(await within(list).findAllByText('No steps yet')).toHaveLength(2);
+    // Workflows without steps draw the empty thread, not a blank gap.
+    expect(
+      list.querySelectorAll('[data-slot="pattern-glyph"][data-state="empty"]'),
+    ).toHaveLength(2);
     expect(list).not.toHaveTextContent(workflowId);
     const header = screen
       .getByRole('heading', { name: 'Workflows' })
@@ -293,6 +297,23 @@ describe('workflow list', () => {
     expect(
       screen.getByText(/among the latest 3 runs in this workspace/u),
     ).toBeVisible();
+  });
+
+  it('leaves out the run-strip note while the workspace has no runs', async () => {
+    mockServer.use(
+      ...discoveryHandlers(['workflow:create', 'run:read']),
+      draftHandler(),
+      listHandler(() => ({
+        items: [summary(workflowId, 'Invoice intake')],
+        nextCursor: null,
+      })),
+      http.get(`${api}/runs`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/workflows`);
+    expect(await screen.findByText('None recently')).toBeInTheDocument();
+    expect(screen.queryByText(/Run strips show/u)).not.toBeInTheDocument();
   });
 
   it('archives from the row menu after spelling out the consequences', async () => {

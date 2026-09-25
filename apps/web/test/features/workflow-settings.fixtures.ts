@@ -192,6 +192,9 @@ export function installQueries(
     http.get(`${api}/failure-notification-destinations`, () =>
       HttpResponse.json({ items: [destination] }),
     ),
+    http.get(`${workflowApi}/failure-notification-policy`, () =>
+      HttpResponse.json({ destination: null }),
+    ),
     http.get(`${api}/connections`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
     ),

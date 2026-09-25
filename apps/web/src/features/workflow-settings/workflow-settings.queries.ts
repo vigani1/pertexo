@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllWorkflowVersions } from '@/features/workflow-versions/public';
 import {
+  getFailureNotificationPolicy,
   getScheduleTriggers,
   getWebhookTriggers,
 } from './workflow-settings.api';
@@ -31,6 +32,11 @@ export const workflowSettingsKeys = {
     [
       ...workflowSettingsKeys.root(userId, workspaceId, workflowId),
       'webhooks',
+    ] as const,
+  failurePolicy: (userId: string, workspaceId: string, workflowId: string) =>
+    [
+      ...workflowSettingsKeys.root(userId, workspaceId, workflowId),
+      'failure-policy',
     ] as const,
 };
 
@@ -83,5 +89,23 @@ export function webhookTriggersQueryOptions(
     queryKey: workflowSettingsKeys.webhooks(userId, workspaceId, workflowId),
     queryFn: ({ signal }) =>
       getWebhookTriggers(apiClient, workspaceId, workflowId, signal),
+  });
+}
+
+/** The workflow's current failure-alert destination, or none. */
+export function failureNotificationPolicyQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return queryOptions({
+    queryKey: workflowSettingsKeys.failurePolicy(
+      userId,
+      workspaceId,
+      workflowId,
+    ),
+    queryFn: ({ signal }) =>
+      getFailureNotificationPolicy(apiClient, workspaceId, workflowId, signal),
   });
 }

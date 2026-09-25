@@ -37,7 +37,12 @@ function SettingsSession({
   );
   return (
     <div className="flex flex-col">
-      <IdentitySection query={summary} />
+      <IdentitySection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        query={summary}
+      />
       <FailureAlertsSection
         apiClient={apiClient}
         userId={user.id}

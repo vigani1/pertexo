@@ -16,9 +16,13 @@ import { NewWorkflowSheet } from './components/new-workflow-sheet';
 import type { StartChoice } from './components/starter-choice';
 import { WorkflowLifecycleDialog } from './components/workflow-lifecycle-dialog';
 import { WorkflowListEmpty } from './components/workflow-list-empty';
-import { WorkflowListHeader } from './components/workflow-list-header';
+import {
+  NewWorkflowButton,
+  WorkflowListHeader,
+} from './components/workflow-list-header';
 import { WorkflowListResults } from './components/workflow-list-results';
 import { WorkflowListError } from './components/workflow-list-states';
+import { WorkflowRenameDialog } from './components/workflow-rename-dialog';
 import { WorkflowRowsSkeleton } from './components/workflow-rows';
 import {
   lifecycleIntentFor,
@@ -114,6 +118,7 @@ export function WorkflowListPage({
   const [query, setQuery] = useState('');
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
+  const [renaming, setRenaming] = useState<WorkflowSummary>();
 
   const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
   const starters =
@@ -147,10 +152,15 @@ export function WorkflowListPage({
         workflows={items}
         loading={workflows.isPending}
         hasMore={workflows.hasNextPage}
-        showCreate={canCreate && !empty}
-        onCreate={() => {
-          openCreate('blank');
-        }}
+        actions={
+          canCreate && !empty ? (
+            <NewWorkflowButton
+              onClick={() => {
+                openCreate('blank');
+              }}
+            />
+          ) : undefined
+        }
       />
       {refreshingInBackground(workflows) ? (
         <SkeletonThread
@@ -187,6 +197,7 @@ export function WorkflowListPage({
           runs={runs}
           onQueryChange={setQuery}
           onSearchChange={onSearchChange}
+          onRename={setRenaming}
           onLifecycle={(workflow) => {
             setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
           }}
@@ -208,6 +219,18 @@ export function WorkflowListPage({
           onCreated={onCreated}
         />
       ) : null}
+      {renaming === undefined ? null : (
+        <WorkflowRenameDialog
+          key={renaming.id}
+          apiClient={apiClient}
+          userId={user.id}
+          workspaceId={workspace.id}
+          workflow={renaming}
+          onClose={() => {
+            setRenaming(undefined);
+          }}
+        />
+      )}
       {lifecycle === undefined ? null : (
         <WorkflowLifecycleDialog
           key={lifecycle.workflow.id}

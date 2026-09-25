@@ -7,6 +7,7 @@ import {
   CopyIcon,
   HistoryIcon,
   EllipsisIcon,
+  PencilIcon,
   PencilRulerIcon,
   CirclePlayIcon,
   SettingsIcon,
@@ -23,18 +24,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
+import { canRenameWorkflow } from '../model/workflow-rename';
 
 /**
- * The row's ⋯ menu: the hub tabs, copying the ID (never shown in the row)
- * and archive/restore for people who can publish.
+ * The row's ⋯ menu: the hub tabs, renaming for editors, copying the ID
+ * (never shown in the row) and archive/restore for people who can publish.
  */
 export function WorkflowRowMenu({
   workspace,
   workflow,
+  onRename,
   onLifecycle,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
+  onRename: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
 }>) {
   const params = { workspaceId: workspace.id, workflowId: workflow.id };
@@ -111,6 +115,16 @@ export function WorkflowRowMenu({
           Settings
         </DropdownMenuLinkItem>
         <DropdownMenuSeparator />
+        {canRenameWorkflow(workspace, workflow) ? (
+          <DropdownMenuItem
+            onClick={() => {
+              onRename(workflow);
+            }}
+          >
+            <PencilIcon aria-hidden="true" />
+            Rename…
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           onClick={() =>
             void copy(workflow.id, 'workflow ID', {
