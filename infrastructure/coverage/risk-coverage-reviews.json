@@ -3826,7 +3826,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:98f1c9483c04724a85c1e04f03e9069b62d55282d5c4aad2ac201e498ea2b65d",
+          "sourceFingerprint": "sha256:97f100b432dfc79fadbc2746b11ded913d705afdf7ec45f2bca8de065f7a95ae",
           "classification": "generated",
           "justification": "V8 reports this synthetic branch arm at line zero for transpiled control-flow bookkeeping; it has no distinct source location or independently callable source behavior."
         }
