@@ -1,7 +1,8 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
 import { CalendarClockIcon } from 'lucide-react';
 import { LoadingOrb } from '@/components/ui/loading-orb';
+import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -9,6 +10,7 @@ import {
   describeRecurrence,
 } from '@/features/catalog/presentation.public';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
+import { describeScheduleHold } from '../../model/occurrence-outcome';
 import { describeTriggerState } from '../../model/trigger-state';
 
 function When({
@@ -39,7 +41,7 @@ function When({
 
 /**
  * One schedule: its rule as a sentence, when it runs next and last, what
- * happens to a missed run, and the switch that pauses it.
+ * happens to a missed run, the switch that pauses it and what it did.
  */
 export function ScheduleCard({
   trigger,
@@ -48,6 +50,8 @@ export function ScheduleCard({
   pending,
   disabled,
   onEnabledChange,
+  nextRuns,
+  history,
 }: Readonly<{
   trigger: ScheduleTriggerHealthResponse;
   stepName: string;
@@ -55,9 +59,14 @@ export function ScheduleCard({
   pending: boolean;
   disabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  /** Upcoming run times, composed by the section that can read them. */
+  nextRuns?: ReactNode;
+  /** Recorded run times, composed by the section that can read them. */
+  history?: ReactNode;
 }>) {
   const switchId = useId();
   const state = describeTriggerState(trigger);
+  const hold = describeScheduleHold(trigger);
   const enabled = trigger.status !== 'disabled';
   return (
     <article
@@ -102,12 +111,9 @@ export function ScheduleCard({
           </span>
         ) : null}
       </p>
-      <dl className="grid gap-4 sm:grid-cols-3">
-        <When
-          label="Next run"
-          value={enabled ? trigger.nextFireAt : null}
-          empty="Paused — nothing scheduled"
-        />
+      {hold === undefined ? null : <Notice tone="warning">{hold}</Notice>}
+      {nextRuns}
+      <dl className="grid gap-4 sm:grid-cols-2">
         <When label="Last run" value={trigger.lastFireAt} empty="Not yet" />
         <div className="flex flex-col gap-0.5">
           <dt className="text-xs text-muted-foreground">Missed runs</dt>
@@ -116,6 +122,7 @@ export function ScheduleCard({
           </dd>
         </div>
       </dl>
+      {history}
     </article>
   );
 }

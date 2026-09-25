@@ -2,6 +2,7 @@ import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catal
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import {
   configFromDraft,
@@ -21,6 +22,8 @@ import {
   findCanvas,
   pressSave,
   setDefinition,
+  workflowApi,
+  workflowSummaryHandler,
 } from '../support/workflow-editor-fixtures';
 
 const misfirePolicy = {
@@ -213,6 +216,35 @@ describe('schedule builder model', () => {
   });
 });
 
+/** The server's preview: three run times, or a 400 for an hour of 25. */
+function previewHandler(sent: unknown[] = []) {
+  return http.post(
+    `${workflowApi}/triggers/schedules/preview`,
+    async ({ request }) => {
+      const body: unknown = await request.json();
+      sent.push(body);
+      if (JSON.stringify(body).includes('"0 25 * * *"'))
+        return HttpResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Invalid request',
+            status: 400,
+            code: 'request.invalid',
+          },
+          { status: 400 },
+        );
+      return HttpResponse.json({
+        observedAt: '2027-03-12T12:00:00.000Z',
+        items: [
+          { scheduledAt: '2027-03-13T07:30:00.000Z' },
+          { scheduledAt: '2027-03-14T07:00:00.000Z' },
+          { scheduledAt: '2027-03-15T06:30:00.000Z' },
+        ],
+      });
+    },
+  );
+}
+
 function scheduleGraph(
   config: WorkflowGraphContract['nodes'][number]['config'],
 ): WorkflowGraphContract {
@@ -245,6 +277,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
         },
         { graph: scheduleGraph({}), definitions: [scheduleDefinition] },
       ),
+      previewHandler(),
     );
     renderApp(editorPath);
     const event = userEvent.setup();
@@ -314,6 +347,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
         },
         { graph: scheduleGraph({}), definitions: [scheduleDefinition] },
       ),
+      previewHandler(),
     );
     try {
       renderApp(editorPath);
@@ -339,5 +373,60 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it('shows the next runs the server works out for the rule on screen', async () => {
+    const sent: unknown[] = [];
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: scheduleGraph({
+          kind: 'cron',
+          expression: '30 2 * * *',
+          timezone: 'America/New_York',
+          misfirePolicy: 'catch_up_once',
+        }),
+        definitions: [scheduleDefinition],
+      }),
+      workflowSummaryHandler('Nightly schedule', null),
+      previewHandler(sent),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Nightly'));
+    const preview = screen.getByRole('region', { name: 'When it runs' });
+    expect(
+      within(preview).getByRole('status', {
+        name: 'Working out the next runs',
+      }),
+    ).toBeVisible();
+    const list = await within(preview).findByRole('list', {
+      name: 'Next runs if published now',
+    });
+    const [before, gap, after] = within(list).getAllByRole('listitem');
+    // New York's clocks spring forward on 14 March 2027.
+    expect(before).toHaveTextContent(/02:30.*EST/u);
+    expect(gap).toHaveTextContent(/03:00.*EDT/u);
+    expect(after).toHaveTextContent(/02:30.*EDT/u);
+    expect(sent).toEqual([
+      {
+        config: {
+          kind: 'cron',
+          expression: '30 2 * * *',
+          timezone: 'America/New_York',
+        },
+        count: 3,
+      },
+    ]);
+
+    await choose(event, 'Runs', 'Custom cron rule');
+    fireEvent.change(screen.getByLabelText('Cron rule'), {
+      target: { value: '0 25 * * *' },
+    });
+    expect(
+      await within(preview).findByText(
+        'Pertexo can’t schedule this rule. Check the cron fields and the timezone.',
+      ),
+    ).toBeVisible();
+    expect(within(preview).queryByRole('list')).not.toBeInTheDocument();
   });
 });

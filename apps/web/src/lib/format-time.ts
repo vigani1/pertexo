@@ -99,6 +99,39 @@ export function formatCountdown(totalSeconds: number): string {
   return `${String(minutes)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Weekday, date and time on a named place's clock, with that clock's own
+ * zone name so a daylight-saving change shows: "Sun, 8 Mar, 03:00 EDT" for
+ * `America/New_York`. Invalid zones render a dash.
+ */
+export function formatDateTimeInZone(
+  value: string | null | undefined,
+  timeZone: string,
+): string {
+  const date = toDate(value);
+  if (date === undefined) return MISSING;
+  let formatter = zonedFormatters.get(timeZone);
+  if (formatter === undefined) {
+    try {
+      formatter = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
+        timeZone,
+      });
+    } catch {
+      return MISSING;
+    }
+    zonedFormatters.set(timeZone, formatter);
+  }
+  return formatter.format(date);
+}
+
 /** The person's IANA time zone, e.g. `Europe/Berlin`. */
 export function localTimeZone(): string {
   return dateTimeFormatter.resolvedOptions().timeZone;
