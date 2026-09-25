@@ -24,7 +24,7 @@ function ConnectionRow({
       <button
         type="button"
         aria-label={`${connection.name}, ${status.label}, ${health.text}`}
-        className="group/row grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring/60 sm:grid-cols-[auto_minmax(0,1fr)_7.5rem_minmax(0,13rem)_6rem_auto]"
+        className="group/row grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-card focus-ring sm:grid-cols-[auto_minmax(0,1fr)_7.5rem_minmax(0,13rem)_6rem_auto]"
         onClick={() => {
           onOpen(connection.id);
         }}

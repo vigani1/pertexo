@@ -216,7 +216,7 @@ export function StepLens({
         />
       </LensSection>
       <details className="group mt-6">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-subtle-foreground outline-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
           Details
           <ChevronDownIcon
             aria-hidden="true"

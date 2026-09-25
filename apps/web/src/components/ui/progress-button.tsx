@@ -34,8 +34,21 @@ export function ProgressButton({
 }: ProgressButtonProps) {
   const waiting = waitSeconds > 0;
   return (
-    <Button disabled={disabled === true || pending || waiting} {...props}>
-      {pending ? <LoadingOrb data-icon="inline-start" /> : icon}
+    <Button
+      disabled={disabled === true || pending || waiting}
+      data-pending={pending ? '' : undefined}
+      {...props}
+    >
+      {pending ? (
+        <LoadingOrb
+          data-icon="inline-start"
+          className={
+            props.variant === 'primary' ? 'loading-orb-on-fill' : undefined
+          }
+        />
+      ) : (
+        icon
+      )}
       {pending ? (
         pendingLabel
       ) : waiting ? (

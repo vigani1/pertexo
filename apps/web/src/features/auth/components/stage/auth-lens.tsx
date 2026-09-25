@@ -28,7 +28,7 @@ export function AuthLensTitle({ className, ...props }: ComponentProps<'h1'>) {
   return (
     <h1
       className={cn(
-        'font-display text-[1.875rem] leading-none tracking-[-0.02em] [--display-optical-size:30] [--display-width:82%]',
+        'font-display text-[1.875rem] leading-none [--display-optical-size:30] [--display-width:82%]',
         className,
       )}
       {...props}

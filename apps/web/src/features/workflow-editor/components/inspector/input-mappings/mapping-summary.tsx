@@ -56,7 +56,7 @@ export function MappingSummary({
       aria-expanded={open}
       aria-controls={controlsId}
       aria-describedby={describedBy}
-      className="-m-1.5 flex w-[calc(100%+0.75rem)] flex-col gap-2.5 rounded-md p-1.5 text-left outline-none hover:bg-white/3 focus-visible:ring-2 focus-visible:ring-ring/60"
+      className="-m-1.5 flex w-[calc(100%+0.75rem)] flex-col gap-2.5 rounded-md p-1.5 text-left outline-none hover:bg-white/3 focus-ring"
       onClick={onToggle}
     >
       {/* Spaces between the parts keep the accessible name readable:

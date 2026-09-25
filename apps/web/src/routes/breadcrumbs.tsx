@@ -21,7 +21,7 @@ type CrumbSource =
   | Readonly<{ kind: 'run'; run: RunCrumb | undefined }>;
 
 const crumbLinkClass =
-  'rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60';
+  'rounded-sm outline-none hover:text-foreground focus-ring';
 
 export function workflowsCrumb(workspaceId: string): Crumb {
   return {

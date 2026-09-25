@@ -204,7 +204,7 @@ function PickButton({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-white/5 hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-white/5 hover:text-accent-foreground focus-ring"
       onClick={onClick}
     >
       <span className="truncate">{label}</span>

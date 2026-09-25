@@ -80,7 +80,7 @@ export function CopyButton({
       aria-label={name}
       title={outcome === undefined ? label : name}
       className={cn(
-        'group/copy inline-flex min-w-0 items-center gap-1.5 rounded-sm font-mono text-xs text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 [&_svg]:size-3 [&_svg]:shrink-0',
+        'group/copy inline-flex min-w-0 items-center gap-1.5 rounded-sm font-mono text-xs text-subtle-foreground outline-none hover:text-foreground focus-ring [&_svg]:size-3 [&_svg]:shrink-0',
         className,
       )}
       onClick={copy}

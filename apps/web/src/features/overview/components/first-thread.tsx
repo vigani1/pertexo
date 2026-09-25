@@ -6,7 +6,7 @@ import type {
 } from '../model/first-thread';
 
 const linkClass =
-  'text-sm font-semibold text-foreground outline-none hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/60 rounded-sm';
+  'text-sm font-semibold text-foreground outline-none hover:text-accent-foreground focus-ring rounded-sm';
 
 function StepLink({
   destination,

@@ -131,7 +131,7 @@ export function RunFilters({
               type="button"
               title={chip.label}
               aria-label={`Remove filter ${chip.label}`}
-              className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-primary/25 bg-primary/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-primary/25 bg-primary/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-primary/50 focus-ring"
               onClick={() => {
                 onSearchChange(
                   chip.key === 'time'

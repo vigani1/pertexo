@@ -65,7 +65,7 @@ function Boot({ message }: Readonly<{ message: string }>) {
         className="mx-auto flex flex-col items-center gap-4 text-center"
       >
         <CoreOrb assemble state="idle" className="size-44" />
-        <p className="font-display text-2xl tracking-[-0.03em] [--display-optical-size:24] [--display-width:80%]">
+        <p className="font-display text-2xl [--display-optical-size:24] [--display-width:80%]">
           Pertexo<span className="text-secondary">.</span>
         </p>
         <p className="font-mono text-xs text-subtle-foreground">

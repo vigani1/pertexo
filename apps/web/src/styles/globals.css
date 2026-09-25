@@ -118,6 +118,11 @@
   body {
     @apply bg-background text-foreground antialiased;
     min-height: 100svh;
+  }
+
+  /* Figures line up where numbers are compared (instruments and tables).
+     Not on body: Inter's tabular set also widens hyphens ("sign - in"). */
+  :where(code, kbd, samp, pre, .font-mono, table) {
     font-variant-numeric: tabular-nums;
   }
 
@@ -136,8 +141,11 @@
     touch-action: manipulation;
   }
 
+  /* The one focus ring: a 2px outline with a 2px gap that follows each
+     element's corners. Invalid controls and destructive buttons set
+     --focus-ring-color. */
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--focus-ring-color, var(--ring));
     outline-offset: 2px;
   }
 
@@ -187,6 +195,8 @@
   font-weight: 620;
   font-stretch: var(--display-width, 76%);
   font-variation-settings: 'opsz' var(--display-optical-size, 72);
+  /* The width is already condensed; tighter tracking makes letters touch. */
+  letter-spacing: -0.012em;
 }
 
 /* Skeletons stay invisible for their first 150 ms, so a fast load never
@@ -225,19 +235,22 @@
     ) {
     border-color: rgb(255 255 255 / 17%);
   }
-  /* The control itself, or a composite (chips, a search row) holding it. */
-  &:focus-visible,
+  &:focus-visible {
+    border-color: color-mix(in oklch, var(--ring) 60%, transparent);
+  }
+  /* A composite (chips, a search row) wears the ring, not the bare input
+     inside it. */
   &:has(:focus-visible) {
-    border-color: color-mix(in oklch, var(--ring) 70%, transparent);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 14%, transparent);
+    border-color: color-mix(in oklch, var(--ring) 60%, transparent);
+    outline: 2px solid var(--focus-ring-color, var(--ring));
+    outline-offset: 2px;
+  }
+  & :focus-visible {
+    outline: none;
   }
   &[aria-invalid='true'] {
+    --focus-ring-color: var(--destructive);
     border-color: color-mix(in srgb, var(--destructive) 55%, transparent);
-  }
-  &[aria-invalid='true']:focus-visible {
-    border-color: color-mix(in srgb, var(--destructive) 75%, transparent);
-    box-shadow: 0 0 0 3px
-      color-mix(in srgb, var(--destructive) 14%, transparent);
   }
   &:disabled {
     cursor: not-allowed;
@@ -245,6 +258,14 @@
   }
   @media (prefers-reduced-motion: reduce) {
     transition: none;
+  }
+}
+
+/* The focus ring for elements that clear the browser outline. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--focus-ring-color, var(--ring));
+    outline-offset: 2px;
   }
 }
 
@@ -260,6 +281,7 @@
     transparent
   );
   text-underline-offset: 4px;
+  border-radius: 2px;
   &:hover {
     text-decoration-color: var(--accent-foreground);
   }
@@ -420,6 +442,21 @@
     border-bottom-color: color-mix(in srgb, var(--secondary) 85%, transparent);
     border-left-color: color-mix(in srgb, var(--primary) 45%, transparent);
     animation: loading-orb-secondary 1.35s linear infinite reverse;
+  }
+
+  /* On a filled button the orb takes the label's colour, or it vanishes
+     into the fill. */
+  .loading-orb-on-fill .loading-orb-core,
+  .loading-orb-on-fill .loading-orb-particle {
+    background: currentColor;
+    box-shadow: none;
+  }
+  .loading-orb-on-fill .loading-orb-ring-primary,
+  .loading-orb-on-fill .loading-orb-ring-secondary {
+    border-top-color: currentColor;
+    border-right-color: color-mix(in srgb, currentColor 45%, transparent);
+    border-bottom-color: color-mix(in srgb, currentColor 70%, transparent);
+    border-left-color: color-mix(in srgb, currentColor 30%, transparent);
   }
 
   .loading-orb-particle {

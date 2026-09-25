@@ -35,7 +35,7 @@ function Snippet({ code }: Readonly<{ code: string }>) {
 export function WebhookGuide() {
   return (
     <details className="group/guide rounded-lg border border-border">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-muted-foreground outline-none select-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-muted-foreground outline-none select-none hover:text-foreground focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon
           aria-hidden="true"
           className="size-4 transition-transform duration-150 group-open/guide:rotate-90 motion-reduce:transition-none"

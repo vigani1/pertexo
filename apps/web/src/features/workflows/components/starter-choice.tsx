@@ -57,7 +57,7 @@ function StarterOption({
   return (
     <label
       className={cn(
-        'group/starter grid cursor-pointer grid-cols-[8.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg border border-border bg-white/[0.02] p-2.5 transition-colors duration-150 hover:border-border-strong has-checked:border-primary/45 has-checked:bg-primary/[0.06] has-focus-visible:ring-2 has-focus-visible:ring-ring/60 has-disabled:cursor-not-allowed has-disabled:opacity-60 motion-reduce:transition-none',
+        'group/starter grid cursor-pointer grid-cols-[8.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg border border-border bg-white/[0.02] p-2.5 transition-colors duration-150 hover:border-border-strong has-checked:border-primary/45 has-checked:bg-primary/[0.06] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring has-disabled:cursor-not-allowed has-disabled:opacity-60 motion-reduce:transition-none',
       )}
     >
       <input

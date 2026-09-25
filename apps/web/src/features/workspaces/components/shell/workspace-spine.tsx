@@ -17,7 +17,7 @@ function formatBadge(count: number): string {
 }
 
 const spineLinkClass =
-  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-white/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 aria-[current=page]:bg-primary/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
+  "relative grid size-10 place-items-center rounded-md text-subtle-foreground outline-none transition-colors hover:bg-white/5 hover:text-foreground focus-ring aria-[current=page]:bg-primary/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_22%,transparent)] [&_svg:not([class*='size-'])]:size-[1.15rem]";
 
 function SpineLink({
   workspaceId,
@@ -65,7 +65,7 @@ function HomeCore({
             params={{ workspaceId }}
             activeOptions={{ exact: true }}
             aria-label="Home"
-            className="grid size-11 place-items-center rounded-lg bg-[radial-gradient(circle,color-mix(in_srgb,var(--primary)_14%,transparent),transparent_70%)] outline-none focus-visible:ring-2 focus-visible:ring-ring/60 aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
+            className="grid size-11 place-items-center rounded-lg bg-[radial-gradient(circle,color-mix(in_srgb,var(--primary)_14%,transparent),transparent_70%)] outline-none focus-ring aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
           />
         }
       >

@@ -47,7 +47,7 @@ function Node({
     : `{${String(entries.length)}}`;
   return (
     <details open={depth < OPEN_DEPTH} className="group/json">
-      <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-white/4 focus-visible:ring-2 focus-visible:ring-ring/60 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-default list-none items-center gap-1 rounded-sm py-0.5 outline-none select-none hover:bg-white/4 focus-ring [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon
           aria-hidden="true"
           className="size-3.5 shrink-0 text-subtle-foreground transition-transform group-open/json:rotate-90 motion-reduce:transition-none"
