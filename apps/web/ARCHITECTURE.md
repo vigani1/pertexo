@@ -1209,7 +1209,12 @@ support reference helpers), `use-prefers-reduced-motion.ts`,
   `WorkspaceBootPage` (“Opening Northwind Ops…”, then “Still connecting…” after
   2 s) for a cold workspace and `BootPage`/`OpeningPage` for public pages.
   `Skeleton` and `SkeletonThread` stay invisible for their first 150 ms, so an
-  in-page skeleton never flashes either.
+  in-page skeleton never flashes either. A page change that waits on the scope's
+  session check (it runs again on every navigation) keeps the current page on
+  screen, and `NavigationProgress` (`routes/navigation-progress.tsx`, in the
+  root layout) draws a slim spooling thread along the top from the router's
+  pending state after the same 150 ms; it holds still under reduced motion and
+  never shows on a cold start, which has the boot page.
 - File placement is the same in every feature: `components/` holds components
   (and the Canvas scene a component owns); `model/` holds pure rules, types and
   the editor store with its React contexts; feature hooks (`use-*.ts`) sit at
