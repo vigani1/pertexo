@@ -1,5 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
+import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
@@ -18,7 +19,6 @@ import { RunLoom } from '../loom/run-loom';
 import { RunList } from './run-list';
 import {
   NoMatchingRuns,
-  NoRunsYet,
   RunListSkeleton,
   RunsLoadError,
   RunsUnavailable,
@@ -40,6 +40,7 @@ export function RunResults({
   query,
   runs,
   variant,
+  noRuns,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -49,6 +50,8 @@ export function RunResults({
   query: RunHistoryQuery;
   runs: readonly WorkflowRunReadSummary[];
   variant: RunListVariant;
+  /** What to say, and where to go, before anything has run here. */
+  noRuns: ReactNode;
 }>) {
   if (query.isError && isApiError(query.error) && query.error.status === 404)
     return <RunsUnavailable />;
@@ -82,10 +85,7 @@ export function RunResults({
             }}
           />
         ) : (
-          <NoRunsYet
-            workspaceId={workspace.id}
-            canReadWorkflows={workspace.capabilities.includes('workflow:read')}
-          />
+          noRuns
         )
       ) : search.view === 'loom' ? (
         <RunsLoomView

@@ -84,13 +84,10 @@ export function NoRunsYet({
 }: Readonly<{ workspaceId: string; canReadWorkflows: boolean }>) {
   return (
     <Empty>
-      <EmptyMedia>
-        <StatusGlyph tone="neutral" className="size-6" />
-      </EmptyMedia>
       <EmptyTitle>No runs yet</EmptyTitle>
       <EmptyDescription>
-        Runs show up here once a published workflow runs, from a trigger, the
-        API or Run in Build.
+        Runs show up here once a published workflow runs, from one of its
+        triggers or from Run in its editor.
       </EmptyDescription>
       {canReadWorkflows ? (
         <EmptyActions>
@@ -103,6 +100,31 @@ export function NoRunsYet({
           </Link>
         </EmptyActions>
       ) : null}
+    </Empty>
+  );
+}
+
+/** A workflow that hasn't run: the way on is its editor, not the list. */
+export function NoWorkflowRunsYet({
+  workspaceId,
+  workflowId,
+}: Readonly<{ workspaceId: string; workflowId: string }>) {
+  return (
+    <Empty>
+      <EmptyTitle>No runs yet</EmptyTitle>
+      <EmptyDescription>
+        This workflow’s runs show up here once it’s published and runs, from one
+        of its triggers or from Run in Build.
+      </EmptyDescription>
+      <EmptyActions>
+        <Link
+          to="/w/$workspaceId/workflows/$workflowId"
+          params={{ workspaceId, workflowId }}
+          className={buttonVariants({ variant: 'default' })}
+        >
+          Open Build
+        </Link>
+      </EmptyActions>
     </Empty>
   );
 }
