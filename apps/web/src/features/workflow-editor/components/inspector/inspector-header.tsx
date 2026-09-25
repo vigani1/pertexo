@@ -4,11 +4,13 @@ import {
   CopyIcon,
   CopyPlusIcon,
   EllipsisIcon,
+  PlusIcon,
   PowerIcon,
   PowerOffIcon,
   Trash2Icon,
   XIcon,
 } from 'lucide-react';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
@@ -26,6 +28,8 @@ import type { NodeFormApi } from '../../model/node-form';
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 export type StepMenuActions = Readonly<{
+  /** Opens quick add for a step connected after this one. */
+  onAddAfter: (returnFocus: HTMLElement | null) => void;
   onDuplicate: () => void;
   onCopyId: () => void;
   onDelete: () => void;
@@ -64,6 +68,12 @@ export function InspectorHeader({
     },
   });
   const disabled = node.disabled === true;
+  const canAddAfter =
+    form.editable && (definition?.ports.outputs.length ?? 0) > 0;
+  // Quick add opens once the menu has finished closing, so the menu's own
+  // focus return can't pull focus out of it; closing it comes back to ⋯.
+  const addAfterRequested = useRef(false);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   return (
     <div className="flex items-start gap-3">
       <StepTile step={step} size="lg" />
@@ -90,8 +100,15 @@ export function InspectorHeader({
           {disabled ? ' · disabled' : ''}
         </p>
       </div>
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChangeComplete={(open) => {
+          if (open || !addAfterRequested.current) return;
+          addAfterRequested.current = false;
+          actions.onAddAfter(menuTrigger.current);
+        }}
+      >
         <DropdownMenuTrigger
+          ref={menuTrigger}
           aria-label="Step actions"
           className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
         >
@@ -99,6 +116,16 @@ export function InspectorHeader({
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuGroup>
+            {canAddAfter ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  addAfterRequested.current = true;
+                }}
+              >
+                <PlusIcon aria-hidden="true" />
+                Add step after
+              </DropdownMenuItem>
+            ) : null}
             {form.editable ? (
               <DropdownMenuItem onClick={actions.onDuplicate}>
                 <CopyPlusIcon aria-hidden="true" />

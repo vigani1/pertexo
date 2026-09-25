@@ -17,8 +17,10 @@ import type { useCanvasEffects } from '../use-canvas-effects';
 import type { useEditorActions } from '../use-editor-actions';
 import { useEditorShortcuts } from '../use-editor-shortcuts';
 import { useInspectorNavigation } from '../use-inspector-navigation';
+import { useQuickAdd } from '../use-quick-add';
 import { useStepPlacement } from '../use-step-placement';
 import { AddStepLens } from './add-step/add-step-lens';
+import { QuickAddLens } from './add-step/quick-add-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
 import { ValidationSweep } from './canvas/validation-sweep';
@@ -93,6 +95,11 @@ export function EditorWorkspace({
         store.getState().selectNode(nodeId);
     },
   });
+  const quickAdd = useQuickAdd({
+    store,
+    definitions,
+    onAdd: placement.addAfter,
+  });
 
   const { selectNodes, removeEdge, deleteSelection, duplicateSelection } =
     useSelectionCommands(store, request, editable);
@@ -160,6 +167,7 @@ export function EditorWorkspace({
           onSelectNodes={selectNodes}
           onRemoveEdge={removeEdge}
           onDropStep={placement.addAt}
+          onPortDrop={quickAdd.openAtDrop}
         >
           <StartPicker
             definitions={definitions}
@@ -201,17 +209,30 @@ export function EditorWorkspace({
             setMobilePanel('none');
             request({ kind: 'select', nodeIds: [] });
           }}
+          onAddStepAfter={(nodeId, returnFocus) => {
+            if (editable) quickAdd.openAfter(nodeId, returnFocus);
+          }}
           onDuplicateSelection={duplicateSelection}
           onDeleteSelection={deleteSelection}
           onRemoveEdge={removeEdge}
         />
       }
       overlay={
-        <SelectionToolbar
-          editable={editable}
-          onDuplicate={duplicateSelection}
-          onDelete={deleteSelection}
-        />
+        <>
+          <SelectionToolbar
+            editable={editable}
+            onDuplicate={duplicateSelection}
+            onDelete={deleteSelection}
+          />
+          <QuickAddLens
+            request={editable ? quickAdd.request : undefined}
+            definitions={definitions}
+            fallbackFocus={canvasRef}
+            onPortChange={quickAdd.choosePort}
+            onChoose={quickAdd.choose}
+            onClose={quickAdd.close}
+          />
+        </>
       }
     />
   );

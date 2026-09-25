@@ -40,6 +40,7 @@ export function EditorInspector({
   testRef,
   onTestPassed,
   onClose,
+  onAddStepAfter,
   onDuplicateSelection,
   onDeleteSelection,
   onRemoveEdge,
@@ -57,6 +58,7 @@ export function EditorInspector({
   testRef: Ref<NodeTestHandle>;
   onTestPassed: (nodeId: string) => void;
   onClose: () => void;
+  onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
   onDuplicateSelection: () => void;
   onDeleteSelection: () => void;
   onRemoveEdge: (edgeId: string) => void;
@@ -87,6 +89,10 @@ export function EditorInspector({
       onDuplicateSelection={onDuplicateSelection}
       onDeleteSelection={onDeleteSelection}
       actions={{
+        onAddAfter: (returnFocus) => {
+          if (selectedNodeId !== null)
+            onAddStepAfter(selectedNodeId, returnFocus);
+        },
         onDuplicate: onDuplicateSelection,
         onCopyId: copyStepId,
         onDelete: () => {
