@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptancePersistence,
   invitationPersistence,
+  memberRemovalPersistence,
   missingInvitationTokenProtector,
+  profilePersistence,
   renamePersistence,
 } from '../../src/identity-workspace/persistence-capabilities.js';
 import type { IdentityWorkspacePersistence } from '../../src/identity-workspace/ports.js';
@@ -23,6 +25,14 @@ const acceptanceMethods = [
   'completeInvitationAcceptance',
   'abandonInvitationAcceptance',
 ] as const;
+
+const configuredMethods = [
+  'renameWorkspace',
+  'removeWorkspaceMember',
+  'updateUserProfile',
+  ...invitationMethods,
+  ...acceptanceMethods,
+];
 
 function persistenceWith(
   methods: readonly string[],
@@ -61,6 +71,14 @@ describe('identity-workspace persistence capabilities', () => {
       'Workspace rename persistence is not configured',
     );
     await expectEveryCapabilityRejects(
+      memberRemovalPersistence(persistence),
+      'Workspace member removal persistence is not configured',
+    );
+    await expectEveryCapabilityRejects(
+      profilePersistence(persistence),
+      'User profile persistence is not configured',
+    );
+    await expectEveryCapabilityRejects(
       invitationPersistence(persistence),
       'Invitation persistence is not configured',
     );
@@ -90,12 +108,11 @@ describe('identity-workspace persistence capabilities', () => {
 
   it('delegates every configured method with its persistence receiver', async () => {
     const calls: string[] = [];
-    const persistence = persistenceWith(
-      ['renameWorkspace', ...invitationMethods, ...acceptanceMethods],
-      calls,
-    );
+    const persistence = persistenceWith(configuredMethods, calls);
     const capabilities: readonly Readonly<Record<string, AnyCapability>>[] = [
       renamePersistence(persistence),
+      memberRemovalPersistence(persistence),
+      profilePersistence(persistence),
       invitationPersistence(persistence),
       acceptancePersistence(persistence),
     ];
@@ -108,9 +125,7 @@ describe('identity-workspace persistence capabilities', () => {
         );
     }
     expect(calls).toEqual(
-      ['renameWorkspace', ...invitationMethods, ...acceptanceMethods].map(
-        (method) => `${method}:configured`,
-      ),
+      configuredMethods.map((method) => `${method}:configured`),
     );
   });
 });
