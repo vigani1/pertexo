@@ -187,14 +187,16 @@ describe('step cards', () => {
     expect(portLinkLabel('true', 'outputs', links.true)).toBe(
       'true → Ask finance +1',
     );
-    expect(portLinkLabel('default', 'outputs', links.default)).toBe('default');
+    expect(portLinkLabel('default', 'outputs', links.default)).toBe(
+      'Otherwise',
+    );
     expect(
       portLinkLabel(
         'branch-02',
         'inputs',
         portLinks({ id: 'erp' }, level, 'inputs', titles).false,
       ),
-    ).toBe('branch-02');
+    ).toBe('Branch 2');
   });
 
   it('summarises a step’s own setup, and nothing it doesn’t hold', () => {

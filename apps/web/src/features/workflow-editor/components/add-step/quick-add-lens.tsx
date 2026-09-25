@@ -15,6 +15,7 @@ import { findStep } from '../../model/graph-scopes';
 import { followingSteps } from '../../model/quick-add';
 import type { QuickAddRequest } from '../../use-quick-add';
 import { ChoiceSelect } from '../inspector/choice-select';
+import { portName } from '../../model/step-card';
 import { firstStepChoice, StepChoiceList, StepSearch } from './step-picker';
 
 /**
@@ -103,7 +104,7 @@ function QuickAddContent({
             disabled={false}
             choices={request.outputs.map((port) => ({
               value: port,
-              label: port,
+              label: portName(port),
             }))}
             onChange={(port) => {
               if (port !== null) onPortChange(port);

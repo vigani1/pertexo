@@ -78,7 +78,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
   it('sums up a passed test and opens its output on the step’s Test tab', async () => {
     const { event, canvas, bar } = await testTarget('succeeded');
     expect(bar.getByText('Test passed')).toBeVisible();
-    expect(bar.getByText('Manual input → Target · 1.4s')).toBeVisible();
+    expect(bar.getByTitle('Manual input → Target · 1.4s')).toBeVisible();
 
     fireEvent.click(canvas.getByText('Manual input'));
     await event.click(screen.getByRole('tab', { name: 'Setup' }));
@@ -107,7 +107,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     const { bar } = await testTarget('failed');
     expect(bar.getByText('Test failed')).toBeVisible();
     expect(
-      bar.getByText('Manual input → Target · 1.4s · service unavailable'),
+      bar.getByTitle('Manual input → Target · 1.4s · service unavailable'),
     ).toBeVisible();
     expect(bar.getByRole('button', { name: 'View details' })).toBeVisible();
     expect(

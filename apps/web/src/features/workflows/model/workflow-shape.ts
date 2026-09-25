@@ -180,6 +180,37 @@ function spread(count: number, index: number, height: number): number {
   return inset + (index * (height - inset * 2)) / (count - 1);
 }
 
+/** Canvas positions scaled into the glyph, keeping their proportions. */
+function canvasPoints(
+  nodes: readonly WorkflowNode[],
+  size: Readonly<{ width: number; height: number }>,
+  inset: number,
+): ReadonlyMap<string, GlyphPoint> {
+  const xs = nodes.map((node) => node.position.x);
+  const ys = nodes.map((node) => node.position.y);
+  const spanX = Math.max(...xs) - Math.min(...xs);
+  const spanY = Math.max(...ys) - Math.min(...ys);
+  const room = { x: size.width - inset * 2, y: size.height - inset * 2 };
+  const scale = Math.min(
+    spanX === 0 ? Infinity : room.x / spanX,
+    spanY === 0 ? Infinity : room.y / spanY,
+  );
+  const factor = Number.isFinite(scale) ? scale : 0;
+  const offset = {
+    x: (size.width - spanX * factor) / 2 - Math.min(...xs) * factor,
+    y: (size.height - spanY * factor) / 2 - Math.min(...ys) * factor,
+  };
+  return new Map(
+    nodes.map((node) => [
+      node.id,
+      {
+        x: round(offset.x + node.position.x * factor),
+        y: round(offset.y + node.position.y * factor),
+      },
+    ]),
+  );
+}
+
 /**
  * A tiny silhouette of the graph: one column per longest-path layer, steps in
  * a column ordered by their canvas position, the trigger marked.
@@ -209,12 +240,19 @@ export function layoutPatternGlyph(
   );
   const entry = entryNode(graph, links.incoming);
   const points = new Map<string, GlyphPoint>();
+  // Steps with no connections at all have no layers: stacked in one column
+  // they drew a ⋮ that looked like a menu, so they sit where they are on the
+  // canvas instead, scaled into the glyph.
+  const scattered =
+    graph.edges.length === 0 && graph.nodes.length > 1
+      ? canvasPoints(graph.nodes, size, inset)
+      : undefined;
   const nodes = [...columns.entries()].flatMap(([depth, column]) =>
     column
       .slice()
       .sort((a, b) => a.position.y - b.position.y)
       .map((node, index) => {
-        const point = {
+        const point = scattered?.get(node.id) ?? {
           x: round(
             lastColumn === 0 ? size.width / 2 : inset + depth * columnWidth,
           ),

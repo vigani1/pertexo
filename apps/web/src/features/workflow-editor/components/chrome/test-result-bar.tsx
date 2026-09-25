@@ -40,8 +40,7 @@ function TestResult({
   const { preview, nodeId } = test;
   const status = describePreviewStatus(preview.status);
   const path = describeTestPath(levelOf(graph, nodeId) ?? graph, nodeId);
-  const summary = [
-    path,
+  const facts = [
     ...(preview.startedAt === null || preview.completedAt === null
       ? []
       : [
@@ -53,6 +52,7 @@ function TestResult({
       ? []
       : [shortStepError(preview.safeErrorCode)]),
   ].join(' · ');
+  const summary = facts === '' ? path : `${path} · ${facts}`;
   return (
     <section
       aria-label="Last test"
@@ -61,12 +61,16 @@ function TestResult({
       <Status tone={status.tone} className="shrink-0">
         {status.label}
       </Status>
-      {/* On phones the path takes its own line under the status. */}
+      {/* On phones the path takes its own line under the status. The path
+          gives way (ellipsis) so its time and reason stay on the line. */}
       <p
         title={summary}
-        className="order-last line-clamp-2 w-full min-w-0 pb-1 font-mono text-[0.72rem] leading-snug break-words text-subtle-foreground sm:order-none sm:w-auto sm:flex-1 sm:pb-0"
+        className="order-last flex w-full min-w-0 pb-1 font-mono text-[0.72rem] leading-snug whitespace-nowrap text-subtle-foreground sm:order-none sm:w-auto sm:flex-1 sm:pb-0"
       >
-        {summary}
+        <span className="min-w-0 truncate">{path}</span>
+        {facts === '' ? null : (
+          <span className="shrink-0">&nbsp;· {facts}</span>
+        )}
       </p>
       <Button
         type="button"

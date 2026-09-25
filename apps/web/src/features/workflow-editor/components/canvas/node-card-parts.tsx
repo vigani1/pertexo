@@ -8,7 +8,7 @@ import {
 import { formatByteLength } from '@/lib/format-bytes';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../model/graph-adapter';
-import { portLinkLabel } from '../../model/step-card';
+import { portLinkLabel, portName } from '../../model/step-card';
 import { handleClass } from './node-card-style';
 
 /**
@@ -168,7 +168,7 @@ export function PortRows({
             id={port}
             type={output ? 'source' : 'target'}
             position={output ? Position.Right : Position.Left}
-            aria-label={`${title}: ${output ? 'output' : 'input'} ${port}`}
+            aria-label={`${title}: ${output ? 'output' : 'input'} ${portName(port)}`}
             className={cn(
               handleClass,
               output ? '!-right-3' : '!-left-3',
