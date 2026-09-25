@@ -1,5 +1,5 @@
 import { XIcon } from 'lucide-react';
-import { LabelledField, type FieldThread } from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 
 /**
@@ -13,7 +13,6 @@ export function EmailChipsField({
   draft,
   disabled,
   error,
-  thread,
   inputRef,
   onDraftChange,
   onCommit,
@@ -24,7 +23,6 @@ export function EmailChipsField({
   draft: string;
   disabled: boolean;
   error: string | undefined;
-  thread: FieldThread;
   inputRef: (element: HTMLElement | null) => void;
   onDraftChange: (draft: string) => void;
   /** Turns the given text into chips, keeping anything that isn’t an address. */
@@ -37,12 +35,11 @@ export function EmailChipsField({
       label="Email addresses"
       description="Separate addresses with commas or spaces. Each person gets their own link, valid for seven days."
       error={error}
-      thread={thread}
     >
       {(control) => (
         <div
           className={cn(
-            'recessed-control flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5 focus-within:border-primary',
+            'recessed-control flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5',
             disabled && 'opacity-50',
           )}
         >

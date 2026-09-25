@@ -30,15 +30,15 @@ describe('Weft visual primitives', () => {
     );
   });
 
-  it('marks field validation visually without changing the control', async () => {
+  it('holds an invalid control without changing it', async () => {
     const { container } = render(
-      <FieldControl state="invalid">
+      <FieldControl>
         <Input aria-label="Email" aria-invalid="true" />
       </FieldControl>,
     );
     expect(
       container.querySelector('[data-slot="field-control"]'),
-    ).toHaveAttribute('data-state', 'invalid');
+    ).toContainElement(screen.getByRole('textbox', { name: 'Email' }));
     await userEvent
       .setup()
       .type(screen.getByRole('textbox', { name: 'Email' }), 'a@b.dev');

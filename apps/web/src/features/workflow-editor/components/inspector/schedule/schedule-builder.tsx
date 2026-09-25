@@ -93,7 +93,8 @@ export function ScheduleBuilder({
     kind === 'cron' ? schema.cron !== undefined : schema.interval !== undefined,
   );
   return (
-    <div className="flex flex-col gap-4">
+    // Leaving any of the rule's controls shows what's wrong with it.
+    <div className="flex flex-col gap-4" onBlur={live.blur}>
       {config.kind === 'cron' || config.kind === 'interval' ? null : (
         <Notice
           tone="warning"

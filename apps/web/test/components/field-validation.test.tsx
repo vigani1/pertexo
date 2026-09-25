@@ -40,7 +40,6 @@ function CallerOwnedForm({
           id={name}
           label={name === 'first' ? 'First name' : 'Code'}
           error={validation.error(name)}
-          thread={validation.thread(name)}
         >
           {(control) => (
             <Input
@@ -51,9 +50,6 @@ function CallerOwnedForm({
                 const next = { ...values, [name]: event.target.value };
                 setValues(next);
                 validation.change(name, rule[name](next[name]));
-              }}
-              onBlur={() => {
-                validation.blur(name, rule[name](values[name]));
               }}
             />
           )}
@@ -96,48 +92,47 @@ function PasswordForm() {
   );
 }
 
-function thread(label: string) {
-  return screen
-    .getByLabelText(label)
-    .closest('[data-slot="field-control"]')
-    ?.getAttribute('data-state');
-}
-
 describe('field validation', () => {
-  it('checks on blur, then live, and ties a knot once corrected', async () => {
+  it('stays quiet while people type or move between fields', async () => {
     const user = userEvent.setup();
     render(<CallerOwnedForm />);
     const first = screen.getByLabelText('First name');
     await user.click(first);
     await user.tab();
-    expect(first).toHaveAttribute('aria-invalid', 'true');
-    expect(first).toHaveAccessibleDescription('Enter a first name.');
-    expect(thread('First name')).toBe('invalid');
-
     await user.type(first, 'A');
+    await user.clear(first);
+    await user.tab();
     expect(first).toHaveAttribute('aria-invalid', 'false');
-    expect(thread('First name')).toBe('corrected');
-    await user.type(first, 'da');
-    expect(thread('First name')).toBe('corrected');
-    // Untouched fields stay quiet while another is corrected.
-    expect(screen.getByLabelText('Code')).toHaveAttribute(
-      'aria-invalid',
-      'false',
-    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('focuses the first invalid field in document order and then goes live', async () => {
+  it('shows every message on submit and focuses the first in document order', async () => {
     const user = userEvent.setup();
     render(<CallerOwnedForm />);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(screen.getByLabelText('Code')).toHaveFocus();
     expect(screen.getAllByRole('alert')).toHaveLength(2);
-
-    await user.type(screen.getByLabelText('Code'), 'X');
-    expect(screen.getByLabelText('Code')).toHaveAttribute(
-      'aria-invalid',
-      'false',
+    expect(screen.getByLabelText('First name')).toHaveAccessibleDescription(
+      'Enter a first name.',
     );
+  });
+
+  it('clears a message once fixed and says so again if it breaks before the next submit', async () => {
+    const user = userEvent.setup();
+    render(<CallerOwnedForm />);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const code = screen.getByLabelText('Code');
+
+    await user.type(code, 'X');
+    expect(code).toHaveAttribute('aria-invalid', 'false');
+    // Fixing one field leaves the other's message alone.
+    expect(screen.getByLabelText('First name')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+
+    await user.clear(code);
+    expect(code).toHaveAccessibleDescription('Enter a code.');
   });
 
   it('places server field errors and focuses the first of them', async () => {
@@ -160,6 +155,8 @@ describe('field validation', () => {
     await user.type(screen.getByLabelText('Password'), 'woven-thread');
     await user.type(screen.getByLabelText('Confirm password'), 'woven');
     await user.tab();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(
       screen.getByLabelText('Confirm password'),
     ).toHaveAccessibleDescription('The passwords don’t match.');
@@ -170,6 +167,5 @@ describe('field validation', () => {
       'aria-invalid',
       'false',
     );
-    expect(thread('Confirm password')).toBe('corrected');
   });
 });

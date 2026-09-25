@@ -25,7 +25,6 @@ export function RunInputFields({
         label={inputLabel}
         description="Use {} if the workflow doesn’t read any input."
         error={validation.error('input')}
-        thread={validation.thread('input')}
       >
         {(control) => (
           <Textarea
@@ -41,18 +40,15 @@ export function RunInputFields({
             onChange={(event) => {
               runInput.changeInput(event.currentTarget.value);
             }}
-            onBlur={runInput.blurInput}
           />
         )}
       </LabelledField>
       <DeadlineField
         value={runInput.deadline}
         error={validation.error('deadline')}
-        thread={validation.thread('deadline')}
         disabled={disabled}
         register={validation.register('deadline')}
         onChange={runInput.changeDeadline}
-        onBlur={runInput.blurDeadline}
       />
     </FieldGroup>
   );

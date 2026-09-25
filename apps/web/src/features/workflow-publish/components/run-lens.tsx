@@ -81,7 +81,6 @@ export function RunLens({
           label="Run input (JSON)"
           description="Use {} if the workflow doesn’t read any input."
           error={runInput.validation.error('input')}
-          thread={runInput.validation.thread('input')}
         >
           {(control) => (
             <Textarea
@@ -96,18 +95,15 @@ export function RunLens({
               onChange={(event) => {
                 runInput.changeInput(event.currentTarget.value);
               }}
-              onBlur={runInput.blurInput}
             />
           )}
         </LabelledField>
         <DeadlineField
           value={runInput.deadline}
           error={runInput.validation.error('deadline')}
-          thread={runInput.validation.thread('deadline')}
           disabled={pending}
           register={runInput.validation.register('deadline')}
           onChange={runInput.changeDeadline}
-          onBlur={runInput.blurDeadline}
         />
       </FieldGroup>
     </ConfirmDialog>

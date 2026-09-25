@@ -36,8 +36,7 @@ export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
             className={cn(
               'h-0.75 flex-1 rounded-full bg-white/10 transition-colors',
               index < current && 'bg-success',
-              index === current &&
-                'bg-primary shadow-[0_0_10px_var(--primary)]',
+              index === current && 'bg-action',
             )}
           />
         ))}
@@ -76,7 +75,6 @@ export function NameStep({
         label="Connection name"
         description="People pick connections by this name in steps and alerts."
         error={validation.error('name')}
-        thread={validation.thread('name')}
       >
         {(control) => (
           <Input
@@ -91,9 +89,6 @@ export function NameStep({
               const next = event.currentTarget.value;
               onNameChange(next);
               validation.change('name', connectionNameError(next));
-            }}
-            onBlur={() => {
-              validation.blur('name', connectionNameError(name));
             }}
           />
         )}

@@ -218,7 +218,7 @@ describe('workspace creation', () => {
     ).not.toHaveLength(0);
   });
 
-  it('validates on blur and submit and focuses the first invalid field', async () => {
+  it('validates on submit and focuses the first invalid field', async () => {
     installIdentity();
     renderApp('/workspaces');
     const form = await openCreation('first');
@@ -226,14 +226,17 @@ describe('workspace creation', () => {
 
     await userEvent.setup().click(name);
     await userEvent.setup().tab();
-    expect(within(form).getByText(/Give the workspace a name/u)).toBeVisible();
-    expect(name).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      within(form).queryByText(/Give the workspace a name/u),
+    ).not.toBeInTheDocument();
+    expect(name).toHaveAttribute('aria-invalid', 'false');
     const slug = await revealHandle(form);
     await userEvent.setup().type(slug, 'Not valid');
     await userEvent
       .setup()
       .click(within(form).getByRole('button', { name: 'Create workspace' }));
     expect(name).toHaveFocus();
+    expect(within(form).getByText(/Give the workspace a name/u)).toBeVisible();
     expect(slug).toHaveAttribute('aria-invalid', 'true');
 
     await userEvent.setup().type(name, 'Valid name');

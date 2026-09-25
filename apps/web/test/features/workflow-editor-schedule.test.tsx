@@ -308,6 +308,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     const rule = screen.getByLabelText('Cron rule');
     expect(rule).toHaveValue('30 8 * * 1-5');
     fireEvent.change(rule, { target: { value: 'H 8 * * *' } });
+    fireEvent.blur(rule);
     expect(rule).toHaveAccessibleDescription(/aren’t supported/u);
     expect(
       screen.getByText('An edit isn’t valid yet, so it isn’t saved.'),

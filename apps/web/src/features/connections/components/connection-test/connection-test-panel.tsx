@@ -119,7 +119,6 @@ export function ConnectionTestPanel({
           label="Address to call"
           description="Pertexo sends a GET request with your headers, like https://api.example.com/me."
           error={validation.error('url')}
-          thread={validation.thread('url')}
         >
           {(control) => (
             <Input
@@ -137,9 +136,6 @@ export function ConnectionTestPanel({
                 const next = event.currentTarget.value;
                 setUrl(next);
                 validation.change('url', urlError(next));
-              }}
-              onBlur={() => {
-                validation.blur('url', urlError(url));
               }}
             />
           )}

@@ -28,10 +28,7 @@ type SecretFieldProps = Readonly<{
   description?: string;
   update: (value: string) => CredentialDraft;
 }> &
-  Pick<
-    FieldsProps,
-    'draft' | 'idPrefix' | 'disabled' | 'validation' | 'onChange'
-  >;
+  Pick<FieldsProps, 'idPrefix' | 'disabled' | 'validation' | 'onChange'>;
 
 function CredentialInput({
   field,
@@ -41,7 +38,6 @@ function CredentialInput({
   secret,
   description,
   update,
-  draft,
   idPrefix,
   disabled,
   validation,
@@ -53,7 +49,6 @@ function CredentialInput({
       label={label}
       {...(description === undefined ? {} : { description })}
       error={validation.error(field)}
-      thread={validation.thread(field)}
     >
       {(control) => (
         <Input
@@ -71,9 +66,6 @@ function CredentialInput({
             const next = update(event.currentTarget.value);
             onChange(next);
             validation.change(field, credentialErrors(next)[field]);
-          }}
-          onBlur={() => {
-            validation.blur(field, credentialErrors(draft)[field]);
           }}
         />
       )}

@@ -167,7 +167,6 @@ export function NewWorkflowSheet({
               label="Workflow name"
               description="For example “Invoice intake” or “Nightly CRM sync”."
               error={validation.error('name')}
-              thread={validation.thread('name')}
             >
               {(control) => (
                 <Input
@@ -181,9 +180,6 @@ export function NewWorkflowSheet({
                   value={name}
                   onChange={(event) => {
                     changeName(event.target.value);
-                  }}
-                  onBlur={() => {
-                    validation.blur('name', nameProblem(name));
                   }}
                 />
               )}

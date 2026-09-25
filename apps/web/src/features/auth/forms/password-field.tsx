@@ -1,7 +1,7 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LabelledField, type FieldThread } from '@/components/ui/field';
+import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordMeter } from './password-meter';
 
@@ -10,7 +10,6 @@ type PasswordFieldProps = Readonly<{
   label: ReactNode;
   labelAction?: ReactNode;
   error?: string | undefined;
-  thread?: FieldThread;
   /** Shows the requirement thread for a new password. */
   minimumLength?: number | undefined;
 }> &
@@ -22,7 +21,6 @@ export function PasswordField({
   label,
   labelAction,
   error,
-  thread,
   minimumLength,
   ...inputProps
 }: PasswordFieldProps) {
@@ -35,7 +33,6 @@ export function PasswordField({
       label={label}
       labelAction={labelAction}
       error={error}
-      thread={thread}
       describedBy={minimumLength === undefined ? undefined : meterId}
       trailing={
         <Button

@@ -129,6 +129,9 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
     );
     await event.clear(field);
     await event.type(field, 'ops');
+    // Typing says nothing yet; leaving the field does.
+    expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.blur(field);
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Channel IDs start with C, G or D/u,
     );

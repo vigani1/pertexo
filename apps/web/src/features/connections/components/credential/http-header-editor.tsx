@@ -39,10 +39,6 @@ export function HttpHeaderEditor({
       validation.change(field, credentialErrors(next)[field]);
   }
 
-  function blur(field: CredentialField) {
-    validation.blur(field, credentialErrors(draft)[field]);
-  }
-
   const formError = validation.error('headers');
 
   return (
@@ -61,7 +57,7 @@ export function HttpHeaderEditor({
               key={row.id}
               className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-start gap-2"
             >
-              <FieldControl state={validation.thread(nameField)}>
+              <FieldControl>
                 <Input
                   ref={validation.register(nameField)}
                   id={nameId}
@@ -87,12 +83,9 @@ export function HttpHeaderEditor({
                       nameField,
                     );
                   }}
-                  onBlur={() => {
-                    blur(nameField);
-                  }}
                 />
               </FieldControl>
-              <FieldControl state={validation.thread(valueField)}>
+              <FieldControl>
                 <Input
                   ref={validation.register(valueField)}
                   id={valueId}
@@ -118,9 +111,6 @@ export function HttpHeaderEditor({
                       ),
                       valueField,
                     );
-                  }}
-                  onBlur={() => {
-                    blur(valueField);
                   }}
                 />
               </FieldControl>

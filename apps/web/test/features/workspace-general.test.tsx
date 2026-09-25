@@ -427,8 +427,11 @@ describe('workspace settings', () => {
     const reason = dialog.getByLabelText('Reason');
     await actor.click(reason);
     await actor.tab();
-    expect(await dialog.findByText(/Say why in a sentence/u)).toBeVisible();
+    expect(
+      dialog.queryByText(/Say why in a sentence/u),
+    ).not.toBeInTheDocument();
     await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
+    expect(dialog.getByText(/Say why in a sentence/u)).toBeVisible();
     expect(confirmation).toHaveFocus();
     expect(confirmation).toHaveAccessibleDescription(
       'Type Control Operations exactly to confirm.',

@@ -151,6 +151,8 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
     fireEvent.click((await findCanvas()).getByText('Numbers'));
     const count = screen.getByLabelText('Count');
     fireEvent.change(count, { target: { value: '-' } });
+    expect(screen.queryByText('Count must be a number.')).toBeNull();
+    fireEvent.blur(count);
     expect(screen.getByText('Count must be a number.')).toBeVisible();
     fireEvent.change(count, { target: { value: '-2.5' } });
     expect(screen.queryByText('Count must be a number.')).toBeNull();

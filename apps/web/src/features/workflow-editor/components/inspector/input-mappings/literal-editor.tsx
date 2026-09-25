@@ -46,10 +46,9 @@ export function LiteralEditor({
         </div>
       </Field>
     );
-  const thread = error === undefined ? undefined : 'invalid';
   if (mode === 'string' || mode === 'number')
     return (
-      <LabelledField id={controlId} label="Value" error={error} thread={thread}>
+      <LabelledField id={controlId} label="Value" error={error}>
         {(control) => (
           <Input
             {...control}
@@ -71,12 +70,7 @@ export function LiteralEditor({
       </LabelledField>
     );
   return (
-    <LabelledField
-      id={controlId}
-      label="JSON value"
-      error={error}
-      thread={thread}
-    >
+    <LabelledField id={controlId} label="JSON value" error={error}>
       {(control) => (
         <Textarea
           {...control}

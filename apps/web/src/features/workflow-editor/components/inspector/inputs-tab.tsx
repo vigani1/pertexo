@@ -172,6 +172,9 @@ export function InputsTab({
                 onFocusRow={() => {
                   activeRowId.current = row.id;
                 }}
+                onLeaveRow={() => {
+                  mappings.leaveRow(row.id);
+                }}
               />
             ))}
           </ol>

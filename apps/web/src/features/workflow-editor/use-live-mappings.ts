@@ -13,6 +13,7 @@ type MappingDraft = Readonly<{
   rows: readonly InputMappingDraftRow[];
   /** JSON of the mappings these rows last applied, to spot outside changes. */
   applied: string;
+  /** Rows people have left: their problems show and then follow typing. */
   touched: ReadonlySet<string>;
   sequence: number;
 }>;
@@ -59,12 +60,9 @@ export function useLiveMappings({
 
   function update(
     rows: readonly InputMappingDraftRow[],
-    changes: Readonly<{ touchedRowId?: string; sequence?: number }> = {},
+    changes: Readonly<{ sequence?: number }> = {},
   ) {
-    const touched =
-      changes.touchedRowId === undefined
-        ? current.touched
-        : new Set(current.touched).add(changes.touchedRowId);
+    const { touched } = current;
     const sequence = changes.sequence ?? current.sequence;
     const result = validateInputMappingRows(rows, graph, node.id, {
       checkGraph: false,
@@ -114,8 +112,12 @@ export function useLiveMappings({
         current.rows.map((candidate) =>
           candidate.id === row.id ? row : candidate,
         ),
-        { touchedRowId: row.id },
       );
+    },
+    /** Leaving a row's controls shows what's wrong with it. */
+    leaveRow: (rowId: string) => {
+      if (current.touched.has(rowId)) return;
+      setDraft({ ...current, touched: new Set(current.touched).add(rowId) });
     },
     removeRow: (rowId: string) => {
       update(current.rows.filter((row) => row.id !== rowId));

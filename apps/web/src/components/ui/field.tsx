@@ -1,9 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-/** The validation thread under a control: frayed, briefly knotted, or none. */
-export type FieldThread = 'invalid' | 'corrected' | undefined;
-
 // The small, presentational subset of the shadcn Field composition. The
 // caller owns validation and explicit control/description/error IDs, or uses
 // `LabelledField`, which links them.
@@ -68,47 +65,17 @@ export function FieldError({ className, ...props }: ComponentProps<'p'>) {
 }
 
 /**
- * Wraps a single control with Weft's validation thread: when `state` is
- * `invalid` the line under the control frays; `corrected` ties a brief knot
- * after a previously invalid value becomes valid. Purely visual — the caller
- * still sets `aria-invalid` and links its error with `aria-describedby`.
+ * Holds a single control and anything drawn inside its edges (a show/hide
+ * toggle, a unit). An invalid control marks itself with `aria-invalid`,
+ * which draws its border in the error colour; the message sits below.
  */
-export function FieldControl({
-  state,
-  className,
-  children,
-  ...props
-}: ComponentProps<'div'> & { state?: FieldThread }) {
+export function FieldControl({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="field-control"
-      data-state={state}
-      className={cn('group/control relative min-w-0', className)}
+      className={cn('relative min-w-0', className)}
       {...props}
-    >
-      {children}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-2.5 -bottom-px h-0.5 rounded-full opacity-0 group-data-[state=corrected]/control:bg-success group-data-[state=corrected]/control:motion-safe:animate-[field-tie_1.4s_ease-out_forwards] group-data-[state=invalid]/control:right-8 group-data-[state=invalid]/control:bg-linear-to-r group-data-[state=invalid]/control:from-destructive/15 group-data-[state=invalid]/control:to-destructive group-data-[state=invalid]/control:opacity-100"
-      />
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 22 16"
-        className="pointer-events-none absolute right-2 -bottom-2 h-4 w-5.5 origin-left text-destructive opacity-0 group-data-[state=invalid]/control:opacity-100 group-data-[state=invalid]/control:motion-safe:animate-fray"
-      >
-        <path
-          d="M0 8h7M7 8l13-6M7 8h15M7 8l13 6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2 -bottom-1.5 size-2.5 rounded-full bg-success opacity-0 group-data-[state=corrected]/control:motion-safe:animate-[knot-flash_1.4s_ease-out_forwards]"
-      />
-    </div>
+    />
   );
 }
 
@@ -121,8 +88,8 @@ export type LabelledControlProps = Readonly<{
 
 /**
  * The one labelled field: label (with an optional action beside it), the
- * control drawn by the caller with the returned accessibility props, the
- * validation thread, then any live feedback, the hint and the message.
+ * control drawn by the caller with the returned accessibility props, then
+ * any live feedback, the hint and the message.
  */
 export function LabelledField({
   id,
@@ -130,7 +97,6 @@ export function LabelledField({
   labelAction,
   description,
   error,
-  thread,
   trailing,
   feedback,
   describedBy,
@@ -143,7 +109,6 @@ export function LabelledField({
   labelAction?: ReactNode;
   description?: ReactNode;
   error?: string | undefined;
-  thread?: FieldThread;
   /** A control inside the input's right edge, e.g. show/hide. */
   trailing?: ReactNode;
   /** Live feedback between the control and its hint, e.g. a strength meter. */
@@ -173,7 +138,6 @@ export function LabelledField({
         </div>
       )}
       <FieldControl
-        state={thread}
         className={cn(trailing !== undefined && '[&_[data-slot=input]]:pr-11')}
       >
         {children({

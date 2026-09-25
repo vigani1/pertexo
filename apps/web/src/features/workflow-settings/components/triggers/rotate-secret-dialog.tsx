@@ -59,7 +59,6 @@ export function RotateSecretDialog({
         label="Current address or endpoint key"
         description="Pertexo uses it to confirm which endpoint you mean. It isn’t stored here."
         error={validation.error('endpoint')}
-        thread={validation.thread('endpoint')}
       >
         {(control) => (
           <Input
@@ -77,9 +76,6 @@ export function RotateSecretDialog({
                 'endpoint',
                 endpointProblem(event.target.value),
               );
-            }}
-            onBlur={() => {
-              validation.blur('endpoint', endpointProblem(pasted));
             }}
           />
         )}
