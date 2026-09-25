@@ -282,14 +282,13 @@ export class LoomRenderer extends CanvasScene {
         return;
       }
       case 'failure':
+        // The thread stops at a cross.
         context.lineWidth = 1.6;
         context.beginPath();
-        context.moveTo(x, y);
-        context.lineTo(x + 7, y - 4.5);
-        context.moveTo(x, y);
-        context.lineTo(x + 8.5, y);
-        context.moveTo(x, y);
-        context.lineTo(x + 7, y + 4.5);
+        context.moveTo(x + 1.5, y - 3.5);
+        context.lineTo(x + 8.5, y + 3.5);
+        context.moveTo(x + 8.5, y - 3.5);
+        context.lineTo(x + 1.5, y + 3.5);
         context.stroke();
         return;
       case 'timeout':

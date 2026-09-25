@@ -19,7 +19,9 @@ export type StatusTone =
   | 'neutral';
 
 const statusVariants = cva(
-  'inline-flex min-w-0 items-center gap-1.5 text-[0.8rem] leading-none font-semibold whitespace-nowrap',
+  // A status is one short word and never gives up its space to the text
+  // beside it: that text wraps instead.
+  'inline-flex shrink-0 items-center gap-1.5 text-[0.8rem] leading-none font-semibold whitespace-nowrap',
   {
     variants: { tone: statusToneText },
     defaultVariants: { tone: 'neutral' },
@@ -74,7 +76,8 @@ function GlyphShape({ tone }: Readonly<{ tone: StatusTone }>) {
         </>
       );
     case 'failure':
-      return <path d="M1.5 8h6.5M8 8l5.8-4.6M8 8h6.8M8 8l5.8 4.6" />;
+      // The thread stops at a cross.
+      return <path d="M1.5 8h5.5M9.5 5l6 6M15.5 5l-6 6" />;
     case 'timeout':
       return (
         <>
@@ -117,7 +120,7 @@ export function StatusGlyph({
     >
       <svg
         viewBox="0 0 16 16"
-        className="size-4 overflow-visible"
+        className="size-full overflow-visible"
         {...strokeProps}
       >
         <GlyphShape tone={tone} />
@@ -145,9 +148,7 @@ export function Status({
       {...props}
     >
       <StatusGlyph tone={tone} />
-      {children === undefined ? null : (
-        <span className="min-w-0 truncate">{children}</span>
-      )}
+      {children === undefined ? null : <span>{children}</span>}
     </span>
   );
 }

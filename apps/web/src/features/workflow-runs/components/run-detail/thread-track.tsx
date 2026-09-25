@@ -65,7 +65,7 @@ function SegmentEnd({ segment }: Readonly<{ segment: ThreadSegment }>) {
           strokeWidth="1.8"
           strokeLinecap="round"
         >
-          <path d="M0 8h7M7 8l13-6M7 8h15M7 8l13 6" />
+          <path d="M0 8h7M10 4l8 8M18 4l-8 8" />
         </svg>
       );
     case 'bar':

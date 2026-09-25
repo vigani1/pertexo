@@ -1104,13 +1104,13 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 
 #### Five materials, one rule each
 
-| Material  | Meaning                                                                                                 | Rule                                                                                                         | Implementation                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Thread    | A run moving through time: grows while running, knots on success, frays on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                     |
-| Loom      | Time laid sideways, one lane per workflow                                                               | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                           |
-| Core      | The living particle orb                                                                                 | At most one large animated Core per screen                                                                   | `components/patterns/core-orb.tsx` + `core-orb-scene.ts` (Canvas 2D, token colours, paused off-screen) |
-| Lens      | Glass                                                                                                   | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                      |
-| Live edge | The aurora travelling around a border                                                                   | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                                 |
+| Material  | Meaning                                                                                                            | Rule                                                                                                         | Implementation                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Thread    | A run moving through time: grows while running, knots on success, stops at a cross on failure, coils while waiting | Every status in the product speaks the thread glyph language                                                 | `components/ui/status.tsx` (`Status`, `StatusGlyph`, `StatusTone`)                                     |
+| Loom      | Time laid sideways, one lane per workflow                                                                          | Charts come from real run times, never invented metrics                                                      | Runs feature (Home and the Runs "Loom" view); step thread view on run detail                           |
+| Core      | The living particle orb                                                                                            | At most one large animated Core per screen                                                                   | `components/patterns/core-orb.tsx` + `core-orb-scene.ts` (Canvas 2D, token colours, paused off-screen) |
+| Lens      | Glass                                                                                                              | Only layers that float above the page: spine, bars, inspectors, dialogs, menus, toasts. Page content is flat | `lens` utility in `styles/globals.css`; `components/ui/sheet.tsx`, dialog, popups                      |
+| Live edge | The aurora travelling around a border                                                                              | Only while real work is in flight; nothing moves when nothing happens                                        | `live-edge` class (animated `@property` angle, bounded to the element)                                 |
 
 #### Tokens and type
 
@@ -1144,18 +1144,18 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 Features map their own enums to a `StatusTone` in their `model/` (for example
 `features/workflows/model/workflow-state.ts`). Never colour a status ad hoc.
 
-| Tone        | Glyph (motion)               | Used for                                                             |
-| ----------- | ---------------------------- | -------------------------------------------------------------------- |
-| `live`      | light travels along a thread | running runs/steps/previews, starting activation, info notifications |
-| `queued`    | three beads brighten in turn | queued runs, pending/ready steps                                     |
-| `waiting`   | a slowly turning coil        | waiting runs/steps, scheduled retries, stopping                      |
-| `success`   | knot                         | succeeded, healthy, enabled, live workflows                          |
-| `failure`   | fray                         | failed, error, unhealthy, revoked-by-failure                         |
-| `timeout`   | thread stopped by a bar      | timed out                                                            |
-| `attention` | dotted gap, slow blink       | outcome unknown, degraded, reauthorization required                  |
-| `canceled`  | cut thread                   | canceled, revoked, archived                                          |
-| `skipped`   | dashed thread                | skipped branches                                                     |
-| `neutral`   | hollow bead                  | drafts and states without meaning                                    |
+| Tone        | Glyph (motion)                | Used for                                                             |
+| ----------- | ----------------------------- | -------------------------------------------------------------------- |
+| `live`      | light travels along a thread  | running runs/steps/previews, starting activation, info notifications |
+| `queued`    | three beads brighten in turn  | queued runs, pending/ready steps                                     |
+| `waiting`   | a slowly turning coil         | waiting runs/steps, scheduled retries, stopping                      |
+| `success`   | knot                          | succeeded, healthy, enabled, live workflows                          |
+| `failure`   | cross (the thread stops at ×) | failed, error, unhealthy, revoked-by-failure                         |
+| `timeout`   | thread stopped by a bar       | timed out                                                            |
+| `attention` | dotted gap, slow blink        | outcome unknown, degraded, reauthorization required                  |
+| `canceled`  | cut thread                    | canceled, revoked, archived                                          |
+| `skipped`   | dashed thread                 | skipped branches                                                     |
+| `neutral`   | hollow bead                   | drafts and states without meaning                                    |
 
 #### Shared building blocks
 
