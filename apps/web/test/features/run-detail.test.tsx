@@ -366,7 +366,7 @@ describe('run page', () => {
     expect(
       await screen.findByRole(
         'heading',
-        { level: 1, name: 'Succeeded in 2.0 s' },
+        { level: 1, name: 'Succeeded in 2s' },
         coldStart,
       ),
     ).toBeVisible();

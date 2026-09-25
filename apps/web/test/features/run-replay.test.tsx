@@ -192,7 +192,7 @@ describe('run replay', () => {
     expect(
       await screen.findByRole(
         'heading',
-        { level: 1, name: 'Failed after 2.0 s' },
+        { level: 1, name: 'Failed after 2s' },
         coldStart,
       ),
     ).toBeVisible();

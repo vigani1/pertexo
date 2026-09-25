@@ -1197,11 +1197,12 @@ capped in size, so a large Core (sign-in) stays fine-grained. Other libraries
 (`lib`): `format-time.ts` (all date/time/duration text — no feature-local
 `Intl.DateTimeFormat`; `formatDateTimeInZone` reads a time on a named clock with
 its zone name; `formatShortTime` is the locale's time to the minute, “Saved
-14:31” and the stale line, while `formatClock` keeps seconds for instruments),
-`format-bytes.ts` (byte sizes for files and payloads), `format-initials.ts`,
-`api/api-error-copy.ts` (generic read/command failure sentences, uncertain
-outcome, forbidden, rate-limit and support reference helpers),
-`use-prefers-reduced-motion.ts`, `use-online-status.ts`.
+14:31” and the stale line, while `formatClock` keeps seconds for logs; durations
+have one compact style, `0.12s`, `4.2s`, `1m 12s`, `2h 05m`, and relative times
+the narrow one, `3m ago`), `format-bytes.ts` (byte sizes for files and
+payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic read/command
+failure sentences, uncertain outcome, forbidden, rate-limit and support
+reference helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 #### Structure
 
