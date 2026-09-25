@@ -66,8 +66,8 @@ const TITLE_CLASS =
 /**
  * The floating command bar shared by every tab of a workflow: identity on
  * the left (editors rename it in place), tabs in the middle, the active
- * tab's own actions on the right. `detail` sits under the name (e.g. the
- * editor's save state).
+ * tab's own actions on the right. `glyph` sits before the name (the
+ * editor's pattern glyph) and `detail` under it (e.g. its save state).
  */
 export function WorkflowHubBar({
   apiClient,
@@ -76,6 +76,7 @@ export function WorkflowHubBar({
   workflowId,
   workflow,
   activeTab,
+  glyph,
   detail,
   actions,
 }: Readonly<{
@@ -85,6 +86,7 @@ export function WorkflowHubBar({
   workflowId: string;
   workflow: WorkflowSummary | undefined;
   activeTab: WorkflowHubTab;
+  glyph?: ReactNode;
   detail?: ReactNode;
   actions?: ReactNode;
 }>) {
@@ -101,6 +103,7 @@ export function WorkflowHubBar({
         >
           <ArrowLeftIcon aria-hidden="true" />
         </Link>
+        {glyph}
         <div className="min-w-0">
           {workflow === undefined ? (
             <h1 className={TITLE_CLASS}>Workflow</h1>
