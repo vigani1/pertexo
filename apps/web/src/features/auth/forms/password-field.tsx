@@ -59,6 +59,7 @@ export function PasswordField({
             id={meterId}
             length={typeof value === 'string' ? value.length : 0}
             minimumLength={minimumLength}
+            quiet={error !== undefined}
           />
         )
       }

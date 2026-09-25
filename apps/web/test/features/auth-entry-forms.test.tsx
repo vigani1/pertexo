@@ -158,12 +158,12 @@ describe('sign-in family forms', () => {
     const meter = () => document.querySelector('[data-slot="password-meter"]');
     await actor.type(password, 'woven-t');
     expect(meter()).toHaveAttribute('data-state', 'short');
-    expect(meter()).toHaveTextContent('7 / 10');
+    expect(meter()).toHaveTextContent('3 more characters');
     await actor.type(password, 'hr');
     expect(meter()).toHaveAttribute('data-state', 'short');
     await actor.type(password, 'e');
     expect(meter()).toHaveAttribute('data-state', 'met');
-    expect(meter()).toHaveTextContent('10 / 10');
+    expect(meter()).toHaveTextContent('Long enough');
     expect(password).toHaveAttribute(
       'aria-describedby',
       expect.stringContaining('sign-up-password-meter'),
