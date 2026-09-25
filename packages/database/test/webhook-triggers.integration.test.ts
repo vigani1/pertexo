@@ -33,6 +33,7 @@ import {
   ScheduleTriggerError,
 } from '../src/triggers/schedule-triggers.js';
 import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
+import type { WebhookDeliveryPosition } from '../src/triggers/webhook-trigger-deliveries.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -1095,6 +1096,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('archived-webhook-admission'),
         payload: { archived: true },
+        bodyBytes: 64,
         checkpointFactory,
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
@@ -1190,7 +1192,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0113_workflow_run_statistics_index.sql',
+      migrationHead: '0115_webhook_delivery_log.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -1644,6 +1646,7 @@ describe('generic webhook database seam', () => {
       requestFingerprint: hash('payload-one'),
       idempotencyKeyHash: hash('sender-key'),
       payload: { event: 'one' },
+      bodyBytes: 64,
       checkpointFactory,
     } as const;
     const accepted = await Promise.all([
@@ -1713,6 +1716,7 @@ describe('generic webhook database seam', () => {
           ? { idempotencyKeyHash: dedupeKeyHash }
           : {}),
         payload: { dedupeKind },
+        bodyBytes: 64,
         checkpointFactory,
       } as const;
       const first = await webhook.acceptVerifiedDelivery(input);
@@ -1740,13 +1744,20 @@ describe('generic webhook database seam', () => {
         true,
       ]);
     }
+    // Each kind admits twice; each race also records its losing exact replay.
     await expect(
-      ownerQuery<{ count: number }>(
-        `select count(*)::int count from app.webhook_trigger_deliveries
-          where workspace_id=$1 and endpoint_id=$2`,
+      ownerQuery<{ outcome: string; count: number }>(
+        `select outcome,count(*)::int count from app.webhook_trigger_deliveries
+          where workspace_id=$1 and endpoint_id=$2
+          group by outcome order by outcome`,
         [workspaceId, resources.endpointId],
       ),
-    ).resolves.toMatchObject({ rows: [{ count: 4 }] });
+    ).resolves.toMatchObject({
+      rows: [
+        { outcome: 'accepted', count: 4 },
+        { outcome: 'replayed', count: 2 },
+      ],
+    });
   });
 
   it('rolls back replay, run, delivery, and outbox after post-replay failure', async () => {
@@ -1779,6 +1790,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('post-replay-rollback'),
         payload: { event: 'post-replay-rollback' },
+        bodyBytes: 64,
         checkpointFactory: () => {
           throw failure;
         },
@@ -1818,6 +1830,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: verification.currentSecret.id,
         requestFingerprint: hash('graph-disabled-ingress'),
         payload: { event: 'graph-disabled-ingress' },
+        bodyBytes: 64,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ replayed: false });
@@ -1854,6 +1867,7 @@ describe('generic webhook database seam', () => {
       requestFingerprint: hash('accepted-before-rotation'),
       idempotencyKeyHash: hash('accepted-before-rotation-key'),
       payload: { event: 'accepted-before-rotation' },
+      bodyBytes: 64,
       checkpointFactory,
     } as const;
     const accepted = await webhook.acceptVerifiedDelivery(
@@ -1886,6 +1900,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: oldVerification.currentSecret.id,
         requestFingerprint: hash('rotation-race'),
         payload: { event: 'rotation-race' },
+        bodyBytes: 64,
         checkpointFactory,
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
@@ -1950,6 +1965,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-before-expiry'),
         payload: { event: 'previous-secret-before-expiry' },
+        bodyBytes: 64,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ replayed: false });
@@ -1982,6 +1998,7 @@ describe('generic webhook database seam', () => {
         verifiedSecretVersionId: after.previousSecret.id,
         requestFingerprint: hash('previous-secret-after-expiry'),
         payload: { event: 'previous-secret-after-expiry' },
+        bodyBytes: 64,
         checkpointFactory,
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
@@ -1999,6 +2016,7 @@ describe('generic webhook database seam', () => {
       requestFingerprint: hash('rollback-payload'),
       idempotencyKeyHash: hash('rollback-key'),
       payload: { event: 'rollback' },
+      bodyBytes: 64,
       checkpointFactory,
     } as const;
     await expect(webhook.acceptVerifiedDelivery(input)).rejects.toBeInstanceOf(
@@ -2010,5 +2028,166 @@ describe('generic webhook database seam', () => {
     await expect(webhook.acceptVerifiedDelivery(input)).resolves.toMatchObject({
       replayed: false,
     });
+  });
+
+  it('records metadata-only delivery outcomes and pages the retained log', async () => {
+    const { published, resources, verification } =
+      await createWebhookScenario();
+    const admitted = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('delivery-log-payload'),
+      idempotencyKeyHash: hash('delivery-log-key'),
+      payload: { event: 'delivery-log' },
+      bodyBytes: 321,
+      checkpointFactory,
+    } as const;
+    const accepted = await webhook.acceptVerifiedDelivery(admitted);
+    await expect(webhook.acceptVerifiedDelivery(admitted)).resolves.toEqual({
+      runId: accepted.runId,
+      replayed: true,
+    });
+    const endpoint = {
+      workspaceId,
+      triggerId: resources.webhookId,
+      endpointId: resources.endpointId,
+    };
+    const rejections = [
+      ['authentication_failed', 'not_checked', 'stale_timestamp'],
+      ['authentication_failed', 'mismatch', 'not_checked'],
+      ['invalid_request', 'verified', 'not_checked'],
+      ['conflict', 'verified', 'conflict'],
+      ['rate_limited', 'verified', 'new'],
+    ] as const;
+    for (const [index, [outcome, signatureCheck, replayCheck]] of [
+      ...rejections.entries(),
+    ])
+      await webhook.recordRejectedDelivery({
+        endpoint,
+        outcome,
+        signatureCheck,
+        replayCheck,
+        bodyBytes: index,
+      });
+    await expect(
+      webhook.recordRejectedDelivery({
+        endpoint,
+        outcome: 'conflict',
+        signatureCheck: 'mismatch',
+        replayCheck: 'new',
+        bodyBytes: 1,
+      }),
+    ).rejects.toMatchObject({
+      cause: { constraint: 'webhook_trigger_deliveries_outcome_valid' },
+    });
+
+    const read = {
+      workspaceId,
+      actorId,
+      workflowId: published.created.workflowId,
+      triggerId: resources.webhookId,
+      limit: 3,
+    };
+    const nextPage = (cursor: WebhookDeliveryPosition | undefined) => {
+      if (cursor === undefined) throw new Error('Expected another page');
+      return webhook.listDeliveries({ ...read, after: cursor });
+    };
+    const first = await webhook.listDeliveries(read);
+    const second = await nextPage(first.nextCursor);
+    const third = await nextPage(second.nextCursor);
+    expect(
+      [first, second, third].map((page) =>
+        page.items.map(({ outcome, httpStatus, bodyBytes }) => [
+          outcome,
+          httpStatus,
+          bodyBytes,
+        ]),
+      ),
+    ).toEqual([
+      [
+        ['rate_limited', 429, 4],
+        ['conflict', 409, 3],
+        ['invalid_request', 400, 2],
+      ],
+      [
+        ['authentication_failed', 401, 1],
+        ['authentication_failed', 401, 0],
+        ['replayed', 202, 321],
+      ],
+      [['accepted', 202, 321]],
+    ]);
+    expect(third.nextCursor).toBeUndefined();
+    expect(second.items[2]).toMatchObject({
+      signatureCheck: 'verified',
+      replayCheck: 'duplicate',
+      runId: accepted.runId,
+    });
+    expect(third.items[0]).toMatchObject({
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      runId: accepted.runId,
+    });
+    expect(first.items.every(({ runId }) => runId === null)).toBe(true);
+    const columns = await ownerQuery<{ keys: string[] }>(
+      `select array_agg(key order by key) keys from (
+         select distinct jsonb_object_keys(to_jsonb(delivery)) key
+           from app.webhook_trigger_deliveries delivery
+          where workspace_id=$1 and trigger_id=$2) keys`,
+      [workspaceId, resources.webhookId],
+    );
+    expect(columns.rows[0]?.keys).toEqual([
+      'body_bytes',
+      'dedupe_kind',
+      'endpoint_id',
+      'expires_at',
+      'http_status',
+      'id',
+      'outcome',
+      'received_at',
+      'replay_check',
+      'signature_check',
+      'trigger_id',
+      'workflow_run_id',
+      'workspace_id',
+    ]);
+
+    await ownerQuery(
+      `update app.webhook_trigger_deliveries
+          set received_at=clock_timestamp()-interval '91 days',
+              expires_at=clock_timestamp()-interval '1 day'
+        where workspace_id=$1 and trigger_id=$2 and outcome='rate_limited'`,
+      [workspaceId, resources.webhookId],
+    );
+    const retained = await webhook.listDeliveries({ ...read, limit: 100 });
+    expect(retained.items.map(({ outcome }) => outcome)).not.toContain(
+      'rate_limited',
+    );
+    expect(retained.items).toHaveLength(6);
+
+    for (const hidden of [
+      { ...read, actorId: randomUUID() },
+      { ...read, triggerId: resources.scheduleId },
+      { ...read, workflowId: workflowId },
+      { ...read, workspaceId: randomUUID() },
+    ])
+      await expect(webhook.listDeliveries(hidden)).rejects.toBeInstanceOf(
+        WebhookTriggerNotFoundError,
+      );
+    const otherTenant = await readinessPool.connect();
+    try {
+      await otherTenant.query('begin');
+      await otherTenant.query("select set_config('app.workspace_id',$1,true)", [
+        randomUUID(),
+      ]);
+      await expect(
+        otherTenant.query(
+          'select id from app.webhook_trigger_deliveries where trigger_id=$1',
+          [resources.webhookId],
+        ),
+      ).resolves.toMatchObject({ rows: [] });
+      await otherTenant.query('rollback');
+    } finally {
+      otherTenant.release();
+    }
   });
 });

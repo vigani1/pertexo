@@ -78,14 +78,23 @@ export const webhookTriggerDeliveries = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     triggerId: uuid('trigger_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
-    workflowRunId: uuid('workflow_run_id').notNull(),
-    dedupeKind: varchar('dedupe_kind', { length: 16 }).notNull(),
+    workflowRunId: uuid('workflow_run_id'),
+    dedupeKind: varchar('dedupe_kind', { length: 16 }),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()+interval '90 days'`)
       .notNull(),
+    outcome: varchar('outcome', { length: 32 }).default('accepted').notNull(),
+    httpStatus: smallint('http_status').default(202).notNull(),
+    signatureCheck: varchar('signature_check', { length: 16 })
+      .default('verified')
+      .notNull(),
+    replayCheck: varchar('replay_check', { length: 16 })
+      .default('new')
+      .notNull(),
+    bodyBytes: integer('body_bytes'),
   },
   (table) => [
     uniqueIndex('webhook_trigger_deliveries_workspace_identity_unique').on(

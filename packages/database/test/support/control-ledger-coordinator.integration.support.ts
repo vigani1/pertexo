@@ -78,6 +78,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0107_legacy_method_migration_attempts.sql',
   '0108_workflow_name_revision.sql',
   '0113_workflow_run_statistics_index.sql',
+  '0115_webhook_delivery_log.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

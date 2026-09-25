@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0113_workflow_run_statistics_index.sql",
+  "transactionalThrough": "0115_webhook_delivery_log.sql",
   "migrations": {}
 }

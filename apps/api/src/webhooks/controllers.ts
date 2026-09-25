@@ -5,10 +5,14 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { webhookRotateSecretRequestSchema } from '@pertexo/contracts/webhooks';
+import {
+  webhookDeliveryListQuerySchema,
+  webhookRotateSecretRequestSchema,
+} from '@pertexo/contracts/webhooks';
 import { z } from 'zod';
 
 import {
@@ -54,6 +58,26 @@ export class WebhookManagementController {
       workspaceId: route.workspaceId,
       workflowId: route.workflowId,
       actorId: authenticatedSession(request).userId,
+    });
+  }
+
+  @Get(':triggerId/webhook/deliveries')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, WebhookReadGuard)
+  public deliveries(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = commandRouteSchema.parse(params);
+    const page = webhookDeliveryListQuerySchema.parse(query ?? {});
+    return this.service.listDeliveries({
+      workspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+      triggerId: route.triggerId,
+      actorId: authenticatedSession(request).userId,
+      ...(page.limit === undefined ? {} : { limit: page.limit }),
+      ...(page.after === undefined ? {} : { after: page.after }),
     });
   }
 

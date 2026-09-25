@@ -63,8 +63,64 @@ export const webhookIngressResponseSchema = z
   .object({ runId: z.uuid(), replayed: z.boolean() })
   .strict();
 
+/** ADR 045: what happened to one attributed request, metadata only. */
+export const webhookDeliveryOutcomeSchema = z.enum([
+  'accepted',
+  'replayed',
+  'authentication_failed',
+  'invalid_request',
+  'conflict',
+  'rate_limited',
+]);
+export const webhookDeliverySignatureCheckSchema = z.enum([
+  'verified',
+  'mismatch',
+  'not_checked',
+]);
+export const webhookDeliveryReplayCheckSchema = z.enum([
+  'new',
+  'duplicate',
+  'conflict',
+  'stale_timestamp',
+  'not_checked',
+]);
+export const webhookDeliveryCursorSchema = z.string().min(1).max(512);
+export const webhookDeliveryPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(100);
+export const webhookDeliveryListQuerySchema = z
+  .object({
+    limit: webhookDeliveryPageLimitSchema.optional(),
+    after: webhookDeliveryCursorSchema.optional(),
+  })
+  .strict();
+export const webhookDeliverySchema = z
+  .object({
+    id: z.uuid(),
+    receivedAt: z.iso.datetime(),
+    outcome: webhookDeliveryOutcomeSchema,
+    httpStatus: z.number().int().min(200).max(599),
+    signatureCheck: webhookDeliverySignatureCheckSchema,
+    replayCheck: webhookDeliveryReplayCheckSchema,
+    byteLength: z.number().int().min(0).max(262_144).nullable(),
+    runId: z.uuid().nullable(),
+  })
+  .strict();
+export const webhookDeliveryListResponseSchema = z
+  .object({
+    items: z.array(webhookDeliverySchema).max(100),
+    nextCursor: webhookDeliveryCursorSchema.nullable(),
+  })
+  .strict();
+
 export type WebhookTriggerHealthResponse = z.output<
   typeof webhookTriggerHealthSchema
+>;
+export type WebhookDeliveryResponse = z.output<typeof webhookDeliverySchema>;
+export type WebhookDeliveryListResponse = z.output<
+  typeof webhookDeliveryListResponseSchema
 >;
 export type WebhookManagementCommandResponse = z.output<
   typeof webhookManagementCommandResponseSchema

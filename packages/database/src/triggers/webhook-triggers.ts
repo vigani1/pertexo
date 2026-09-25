@@ -26,6 +26,26 @@ import {
 } from './workflow-triggers.js';
 import { canManageWorkflowTrigger } from './trigger-management-access.js';
 import {
+  authorizeWebhookTriggerReader,
+  createWebhookDeliveryLog,
+  insertWebhookDelivery,
+  type WebhookDeliveryLog,
+} from './webhook-trigger-deliveries.js';
+import {
+  deleteExpiredReplay,
+  lockEndpointDedupeKey,
+  readLockedReplay,
+  resolveExactReplay,
+  type WebhookReplayIdentity,
+} from './webhook-trigger-replay.js';
+import {
+  WebhookDeliveryIneligibleError,
+  WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
+  WebhookTriggerIdempotencyConflictError,
+  WebhookTriggerNotFoundError,
+} from './webhook-trigger-errors.js';
+import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
@@ -73,12 +93,13 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   verifiedSecretVersionId: string;
   requestFingerprint: string;
   idempotencyKeyHash?: string;
+  bodyBytes: number;
   payload: unknown;
   checkpointFactory: WebhookCheckpointFactory;
   traceparent?: string;
 }>;
 
-export interface WebhookTriggerDatabase {
+export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
   provision(
     input: Command &
       Readonly<{
@@ -114,46 +135,17 @@ export interface WebhookTriggerDatabase {
   close(): Promise<void>;
 }
 
-export class WebhookTriggerNotFoundError extends Error {
-  public override readonly name = 'WebhookTriggerNotFoundError';
-}
-export class WebhookTriggerIdempotencyConflictError extends Error {
-  public override readonly name = 'WebhookTriggerIdempotencyConflictError';
-}
-export class WebhookDeliveryReplayMismatchError extends Error {
-  public override readonly name = 'WebhookDeliveryReplayMismatchError';
-}
-export class WebhookDeliveryIneligibleError extends Error {
-  public override readonly name = 'WebhookDeliveryIneligibleError';
-}
-export class WebhookIngressRateLimitExceededError extends Error {
-  public override readonly name = 'WebhookIngressRateLimitExceededError';
-  public constructor(public readonly retryAfterSeconds: number) {
-    super('webhook.rate_limited');
-  }
-}
+export {
+  WebhookDeliveryIneligibleError,
+  WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
+  WebhookTriggerIdempotencyConflictError,
+  WebhookTriggerNotFoundError,
+};
 function keyHash(value: string): string {
   return createHash('sha256')
     .update(z.string().min(1).max(128).parse(value))
     .digest('hex');
-}
-
-async function authorizeReader(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=$2
-       and membership.status='active'
-       and membership.role in ('owner','admin','builder')
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId],
-  );
-  if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
 }
 
 async function claimCommand(
@@ -291,62 +283,40 @@ async function executableProjection(
   return classified.workflowVersion;
 }
 
-type WebhookReplayRecord = Readonly<{
-  request_fingerprint: string;
-  workflow_run_id: string | null;
-  active: boolean;
-}>;
-type WebhookReplayIdentity = Readonly<{
-  endpointId: string;
-  dedupeKind: 'fingerprint' | 'keyed';
-  dedupeKeyHash: string;
-}>;
-async function lockEndpointDedupeKey(
+/** Locks the verified endpoint and everything that must stay admissible. */
+async function lockEligibleEndpoint(
   transaction: WorkspaceTransaction,
-  identity: WebhookReplayIdentity,
+  verification: WebhookVerificationReference,
+  verifiedSecretVersionId: string,
 ): Promise<void> {
-  await transaction.db.execute(sql`
-    select pg_advisory_xact_lock(hashtextextended(
-      ${`${identity.endpointId}:${identity.dedupeKind}:${identity.dedupeKeyHash}`},0))
+  const eligible = await transaction.db.execute<{
+    workflow_version_id: string;
+  }>(sql`
+    select trigger.workflow_version_id
+      from app.webhook_trigger_endpoints endpoint
+      join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id
+       and trigger.id=endpoint.trigger_id
+      join app.workflows workflow on workflow.workspace_id=trigger.workspace_id
+       and workflow.id=trigger.workflow_id
+      join app.workspaces workspace on workspace.id=trigger.workspace_id
+     where endpoint.workspace_id=${transaction.workspaceId}
+       and endpoint.id=${verification.endpointId}
+       and endpoint.endpoint_key_hash=${verification.endpointKeyHash}
+       and endpoint.trigger_id=${verification.triggerId}
+       and endpoint.status='active' and trigger.status='active'
+       and trigger.workflow_id=${verification.workflowId}
+       and trigger.workflow_version_id=${verification.workflowVersionId}
+       and workflow.published_version_id=trigger.workflow_version_id
+       and workflow.lifecycle_status='active'
+       and workflow.activation_status in ('active','degraded')
+       and workspace.status='active'
+       and (endpoint.current_secret_version_id=${verifiedSecretVersionId}
+         or (endpoint.previous_secret_version_id=${verifiedSecretVersionId}
+           and endpoint.previous_secret_valid_until>clock_timestamp()))
+     for share of endpoint,trigger,workflow,workspace
   `);
-}
-async function readLockedReplay(
-  transaction: WorkspaceTransaction,
-  identity: WebhookReplayIdentity,
-): Promise<WebhookReplayRecord | undefined> {
-  const result = await transaction.db.execute<WebhookReplayRecord>(sql`
-    select request_fingerprint,workflow_run_id,
-           expires_at>clock_timestamp() active
-      from app.webhook_trigger_replay_records
-     where workspace_id=${transaction.workspaceId}
-       and endpoint_id=${identity.endpointId}
-       and dedupe_kind=${identity.dedupeKind}
-       and dedupe_key_hash=${identity.dedupeKeyHash}
-     for update
-  `);
-  return result.rows[0];
-}
-function resolveExactReplay(
-  replay: WebhookReplayRecord,
-  requestFingerprint: string,
-): Readonly<{ runId: string; replayed: true }> {
-  if (replay.request_fingerprint !== requestFingerprint)
-    throw new WebhookDeliveryReplayMismatchError();
-  if (replay.workflow_run_id === null)
-    throw new Error('Webhook replay record is incomplete');
-  return Object.freeze({ runId: replay.workflow_run_id, replayed: true });
-}
-async function deleteExpiredReplay(
-  transaction: WorkspaceTransaction,
-  identity: WebhookReplayIdentity,
-): Promise<void> {
-  await transaction.db.execute(sql`
-    delete from app.webhook_trigger_replay_records
-     where workspace_id=${transaction.workspaceId}
-       and endpoint_id=${identity.endpointId}
-       and dedupe_kind=${identity.dedupeKind}
-       and dedupe_key_hash=${identity.dedupeKeyHash}
-  `);
+  if (eligible.rows[0] === undefined)
+    throw new WebhookDeliveryIneligibleError();
 }
 
 export function createWebhookTriggerDatabase(
@@ -484,7 +454,11 @@ export function createWebhookTriggerDatabase(
           actorId: uuidSchema.parse(input.actorId),
         },
         async (client) => {
-          await authorizeReader(client, input.workspaceId, input.actorId);
+          await authorizeWebhookTriggerReader(
+            client,
+            input.workspaceId,
+            input.actorId,
+          );
           return readHealth(
             client,
             input.workspaceId,
@@ -561,39 +535,26 @@ export function createWebhookTriggerDatabase(
         async (transaction) => {
           await lockEndpointDedupeKey(transaction, replayIdentity);
           const replay = await readLockedReplay(transaction, replayIdentity);
-          if (replay?.active === true)
-            return resolveExactReplay(replay, requestFingerprint);
+          if (replay?.active === true) {
+            const replayed = resolveExactReplay(replay, requestFingerprint);
+            await insertWebhookDelivery(transaction, verification, {
+              outcome: 'replayed',
+              signatureCheck: 'verified',
+              replayCheck: 'duplicate',
+              bodyBytes: input.bodyBytes,
+              runId: replayed.runId,
+              dedupeKind,
+            });
+            return replayed;
+          }
           if (replay !== undefined)
             await deleteExpiredReplay(transaction, replayIdentity);
 
-          const eligible = await transaction.db.execute<{
-            workflow_version_id: string;
-          }>(sql`
-            select trigger.workflow_version_id
-              from app.webhook_trigger_endpoints endpoint
-              join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id
-               and trigger.id=endpoint.trigger_id
-              join app.workflows workflow on workflow.workspace_id=trigger.workspace_id
-               and workflow.id=trigger.workflow_id
-              join app.workspaces workspace on workspace.id=trigger.workspace_id
-             where endpoint.workspace_id=${transaction.workspaceId}
-               and endpoint.id=${verification.endpointId}
-               and endpoint.endpoint_key_hash=${verification.endpointKeyHash}
-               and endpoint.trigger_id=${verification.triggerId}
-               and endpoint.status='active' and trigger.status='active'
-               and trigger.workflow_id=${verification.workflowId}
-               and trigger.workflow_version_id=${verification.workflowVersionId}
-               and workflow.published_version_id=trigger.workflow_version_id
-               and workflow.lifecycle_status='active'
-               and workflow.activation_status in ('active','degraded')
-               and workspace.status='active'
-               and (endpoint.current_secret_version_id=${input.verifiedSecretVersionId}
-                 or (endpoint.previous_secret_version_id=${input.verifiedSecretVersionId}
-                   and endpoint.previous_secret_valid_until>clock_timestamp()))
-             for share of endpoint,trigger,workflow,workspace
-          `);
-          if (eligible.rows[0] === undefined)
-            throw new WebhookDeliveryIneligibleError();
+          await lockEligibleEndpoint(
+            transaction,
+            verification,
+            input.verifiedSecretVersionId,
+          );
 
           const deliveryId = generatePersistedId();
           await transaction.db.execute(sql`
@@ -633,12 +594,15 @@ export function createWebhookTriggerDatabase(
               ? {}
               : { traceparent: input.traceparent }),
           });
-          await transaction.db.execute(sql`
-            insert into app.webhook_trigger_deliveries
-              (id,workspace_id,trigger_id,endpoint_id,workflow_run_id,dedupe_kind)
-            values(${deliveryId},${transaction.workspaceId},${verification.triggerId},
-              ${verification.endpointId},${accepted.runId},${dedupeKind})
-          `);
+          await insertWebhookDelivery(transaction, verification, {
+            id: deliveryId,
+            outcome: 'accepted',
+            signatureCheck: 'verified',
+            replayCheck: 'new',
+            bodyBytes: input.bodyBytes,
+            runId: accepted.runId,
+            dedupeKind,
+          });
           await transaction.db.execute(sql`
             update app.webhook_trigger_replay_records set workflow_run_id=${accepted.runId}
              where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}
@@ -647,6 +611,7 @@ export function createWebhookTriggerDatabase(
         },
       );
     },
+    ...createWebhookDeliveryLog(pool),
     close: () => lease.close(),
   });
 }

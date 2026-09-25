@@ -57,7 +57,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0113_workflow_run_statistics_index.sql',
+          migrationHead: '0115_webhook_delivery_log.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -132,7 +132,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0113_workflow_run_statistics_index.sql',
+          migrationHead: '0115_webhook_delivery_log.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -202,7 +202,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0113_workflow_run_statistics_index.sql',
+        migrationHead: '0115_webhook_delivery_log.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -441,7 +441,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0113_workflow_run_statistics_index.sql',
+        migrationHead: '0115_webhook_delivery_log.sql',
       });
     } finally {
       await readinessPool.end();

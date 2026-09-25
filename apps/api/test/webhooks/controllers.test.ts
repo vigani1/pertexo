@@ -37,6 +37,7 @@ function request(
 function fixture() {
   const service = {
     list: vi.fn().mockResolvedValue({ items: [] }),
+    listDeliveries: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     provision: vi.fn().mockResolvedValue({ ok: true }),
     rotateEndpoint: vi.fn().mockResolvedValue({ ok: true }),
     rotateSecret: vi.fn().mockResolvedValue({ ok: true }),
@@ -60,6 +61,25 @@ describe('webhook management controller public seam', () => {
       workflowId,
       actorId,
     });
+  });
+
+  it('forwards a bounded delivery page for one trigger of the workflow', async () => {
+    const { controller, service } = fixture();
+    const route = { workspaceId, workflowId, triggerId };
+
+    await controller.deliveries(request(), route, undefined);
+    await controller.deliveries(request(), route, {
+      limit: '50',
+      after: 'opaque',
+    });
+
+    expect(service.listDeliveries.mock.calls).toEqual([
+      [{ ...route, actorId }],
+      [{ ...route, actorId, limit: 50, after: 'opaque' }],
+    ]);
+    for (const query of [{ limit: '0' }, { limit: '101' }, { cursor: 'x' }])
+      expect(() => controller.deliveries(request(), route, query)).toThrow();
+    expect(service.listDeliveries).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -128,10 +148,11 @@ describe('webhook management controller public seam', () => {
 
   it('keeps read and mutation guards in the reviewed order', () => {
     const reflector = new Reflector();
-    expect(guards(reflector, 'list')).toEqual([
-      SessionAuthenticationGuard,
-      WebhookReadGuard,
-    ]);
+    for (const method of ['list', 'deliveries'] as const)
+      expect(guards(reflector, method)).toEqual([
+        SessionAuthenticationGuard,
+        WebhookReadGuard,
+      ]);
     for (const method of [
       'provision',
       'rotateEndpoint',
@@ -147,7 +168,8 @@ describe('webhook management controller public seam', () => {
 
 function guards(
   reflector: Reflector,
-  method: 'list' | 'provision' | 'rotateEndpoint' | 'rotateSecret',
+  method:
+    'deliveries' | 'list' | 'provision' | 'rotateEndpoint' | 'rotateSecret',
 ): unknown[] {
   const candidate: unknown = Object.getOwnPropertyDescriptor(
     WebhookManagementController.prototype,

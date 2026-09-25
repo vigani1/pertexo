@@ -141,6 +141,12 @@ export type {
   WebhookTriggerDatabase,
   WebhookVerificationReference,
 } from './triggers/webhook-triggers.js';
+export type {
+  RejectedWebhookDelivery,
+  WebhookDeliveryPage,
+  WebhookDeliveryPosition,
+  WebhookDeliveryRecord,
+} from './triggers/webhook-trigger-deliveries.js';
 export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,

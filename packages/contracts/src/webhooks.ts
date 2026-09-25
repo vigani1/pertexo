@@ -2,6 +2,9 @@ export * from './http/webhooks.js';
 
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
+  webhookDeliveryCursorSchema,
+  webhookDeliveryListResponseSchema,
+  webhookDeliveryPageLimitSchema,
   webhookIngressResponseSchema,
   webhookManagementCommandResponseSchema,
   webhookRotateSecretRequestSchema,
@@ -16,6 +19,7 @@ import {
   jsonSchema,
   pathParameter as openApiPathParameter,
   problemResponse,
+  queryParameter,
   responseReference,
   webhookContentTypeHeaderParameter,
 } from './openapi-primitives.js';
@@ -56,6 +60,10 @@ const schemas = Object.freeze({
     webhookTriggerListResponseSchema,
     'output',
   ),
+  WebhookDeliveryListResponse: jsonSchema(
+    webhookDeliveryListResponseSchema,
+    'output',
+  ),
 });
 const responses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
@@ -76,6 +84,10 @@ export const webhooksClientContract = Object.freeze({
     {
       method: 'GET',
       path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers',
+    },
+    {
+      method: 'GET',
+      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/deliveries',
     },
     {
       method: 'POST',
@@ -152,6 +164,32 @@ export const webhooksOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/deliveries':
+      {
+        get: {
+          operationId: 'listWebhookDeliveries',
+          security,
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            triggerParameter,
+            queryParameter('limit', webhookDeliveryPageLimitSchema),
+            queryParameter('after', webhookDeliveryCursorSchema),
+          ],
+          responses: {
+            '200': jsonResponse(
+              'Retained delivery metadata, newest first',
+              'WebhookDeliveryListResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '429': responseReference('RateLimited'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/provision':
       managementPath,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-endpoint':

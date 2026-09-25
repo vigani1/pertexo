@@ -6,6 +6,10 @@
       "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers"
     },
     {
+      "method": "GET",
+      "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/deliveries"
+    },
+    {
       "method": "POST",
       "path": "/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/provision",
       "requiredHeaders": [

@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 import type {
+  WebhookDeliveryListResponse,
+  WebhookDeliveryResponse,
   WebhookManagementCommandResponse,
   WebhookTriggerHealthResponse,
 } from '@pertexo/contracts/webhooks';
@@ -9,6 +11,7 @@ import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   generatePersistedId,
+  type WebhookDeliveryRecord,
   type WebhookTriggerDatabase,
   type WorkflowTriggerHealth,
 } from '@pertexo/database/api';
@@ -18,6 +21,11 @@ import {
   applicationError,
   throwApplicationError,
 } from '../platform/http/index.js';
+import {
+  decodeWebhookDeliveryCursor,
+  encodeWebhookDeliveryCursor,
+  InvalidWebhookDeliveryCursorError,
+} from './cursor.js';
 
 export type WebhookCommandInput = Readonly<{
   workspaceId: string;
@@ -30,6 +38,15 @@ export type WebhookCommandInput = Readonly<{
 
 export type WebhookRotateSecretInput = WebhookCommandInput &
   Readonly<{ endpointKey: string }>;
+
+export type WebhookDeliveryListInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  actorId: string;
+  triggerId: string;
+  limit?: number;
+  after?: string;
+}>;
 
 export type WebhookManagementServiceOptions = Readonly<{
   generateMaterial?: () => Buffer;
@@ -62,6 +79,35 @@ export class WebhookManagementService {
         items: health
           .filter(({ kind }) => kind === 'webhook')
           .map(publicHealth),
+      };
+    } catch (error: unknown) {
+      return mapManagementError(error);
+    }
+  }
+
+  /** ADR 045: one trigger's retained delivery metadata, newest first. */
+  public async listDeliveries(
+    input: WebhookDeliveryListInput,
+  ): Promise<WebhookDeliveryListResponse> {
+    try {
+      const page = await this.database.listDeliveries({
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        workflowId: input.workflowId,
+        triggerId: input.triggerId,
+        ...(input.limit === undefined ? {} : { limit: input.limit }),
+        ...(input.after === undefined
+          ? {}
+          : {
+              after: decodeWebhookDeliveryCursor(input.after, input.triggerId),
+            }),
+      });
+      return {
+        items: page.items.map(publicDelivery),
+        nextCursor:
+          page.nextCursor === undefined
+            ? null
+            : encodeWebhookDeliveryCursor(input.triggerId, page.nextCursor),
       };
     } catch (error: unknown) {
       return mapManagementError(error);
@@ -244,6 +290,12 @@ function secretContext(input: WebhookCommandInput, secretVersionId: string) {
 }
 
 function mapManagementError(error: unknown): never {
+  if (error instanceof InvalidWebhookDeliveryCursorError)
+    return throwApplicationError(
+      applicationError('request.invalid', {
+        safeDetail: 'The delivery cursor is invalid.',
+      }),
+    );
   if (error instanceof WebhookTriggerNotFoundError)
     return throwApplicationError(applicationError('resource.not_found'));
   if (error instanceof WebhookTriggerIdempotencyConflictError)
@@ -275,5 +327,20 @@ function publicHealth(
     lastErrorCode: trigger.lastErrorCode,
     endpointReady: trigger.endpointReady,
     reconciledAt: trigger.reconciledAt?.toISOString() ?? null,
+  };
+}
+
+function publicDelivery(
+  delivery: WebhookDeliveryRecord,
+): WebhookDeliveryResponse {
+  return {
+    id: delivery.id,
+    receivedAt: delivery.receivedAt,
+    outcome: delivery.outcome,
+    httpStatus: delivery.httpStatus,
+    signatureCheck: delivery.signatureCheck,
+    replayCheck: delivery.replayCheck,
+    byteLength: delivery.bodyBytes,
+    runId: delivery.runId,
   };
 }

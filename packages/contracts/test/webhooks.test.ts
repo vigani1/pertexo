@@ -4,6 +4,8 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 
 import {
+  webhookDeliveryListQuerySchema,
+  webhookDeliveryListResponseSchema,
   webhookIngressResponseSchema,
   webhookManagementCommandResponseSchema,
 } from '../src/http/webhooks.js';
@@ -37,7 +39,12 @@ const generatedDocument = JSON.parse(
     'utf8',
   ),
 ) as {
-  components: { schemas: { WebhookManagementCommandResponse: object } };
+  components: {
+    schemas: {
+      WebhookDeliveryListResponse: object;
+      WebhookManagementCommandResponse: object;
+    };
+  };
 };
 const generatedValidator = new Ajv2020({
   allErrors: true,
@@ -57,7 +64,64 @@ function expectRuntimeAndGenerated(value: unknown, accepted: boolean): void {
   ).toBe(accepted);
 }
 
+const generatedDeliveryValidator = new Ajv2020({
+  allErrors: true,
+  strict: true,
+  validateFormats: false,
+}).compile(generatedDocument.components.schemas.WebhookDeliveryListResponse);
+
 describe('webhook public contracts', () => {
+  it('keeps the delivery log metadata-only, strict and bounded', () => {
+    const accepted = {
+      id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      receivedAt: '2026-09-25T10:00:00.123456Z',
+      outcome: 'accepted',
+      httpStatus: 202,
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      byteLength: 321,
+      runId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    };
+    const rejected = {
+      ...accepted,
+      outcome: 'authentication_failed',
+      httpStatus: 401,
+      signatureCheck: 'mismatch',
+      replayCheck: 'not_checked',
+      byteLength: null,
+      runId: null,
+    };
+    for (const [value, valid] of [
+      [{ items: [accepted, rejected], nextCursor: 'opaque' }, true],
+      [{ items: [], nextCursor: null }, true],
+      [{ items: [{ ...accepted, headers: {} }], nextCursor: null }, false],
+      [
+        { items: [{ ...accepted, byteLength: 262_145 }], nextCursor: null },
+        false,
+      ],
+      [
+        { items: [{ ...accepted, outcome: 'queued' }], nextCursor: null },
+        false,
+      ],
+      [{ items: [accepted] }, false],
+    ] as const) {
+      expect(webhookDeliveryListResponseSchema.safeParse(value).success).toBe(
+        valid,
+      );
+      expect(
+        generatedDeliveryValidator(value),
+        JSON.stringify(generatedDeliveryValidator.errors),
+      ).toBe(valid);
+    }
+    expect(webhookDeliveryListQuerySchema.parse({ limit: '25' })).toEqual({
+      limit: 25,
+    });
+    for (const query of [{ limit: '0' }, { limit: '101' }, { cursor: 'x' }])
+      expect(webhookDeliveryListQuerySchema.safeParse(query).success).toBe(
+        false,
+      );
+  });
+
   it('accepts replay only when credential values are absent', () => {
     expectRuntimeAndGenerated({ trigger, replayed: true }, true);
     for (const credentials of [

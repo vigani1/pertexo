@@ -155,6 +155,7 @@ describe('selected published migration repair upgrade', () => {
       '0107_legacy_method_migration_attempts.sql',
       '0108_workflow_name_revision.sql',
       '0113_workflow_run_statistics_index.sql',
+      '0115_webhook_delivery_log.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 
