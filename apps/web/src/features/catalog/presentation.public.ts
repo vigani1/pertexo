@@ -1,7 +1,11 @@
 // Presentation interface kept apart from `public.ts`, whose query options are
 // imported statically by route loaders: icons and tiles stay in lazy chunks.
 export { StepTile } from './components/step-tile';
-export { describeMisfirePolicy, describeRecurrence } from './schedule-sentence';
+export {
+  describeDaylightSaving,
+  describeMisfirePolicy,
+  describeRecurrence,
+} from './schedule-sentence';
 export {
   describeConnectionRequirement,
   describeRetryBehaviour,

@@ -6,18 +6,26 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { isForEach, loopSummary } from '../../model/graph-adapter';
-import { schemaFields } from '../../model/inspector-draft';
+import { schemaFields, type NodeConfig } from '../../model/inspector-draft';
+import {
+  readScheduleSchema,
+  type ScheduleSchema,
+} from '../../model/schedule-draft';
 import { ConfigJsonEditor } from './config-json-editor';
 import { ConnectionSlot } from './connection-slot';
 import { LoopBodySummary } from './loop-body-summary';
+import { ScheduleBuilder } from './schedule/schedule-builder';
 import type { NodeFormApi } from '../../model/node-form';
 import { SchemaField } from './schema-field';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
+const SCHEDULE_KEY = 'core.schedule';
+
 /**
- * Setup: schema-driven controls, connection slots and "Edit as JSON" for
- * everything the controls don't model. Nothing a schema allows is dropped.
+ * Setup: schema-driven controls (a rule builder for the Schedule step),
+ * connection slots and "Edit as JSON" for everything the controls don't
+ * model. Nothing a schema allows is dropped.
  */
 export function SetupTab({
   node,
@@ -36,6 +44,13 @@ export function SetupTab({
     () => schemaFields(definition?.configSchema),
     [definition?.configSchema],
   );
+  const scheduleSchema = useMemo(
+    () =>
+      node.definition.key === SCHEDULE_KEY
+        ? readScheduleSchema(definition?.configSchema)
+        : undefined,
+    [node.definition.key, definition?.configSchema],
+  );
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonScratch, setJsonScratch] = useState(false);
   const jsonForm = useMemo<NodeFormApi>(
@@ -49,12 +64,6 @@ export function SetupTab({
     [form],
   );
   const onlyJson = definition === undefined;
-  const propertyCount = schemaPropertyCount(definition?.configSchema);
-  const nothingToSet =
-    !onlyJson &&
-    fields.length === 0 &&
-    Object.keys(node.config).length === 0 &&
-    propertyCount === 0;
   const showJson = onlyJson || jsonMode;
   return (
     <FieldGroup className="gap-4">
@@ -69,16 +78,13 @@ export function SetupTab({
               : 'Every property is kept, including ones the fields above don’t show.'
           }
         />
-      ) : nothingToSet ? (
-        <p className="text-sm text-muted-foreground">
-          Nothing to set up for this step. Its inputs decide what it does.
-        </p>
       ) : (
-        <SchemaFieldList
-          fields={fields}
+        <SetupControls
           config={node.config}
+          configSchema={definition.configSchema}
+          fields={fields}
+          scheduleSchema={scheduleSchema}
           form={form}
-          jsonOnlySettings={propertyCount > fields.length}
         />
       )}
       {onlyJson ? null : (
@@ -101,6 +107,45 @@ export function SetupTab({
         />
       ))}
     </FieldGroup>
+  );
+}
+
+/** The controls for a catalog step's setup, when it isn't shown as JSON. */
+function SetupControls({
+  config,
+  configSchema,
+  fields,
+  scheduleSchema,
+  form,
+}: Readonly<{
+  config: NodeConfig;
+  configSchema: unknown;
+  fields: ReturnType<typeof schemaFields>;
+  scheduleSchema: ScheduleSchema | undefined;
+  form: NodeFormApi;
+}>) {
+  if (scheduleSchema !== undefined)
+    return (
+      <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
+    );
+  const propertyCount = schemaPropertyCount(configSchema);
+  if (
+    fields.length === 0 &&
+    Object.keys(config).length === 0 &&
+    propertyCount === 0
+  )
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nothing to set up for this step. Its inputs decide what it does.
+      </p>
+    );
+  return (
+    <SchemaFieldList
+      fields={fields}
+      config={config}
+      form={form}
+      jsonOnlySettings={propertyCount > fields.length}
+    />
   );
 }
 

@@ -188,10 +188,21 @@ export function describeRecurrence(recurrence: Recurrence): string {
     : describeCron(recurrence.expression);
 }
 
+/** What happens to runs missed while Pertexo couldn't start them (ADR 014). */
 export function describeMisfirePolicy(
   policy: ScheduleTriggerHealthResponse['misfirePolicy'],
 ): string {
   return policy === 'catch_up_once'
-    ? 'If a run is missed, it runs once as soon as Pertexo can.'
+    ? 'If runs are missed, the latest one runs once as soon as Pertexo can and the rest are skipped.'
     : 'If a run is missed, it’s skipped and the next one runs on time.';
+}
+
+/**
+ * How daylight-saving changes affect a rule (ADR 014): a cron time follows
+ * the local clock, while an interval counts elapsed time.
+ */
+export function describeDaylightSaving(kind: Recurrence['kind']): string {
+  return kind === 'cron'
+    ? 'When the clocks change, a time that’s skipped runs at the first moment after the gap, and a time that happens twice runs once, the first time.'
+    : 'It counts real time between runs, so clock changes don’t shift it.';
 }
