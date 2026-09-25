@@ -399,15 +399,18 @@ describe('workflow triggers tab', () => {
       ),
     );
     renderApp(triggersPath);
-    expect(
-      await screen.findByRole('heading', {
-        name: 'This version has no trigger',
-      }),
-    ).toBeVisible();
+    const heading = await screen.findByRole('heading', {
+      name: 'This version has no trigger',
+    });
+    expect(heading).toBeVisible();
     expect(screen.getByRole('link', { name: 'Open Build' })).toHaveAttribute(
       'href',
       `/w/${workspaceId}/workflows/${workflowId}`,
     );
+    // The empty tab starts under the hub bar without a divider or a glyph.
+    const empty = heading.closest('[data-slot="empty"]');
+    expect(empty).toHaveClass('border-t-0');
+    expect(empty?.querySelector('[data-slot="status-glyph"]')).toBeNull();
   });
 
   it('resets state and fences late credentials when the workflow changes', async () => {
