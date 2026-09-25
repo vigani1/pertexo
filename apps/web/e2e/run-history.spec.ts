@@ -315,7 +315,8 @@ test('keeps a maximum-length workflow identity accessible and contained on mobil
   await expect(
     page.getByRole('heading', { level: 1, name: /^Succeeded in/u }),
   ).toBeVisible();
-  const name = page.getByRole('link', { name: workflowName });
+  // The breadcrumb names the workflow too; this is the header's own link.
+  const name = page.getByRole('main').getByRole('link', { name: workflowName });
   await expect(name).toBeVisible();
   const box = await name.boundingBox();
   expect(box).not.toBeNull();
