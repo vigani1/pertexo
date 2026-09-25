@@ -185,16 +185,31 @@ export const workflowSettingsRoute = createRoute({
   pendingComponent: WorkflowHubPending,
   path: 'settings',
   loader: ({ context }) => {
-    const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('workflow:update')) return;
+    const { apiClient, queryClient, user, workspace, workflowId } = context;
+    if (workflowId === null) return;
     warmPrefetches(context, [
       queryClient.query(
-        failureNotificationDestinationsQueryOptions(
+        workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
+      ),
+      queryClient.query(
+        workflowVersionsQueryOptions(
           apiClient,
           user.id,
           workspace.id,
+          workflowId,
         ),
       ),
+      ...(workspace.capabilities.includes('workflow:update')
+        ? [
+            queryClient.query(
+              failureNotificationDestinationsQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+              ),
+            ),
+          ]
+        : []),
     ]);
   },
   head: ({ match }) => ({

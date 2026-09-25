@@ -2,6 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
+import { cn } from '@/lib/utils';
 import type { ApiClient } from '@/lib/api/client';
 import {
   formatDateTime,
@@ -14,8 +15,28 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { RunRowMenu } from '../run-actions/run-row-menu';
 import { ThreadBar } from '../thread-bar';
 import { TriggerLabel } from '../trigger-label';
+import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
 
-export type RunListVariant = 'workspace' | 'workflow';
+/** When a run started: relative, in mono, with the exact time on hover. */
+function StartedAt({
+  run,
+  nowMs,
+  className,
+}: Readonly<{
+  run: WorkflowRunReadSummary;
+  nowMs: number;
+  className?: string;
+}>) {
+  return (
+    <time
+      dateTime={run.createdAt}
+      title={formatDateTime(run.createdAt)}
+      className={cn('font-mono text-xs', className)}
+    >
+      {formatRelativeTime(run.createdAt, nowMs)}
+    </time>
+  );
+}
 
 /**
  * One run as a thread: status, name (or start time inside a workflow),
@@ -42,24 +63,34 @@ export function RunRow({
   nowMs: number;
 }>) {
   const look = describeRunStatus(run.status);
-  const title =
-    variant === 'workspace'
-      ? workflowLabel(run)
-      : formatDateTime(run.createdAt);
+  const layout = RUN_ROW_LAYOUT[variant];
+  const inWorkflow = variant === 'workflow';
   return (
     <li
       data-slot="run-row"
-      className="group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-3 transition-colors hover:bg-white/[0.035] lg:grid-cols-[8.5rem_minmax(8rem,1fr)_6.5rem_6.5rem_5.5rem_minmax(4rem,7rem)_6.5rem_2rem] lg:gap-x-4 lg:py-2.5"
+      className={cn(
+        'group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-3 transition-colors hover:bg-white/[0.035] lg:gap-x-4 lg:py-2.5',
+        layout.grid,
+      )}
     >
       <Link
         to="/w/$workspaceId/runs/$runId"
         params={{ workspaceId: workspace.id, runId: run.id }}
-        title={title}
-        className="col-start-1 row-start-1 min-w-0 truncate font-medium text-foreground outline-none after:absolute after:inset-0 after:rounded-md after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60 lg:col-start-2"
+        {...(inWorkflow
+          ? { 'aria-label': `Run from ${formatDateTime(run.createdAt)}` }
+          : { title: workflowLabel(run) })}
+        className={cn(
+          "col-start-1 row-start-1 min-w-0 truncate font-medium text-foreground outline-none after:absolute after:inset-0 after:rounded-md after:content-[''] hover:text-accent-foreground focus-visible:after:ring-2 focus-visible:after:ring-ring/60",
+          layout.link,
+        )}
       >
-        {title}
+        {inWorkflow ? (
+          <StartedAt run={run} nowMs={nowMs} className="text-sm" />
+        ) : (
+          workflowLabel(run)
+        )}
       </Link>
-      <div className="relative z-10 col-start-2 row-start-1 lg:col-start-8">
+      <div className={cn('relative z-10 col-start-2 row-start-1', layout.menu)}>
         <RunRowMenu
           apiClient={apiClient}
           userId={userId}
@@ -73,29 +104,37 @@ export function RunRow({
         </Status>
         <TriggerLabel
           type={run.triggerType}
-          className="lg:col-start-3 lg:row-start-1"
+          className={cn('lg:row-start-1', layout.trigger)}
         />
-        <time
-          dateTime={run.createdAt}
-          title={formatDateTime(run.createdAt)}
-          className="text-subtle-foreground lg:col-start-4 lg:row-start-1"
+        {inWorkflow ? null : (
+          <StartedAt
+            run={run}
+            nowMs={nowMs}
+            className="text-subtle-foreground lg:col-start-4 lg:row-start-1"
+          />
+        )}
+        <span
+          className={cn(
+            'font-mono text-xs text-muted-foreground lg:row-start-1',
+            layout.took,
+          )}
         >
-          {formatRelativeTime(run.createdAt, nowMs)}
-        </time>
-        <span className="font-mono text-xs text-muted-foreground lg:col-start-5 lg:row-start-1">
           {durationMs === undefined ? '—' : formatDurationMs(durationMs)}
         </span>
         <CopyButton
           value={run.id}
           display={shortRunId(run.id)}
           label="Copy run ID"
-          className="relative z-10 lg:col-start-7 lg:row-start-1"
+          className={cn('relative z-10 lg:row-start-1', layout.id)}
         />
       </div>
       <ThreadBar
         share={share}
         tone={look.tone}
-        className="col-span-2 row-start-3 lg:col-span-1 lg:col-start-6 lg:row-start-1"
+        className={cn(
+          'col-span-2 row-start-3 lg:col-span-1 lg:row-start-1',
+          layout.bar,
+        )}
       />
     </li>
   );

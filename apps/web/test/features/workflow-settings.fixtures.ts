@@ -187,6 +187,7 @@ export function installQueries(
       }),
     ),
     http.get(workflowApi, () => HttpResponse.json({ workflow: summary })),
+    http.get(`${workflowApi}/draft`, () => draftResponse(emptyGraph, etag)),
     http.get(`${workflowApi}/versions`, () =>
       HttpResponse.json({
         items: [version(versionId, 1)],
