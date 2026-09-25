@@ -283,6 +283,46 @@ describe('failure notification destination API seams', () => {
     });
   });
 
+  it('reads the current workflow policy through the safe destination projection', async () => {
+    const database = persistence();
+    const controller = new FailureNotificationDestinationsController(
+      new FailureNotificationDestinationUseCases(database),
+    );
+
+    const current = await controller.getPolicy(request(), {
+      workspaceId,
+      workflowId,
+    });
+    expect(current).toEqual({
+      destination: {
+        id: destinationId,
+        workspaceId,
+        kind: 'slack',
+        status: 'enabled',
+        currentVersion: 1,
+        config: record.config,
+        createdAt: '2026-08-25T10:00:00.000Z',
+        updatedAt: '2026-08-25T10:00:00.000Z',
+      },
+    });
+    expect(JSON.stringify(current)).not.toContain('must-not-escape');
+    expect(database.getWorkflowPolicy).toHaveBeenCalledWith({
+      workspaceId,
+      workflowId,
+      actorId,
+      requestId: 'request-42',
+      traceId: 'trace-42',
+    });
+
+    vi.mocked(database.getWorkflowPolicy).mockResolvedValueOnce(null);
+    await expect(
+      controller.getPolicy(request(), { workspaceId, workflowId }),
+    ).resolves.toEqual({ destination: null });
+    await expect(
+      controller.getPolicy(request(), { workspaceId, workflowId: 'nope' }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
   it('appends a version and propagates optimistic and idempotency conflicts', async () => {
     const database = persistence();
     const controller = new FailureNotificationDestinationsController(

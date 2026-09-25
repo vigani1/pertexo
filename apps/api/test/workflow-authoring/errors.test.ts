@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { WorkflowLifecycleRevisionConflictError } from '@pertexo/database/api';
+import {
+  WorkflowLifecycleRevisionConflictError,
+  WorkflowNameRevisionConflictError,
+} from '@pertexo/database/api';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
@@ -102,6 +105,14 @@ describe('workflow authoring error mapping', () => {
       safeDetail:
         'The workflow lifecycle has changed; reload it before retrying.',
       details: { currentLifecycleRevision: 4 },
+    });
+    expect(
+      mapWorkflowAuthoringError(new WorkflowNameRevisionConflictError(5)),
+    ).toEqual({
+      code: 'workflow.name_conflict',
+      safeDetail:
+        'The workflow was renamed meanwhile; reload it before retrying.',
+      details: { currentNameRevision: 5 },
     });
     expect(
       mapWorkflowAuthoringError(new WorkflowRevisionConflictError(3, tag)),

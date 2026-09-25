@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CreateWorkflowUseCase,
+  RenameWorkflowUseCase,
   WorkflowAuthoringController,
   WorkflowAuthoringModule,
   type WorkflowAuthoringDependencies,
@@ -12,6 +13,7 @@ const dependencies = {
     restoreWorkflowVersion: () => Promise.reject(new Error('not used')),
     transitionWorkflowLifecycle: () =>
       Promise.reject(new Error('not exercised')),
+    renameWorkflow: () => Promise.reject(new Error('not exercised')),
     createWorkflow: () => Promise.reject(new Error('not exercised')),
     listWorkflows: () => Promise.resolve({ items: [] }),
     getWorkflow: () => Promise.resolve(null),
@@ -36,8 +38,10 @@ describe('workflow authoring Nest module', () => {
     expect(providers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provide: CreateWorkflowUseCase }),
+        expect.objectContaining({ provide: RenameWorkflowUseCase }),
       ]),
     );
+    expect(dynamic.exports).toContain(RenameWorkflowUseCase);
     expect(dynamic.controllers).toContain(WorkflowAuthoringController);
     expect(providers).toEqual(
       expect.arrayContaining([

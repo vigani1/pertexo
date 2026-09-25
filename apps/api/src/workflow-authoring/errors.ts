@@ -4,6 +4,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
+  WorkflowNameRevisionConflictError,
 } from '@pertexo/database/api';
 import { z } from 'zod';
 
@@ -61,6 +62,12 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail:
         'The workflow lifecycle has changed; reload it before retrying.',
       details: { currentLifecycleRevision: error.currentRevision },
+    });
+  if (error instanceof WorkflowNameRevisionConflictError)
+    return applicationError('workflow.name_conflict', {
+      safeDetail:
+        'The workflow was renamed meanwhile; reload it before retrying.',
+      details: { currentNameRevision: error.currentRevision },
     });
   if (error instanceof WorkflowDefinitionPlacementError)
     return applicationError('workflow.invalid', {
