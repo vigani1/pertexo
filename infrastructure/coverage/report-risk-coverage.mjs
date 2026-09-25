@@ -59,6 +59,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
   'api-orchestration': [
     'apps/api/src/application-error-mappers.ts',
     'apps/api/src/connections/connection-testing.ts',
+    'apps/api/src/connections/slack-channel-lookup.ts',
     'apps/api/src/workflow-runs/sse-authorization-lifetime.ts',
     'apps/api/src/workflow-runs/statistics-use-case.ts',
     'apps/api/src/workflow-runs/use-cases.ts',
@@ -76,6 +77,7 @@ const EXACT_RISK_COHORT_FILES = Object.freeze({
     'apps/api/src/platform/identity/better-auth-composition.ts',
     'apps/api/src/platform/identity/identity-runtime.module.ts',
     'apps/api/src/platform/identity/oidc-runtime.ts',
+    'apps/api/src/webhooks/delivery-log.ts',
     'apps/api/src/webhooks/ingress.ts',
     'apps/api/src/workflow-authoring/lifecycle-use-case.ts',
     'apps/api/src/workflow-authoring/module.ts',
