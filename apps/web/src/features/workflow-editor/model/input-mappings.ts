@@ -1,15 +1,11 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import { parseJsonPath } from '@pertexo/workflow-model/json-path';
 import { stepTitle } from './graph-adapter';
+import type { GraphLevel, WorkflowNode } from './graph-scopes';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type InputMapping = WorkflowNode['inputMappings'][string];
 type JsonValue = Extract<InputMapping, { readonly kind: 'literal' }>['value'];
-export type EditableInputMappingKind = Extract<
-  InputMapping,
-  { readonly kind: 'literal' | 'run_input' | 'node_output' | 'expression' }
->['kind'];
+export type EditableInputMappingKind = InputMapping['kind'];
 
 /** The restricted JSONata policy the catalog's expression steps accept. */
 const EXPRESSION_POLICY_VERSION = 1;
@@ -27,10 +23,7 @@ export type InputMappingDraftRow =
         policyVersion: number;
       }>)
   | (RowBase &
-      Readonly<{
-        kind: 'advanced';
-        source: Extract<InputMapping, { readonly kind: 'structured_input' }>;
-      }>);
+      Readonly<{ kind: 'structured_input'; port: string; path: string }>);
 
 export type InputMappingRowErrors = Readonly<{
   destinationKey?: string;
@@ -95,7 +88,13 @@ export function inputMappingRowsFor(
             policyVersion: source.policyVersion,
           };
         case 'structured_input':
-          return { id, destinationKey, kind: 'advanced', source };
+          return {
+            id,
+            destinationKey,
+            kind: 'structured_input',
+            port: source.port,
+            path: source.path,
+          };
       }
     },
   );
@@ -109,7 +108,7 @@ export function newInputMappingRow(
 }
 
 export function changeInputMappingKind(
-  row: Exclude<InputMappingDraftRow, { readonly kind: 'advanced' }>,
+  row: InputMappingDraftRow,
   kind: EditableInputMappingKind,
   firstPredecessorId = '',
 ): InputMappingDraftRow {
@@ -121,6 +120,8 @@ export function changeInputMappingKind(
       return { ...base, kind, path: '$' };
     case 'node_output':
       return { ...base, kind, nodeId: firstPredecessorId, path: '$' };
+    case 'structured_input':
+      return { ...base, kind, port: 'item', path: '$' };
     case 'expression':
       return {
         ...base,
@@ -131,16 +132,23 @@ export function changeInputMappingKind(
   }
 }
 
-/**
- * Converts rows into mappings. `requireDirectPredecessor: false` accepts a
- * step-output source that is no longer wired: live editing keeps such a row
- * (shown as a warning) instead of blocking every other input edit.
- */
+export type MappingCheckOptions = Readonly<{
+  /**
+   * Check sources against the graph: a step output must be wired straight
+   * into this step, and a loop item needs a body port. `false` keeps such a
+   * row (shown as a warning) so live editing never blocks other inputs.
+   */
+  checkGraph?: boolean;
+  /** The inputs of the body this step is in; none outside a For each. */
+  loopPorts?: readonly string[];
+}>;
+
+/** Converts rows into mappings, or says which rows can't be used yet. */
 export function validateInputMappingRows(
   rows: readonly InputMappingDraftRow[],
-  graph: WorkflowGraphContract,
+  graph: GraphLevel,
   targetNodeId: string,
-  options: Readonly<{ requireDirectPredecessor?: boolean }> = {},
+  options: MappingCheckOptions = {},
 ): InputMappingValidationResult {
   const errors: Record<string, InputMappingRowErrors> = {};
   const keyCounts = new Map<string, number>();
@@ -152,7 +160,11 @@ export function validateInputMappingRows(
   const directPredecessors = new Set(
     directPredecessorOptions(graph, targetNodeId).map(({ nodeId }) => nodeId),
   );
-  const requirePredecessor = options.requireDirectPredecessor ?? true;
+  const check = {
+    predecessors: directPredecessors,
+    graph: options.checkGraph ?? true,
+    loopPorts: options.loopPorts,
+  };
   const inputMappings = Object.create(null) as Record<string, InputMapping>;
   for (const row of rows) {
     const destinationKey =
@@ -161,7 +173,7 @@ export function validateInputMappingRows(
         : (keyCounts.get(row.destinationKey) ?? 0) > 1
           ? 'Destination keys must be unique.'
           : undefined;
-    const source = rowSource(row, directPredecessors, requirePredecessor);
+    const source = rowSource(row, check);
     if (destinationKey !== undefined || source.error !== undefined) {
       errors[row.id] = {
         ...(destinationKey === undefined ? {} : { destinationKey }),
@@ -177,14 +189,17 @@ export function validateInputMappingRows(
     : { errors };
 }
 
+type SourceCheck = Readonly<{
+  predecessors: ReadonlySet<string>;
+  graph: boolean;
+  loopPorts: readonly string[] | undefined;
+}>;
+
 function rowSource(
   row: InputMappingDraftRow,
-  directPredecessors: ReadonlySet<string>,
-  requirePredecessor: boolean,
+  check: SourceCheck,
 ): Readonly<{ mapping?: InputMapping; error?: string }> {
   switch (row.kind) {
-    case 'advanced':
-      return { mapping: row.source };
     case 'literal': {
       const value = parseJsonValue(row.literalJson);
       return value === undefined
@@ -204,16 +219,36 @@ function rowSource(
           };
     case 'run_input':
     case 'node_output':
+    case 'structured_input':
       break;
   }
   if (parseJsonPath(row.path) === undefined)
     return {
       error: 'Use $, dot properties, array indexes, or quoted properties.',
     };
-  if (row.kind === 'run_input')
-    return { mapping: { kind: 'run_input', path: row.path } };
+  switch (row.kind) {
+    case 'run_input':
+      return { mapping: { kind: 'run_input', path: row.path } };
+    case 'structured_input':
+      return check.graph &&
+        check.loopPorts !== undefined &&
+        !check.loopPorts.includes(row.port)
+        ? {
+            error:
+              'Only steps inside a For each body can read the loop item. Choose another source.',
+          }
+        : {
+            mapping: {
+              kind: 'structured_input',
+              port: row.port,
+              path: row.path,
+            },
+          };
+    case 'node_output':
+      break;
+  }
   if (row.nodeId === '') return { error: 'Choose a connected predecessor.' };
-  if (requirePredecessor && !directPredecessors.has(row.nodeId))
+  if (check.graph && !check.predecessors.has(row.nodeId))
     return { error: 'The source must be a directly connected predecessor.' };
   return {
     mapping: { kind: 'node_output', nodeId: row.nodeId, path: row.path },
@@ -223,10 +258,16 @@ function rowSource(
 /** Graph-consistency warnings that live editing shows but does not block. */
 export function inputMappingSourceErrors(
   rows: readonly InputMappingDraftRow[],
-  graph: WorkflowGraphContract,
+  graph: GraphLevel,
   targetNodeId: string,
+  loopPorts?: readonly string[],
 ): Readonly<Record<string, InputMappingRowErrors>> {
-  const validated = validateInputMappingRows(rows, graph, targetNodeId);
+  const validated = validateInputMappingRows(
+    rows,
+    graph,
+    targetNodeId,
+    loopPorts === undefined ? {} : { loopPorts },
+  );
   return Object.fromEntries(
     Object.entries(validated.errors).flatMap(([rowId, error]) =>
       error.source === undefined
@@ -273,7 +314,7 @@ export function propertyPath(key: string): string {
 }
 
 export function directPredecessorOptions(
-  graph: WorkflowGraphContract,
+  graph: GraphLevel,
   targetNodeId: string,
 ): readonly PredecessorOption[] {
   const predecessorIds = new Set(
@@ -322,7 +363,8 @@ export function isEditableInputMappingKind(
     value === 'literal' ||
     value === 'run_input' ||
     value === 'node_output' ||
-    value === 'expression'
+    value === 'expression' ||
+    value === 'structured_input'
   );
 }
 

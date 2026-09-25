@@ -7,14 +7,16 @@ import {
 } from '@/features/workflow-editor/model/editor.store';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph-adapter';
 import {
-  adoptStepFrom,
-  duplicateWorkflowNodes,
   freePosition,
   moveWorkflowNodes,
   removeWorkflowElements,
   restoreWorkflowElements,
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph-commands';
+import {
+  adoptStepFrom,
+  duplicateWorkflowNodes,
+} from '@/features/workflow-editor/model/graph-copies';
 import {
   edgeWeaveOrder,
   upstreamEdgeIds,
@@ -100,7 +102,11 @@ describe('editor graph commands', () => {
     });
     expect(edgeOnly.graph.nodes).toBe(graph.nodes);
     expect(edgeOnly.graph.edges.map((item) => item.id)).toEqual(['e1', 'e3']);
-    expect(edgeOnly.removed).toEqual({ nodes: [], edges: [graph.edges[1]] });
+    expect(edgeOnly.removed).toEqual({
+      nodes: [],
+      edges: [graph.edges[1]],
+      scopes: { e2: [] },
+    });
 
     const stepRemoved = removeWorkflowElements(graph, {
       nodeIds: ['check'],
@@ -222,6 +228,7 @@ describe('editor graph commands', () => {
       selectedNodeIds: ['slack'],
       selectedEdgeIds: [],
       dragPositions: new Map([['trigger', { x: 5, y: 6 }]]),
+      bodyIssues: new Map(),
     });
     expect(projection.nodes[0]?.position).toEqual({ x: 5, y: 6 });
     expect(projection.nodes[1]?.selected).toBe(true);

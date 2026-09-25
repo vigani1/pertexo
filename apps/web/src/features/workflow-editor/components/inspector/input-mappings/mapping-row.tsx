@@ -15,15 +15,19 @@ import {
 } from '../../../model/input-mappings';
 import { MappingSourceEditor } from './mapping-source-editor';
 
-const kinds: readonly Readonly<{
-  kind: EditableInputMappingKind;
-  label: string;
-}>[] = [
+type KindOption = Readonly<{ kind: EditableInputMappingKind; label: string }>;
+
+const kinds: readonly KindOption[] = [
   { kind: 'literal', label: 'Value' },
   { kind: 'run_input', label: 'Run input' },
   { kind: 'node_output', label: 'Step output' },
   { kind: 'expression', label: 'Expression' },
 ];
+/** Offered inside a For each body, or kept visible where one is stored. */
+const loopItemKind: KindOption = {
+  kind: 'structured_input',
+  label: 'Loop item',
+};
 
 /** One input: `field ← source`, with the source's own editor below. */
 export function MappingRow({
@@ -31,6 +35,7 @@ export function MappingRow({
   row,
   suggestions,
   predecessors,
+  loopPorts,
   errors,
   disabled,
   onChange,
@@ -41,6 +46,8 @@ export function MappingRow({
   row: InputMappingDraftRow;
   suggestions: readonly InputKeySuggestion[];
   predecessors: readonly PredecessorOption[];
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   errors: InputMappingRowErrors | undefined;
   disabled: boolean;
   onChange: (row: InputMappingDraftRow) => void;
@@ -51,6 +58,10 @@ export function MappingRow({
   const keyErrorId = `${keyId}-error`;
   const listId = `${keyId}-suggestions`;
   const suggestion = suggestions.find(({ key }) => key === row.destinationKey);
+  const options =
+    loopPorts.length > 0 || row.kind === 'structured_input'
+      ? [...kinds, loopItemKind]
+      : kinds;
   return (
     <li
       className="flex flex-col gap-3 rounded-lg border border-white/7 bg-black/18 p-3"
@@ -110,32 +121,29 @@ export function MappingRow({
           {suggestion.description}
         </p>
       )}
-      {row.kind === 'advanced' ? null : (
-        <ToggleGroup
-          aria-label="Source"
-          value={[row.kind]}
-          disabled={disabled}
-          className="w-full flex-wrap"
-          onValueChange={(values) => {
-            const kind: unknown = values[0];
-            if (!isEditableInputMappingKind(kind)) return;
-            onChange(
-              changeInputMappingKind(row, kind, predecessors[0]?.nodeId),
-            );
-          }}
-        >
-          {kinds.map((option) => (
-            <ToggleGroupItem key={option.kind} value={option.kind}>
-              {option.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      )}
+      <ToggleGroup
+        aria-label="Source"
+        value={[row.kind]}
+        disabled={disabled}
+        className="w-full flex-wrap"
+        onValueChange={(values) => {
+          const kind: unknown = values[0];
+          if (!isEditableInputMappingKind(kind)) return;
+          onChange(changeInputMappingKind(row, kind, predecessors[0]?.nodeId));
+        }}
+      >
+        {options.map((option) => (
+          <ToggleGroupItem key={option.kind} value={option.kind}>
+            {option.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       <MappingSourceEditor
         nodeId={nodeId}
         row={row}
         type={suggestion?.type}
         predecessors={predecessors}
+        loopPorts={loopPorts}
         error={errors?.source}
         disabled={disabled}
         onChange={onChange}

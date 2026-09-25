@@ -237,14 +237,16 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));
     const inputs = screen.getByRole('region', { name: 'Inputs' });
-    expect(within(inputs).getByText(/Loop input/u)).toBeVisible();
+    // Outside a For each body, a loop-item source is kept but called out.
+    const outsideBody = /Only steps inside a For each body can read/u;
+    expect(within(inputs).getByText(outsideBody)).toBeVisible();
     await event.click(
       within(inputs).getByRole('button', { name: 'Remove the loop input' }),
     );
-    expect(within(inputs).queryByText(/Loop input/u)).toBeNull();
+    expect(within(inputs).queryByText(outsideBody)).toBeNull();
     expect(await screen.findByText('Removed the “loop” input')).toBeVisible();
     await event.click(toastAction('Undo'));
-    expect(within(inputs).getByText(/Loop input/u)).toBeVisible();
+    expect(within(inputs).getByText(outsideBody)).toBeVisible();
 
     await event.click(
       screen.getByRole('button', {

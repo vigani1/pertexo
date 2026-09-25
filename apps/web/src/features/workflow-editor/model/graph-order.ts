@@ -1,11 +1,12 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import type { GraphLevel } from './graph-scopes';
 
 /**
- * Execution depth of every step: steps without incoming connections are 0,
- * every other step is one more than its deepest predecessor. Cycles (which
- * validation rejects anyway) are cut rather than looping forever.
+ * Execution depth of every step on one level: steps without incoming
+ * connections are 0, every other step is one more than its deepest
+ * predecessor. Cycles (which validation rejects anyway) are cut rather than
+ * looping forever.
  */
-function stepDepths(graph: WorkflowGraphContract): ReadonlyMap<string, number> {
+export function stepDepths(graph: GraphLevel): ReadonlyMap<string, number> {
   const incoming = new Map<string, string[]>();
   for (const edge of graph.edges) {
     const sources = incoming.get(edge.target.nodeId) ?? [];
@@ -33,9 +34,7 @@ function stepDepths(graph: WorkflowGraphContract): ReadonlyMap<string, number> {
 }
 
 /** Each connection lights in the order its source step would run. */
-export function edgeWeaveOrder(
-  graph: WorkflowGraphContract,
-): ReadonlyMap<string, number> {
+export function edgeWeaveOrder(graph: GraphLevel): ReadonlyMap<string, number> {
   const depths = stepDepths(graph);
   return new Map(
     graph.edges.map((edge) => [edge.id, depths.get(edge.source.nodeId) ?? 0]),
@@ -44,7 +43,7 @@ export function edgeWeaveOrder(
 
 /** Connections on any path that leads into `nodeId`: a test's path. */
 export function upstreamEdgeIds(
-  graph: WorkflowGraphContract,
+  graph: GraphLevel,
   nodeId: string,
 ): ReadonlySet<string> {
   const edgeIds = new Set<string>();
@@ -61,4 +60,20 @@ export function upstreamEdgeIds(
     }
   }
   return edgeIds;
+}
+
+/**
+ * Steps on this level that nothing on it follows, in stored order. A For
+ * each body must have exactly one: its output is each item's result.
+ */
+export function levelSinks(graph: GraphLevel): readonly string[] {
+  const ids = new Set(graph.nodes.map((node) => node.id));
+  const leading = new Set(
+    graph.edges.flatMap((edge) =>
+      ids.has(edge.source.nodeId) && ids.has(edge.target.nodeId)
+        ? [edge.source.nodeId]
+        : [],
+    ),
+  );
+  return graph.nodes.flatMap((node) => (leading.has(node.id) ? [] : [node.id]));
 }

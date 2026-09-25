@@ -17,6 +17,7 @@ import {
   schemaFields,
 } from '@/features/workflow-editor/model/inspector-draft';
 import {
+  changeInputMappingKind,
   directPredecessorOptions,
   inputKeySuggestions,
   inputMappingRowsFor,
@@ -198,6 +199,66 @@ describe('workflow editor input mapping rows', () => {
         destinationKey: 'Destination key is required.',
         source: 'Literal value must be valid JSON.',
       },
+    });
+  });
+});
+
+describe('loop item sources inside a For each body', () => {
+  const loopRow = (port: string) =>
+    ({
+      id: 'loop',
+      destinationKey: 'order',
+      kind: 'structured_input',
+      port,
+      path: '$.id',
+    }) as const;
+
+  it('reads the item or its position only where a body offers them', () => {
+    const level = addDefinitionNode(
+      emptyGraph(),
+      definition,
+      { x: 0, y: 0 },
+      'step',
+    );
+    const loopPorts = ['item', 'ordinal'];
+    expect(
+      validateInputMappingRows([loopRow('item')], level, 'step', { loopPorts })
+        .inputMappings,
+    ).toEqual({
+      order: { kind: 'structured_input', port: 'item', path: '$.id' },
+    });
+    expect(
+      validateInputMappingRows([loopRow('batch')], level, 'step', { loopPorts })
+        .errors,
+    ).toEqual({
+      loop: {
+        source:
+          'Only steps inside a For each body can read the loop item. Choose another source.',
+      },
+    });
+    // Live editing keeps such a row, shown as a warning, outside a body too.
+    expect(
+      validateInputMappingRows([loopRow('item')], level, 'step', {
+        checkGraph: false,
+        loopPorts: [],
+      }).errors,
+    ).toEqual({});
+    expect(
+      Object.keys(
+        inputMappingSourceErrors([loopRow('item')], level, 'step', []),
+      ),
+    ).toEqual(['loop']);
+    expect(
+      changeInputMappingKind(
+        { id: 'r', destinationKey: 'k', kind: 'literal', literalJson: '1' },
+        'structured_input',
+      ),
+    ).toEqual({
+      id: 'r',
+      destinationKey: 'k',
+      kind: 'structured_input',
+      port: 'item',
+      path: '$',
     });
   });
 });

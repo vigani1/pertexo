@@ -15,6 +15,7 @@ import {
 } from '../../model/editor-store-context';
 import { stepTitle } from '../../model/graph-adapter';
 import { connectWorkflowNodes } from '../../model/graph-commands';
+import { findStep, levelOf } from '../../model/graph-scopes';
 import type { useEditorActions } from '../../use-editor-actions';
 import { InspectorPanel } from './inspector-panel';
 import type { InspectorTab } from '../../use-inspector-navigation';
@@ -41,6 +42,7 @@ export function EditorInspector({
   onTestPassed,
   onClose,
   onAddStepAfter,
+  onAddToBody,
   onDuplicateSelection,
   onDeleteSelection,
   onRemoveEdge,
@@ -59,6 +61,7 @@ export function EditorInspector({
   onTestPassed: (nodeId: string) => void;
   onClose: () => void;
   onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
+  onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
   onDuplicateSelection: () => void;
   onDeleteSelection: () => void;
   onRemoveEdge: (edgeId: string) => void;
@@ -111,6 +114,12 @@ export function EditorInspector({
         },
         onRemoveEdge,
         onDiscardScratch: actions.discardScratch,
+        onSelectStep: (nodeId) => {
+          actions.request({ kind: 'select', nodeIds: [nodeId] });
+        },
+        onAddToBody: (opener) => {
+          if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
+        },
       }}
       renderTest={(nodeId, stepSideEffect) => (
         <NodeTestPanel
@@ -139,12 +148,12 @@ function priorTestFor(
   nodeId: string,
 ): Readonly<{ id: string; stepName: string }> | undefined {
   if (passed === undefined) return undefined;
-  const wired = graph.edges.some(
+  const wired = levelOf(graph, nodeId)?.edges.some(
     (edge) =>
       edge.source.nodeId === passed.nodeId && edge.target.nodeId === nodeId,
   );
-  const source = graph.nodes.find((node) => node.id === passed.nodeId);
-  return wired && source !== undefined
+  const source = findStep(graph, passed.nodeId);
+  return wired === true && source !== undefined
     ? { id: passed.previewId, stepName: stepTitle(source) }
     : undefined;
 }

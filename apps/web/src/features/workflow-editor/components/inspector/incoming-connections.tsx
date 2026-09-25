@@ -1,18 +1,17 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
 import { LinkIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { findDefinition, stepTitle } from '../../model/graph-adapter';
+import type { GraphLevel, WorkflowNode } from '../../model/graph-scopes';
 import { ChoiceSelect } from './choice-select';
-
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
 /**
  * Connections into this step, with a keyboard way to add one: the canvas
- * drag is never the only way to wire steps.
+ * drag is never the only way to wire steps. Only steps on the same level
+ * (the workflow, or the same For each body) are offered.
  */
 export function IncomingConnections({
   node,
@@ -23,7 +22,7 @@ export function IncomingConnections({
   onRemoveEdge,
 }: Readonly<{
   node: WorkflowNode;
-  graph: WorkflowGraphContract;
+  graph: GraphLevel;
   definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   onConnect: (connection: Connection) => void;

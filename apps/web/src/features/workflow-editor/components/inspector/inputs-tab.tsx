@@ -1,11 +1,11 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useEditorStoreApi } from '../../model/editor-store-context';
+import type { GraphLevel, WorkflowNode } from '../../model/graph-scopes';
 import {
   directPredecessorOptions,
   inputKeySuggestions,
@@ -21,15 +21,15 @@ import {
 import { MappingRow } from './input-mappings/mapping-row';
 import type { NodeFormApi } from '../../model/node-form';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
-
 /**
  * Inputs: each row reads `field ← source`. Rows apply as soon as they're
- * complete; removing one is an ordinary edit, so ⌘Z brings it back.
+ * complete; removing one is an ordinary edit, so ⌘Z brings it back. Inside
+ * a For each body, rows can also read the item the body runs for.
  */
 export function InputsTab({
   node,
   graph,
+  loopPorts,
   definition,
   definitions,
   form,
@@ -37,7 +37,10 @@ export function InputsTab({
   onRemoveEdge,
 }: Readonly<{
   node: WorkflowNode;
-  graph: WorkflowGraphContract;
+  /** The level the step is on: the workflow, or the body it's in. */
+  graph: GraphLevel;
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   definition: NodeDefinitionCatalogItem | undefined;
   definitions: readonly NodeDefinitionCatalogItem[];
   form: NodeFormApi;
@@ -50,6 +53,7 @@ export function InputsTab({
   const mappings = useLiveMappings({
     node,
     graph,
+    loopPorts,
     commit: (inputMappings) => {
       form.commit({ inputMappings }, `${node.id}:inputs`);
     },
@@ -80,17 +84,14 @@ export function InputsTab({
     );
 
   function insert(source: InsertedSource, fieldName: string) {
-    const active = mappings.rows.find(
-      (row) => row.id === activeRowId.current && row.kind !== 'advanced',
-    );
+    const active = mappings.rows.find((row) => row.id === activeRowId.current);
     const withSource = (
       base: Pick<InputMappingDraftRow, 'id' | 'destinationKey'>,
-    ): InputMappingDraftRow =>
-      source.kind === 'node_output'
-        ? { ...base, ...source }
-        : { ...base, kind: 'run_input', path: source.path };
+    ): InputMappingDraftRow => ({ ...base, ...source });
     if (active !== undefined) {
-      mappings.changeRow(withSource(active));
+      mappings.changeRow(
+        withSource({ id: active.id, destinationKey: active.destinationKey }),
+      );
       return;
     }
     const taken = mappings.rows.some((row) => row.destinationKey === fieldName);
@@ -116,6 +117,7 @@ export function InputsTab({
                 row={row}
                 suggestions={suggestions}
                 predecessors={predecessors}
+                loopPorts={loopPorts}
                 errors={mappings.errors[row.id]}
                 disabled={!editable}
                 onChange={mappings.changeRow}
@@ -158,6 +160,7 @@ export function InputsTab({
             <InsertDataPicker
               graph={graph}
               nodeId={node.id}
+              loopPorts={loopPorts}
               definitions={definitions}
               disabled={!editable}
               onInsert={insert}

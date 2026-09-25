@@ -11,6 +11,7 @@ import { FieldLabel } from '@/components/ui/field';
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover';
 import { useEditorStore } from '../../model/editor-store-context';
 import { stepTitle } from '../../model/graph-adapter';
+import { findStep } from '../../model/graph-scopes';
 import { followingSteps } from '../../model/quick-add';
 import type { QuickAddRequest } from '../../use-quick-add';
 import { ChoiceSelect } from '../inspector/choice-select';
@@ -18,8 +19,9 @@ import { StepChoiceList, StepSearch } from './step-picker';
 
 /**
  * Quick add: the add-step search and list in a lens at the drop point (or
- * beside the step for “Add step after”). Choosing a step adds it there,
- * connected from the chosen output. Escape or a click away closes it.
+ * beside the step for “Add step after”, or the For each's “Add step”).
+ * Choosing a step adds it there, connected from the chosen output when it
+ * follows one. Escape or a click away closes it.
  */
 export function QuickAddLens({
   request,
@@ -77,12 +79,7 @@ function QuickAddContent({
   const { anchor, returnFocus } = request;
   // A stable reference, so positioning doesn't restart on every render.
   const virtualAnchor = useMemo(() => pointAnchor(anchor), [anchor]);
-  const sourceTitle = useEditorStore((state) => {
-    const source = state.graph.nodes.find(
-      (node) => node.id === request.from.nodeId,
-    );
-    return source === undefined ? 'this step' : stepTitle(source);
-  });
+  const title = useEditorStore((state) => lensTitle(state.graph, request));
   return (
     <PopoverContent
       anchor={virtualAnchor}
@@ -94,10 +91,8 @@ function QuickAddContent({
       }
       className="flex max-h-[min(28rem,var(--available-height))] w-72 flex-col gap-3 p-3"
     >
-      <PopoverTitle className="truncate text-sm">
-        Add a step after “{sourceTitle}”
-      </PopoverTitle>
-      {request.outputs.length > 1 ? (
+      <PopoverTitle className="truncate text-sm">{title}</PopoverTitle>
+      {request.from !== undefined && request.outputs.length > 1 ? (
         <div className="flex items-center gap-2">
           <FieldLabel htmlFor={portId} className="shrink-0">
             Connect from
@@ -133,6 +128,23 @@ function QuickAddContent({
       </div>
     </PopoverContent>
   );
+}
+
+/** “Add a step after “Check stock”” or “Add a step to “Each order””. */
+function lensTitle(
+  graph: Parameters<typeof findStep>[0],
+  request: QuickAddRequest,
+): string {
+  const from =
+    request.from === undefined
+      ? undefined
+      : findStep(graph, request.from.nodeId);
+  if (from !== undefined) return `Add a step after “${stepTitle(from)}”`;
+  const loop =
+    request.loopId === undefined ? undefined : findStep(graph, request.loopId);
+  return loop === undefined
+    ? 'Add a step after this step'
+    : `Add a step to “${stepTitle(loop)}”`;
 }
 
 /** A zero-size anchor at a viewport point, for the popup to sit beside. */

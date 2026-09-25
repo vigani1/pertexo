@@ -218,6 +218,63 @@ describe('workflow issues', () => {
     expect(groups[0]?.issues[1]?.message).toBe('Url is required.');
     expect(groups[2]?.issues[0]?.message).toMatch(/loop back on themselves/u);
   });
+
+  it('files findings inside a For each body under the body step, or the For each', () => {
+    const inner = node('check', 'core.set');
+    const loop = node('loop', 'core.foreach', {
+      structured: {
+        kind: 'for_each',
+        maxIterations: 10,
+        maxConcurrency: 1,
+        body: {
+          ...graph([inner, node('retired', 'core.retired')]),
+          inputPorts: ['item', 'ordinal'],
+          outputPorts: ['result'],
+        },
+      },
+    });
+    const body = '$.nodes.loop.structured.body';
+    const groups = groupWorkflowIssues(
+      {
+        valid: false,
+        issues: [
+          {
+            path: `${body}.nodes.check.inputMappings.item`,
+            code: 'invalid_structured_body',
+            message:
+              'structured input must reference a port on the nearest body',
+          },
+          {
+            path: body,
+            code: 'invalid_structured_body',
+            message: 'For Each body must not be empty',
+          },
+        ],
+        compatibility: {
+          ...compatibility,
+          compatible: false,
+          issues: [
+            {
+              code: 'unknown_definition',
+              definitionKey: 'core.retired',
+              version: 1,
+            },
+          ],
+        },
+      },
+      graph([loop]),
+    );
+    expect(
+      groups.map((group) => [
+        group.nodeId,
+        group.issues.map((issue) => issue.target),
+      ]),
+    ).toEqual([
+      ['check', [{ nodeId: 'check', mappingKey: 'item' }]],
+      ['loop', [{ nodeId: 'loop' }]],
+      ['retired', [{ nodeId: 'retired' }]],
+    ]);
+  });
 });
 
 describe('publish readiness', () => {

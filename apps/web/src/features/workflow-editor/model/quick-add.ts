@@ -1,7 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
-import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { FinalConnectionState } from '@xyflow/react';
 import type { PortRef } from './graph-commands';
+import type { GraphLevel } from './graph-scopes';
 
 // Quick add: a step created after another one and connected from one of its
 // outputs, either by dropping a connection on empty canvas or from the
@@ -37,7 +37,7 @@ export function gestureEndPoint(event: MouseEvent | TouchEvent): Point | null {
 
 /** The first output with nothing connected yet, otherwise the first one. */
 export function openOutputPort(
-  graph: WorkflowGraphContract,
+  graph: GraphLevel,
   nodeId: string,
   outputs: readonly string[],
 ): string | undefined {

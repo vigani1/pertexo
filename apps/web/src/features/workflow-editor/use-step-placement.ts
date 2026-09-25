@@ -1,15 +1,17 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import { useReactFlow } from '@xyflow/react';
 import type { RefObject } from 'react';
+import { shownLevel, STEP_CARD } from './model/body-layout';
 import type { EditorStore } from './model/editor.store';
 import {
+  addBodyStep,
   addDefinitionNode,
   addStepAfter,
   freePosition,
-  STEP_CARD,
-  type PortRef,
 } from './model/graph-commands';
+import { scopeOf, type ScopePath } from './model/graph-scopes';
 import { findDefinitionByIdentity } from './model/step-catalog';
+import type { QuickAddTarget } from './use-quick-add';
 
 type Position = Readonly<{ x: number; y: number }>;
 
@@ -23,7 +25,8 @@ const CARD_HALF = Object.freeze({
  * Places new steps where people can see them: clicking an add-step item
  * drops it at the centre of the visible canvas (nudged off any step already
  * there), dragging drops it under the pointer, and quick add puts it where
- * it was asked for, already connected.
+ * it was asked for, already connected, inside a For each body when that's
+ * where it was asked for.
  */
 export function useStepPlacement({
   store,
@@ -51,44 +54,50 @@ export function useStepPlacement({
 
   function place(
     definition: NodeDefinitionCatalogItem,
-    position: Position,
-    from?: PortRef,
+    target: QuickAddTarget,
   ) {
     const state = store.getState();
     if (state.saveStatus === 'conflict') return;
-    const id = crypto.randomUUID();
-    const at = freePosition(state.graph, position);
-    const next =
-      from === undefined
-        ? addDefinitionNode(state.graph, definition, at, id)
-        : addStepAfter(state.graph, definition, at, from, {
-            nodeId: id,
-            edgeId: crypto.randomUUID(),
-          });
+    const { graph } = state;
+    const { from, loopId } = target;
+    let scope: ScopePath = [];
+    if (loopId !== undefined)
+      scope = [...(scopeOf(graph, loopId) ?? []), loopId];
+    else if (from !== undefined) scope = scopeOf(graph, from.nodeId) ?? [];
+    const level = shownLevel(graph, scope) ?? { nodes: [], edges: [] };
+    const at = freePosition(level, target.position);
+    const ids = { nodeId: crypto.randomUUID(), edgeId: crypto.randomUUID() };
+    let next;
+    if (loopId !== undefined)
+      next = addBodyStep(graph, loopId, definition, at, ids, from);
+    else if (from !== undefined)
+      next = addStepAfter(graph, definition, at, from, ids);
+    else next = addDefinitionNode(graph, definition, at, ids.nodeId);
     if (next === null) return;
     state.transact(next);
-    onPlaced(id);
+    onPlaced(ids.nodeId);
+  }
+
+  function addOnCanvas(
+    definition: NodeDefinitionCatalogItem,
+    position: Position,
+  ) {
+    place(definition, { from: undefined, loopId: undefined, position });
   }
 
   return {
     addAtCentre: (definition: NodeDefinitionCatalogItem) => {
-      place(definition, viewportCentre());
+      addOnCanvas(definition, viewportCentre());
     },
     addAt: (identity: string, position: Position) => {
       const definition = findDefinitionByIdentity(definitions, identity);
       if (definition !== undefined)
-        place(definition, {
+        addOnCanvas(definition, {
           x: position.x - CARD_HALF.x,
           y: position.y - CARD_HALF.y,
         });
     },
-    /** Adds a step at `position` (its top left) connected from `from`. */
-    addAfter: (
-      definition: NodeDefinitionCatalogItem,
-      from: PortRef,
-      position: Position,
-    ) => {
-      place(definition, position, from);
-    },
+    /** Adds a step where quick add asked for it, connected as asked. */
+    addFromQuickAdd: place,
   } as const;
 }

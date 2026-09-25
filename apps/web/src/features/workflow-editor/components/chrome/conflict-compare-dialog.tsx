@@ -15,7 +15,7 @@ import {
 } from '@/features/workflow-drafts/public';
 import { useEditorStore } from '../../model/editor-store-context';
 import { stepTitle } from '../../model/graph-adapter';
-import { adoptStepFrom } from '../../model/graph-commands';
+import { adoptStepFrom } from '../../model/graph-copies';
 
 const aspectWords: Readonly<Record<StepChangeAspect, string>> = {
   label: 'name',

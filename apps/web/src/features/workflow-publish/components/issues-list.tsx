@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import type { WorkflowIssueGroup } from '../model/workflow-issues';
-import type { WorkflowValidationTarget } from '../model/validation-target';
+import {
+  findWorkflowStep,
+  type WorkflowValidationTarget,
+} from '../model/validation-target';
 
 /** Findings grouped under the step they belong to, each with a Fix. */
 export function IssuesList({
@@ -22,7 +25,7 @@ export function IssuesList({
         const node =
           group.nodeId === null
             ? undefined
-            : graph.nodes.find((candidate) => candidate.id === group.nodeId);
+            : findWorkflowStep(graph, group.nodeId);
         const step =
           node === undefined ? undefined : describeStep(node.definition.key);
         const name =

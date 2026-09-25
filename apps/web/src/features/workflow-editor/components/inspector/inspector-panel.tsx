@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
 import { findDefinition } from '../../model/graph-adapter';
+import { locateStep } from '../../model/graph-scopes';
 import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
@@ -45,14 +46,17 @@ export function InspectorPanel({
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const selectedCount = useEditorStore((state) => state.selectedNodeIds.length);
-  const node = graph.nodes.find((candidate) => candidate.id === selectedNodeId);
-  if (node !== undefined) {
+  const step =
+    selectedNodeId === null ? undefined : locateStep(graph, selectedNodeId);
+  if (step !== undefined) {
+    const { node } = step;
     const definition = findDefinition(definitions, node);
     return (
       <NodeInspector
         key={`${node.id}:${String(scratchVersion)}`}
         node={node}
-        graph={graph}
+        graph={step.level}
+        loopPorts={step.loopPorts}
         definition={definition}
         definitions={definitions}
         connections={connections}

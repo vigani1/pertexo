@@ -4,9 +4,12 @@ import { createContext } from 'react';
 type CanvasActions = Readonly<{
   editable: boolean;
   removeEdge: (edgeId: string) => void;
+  /** Opens the step picker for a For each's body, next to `opener`. */
+  addToBody: (loopId: string, opener: HTMLElement) => void;
 }>;
 
 export const CanvasActionsContext = createContext<CanvasActions>({
   editable: false,
   removeEdge: () => undefined,
+  addToBody: () => undefined,
 });

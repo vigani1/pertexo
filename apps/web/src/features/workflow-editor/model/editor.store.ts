@@ -7,6 +7,7 @@ import {
   undoHistory,
   type EditorHistory,
 } from './editor-history';
+import { indexGraph } from './graph-scopes';
 
 type SaveStatus =
   'clean' | 'dirty' | 'saving' | 'conflict' | 'failed' | 'uncertain';
@@ -224,7 +225,7 @@ function adoptRemote(conflict: EditorConflict, generation: number) {
   } as const;
 }
 
-/** Drops selected nodes and edges that no longer exist in `graph`. */
+/** Drops selected steps and connections that no longer exist anywhere. */
 function pruneSelection(
   graph: WorkflowGraphContract,
   current: Pick<
@@ -235,8 +236,7 @@ function pruneSelection(
     | 'inspectorScratch'
   >,
 ) {
-  const nodeIds = new Set(graph.nodes.map((node) => node.id));
-  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
+  const { nodes: nodeIds, edges: edgeIds } = indexGraph(graph);
   const selectedNodeIds = current.selectedNodeIds.filter((id) =>
     nodeIds.has(id),
   );

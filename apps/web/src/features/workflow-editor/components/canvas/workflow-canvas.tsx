@@ -3,6 +3,7 @@ import {
   ReactFlow,
   useReactFlow,
   type Connection,
+  type Edge,
   type EdgeChange,
   type FinalConnectionState,
   type NodeChange,
@@ -16,6 +17,8 @@ import {
   type Ref,
 } from 'react';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import { levelPositions } from '../../model/body-layout';
+import { forEachBodyIssues } from '../../model/body-rules';
 import {
   projectWorkflowGraph,
   type CanvasDecorations,
@@ -31,6 +34,7 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
+import { canConnectSteps } from '../../model/graph-scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
@@ -58,7 +62,10 @@ export type CanvasOverlays = Pick<
  * The workflow drawn on the weave. Gestures become editor commands: drags
  * move steps as one change when they end, selection goes through the
  * editor's guard, ⌫ is handled by the editor rather than React Flow, and a
- * connection dropped on empty canvas asks which step to add there.
+ * connection dropped on empty canvas (or an empty part of a For each body)
+ * asks which step to add there. For each bodies are edited in place: their
+ * steps are the container's children, and connections never cross a body's
+ * edge.
  */
 export function WorkflowCanvas({
   definitions,
@@ -69,6 +76,7 @@ export function WorkflowCanvas({
   onRemoveEdge,
   onDropStep,
   onPortDrop,
+  onAddToBody,
   children,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -80,6 +88,7 @@ export function WorkflowCanvas({
   onDropStep: (identity: string, position: Position) => void;
   /** A connection from `from` ended over empty canvas at `point`. */
   onPortDrop: (from: PortRef, point: Position) => void;
+  onAddToBody: (loopId: string, opener: HTMLElement) => void;
   children?: ReactNode;
 }>) {
   const store = useEditorStoreApi();
@@ -101,6 +110,7 @@ export function WorkflowCanvas({
         selectedNodeIds,
         selectedEdgeIds,
         dragPositions,
+        bodyIssues: forEachBodyIssues(graph),
       }),
     // selectionResync only forces fresh node objects for React Flow.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,9 +156,10 @@ export function WorkflowCanvas({
         setDragPositions((current) => new Map([...current, ...moving]));
       if (settled.size === 0) return;
       const state = store.getState();
-      state.transact(moveWorkflowNodes(state.graph, settled), {
-        coalesceKey: `move:${[...settled.keys()].join(',')}`,
-      });
+      state.transact(
+        moveWorkflowNodes(state.graph, levelPositions(state.graph, settled)),
+        { coalesceKey: `move:${[...settled.keys()].join(',')}` },
+      );
       setDragPositions((current) => {
         const next = new Map(current);
         for (const id of settled.keys()) next.delete(id);
@@ -173,29 +184,11 @@ export function WorkflowCanvas({
     [store],
   );
 
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      if (!editable) return;
-      const state = store.getState();
-      const next = connectWorkflowNodes(state.graph, connection);
-      if (next !== null) state.transact(next);
-    },
-    [editable, store],
-  );
-
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
-      const point = gestureEndPoint(event);
-      if (!editable || point === null) return;
-      const from = portDropSource(state, isOverStep(point));
-      if (from !== null) onPortDrop(from, point);
-    },
-    [editable, onPortDrop],
-  );
+  const connections = useConnectionGestures(store, editable, onPortDrop);
 
   const actions = useMemo(
-    () => ({ editable, removeEdge: onRemoveEdge }),
-    [editable, onRemoveEdge],
+    () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),
+    [editable, onAddToBody, onRemoveEdge],
   );
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -236,8 +229,9 @@ export function WorkflowCanvas({
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onConnectEnd={onConnectEnd}
+          isValidConnection={connections.isValidConnection}
+          onConnect={connections.onConnect}
+          onConnectEnd={connections.onConnectEnd}
           onPaneClick={(event) => {
             event.currentTarget
               .closest<HTMLElement>('[data-workflow-canvas]')
@@ -263,11 +257,57 @@ export function WorkflowCanvas({
   );
 }
 
-/** Whether a point in the viewport is over a step card rather than canvas. */
+/**
+ * Connections drawn on the canvas: only between steps on the same level (a
+ * body's steps connect only to each other), added as one change, and a
+ * connection dropped on empty canvas opens quick add there.
+ */
+function useConnectionGestures(
+  store: ReturnType<typeof useEditorStoreApi>,
+  editable: boolean,
+  onPortDrop: (from: PortRef, point: Position) => void,
+) {
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) =>
+      canConnectSteps(
+        store.getState().graph,
+        connection.source,
+        connection.target,
+      ),
+    [store],
+  );
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!editable) return;
+      const state = store.getState();
+      const next = connectWorkflowNodes(state.graph, connection);
+      if (next !== null) state.transact(next);
+    },
+    [editable, store],
+  );
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      const point = gestureEndPoint(event);
+      if (!editable || point === null) return;
+      const from = portDropSource(state, isOverStep(point));
+      if (from !== null) onPortDrop(from, point);
+    },
+    [editable, onPortDrop],
+  );
+  return { isValidConnection, onConnect, onConnectEnd } as const;
+}
+
+/**
+ * Whether a point in the viewport is over a step card rather than canvas.
+ * The empty part of a For each body counts as canvas: body steps are drawn
+ * above it, so a point over one of them finds that step first.
+ */
 function isOverStep(point: Position): boolean {
   if (typeof document.elementFromPoint !== 'function') return false;
-  const step = document
-    .elementFromPoint(point.x, point.y)
-    ?.closest('.react-flow__node');
-  return step !== null && step !== undefined;
+  const element = document.elementFromPoint(point.x, point.y);
+  if (element === null) return false;
+  return (
+    element.closest('.react-flow__node') !== null &&
+    element.closest('[data-for-each-body]') === null
+  );
 }
