@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { formatClock } from '@/lib/format-time';
+import { formatShortTime } from '@/lib/format-time';
 import { cn } from '@/lib/utils';
 
 /**
@@ -36,9 +36,12 @@ export function StaleLine({
       <StatusGlyph tone="attention" />
       <span>
         Couldn’t refresh. Showing results from{' '}
-        <span className="font-mono">
-          {formatClock(new Date(updatedAt).toISOString())}
-        </span>
+        <time
+          dateTime={new Date(updatedAt).toISOString()}
+          className="font-mono"
+        >
+          {formatShortTime(updatedAt)}
+        </time>
         .{children === undefined ? null : <> {children}</>}
       </span>
       <Button
