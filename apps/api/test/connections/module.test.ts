@@ -43,6 +43,7 @@ const dependencies = {
     setStatus: () => Promise.reject(new Error('not exercised')),
     setWorkflowPolicy: () => Promise.reject(new Error('not exercised')),
     clearWorkflowPolicy: () => Promise.reject(new Error('not exercised')),
+    getWorkflowPolicy: () => Promise.reject(new Error('not exercised')),
     close: () => Promise.resolve(),
   },
 } satisfies ConnectionDependencies;

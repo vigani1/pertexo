@@ -27,6 +27,7 @@ import {
   failureNotificationDestinationResponseSchema,
   failureNotificationDestinationStatusRequestSchema,
   workflowFailureNotificationPolicyRequestSchema,
+  workflowFailureNotificationPolicyResponseSchema,
 } from './http/failure-notification-destinations.js';
 import type { z } from 'zod';
 
@@ -68,10 +69,14 @@ const schemas = Object.freeze({
     workflowFailureNotificationPolicyRequestSchema,
     'input',
   ),
+  WorkflowFailureNotificationPolicyResponse: jsonSchema(
+    workflowFailureNotificationPolicyResponseSchema,
+    'output',
+  ),
 });
 
 export const connectionsClientContract = Object.freeze({
-  schemaVersion: '1.2.0',
+  schemaVersion: '1.3.0',
   schemas,
 });
 
@@ -115,7 +120,7 @@ const idempotencyParameter = idempotencyHeaderParameter();
 
 export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
-  info: { title: 'Pertexo Connections API', version: '1.2.0' },
+  info: { title: 'Pertexo Connections API', version: '1.3.0' },
   paths: {
     '/v1/workspaces/{workspaceId}/connections': {
       get: {
@@ -342,6 +347,21 @@ export const connectionsOpenApiDocument = Object.freeze({
       },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/failure-notification-policy':
       {
+        get: {
+          operationId: 'getWorkflowFailureNotificationPolicy',
+          security: [{ cookieSession: [] }],
+          parameters: [workspaceParameter, workflowParameter],
+          responses: {
+            '200': jsonResponse(
+              'Failure notification policy',
+              'WorkflowFailureNotificationPolicyResponse',
+            ),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '500': responseReference('Unexpected'),
+          },
+        },
         put: {
           operationId: 'setWorkflowFailureNotificationPolicy',
           security: [{ cookieSession: [] }],

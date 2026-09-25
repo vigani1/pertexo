@@ -65,6 +65,7 @@
               "workspace.invitation_delivery_unavailable",
               "workflow.revision_conflict",
               "workflow.lifecycle_conflict",
+              "workflow.name_conflict",
               "workflow.invalid",
               "workflow.not_published",
               "workflow.activation_failed",

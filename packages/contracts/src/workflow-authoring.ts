@@ -7,9 +7,6 @@ import {
   workflowDraftSaveRequestSchema,
   workflowListResponseSchema,
   workflowListQuerySchema,
-  workflowLifecycleRequestSchema,
-  workflowLifecycleResponseSchema,
-  workflowLifecycleConflictProblemSchema,
   workflowVersionRestoreRequestSchema,
   workflowPublishResponseSchema,
   workflowRevisionConflictProblemSchema,
@@ -22,6 +19,10 @@ import {
   strongEtagSchema,
 } from './http/workflow-authoring.js';
 import { projectContractSchema } from './schema-projection.js';
+import {
+  workflowRevisionCommandPaths,
+  workflowRevisionCommandSchemas,
+} from './workflow-revision-commands-contract.js';
 import {
   authenticatedComponents,
   csrfHeaderParameter,
@@ -47,21 +48,7 @@ function contractSchemas(target: 'client' | 'openapi') {
       workflowVersionRestoreRequestSchema,
       'input',
     ),
-    WorkflowLifecycleRequest: project(
-      'WorkflowLifecycleRequest',
-      workflowLifecycleRequestSchema,
-      'input',
-    ),
-    WorkflowLifecycleResponse: project(
-      'WorkflowLifecycleResponse',
-      workflowLifecycleResponseSchema,
-      'output',
-    ),
-    WorkflowLifecycleConflictProblem: project(
-      'WorkflowLifecycleConflictProblem',
-      workflowLifecycleConflictProblemSchema,
-      'output',
-    ),
+    ...workflowRevisionCommandSchemas(project),
     WorkflowRevisionConflictProblem: project(
       'WorkflowRevisionConflictProblem',
       workflowRevisionConflictProblemSchema,
@@ -183,44 +170,6 @@ const etagParameter = {
 const idempotencyParameter = idempotencyHeaderParameter();
 const csrfParameter = csrfHeaderParameter();
 
-function lifecycleOperation(
-  operationId: 'archiveWorkflow' | 'restoreWorkflow',
-) {
-  return {
-    operationId,
-    description:
-      'Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.',
-    security: [{ cookieSession: [] }],
-    parameters: [...workflowParameters, csrfParameter, idempotencyParameter],
-    requestBody: jsonRequest('WorkflowLifecycleRequest'),
-    responses: {
-      '202': jsonResponse(
-        'Workflow lifecycle accepted',
-        'WorkflowLifecycleResponse',
-      ),
-      '400': responseReference('BadRequest'),
-      '401': responseReference('Unauthenticated'),
-      '403': responseReference('Forbidden'),
-      '404': responseReference('NotFound'),
-      '409': {
-        description: 'Lifecycle revision or idempotency conflict',
-        content: {
-          'application/problem+json': {
-            schema: {
-              oneOf: [
-                {
-                  $ref: '#/components/schemas/WorkflowLifecycleConflictProblem',
-                },
-                { $ref: '#/components/schemas/ApiProblem' },
-              ],
-            },
-          },
-        },
-      },
-      '500': responseReference('Unexpected'),
-    },
-  };
-}
 export const workflowAuthoringOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
@@ -264,12 +213,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           },
         },
       },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive': {
-      post: lifecycleOperation('archiveWorkflow'),
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore': {
-      post: lifecycleOperation('restoreWorkflow'),
-    },
+    ...workflowRevisionCommandPaths,
     '/v1/workspaces/{workspaceId}/workflows': {
       get: {
         operationId: 'listWorkflows',

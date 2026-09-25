@@ -19,6 +19,7 @@ import {
   type WorkflowVersionRestoreContext,
 } from './workflow-authoring-version-restore.js';
 import { createWorkflowAuthoringLifecycleStore } from './workflow-authoring-lifecycle.js';
+import { createWorkflowAuthoringRenameStore } from './workflow-authoring-rename.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -59,6 +60,7 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   WorkflowLifecycleRevisionConflictError,
+  WorkflowNameRevisionConflictError,
 } from './workflow-authoring-errors.js';
 export type {
   TransitionWorkflowLifecycleInput,
@@ -368,6 +370,10 @@ export function createWorkflowAuthoringDatabase(
     }),
     publishWorkflow,
     ...createWorkflowAuthoringLifecycleStore({
+      ...authoringContext,
+      keyDigest,
+    }),
+    ...createWorkflowAuthoringRenameStore({
       ...authoringContext,
       keyDigest,
     }),

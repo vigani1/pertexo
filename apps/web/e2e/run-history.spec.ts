@@ -74,6 +74,7 @@ async function installRoutes(page: Page, workflowName?: string) {
     id: workflowId,
     workspaceId,
     name: 'Customer onboarding',
+    nameRevision: 1,
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'active',

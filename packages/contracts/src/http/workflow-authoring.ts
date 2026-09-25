@@ -25,6 +25,12 @@ export const workflowLifecycleRevisionSchema = z
   .int()
   .positive()
   .max(Number.MAX_SAFE_INTEGER);
+/** ADR 041: advances once per effective rename, independent of lifecycle and drafts. */
+export const workflowNameRevisionSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(Number.MAX_SAFE_INTEGER);
 export const workflowIdParamSchema = z
   .object({ workspaceId: z.uuid(), workflowId: workflowIdentifierSchema })
   .strict();
@@ -89,6 +95,7 @@ export const workflowSummarySchema = z
     id: z.uuid(),
     workspaceId: z.uuid(),
     name: workflowNameSchema,
+    nameRevision: workflowNameRevisionSchema,
     lifecycleStatus: workflowLifecycleStatusSchema,
     lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
@@ -110,6 +117,16 @@ export const workflowLifecycleRequestSchema = z
   })
   .strict();
 export const workflowLifecycleResponseSchema = z
+  .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
+  .strict();
+
+export const workflowRenameRequestSchema = z
+  .object({
+    name: workflowNameSchema,
+    expectedNameRevision: workflowNameRevisionSchema,
+  })
+  .strict();
+export const workflowRenameResponseSchema = z
   .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
   .strict();
 
@@ -190,8 +207,22 @@ export const workflowLifecycleConflictProblemSchema = createApiProblemSchema({
   code: z.literal('workflow.lifecycle_conflict'),
   currentLifecycleRevision: workflowLifecycleRevisionSchema,
 });
+export const workflowNameConflictProblemSchema = createApiProblemSchema({
+  status: z.literal(409),
+  code: z.literal('workflow.name_conflict'),
+  currentNameRevision: workflowNameRevisionSchema,
+});
 export type WorkflowLifecycleResponse = z.output<
   typeof workflowLifecycleResponseSchema
+>;
+export type WorkflowRenameRequest = z.output<
+  typeof workflowRenameRequestSchema
+>;
+export type WorkflowRenameResponse = z.output<
+  typeof workflowRenameResponseSchema
+>;
+export type WorkflowNameConflictProblem = z.output<
+  typeof workflowNameConflictProblemSchema
 >;
 export type WorkflowLifecycleConflictProblem = z.output<
   typeof workflowLifecycleConflictProblemSchema

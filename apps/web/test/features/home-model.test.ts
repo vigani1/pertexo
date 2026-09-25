@@ -203,6 +203,7 @@ describe('needs attention', () => {
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       name: 'Nightly CRM sync',
+      nameRevision: 1,
       lifecycleStatus: 'active' as const,
       lifecycleRevision: 1,
       activationStatus: 'degraded' as const,

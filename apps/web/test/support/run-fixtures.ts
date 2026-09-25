@@ -145,6 +145,7 @@ export function fixtureWorkflow(overrides: Record<string, unknown> = {}) {
     id: fixtureIds.workflow,
     workspaceId: fixtureIds.workspace,
     name: 'Customer onboarding',
+    nameRevision: 1,
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'active',

@@ -202,6 +202,7 @@ export function workflowSummary(
       id: workflowId,
       workspaceId,
       name,
+      nameRevision: 1,
       lifecycleStatus: 'active',
       lifecycleRevision: 1,
       activationStatus: publishedVersionId === null ? 'inactive' : 'active',

@@ -69,6 +69,7 @@ async function installRoutes(page: Page) {
               id: workflowId,
               workspaceId,
               name: 'Daily intake',
+              nameRevision: 1,
               lifecycleStatus: 'active',
               lifecycleRevision: 1,
               activationStatus: 'inactive',

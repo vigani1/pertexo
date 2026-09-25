@@ -203,6 +203,7 @@ function connectionRuntime(
     setStatus: () => Promise.reject(new Error('not used')),
     setWorkflowPolicy: () => Promise.reject(new Error('not used')),
     clearWorkflowPolicy: () => Promise.reject(new Error('not used')),
+    getWorkflowPolicy: () => Promise.reject(new Error('not used')),
     close: () => Promise.resolve(),
   };
   const executeHttp = vi.fn<ConnectionDependencies['httpClient']['execute']>(

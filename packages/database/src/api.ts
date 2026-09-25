@@ -145,6 +145,7 @@ export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowLifecycleRevisionConflictError,
+  WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   createWorkflowAuthoringDatabase,

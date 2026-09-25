@@ -3,14 +3,14 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  planWorkflowLifecycleCommand,
-  workflowActivationStatusSchema,
-  workflowLifecycleStatusSchema,
-} from '@pertexo/workflow-model/lifecycle';
+import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model/lifecycle';
 
 import {
-  WorkflowIdempotencyConflictError,
+  claimWorkflowCommand,
+  completeWorkflowCommand,
+  type WorkflowCommandClaim,
+} from './workflow-authoring-command-receipts.js';
+import {
   WorkflowLifecycleRevisionConflictError,
   WorkflowNotFoundError,
 } from './workflow-authoring-errors.js';
@@ -54,159 +54,32 @@ export type WorkflowAuthoringLifecycleContext = Readonly<{
   ): Promise<T>;
 }>;
 
-type LifecycleClaim = Readonly<{
-  digest: string;
-  operation: string;
-  replay: WorkflowRecord | null;
-  scope: string;
-}>;
-
-const durableWorkflowSchema = z
-  .object({
-    id: uuidSchema,
-    workspaceId: uuidSchema,
-    name: z.string().trim().min(1).max(128),
-    lifecycleStatus: workflowLifecycleStatusSchema,
-    lifecycleRevision: lifecycleRevisionSchema,
-    activationStatus: workflowActivationStatusSchema,
-    publishedVersionId: uuidSchema.nullable(),
-    createdBy: uuidSchema,
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
-  })
-  .strict();
-
-const durableLifecycleResultSchema = z
-  .object({ workflow: durableWorkflowSchema })
-  .strict();
-
-function serializeWorkflow(workflow: WorkflowRecord): Record<string, unknown> {
-  return {
-    id: workflow.id,
-    workspaceId: workflow.workspaceId,
-    name: workflow.name,
-    lifecycleStatus: workflow.lifecycleStatus,
-    lifecycleRevision: workflow.lifecycleRevision,
-    activationStatus: workflow.activationStatus,
-    publishedVersionId: workflow.publishedVersionId,
-    createdBy: workflow.createdBy,
-    createdAt: workflow.createdAt.toISOString(),
-    updatedAt: workflow.updatedAt.toISOString(),
-  };
-}
-
-function durableLifecycleResult(
-  value: unknown,
-  expectedWorkspaceId: string,
-  expectedWorkflowId: string,
-): WorkflowRecord {
-  const parsed = durableLifecycleResultSchema.parse(value).workflow;
-  if (
-    parsed.workspaceId !== expectedWorkspaceId ||
-    parsed.id !== expectedWorkflowId
-  )
-    throw new Error(
-      'Durable workflow lifecycle result identity does not match its claim',
-    );
-  return Object.freeze({
-    id: parsed.id,
-    workspaceId: parsed.workspaceId,
-    name: parsed.name,
-    lifecycleStatus: parsed.lifecycleStatus,
-    lifecycleRevision: parsed.lifecycleRevision,
-    activationStatus: parsed.activationStatus,
-    publishedVersionId: parsed.publishedVersionId,
-    createdBy: parsed.createdBy,
-    createdAt: parsed.createdAt,
-    updatedAt: parsed.updatedAt,
-  });
-}
-
 async function claimLifecycle(
   client: PoolClient,
   input: TransitionWorkflowLifecycleInput,
   context: WorkflowAuthoringLifecycleContext,
-): Promise<LifecycleClaim> {
+): Promise<WorkflowCommandClaim> {
   const command = commandSchema.parse(input.command);
   const workspaceId = uuidSchema.parse(input.workspaceId);
   const workflowId = uuidSchema.parse(input.workflowId);
   const actorId = uuidSchema.parse(input.actorId);
-  const operation = `workflow.${command}`;
-  const scope = `${actorId}:${workflowId}`;
-  const digest = context.keyDigest(input.idempotencyKey);
-  const requestHash = canonicalOutboxPayloadChecksum({
-    actorId,
-    command,
-    expectedLifecycleRevision: lifecycleRevisionSchema.parse(
-      input.expectedLifecycleRevision,
-    ),
+  return claimWorkflowCommand(client, {
+    label: 'lifecycle',
+    operation: `workflow.${command}`,
+    digest: context.keyDigest(input.idempotencyKey),
+    requestHash: canonicalOutboxPayloadChecksum({
+      actorId,
+      command,
+      expectedLifecycleRevision: lifecycleRevisionSchema.parse(
+        input.expectedLifecycleRevision,
+      ),
+      workflowId,
+      workspaceId,
+    }),
     workflowId,
     workspaceId,
+    actorId,
   });
-  await client.query(
-    `insert into app.idempotency_records
-       (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref,expires_at)
-     values($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb,
-       clock_timestamp()+interval '24 hours')
-     on conflict(workspace_id,operation,scope,key_hash) do nothing`,
-    [
-      generatePersistedId(),
-      workspaceId,
-      operation,
-      scope,
-      digest,
-      requestHash,
-      workflowId,
-    ],
-  );
-  const result = await client.query<{
-    request_hash: string;
-    result_ref: unknown;
-    status: string;
-  }>(
-    `select request_hash,status,result_ref from app.idempotency_records
-       where workspace_id=$1 and operation=$2 and scope=$3 and key_hash=$4
-       for update`,
-    [workspaceId, operation, scope, digest],
-  );
-  const claim = result.rows[0];
-  if (claim === undefined)
-    throw new Error('Workflow lifecycle idempotency claim is unavailable');
-  if (claim.request_hash !== requestHash)
-    throw new WorkflowIdempotencyConflictError(
-      'Idempotency key request mismatch',
-    );
-  return Object.freeze({
-    digest,
-    operation,
-    replay:
-      claim.status === 'completed'
-        ? durableLifecycleResult(claim.result_ref, workspaceId, workflowId)
-        : null,
-    scope,
-  });
-}
-
-async function completeLifecycleClaim(
-  client: PoolClient,
-  claim: LifecycleClaim,
-  workspaceId: string,
-  workflow: WorkflowRecord,
-): Promise<void> {
-  const result = await client.query(
-    `update app.idempotency_records set status='completed',result_ref=$1::jsonb,
-       updated_at=transaction_timestamp()
-     where workspace_id=$2 and operation=$3 and scope=$4 and key_hash=$5`,
-    [
-      JSON.stringify({ workflow: serializeWorkflow(workflow) }),
-      workspaceId,
-      claim.operation,
-      claim.scope,
-      claim.digest,
-    ],
-  );
-  if (result.rowCount !== 1)
-    throw new Error('Workflow lifecycle idempotency completion is unavailable');
 }
 
 async function transitionWorkflowLifecycle(
@@ -337,7 +210,7 @@ async function transitionWorkflowLifecycle(
       await context.testHooks?.afterLifecycleStep?.('audit');
     }
 
-    await completeLifecycleClaim(client, claim, workspaceId, workflow);
+    await completeWorkflowCommand(client, claim, workflow);
     await context.testHooks?.afterLifecycleStep?.('idempotency');
     return Object.freeze({ replayed: false, workflow });
   });

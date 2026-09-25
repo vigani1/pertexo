@@ -19,6 +19,13 @@ export class WorkflowLifecycleRevisionConflictError extends Error {
   }
 }
 
+export class WorkflowNameRevisionConflictError extends Error {
+  public override readonly name = 'WorkflowNameRevisionConflictError';
+  public constructor(public readonly currentRevision: number) {
+    super('Workflow name revision does not match');
+  }
+}
+
 export class WorkflowIdempotencyConflictError extends Error {
   public override readonly name = 'WorkflowIdempotencyConflictError';
 }

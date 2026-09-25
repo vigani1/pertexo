@@ -131,6 +131,7 @@ export function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
     id: workflow.id,
     workspaceId: workflow.workspaceId,
     name: workflow.name,
+    nameRevision: workflow.nameRevision,
     lifecycleStatus: workflow.lifecycleStatus,
     lifecycleRevision: workflow.lifecycleRevision,
     activationStatus: workflow.activationStatus,
