@@ -77,7 +77,7 @@ export function inset(area: Box, by: number): Box {
 /**
  * A viewport showing `bounds` (flow coordinates) inside `area` (canvas
  * coordinates): as large as fits, never above `maxZoom` and never below
- * `minZoom`. When it doesn't fit at `minZoom`, the workflow's start (its
+ * `minZoom`, centred across and a third of the way down. When it doesn't fit at `minZoom`, the workflow's start (its
  * left edge, and its top if it's also too tall) is kept in view.
  */
 export function framedViewport(
@@ -94,9 +94,11 @@ export function framedViewport(
   const shownHeight = bounds.height * zoom;
   const left =
     shownWidth <= area.width ? area.x + (area.width - shownWidth) / 2 : area.x;
+  // Nearer the top than the middle, as the blueprint draws it, which also
+  // leaves the bottom free for the issues lens.
   const top =
     shownHeight <= area.height
-      ? area.y + (area.height - shownHeight) / 2
+      ? area.y + (area.height - shownHeight) / 3
       : area.y;
   return { x: left - bounds.x * zoom, y: top - bounds.y * zoom, zoom };
 }
