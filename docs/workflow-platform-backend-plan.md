@@ -2073,6 +2073,7 @@ and response mapping only.
 | Endpoint                                                                  | Application use case       | Transaction/side effect                                     |
 | ------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- |
 | `GET /v1/users/me` | `GetCurrentUser` | authenticated current-user profile projection; no identity-provider secrets |
+| `PATCH /v1/users/me` | `UpdateUserProfile` | the signed-in user's own display name at its profile revision, with an exact-retry receipt (ADR 043) |
 | `GET /v1/workspaces/:workspaceId/members` | `ListWorkspaceMembers` | authorized, workspace-scoped cursor query |
 | `GET /v1/node-definitions` | `ListNodeDefinitions` | browser-safe definition projection from the configured release cohort |
 | `GET /v1/integrations` | `ListIntegrations` | integration discovery derived from that same release catalog |
@@ -2105,7 +2106,8 @@ allowlists per endpoint, never arbitrary column names from the request.
 The four discovery routes above close the previously unallocated API surface:
 current-user and member reads belong to Phase 1; node discovery belongs to
 Phase 3, and integration discovery belongs to Phase 4, including the definitions
-added by Phases 5–6. `/v1/users/me` is self-profile read access, not user administration.
+added by Phases 5–6. `/v1/users/me` is self-profile access (read, and a
+display-name change under ADR 043), not user administration.
 The members route permits owner/admin reads of existing memberships under
 `member:read`; it does not introduce invitations
 or role-management writes. Integrations are a catalog projection, not a second

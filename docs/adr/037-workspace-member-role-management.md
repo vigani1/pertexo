@@ -2,6 +2,8 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-15
+- **Extended:** 2026-09-25 by [ADR 042](042-workspace-member-removal.md),
+  which adds member removal on the same revision, receipt and session rules
 
 ## Decision
 
