@@ -179,7 +179,9 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
     expect(requests[0]).toMatchObject({ body: '', etag: etagA });
     expect(requests[0]?.key).toBeTruthy();
     expect(requests[1]).toEqual(requests[0]);
-    expect(await screen.findByText('v1 live')).toBeVisible();
+    expect(
+      await screen.findByText('v1 is live', {}, { timeout: 4_000 }),
+    ).toBeVisible();
   });
 });
 
@@ -306,7 +308,14 @@ describe(
       await event.click(
         screen.getByRole('button', { name: 'Verify original account' }),
       );
-      expect(await screen.findByText('v1 live')).toBeVisible();
+      // The kept receipt is what an edit is measured against.
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('heading', { name: 'Editor paused' }),
+        ).toBeNull();
+      });
+      await event.click(addStepButton(/Set fields/u));
+      expect(await screen.findByText('Edited since v1')).toBeVisible();
       expect(publishRequests).toBe(1);
     });
   },

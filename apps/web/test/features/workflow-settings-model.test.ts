@@ -95,7 +95,7 @@ describe('version changes', () => {
     );
     expect(steps.map((step) => [step.label, step.kind, step.trigger])).toEqual([
       ['Schedule', 'Schedule', true],
-      ['Shape', 'Set values', false],
+      ['Shape', 'Set fields', false],
       ['HTTP request', 'HTTP request', false],
     ]);
   });

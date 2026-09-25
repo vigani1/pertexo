@@ -1,3 +1,4 @@
+import { describeStep } from '@/features/catalog/presentation.public';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -14,31 +15,9 @@ const TRIGGER_ORDER: readonly TriggerKind[] = ['webhook', 'schedule', 'manual'];
 
 // A client registry of readable step names until the catalog carries display
 // names. Unknown definitions fall back to their key's last segment.
-const STEP_NAMES: ReadonlyMap<string, string> = new Map([
-  ['core.webhook', 'Webhook'],
-  ['core.schedule', 'Schedule'],
-  ['core.manual', 'Manual start'],
-  ['core.validate', 'Validate'],
-  ['core.condition', 'Condition'],
-  ['core.switch', 'Switch'],
-  ['core.merge', 'Merge'],
-  ['core.parallel', 'Parallel'],
-  ['core.foreach', 'For each'],
-  ['core.set', 'Set values'],
-  ['core.wait', 'Wait'],
-  ['core.terminate', 'Stop'],
-  ['http.request', 'HTTP request'],
-  ['slack.send_message', 'Send to Slack'],
-  ['email.send_notification', 'Send email'],
-]);
-
+/** A definition's readable name: the catalog's, as the editor shows it. */
 export function definitionName(key: string): string {
-  const known = STEP_NAMES.get(key);
-  if (known !== undefined) return known;
-  const words = (key.split('.').at(-1) ?? key).replaceAll('_', ' ').trim();
-  return words === ''
-    ? key
-    : `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+  return describeStep(key).name;
 }
 
 /** The name a person gave the step, else its definition's readable name. */

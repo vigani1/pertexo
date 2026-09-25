@@ -20,8 +20,11 @@ import type { PublicationReceipt } from './mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from './use-workflow-command-session';
 import { latestVersionQueryOptions } from './workflow-publish.queries';
 
-/** "v4 live", and "· edited since" once the draft moved on. */
-function LiveVersionNote({
+/**
+ * "Edited since v4" once the draft moves on from what was just published.
+ * The state line already names the live version, so nothing shows before.
+ */
+function EditedSinceNote({
   receipt,
   draft,
 }: Readonly<{
@@ -31,10 +34,10 @@ function LiveVersionNote({
   const edited =
     receipt.generation !== draft.generation ||
     receipt.revision !== draft.revision;
+  if (!edited) return null;
   return (
     <span className="hidden font-mono text-[0.7rem] whitespace-nowrap text-subtle-foreground sm:inline">
-      v{receipt.versionNumber} live
-      {edited ? ' · edited since' : ''}
+      Edited since v{receipt.versionNumber}
     </span>
   );
 }
@@ -188,7 +191,7 @@ export function WorkflowCommandActions({
         />
       ) : null}
       {receipt === undefined ? null : (
-        <LiveVersionNote receipt={receipt} draft={draft} />
+        <EditedSinceNote receipt={receipt} draft={draft} />
       )}
       {canPublish ? (
         <PublishButton
