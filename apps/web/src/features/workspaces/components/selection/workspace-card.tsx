@@ -3,13 +3,16 @@ import { ArrowRightIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
-import { WorkspaceMark } from '../shell/workspace-mark';
+import { RingMonogram } from '../shell/workspace-mark';
 import {
   roleName,
   workspaceAvailability,
 } from '../../model/workspace-availability';
 
-/** One workspace: its mark, name, your role, its state and "last opened". */
+/**
+ * One workspace: its monogram in a thread ring, name, your role, its state
+ * and "last opened".
+ */
 export function WorkspaceCard({
   workspace,
   lastOpened,
@@ -34,10 +37,7 @@ export function WorkspaceCard({
       }}
     >
       <span className="flex w-full items-start justify-between gap-3">
-        <WorkspaceMark
-          name={workspace.name}
-          className="size-11 rounded-lg text-sm"
-        />
+        <RingMonogram name={workspace.name} className="size-11 text-sm" />
         {lastOpened ? <Badge variant="default">Last opened</Badge> : null}
       </span>
       <span className="flex min-w-0 flex-col gap-2">

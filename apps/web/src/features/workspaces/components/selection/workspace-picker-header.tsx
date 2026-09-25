@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Wordmark } from '@/features/auth/auth-stage.public';
-import { PersonAvatar } from '../shell/workspace-mark';
+import { RingMonogram } from '../shell/workspace-mark';
 
 /** The picker's header: the wordmark and the account menu. */
 export function WorkspacePickerHeader({
@@ -32,7 +32,7 @@ export function WorkspacePickerHeader({
           aria-label={`Account menu for ${user.displayName}`}
           className="flex min-w-0 items-center gap-2.5 rounded-full py-1 pr-1 pl-1 text-sm text-muted-foreground outline-none hover:bg-white/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 sm:pr-3"
         >
-          <PersonAvatar name={user.displayName || user.email} />
+          <RingMonogram name={user.displayName || user.email} />
           <span className="max-w-48 truncate max-sm:hidden">{user.email}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
