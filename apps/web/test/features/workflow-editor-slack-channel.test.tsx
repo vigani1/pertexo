@@ -162,6 +162,57 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
     expect(lookups).toEqual([]);
   });
 
+  it('adds a Slack connection in place and comes back with it selected', async () => {
+    const createdId = '55555555-5555-4555-8555-555555555555';
+    const created = slackConnection(
+      workspaceId,
+      createdId,
+      'Control Operations Slack',
+    );
+    const { saved, event } = await openSlackStep(
+      slackGraph({ channelId: { kind: 'literal', value: 'C0123456789' } }, {}),
+      [...workspace.capabilities, 'connection:use', 'connection:manage'],
+    );
+    mockServer.use(
+      http.post(`${workspaceApi}/connections`, () =>
+        HttpResponse.json(created, { status: 201 }),
+      ),
+      http.post(`${workspaceApi}/connections/${createdId}/test`, () =>
+        HttpResponse.json({
+          connection: created,
+          outcome: { ok: true, httpStatus: 200, errorCode: null },
+        }),
+      ),
+    );
+    await event.click(
+      screen.getByRole('button', { name: 'New Slack connection' }),
+    );
+    const lens = within(await screen.findByRole('dialog'));
+    expect(lens.getByText('Connect Slack')).toBeVisible();
+    await event.type(
+      lens.getByLabelText('Slack bot token'),
+      'xoxb-1234567890-secret',
+    );
+    await event.click(lens.getByRole('button', { name: 'Continue' }));
+    await event.click(lens.getByRole('button', { name: 'Save and test' }));
+    expect(await lens.findByText('Slack accepted the token.')).toBeVisible();
+    await event.click(lens.getByRole('button', { name: 'Done' }));
+
+    expect(
+      await screen.findByText('Connected Control Operations Slack'),
+    ).toBeVisible();
+    expect(screen.queryByText('Connect Slack')).toBeNull();
+    expect(screen.getByLabelText('Slack connection')).toHaveTextContent(
+      'Control Operations Slack',
+    );
+    pressSave();
+    await waitFor(() => {
+      expect(saved.graph?.nodes[0]?.connectionRefs).toEqual({
+        slack_bot_token: createdId,
+      });
+    });
+  });
+
   it('leaves a channel from another source to the Inputs tab', async () => {
     mockServer.use(
       ...editorHandlers(() => undefined, {

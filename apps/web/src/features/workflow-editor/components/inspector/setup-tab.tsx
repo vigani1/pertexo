@@ -29,13 +29,11 @@ export function SetupTab({
   node,
   definition,
   connections,
-  workspaceId,
   form,
 }: Readonly<{
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
-  workspaceId: string;
   form: NodeFormApi;
 }>) {
   const fields = useMemo(
@@ -99,7 +97,6 @@ export function SetupTab({
           requirement={requirement}
           selectedId={node.connectionRefs[requirement]}
           connections={connections}
-          workspaceId={workspaceId}
           form={form}
         />
       ))}
