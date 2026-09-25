@@ -69,6 +69,12 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     sentence: 'The run was stopped before this step finished.',
     advice: 'Replay the run if the work still needs to happen.',
   },
+  'execution.attempt_invalid': {
+    sentence:
+      'One of this step’s inputs couldn’t be worked out, so the step didn’t run.',
+    advice:
+      'Check its inputs in Build (an expression that fails, or a path that isn’t in the data), publish, then replay the run.',
+  },
   'artifact.unavailable': {
     sentence: 'A file this step needed wasn’t available.',
     advice: 'Replay the run once the file is available again.',
@@ -104,15 +110,14 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.deadline_exceeded': 'deadline reached',
   'execution.canceled': 'stopped',
   'artifact.unavailable': 'file unavailable',
+  'execution.attempt_invalid': 'an input couldn’t be worked out',
 };
 
-/** A few words for a step's error, for one-line summaries such as Home's. */
+/**
+ * A few words for a step's error, for one-line summaries such as Home's.
+ * An unknown code never becomes words ("attempt invalid" reads as English
+ * but says nothing); it stays a plain "stopped with an error".
+ */
 export function shortStepError(code: string): string {
-  const known = SHORT_REASONS[code];
-  if (known !== undefined) return known;
-  const words = (code.split('.').at(-1) ?? '')
-    .replaceAll(/[_-]+/gu, ' ')
-    .trim()
-    .toLowerCase();
-  return /^[a-z ]+$/u.test(words) ? words : 'stopped with an error';
+  return SHORT_REASONS[code] ?? 'stopped with an error';
 }

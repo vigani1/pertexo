@@ -133,6 +133,10 @@ class StepReplayBuilder {
   public safeErrorCode: string | undefined;
   public nodeRunId: string | undefined;
   public firstActivityMs: number | undefined;
+  /** A Wait step is paused; its next start resumes the same attempt. */
+  private resuming = false;
+  /** Starts that resumed a wait, which the engine numbers as attempts. */
+  public resumes = 0;
 
   public apply(event: WorkflowRunEvent): void {
     const atMs = Date.parse(event.createdAt);
@@ -199,6 +203,16 @@ class StepReplayBuilder {
     const atMs = Date.parse(createdAt);
     this.close(atMs, 'live');
     this.updateLast(['retry', 'wait'], { endedAt: createdAt });
+    if (this.resuming) {
+      // The engine starts a Wait step again when its time comes. That's the
+      // same attempt carrying on, not a retry: one attempt, spanning the wait.
+      this.resuming = false;
+      this.resumes += 1;
+      this.status = 'running';
+      this.open = { kind: 'attempt', startMs: atMs };
+      this.updateLast(['attempt'], { outcome: 'running', tone: 'live' });
+      return;
+    }
     const attempt = attemptNumber ?? this.attempts + 1;
     this.attempts = Math.max(this.attempts, attempt);
     this.status = 'running';
@@ -241,6 +255,7 @@ class StepReplayBuilder {
     if (this.open?.kind === 'attempt')
       this.finish(failedFinish, createdAt, payload.safeErrorCode);
     else this.close(Date.parse(createdAt), 'failure');
+    this.resuming = false;
     this.status = 'waiting';
     this.open = {
       kind: 'wait',
@@ -262,6 +277,7 @@ class StepReplayBuilder {
   private wait(createdAt: string, dueAt: string | undefined): void {
     this.close(Date.parse(createdAt), 'live');
     this.updateLast(['attempt'], { outcome: 'waiting', tone: 'waiting' });
+    this.resuming = true;
     this.status = 'waiting';
     this.open = {
       kind: 'wait',
@@ -363,7 +379,10 @@ export function replayStep(
     segments: builder.segments,
     story: builder.story,
     outputs: builder.outputs,
-    attempts: Math.max(builder.attempts, summary?.currentAttemptNumber ?? 0),
+    attempts: Math.max(
+      builder.attempts,
+      (summary?.currentAttemptNumber ?? 0) - builder.resumes,
+    ),
     ...(status === undefined ? {} : { status }),
     ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
     ...(resumeAt === undefined ? {} : { resumeAt }),

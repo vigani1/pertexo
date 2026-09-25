@@ -9,6 +9,7 @@ import { describeRunEvent } from '@/features/workflow-runs/model/event-copy';
 import { describeRunSentence } from '@/features/workflow-runs/model/run-sentence';
 import { describeStepError } from '@/features/workflow-runs/model/step-error-copy';
 import { stepTag } from '@/features/workflow-runs/model/step-copy';
+import { replayStep } from '@/features/workflow-runs/model/step-replay';
 import {
   buildThreadView,
   segmentPlacement,
@@ -302,6 +303,32 @@ describe('run copy', () => {
       sentence: 'retry scheduled in 30s · attempt 2',
       tone: 'waiting',
       rawType: 'node.retry_scheduled',
+    });
+  });
+});
+
+describe('a Wait step', () => {
+  it('stays one attempt across its pause and spans the whole wait', () => {
+    const replay = replayStep(
+      [
+        nodeEvent('node.started', 1, { attemptNumber: 1 }),
+        nodeEvent('node.waiting', 1.02, { dueAt: at(91) }),
+        nodeEvent('node.started', 91, { attemptNumber: 2 }),
+        nodeEvent('node.succeeded', 91.03, { attemptNumber: 2 }),
+      ],
+      node('send-receipt', 'succeeded', {
+        currentAttemptNumber: 2,
+        completedAt: at(91.03),
+      }),
+      Date.parse(at(92)),
+    );
+    expect(replay.attempts).toBe(1);
+    const attempts = replay.story.filter((entry) => entry.kind === 'attempt');
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      outcome: 'succeeded',
+      startedAt: at(1),
+      endedAt: at(91.03),
     });
   });
 });

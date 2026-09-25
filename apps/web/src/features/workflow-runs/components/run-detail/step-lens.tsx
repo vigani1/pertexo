@@ -135,8 +135,8 @@ function StepOutputs({
       ) : null}
       {inline.length > 0 ? (
         <p className="text-[0.8rem] text-muted-foreground">
-          This step returned a result. Pertexo keeps it with the attempt, but
-          showing it here needs an API endpoint that isn’t available yet.
+          This step returned a result. It’s kept with the attempt but isn’t
+          shown here.
         </p>
       ) : null}
     </div>

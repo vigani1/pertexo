@@ -67,8 +67,11 @@ export function RunResults({
   const visible = filterRunsByTrigger(runs, search.trigger);
   const refreshing = query.isRefetching && !query.isFetchingNextPage;
   return (
-    <div className="flex flex-col gap-4" aria-busy={query.isFetching}>
-      {refreshing ? <SkeletonThread className="-mt-2" /> : null}
+    <div className="relative flex flex-col gap-4" aria-busy={query.isFetching}>
+      {/* Laid over the top edge, so a refresh never moves the list. */}
+      {refreshing ? (
+        <SkeletonThread className="absolute inset-x-0 -top-3" />
+      ) : null}
       {query.isError && !query.isFetchNextPageError ? (
         <StaleLine
           updatedAt={query.dataUpdatedAt}

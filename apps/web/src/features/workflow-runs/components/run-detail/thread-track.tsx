@@ -135,10 +135,11 @@ export function ThreadTrack({
             }}
           >
             <span className={cn('block w-full', segmentClass(segment))} />
-            {segment.kind === 'wait' ? (
+            {/* While it waits, the coil sits at its live end: now. */}
+            {segment.kind === 'wait' && segment.endMs === null ? (
               <StatusGlyph
                 tone="waiting"
-                className="absolute top-1/2 left-1/2 size-3.5 -translate-1/2 bg-background"
+                className="absolute top-1/2 right-0 size-3.5 translate-x-1/2 -translate-y-1/2 bg-background"
               />
             ) : null}
             <SegmentEnd segment={segment} />
