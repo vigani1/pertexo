@@ -23,6 +23,7 @@ import {
 } from '../../../model/schedule-draft';
 import { useLiveField } from '../../../use-live-field';
 import { ChoiceSelect } from '../choice-select';
+import { DraftNextRuns } from './draft-next-runs';
 import {
   CronField,
   DaysField,
@@ -171,7 +172,10 @@ function RuleFields(props: RuleFieldProps) {
   }
 }
 
-/** The rule read back as a sentence, live, with how clock changes apply. */
+/**
+ * The rule read back as a sentence, live, with how clock changes apply and
+ * the run times the server works out for it.
+ */
 function SchedulePreview({
   recurrence,
 }: Readonly<{ recurrence: ScheduleRecurrence | undefined }>) {
@@ -198,6 +202,7 @@ function SchedulePreview({
           {describeDaylightSaving(recurrence.kind)}
         </p>
       )}
+      <DraftNextRuns recurrence={recurrence} />
     </section>
   );
 }

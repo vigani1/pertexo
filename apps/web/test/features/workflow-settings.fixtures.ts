@@ -75,6 +75,16 @@ export const schedule = {
   lastFireAt: null,
 };
 
+/** The next three run times the scheduler reports for `schedule`. */
+export const scheduleNextRuns = {
+  observedAt: '2026-09-14T10:01:00.000Z',
+  items: [
+    { scheduledAt: '2026-09-14T10:15:00.000Z' },
+    { scheduledAt: '2026-09-14T10:30:00.000Z' },
+    { scheduledAt: '2026-09-14T10:45:00.000Z' },
+  ],
+};
+
 export const webhook = {
   id: webhookId,
   workflowId,
@@ -190,6 +200,12 @@ export function installQueries(
       HttpResponse.json({ items: [webhook] }),
     ),
     http.get(`${workflowApi}/triggers/:triggerId/webhook/deliveries`, () =>
+      HttpResponse.json({ items: [], nextCursor: null }),
+    ),
+    http.get(`${workflowApi}/triggers/:triggerId/schedule/next-runs`, () =>
+      HttpResponse.json(scheduleNextRuns),
+    ),
+    http.get(`${workflowApi}/triggers/:triggerId/schedule/occurrences`, () =>
       HttpResponse.json({ items: [], nextCursor: null }),
     ),
     http.get(`${api}/failure-notification-destinations`, () =>

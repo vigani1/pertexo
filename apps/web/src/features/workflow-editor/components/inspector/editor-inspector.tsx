@@ -8,6 +8,7 @@ import {
   NodeTestPanel,
   type NodeTestHandle,
 } from '@/features/workflow-publish/public';
+import { SchedulePreviewScope } from '@/features/workflow-publish/schedule-preview.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   useEditorStore,
@@ -81,6 +82,10 @@ export function EditorInspector({
     () => ({ apiClient, userId, workspaceId, enabled: lookUpChannels }),
     [apiClient, lookUpChannels, userId, workspaceId],
   );
+  const previewScope = useMemo(
+    () => ({ apiClient, workspaceId, workflowId }),
+    [apiClient, workspaceId, workflowId],
+  );
 
   function copyStepId() {
     if (selectedNodeId === null) return;
@@ -89,7 +94,7 @@ export function EditorInspector({
     });
   }
 
-  return (
+  const panel = (
     <InspectorPanel
       definitions={definitions}
       connections={connections}
@@ -149,6 +154,10 @@ export function EditorInspector({
         />
       )}
     />
+  );
+  // The Schedule step's builder previews its rule against this workflow.
+  return (
+    <SchedulePreviewScope value={previewScope}>{panel}</SchedulePreviewScope>
   );
 }
 

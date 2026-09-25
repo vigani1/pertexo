@@ -4,9 +4,13 @@ import {
   type WorkflowFailureNotificationPolicyResponse,
 } from '@pertexo/contracts/schemas/failure-notifications';
 import {
+  scheduleFireTimesResponseSchema,
   scheduleManagementCommandResponseSchema,
+  scheduleOccurrenceListResponseSchema,
   scheduleTriggerListResponseSchema,
+  type ScheduleFireTimesResponse,
   type ScheduleManagementCommandResponse,
+  type ScheduleOccurrenceListResponse,
 } from '@pertexo/contracts/schemas/schedules';
 import {
   webhookDeliveryListResponseSchema,
@@ -35,6 +39,51 @@ export function getScheduleTriggers(
     response: {
       kind: 'json',
       decode: (value) => scheduleTriggerListResponseSchema.parse(value),
+    },
+  });
+}
+
+function triggerPath(
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+): `/v1${string}` {
+  return `${workflowPath(workspaceId, workflowId)}/triggers/${encodeURIComponent(triggerId)}`;
+}
+
+/** When a published schedule fires next, by the scheduler's own rules. */
+export function getScheduleNextRuns(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+  signal?: AbortSignal,
+): Promise<ScheduleFireTimesResponse> {
+  return apiClient.request({
+    path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/next-runs?${searchParams({ count: 3 })}`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => scheduleFireTimesResponseSchema.parse(value),
+    },
+  });
+}
+
+/** One page of a schedule's retained occurrences, newest first. */
+export function getScheduleOccurrencesPage(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  triggerId: string,
+  input: Readonly<{ after?: string; signal?: AbortSignal }> = {},
+): Promise<ScheduleOccurrenceListResponse> {
+  const query = searchParams({ limit: 10, after: input.after });
+  return apiClient.request({
+    path: `${triggerPath(workspaceId, workflowId, triggerId)}/schedule/occurrences?${query}`,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => scheduleOccurrenceListResponseSchema.parse(value),
     },
   });
 }

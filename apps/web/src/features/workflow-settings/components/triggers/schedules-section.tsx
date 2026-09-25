@@ -6,10 +6,13 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useScheduleCommand } from '../../mutations/use-trigger-commands';
 import { ScheduleCard } from './schedule-card';
+import { ScheduleNextRuns } from './schedule-next-runs';
+import { ScheduleOccurrences } from './schedule-occurrences';
 
 /**
- * Schedule cards. Turning one on is immediate; turning one off asks first,
- * because nothing runs from it until someone turns it back on.
+ * Schedule cards with their next and recent runs. Turning one on is
+ * immediate; turning one off asks first, because nothing runs from it until
+ * someone turns it back on.
  */
 export function SchedulesSection({
   apiClient,
@@ -71,6 +74,24 @@ export function SchedulesSection({
             if (enabled) void setEnabled(trigger, true);
             else setPausing(trigger);
           }}
+          nextRuns={
+            <ScheduleNextRuns
+              apiClient={apiClient}
+              userId={userId}
+              workspaceId={workspaceId}
+              workflowId={workflowId}
+              trigger={trigger}
+            />
+          }
+          history={
+            <ScheduleOccurrences
+              apiClient={apiClient}
+              userId={userId}
+              workspaceId={workspaceId}
+              workflowId={workflowId}
+              triggerId={trigger.id}
+            />
+          }
         />
       ))}
       <ConfirmDialog
