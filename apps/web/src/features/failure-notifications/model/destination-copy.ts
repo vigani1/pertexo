@@ -5,6 +5,11 @@ import {
   type FailureNotificationDestinationResponse,
 } from '@pertexo/contracts/schemas/failure-notifications';
 import type { ApiProblemIssue } from '@pertexo/contracts/schemas/errors';
+import {
+  channelKey,
+  describeChannel,
+  type ChannelNames,
+} from './channel-names';
 
 export type DestinationKind = FailureNotificationDestinationResponse['kind'];
 export type DestinationField = 'connection' | 'target';
@@ -14,15 +19,29 @@ export type DestinationErrors = Readonly<
 
 function destinationTarget(
   config: FailureNotificationDestinationConfig,
-): string {
-  return config.kind === 'slack' ? `#${config.channelId}` : config.toEmail;
+  names: ChannelNames,
+): Readonly<{ target: string; note: string | undefined }> {
+  return config.kind === 'slack'
+    ? describeChannel(
+        config.channelId,
+        names.get(channelKey(config.connectionId, config.channelId)),
+      )
+    : { target: config.toEmail, note: undefined };
 }
 
-/** "#C0123 via Ops bot" or "oncall@northwind.dev via Receipts". */
+/**
+ * "#ops-alerts via Ops bot" or "oncall@northwind.dev via Receipts". A Slack
+ * channel whose name isn't known shows its ID, with why when a lookup said.
+ */
 export function describeDestination(
   destination: Pick<FailureNotificationDestinationResponse, 'config'>,
   connections: readonly ConnectionResponse[],
-): Readonly<{ label: string; connectionProblem: string | undefined }> {
+  names: ChannelNames = new Map(),
+): Readonly<{
+  label: string;
+  connectionProblem: string | undefined;
+  channelNote: string | undefined;
+}> {
   const connection = connections.find(
     (candidate) => candidate.id === destination.config.connectionId,
   );
@@ -32,9 +51,12 @@ export function describeDestination(
     connectionProblem = `${connection.name} was revoked, so these alerts can’t be sent.`;
   else if (connection?.status === 'reauthorization_required')
     connectionProblem = `${connection.name} needs reconnecting before these alerts can be sent.`;
+  const { target, note } = destinationTarget(destination.config, names);
   return {
-    label: `${destinationTarget(destination.config)} via ${via}`,
+    label: `${target} via ${via}`,
     connectionProblem,
+    // A connection problem already explains why the name can't be read.
+    channelNote: connectionProblem === undefined ? note : undefined,
   };
 }
 

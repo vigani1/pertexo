@@ -4,6 +4,7 @@ import {
   getAllConnections,
   getConnection,
   getConnectionsPage,
+  getSlackChannelNames,
 } from './connections.api';
 
 export const connectionKeys = {
@@ -19,7 +20,49 @@ export const connectionKeys = {
       'detail',
       connectionId,
     ] as const,
+  slackChannels: (
+    userId: string,
+    workspaceId: string,
+    connectionId: string,
+    channelIds: readonly string[],
+  ) =>
+    [
+      ...connectionKeys.scope(userId, workspaceId),
+      'slack-channels',
+      connectionId,
+      channelIds.join(','),
+    ] as const,
 };
+
+/**
+ * Channel names change rarely and each lookup spends the connection's
+ * provider-test allowance, so names stay fresh for five minutes.
+ */
+export function slackChannelNamesQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  connectionId: string,
+  channelIds: readonly string[],
+) {
+  return queryOptions({
+    queryKey: connectionKeys.slackChannels(
+      userId,
+      workspaceId,
+      connectionId,
+      channelIds,
+    ),
+    queryFn: ({ signal }) =>
+      getSlackChannelNames(
+        apiClient,
+        workspaceId,
+        connectionId,
+        channelIds,
+        signal,
+      ),
+    staleTime: 5 * 60_000,
+  });
+}
 
 const initialConnectionPageParam: string | null = null;
 
