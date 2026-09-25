@@ -369,6 +369,53 @@ describe('workflow list', () => {
     expect(requests[0]?.body).toEqual({ expectedLifecycleRevision: 4 });
   });
 
+  it('reports a stale archive as a conflict, not an uncertain outcome', async () => {
+    mockServer.use(
+      ...discoveryHandlers(['workflow:create', 'workflow:publish']),
+      draftHandler(),
+      listHandler(() => ({
+        items: [
+          summary(workflowId, 'Invoice intake', { lifecycleRevision: 4 }),
+        ],
+        nextCursor: null,
+      })),
+      http.post(`${api}/workflows/${workflowId}/archive`, () =>
+        HttpResponse.json(
+          {
+            type: 'urn:pertexo:problem:workflow.lifecycle_conflict',
+            title: 'Workflow lifecycle changed',
+            status: 409,
+            code: 'workflow.lifecycle_conflict',
+            requestId: 'lifecycle-conflict',
+            currentLifecycleRevision: 5,
+          },
+          {
+            status: 409,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/workflows`);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Actions for Invoice intake' }),
+    );
+    await event.click(
+      await screen.findByRole('menuitem', { name: 'Archive…' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Archive this workflow?',
+    });
+    await event.click(within(dialog).getByRole('button', { name: 'Archive' }));
+    expect(
+      await within(dialog).findByText(
+        /This workflow changed since you opened/u,
+      ),
+    ).toBeVisible();
+    expect(within(dialog).queryByText(/couldn’t confirm/u)).toBeNull();
+  });
+
   it('keeps archive out of the menu for people who can’t publish', async () => {
     mockServer.use(
       ...discoveryHandlers(),

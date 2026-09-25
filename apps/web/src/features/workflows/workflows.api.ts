@@ -3,6 +3,7 @@ import {
   workflowCreateRequestSchema,
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
+  workflowLifecycleConflictProblemSchema,
   workflowLifecycleRequestSchema,
   workflowLifecycleResponseSchema,
   workflowListResponseSchema,
@@ -134,6 +135,9 @@ export function transitionWorkflowLifecycle(
     body: workflowLifecycleRequestSchema.parse({
       expectedLifecycleRevision: input.expectedLifecycleRevision,
     }),
+    // ADR 034: a stale revision answers with the typed lifecycle conflict.
+    decodeProblem: (value) =>
+      workflowLifecycleConflictProblemSchema.parse(value),
     response: {
       kind: 'json',
       decode: (value) => workflowLifecycleResponseSchema.parse(value),
