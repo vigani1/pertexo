@@ -225,7 +225,8 @@ export function EditorWorkspace({
             onDelete={deleteSelection}
           />
           <QuickAddLens
-            request={editable ? quickAdd.request : undefined}
+            // It renders in a portal, outside the workspace a pause makes inert.
+            request={editable && !paused ? quickAdd.request : undefined}
             definitions={definitions}
             fallbackFocus={canvasRef}
             onPortChange={quickAdd.choosePort}
