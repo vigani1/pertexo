@@ -8,8 +8,10 @@ import {
   retireJourney,
   startBootstrap,
   startJourneySignIn,
+  verifyJourneySession,
   type JourneyRuntime,
 } from './invitation-journey-operations';
+import type { InvitationSignInMethod } from './model/sign-in-method';
 import {
   CLEANUP_UNFINISHED,
   NOT_SET_ASIDE,
@@ -24,15 +26,23 @@ import {
 export function useInvitationJourney({
   apiClient,
   routeToken,
+  signInMethod,
   clearFragment,
   navigateToProvider,
+  openSignIn,
+  openFreshSignIn,
   openWorkspace,
   openWorkspaceDiscovery,
 }: Readonly<{
   apiClient: ApiClient;
   routeToken: string | undefined;
+  signInMethod: InvitationSignInMethod;
   clearFragment: () => void;
   navigateToProvider: (url: string) => void;
+  /** Sign in, then come back to this invitation. */
+  openSignIn: () => void;
+  /** Sign out and in again with a fresh session, then come back. */
+  openFreshSignIn: () => void;
   openWorkspace: (workspaceId: string) => void;
   openWorkspaceDiscovery: () => void;
 }>) {
@@ -72,9 +82,9 @@ export function useInvitationJourney({
 
   const bootstrap = useCallback(
     (owned = ownership.current) => {
-      startBootstrap(runtime, owned);
+      startBootstrap(runtime, owned, signInMethod === 'session');
     },
-    [runtime],
+    [runtime, signInMethod],
   );
 
   useEffect(() => {
@@ -120,7 +130,18 @@ export function useInvitationJourney({
     retry: () => {
       bootstrap();
     },
-    signIn: () => void startJourneySignIn(runtime, journey, navigateToProvider),
+    signIn: () =>
+      void (signInMethod === 'session'
+        ? verifyJourneySession(runtime, journey, {
+            signIn: openSignIn,
+            signInAgain: openFreshSignIn,
+          })
+        : startJourneySignIn(runtime, journey, navigateToProvider)),
+    /** A different account is signed in: sign in again as the invited one. */
+    switchAccount: () => {
+      if (signInMethod === 'session') openFreshSignIn();
+      else void startJourneySignIn(runtime, journey, navigateToProvider);
+    },
     accept: () => void acceptJourney(runtime, journey),
     reconcile: () => void reconcileJourney(runtime),
     /** After completion: clear the binding, then open the workspace. */

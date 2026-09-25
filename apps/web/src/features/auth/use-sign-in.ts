@@ -21,11 +21,14 @@ export function useSignIn({
   navigateToProvider,
   onAuthenticated,
   onUnverified,
+  returnTo,
 }: Readonly<{
   apiClient: ApiClient;
   navigateToProvider: (authorizationUrl: string) => void;
   onAuthenticated: () => void;
   onUnverified: (email: string) => void;
+  /** An allowlisted path social sign-in comes back to. */
+  returnTo?: string | undefined;
 }>) {
   const requests = useLatestRequest();
   const rateLimit = useCountdown();
@@ -68,6 +71,7 @@ export function useSignIn({
         apiClient,
         provider,
         request.signal,
+        returnTo,
       );
       // The page stays busy while the browser leaves for the provider.
       if (request.isCurrent()) navigateToProvider(url);

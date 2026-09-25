@@ -3,6 +3,12 @@ import {
   lazyRouteComponent,
   redirect,
 } from '@tanstack/react-router';
+import {
+  returnPathFrom,
+  returnToSearch,
+} from '@/features/auth/return-path.public';
+import { authenticationCapabilitiesQueryOptions } from '@/features/auth/queries.public';
+import { invitationSignInMethod } from '@/features/workspace-invitations/public';
 import { landingWorkspace } from '@/features/workspaces/last-workspace.public';
 import { pageTitle } from './page-title';
 import {
@@ -55,10 +61,15 @@ export const loginRoute = createRoute({
       ? { migrationFailed: true as const }
       : {}),
     ...(flag(search.socialError) ? { socialError: true as const } : {}),
+    ...returnToSearch(returnPathFrom(search.returnTo)),
   }),
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, search }) => {
     const user = await findCurrentUser(context);
-    if (user !== undefined) redirect({ to: '/', throw: true });
+    if (user === undefined) return;
+    // Router search keeps unvalidated raw keys, so check the value again.
+    const returnTo = returnPathFrom(search.returnTo);
+    if (returnTo === undefined) redirect({ to: '/', throw: true });
+    else redirect({ href: returnTo, throw: true });
   },
   head: () => ({ meta: [{ title: pageTitle('Sign in') }] }),
   component: lazyRouteComponent(() => import('./login-route'), 'LoginRoute'),
@@ -67,6 +78,8 @@ export const loginRoute = createRoute({
 export const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-up',
+  validateSearch: (search: Record<string, unknown>) =>
+    returnToSearch(returnPathFrom(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Create account') }] }),
   component: lazyRouteComponent(() => import('./sign-up-route'), 'SignUpRoute'),
 });
@@ -109,6 +122,8 @@ export const passwordResetRoute = createRoute({
 export const logoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/logout',
+  validateSearch: (search: Record<string, unknown>) =>
+    returnToSearch(returnPathFrom(search.returnTo)),
   head: () => ({ meta: [{ title: pageTitle('Signing out') }] }),
   component: lazyRouteComponent(() => import('./logout-route'), 'LogoutRoute'),
 });
@@ -132,6 +147,14 @@ export const accountSecurityRoute = createRoute({
 export const invitationAcceptanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invitations/accept',
+  // Unreadable capabilities fall back to the session authority's sign-in.
+  loader: async ({ context }) => ({
+    signInMethod: invitationSignInMethod(
+      await context.queryClient
+        .query(authenticationCapabilitiesQueryOptions(context.apiClient))
+        .catch(() => undefined),
+    ),
+  }),
   head: () => ({ meta: [{ title: pageTitle('Workspace invitation') }] }),
   component: lazyRouteComponent(
     () => import('./invitation-acceptance-route'),

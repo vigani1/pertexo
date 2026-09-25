@@ -9,6 +9,7 @@ import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
 import { AuthForm } from '../../forms/auth-form';
 import { PasswordField } from '../../forms/password-field';
 import type { LoginNotice } from '../../model/login-notice';
+import { returnToSearch } from '../../model/return-path';
 import { useSignIn } from '../../use-sign-in';
 import { OrDivider, SocialProviderGrid } from '../social/social-provider-grid';
 import {
@@ -30,6 +31,7 @@ export function SignInLens({
   onAuthenticated,
   onUnverified,
   onRequestVerificationLink,
+  returnTo,
 }: Readonly<{
   apiClient: ApiClient;
   capabilities: AuthenticationCapabilitiesResponse;
@@ -38,12 +40,14 @@ export function SignInLens({
   onAuthenticated: () => void;
   onUnverified: (email: string) => void;
   onRequestVerificationLink: () => void;
+  returnTo: string | undefined;
 }>) {
   const signIn = useSignIn({
     apiClient,
     navigateToProvider,
     onAuthenticated,
     onUnverified,
+    returnTo,
   });
   const fields = useFieldValues(fieldRules, { email: '', password: '' });
   const providers = capabilities.socialProviders;
@@ -148,7 +152,10 @@ export function SignInLens({
             />
           </AuthForm>
           <AuthLensFooter>
-            New to Pertexo? <Link to="/sign-up">Create an account</Link>
+            New to Pertexo?{' '}
+            <Link to="/sign-up" search={returnToSearch(returnTo)}>
+              Create an account
+            </Link>
           </AuthLensFooter>
         </>
       ) : signIn.failure === undefined ? null : (

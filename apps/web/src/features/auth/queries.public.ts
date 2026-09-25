@@ -1,2 +1,5 @@
-export { currentUserQueryOptions } from './auth.queries';
+export {
+  authenticationCapabilitiesQueryOptions,
+  currentUserQueryOptions,
+} from './auth.queries';
 export { isUnauthenticated } from './auth-errors';

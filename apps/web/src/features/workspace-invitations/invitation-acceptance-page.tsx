@@ -15,15 +15,21 @@ import {
   WrongAccountJourney,
 } from './components/journey-states';
 import { isDeadEnd } from './model/journey-copy';
+import type { InvitationSignInMethod } from './model/sign-in-method';
 import { useInvitationJourney } from './use-invitation-journey';
 
 type InvitationAcceptancePageProps = Readonly<{
   apiClient: ApiClient;
   initialToken?: string;
+  /** How the invited account is proven (ADR 043). */
+  signInMethod: InvitationSignInMethod;
   clearFragment: () => void;
   navigateToProvider: (url: string) => void;
   openWorkspace: (workspaceId: string) => void;
+  /** Sign in and come back to this invitation. */
   openSignIn: () => void;
+  /** Sign in again with a fresh session and come back. */
+  openFreshSignIn?: () => void;
   openSignUp?: () => void;
   openWorkspaceDiscovery: () => void;
   /** How long "Opening…" waits after joining; injectable for tests. */
@@ -33,10 +39,12 @@ type InvitationAcceptancePageProps = Readonly<{
 export function InvitationAcceptancePage({
   apiClient,
   initialToken,
+  signInMethod,
   clearFragment,
   navigateToProvider,
   openWorkspace,
   openSignIn,
+  openFreshSignIn = openSignIn,
   openSignUp = openSignIn,
   openWorkspaceDiscovery,
   autoOpenAfterMs = 3_000,
@@ -44,8 +52,11 @@ export function InvitationAcceptancePage({
   const journey = useInvitationJourney({
     apiClient,
     routeToken: initialToken,
+    signInMethod,
     clearFragment,
     navigateToProvider,
+    openSignIn,
+    openFreshSignIn,
     openWorkspace,
     openWorkspaceDiscovery,
   });
@@ -77,6 +88,7 @@ export function InvitationAcceptancePage({
             onAccept={journey.accept}
             onNotNow={journey.setAside}
             onSignIn={journey.signIn}
+            onSwitchAccount={journey.switchAccount}
             onCreateAccount={openSignUp}
             onOpenCompleted={journey.openCompleted}
             autoOpenAfterMs={autoOpenAfterMs}
@@ -110,6 +122,7 @@ function JourneyContent({
   onAccept,
   onNotNow,
   onSignIn,
+  onSwitchAccount,
   onCreateAccount,
   onOpenCompleted,
   autoOpenAfterMs,
@@ -123,6 +136,7 @@ function JourneyContent({
   onAccept: () => void;
   onNotNow: () => void;
   onSignIn: () => void;
+  onSwitchAccount: () => void;
   onCreateAccount: () => void;
   onOpenCompleted: (workspaceId: string, csrfToken: string) => void;
   autoOpenAfterMs: number;
@@ -165,7 +179,7 @@ function JourneyContent({
         <WrongAccountJourney
           apiClient={apiClient}
           pending={pending}
-          onSwitchAccount={onSignIn}
+          onSwitchAccount={onSwitchAccount}
           onDiscover={onDiscover}
         />
       );

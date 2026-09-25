@@ -1,5 +1,6 @@
 import { isApiError, type ApiError } from '@/lib/api/api-error';
 import type { ApiClient } from '@/lib/api/client';
+import { verifiedSignInPath } from './model/return-path';
 
 type AuthenticationProvider = 'google' | 'microsoft' | 'github' | 'apple';
 
@@ -69,7 +70,12 @@ export function signInWithEmail(
 
 export function signUpWithEmail(
   apiClient: ApiClient,
-  input: Readonly<{ displayName: string; email: string; password: string }>,
+  input: Readonly<{
+    displayName: string;
+    email: string;
+    password: string;
+    returnTo?: string | undefined;
+  }>,
   signal?: AbortSignal,
 ) {
   return postAuthentication<unknown>(apiClient, {
@@ -78,7 +84,7 @@ export function signUpWithEmail(
       name: input.displayName,
       email: input.email,
       password: input.password,
-      callbackURL: '/login?verified=true',
+      callbackURL: verifiedSignInPath(input.returnTo),
     },
     ...(signal === undefined ? {} : { signal }),
   });
@@ -86,12 +92,15 @@ export function signUpWithEmail(
 
 export function resendVerificationEmail(
   apiClient: ApiClient,
-  email: string,
+  input: Readonly<{ email: string; returnTo?: string | undefined }>,
   signal?: AbortSignal,
 ) {
   return postAuthentication<unknown>(apiClient, {
     path: '/v1/auth/send-verification-email',
-    body: { email, callbackURL: '/login?verified=true' },
+    body: {
+      email: input.email,
+      callbackURL: verifiedSignInPath(input.returnTo),
+    },
     ...(signal === undefined ? {} : { signal }),
   });
 }
@@ -120,17 +129,21 @@ export function resetPassword(
   });
 }
 
+/** Social sign-in returns to an allowlisted path, else the workspaces. */
 export async function startSocialAuthentication(
   apiClient: ApiClient,
   provider: AuthenticationProvider,
   signal?: AbortSignal,
+  returnTo?: string,
 ): Promise<string> {
+  const failed = new URLSearchParams({ socialError: 'true' });
+  if (returnTo !== undefined) failed.set('returnTo', returnTo);
   const value = await postAuthentication<unknown>(apiClient, {
     path: '/v1/auth/sign-in/social',
     body: {
       provider,
-      callbackURL: '/workspaces',
-      errorCallbackURL: '/login?socialError=true',
+      callbackURL: returnTo ?? '/workspaces',
+      errorCallbackURL: `/login?${failed.toString()}`,
     },
     ...(signal === undefined ? {} : { signal }),
   });

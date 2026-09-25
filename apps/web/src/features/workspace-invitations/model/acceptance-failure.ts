@@ -43,6 +43,14 @@ export const NOT_SET_ASIDE: AcceptanceFailure = {
     'We couldn’t set this invitation aside. Try again, or go to your workspaces.',
 };
 
+/** The recipient proof is older than five minutes: sign in again. */
+export function isProofExpired(error: unknown): boolean {
+  return (
+    isApiError(error) &&
+    error.problem?.code === 'workspace.invitation_proof_expired'
+  );
+}
+
 /**
  * `uncertain` marks a command whose result may already be applied: it is
  * retried with the same intent and key, never re-issued.
@@ -65,10 +73,7 @@ export function acceptanceFailure(
       message:
         'Your session ended. Check whether you joined, or sign in again with the invited account.',
     };
-  if (
-    isApiError(error) &&
-    error.problem?.code === 'workspace.invitation_proof_expired'
-  )
+  if (isProofExpired(error))
     return {
       kind: 'verification',
       message:

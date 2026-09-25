@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -7,6 +7,7 @@ import {
   accountCommandFailure,
   needsFreshSignIn,
 } from '../../model/account-failure';
+import { returnPathFrom, returnToSearch } from '../../model/return-path';
 import { Notice } from '@/components/ui/notice';
 
 /** A flat block on the account page: a title, one short line, the content. */
@@ -89,12 +90,17 @@ export function AccountReadFailure({
   );
 }
 
-/** "Sign in again" when the server wants a fresh session for a change. */
+/**
+ * "Sign in again" when the server wants a fresh session for a change. The
+ * new sign-in comes back to this account page.
+ */
 export function FreshSignInLink({ error }: Readonly<{ error: unknown }>) {
+  const pathname = useLocation({ select: (location) => location.pathname });
   if (!needsFreshSignIn(error)) return null;
   return (
     <Link
       to="/logout"
+      search={returnToSearch(returnPathFrom(pathname))}
       className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
     >
       Sign in again

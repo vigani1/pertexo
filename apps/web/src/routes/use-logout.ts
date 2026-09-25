@@ -12,9 +12,13 @@ import type { ApiClient } from '@/lib/api/client';
 
 export function useLogout(
   apiClient: ApiClient,
-  options: Readonly<{ onError?: (message: string) => void }> = {},
+  options: Readonly<{
+    onError?: (message: string) => void;
+    /** An allowlisted page to come back to after signing in again. */
+    returnTo?: string | undefined;
+  }> = {},
 ) {
-  const { onError } = options;
+  const { onError, returnTo } = options;
   const { queryClient } = useRouteContext({ from: '__root__' });
   const navigate = useNavigate();
   const router = useRouter();
@@ -29,7 +33,11 @@ export function useLogout(
     setError(undefined);
     try {
       await endBrowserSession(apiClient, queryClient);
-      await navigate({ to: '/login', replace: true });
+      await navigate({
+        to: '/login',
+        search: returnTo === undefined ? {} : { returnTo },
+        replace: true,
+      });
       await router.invalidate();
     } catch (cause) {
       pendingRef.current = false;
@@ -38,7 +46,7 @@ export function useLogout(
       setPending(false);
       onError?.(message);
     }
-  }, [apiClient, navigate, onError, queryClient, router]);
+  }, [apiClient, navigate, onError, queryClient, returnTo, router]);
 
   const requestLogout = useCallback(() => {
     if (router.state.location.pathname === '/logout') {

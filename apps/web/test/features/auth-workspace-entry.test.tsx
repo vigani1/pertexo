@@ -901,9 +901,10 @@ describe('authentication and workspace entry', () => {
     expect(
       await screen.findByText(/For your security, sign in again/u),
     ).toBeVisible();
+    // The fresh sign-in comes back to this page.
     expect(screen.getByRole('link', { name: 'Sign in again' })).toHaveAttribute(
       'href',
-      '/logout',
+      '/logout?returnTo=%2Faccount%2Fsecurity',
     );
   });
 
