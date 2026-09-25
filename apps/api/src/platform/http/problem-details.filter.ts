@@ -6,7 +6,10 @@ import {
   workflowRevisionConflictProblemSchema,
   workflowLifecycleConflictProblemSchema,
   workflowLifecycleRevisionSchema,
+  workflowNameConflictProblemSchema,
+  workflowNameRevisionSchema,
   type WorkflowLifecycleConflictProblem,
+  type WorkflowNameConflictProblem,
   type WorkflowRevisionConflictProblem,
 } from '@pertexo/contracts/workflow-authoring';
 import { Catch, HttpException } from '@nestjs/common';
@@ -39,7 +42,8 @@ type ProblemIssue = ApiProblemIssue;
 type ProblemDetails =
   | ApiProblem
   | WorkflowRevisionConflictProblem
-  | WorkflowLifecycleConflictProblem;
+  | WorkflowLifecycleConflictProblem
+  | WorkflowNameConflictProblem;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -79,6 +83,7 @@ type NormalizedProblem = Readonly<{
   }>;
   retryAfterSeconds?: number;
   currentLifecycleRevision?: number;
+  currentNameRevision?: number;
   cause?: unknown;
 }>;
 
@@ -159,6 +164,16 @@ function safeHttpStatus(status: number): number {
     : APPLICATION_ERROR_CATALOG['internal.unexpected'].status;
 }
 
+function unexpectedProblem(cause: unknown): NormalizedProblem {
+  const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
+  return {
+    code: 'internal.unexpected',
+    status: fallback.status,
+    title: fallback.title,
+    cause,
+  };
+}
+
 function fromApplicationError(error: ApplicationError): NormalizedProblem {
   const entry = APPLICATION_ERROR_CATALOG[error.code];
   const detail =
@@ -195,15 +210,17 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     const parsed = workflowLifecycleRevisionSchema.safeParse(
       error.details?.currentLifecycleRevision,
     );
-    if (parsed.success)
-      return { ...base, currentLifecycleRevision: parsed.data };
-    const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
-    return {
-      code: 'internal.unexpected',
-      status: fallback.status,
-      title: fallback.title,
-      cause: error,
-    };
+    return parsed.success
+      ? { ...base, currentLifecycleRevision: parsed.data }
+      : unexpectedProblem(error);
+  }
+  if (error.code === 'workflow.name_conflict') {
+    const parsed = workflowNameRevisionSchema.safeParse(
+      error.details?.currentNameRevision,
+    );
+    return parsed.success
+      ? { ...base, currentNameRevision: parsed.data }
+      : unexpectedProblem(error);
   }
   if (error.code !== 'workflow.revision_conflict') return base;
   const currentRevision = error.details?.currentRevision;
@@ -214,15 +231,8 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     !Number.isSafeInteger(currentRevision) ||
     currentRevision < 1 ||
     !parsedEtag.success
-  ) {
-    const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
-    return {
-      code: 'internal.unexpected',
-      status: fallback.status,
-      title: fallback.title,
-      cause: error,
-    };
-  }
+  )
+    return unexpectedProblem(error);
   return {
     ...base,
     revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
@@ -371,6 +381,11 @@ function problemDetails(
     return workflowLifecycleConflictProblemSchema.parse({
       ...baseProblem,
       currentLifecycleRevision: normalized.currentLifecycleRevision,
+    });
+  if (normalized.currentNameRevision !== undefined)
+    return workflowNameConflictProblemSchema.parse({
+      ...baseProblem,
+      currentNameRevision: normalized.currentNameRevision,
     });
   if (normalized.revisionConflict !== undefined)
     return workflowRevisionConflictProblemSchema.parse({

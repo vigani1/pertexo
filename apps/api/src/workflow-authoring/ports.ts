@@ -17,6 +17,7 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'saveDraft'
   | 'publishWorkflow'
   | 'transitionWorkflowLifecycle'
+  | 'renameWorkflow'
   | 'restoreWorkflowVersion'
 >;
 

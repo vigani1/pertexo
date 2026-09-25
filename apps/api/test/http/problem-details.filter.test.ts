@@ -59,39 +59,63 @@ describe('RFC 9457 problem details filter', () => {
     },
   );
 
-  it('exposes the current lifecycle revision without a draft ETag or untrusted details', () => {
-    const response = responseMock();
-    new ProblemDetailsFilter(new RequestContextStore()).catch(
-      applicationError('workflow.lifecycle_conflict', {
-        details: { currentLifecycleRevision: 7, secret: 'not-public' },
-      }),
-      hostFor(
-        { url: '/v1/workspaces/workspace/workflows/workflow/archive' },
-        response,
-      ),
-    );
-    expect(response.status).toHaveBeenCalledWith(409);
-    expect(response.body).toMatchObject({
+  const revisionConflicts = [
+    {
       code: 'workflow.lifecycle_conflict',
-      currentLifecycleRevision: 7,
-    });
-    expect(response.body).not.toHaveProperty('secret');
-    expect(response.body).not.toHaveProperty('currentEtag');
-    expect(response.header).not.toHaveBeenCalledWith('etag', expect.anything());
-  });
-  it.each([undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1])(
-    'fails closed for invalid lifecycle conflict revision %j',
-    (currentLifecycleRevision) => {
+      field: 'currentLifecycleRevision',
+      command: 'archive',
+    },
+    {
+      code: 'workflow.name_conflict',
+      field: 'currentNameRevision',
+      command: 'rename',
+    },
+  ] as const;
+  it.each(revisionConflicts)(
+    'exposes only the current revision for $code without a draft ETag or untrusted details',
+    ({ code, field, command }) => {
       const response = responseMock();
       new ProblemDetailsFilter(new RequestContextStore()).catch(
-        applicationError('workflow.lifecycle_conflict', {
-          details: { currentLifecycleRevision },
+        applicationError(code, {
+          details: { [field]: 7, secret: 'not-public' },
         }),
+        hostFor(
+          { url: `/v1/workspaces/workspace/workflows/workflow/${command}` },
+          response,
+        ),
+      );
+      expect(response.status).toHaveBeenCalledWith(409);
+      expect(response.body).toEqual(
+        expect.objectContaining({ code, [field]: 7 }),
+      );
+      expect(response.body).not.toHaveProperty('secret');
+      expect(response.body).not.toHaveProperty('currentEtag');
+      for (const other of revisionConflicts)
+        if (other.field !== field)
+          expect(response.body).not.toHaveProperty(other.field);
+      expect(response.header).not.toHaveBeenCalledWith(
+        'etag',
+        expect.anything(),
+      );
+    },
+  );
+  it.each(
+    revisionConflicts.flatMap((conflict) =>
+      [undefined, 0, -1, 1.5, '2', Number.MAX_SAFE_INTEGER + 1].map(
+        (revision) => ({ ...conflict, revision }),
+      ),
+    ),
+  )(
+    'fails closed for an invalid $code revision $revision',
+    ({ code, field, revision }) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        applicationError(code, { details: { [field]: revision } }),
         hostFor({}, response),
       );
       expect(response.status).toHaveBeenCalledWith(500);
       expect(response.body).toMatchObject({ code: 'internal.unexpected' });
-      expect(response.body).not.toHaveProperty('currentLifecycleRevision');
+      expect(response.body).not.toHaveProperty(field);
     },
   );
   it('rejects oversized safe details before they can reach the response boundary', () => {

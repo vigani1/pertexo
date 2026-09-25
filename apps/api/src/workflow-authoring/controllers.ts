@@ -24,6 +24,7 @@ import {
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
+import { RenameWorkflowUseCase } from './rename-use-case.js';
 import { RestoreWorkflowVersionUseCase } from './restore-version-use-case.js';
 import { workflowVersionRestoreParamsSchema } from '@pertexo/contracts/workflow-authoring';
 import { throwWorkflowApplicationError } from './errors.js';
@@ -72,6 +73,7 @@ export class WorkflowAuthoringController {
     private readonly listVersions: ListWorkflowVersionsUseCase,
     private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
     private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
+    private readonly renameWorkflow: RenameWorkflowUseCase,
   ) {}
 
   @Get()
@@ -287,6 +289,31 @@ export class WorkflowAuthoringController {
     @Body() body: unknown,
   ) {
     return this.lifecycleCommand('restore', request, params, body);
+  }
+
+  @Post(':workflowId/rename')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowUpdateGuard,
+    CsrfProtectionGuard,
+  )
+  public rename(
+    @Req() request: WorkflowAuthoringRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = workflowParams(params);
+    return this.renameWorkflow.execute({
+      ...requestContext(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+      request: body,
+      idempotencyKey: parseIdempotencyKey(
+        requestHeaderValue(request.headers, 'idempotency-key'),
+      ),
+    });
   }
 
   private lifecycleCommand(

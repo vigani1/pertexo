@@ -25,6 +25,7 @@ const workflow = {
   id: workflowId,
   workspaceId,
   name: 'Operations',
+  nameRevision: 1,
   lifecycleStatus: 'active' as const,
   lifecycleRevision: 1,
   activationStatus: 'inactive' as const,
@@ -72,6 +73,9 @@ function makeController() {
   const transitionLifecycle = {
     execute: vi.fn().mockResolvedValue({ workflow, replayed: false }),
   };
+  const renameWorkflow = {
+    execute: vi.fn().mockResolvedValue({ workflow, replayed: false }),
+  };
   const createWorkflow = {
     execute: vi.fn().mockResolvedValue({
       body: { workflow, draft: body },
@@ -112,8 +116,10 @@ function makeController() {
       listVersions as never,
       transitionLifecycle as never,
       restoreVersion as never,
+      renameWorkflow as never,
     ),
     transitionLifecycle,
+    renameWorkflow,
     restoreVersion,
     createWorkflow,
     getDraft,
@@ -295,6 +301,37 @@ describe('workflow authoring controller public seam', () => {
       );
     },
   );
+  it('forwards one rename command and requires idempotency before delegation', async () => {
+    const { controller, renameWorkflow } = makeController();
+    const renameBody = { name: 'Invoices', expectedNameRevision: 1 };
+    expect(() =>
+      controller.rename(request(), { workspaceId, workflowId }, renameBody),
+    ).toThrow('Idempotency-Key must contain exactly one valid value');
+    expect(() =>
+      controller.rename(
+        request({ 'idempotency-key': 'key' }),
+        { workspaceId, workflowId: 'not-a-workflow' },
+        renameBody,
+      ),
+    ).toThrow();
+    expect(renameWorkflow.execute).not.toHaveBeenCalled();
+
+    await expect(
+      controller.rename(
+        request({ 'idempotency-key': 'rename-key' }, { traceId: 'trace-7' }),
+        { workspaceId, workflowId },
+        renameBody,
+      ),
+    ).resolves.toEqual({ workflow, replayed: false });
+    expect(renameWorkflow.execute).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        workflowId,
+        routeWorkspaceId: workspaceId,
+        request: renameBody,
+        idempotencyKey: 'rename-key',
+      }),
+    );
+  });
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
     const { controller, getDraft } = makeController();
     const response = { header: vi.fn() };

@@ -195,6 +195,9 @@ function connectionRuntime(
   const listDestinations = vi
     .fn<FailureNotificationDestinationDatabase['list']>()
     .mockResolvedValue([destinationRecord]);
+  const getWorkflowPolicy = vi
+    .fn<FailureNotificationDestinationDatabase['getWorkflowPolicy']>()
+    .mockResolvedValue(destinationRecord);
   const destinationPersistence: FailureNotificationDestinationDatabase = {
     create: () => Promise.reject(new Error('not used')),
     get: getDestination,
@@ -203,7 +206,7 @@ function connectionRuntime(
     setStatus: () => Promise.reject(new Error('not used')),
     setWorkflowPolicy: () => Promise.reject(new Error('not used')),
     clearWorkflowPolicy: () => Promise.reject(new Error('not used')),
-    getWorkflowPolicy: () => Promise.reject(new Error('not used')),
+    getWorkflowPolicy,
     close: () => Promise.resolve(),
   };
   const executeHttp = vi.fn<ConnectionDependencies['httpClient']['execute']>(
@@ -327,6 +330,7 @@ function connectionRuntime(
     appendDestinationVersion,
     getDestination,
     listDestinations,
+    getWorkflowPolicy,
   };
 }
 
@@ -561,6 +565,57 @@ describe('connections real Nest HTTP stack', () => {
     });
     expect(denied.statusCode).toBe(404);
     expect(connection.appendDestinationVersion).not.toHaveBeenCalled();
+  });
+
+  it('reads the workflow failure-alert policy as a builder, never for a viewer', async () => {
+    const policyUrl = `/v1/workspaces/${workspaceId}/workflows/ffffffff-ffff-4fff-8fff-ffffffffffff/failure-notification-policy`;
+    const builder = await start('builder');
+    const current = await builder.application.inject({
+      method: 'GET',
+      url: policyUrl,
+      headers: authenticatedHeaders,
+    });
+    expect(current.statusCode, current.payload).toBe(200);
+    expect(current.json()).toEqual({
+      destination: {
+        id: destinationId,
+        workspaceId,
+        kind: 'slack',
+        status: 'enabled',
+        currentVersion: 2,
+        config: {
+          kind: 'slack',
+          connectionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+          channelId: 'C67890',
+        },
+        createdAt: '2026-08-22T12:00:00.000Z',
+        updatedAt: '2026-08-22T12:01:00.000Z',
+      },
+    });
+    builder.connection.getWorkflowPolicy.mockRejectedValueOnce(
+      new FailureNotificationDestinationError(
+        'not_found',
+        'raw hidden workflow detail',
+      ),
+    );
+    const hidden = await builder.application.inject({
+      method: 'GET',
+      url: policyUrl,
+      headers: authenticatedHeaders,
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.payload).not.toContain('raw hidden workflow detail');
+    await builder.application.close();
+    application = undefined;
+
+    const viewer = await start('viewer');
+    const denied = await viewer.application.inject({
+      method: 'GET',
+      url: policyUrl,
+      headers: authenticatedHeaders,
+    });
+    expect(denied.statusCode).toBe(404);
+    expect(viewer.connection.getWorkflowPolicy).not.toHaveBeenCalled();
   });
 
   it('denies a viewer destination reads before persistence', async () => {

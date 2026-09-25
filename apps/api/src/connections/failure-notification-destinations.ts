@@ -5,6 +5,7 @@ import {
   failureNotificationDestinationListResponseSchema,
   failureNotificationDestinationStatusRequestSchema,
   type FailureNotificationDestinationResponse,
+  type WorkflowFailureNotificationPolicyResponse,
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts/connections';
 import {
@@ -91,6 +92,8 @@ export type SetWorkflowFailureNotificationPolicyInput =
     }>;
 export type ClearWorkflowFailureNotificationPolicyInput =
   DestinationMutationInput & Readonly<{ workflowId: string }>;
+export type GetWorkflowFailureNotificationPolicyInput =
+  DestinationCommandInput & Readonly<{ workflowId: string }>;
 
 @Injectable()
 export class FailureNotificationDestinationUseCases {
@@ -168,6 +171,16 @@ export class FailureNotificationDestinationUseCases {
           }),
         ),
     );
+  }
+  /** The current choice in the destination read projection, never secrets. */
+  public async getPolicy(
+    input: GetWorkflowFailureNotificationPolicyInput,
+  ): Promise<WorkflowFailureNotificationPolicyResponse> {
+    const destination = await this.database.getWorkflowPolicy({
+      ...databaseCommand(input),
+      workflowId: input.workflowId,
+    });
+    return { destination: destination === null ? null : response(destination) };
   }
   public setPolicy(
     input: SetWorkflowFailureNotificationPolicyInput,

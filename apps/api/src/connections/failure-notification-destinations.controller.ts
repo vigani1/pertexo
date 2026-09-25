@@ -166,6 +166,20 @@ export class FailureNotificationDestinationsController {
     });
   }
 
+  @Get('workflows/:workflowId/failure-notification-policy')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
+  public async getPolicy(
+    @Req() request: ConnectionRequest,
+    @Param() params: unknown,
+  ) {
+    const route = workflowPolicyParamsSchema.parse(params);
+    return this.useCases.getPolicy({
+      ...requestCommand(request, route.workspaceId),
+      workflowId: route.workflowId,
+    });
+  }
+
   @Put('workflows/:workflowId/failure-notification-policy')
   @UseGuards(
     SessionAuthenticationGuard,

@@ -32,6 +32,7 @@ const validBusinessConflicts = new Set<string>([
   'workflow.not_published',
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
+  'workflow.name_conflict',
   'artifact.conflict',
   'workspace.conflict',
 ]);

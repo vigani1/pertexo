@@ -59,6 +59,11 @@ const routes: readonly (readonly [
   [FailureNotificationDestinationsController, 'get', 'authenticated_read'],
   [FailureNotificationDestinationsController, 'append', 'ordinary_mutation'],
   [FailureNotificationDestinationsController, 'status', 'ordinary_mutation'],
+  [
+    FailureNotificationDestinationsController,
+    'getPolicy',
+    'authenticated_read',
+  ],
   [FailureNotificationDestinationsController, 'setPolicy', 'ordinary_mutation'],
   [
     FailureNotificationDestinationsController,
@@ -75,6 +80,7 @@ const routes: readonly (readonly [
   [WorkflowAuthoringController, 'restoreVersion', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'archive', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'restore', 'ordinary_mutation'],
+  [WorkflowAuthoringController, 'rename', 'ordinary_mutation'],
   [WorkflowAuthoringController, 'versions', 'authenticated_read'],
   [WorkflowRunsController, 'startRun', 'run_admission'],
   [WorkflowRunsController, 'replayRun', 'run_admission'],
