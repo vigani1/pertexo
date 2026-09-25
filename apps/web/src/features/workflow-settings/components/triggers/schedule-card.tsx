@@ -4,11 +4,11 @@ import { CalendarClockIcon } from 'lucide-react';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Status } from '@/components/ui/status';
 import { Switch } from '@/components/ui/switch';
-import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import {
   describeMisfirePolicy,
   describeRecurrence,
-} from '../../model/schedule-sentence';
+} from '@/features/catalog/presentation.public';
+import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { describeTriggerState } from '../../model/trigger-state';
 
 function When({
