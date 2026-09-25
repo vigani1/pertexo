@@ -2,6 +2,16 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-19
+- **Amended:** 2026-09-25 by ADR 042 and ADR 043
+
+> **Amendment note (2026-09-25).** [ADR 043](043-self-service-profile-and-session-authority-journeys.md)
+> registers acceptance under the active session authority: besides the fresh
+> OIDC result below, a session authority that verifies email (Better Auth) may
+> prove the recipient with a sign-in issued at most five minutes earlier, and
+> the acceptance routes no longer depend on legacy OIDC being configured.
+> [ADR 042](042-workspace-member-removal.md) lets a later invitation make a
+> _removed_ membership active again at the invited role; a suspended
+> membership remains a conflict. The rest of this record is unchanged.
 
 ## Decision
 
