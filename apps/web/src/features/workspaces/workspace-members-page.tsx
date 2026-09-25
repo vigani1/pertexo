@@ -189,7 +189,7 @@ export function WorkspaceMembersPage({
         onInvite={openInvite}
       />
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <Tabs
           value={tab}
           onValueChange={(next) => {

@@ -16,7 +16,7 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { absorbAddresses } from '../../model/invite-addresses';
 import type { ManagedRole } from '../../model/workspace-roles';
 import type { InvitationCommand } from '../../mutations/use-invitation-command';
-import { RoleSelect } from '../members/role-select';
+import { RoleSelectWithSummaries } from '../members/role-select';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';
 import { useInviteBatch } from '../../use-invite-batch';
@@ -140,10 +140,9 @@ export function InviteLens({
                   description="You can change it later from the Members tab."
                 >
                   {(control) => (
-                    <RoleSelect
+                    <RoleSelectWithSummaries
                       value={role}
                       roles={roles}
-                      withSummaries
                       disabled={command.locked}
                       onChange={setRole}
                       triggerProps={control}

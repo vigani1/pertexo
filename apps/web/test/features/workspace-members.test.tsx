@@ -4,63 +4,29 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import {
+  api,
+  deferred,
+  firstMemberId,
+  identityHandlers,
+  member,
+  membersOf,
+  noInvitations,
+  ownerWorkspace,
+  problem,
+  rowOf,
+  secondMemberId,
+  timestamp,
+  user,
+  userId,
+  workspace,
+  workspaceId,
+} from '../support/team-fixtures';
 
 // Each page loads its lazy route on first render; under a busy machine that
 // can outlast the default one-second wait without anything being wrong.
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const firstMemberId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const secondMemberId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const invitationId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const timestamp = '2026-09-15T10:00:00.000Z';
-const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
-const user = {
-  id: userId,
-  email: 'operator@example.test',
-  displayName: 'Pertexo Operator',
-  status: 'active',
-  revision: 1,
-  createdAt: timestamp,
-  updatedAt: timestamp,
-};
-const workspace = {
-  id: workspaceId,
-  name: 'Control Operations With A Deliberately Long Workspace Name',
-  slug: 'control-operations',
-  status: 'active',
-  revision: 1,
-  role: 'viewer',
-  capabilities: ['workspace:read', 'member:read'],
-  createdAt: timestamp,
-  updatedAt: timestamp,
-};
-const ownerWorkspace = {
-  ...workspace,
-  role: 'owner',
-  capabilities: ['workspace:read', 'member:read', 'member:manage'],
-};
-
-type Role = 'owner' | 'admin' | 'builder' | 'operator' | 'viewer';
-
-function member(
-  userIdValue: string,
-  displayName: string,
-  role: Role,
-  roleRevision = 1,
-) {
-  return {
-    userId: userIdValue,
-    email: `${userIdValue.slice(0, 8)}@example.test`,
-    displayName,
-    role,
-    roleRevision,
-    membershipStatus: 'active',
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-}
-
 function invitation(email: string, id = invitationId) {
   return {
     id,
@@ -73,48 +39,6 @@ function invitation(email: string, id = invitationId) {
     createdAt: timestamp,
     updatedAt: timestamp,
   };
-}
-
-function identityHandlers(currentWorkspace: unknown = workspace) {
-  return [
-    http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({ items: [currentWorkspace], nextCursor: null }),
-    ),
-  ];
-}
-
-function membersOf(items: () => readonly unknown[]) {
-  return http.get(`${api}/members`, () =>
-    HttpResponse.json({ items: items(), nextCursor: null }),
-  );
-}
-
-function noInvitations() {
-  return http.get(`${api}/invitations`, () =>
-    HttpResponse.json({ items: [], nextCursor: null }),
-  );
-}
-
-function problem(status: number, code: string) {
-  return HttpResponse.json(
-    {
-      type: `https://pertexo.test/problems/${code}`,
-      title: 'Problem',
-      status,
-      code,
-      requestId: `request-${code}`,
-    },
-    { status, headers: { 'content-type': 'application/problem+json' } },
-  );
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((accept) => {
-    resolve = accept;
-  });
-  return { promise, resolve } as const;
 }
 
 function sheet() {
@@ -140,12 +64,6 @@ async function pickRole(
     await screen.findByRole('combobox', { name: `Role for ${name}` }),
   );
   await actor.click(await screen.findByRole('option', { name: role }));
-}
-
-function rowOf(name: string) {
-  const row = screen.getByText(name).closest('li');
-  if (row === null) throw new Error(`${name} row is unavailable`);
-  return within(row);
 }
 
 describe('team: invitations', () => {
@@ -474,6 +392,22 @@ describe('team: members', () => {
         name: 'Rename or delete the workspace',
       }),
     ).toBeVisible();
+    // Full role names name every column; phones show whole short words.
+    expect(
+      within(matrix)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual([
+      'Ability',
+      'OwnerOwner',
+      'AdminAdmin',
+      'BuildBuilder',
+      'OpsOperator',
+      'ViewViewer',
+    ]);
+    expect(
+      within(matrix).getByRole('columnheader', { name: 'Operator' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('You’re a Viewer. Your column is highlighted.'),
     ).toBeVisible();

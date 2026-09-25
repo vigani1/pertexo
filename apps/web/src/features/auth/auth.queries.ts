@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAuthenticationCapabilities, getCurrentUser } from './auth.api';
 
-const currentUserQueryKey = ['identity', 'current-user'] as const;
+export const currentUserQueryKey = ['identity', 'current-user'] as const;
 
 export function currentUserQueryOptions(apiClient: ApiClient) {
   return queryOptions({

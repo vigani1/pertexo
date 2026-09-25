@@ -2,6 +2,7 @@ import {
   Link,
   useLoaderData,
   useRouteContext,
+  useRouter,
   useSearch,
 } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
@@ -15,6 +16,7 @@ export function AccountSecurityRoute() {
   const { apiClient } = useRouteContext({ from: '/account/security' });
   const user = useLoaderData({ from: '/account/security' });
   const search = useSearch({ from: '/account/security' });
+  const router = useRouter();
   return (
     <div className="relative isolate min-h-svh bg-background">
       <div className="ambient fixed -z-10" aria-hidden="true" />
@@ -28,11 +30,16 @@ export function AccountSecurityRoute() {
           Back to Pertexo
         </Link>
       </header>
-      <main id="main" className="px-4 pt-10 pb-20 sm:px-8">
+      {/* The page starts where the wordmark does, like pages in the shell. */}
+      <main
+        id="main"
+        className="mx-auto w-full max-w-5xl px-4 pt-10 pb-20 sm:px-8"
+      >
         <AccountSecurityPage
           key={user.id}
           apiClient={apiClient}
           user={user}
+          onProfileChanged={() => void router.invalidate()}
           {...(search.linked ? { linkOutcome: 'returned' as const } : {})}
           {...(search.linkError ? { linkOutcome: 'failed' as const } : {})}
         />

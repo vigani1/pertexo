@@ -1,4 +1,13 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
+import { MoreHorizontalIcon, UserMinusIcon } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button-variants';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Status, StatusGlyph } from '@/components/ui/status';
 import { formatDate } from '@/lib/format-time';
 import {
@@ -9,15 +18,49 @@ import {
 import { PersonAvatar } from '../shell/workspace-mark';
 import { RoleSelect } from './role-select';
 
-export type MemberRoleControl = Readonly<{
+export type MemberRowControl = Readonly<{
   roles: readonly ManagedRole[];
   canChange: (member: WorkspaceMember) => boolean;
+  canRemove: (member: WorkspaceMember) => boolean;
   /** The role shown while a change for this member awaits confirmation. */
   shownRole: (member: WorkspaceMember) => WorkspaceRole;
   disabled: boolean;
   feedback: (member: WorkspaceMember) => string | undefined;
   onPick: (member: WorkspaceMember, role: ManagedRole) => void;
+  onRemove: (member: WorkspaceMember) => void;
 }>;
+
+function MemberActions({
+  member,
+  control,
+}: Readonly<{ member: WorkspaceMember; control: MemberRowControl }>) {
+  if (!control.canRemove(member))
+    return <span aria-hidden="true" className="max-sm:hidden" />;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={control.disabled}
+        aria-label={`Actions for ${member.displayName}`}
+        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+      >
+        <MoreHorizontalIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => {
+              control.onRemove(member);
+            }}
+          >
+            <UserMinusIcon aria-hidden="true" />
+            Remove from workspace
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function MemberRow({
   member,
@@ -26,11 +69,11 @@ function MemberRow({
 }: Readonly<{
   member: WorkspaceMember;
   isYou: boolean;
-  control: MemberRoleControl;
+  control: MemberRowControl;
 }>) {
   const feedback = control.feedback(member);
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-border py-3 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem]">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-border py-3 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem]">
       <PersonAvatar name={member.displayName} />
       <div className="min-w-0">
         <p className="flex min-w-0 items-baseline gap-2">
@@ -83,6 +126,7 @@ function MemberRow({
       <span className="font-mono text-[0.72rem] text-subtle-foreground max-sm:hidden">
         {formatDate(member.createdAt)}
       </span>
+      <MemberActions member={member} control={control} />
       {feedback === undefined ? null : (
         <p
           role="alert"
@@ -104,7 +148,7 @@ export function MemberList({
 }: Readonly<{
   members: readonly WorkspaceMember[];
   actorUserId: string;
-  control: MemberRoleControl;
+  control: MemberRowControl;
 }>) {
   return (
     <ul aria-label="Members" className="flex flex-col">
