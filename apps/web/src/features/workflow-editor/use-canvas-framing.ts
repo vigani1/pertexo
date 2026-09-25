@@ -72,8 +72,10 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     fit(false);
   }, [fit, nodesInitialized]);
 
+  // A step added and selected in one move has no size on its first render,
+  // so this runs again once it's measured.
   useEffect(() => {
-    if (selectedNodeId === null) return;
+    if (selectedNodeId === null || !nodesInitialized) return;
     const node = flow.getInternalNode(selectedNodeId);
     const area = visibleArea();
     const width = node?.measured.width;
@@ -92,7 +94,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     );
     if (next !== undefined)
       void flow.setViewport(next, { duration: reducedMotion ? 0 : 250 });
-  }, [flow, reducedMotion, selectedNodeId, visibleArea]);
+  }, [flow, nodesInitialized, reducedMotion, selectedNodeId, visibleArea]);
 
   return fit;
 }

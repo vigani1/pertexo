@@ -44,10 +44,11 @@ export function PublishedStamp({
   }, [reducedMotion]);
   const visible = shown || reducedMotion;
   return (
+    // Beside the inspector lens, not over it; the editor sets the inset.
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed top-24 right-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col items-end gap-2"
+      className="pointer-events-none fixed top-24 right-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col items-end gap-2 lg:right-[var(--editor-right-inset,1rem)]"
     >
       {visible ? (
         <>
