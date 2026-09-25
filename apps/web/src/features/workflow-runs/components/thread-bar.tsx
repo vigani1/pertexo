@@ -6,7 +6,7 @@ import { toneLineStyle } from '../model/tone-styles';
 /**
  * A run's duration as a thread: its length is the run's share of the longest
  * visible run (log scale). Running threads carry a light at their tip,
- * finished ones end in a knot, failed ones fray. Decorative: the row states
+ * finished ones end in a knot, failed ones at a cross. Decorative: the row states
  * the duration in words.
  */
 export function ThreadBar({
@@ -73,7 +73,7 @@ function ThreadEnd({ tone }: Readonly<{ tone: StatusTone }>) {
           strokeLinecap="round"
         >
           {tone === 'failure' ? (
-            <path d="M0 5l8-3.5M0 5h9M0 5l8 3.5" />
+            <path d="M2 1.5l7 7M9 1.5l-7 7" />
           ) : (
             <path d="M3 1v8" />
           )}

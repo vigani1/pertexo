@@ -56,9 +56,7 @@ function ThreadStroke({ phase }: Readonly<{ phase: TestPhase }>) {
         <>
           <path d={FRAYED} className="stroke-destructive" />
           <g className="origin-[150px_22px] stroke-destructive motion-safe:animate-fray">
-            <path d="M150 22l16-9" />
-            <path d="M150 22h18" />
-            <path d="M150 22l16 9" />
+            <path d="M156 16l12 12M168 16l-12 12" />
           </g>
         </>
       );
