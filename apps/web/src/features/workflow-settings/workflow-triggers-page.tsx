@@ -9,10 +9,8 @@ import {
   Empty,
   EmptyActions,
   EmptyDescription,
-  EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { StatusGlyph } from '@/components/ui/status';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { visibleSettingsData } from './model/settings-query';
@@ -52,11 +50,10 @@ function NoTriggers({
   workflowId,
   published,
 }: Readonly<{ workspaceId: string; workflowId: string; published: boolean }>) {
+  // The tab's first content sits right under the hub bar, like the Versions
+  // tab's empty state: no divider above it and no decorative glyph.
   return (
-    <Empty>
-      <EmptyMedia>
-        <StatusGlyph tone="neutral" />
-      </EmptyMedia>
+    <Empty className="border-t-0 py-2">
       <EmptyTitle>
         {published ? 'This version has no trigger' : 'Nothing is published yet'}
       </EmptyTitle>
