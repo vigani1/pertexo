@@ -10,6 +10,7 @@ import {
   PROVIDERS,
   type ProviderKey,
 } from '../../model/connection-providers';
+import type { SavedCredential } from '../../model/credential-draft';
 import type { ConnectionTest } from '../../use-connection-test';
 import { ConnectionTestPanel } from '../connection-test/connection-test-panel';
 
@@ -112,11 +113,19 @@ export function NameStep({
   );
 }
 
-/** The saved connection, tested straight away where nothing else is needed. */
+/**
+ * The saved connection, tested straight away where nothing else is needed,
+ * with a summary of what was stored: its name and the credential, masked.
+ */
 export function TestStep({
   connection,
+  saved,
   test,
-}: Readonly<{ connection: ConnectionResponse; test: ConnectionTest }>) {
+}: Readonly<{
+  connection: ConnectionResponse;
+  saved: SavedCredential | undefined;
+  test: ConnectionTest;
+}>) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
@@ -130,6 +139,34 @@ export function TestStep({
           test.run(connection, request);
         }}
       />
+      <section
+        aria-labelledby="add-connection-summary"
+        className="rounded-lg border border-white/6 bg-black/20 p-3.5"
+      >
+        <h3
+          id="add-connection-summary"
+          className="font-sans text-xs font-semibold text-subtle-foreground"
+        >
+          Summary
+        </h3>
+        <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+          <dt className="text-subtle-foreground">Name</dt>
+          <dd className="min-w-0 truncate">{connection.name}</dd>
+          {saved === undefined ? null : (
+            <>
+              <dt className="text-subtle-foreground">{saved.term}</dt>
+              <dd className="min-w-0">
+                <span className="font-mono text-[0.8rem] break-all">
+                  {saved.value}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Stored encrypted, never shown again.
+                </span>
+              </dd>
+            </>
+          )}
+        </dl>
+      </section>
     </div>
   );
 }

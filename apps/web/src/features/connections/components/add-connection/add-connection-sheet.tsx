@@ -31,8 +31,10 @@ import {
   type ProviderKey,
 } from '../../model/connection-providers';
 import {
+  describeSavedCredential,
   toCreateRequest,
   type CredentialDraft,
+  type SavedCredential,
 } from '../../model/credential-draft';
 import {
   useConnectionTest,
@@ -86,6 +88,7 @@ export function AddConnectionSheet({
   const [stepState, setStep] = useState<AddStep>();
   const [nameInput, setNameInput] = useState<string>();
   const [created, setCreated] = useState<ConnectionResponse>();
+  const [savedCredential, setSavedCredential] = useState<SavedCredential>();
   const provider = chosen ?? (request === 'any' ? undefined : request);
   const step: AddStep =
     stepState ?? (provider === undefined ? 'provider' : 'credential');
@@ -115,6 +118,7 @@ export function AddConnectionSheet({
     setStep(undefined);
     setNameInput(undefined);
     setCreated(undefined);
+    setSavedCredential(undefined);
     credential.clear();
     nameValidation.reset();
     clearSensitiveState();
@@ -158,6 +162,7 @@ export function AddConnectionSheet({
       return;
     }
     attempt.current = undefined;
+    setSavedCredential(describeSavedCredential(credential.draft));
     credential.clear();
     clearSensitiveState();
     setCreated(connection);
@@ -202,6 +207,7 @@ export function AddConnectionSheet({
               step={step}
               provider={provider}
               created={created}
+              savedCredential={savedCredential}
               credential={credential}
               name={name}
               nameValidation={nameValidation}
@@ -250,6 +256,7 @@ function StepBody({
   step,
   provider,
   created,
+  savedCredential,
   credential,
   name,
   nameValidation,
@@ -265,6 +272,7 @@ function StepBody({
   step: AddStep;
   provider: ProviderKey | undefined;
   created: ConnectionResponse | undefined;
+  savedCredential: SavedCredential | undefined;
   credential: CredentialForm;
   name: string;
   nameValidation: FieldValidation<'name'>;
@@ -277,10 +285,11 @@ function StepBody({
   onCredentialChange: (draft: CredentialDraft) => void;
   onNameChange: (name: string) => void;
 }>) {
-  if (step === 'provider') return <ProviderSockets onConnect={onChoose} />;
+  if (step === 'provider')
+    return <ProviderSockets layout="stack" onConnect={onChoose} />;
   if (step === 'test')
     return created === undefined ? null : (
-      <TestStep connection={created} test={test} />
+      <TestStep connection={created} saved={savedCredential} test={test} />
     );
   if (provider === undefined) return null;
   if (step === 'credential')

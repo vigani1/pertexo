@@ -297,6 +297,10 @@ describe('connections page', () => {
     );
     await event.click(lens().getByRole('button', { name: 'Try again' }));
     expect(await lens().findByText('Slack accepted the token.')).toBeVisible();
+    // The summary names what was stored without ever showing it whole.
+    const summary = lens().getByRole('region', { name: 'Summary' });
+    expect(summary).toHaveTextContent('NameOperations Slack');
+    expect(summary).toHaveTextContent('Tokenxoxb-••••••••cret');
     expect(keys).toHaveLength(2);
     expect(keys[1]).toBe(keys[0]);
     expect(testKeys).toHaveLength(1);

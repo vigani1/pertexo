@@ -49,11 +49,23 @@ const REJECTED_CREDENTIAL: Readonly<Record<ProviderKey, string>> = {
   email: 'invalid API key',
 };
 
+/**
+ * A code Pertexo doesn't know yet, in words: its last part without
+ * separators ("http.request_failed" → "request failed"), never the raw code.
+ */
+function unmappedFailure(errorCode: string): string {
+  const words = (errorCode.split('.').at(-1) ?? '')
+    .replaceAll(/[_-]+/gu, ' ')
+    .trim()
+    .toLowerCase();
+  return /^[a-z ]+$/u.test(words) ? words : 'the service reported a problem';
+}
+
 /** A few words for why the last test failed, never the raw code. */
 function describeTestFailure(provider: ProviderKey, errorCode: string): string {
   if (errorCode === 'connection.credential_rejected')
     return REJECTED_CREDENTIAL[provider];
-  return FAILURE_REASONS[errorCode] ?? 'something went wrong';
+  return FAILURE_REASONS[errorCode] ?? unmappedFailure(errorCode);
 }
 
 export type HealthSentence = Readonly<{

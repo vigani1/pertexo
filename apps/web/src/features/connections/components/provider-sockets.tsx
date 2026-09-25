@@ -1,4 +1,5 @@
 import { PlusIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   PROVIDER_KEYS,
   PROVIDERS,
@@ -8,15 +9,20 @@ import { ProviderTile } from './provider-tile';
 
 /**
  * One socket per provider Pertexo can plug into. Always visible to people who
- * manage connections, it doubles as the empty state's call to action.
+ * manage connections, it doubles as the empty state's call to action. On the
+ * page they sit in a row; inside a lens they stack, so each keeps its words.
  */
 export function ProviderSockets({
+  layout = 'row',
   onConnect,
-}: Readonly<{ onConnect: (provider: ProviderKey) => void }>) {
+}: Readonly<{
+  layout?: 'row' | 'stack';
+  onConnect: (provider: ProviderKey) => void;
+}>) {
   return (
     <ul
       aria-label="Services you can connect"
-      className="grid gap-3 sm:grid-cols-3"
+      className={cn('grid gap-3', layout === 'row' && 'sm:grid-cols-3')}
     >
       {PROVIDER_KEYS.map((provider) => (
         <li key={provider}>
