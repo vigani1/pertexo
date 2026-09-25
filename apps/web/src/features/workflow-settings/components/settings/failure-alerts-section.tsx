@@ -16,6 +16,11 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import {
+  destinationChannels,
+  useSlackChannelNames,
+  type ChannelNames,
+} from '@/features/failure-notifications/channel-names.public';
+import {
   failureNotificationDestinationsQueryOptions,
   type FailureNotificationDestinationList,
 } from '@/features/failure-notifications/queries.public';
@@ -41,12 +46,13 @@ function connectionNames(
 function destinationOptions(
   list: FailureNotificationDestinationList | undefined,
   names: ReadonlyMap<string, string>,
+  channelNames: ChannelNames,
 ) {
   return (list?.items ?? [])
     .filter((destination) => destination.status === 'enabled')
     .map((destination) => ({
       value: destination.id,
-      label: describeDestination(destination, names),
+      label: describeDestination(destination, names, channelNames),
     }));
 }
 
@@ -92,6 +98,18 @@ export function FailureAlertsSection({
     enabled: canSet,
   });
   const current = visibleSettingsData(policy);
+  const currentDestination = current?.destination ?? null;
+  const listed = visibleSettingsData(destinations);
+  const channelNames = useSlackChannelNames({
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    channels: destinationChannels([
+      ...(currentDestination === null ? [] : [currentDestination]),
+      ...(listed?.items ?? []),
+    ]),
+    enabled: canSet && can('connection:use'),
+  });
   const commands = useFailureNotificationCommands({
     apiClient,
     userId,
@@ -100,8 +118,9 @@ export function FailureAlertsSection({
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const options = destinationOptions(
-    visibleSettingsData(destinations),
+    listed,
     connections.data ?? NO_NAMES,
+    channelNames,
   );
   const selected = options.find((option) => option.value === selectedId);
 
@@ -137,6 +156,7 @@ export function FailureAlertsSection({
             <CurrentAlertDestination
               destination={current.destination}
               connectionNames={connections.data ?? NO_NAMES}
+              channelNames={channelNames}
             />
           )}
           <SettingsQueryState

@@ -23,6 +23,7 @@ import { DestinationCollection } from './components/destination-collection';
 import { DestinationForm } from './components/destination-lens';
 import { destinationEditMutationKey } from './failure-notifications.mutations';
 import { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
+import { destinationChannels } from './model/channel-names';
 import { useSlackChannelNames } from './use-slack-channel-names';
 
 type Lens = Readonly<{
@@ -72,7 +73,7 @@ export function FailureNotificationDestinationsPage({
     apiClient,
     userId: user.id,
     workspaceId: workspace.id,
-    destinations: destinations.data?.items ?? [],
+    channels: destinationChannels(destinations.data?.items ?? []),
     enabled: canRead && canUseConnections,
   });
   const [lens, setLens] = useState<Lens>({

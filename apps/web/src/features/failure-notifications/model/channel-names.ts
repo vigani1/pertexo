@@ -14,6 +14,12 @@ export type ChannelName =
     }>;
 export type ChannelNames = ReadonlyMap<string, ChannelName>;
 
+/** A Slack channel as a connection's bot token sees it. */
+export type SlackChannelRef = Readonly<{
+  connectionId: string;
+  channelId: string;
+}>;
+
 /** One bounded name lookup: a connection and up to ten of its channels. */
 export type ChannelLookup = Readonly<{
   connectionId: string;
@@ -42,19 +48,29 @@ export function channelKey(connectionId: string, channelId: string): string {
   return `${connectionId}:${channelId}`;
 }
 
-/** Each connection's distinct Slack channels, in groups the API accepts. */
-export function channelLookups(
+/** The Slack channels alert destinations post to. */
+export function destinationChannels(
   destinations: readonly Pick<
     FailureNotificationDestinationResponse,
     'config'
   >[],
+): readonly SlackChannelRef[] {
+  return destinations.flatMap(({ config }) =>
+    config.kind === 'slack'
+      ? [{ connectionId: config.connectionId, channelId: config.channelId }]
+      : [],
+  );
+}
+
+/** Each connection's distinct Slack channels, in groups the API accepts. */
+export function channelLookups(
+  refs: readonly SlackChannelRef[],
 ): readonly ChannelLookup[] {
   const channels = new Map<string, Set<string>>();
-  for (const { config } of destinations) {
-    if (config.kind !== 'slack') continue;
-    const ids = channels.get(config.connectionId) ?? new Set<string>();
-    ids.add(config.channelId);
-    channels.set(config.connectionId, ids);
+  for (const { connectionId, channelId } of refs) {
+    const ids = channels.get(connectionId) ?? new Set<string>();
+    ids.add(channelId);
+    channels.set(connectionId, ids);
   }
   return [...channels.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
