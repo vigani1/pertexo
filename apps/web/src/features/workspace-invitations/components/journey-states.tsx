@@ -190,21 +190,28 @@ export function DeadEndJourney({
       <AuthLensDescription>
         {copy.sentence} Ask an admin for a new invitation.
       </AuthLensDescription>
+      {/* When the invitation can't be read, signing in is the way on. */}
       <div className="mt-6 flex flex-col gap-2">
+        {onSignIn === undefined ? null : (
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            onClick={onSignIn}
+          >
+            Sign in
+          </Button>
+        )}
         <Button
           type="button"
-          variant="primary"
-          size="lg"
-          className="w-full"
+          variant={onSignIn === undefined ? 'primary' : 'ghost'}
+          size={onSignIn === undefined ? 'lg' : 'default'}
+          className={onSignIn === undefined ? 'w-full' : undefined}
           onClick={onDiscover}
         >
           Go to my workspaces
         </Button>
-        {onSignIn === undefined ? null : (
-          <Button type="button" variant="ghost" onClick={onSignIn}>
-            Sign in
-          </Button>
-        )}
       </div>
     </>
   );
