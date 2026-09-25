@@ -20,12 +20,14 @@ import { useEditorStore } from './model/editor-store-context';
 import type { WorkflowFlowEdge, WorkflowFlowNode } from './model/graph-adapter';
 
 const FIT_PADDING = 24;
+/** The smallest zoom Fit goes to; the canvas itself allows 0.2. */
+const FIT_MIN_ZOOM = 0.2;
 const REVEAL_MARGIN = 24;
 
 /**
  * Frames the workflow between the editor's lenses: it opens fitted into
  * the area no lens covers (at a readable zoom, starting from the left when
- * it's too wide), Fit does the same, and a newly selected step that the
+ * it's too wide), Fit shows every step, and a newly selected step that the
  * inspector or another lens would hide is panned into view. Moves are
  * straight pans: the default "fly" zooms out and back in on the way, which
  * makes the steps look like they grow and shrink.
@@ -52,8 +54,10 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
     return uncoveredArea(canvas, covers);
   }, [containerRef]);
 
+  // Opening frames at a readable zoom, starting from the left when the
+  // workflow is too wide; Fit shows every step, however small that makes them.
   const fit = useCallback(
-    (animate: boolean) => {
+    (animate: boolean, readable = false) => {
       const area = visibleArea();
       const nodes = flow
         .getNodes()
@@ -61,7 +65,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       if (area === undefined || nodes.length === 0) return;
       void flow.setViewport(
         framedViewport(flow.getNodesBounds(nodes), inset(area, FIT_PADDING), {
-          minZoom: READABLE_ZOOM,
+          minZoom: readable ? READABLE_ZOOM : FIT_MIN_ZOOM,
           maxZoom: 1,
         }),
         {
@@ -78,7 +82,7 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     if (!nodesInitialized || framed.current) return;
     framed.current = true;
-    fit(false);
+    fit(false, true);
   }, [fit, nodesInitialized]);
 
   const reveal = useCallback(

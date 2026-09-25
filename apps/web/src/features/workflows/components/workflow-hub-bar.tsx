@@ -125,6 +125,19 @@ export function WorkflowHubBar({
                 {state.label}
               </Status>
             )}
+            {/* Starting lasts until every trigger is ready; a webhook waits
+                for its endpoint, so say where to look. */}
+            {workflow?.activationStatus === 'activating' &&
+            workflow.lifecycleStatus === 'active' &&
+            activeTab !== 'triggers' ? (
+              <Link
+                to="/w/$workspaceId/workflows/$workflowId/triggers"
+                params={{ workspaceId: workspace.id, workflowId }}
+                className="inline-link font-sans text-[0.72rem] font-medium"
+              >
+                Check triggers
+              </Link>
+            ) : null}
             {detail}
           </div>
         </div>

@@ -83,7 +83,7 @@ describe('workflow shape', () => {
       ]),
     );
     expect(describeWorkflowPath(linear)).toBe(
-      'Webhook → Call CRM → Send to Slack',
+      'Webhook → Call CRM → Send Slack message',
     );
     expect(describeWorkflowPath(branching())).toBe(
       'Webhook → Condition → Approve or Post to ERP',
@@ -108,7 +108,7 @@ describe('workflow shape', () => {
       ),
     );
     expect(describeWorkflowPath(long)).toBe(
-      'Manual start → Set values → Validate → Wait → …',
+      'Manual start → Set fields → Validate → Wait → …',
     );
   });
 
@@ -159,7 +159,7 @@ describe('workflow shape', () => {
     });
     const layout = layoutPatternGlyph(cyclic);
     expect(layout.nodes).toHaveLength(2);
-    expect(describeWorkflowPath(cyclic)).toBe('Set values → Set values');
+    expect(describeWorkflowPath(cyclic)).toBe('Set fields → Set fields');
   });
 });
 

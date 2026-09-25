@@ -85,10 +85,10 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(publishes).toHaveLength(1);
     expect(publishes[0]?.etag).toBe(etagB);
     expect(validations).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('v1 live')).toBeVisible();
+    expect(screen.queryByText(/Edited since/u)).toBeNull();
 
     await event.click(addStepButton(/Set fields/u));
-    expect(screen.getByText('v1 live · edited since')).toBeVisible();
+    expect(screen.getByText('Edited since v1')).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Run' }));
     await event.click(
       await screen.findByRole('menuitem', { name: 'Run published version' }),

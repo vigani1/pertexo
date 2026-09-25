@@ -60,7 +60,7 @@ export function PublishChanges({
               'No step changes. Publishing makes the same steps live again.')}
         </p>
       ) : (
-        <ul className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto pr-1 text-sm">
+        <ul className="mt-2 flex flex-col gap-1 text-sm">
           {summary.lines.map((line) => (
             <ChangeLine key={`${line.kind}:${line.nodeId}`} line={line} />
           ))}

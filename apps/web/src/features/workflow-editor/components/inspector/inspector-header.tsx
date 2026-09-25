@@ -21,7 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { describeStep, StepTile } from '@/features/catalog/presentation.public';
+import {
+  describeStep,
+  familyWord,
+  StepTile,
+} from '@/features/catalog/presentation.public';
 import { useLiveField } from '../../use-live-field';
 import type { NodeFormApi } from '../../model/node-form';
 
@@ -88,13 +92,15 @@ export function InspectorHeader({
           placeholder={step.name}
           value={label.text}
           disabled={!form.editable}
-          className="-mx-1 w-full min-w-0 rounded-sm bg-transparent px-1 font-heading text-lg leading-tight font-semibold tracking-[-0.02em] outline-none placeholder:text-foreground/70 hover:bg-white/4 focus-visible:bg-black/25 focus-ring disabled:hover:bg-transparent"
+          className="-mx-1 w-full min-w-0 rounded-sm bg-transparent px-1 font-heading text-lg leading-tight font-semibold tracking-[-0.02em] outline-none placeholder:text-foreground hover:bg-white/4 focus-visible:bg-black/25 focus-ring disabled:hover:bg-transparent"
           onChange={(event) => {
             label.change(event.currentTarget.value);
           }}
         />
+        {/* Under a custom label, the step's type; under the type's own name,
+            its family, so the line never repeats the title. */}
         <p className="mt-0.5 truncate text-xs text-subtle-foreground">
-          {step.name} ·{' '}
+          {label.text.trim() === '' ? familyWord(step.family) : step.name} ·{' '}
           <span className="font-mono">v{node.definition.version}</span>
           {definition === undefined ? ' · not in catalog' : ''}
           {disabled ? ' · disabled' : ''}
