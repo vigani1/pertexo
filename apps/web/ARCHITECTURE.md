@@ -975,7 +975,7 @@ are visual references, not files to copy wholesale.
 | [x]    | Canvas controls / minimap appearance | Controls and `MiniMap` inside `canvas/workflow-canvas.tsx`                                                                                                                                           | `features/workflow-editor/components/canvas/canvas-controls.tsx`; style the existing React Flow minimap at its later composition site | Zoom/fit/lock control appearance and compact minimap treatment             | Whole canvas container, graph state and old handlers; do not create a minimap wrapper merely to hold classes      |
 | [x]    | Selection toolbar                    | `canvas/workflow-canvas-selection-toolbar.tsx`                                                                                                                                                       | `features/workflow-editor/components/canvas/selection-toolbar.tsx`                                                                    | Selected-count and action layout                                           | Selection ownership, deletion commands and history logic                                                          |
 | [x]    | Inspector panel                      | `inspector/workflow-inspector.tsx`, `workflow-inspector-dock.tsx`, `workflow-inspector-metadata.tsx` in the same folder                                                                              | Existing `components/workflow-inspector.tsx` form plus meaningful presentation sections under `components/inspector/`                 | Panel/dock geometry, sections and metadata presentation                    | Old configuration/mapping forms, validation, process selectors, credentials and API hooks                         |
-| [x]    | Editor command bar                   | `chrome/workflow-builder-command-bar.tsx`, `chrome/workflow-name-field.tsx`                                                                                                                          | `features/workflow-editor/components/chrome/editor-command-bar.tsx`                                                                   | Composition slots for identity, actions and status; compact appearance     | Old save/run/dirty-state behavior; workflow name editing remains gated on a supported rename contract             |
+| [x]    | Editor command bar                   | `chrome/workflow-builder-command-bar.tsx`, `chrome/workflow-name-field.tsx`                                                                                                                          | `features/workflow-editor/components/chrome/editor-command-bar.tsx`                                                                   | Composition slots for identity, actions and status; compact appearance     | Old save/run/dirty-state behavior; the name is renamed in place with `InlineRename` (ADR 041)                     |
 | [x]    | Full app-shell visual adaptation     | Legacy `src/components/layout/app-shell.tsx`                                                                                                                                                         | Existing `features/workspaces/workspace-shell.tsx` with feature-owned components as detailed above                                    | Sidebar/header geometry, account card, mobile drawer and responsive layout | Next navigation, auth, old menu destinations and shell event wiring                                               |
 
 Already adapted: branded button variants, input, textarea, field composition,
@@ -1117,6 +1117,7 @@ their own:
 | Validation     | `components/ui/use-field-validation.ts`                                   | `useFieldValidation`: the only message timing (blur → live, focus first invalid, server `errors[].path`, knot); `useFieldValues` is the thin values-and-rules layer for plain text forms       |
 | Confirmation   | `components/patterns/confirm-dialog.tsx`                                  | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `unconfirmed` turns confirm into the exact retry and Cancel into Close  |
 | Pending button | `components/ui/progress-button.tsx`                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                     |
+| Rename         | `components/patterns/inline-rename.tsx`                                   | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                     |
 | Copy           | `components/ui/copy-button.tsx`, `components/ui/use-copy-to-clipboard.ts` | `CopyButton` (icon, or a short value in mono whose name adds it) confirms in place; `useCopyToClipboard` for menu items (toast, same wording). Only `lib/clipboard.ts` touches the clipboard   |
 | Notice         | `components/ui/notice.tsx`                                                | `Notice`: tones `info`/`success`/`warning`/`destructive` (destructive is an alert), optional thread `glyph`, title and one action. Banners, failed commands and uncertain outcomes             |
 | Stale data     | `components/patterns/stale-line.tsx`                                      | `StaleLine`: the one amber "Couldn’t refresh. Showing results from 14:02" line with Retry                                                                                                      |
@@ -1942,7 +1943,7 @@ without a concrete new reason.
 | Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline                                                                                                    |
 | Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                               |
 | Run history                                                     | Implemented safe cursor list with workflow/status/UTC date filters and detail navigation                                        |
-| Workflow settings                                               | Implemented versions/restore, lifecycle, schedule toggles, webhook operations and failure-policy commands                       |
+| Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, triggers and the current failure policy                                |
 | Connections                                                     | Implemented safe cursor list plus Slack bot-token create/test/rotate and generic revocation; additional auth types remain gated |
 | Notification destinations                                       | Implemented safe list/create/version/status management using existing Slack or email connection references                      |
 | Workspace members                                               | Implemented capability-gated list, cursor pagination, bounded existing-member role changes and invitation management            |
@@ -1978,11 +1979,11 @@ local-only scope.
 
 | Surface                        | Proposed presentation                                 | Content and scope                                                                           | Gate before enabling                                                                                                |
 | ------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Published versions             | Existing `E/settings` section; optional future detail | List immutable versions, conditionally restore into draft; add inspection when needed       | Existing version list/restore; dirty editor guard; no separate versions page or version-diff feature assumed        |
+| Published versions             | Versions hub tab with preview and compare side sheets | List immutable versions, preview one, compare any two, restore into draft                   | Existing version list/restore; compare reuses the client version-diff model                                         |
 | Run history                    | `B/runs`; optional workflow-filtered entry            | Cursor history/filtering and links to run details                                           | Delivered with exact-precision, filter-bound pagination and URL-owned filters; no session-local remembered IDs      |
 | Workflow triggers              | `E/settings`, schedule/webhook sections               | Published trigger status, enable/disable schedule; provision/rotate webhook endpoint/secret | Existing list/control contracts; derive trigger definitions from published workflow, not invented independent CRUD  |
-| Workflow failure notifications | `E/settings` section                                  | Set/clear failure policy and select a configured destination                                | Existing policy/destination contracts; proper permissions and keyed commands                                        |
-| Workflow lifecycle             | Workflow action menu + confirmation/status            | Archive/unarchive; show authoritative result                                                | Existing lifecycle revision/idempotency semantics; keep distinct from restoring a version                           |
+| Workflow failure notifications | `E/settings` section                                  | Show the current choice; set/clear the policy with a configured destination                 | Policy read/set/clear under `workflow:update`; the read reuses the destination projection                           |
+| Workflow lifecycle             | Workflow action menu + confirmation/status            | Archive/unarchive and rename; show authoritative result                                     | Separate lifecycle and name revisions (ADR 034/041); distinct from restoring a version                              |
 | Workspace members              | `B/settings/members`; `/invitations/accept`           | Paginated members, bounded role changes, invitation management and recipient acceptance     | ADR 037/038 authority, current-database checks, dedicated delivery and browser-bound OIDC acceptance                |
 | Notification destinations      | `B/settings/notifications`                            | Delivered list/create/version/status management using safe connection references            | Separate read/manage gates, stable uncertain retries, version preconditions and browser regression coverage         |
 | Workspace lifecycle            | `B/settings/general` danger zone / operation status   | Request deletion or recovery where allowed; show operation status                           | Existing lifecycle commands; current authority and server deadlines; no invented workspace rename/settings API      |
@@ -3778,6 +3779,47 @@ the reviewing task. Update this section and U5 in `FRONTEND-AUDIT.md` with
 actual evidence at completion; until all required gates pass, U5 remains
 partial. Do not label blocked or mocked checks as live verification, or mark the
 whole application fully verified.
+
+#### Workflow rename, current failure alert and version compare
+
+**Delivered in the working tree (2026-09-25).** ADR 041 gives the workflow name
+its own revision, exposed as `nameRevision` in every summary, so a rename never
+collides with an archive/restore (ADR 034) or the draft ETag (ADR 011).
+`POST …/workflows/:workflowId/rename` takes `{ name, expectedNameRevision }`,
+CSRF and one `Idempotency-Key`, needs `workflow:update` on an active workflow,
+answers `200 { workflow, replayed }` and reports a stale revision as the typed
+`409 workflow.name_conflict` problem.
+`GET …/workflows/:workflowId/failure-notification-policy` returns the current
+destination in the destination read projection, or `null`.
+
+- The workflow hub bar, the Settings tab's Identity section and the list row
+  menu (“Rename…”, a dialog) all rename through `useWorkflowRename` and the
+  shared `InlineRename`/`RenameForm` pattern, which the workspace name field now
+  uses too. The form sends the revision the edit started from, so a background
+  refresh never turns a stale edit into an overwrite; a conflict loads the
+  workflow again and asks “Use theirs / Keep mine”. Archived workflows and roles
+  without `workflow:update` read the name only.
+- Settings → Failure alerts shows the current destination in words (or that
+  alerts are off, or that the chosen destination is turned off) and refreshes it
+  after every set/clear attempt. The “write-only” note is gone.
+- Versions offers “Compare versions” once there are two: any two versions, in
+  either order, reusing `diffWorkflowGraphs` through the shared
+  `VersionDiffSummary` that the preview sheet also uses.
+- The workflow list draws the empty thread for workflows without steps, leaves
+  out the run-strip note until the workspace has runs, and `WorkflowListHeader`
+  takes an `actions` slot (the page passes `NewWorkflowButton`) instead of a
+  `showCreate` flag.
+
+Evidence: contracts 80/80; database unit 769/769 and the full disposable
+PostgreSQL integration suite 584/584 (88 files, including rename receipts,
+races, rollback, archived read-only, legacy receipt replay and the policy read's
+role/tenant matrix); API unit 1,420/1,420; the real HTTP API lane against a
+throwaway database ran 42 tests (rename, lifecycle, version restore and
+identity) with the artifact, SSE, webhook and rate-limit lanes skipped by their
+own gates; web 59 files / 434 tests, production build, typecheck and
+zero-warning lint. `pnpm test:coverage` passed and the risk report recorded 0
+unreviewed and 406 reviewed branches across 195 selected files. Browser journeys
+were not run for this slice; jsdom component tests cover the new flows.
 
 #### Completion and one integrated audit
 

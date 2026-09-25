@@ -60,7 +60,7 @@ wiring remains deployment-owned.
 | `src/features/auth/`                  | Email/password and configured social entry, current session, account security and logout cleanup. |
 | `src/features/workspaces/`            | Workspace discovery, member reads, lifecycle controls, selection and the shared shell.            |
 | `src/features/overview/`              | Capability-scoped bounded workflow/run recency cards and independent recovery.                    |
-| `src/features/workflows/`             | Workflow list/create transport, cache ownership, recovery and presentation.                       |
+| `src/features/workflows/`             | Workflow list/create/rename transport, cache ownership, recovery and presentation.                |
 | `src/features/catalog/`               | Browser catalog discovery and identity-scoped query ownership.                                    |
 | `src/features/connections/`           | Safe metadata discovery plus bounded Slack create/test/rotate and revocation flows.               |
 | `src/features/failure-notifications/` | Workspace destination list/create/version/status ownership with safe connection references.       |
@@ -69,10 +69,10 @@ wiring remains deployment-owned.
 | `src/features/workflow-publish/`      | Saved-revision validation, preview and exact-ETag publish actions.                                |
 | `src/features/workflow-versions/`     | Paged immutable-version reads, exact lookup and restore transport.                                |
 | `src/features/workflow-runs/`         | Workspace history, run commands, authoritative detail and bounded live-event recovery.            |
-| `src/features/workflow-settings/`     | Versions, lifecycle, published triggers and failure-notification controls.                        |
+| `src/features/workflow-settings/`     | Versions and compare, lifecycle, published triggers and the current failure-alert choice.         |
 | `src/features/artifacts/`             | Safe artifact metadata and expiring download-link preparation; no upload UI.                      |
 | `src/components/ui/`                  | Weft primitives on Base UI: field and validation timing, notice, status, copy, progress button.   |
-| `src/components/patterns/`            | Domain-independent compositions: confirm dialog, stale line, load more, Core orb, page header.    |
+| `src/components/patterns/`            | Shared compositions: confirm dialog, inline rename, stale line, load more, Core orb, page header. |
 | `src/lib/api/`                        | Injected same-origin JSON transport, normalized errors, CSRF cookie adapter and cursor paging.    |
 | `src/lib/`                            | Clock and countdown, time formatting, clipboard, Canvas scene and browser subscriptions.          |
 | `src/lib/utils.ts`                    | Domain-independent Tailwind class merging only.                                                   |
