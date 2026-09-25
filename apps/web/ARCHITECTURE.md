@@ -1148,7 +1148,10 @@ outcome, forbidden, rate-limit and support reference helpers),
   `shell` layout renders the spine (Home Core, Workflows, Runs with live count,
   Connections · Team, Alerts, Settings · Search, account), the breadcrumb rooted
   in the workspace switcher, banners and the page. Phones get a bottom bar with
-  a More sheet. ⌘K opens the command palette.
+  a More sheet. ⌘K opens the command palette. The shell route also provides
+  `CommandPaletteContext` (`routes/command-palette-context.ts`); a page route
+  reads `useOpenCommandPalette()` and hands its feature a plain callback (Home's
+  Search), so features never import routes.
 - `/w/$workspaceId/workflows/$workflowId` is the immersive workflow hub (no
   spine) with Build (index), Runs, Triggers, Versions and Settings tabs. Every
   tab renders `WorkflowHubBar` (from `features/workflows/hub.public.ts`) with
@@ -1549,6 +1552,43 @@ value. Commit only when separately authorized under root Git instructions.
   ownership, module boundaries, built exports, formatting and the changed-scope
   React Doctor scan also pass.
 
+### Run-statistics slice evidence
+
+- `GET /v1/workspaces/:workspaceId/run-statistics?window=1h|6h|24h|7d&breakdown=workflow`
+  follows [ADR 044](../../docs/adr/044-bounded-workspace-run-statistics.md). It
+  is authorized with `run:read`, uses the `authenticated_read` rate class and
+  the run list's non-disclosing workspace statuses. It returns exact current
+  queued/running/waiting counts, per-status counts for the fixed window (24
+  hours by default) and, on request, at most 50 workflows by window total. All
+  of these come from one repeatable-read snapshot stamped `asOf`. Workflow names
+  follow `workflow:read`.
+- Migration `0113_workflow_run_statistics_index.sql` adds
+  `workflow_runs_workspace_created_statistics_idx (workspace_id, created_at) INCLUDE (status, workflow_id)`.
+  Current counts use the existing `(workspace_id, status, …)` index. The read
+  runs under a 2-second statement timeout. The disposable-database plan budget
+  seeds 4,420 runs across two workspaces, 96 of them in the measured one-hour
+  window. It records index-only scans for all three statements with zero heap
+  fetches, 96 scanned rows for the window and breakdown, no rows removed by a
+  filter, and 5–8 shared buffers.
+- The web replaces paged status counts with `runStatisticsQueryOptions` (24
+  hours, 15-second refresh). The Home and Runs headers and the spine's
+  `liveRunCountQueryOptions` share that one query, so a shell page makes one
+  request instead of three, "100+" is gone, and the failed-in-24h figure is
+  exact. The Home Loom still draws runs from `/runs` (up to 300 in the window,
+  plus active runs created before it). `loomStatisticsQueryOptions` supplies its
+  caption and lane totals, and a 7-day window is available. Needs attention
+  keeps its bounded problem-run pages because it links individual runs.
+- Home's header adds Search, which opens the shell palette, and New workflow
+  (`workflows?create=true`, `workflow:create` only). First-thread steps link to
+  the create lens, the latest workflow's Build tab, `connections?add=any`,
+  Alerts and `team?invite=true`. Each page still gates its lens by capability.
+- Verification: contracts 76/76; API 1,404/1,404 plus the real-PostgreSQL API
+  journey; database unit 769/769; the disposable-database statistics integration
+  and plan budget; web 433/433 in 58 files. Build, typecheck, lint, knip,
+  architecture, schema, contracts, complexity and duplication checks pass.
+  Playwright was not run in this change; the mocked Chromium journeys were
+  updated to serve the statistics read.
+
 ### Post-baseline frontend slice evidence
 
 - Connections now cover Slack creation, provider testing, exact-precondition
@@ -1881,7 +1921,7 @@ Remaining work is explicitly separate from completed review fixes:
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Workspace invitations                       | Implemented bounded slice; complete the controlled provider/full-stack and production sender environment gates recorded below. |
 | Workspace creation and display-name editing | N1 and N2 implemented; detailed delivery evidence and environment limitations are recorded below.                              |
-| Overview                                    | N3 bounded recent-list page implemented; aggregates remain excluded.                                                           |
+| Overview                                    | N3 recent lists plus exact ADR 044 run statistics implemented; trends, rates and usage stay excluded.                          |
 | Visual node input mapping                   | M1 is implemented; focused delivery evidence and remaining live-integration limits are recorded below.                         |
 | Browser artifact uploads / asset browser    | Real-browser signing, CORS, checksum and finalization evidence; listing contract for a browser.                                |
 | Templates, usage and billing                | Product scope and contracts; not part of the delivered baseline.                                                               |
@@ -2924,9 +2964,16 @@ current user/workspace discovery, and navigate only on explicit user action.
 
 #### 5. Overview: agree data semantics before adding aggregation
 
-There is no dedicated product overview/aggregate API yet. Start with bounded
-authorized workflow and run lists where they satisfy the page; do not create a
-new service or durable read model merely to render a dashboard.
+**Delivered (2026-09-25):** exact run counts now come from the bounded workspace
+run-statistics read in
+[ADR 044](../../docs/adr/044-bounded-workspace-run-statistics.md) (fixed
+windows, one `asOf` snapshot, index-only plans). The rules below still govern
+any further aggregate.
+
+The original gate read: there is no dedicated product overview/aggregate API
+yet. Start with bounded authorized workflow and run lists where they satisfy the
+page; do not create a new service or durable read model merely to render a
+dashboard.
 
 - Define each card's source, time window, sorting, refresh policy and
   permission. Distinguish recent workflow updates from execution activity and
@@ -3145,6 +3192,11 @@ The implementation below remains the lasting contract for this slice.
   simultaneous role/lifecycle changes are reauthorized; cancel leaves no change.
 
 #### N3. Overview without invented aggregate metrics
+
+**Update (2026-09-25):** Home's header figures, the Loom caption and its lane
+totals now use exact ADR 044 run statistics. The "no totals" rule below is
+superseded for these run counts only; trends, rates, usage and incident
+semantics stay excluded.
 
 **Delivered in the working tree (2026-09-21).** The optional workspace Overview
 route composes three independently authorized, cached and recoverable source
