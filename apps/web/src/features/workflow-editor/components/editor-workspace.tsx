@@ -38,6 +38,9 @@ import { EditorInspector } from './inspector/editor-inspector';
 export type EditorChrome = Readonly<{
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
+  /** The bottom issues lens, opened from the command bar's chip. */
+  issuesOpen: boolean;
+  onIssuesOpenChange: (open: boolean) => void;
   onFix: (target: WorkflowValidationTarget) => void;
 }>;
 
@@ -63,6 +66,7 @@ export function EditorWorkspace({
   effects,
   bar,
   banner,
+  bottomLens,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -80,6 +84,8 @@ export function EditorWorkspace({
   effects: ReturnType<typeof useCanvasEffects>;
   bar: (chrome: EditorChrome) => ReactNode;
   banner: ReactNode;
+  /** The bottom lens: the issues the command bar's chip opens. */
+  bottomLens: (chrome: EditorChrome) => ReactNode;
 }>) {
   const store = useEditorStoreApi();
   const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
@@ -92,6 +98,7 @@ export function EditorWorkspace({
   const testRef = useRef<NodeTestHandle>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [issuesOpen, setIssuesOpen] = useState(false);
   const { request } = actions;
   const navigation = useInspectorNavigation(request);
   const { setMobilePanel } = navigation;
@@ -159,13 +166,17 @@ export function EditorWorkspace({
       issues.countsByNode,
     ],
   );
+  const chrome: EditorChrome = {
+    shortcutsOpen,
+    onShortcutsOpenChange: setShortcutsOpen,
+    issuesOpen,
+    onIssuesOpenChange: setIssuesOpen,
+    onFix: navigation.fix,
+  };
   return (
     <EditorLayout
-      bar={bar({
-        shortcutsOpen,
-        onShortcutsOpenChange: setShortcutsOpen,
-        onFix: navigation.fix,
-      })}
+      bar={bar(chrome)}
+      bottomLens={bottomLens(chrome)}
       banner={banner}
       editable={canUpdate}
       addStepCollapsed={collapsed}
