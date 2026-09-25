@@ -5,9 +5,9 @@ import type { ApiClient } from '@/lib/api/client';
 import type { ThreadRow } from '../../model/thread-view';
 
 /**
- * What went in and what came out. File outputs download from here; inline
- * results and the run's input need API reads that don't exist yet, and the
- * page says so instead of guessing.
+ * What went in and what came out. File outputs download from here; the
+ * run's input and inline results are kept for replays but not shown, and
+ * the page says so plainly.
  */
 export function RunOutputsView({
   rows,
@@ -27,21 +27,29 @@ export function RunOutputsView({
   const withInline = rows.filter((row) =>
     row.outputs.some((output) => output.kind === 'inline'),
   );
+  const unfinished = rows.some(
+    (row) =>
+      row.status === 'running' ||
+      row.status === 'waiting' ||
+      row.status === 'ready' ||
+      row.status === 'pending',
+  );
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <section>
         <h2 className="text-lg font-semibold">Input</h2>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-          Pertexo keeps the input this run started with for replays, but the API
-          doesn’t return it to the app yet. When you replay, you enter the input
-          again.
+          Pertexo keeps the input this run started with, so it can be replayed.
+          It isn’t shown on this page; a replay asks for the input to use.
         </p>
       </section>
       <section>
         <h2 className="text-lg font-semibold">Output</h2>
         {withFiles.length === 0 && withInline.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            No step has reported an output yet.
+            {unfinished
+              ? 'No step has produced a file or a result yet.'
+              : 'No step produced a file or a result.'}
           </p>
         ) : null}
         <div className="mt-3 flex flex-col gap-4">
@@ -76,9 +84,9 @@ export function RunOutputsView({
                 {withInline.map((row) => row.label).join(', ')}{' '}
                 {withInline.length === 1
                   ? 'returned a result'
-                  : 'returned results'}{' '}
-                that Pertexo keeps with each attempt. Showing them here needs an
-                API endpoint that isn’t available yet.
+                  : 'returned results'}
+                . Results are kept with each attempt but aren’t shown on this
+                page.
               </p>
             </div>
           ) : null}

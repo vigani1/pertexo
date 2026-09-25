@@ -379,7 +379,7 @@ describe('run page', () => {
       within(panel).getByRole('button', { name: 'Download' }),
     ).toBeVisible();
     expect(
-      within(panel).getByText(/the API doesn’t return it to the app yet/u),
+      within(panel).getByText(/kept with each attempt|so it can be replayed/u),
     ).toBeVisible();
   });
 });

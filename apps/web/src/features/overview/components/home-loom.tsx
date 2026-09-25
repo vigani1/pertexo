@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -48,12 +48,16 @@ export function HomeLoom({
 }>) {
   const [windowKey, setWindowKey] = useState<LoomWindow>('1h');
   const selected = windows[windowKey];
-  const loom = useQuery(
-    runLoomQueryOptions(apiClient, userId, workspaceId, selected.ms),
-  );
-  const statistics = useQuery(
-    loomStatisticsQueryOptions(apiClient, userId, workspaceId, windowKey),
-  );
+  // Switching the window keeps the last one drawn until the new one lands,
+  // so the page below never collapses and jumps back.
+  const loom = useQuery({
+    ...runLoomQueryOptions(apiClient, userId, workspaceId, selected.ms),
+    placeholderData: keepPreviousData,
+  });
+  const statistics = useQuery({
+    ...loomStatisticsQueryOptions(apiClient, userId, workspaceId, windowKey),
+    placeholderData: keepPreviousData,
+  });
   const laneTotals = useMemo(
     () =>
       statistics.data?.workflows === undefined ||
