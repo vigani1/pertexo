@@ -35,6 +35,7 @@ import {
 import { EditorPaused } from './components/chrome/editor-paused';
 import { EditorWorkspace } from './components/editor-workspace';
 import { EditorProvider } from './model/editor-provider';
+import { isStartTrigger } from './model/step-catalog';
 import { useCanvasEffects } from './use-canvas-effects';
 import {
   useEditorStore,
@@ -248,6 +249,7 @@ function WorkflowEditorSession({
                     draft={{ generation, revision }}
                     commandSession={commandSession}
                     issues={issues}
+                    triggersAvailable={definitions.some(isStartTrigger)}
                     onCheckAgain={autoValidation.checkNow}
                     onFix={chrome.onFix}
                     onPublished={effects.weaveIn}

@@ -4,16 +4,16 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpFromLineIcon } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { IssuesChip } from './components/issues-chip';
+import { PublishButton } from './components/publish-button';
 import { PublishLens } from './components/publish-lens';
 import { PublishedStamp } from './components/published-stamp';
 import { RunLens } from './components/run-lens';
 import { RunMenu } from './components/run-menu';
 import type { WorkflowIssuesView } from './model/issues-state';
+import { emptyDraftHint } from './model/publish-readiness';
 import { summarizePublish } from './model/publish-summary';
 import type { WorkflowValidationTarget } from './model/validation-target';
 import type { PublicationReceipt } from './mutations/use-workflow-publication';
@@ -94,18 +94,6 @@ function summaryState(
   return loading ? 'loading' : 'error';
 }
 
-function PublishButton({
-  versionLabel,
-  onClick,
-}: Readonly<{ versionLabel: string | undefined; onClick: () => void }>) {
-  return (
-    <Button type="button" size="sm" variant="primary" onClick={onClick}>
-      <ArrowUpFromLineIcon data-icon="inline-start" />
-      {versionLabel === undefined ? 'Publish' : `Publish ${versionLabel}`}
-    </Button>
-  );
-}
-
 /**
  * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
  * one filled action, Publish vN. Each opens its own lens; the published stamp
@@ -121,6 +109,7 @@ export function WorkflowCommandActions({
   draft,
   commandSession,
   issues,
+  triggersAvailable,
   onCheckAgain,
   onFix,
   onPublished,
@@ -135,6 +124,8 @@ export function WorkflowCommandActions({
   draft: Readonly<{ generation: number; revision: number }>;
   commandSession: WorkflowCommandSession;
   issues: WorkflowIssuesView;
+  /** The catalog offers a trigger to start an empty draft with. */
+  triggersAvailable: boolean;
   onCheckAgain: () => void;
   onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt) => void;
@@ -159,6 +150,7 @@ export function WorkflowCommandActions({
   const canRun = workspace.capabilities.includes('run:start');
   const blockingGroups =
     issues.groups !== undefined && !issues.stale ? issues.groups : [];
+  const emptyHint = emptyDraftHint(graph, triggersAvailable);
 
   async function confirmPublish() {
     const result = await publication.publish();
@@ -178,6 +170,7 @@ export function WorkflowCommandActions({
       <IssuesChip
         state={issues}
         graph={graph}
+        emptyHint={emptyHint}
         open={issuesOpen}
         onOpenChange={setIssuesOpen}
         onCheckAgain={onCheckAgain}
@@ -201,6 +194,7 @@ export function WorkflowCommandActions({
       {canPublish ? (
         <PublishButton
           versionLabel={versionLabel}
+          blockedReason={emptyHint?.label}
           onClick={() => {
             publication.clearPublishError();
             setPublishOpen(true);

@@ -255,6 +255,9 @@ export function graphWithNumericConfig(
   };
 }
 
+/** One Set step: enough for Publish, which an empty draft keeps disabled. */
+export const oneStepGraph = graphWithNumericConfig({});
+
 export function graphWithMappingNodes(
   inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'] = {},
 ): WorkflowGraphContract {

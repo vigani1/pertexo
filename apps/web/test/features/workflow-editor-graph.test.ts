@@ -19,7 +19,10 @@ import {
   edgeWeaveOrder,
   upstreamEdgeIds,
 } from '@/features/workflow-editor/model/graph-order';
-import { groupStepChoices } from '@/features/workflow-editor/model/step-catalog';
+import {
+  groupStepChoices,
+  isStartTrigger,
+} from '@/features/workflow-editor/model/step-catalog';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -252,6 +255,18 @@ describe('editor graph commands', () => {
     expect(groups.map((group) => group.title)).toEqual(['Do something']);
     expect(groupStepChoices([definition], 'slack')[0]?.choices).toHaveLength(1);
     expect(groupStepChoices([definition], 'channel post')).toEqual([]);
+  });
+
+  it('starts drafts only with triggers that can be placed and published', () => {
+    const trigger = {
+      ...definition,
+      definition: { key: 'core.manual', version: 1 },
+      family: 'trigger',
+    } satisfies NodeDefinitionCatalogItem;
+    expect(isStartTrigger(trigger)).toBe(true);
+    expect(isStartTrigger({ ...trigger, publishable: false })).toBe(false);
+    expect(isStartTrigger({ ...trigger, available: false })).toBe(false);
+    expect(isStartTrigger(definition)).toBe(false);
   });
 });
 

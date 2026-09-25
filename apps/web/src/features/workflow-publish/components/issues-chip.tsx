@@ -14,17 +14,20 @@ import {
 import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import type { IssuesState } from '../model/issues-state';
+import type { EmptyDraftHint } from '../model/publish-readiness';
 import { countIssues } from '../model/workflow-issues';
 import type { WorkflowValidationTarget } from '../model/validation-target';
 import { IssuesList } from './issues-list';
 
 /**
  * The command bar's issue count. Opens the issues lens: findings grouped by
- * step, each with Fix, and a way to check again.
+ * step, each with Fix, and a way to check again. An empty draft says what to
+ * add first instead of claiming “No issues”, unless the server found some.
  */
 export function IssuesChip({
   state,
   graph,
+  emptyHint,
   open,
   onOpenChange,
   onCheckAgain,
@@ -32,6 +35,7 @@ export function IssuesChip({
 }: Readonly<{
   state: IssuesState;
   graph: WorkflowGraphContract;
+  emptyHint: EmptyDraftHint | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCheckAgain: () => void;
@@ -39,6 +43,7 @@ export function IssuesChip({
 }>) {
   const count =
     state.groups === undefined ? undefined : countIssues(state.groups);
+  const hint = count !== undefined && count > 0 ? undefined : emptyHint;
   // Fix moves focus to the field it names; the popover must not take it back.
   const fixing = useRef(false);
   return (
@@ -52,14 +57,24 @@ export function IssuesChip({
       <PopoverTrigger
         className={cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),
-          count === 0 && !state.stale && 'text-success hover:text-success',
+          count === 0 &&
+            !state.stale &&
+            hint === undefined &&
+            'text-success hover:text-success',
           count !== undefined &&
             count > 0 &&
             'text-destructive hover:text-destructive',
           state.stale && 'opacity-70',
         )}
       >
-        <ChipLabel state={state} count={count} />
+        {hint === undefined ? (
+          <ChipLabel state={state} count={count} />
+        ) : (
+          <>
+            <StatusGlyph tone="neutral" />
+            {hint.label}
+          </>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="end"
@@ -71,7 +86,9 @@ export function IssuesChip({
             ? 'Issues'
             : `${String(count)} ${count === 1 ? 'issue' : 'issues'}`}
         </PopoverTitle>
-        <PopoverDescription>{describeState(state, count)}</PopoverDescription>
+        <PopoverDescription>
+          {hint === undefined ? describeState(state, count) : hint.detail}
+        </PopoverDescription>
         {state.groups !== undefined && state.groups.length > 0 ? (
           <div className="mt-3 max-h-[50svh] overflow-y-auto pr-1">
             <IssuesList
@@ -85,19 +102,21 @@ export function IssuesChip({
             />
           </div>
         ) : null}
-        <div className="mt-4 flex justify-end">
-          <ProgressButton
-            type="button"
-            size="sm"
-            variant="outline"
-            pending={state.checking}
-            pendingLabel="Checking…"
-            icon={<RefreshCwIcon data-icon="inline-start" />}
-            onClick={onCheckAgain}
-          >
-            Check again
-          </ProgressButton>
-        </div>
+        {hint === undefined ? (
+          <div className="mt-4 flex justify-end">
+            <ProgressButton
+              type="button"
+              size="sm"
+              variant="outline"
+              pending={state.checking}
+              pendingLabel="Checking…"
+              icon={<RefreshCwIcon data-icon="inline-start" />}
+              onClick={onCheckAgain}
+            >
+              Check again
+            </ProgressButton>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

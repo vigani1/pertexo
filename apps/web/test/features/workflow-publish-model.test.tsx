@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
+import { emptyDraftHint } from '@/features/workflow-publish/model/publish-readiness';
 import { summarizePublish } from '@/features/workflow-publish/model/publish-summary';
 import {
   AUTO_VALIDATION_MIN_INTERVAL_MS,
@@ -216,6 +217,21 @@ describe('workflow issues', () => {
     ]);
     expect(groups[0]?.issues[1]?.message).toBe('Url is required.');
     expect(groups[2]?.issues[0]?.message).toMatch(/loop back on themselves/u);
+  });
+});
+
+describe('publish readiness', () => {
+  it('asks an empty draft for a first step, and leaves the rest to the server', () => {
+    expect(emptyDraftHint(graph([]), true)?.label).toBe(
+      'Add a trigger to start',
+    );
+    expect(emptyDraftHint(graph([]), false)).toMatchObject({
+      label: 'Add a step to start',
+      detail: expect.stringMatching(/No triggers are enabled/u) as unknown,
+    });
+    expect(emptyDraftHint(graph([node('a', 'core.set')]), true)).toBe(
+      undefined,
+    );
   });
 });
 
