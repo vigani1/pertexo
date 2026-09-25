@@ -42,7 +42,7 @@ function SpineLink({
       >
         {destination.icon}
         {destination.badge === undefined ? null : (
-          <span className="absolute -top-0.5 -right-1 rounded-sm bg-primary px-1 font-mono text-[0.6rem] leading-[0.85rem] font-bold text-primary-foreground shadow-[0_0_10px_var(--primary)]">
+          <span className="absolute -top-0.5 -right-1 rounded-sm bg-action px-1 font-mono text-[0.6rem] leading-[0.85rem] font-bold text-action-foreground">
             {formatBadge(destination.badge)}
           </span>
         )}

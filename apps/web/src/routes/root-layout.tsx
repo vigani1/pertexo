@@ -11,7 +11,7 @@ export function RootLayout() {
         <NavigationProgress />
         <a
           href="#main"
-          className="fixed top-4 left-4 z-60 -translate-y-16 rounded-md bg-primary p-3 text-primary-foreground opacity-0 transition-[transform,opacity] focus:translate-y-0 focus:opacity-100 motion-reduce:transition-none"
+          className="fixed top-4 left-4 z-60 -translate-y-16 rounded-md bg-action p-3 text-action-foreground opacity-0 transition-[transform,opacity] focus:translate-y-0 focus:opacity-100 motion-reduce:transition-none"
         >
           Skip to content
         </a>

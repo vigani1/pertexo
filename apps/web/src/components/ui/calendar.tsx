@@ -146,7 +146,7 @@ export function Calendar({
                         day === today &&
                           'text-accent-foreground underline decoration-primary/60 underline-offset-4',
                         day === value &&
-                          'bg-primary text-primary-foreground no-underline hover:bg-accent-foreground',
+                          'bg-action text-action-foreground no-underline hover:bg-action-hover',
                       )}
                       onClick={() => {
                         setFocused(day);

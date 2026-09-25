@@ -54,7 +54,7 @@ export function PublishedStamp({
         <>
           <p
             className={cn(
-              'rounded-lg bg-primary px-3.5 py-2.5 font-heading text-[0.95rem] font-semibold text-primary-foreground shadow-primary-lift',
+              'rounded-lg bg-action px-3.5 py-2.5 font-heading text-[0.95rem] font-semibold text-action-foreground shadow-action',
               !reducedMotion &&
                 'motion-safe:animate-[editor-stamp_2.6s_var(--ease-unspool)_both]',
             )}
