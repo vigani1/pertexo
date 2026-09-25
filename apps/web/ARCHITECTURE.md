@@ -625,6 +625,15 @@ unsupported node, resolve arbitrary remote schema references, execute
 schema-provided code or claim full semantic validation. Use catalog definition
 key/version/configVersion as renderer identity.
 
+The Schedule step's `oneOf` cron/interval config has one dedicated Setup builder
+(`workflow-editor/components/inspector/schedule`). It reads its bounds from that
+step's catalog schema, writes the step's own config shape, keeps a stored rule
+it can't write back exactly as a custom cron rule, and applies live like any
+other field. Its cron checks are advisory; the server parses the rule in its
+timezone. The preview sentence, DST and missed-run wording (ADR 014) come from
+the catalog feature's `schedule-sentence.ts`, shared with the published trigger
+cards. An unrecognised schedule schema falls back to JSON.
+
 The initial renderer provides advisory required/type feedback and preserves
 data; the backend validates the saved graph. A full browser JSON Schema
 validator is **not required for the first slice**. If later necessary, select it
@@ -656,6 +665,10 @@ resolving the previous outcome before issuing a new command.
    return domain commands; selection/measurement/viewport are not serialized.
    Node position is persisted. Deletion removes/repairs dependent graph
    references according to shared structural rules; it is one undoable command.
+   Quick add (a connection dropped on empty canvas, or “Add step after” on the
+   step's ⋯ menu) is likewise one command that adds the step and its connection.
+   A For each is projected as a container card around its structured body (ADR
+   020); the projection never changes the stored graph.
 5. The save coordinator captures `{graph}` and the last acknowledged ETag,
    validates structure and sends `PUT .../draft` with `If-Match`.
 6. The accepted response updates the acknowledged baseline/ETag. Edits made
@@ -727,6 +740,10 @@ Apply pending form changes and wait for the intended save before requesting a
 report; associate it with the requested local generation/revision and mark it
 stale if editing continues. Node preview supplies expectedRevision; whole-draft
 validation cannot be presented as proof about unsaved local data.
+
+An empty draft has nothing to check or publish: the issues chip names the first
+step to add and Publish stays disabled with that reason. That is client-side
+feedback only; once the draft has steps, server validation decides.
 
 Publish captures an acknowledged draft tag and a stable idempotency key. Retry
 the exact original command after uncertainty; do not silently publish later
