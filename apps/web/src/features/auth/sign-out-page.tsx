@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import { cn } from '@/lib/utils';
@@ -45,24 +47,28 @@ export function SignOutPage({
             >
               <h1
                 id="sign-out-title"
-                className="text-[1.875rem] leading-none font-semibold tracking-[-0.03em]"
+                className="font-display text-4xl leading-none"
               >
-                We couldn’t confirm sign-out
+                Sign-out didn’t finish
               </h1>
               <p role="alert" className="text-sm text-muted-foreground">
                 {error}
               </p>
-              <ProgressButton
-                type="button"
-                variant="primary"
-                size="lg"
-                className="mt-2 min-w-40"
-                pending={pending}
-                pendingLabel="Signing out…"
-                onClick={onRetry}
-              >
-                Try again
-              </ProgressButton>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                <ProgressButton
+                  type="button"
+                  variant="primary"
+                  className="min-w-32"
+                  pending={pending}
+                  pendingLabel="Signing out…"
+                  onClick={onRetry}
+                >
+                  Try again
+                </ProgressButton>
+                <Link to="/" className={buttonVariants({ variant: 'ghost' })}>
+                  Back to Pertexo
+                </Link>
+              </div>
             </section>
           ) : (
             <p

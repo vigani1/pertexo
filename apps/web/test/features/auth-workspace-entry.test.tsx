@@ -1271,7 +1271,7 @@ describe('authentication and workspace entry', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'We couldn’t confirm sign-out',
+        name: 'Sign-out didn’t finish',
       }),
     ).toBeVisible();
     expect(logoutRequests).toBe(1);
