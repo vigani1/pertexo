@@ -3,6 +3,8 @@
 - **Status:** accepted
 - **Date:** 2026-09-25
 - **Related:** ADR 004, ADR 038 (amended below), ADR 039, ADR 040
+- **Amended:** 2026-09-25 by [ADR 047](047-workspace-membership-lifecycle.md),
+  which adds `/w/{workspaceId}/team` to the return allowlist
 
 ## Context
 
