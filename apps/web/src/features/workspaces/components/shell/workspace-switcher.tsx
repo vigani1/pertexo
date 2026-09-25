@@ -59,7 +59,7 @@ export function WorkspaceSwitcher({
                 </span>
               </span>
               {candidate.id === workspace.id ? (
-                <CheckIcon aria-label="Current" className="text-primary" />
+                <CheckIcon aria-label="Current" className="text-action" />
               ) : null}
             </DropdownMenuLinkItem>
           ))}

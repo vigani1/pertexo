@@ -9,6 +9,7 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
 import { useLeaveWorkspaceCommand } from '../../mutations/use-leave-workspace-command';
+import { DangerAction } from './workspace-danger-zone';
 
 /**
  * Leave the workspace (ADR 047). The owner can't: they are told to make
@@ -41,15 +42,14 @@ export function WorkspaceLeave({
   const isOwner = !canLeaveWorkspace(workspace.role);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="max-w-xl">
-        <p className="text-sm font-semibold">Leave workspace</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isOwner
-            ? 'You’re the owner, so you can’t leave yet. Make another member the owner from Team, then leave.'
-            : 'Your access ends straight away. To come back, someone has to invite you again.'}
-        </p>
-      </div>
+    <DangerAction
+      title="Leave workspace"
+      description={
+        isOwner
+          ? 'You’re the owner, so you can’t leave yet. Make another member the owner from Team, then leave.'
+          : 'Your access ends straight away. To come back, someone has to invite you again.'
+      }
+    >
       {isOwner ? (
         <Link
           to="/w/$workspaceId/team"
@@ -93,6 +93,6 @@ export function WorkspaceLeave({
             : undefined
         }
       />
-    </div>
+    </DangerAction>
   );
 }

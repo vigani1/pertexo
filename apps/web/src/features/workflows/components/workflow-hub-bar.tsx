@@ -119,12 +119,13 @@ export function WorkflowHubBar({
               <h1 className={TITLE_CLASS}>{workflow.name}</h1>
             </WorkflowNameWithDialog>
           )}
-          <div className="flex min-w-0 items-center gap-2.5 font-mono text-[0.7rem] text-subtle-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
             {state === undefined ? null : (
               <Status tone={state.tone} className="font-sans text-[0.75rem]">
                 {state.label}
               </Status>
             )}
+            {detail}
             {/* Starting lasts until every trigger is ready; a webhook waits
                 for its endpoint, so say where to look. */}
             {workflow?.activationStatus === 'activating' &&
@@ -138,7 +139,6 @@ export function WorkflowHubBar({
                 Check triggers
               </Link>
             ) : null}
-            {detail}
           </div>
         </div>
       </div>

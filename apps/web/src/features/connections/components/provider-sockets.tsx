@@ -45,7 +45,7 @@ export function ProviderSockets({
             </span>
             <PlusIcon
               aria-hidden="true"
-              className="size-4 text-subtle-foreground transition-colors group-hover/socket:text-primary"
+              className="size-4 text-subtle-foreground transition-colors group-hover/socket:text-action"
             />
           </button>
         </li>

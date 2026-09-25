@@ -91,7 +91,7 @@ export function SelectItem({
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator
         render={
-          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center text-primary" />
+          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center text-action" />
         }
       >
         <CheckIcon className="size-4" />

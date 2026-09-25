@@ -10,7 +10,7 @@ export function RunLink({
     <Link
       to="/w/$workspaceId/runs/$runId"
       params={{ workspaceId, runId }}
-      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+      className="mt-1 inline-flex w-fit items-center gap-1 text-xs inline-link"
     >
       Open run
       <ArrowRightIcon aria-hidden="true" className="size-3" />
