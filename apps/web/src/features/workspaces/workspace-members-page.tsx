@@ -23,7 +23,11 @@ import { InviteLens } from './components/invitations/invite-lens';
 import { MembersPanel } from './components/members/members-panel';
 import { RolesMatrix } from './components/members/roles-matrix';
 import type { TeamSearch } from './model/team-search';
-import { assignableRoles } from './model/workspace-roles';
+import {
+  assignableRoles,
+  roleLimitSentence,
+  type WorkspaceRole,
+} from './model/workspace-roles';
 import { useInvitationCommand } from './mutations/use-invitation-command';
 import {
   workspaceInvitationsInfiniteQueryOptions,
@@ -34,13 +38,18 @@ type AccessLoss = 'authentication' | 'permission';
 
 /** Why the page can't show the team, if it can't. */
 function blockedCopy(
+  role: WorkspaceRole,
   canRead: boolean,
   losses: readonly (AccessLoss | undefined)[],
 ): Readonly<{ title: string; description: string }> | undefined {
   if (!canRead)
     return {
       title: 'Workspace members are unavailable',
-      description: 'Your role can’t see who’s in this workspace.',
+      description: roleLimitSentence(
+        role,
+        'member:read',
+        'see who’s in this workspace',
+      ),
     };
   if (losses.includes('authentication'))
     return {
@@ -168,7 +177,7 @@ export function WorkspaceMembersPage({
     invitations.isError ? lossOf(invitations.error, true) : undefined,
   ];
 
-  const blocked = blockedCopy(canRead, losses);
+  const blocked = blockedCopy(workspace.role, canRead, losses);
   if (blocked !== undefined)
     return <UnavailablePage heading="Team" {...blocked} />;
 

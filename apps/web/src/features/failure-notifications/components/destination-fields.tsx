@@ -111,48 +111,42 @@ export function DestinationFields({
         }
         error={validation.error('connection')}
         thread={validation.thread('connection')}
+        // Beside the label, so the validation thread sits under the Select.
+        labelAction={
+          <Link
+            to="/w/$workspaceId/connections"
+            params={{ workspaceId }}
+            search={{ add: values.kind }}
+            className={buttonVariants({ variant: 'link', size: 'sm' })}
+          >
+            <PlusIcon data-icon="inline-start" aria-hidden="true" />
+            New {KIND_WORDS[values.kind]} connection
+          </Link>
+        }
       >
         {(control) => (
-          <div className="flex flex-col gap-2">
-            <Select
-              value={values.connectionId}
-              disabled={disabled}
-              items={usable.map((connection) => ({
-                value: connection.id,
-                label: connection.name,
-              }))}
-              onValueChange={(connectionId: string | null) => {
-                update({ ...values, connectionId }, 'connection');
-              }}
-            >
-              <SelectTrigger
-                {...control}
-                ref={validation.register('connection')}
-              >
-                <SelectValue placeholder="Choose a connection" />
-              </SelectTrigger>
-              <SelectContent>
-                {usable.map((connection) => (
-                  <SelectItem key={connection.id} value={connection.id}>
-                    {connection.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Link
-              to="/w/$workspaceId/connections"
-              params={{ workspaceId }}
-              search={{ add: values.kind }}
-              className={buttonVariants({
-                variant: 'link',
-                size: 'sm',
-                className: 'self-start',
-              })}
-            >
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-              New {KIND_WORDS[values.kind]} connection
-            </Link>
-          </div>
+          <Select
+            value={values.connectionId}
+            disabled={disabled}
+            items={usable.map((connection) => ({
+              value: connection.id,
+              label: connection.name,
+            }))}
+            onValueChange={(connectionId: string | null) => {
+              update({ ...values, connectionId }, 'connection');
+            }}
+          >
+            <SelectTrigger {...control} ref={validation.register('connection')}>
+              <SelectValue placeholder="Choose a connection" />
+            </SelectTrigger>
+            <SelectContent>
+              {usable.map((connection) => (
+                <SelectItem key={connection.id} value={connection.id}>
+                  {connection.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </LabelledField>
       <LabelledField

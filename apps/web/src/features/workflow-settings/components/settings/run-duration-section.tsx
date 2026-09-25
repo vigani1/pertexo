@@ -25,6 +25,7 @@ import { visibleSettingsData } from '../../model/settings-query';
 import { useRunDurationChange } from '../../mutations/use-run-duration-change';
 import { workflowVersionsQueryOptions } from '../../workflow-settings.queries';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 function choicesWith(current: number): readonly number[] {
   return RUN_DURATION_CHOICES.includes(current)
@@ -60,7 +61,6 @@ export function RunDurationSection({
   const workflowId = workflow?.id;
   const canUpdate = workspace.capabilities.includes('workflow:update');
   const archived = workflow?.lifecycleStatus === 'archived';
-  const canEdit = canUpdate && !archived;
   const notifications = useNotifications();
   const draft = useQuery({
     ...workflowDraftQueryOptions(
@@ -122,7 +122,16 @@ export function RunDurationSection({
       description="How long a run may take before Pertexo stops it, up to 1 hour."
     >
       <SettingsQueryState query={draft} resource="The draft" />
-      {draftMs === undefined ? null : (
+      {draftMs === undefined ? null : !canUpdate ? (
+        <p className="text-sm text-muted-foreground">
+          Runs stop after {describeRunDuration(draftMs)} in the draft.{' '}
+          {roleLimitSentence(
+            workspace.role,
+            'workflow:update',
+            'change how long runs may take',
+          )}
+        </p>
+      ) : (
         <Field>
           <FieldLabel id="run-duration-label">Maximum run duration</FieldLabel>
           <div className="flex flex-wrap items-center gap-3">
@@ -132,7 +141,7 @@ export function RunDurationSection({
                 label: describeRunDuration(choice),
               }))}
               value={String(draftMs)}
-              disabled={!canEdit || change.pending}
+              disabled={archived || change.pending}
               onValueChange={(value) => {
                 if (typeof value === 'string') void choose(Number(value));
               }}
@@ -163,11 +172,9 @@ export function RunDurationSection({
             ) : null}
           </div>
           <FieldDescription id="run-duration-note">
-            {!canUpdate
-              ? 'Your role can’t change this. Builders, admins and owners can.'
-              : archived
-                ? 'Restore the workflow to change this.'
-                : publishNote(draftMs, live)}
+            {archived
+              ? 'Restore the workflow to change this.'
+              : publishNote(draftMs, live)}
           </FieldDescription>
         </Field>
       )}

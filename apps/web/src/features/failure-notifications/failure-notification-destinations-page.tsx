@@ -25,6 +25,7 @@ import { destinationEditMutationKey } from './failure-notifications.mutations';
 import { failureNotificationDestinationsQueryOptions } from './failure-notifications.queries';
 import { destinationChannels } from './model/channel-names';
 import { useSlackChannelNames } from './use-slack-channel-names';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 type Lens = Readonly<{
   open: boolean;
@@ -87,7 +88,11 @@ export function FailureNotificationDestinationsPage({
       <UnavailablePage
         heading="Alerts"
         title="Alerts are unavailable"
-        description="Your role can’t manage alerts. Builders, admins and owners can."
+        description={roleLimitSentence(
+          workspace.role,
+          'workflow:update',
+          'manage alerts',
+        )}
       />
     );
   if (destinations.isError && isHidden(destinations.error))

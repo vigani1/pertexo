@@ -115,6 +115,7 @@ export function SignInLens({
             pending={signIn.pending}
             pendingLabel="Signing in…"
             submitLabel="Sign in"
+            submitKey="↵"
             waitSeconds={signIn.waitSeconds}
             onSubmit={() => void submit()}
           >

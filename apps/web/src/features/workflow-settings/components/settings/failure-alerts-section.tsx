@@ -31,6 +31,7 @@ import { visibleSettingsData } from '../../model/settings-query';
 import { failureNotificationPolicyQueryOptions } from '../../workflow-settings.queries';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
 import { CurrentAlertDestination } from './current-alert-destination';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
@@ -143,8 +144,11 @@ export function FailureAlertsSection({
     >
       {!canSet ? (
         <p className="text-sm text-muted-foreground">
-          Your role can’t change failure alerts. Builders, admins and owners
-          can.
+          {roleLimitSentence(
+            workspace.role,
+            'workflow:update',
+            'change failure alerts',
+          )}
         </p>
       ) : (
         <>

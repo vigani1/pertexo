@@ -42,7 +42,8 @@ function ProductFacts() {
       className="relative z-10 px-6 pt-4 pb-12 min-[900px]:absolute min-[900px]:bottom-11 min-[900px]:left-11 min-[900px]:max-w-[min(32.5rem,calc(100vw-34.5rem))] min-[900px]:p-0"
     >
       <p className="font-display text-[clamp(2.25rem,4.4vw,3.625rem)] leading-[0.92] tracking-[-0.04em] text-balance [--display-optical-size:96] [--display-width:74%]">
-        Workflows that finish what they start.
+        Workflows that <span className="text-primary">finish</span> what they
+        start.
       </p>
       <ul className="mt-5 grid gap-2.5 font-mono text-[0.78rem] leading-snug text-muted-foreground">
         {FACTS.map((fact) => (

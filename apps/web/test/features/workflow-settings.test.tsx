@@ -378,11 +378,11 @@ describe('workflow settings tab', () => {
     });
     expect(archive).toBeDisabled();
     expect(archive).toHaveAccessibleDescription(
-      /need permission to publish workflows/u,
+      /can’t archive or restore workflows\. Builders and admins can\./u,
     );
     expect(
       within(region('Failure alerts')).getByText(
-        /Your role can’t change failure alerts/u,
+        /can’t change failure alerts\. Builders and admins can\./u,
       ),
     ).toBeVisible();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();

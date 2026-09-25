@@ -19,14 +19,17 @@ import {
   type SettingsQuery,
 } from '../../model/settings-query';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 /** Where the workflow is now, what archiving or restoring does, and the button. */
 function LifecycleCard({
   workflow,
+  role,
   canManage,
   onStart,
 }: Readonly<{
   workflow: WorkflowSummary;
+  role: AccessibleWorkspace['role'];
   canManage: boolean;
   onStart: () => void;
 }>) {
@@ -68,8 +71,11 @@ function LifecycleCard({
             id="lifecycle-permission"
             className="text-xs text-subtle-foreground"
           >
-            Archiving and restoring need permission to publish workflows. Ask an
-            admin or owner.
+            {roleLimitSentence(
+              role,
+              'workflow:publish',
+              'archive or restore workflows',
+            )}
           </p>
         )}
       </div>
@@ -108,6 +114,7 @@ export function LifecycleSection({
       {workflow === undefined ? null : (
         <LifecycleCard
           workflow={workflow}
+          role={workspace.role}
           canManage={canManage}
           onStart={() => {
             setIntent(lifecycleIntentFor(workflow));

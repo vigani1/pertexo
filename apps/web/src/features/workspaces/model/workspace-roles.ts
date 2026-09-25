@@ -95,6 +95,52 @@ export const ROLE_MATRIX: readonly Readonly<{
   },
 ];
 
+// Capabilities the matrix doesn't draw as a row of their own.
+const UNLISTED_CAPABILITY_ROLES: Readonly<
+  Partial<Record<Capability, readonly WorkspaceRole[]>>
+> = {
+  'artifact:upload': ['owner', 'admin', 'builder', 'operator'],
+  'connection:use': ['owner', 'admin', 'builder', 'operator'],
+  'member:read': ['owner', 'admin'],
+};
+
+/** The roles that hold a capability, most powerful first like the matrix. */
+export function rolesAllowedTo(
+  capability: Capability,
+): readonly WorkspaceRole[] {
+  const row = ROLE_MATRIX.find((candidate) =>
+    candidate.capabilities.includes(capability),
+  );
+  return row?.roles ?? UNLISTED_CAPABILITY_ROLES[capability] ?? ['owner'];
+}
+
+const ROLE_PLURALS: Readonly<Record<WorkspaceRole, string>> = {
+  owner: 'owners',
+  admin: 'admins',
+  builder: 'builders',
+  operator: 'operators',
+  viewer: 'viewers',
+};
+
+/**
+ * A forbidden state in words: the person's role, what it can't do and who
+ * can, e.g. "Your role (Operator) can’t manage connections. Admins and
+ * owners can."
+ */
+export function roleLimitSentence(
+  role: WorkspaceRole,
+  capability: Capability,
+  action: string,
+): string {
+  const allowed = [...rolesAllowedTo(capability)]
+    .filter((candidate) => candidate !== role)
+    .reverse()
+    .map((candidate) => ROLE_PLURALS[candidate]);
+  const last = allowed.pop() ?? 'owners';
+  const who = allowed.length === 0 ? last : `${allowed.join(', ')} and ${last}`;
+  return `Your role (${ROLE_NAMES[role]}) can’t ${action}. ${who.charAt(0).toUpperCase()}${who.slice(1)} can.`;
+}
+
 const DELEGATED_ROLES = [
   'builder',
   'operator',

@@ -168,7 +168,7 @@ export function RunHistoryPage({
           />
         </>
       ) : (
-        <RunsForbidden />
+        <RunsForbidden role={workspace.role} />
       )}
     </div>
   );
