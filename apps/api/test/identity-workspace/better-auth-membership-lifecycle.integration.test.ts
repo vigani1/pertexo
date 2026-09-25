@@ -24,7 +24,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       browser: Browser,
       url: string,
       payload: object,
-      key = randomUUID(),
+      key: string = randomUUID(),
     ) {
       return send('POST', url, {
         browser,
