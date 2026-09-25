@@ -33,7 +33,7 @@ function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {
     <Toast.Root
       toast={toast}
       className={cn(
-        'lens group/toast relative grid w-full grid-cols-[1rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-lg py-3 pr-2.5 pl-3 text-sm outline-none',
+        'popup-lens group/toast relative grid w-full grid-cols-[1rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-lg py-3 pr-2.5 pl-3 text-sm outline-none',
         'transition-[opacity,transform] duration-300 ease-unspool data-ending-style:translate-x-6 data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-3 data-starting-style:opacity-0 motion-reduce:transition-none',
         toast.type === 'loading' && 'live-edge',
         toast.type === 'error' && 'ring-1 ring-destructive/30',
