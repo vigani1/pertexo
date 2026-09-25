@@ -19,6 +19,7 @@ import {
   type GraphLevel,
   type WorkflowNode,
 } from '../../model/graph-scopes';
+import { isSlackStep } from '../../model/slack-channel';
 import { createScratchTracker } from '../../use-live-field';
 import { AboutTab } from './about-tab';
 import { InputsTab } from './inputs-tab';
@@ -26,6 +27,10 @@ import { InspectorHeader, type StepMenuActions } from './inspector-header';
 import { LoopBodySection } from './loop-body-section';
 import { fieldControlId, type NodeFormApi } from '../../model/node-form';
 import { SetupTab } from './setup-tab';
+import {
+  SlackChannelField,
+  type ChannelLookupScope,
+} from './slack-channel-field';
 
 export type NodeInspectorActions = StepMenuActions &
   Readonly<{
@@ -51,6 +56,7 @@ export function NodeInspector({
   definition,
   definitions,
   connections,
+  channelLookup,
   workspaceId,
   editable,
   tab,
@@ -67,6 +73,7 @@ export function NodeInspector({
   definition: NodeDefinitionCatalogItem | undefined;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
+  channelLookup: ChannelLookupScope;
   workspaceId: string;
   editable: boolean;
   tab: InspectorTab;
@@ -163,6 +170,13 @@ export function NodeInspector({
                 workspaceId={workspaceId}
                 form={form}
               />
+              {isSlackStep(node) ? (
+                <SlackChannelField
+                  node={node}
+                  form={form}
+                  lookup={channelLookup}
+                />
+              ) : null}
             </div>
           </TabsContent>
           <TabsContent value="inputs" keepMounted>

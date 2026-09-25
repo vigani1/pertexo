@@ -10,6 +10,7 @@ import { locateStep } from '../../model/graph-scopes';
 import type { EditorFocusTarget } from '../../use-editor-actions';
 import type { InspectorTab } from '../../use-inspector-navigation';
 import { NodeInspector, type NodeInspectorActions } from './node-inspector';
+import type { ChannelLookupScope } from './slack-channel-field';
 
 /**
  * What the inspector lens shows for the current selection: one step's
@@ -18,6 +19,7 @@ import { NodeInspector, type NodeInspectorActions } from './node-inspector';
 export function InspectorPanel({
   definitions,
   connections,
+  channelLookup,
   workspaceId,
   editable,
   scratchVersion,
@@ -31,6 +33,7 @@ export function InspectorPanel({
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
+  channelLookup: ChannelLookupScope;
   workspaceId: string;
   editable: boolean;
   scratchVersion: number;
@@ -60,6 +63,7 @@ export function InspectorPanel({
         definition={definition}
         definitions={definitions}
         connections={connections}
+        channelLookup={channelLookup}
         workspaceId={workspaceId}
         editable={editable}
         tab={tab}
