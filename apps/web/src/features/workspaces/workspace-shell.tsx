@@ -26,8 +26,8 @@ type WorkspaceShellProps = Readonly<{
   workspaces: readonly AccessibleWorkspace[];
   /** Running plus waiting runs; undefined when the role can't read runs. */
   liveRunCount: number | undefined;
-  /** Page names after the workspace in the breadcrumb, outermost first. */
-  crumbs: readonly string[];
+  /** Steps after the workspace in the breadcrumb, outermost first. */
+  crumbs: readonly Readonly<{ key: string; label: ReactNode }>[];
   logoutPending: boolean;
   onLogout: () => void;
   onOpenSearch: () => void;
@@ -82,7 +82,7 @@ export function WorkspaceShell({
               </li>
               {crumbs.map((crumb, index) => (
                 <li
-                  key={`${crumb}-${String(index)}`}
+                  key={crumb.key}
                   className="flex min-w-0 items-center gap-2"
                   {...(index === crumbs.length - 1
                     ? { 'aria-current': 'page' as const }
@@ -91,7 +91,7 @@ export function WorkspaceShell({
                   <span aria-hidden="true" className="opacity-40">
                     /
                   </span>
-                  <span className="truncate">{crumb}</span>
+                  <span className="truncate">{crumb.label}</span>
                 </li>
               ))}
             </ol>

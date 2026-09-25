@@ -1189,7 +1189,14 @@ support reference helpers), `use-prefers-reduced-motion.ts`,
   inside the frame for missing runs or workflows; their loaders use
   `prefetchResource` (`routes/route-context.ts`), which turns a 404 into
   `{ found: false }`, and the hub asks only whether its workflow exists
-  (`probeResource`).
+  (`probeResource`). Every error page keeps the shell: a missing workflow
+  renders `WorkspaceShellFrame` (`routes/workspace-shell-route.tsx`) around its
+  not-found state, and any other unmatched address under a workspace hits a
+  catch-all child that throws `notFound()`, which the shell route's
+  `notFoundComponent` (`ShellNotFound`) renders with Go home and Search.
+- Breadcrumbs come from `useShellCrumbs` (`routes/breadcrumbs.tsx`): a page's
+  `staticData.crumb`, or for a run the trail “Runs / <workflow> / <short ID>”
+  from the run loader's data, each step linking back up.
 - Loading: every other loader warms its queries with `warmPrefetches` and
   returns at once, so navigation never waits for list data; each block shows its
   own skeleton. A warmed read that meets an expired session calls the router

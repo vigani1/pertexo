@@ -13,7 +13,11 @@ import {
   statisticsHandler,
 } from '../support/run-fixtures';
 
-const { workspace: workspaceId, firstRun: runId } = fixtureIds;
+const {
+  workspace: workspaceId,
+  firstRun: runId,
+  workflow: workflowId,
+} = fixtureIds;
 const readerCapabilities = ['workspace:read', 'run:read', 'workflow:read'];
 
 function unauthenticated() {
@@ -130,6 +134,45 @@ describe('route loading', () => {
     expect(
       screen.getByRole('navigation', { name: 'Breadcrumb' }),
     ).toBeVisible();
+  });
+
+  it('keeps the shell around an address that leads nowhere', async () => {
+    mockServer.use(...identityHandlers(readerCapabilities));
+    renderApp(`/w/${workspaceId}/nowhere/at-all`);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'This page doesn’t exist' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go home' })).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}`,
+    );
+    expect(
+      screen.getByRole('navigation', { name: 'Breadcrumb' }),
+    ).toBeVisible();
+  });
+
+  it('shows a missing workflow inside the shell, not the hub', async () => {
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      http.get(`${apiBase}/workflows/${workflowId}`, notFoundProblem),
+      http.get(`${apiBase}/workflows/${workflowId}/draft`, notFoundProblem),
+    );
+    renderApp(`/w/${workspaceId}/workflows/${workflowId}`);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'This workflow doesn’t exist' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    const trail = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(trail).getByRole('link', { name: 'Workflows' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
   });
 
   it('keeps a workspace the person cannot open out of the shell', async () => {

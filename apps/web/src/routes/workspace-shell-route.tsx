@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useEffectEvent, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Outlet, useMatches } from '@tanstack/react-router';
+import { Outlet } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { liveRunCountQueryOptions } from '@/features/workflow-runs/queries.public';
 import { rememberLastWorkspace } from '@/features/workspaces/last-workspace.public';
 import { WorkspaceShell } from '@/features/workspaces/public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
+import { useShellCrumbs, type Crumb } from './breadcrumbs';
 import { CommandPaletteContext } from './command-palette-context';
 import { useLogout } from './use-logout';
 import { useWorkspaceScope } from './use-workspace-scope';
@@ -31,7 +38,15 @@ function useCommandShortcut(onOpen: () => void) {
   }, []);
 }
 
-export function WorkspaceShellRoute() {
+/**
+ * The spine, breadcrumb, banners and ⌘K around a workspace page. Pages under
+ * the shell route get it from the layout; a page outside it (a missing
+ * workflow) renders it around itself with its own `crumbs`.
+ */
+export function WorkspaceShellFrame({
+  crumbs,
+  children,
+}: Readonly<{ crumbs?: readonly Crumb[]; children: ReactNode }>) {
   const { apiClient, user, workspace } = useWorkspaceScope();
   const notifications = useNotifications();
   const logout = useLogout(apiClient, {
@@ -51,12 +66,7 @@ export function WorkspaceShellRoute() {
     ...liveRunCountQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadRuns,
   });
-  const crumbs = useMatches({
-    select: (matches) =>
-      matches.flatMap((match) =>
-        match.staticData.crumb === undefined ? [] : [match.staticData.crumb],
-      ),
-  });
+  const routeCrumbs = useShellCrumbs(workspace);
 
   // Stable, so pages that receive it through context don't re-render.
   const openSearch = useCallback(() => {
@@ -74,13 +84,13 @@ export function WorkspaceShellRoute() {
       workspace={workspace}
       workspaces={workspaces.data ?? [workspace]}
       liveRunCount={canReadRuns ? liveRunCount.data : undefined}
-      crumbs={crumbs.filter((crumb) => crumb !== 'Home')}
+      crumbs={crumbs ?? routeCrumbs}
       logoutPending={logout.pending}
       onLogout={logout.requestLogout}
       onOpenSearch={openSearch}
     >
       <CommandPaletteContext value={openSearch}>
-        <Outlet />
+        {children}
       </CommandPaletteContext>
       <WorkspaceCommandPalette
         open={searchOpen}
@@ -89,5 +99,13 @@ export function WorkspaceShellRoute() {
         onLogout={logout.requestLogout}
       />
     </WorkspaceShell>
+  );
+}
+
+export function WorkspaceShellRoute() {
+  return (
+    <WorkspaceShellFrame>
+      <Outlet />
+    </WorkspaceShellFrame>
   );
 }
