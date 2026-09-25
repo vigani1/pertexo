@@ -22,9 +22,11 @@ export function LoomRunList({
           aria-hidden="true"
           className="size-3.5 transition-transform group-open:rotate-180"
         />
-        List the {String(model.runCount)} runs on this timeline
+        {model.runCount === 1
+          ? 'List the run on this timeline'
+          : `List the ${String(model.runCount)} runs on this timeline`}
         {model.hiddenLaneCount > 0
-          ? ` (and ${String(model.hiddenLaneCount)} more workflows not drawn)`
+          ? ` (and ${String(model.hiddenLaneCount)} more ${model.hiddenLaneCount === 1 ? 'workflow' : 'workflows'} not drawn)`
           : ''}
       </summary>
       <div className="mt-3 grid gap-5 sm:grid-cols-2">
