@@ -11,7 +11,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import type { FailureNotificationDestinationList } from '../failure-notifications.api';
 import type { ChannelNames } from '../model/channel-names';
 import type { DestinationMutationScope } from '../failure-notifications.mutations';
@@ -43,9 +43,7 @@ export function DestinationCollection({
     return (
       <Empty>
         <EmptyTitle>Alert destinations couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>
-          {describeReadError(query.error, 'Alert destinations')}
-        </EmptyDescription>
+        <EmptyDescription>{readFailureReason(query.error)}</EmptyDescription>
         <EmptyActions>
           <Button
             type="button"

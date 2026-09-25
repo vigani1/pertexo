@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { describeReadError, isNotFound } from '@/lib/api/api-error-copy';
+import { isNotFound, readFailureReason } from '@/lib/api/api-error-copy';
 import { AddConnectionSheet } from './components/add-connection/add-connection-sheet';
 import { ConnectionCollection } from './components/connection-collection';
 import { ConnectionDetailSheet } from './components/detail/connection-detail-sheet';
@@ -101,7 +101,7 @@ function ConnectionsBody({
       <Empty>
         <EmptyTitle>Connections couldn’t be loaded</EmptyTitle>
         <EmptyDescription>
-          {describeReadError(connections.error, 'Connections')}
+          {readFailureReason(connections.error)}
         </EmptyDescription>
         <EmptyActions>
           <Button

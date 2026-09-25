@@ -17,7 +17,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import type { InvitationCommand } from '../../mutations/use-invitation-command';
 import {
   InvitationActionDialog,
@@ -75,9 +75,7 @@ export function InvitationsPanel({
     return (
       <Empty>
         <EmptyTitle>Invitations couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>
-          {describeReadError(query.error, 'Invitations')}
-        </EmptyDescription>
+        <EmptyDescription>{readFailureReason(query.error)}</EmptyDescription>
         <EmptyActions>
           <Button
             type="button"

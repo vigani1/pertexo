@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import { MemberManagement } from './member-management';
 
 type MembersQuery = UseInfiniteQueryResult<
@@ -48,9 +48,7 @@ export function MembersPanel({
     return (
       <Empty>
         <EmptyTitle>Members couldn’t be loaded</EmptyTitle>
-        <EmptyDescription>
-          {describeReadError(query.error, 'Members')}
-        </EmptyDescription>
+        <EmptyDescription>{readFailureReason(query.error)}</EmptyDescription>
         <EmptyActions>
           <Button
             type="button"
