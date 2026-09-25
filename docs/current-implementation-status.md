@@ -35,6 +35,13 @@ with migrations `0110` and `0111`. Their contract, database, API and web
 evidence is recorded in the
 [web architecture plan](../apps/web/ARCHITECTURE.md#implemented-slice-member-removal-display-names-and-return-paths).
 
+The membership lifecycle follow-up (2026-09-25) lets members leave a workspace,
+lets owners and admins suspend and reactivate members, and lets the owner hand
+the workspace to another member from a fresh sign-in
+([ADR 047](./adr/047-workspace-membership-lifecycle.md)), with migrations
+`0116`–`0118`. Its evidence is in the
+[web architecture plan](../apps/web/ARCHITECTURE.md#implemented-slice-leaving-suspension-and-ownership-transfer).
+
 ## Open production evidence
 
 - AWS IAM admission, immutable image/task invocation, versioned tenant buckets,

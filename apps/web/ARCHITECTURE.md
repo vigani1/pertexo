@@ -2221,7 +2221,8 @@ capability. Proposed route: `GET /v1/workspaces/:workspaceId/runs`.
 #### 4. Workspace administration: separate existing reads from new authority
 
 Existing APIs include workspace discovery, member listing, existing-member role
-changes and removal (ADR 037, ADR 042), workspace creation, deletion
+changes and removal (ADR 037, ADR 042), leaving a workspace, suspension,
+reactivation and ownership transfer (ADR 047), workspace creation, deletion
 request/cancel and lifecycle-operation reads. Invitation management and
 recipient-bound acceptance are implemented under ADR 038 and, for deployments
 whose only session authority is Better Auth, ADR 043; production provider
@@ -2508,8 +2509,65 @@ suites below are its evidence.
   the existing OIDC real-API and Better Auth suites. Web component coverage:
   `workspace-member-removal`, `account-profile`, `invitation-session-acceptance`
   and `sign-in-return-path`.
-- **Not included:** leaving a workspace, suspension, ownership transfer, avatars
-  or other profile fields, and a sign-up name limit matching the profile limit.
+- **Not included:** avatars or other profile fields, and a sign-up name limit
+  matching the profile limit. Leaving, suspension and ownership transfer
+  followed in the next slice.
+
+#### Implemented slice: leaving, suspension and ownership transfer
+
+**Status:** implemented and locally verified on 2026-09-25 under
+[ADR 047](../../docs/adr/047-workspace-membership-lifecycle.md). Playwright
+journeys were not run for this slice; the component, database and real-API
+suites below are its evidence.
+
+- **Backend.** Four commands reuse the ADR 037/042 member-command path, now one
+  shared `executeMemberCommand` runner (workspace-first lock, actor admission
+  under lock, receipt replay and completion) that role change and removal also
+  use. `POST /v1/workspaces/{workspaceId}/leave` (`workspace:read`, strict empty
+  body), `…/members/{userId}/suspend` and `…/reactivate` (`member:manage`,
+  `{ expectedRoleRevision }`) and `…/members/{userId}/transfer-ownership`
+  (`workspace:manage`, `{ expectedRoleRevision, expectedOwnerRoleRevision }`),
+  all `ordinary_mutation` with CSRF and `Idempotency-Key`. Each commits the
+  membership change, its revision, one audit fact, a receipt in its own
+  forced-RLS table (migrations `0116`–`0118`) and session revocation together.
+  Leaving and suspension end the affected person's sessions, reactivation too (a
+  privilege change), and a transfer ends both people's sessions after demoting
+  the owner to admin before promoting the target, so the single-owner index
+  holds throughout. Transfers need a sign-in from the last five minutes
+  (`403 auth.session_not_fresh`); a member in the wrong state is
+  `409 workspace.member_status_conflict`.
+- **Team.** Row actions: Make owner… (owners, to active members), Suspend… or
+  Reactivate… (the removal rules) and Remove. Suspended members read as
+  suspended at every width. Every command uses `MemberCommandDialog`, the shared
+  `ConfirmDialog` bound to the member it is about, with its consequences, a
+  success toast and the exact retry of `useMemberCommand`. A transfer that needs
+  a fresh sign-in keeps the dialog open with "Sign in again", which comes back
+  to Team (`/w/{workspaceId}/team` joins the ADR 043 return allowlist). After a
+  transfer the previous owner sees that their session ended.
+- **Settings.** The danger zone holds Leave workspace for everyone but the
+  owner, who is told to make another member the owner first. Leaving lists its
+  consequences, retries exactly, clears the local session view and goes to the
+  workspace picker, which asks for a sign-in first because every session of the
+  person has ended. A `401` after an unconfirmed leave counts as having left.
+- **Copy.** The roles matrix row and role summaries now say the owner renames,
+  deletes and hands over the workspace; the matrix still derives from
+  `workspace-policy.ts`, and a test pins the new suspension, transfer and leave
+  helpers to it.
+- **Evidence.** Contract tests; database policy tests and the disposable
+  PostgreSQL suite `identity-workspace-membership-lifecycle` (leave, suspend and
+  reactivate matrix, blocked access while suspended, status conflicts, exact and
+  concurrent retries, rollback, concurrent transfers keeping one owner), with
+  the removal and role suites and the full database integration run still
+  passing; API unit tests for the controller, freshness, error mapping and
+  capabilities; the Better Auth-only real-API suite
+  `better-auth-membership-lifecycle` (CSRF, strict bodies, stale revisions,
+  replay, freshness, next-request `401`); web component suites
+  `workspace-member-lifecycle` and `workspace-leave`.
+- **Not included:** a "Leave workspace" item in the account menu. The account
+  menu holds person-wide actions (account, sign out) on every page, while
+  leaving is a per-workspace destructive command with its own confirmation
+  state; Settings is one click away in the spine for every role. Also out of
+  scope: suspension with an end date, several owners and bulk commands.
 
 #### Implemented slice: workspace invitations
 

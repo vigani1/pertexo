@@ -190,8 +190,9 @@ existing authentication/rate limits, bounded public projections, authorization,
 RLS, generated contracts, and deterministic catalog selection. They do not add
 profile administration, invitations, membership mutation, connection
 credentials, or a second connection resource. Later identity slices add role
-changes and removal (ADR 037, ADR 042), invitations (ADR 038) and the
-signed-in person's own display-name change (ADR 043).
+changes and removal (ADR 037, ADR 042), invitations (ADR 038), the
+signed-in person's own display-name change (ADR 043), and leaving,
+suspension, reactivation and ownership transfer (ADR 047).
 
 ## Weft follow-up reads: delivery log and Slack channel names
 
