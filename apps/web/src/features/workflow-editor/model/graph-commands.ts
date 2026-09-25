@@ -1,7 +1,13 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { Connection } from '@xyflow/react';
-import { settleBodyLayout, STEP_CARD } from './body-layout';
+import {
+  cardSize,
+  makeRoomAround,
+  overlaps,
+  settleBodyLayout,
+  STEP_CARD,
+} from './body-layout';
 import {
   canConnectSteps,
   emptyLoopStructure,
@@ -137,17 +143,26 @@ export function addBodyStep(
         }))
       : graph;
   const bodyScope = [...loopScope, loopId];
+  let added: WorkflowGraphContract | null;
   if (from !== undefined) {
     const fromScope = scopeOf(withBody, from.nodeId);
-    return fromScope !== undefined && sameScope(fromScope, bodyScope)
-      ? addStepAfter(withBody, definition, position, from, ids)
-      : null;
+    added =
+      fromScope !== undefined && sameScope(fromScope, bodyScope)
+        ? addStepAfter(withBody, definition, position, from, ids)
+        : null;
+  } else {
+    const node = newStep(definition, position, ids.nodeId);
+    added = changeLevel(withBody, bodyScope, (level) => ({
+      ...level,
+      nodes: [...level.nodes, node],
+    }));
   }
-  const node = newStep(definition, position, ids.nodeId);
-  return changeLevel(withBody, bodyScope, (level) => ({
-    ...level,
-    nodes: [...level.nodes, node],
-  }));
+  // The container grew around its new step: move what it would now cover.
+  return added === null
+    ? null
+    : changeLevel(added, loopScope, (level) =>
+        makeRoomAround(level, loopId, loop),
+      );
 }
 
 export function moveWorkflowNode(
@@ -411,20 +426,30 @@ export function positionAfter(
   return { x: node.position.x + width + 64, y: node.position.y };
 }
 
-const CARD_CLEARANCE = 40;
-const NUDGE = 32;
+/** Space kept between a new step and the cards around it. */
+const GUTTER = 24;
 
-/** The nearest spot at or below-right of `desired` no step on `level` uses. */
+/**
+ * Where a new step can go at `desired` without covering another step: the
+ * same column, moved down below whatever card is in the way (a second
+ * branch's step lands under the first). Cards are measured as drawn, a
+ * For each with its whole body.
+ */
 export function freePosition(level: GraphLevel, desired: Position): Position {
+  const size = { width: STEP_CARD.width + GUTTER, height: 80 + GUTTER };
   let candidate = { x: Math.round(desired.x), y: Math.round(desired.y) };
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const taken = level.nodes.some(
-      (node) =>
-        Math.abs(node.position.x - candidate.x) < CARD_CLEARANCE &&
-        Math.abs(node.position.y - candidate.y) < CARD_CLEARANCE,
+  for (let attempt = 0; attempt < level.nodes.length + 1; attempt += 1) {
+    const blocker = level.nodes.find((node) =>
+      overlaps(
+        { ...candidate, ...size },
+        { ...node.position, ...cardSize(node) },
+      ),
     );
-    if (!taken) return candidate;
-    candidate = { x: candidate.x + NUDGE, y: candidate.y + NUDGE };
+    if (blocker === undefined) return candidate;
+    candidate = {
+      x: candidate.x,
+      y: Math.round(blocker.position.y + cardSize(blocker).height + GUTTER),
+    };
   }
   return candidate;
 }
