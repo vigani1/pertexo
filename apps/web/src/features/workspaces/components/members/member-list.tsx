@@ -1,11 +1,19 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
-import { MoreHorizontalIcon, UserMinusIcon } from 'lucide-react';
+import {
+  CirclePauseIcon,
+  CirclePlayIcon,
+  CrownIcon,
+  MoreHorizontalIcon,
+  UserMinusIcon,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Status, StatusGlyph } from '@/components/ui/status';
@@ -18,23 +26,43 @@ import {
 import { PersonAvatar } from '../shell/workspace-mark';
 import { RoleSelect } from './role-select';
 
+/** What an actor may do to a member from the row's actions menu. */
+export type MemberAction = 'transfer' | 'suspend' | 'reactivate' | 'remove';
+
 export type MemberRowControl = Readonly<{
   roles: readonly ManagedRole[];
   canChange: (member: WorkspaceMember) => boolean;
-  canRemove: (member: WorkspaceMember) => boolean;
+  /** The menu actions for this member, in menu order. */
+  actions: (member: WorkspaceMember) => readonly MemberAction[];
   /** The role shown while a change for this member awaits confirmation. */
   shownRole: (member: WorkspaceMember) => WorkspaceRole;
   disabled: boolean;
   feedback: (member: WorkspaceMember) => string | undefined;
   onPick: (member: WorkspaceMember, role: ManagedRole) => void;
-  onRemove: (member: WorkspaceMember) => void;
+  onAction: (member: WorkspaceMember, action: MemberAction) => void;
 }>;
+
+const ACTION_ITEMS: Readonly<
+  Record<MemberAction, Readonly<{ label: string; icon: ReactNode }>>
+> = {
+  transfer: { label: 'Make owner…', icon: <CrownIcon aria-hidden="true" /> },
+  suspend: { label: 'Suspend…', icon: <CirclePauseIcon aria-hidden="true" /> },
+  reactivate: {
+    label: 'Reactivate…',
+    icon: <CirclePlayIcon aria-hidden="true" />,
+  },
+  remove: {
+    label: 'Remove from workspace',
+    icon: <UserMinusIcon aria-hidden="true" />,
+  },
+};
 
 function MemberActions({
   member,
   control,
 }: Readonly<{ member: WorkspaceMember; control: MemberRowControl }>) {
-  if (!control.canRemove(member))
+  const actions = control.actions(member);
+  if (actions.length === 0)
     return <span aria-hidden="true" className="max-sm:hidden" />;
   return (
     <DropdownMenu>
@@ -47,18 +75,43 @@ function MemberActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => {
-              control.onRemove(member);
-            }}
-          >
-            <UserMinusIcon aria-hidden="true" />
-            Remove from workspace
-          </DropdownMenuItem>
+          {actions.map((action) => (
+            <MemberActionItem
+              key={action}
+              action={action}
+              separated={action === 'remove' && actions.length > 1}
+              onSelect={() => {
+                control.onAction(member, action);
+              }}
+            />
+          ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function MemberActionItem({
+  action,
+  separated,
+  onSelect,
+}: Readonly<{
+  action: MemberAction;
+  separated: boolean;
+  onSelect: () => void;
+}>) {
+  const item = ACTION_ITEMS[action];
+  return (
+    <>
+      {separated ? <DropdownMenuSeparator /> : null}
+      <DropdownMenuItem
+        variant={action === 'remove' ? 'destructive' : 'default'}
+        onClick={onSelect}
+      >
+        {item.icon}
+        {item.label}
+      </DropdownMenuItem>
+    </>
   );
 }
 
@@ -86,6 +139,11 @@ function MemberRow({
           {isYou ? (
             <span className="font-mono text-[0.68rem] text-subtle-foreground">
               you
+            </span>
+          ) : null}
+          {member.membershipStatus === 'suspended' ? (
+            <span className="font-mono text-[0.68rem] text-warning sm:hidden">
+              suspended
             </span>
           ) : null}
         </p>

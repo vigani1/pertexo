@@ -18,11 +18,23 @@ export type MemberCommandAttempt = Readonly<{
   idempotencyKey: string;
 }>;
 
+/** A sentence about one member; `freshSignIn` offers signing in again. */
+export type MemberCommandFeedback = Readonly<{
+  targetUserId: string;
+  message: string;
+  freshSignIn?: boolean;
+}>;
+
+/** A command's feedback when it is about this member. */
+export function feedbackFor(
+  feedback: MemberCommandFeedback | undefined,
+  member: WorkspaceMember | undefined,
+): MemberCommandFeedback | undefined {
+  return feedback?.targetUserId === member?.userId ? feedback : undefined;
+}
+
 type CommandState<Attempt> =
-  | Readonly<{
-      kind: 'idle';
-      feedback?: Readonly<{ targetUserId: string; message: string }>;
-    }>
+  | Readonly<{ kind: 'idle'; feedback?: MemberCommandFeedback }>
   | Readonly<{
       kind: 'executing';
       attempt: Attempt;
@@ -37,6 +49,11 @@ export type MemberCommandCopy = Readonly<{
   /** How a failure names the action, e.g. "changing this role". */
   action: string;
 }>;
+
+/** The server wants a sign-in from the last few minutes (ADR 047). */
+function needsFreshSignIn(cause: unknown): boolean {
+  return isApiError(cause) && cause.problem?.code === 'auth.session_not_fresh';
+}
 
 /** A target that no longer exists or is no longer in the workspace. */
 function isTargetGone(cause: unknown): boolean {
@@ -106,6 +123,18 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     if (isUnauthenticated(cause)) {
       transition({ kind: 'idle' });
       input.onAuthenticationLost();
+      return;
+    }
+    if (needsFreshSignIn(cause)) {
+      transition({
+        kind: 'idle',
+        feedback: {
+          targetUserId: attempt.targetUserId,
+          message:
+            'For your security, sign in again, then confirm within five minutes.',
+          freshSignIn: true,
+        },
+      });
       return;
     }
     if (isApiError(cause) && cause.status === 403) {

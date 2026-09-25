@@ -8,7 +8,8 @@ type Role = Extract<
 const ROLE_COPY: Record<Role, Readonly<{ name: string; meaning: string }>> = {
   owner: {
     name: 'Owner',
-    meaning: 'Everything, including renaming or deleting the workspace',
+    meaning:
+      'Everything, including renaming, deleting or handing over the workspace',
   },
   admin: {
     name: 'Admin',
