@@ -1,6 +1,6 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-14
+Updated: 2026-09-25
 
 ## Delivery state
 
@@ -51,6 +51,16 @@ filled packet is not execution evidence; local fakes, mocks, and repository
 tests cannot close these obligations. The exact schemas and validation live in
 [`infrastructure/ecs/external-platform-contract.json`](../infrastructure/ecs/external-platform-contract.json)
 and [`operations/external-platform-contract.md`](./operations/external-platform-contract.md).
+
+## Product reads after the phase plan
+
+- Workspace run statistics
+  ([ADR 044](./adr/044-bounded-workspace-run-statistics.md)):
+  `GET /v1/workspaces/:workspaceId/run-statistics` returns exact current and
+  fixed-window run counts from one snapshot, backed by a covering
+  `workflow_runs` index. Its query-plan budget and workspace isolation are
+  proven against a disposable database. It replaces the web's paged "100+"
+  counts on Home, Runs and the spine.
 
 ## Current guidance
 

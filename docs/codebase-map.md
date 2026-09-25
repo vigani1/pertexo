@@ -67,14 +67,14 @@ an individual request can use.
 | Node discovery | Read the catalog for the API's configured release, including node input/configuration schemas and availability flags. | [catalog](../apps/api/src/catalog/), [node-catalog](../packages/node-catalog/src/) |
 | Workflow authoring | Create, read, edit, and validate drafts; publish immutable versions; inspect versions and restore one into the draft. | [workflow-authoring](../apps/api/src/workflow-authoring/) |
 | Workflow lifecycle | Archive and restore workflows; inspect activation separately from whether the workflow is archived. | [workflow-authoring](../apps/api/src/workflow-authoring/) |
-| Runs and history | Start a manual run, inspect a known run and its node status, request cancellation, replay a prior run, and follow live events. | [workflow-runs](../apps/api/src/workflow-runs/), [executions](../apps/api/src/executions/) |
+| Runs and history | Start a manual run, list retained history, read exact bounded run statistics ([ADR 044](./adr/044-bounded-workspace-run-statistics.md)), inspect a known run and its node status, request cancellation, replay a prior run, and follow live events. | [workflow-runs](../apps/api/src/workflow-runs/), [executions](../apps/api/src/executions/) |
 | Node preview | Validate a draft node without execution, or request a bounded test execution and poll its result. | [node-testing](../apps/api/src/node-testing/), [worker execution](../apps/worker/src/execution/) |
 | Scheduled workflows | Define a Schedule node in a draft; after publication, inspect trigger health and enable/disable it. Workers handle timezone-aware due starts and trigger reconciliation. | [schedules](../apps/api/src/schedules/), [worker triggers](../apps/worker/src/triggers/) |
 | Webhook workflows | Provision endpoints, rotate keys/signing secrets, inspect trigger health, and accept signature-authenticated incoming requests with replay and admission checks. | [webhooks](../apps/api/src/webhooks/) |
 | Artifacts | Request uploads, finalize verified objects, and obtain authorized download access under workspace capacity limits. | [artifacts](../apps/api/src/artifacts/), [artifact-store](../packages/artifact-store/src/) |
 | Run failure notifications | Manage versioned destinations and workflow notification policies through the API; record and deliver notification work separately from the run result. | [destination controller](../apps/api/src/connections/failure-notification-destinations.controller.ts), [worker handler](../apps/worker/src/execution/failure-notification-handler.ts) |
 
-Current API limits: there is no run-list/search endpoint, general connection
+Current API limits: there is no free-text run search endpoint, general connection
 list/get endpoint, workspace list/get endpoint, or member invitation/role-edit
 endpoint. Stored domain capabilities do not automatically imply public routes.
 Feature endpoints also require their configured runtime dependencies.

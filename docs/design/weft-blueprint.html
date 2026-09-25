@@ -1077,14 +1077,15 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
     </div></div>
     <div class="spec">
       <section><h4>Layout</h4><ul>
-        <li><b>Header:</b> the workspace name as the title. A mono status line gives live counts and an “as of” time. Actions: Search, and New workflow (if <code>workflow:create</code>).</li>
-        <li><b>The Loom (hero):</b> one lane per workflow with runs in the window. Each run is drawn from start to end. Running threads grow toward the Core, which sits at “now” on the right. Window options: 1h, 6h, 24h. Hovering a thread shows a small lens with the run summary; clicking opens the run.</li>
+        <li><b>Header:</b> the workspace name as the title. A mono status line gives exact live counts, failures in 24 hours and the server's “as of” time. Actions: Search, which opens the ⌘K palette, and New workflow (if <code>workflow:create</code>), which opens the Workflows list's New workflow lens (<code>workflows?create=true</code>).</li>
+        <li><b>The Loom (hero):</b> one lane per workflow with runs in the window. Each run is drawn from start to end. Running threads grow toward the Core, which sits at “now” on the right. Window options: 1h, 6h, 24h, 7d. Each lane label carries the workflow's exact total for the window, and a caption states the window's exact total. Hovering a thread shows a small lens with the run summary; clicking opens the run.</li>
         <li><b>Below:</b> “Needs attention” on the left and “Recently changed” on the right.</li>
       </ul></section>
       <section><h4>Data</h4><ul>
-        <li>Loom: <code>GET /runs?createdAtFrom=…</code>, paging up to 300 runs. The caption states the cap when it's hit. <span class="t ok">API ready</span></li>
-        <li>Counts: <code>GET /runs?status=running|waiting|queued&amp;limit=100</code>, showing “100+” when <code>nextCursor</code> exists. Failures in 24h come from the same query filtered by status.</li>
-        <li>Exact totals and a 7-day or 30-day loom need an aggregate endpoint. <span class="t gap">needs API</span> <code>run-statistics</code></li>
+        <li>Loom threads: <code>GET /runs?createdAtFrom=…</code>, paging up to 300 runs, plus one page per active status created before the window so long runs still reach the Core. <span class="t ok">API ready</span></li>
+        <li>Loom caption and lane totals: <code>GET /run-statistics?window=1h|6h|24h|7d&amp;breakdown=workflow</code>. When the drawing stops at 300, the caption says so next to the exact total. <span class="t ok">API ready</span></li>
+        <li>Counts: <code>GET /run-statistics?window=24h</code> gives exact queued, running and waiting counts and failures in 24h from one snapshot. The spine's live count shares the same read. <span class="t ok">API ready</span> (ADR 044)</li>
+        <li>A 30-day window stays out: ADR 044 keeps windows well inside run-summary retention and the query budget.</li>
         <li>Recently changed: <code>GET /workflows?order=updated_desc&amp;limit=6</code>.</li>
       </ul></section>
       <section><h4>Needs attention (all derived, no new API)</h4><ul>
@@ -1095,7 +1096,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
         <li>When everything is fine: a single knotted thread with “All clear. Nothing needs you.”</li>
       </ul></section>
       <section><h4>New workspace &amp; states</h4><ul>
-        <li><b>New workspace:</b> the Loom is replaced by a “First thread” checklist: create a workflow, publish, run it, add a connection, set a failure alert, invite a teammate. Every step is derived from real data, and each finished step ties a knot along one thread. Steps the current role can't check are hidden (for example, invites need <code>member:read</code> and alert destinations need <code>workflow:update</code>).</li>
+        <li><b>New workspace:</b> the Loom is replaced by a “First thread” checklist: create a workflow, publish, run it, add a connection, set a failure alert, invite a teammate. Every step is derived from real data, and each finished step ties a knot along one thread. Each step links to where it's done: the New workflow lens, the latest workflow's Build tab (or Workflows), the Add connection lens, Alerts and the Invite lens. Steps the current role can't check are hidden (for example, invites need <code>member:read</code> and alert destinations need <code>workflow:update</code>).</li>
         <li><b>Loading:</b> skeleton threads shimmer along the lanes. Each block loads and fails independently, as it does today.</li>
         <li><b>Replaces:</b> three different card styles, “No items yet”, and run rows that show ID fragments.</li>
       </ul></section>
@@ -1305,7 +1306,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
     <p class="job">An operator's log: what ran, how it ended, how long it took. It should be scannable at 200 rows and still readable when something is on fire.</p>
     <div class="spec">
       <section><h4>Layout</h4><ul>
-        <li>Header: the title, a live status line (running, waiting, queued), and a <b>Live</b> switch that refreshes every 10 seconds while the tab is visible. There's no workspace-level event stream, so this is honest polling.</li>
+        <li>Header: the title, an exact live status line (running, waiting, queued) from <code>run-statistics</code>, and a <b>Live</b> switch that refreshes every 10 seconds while the tab is visible. There's no workspace-level event stream, so this is honest polling.</li>
         <li>Views: <b>List</b> (default) or <b>Loom</b>, the Home loom with the same filters applied.</li>
         <li>Rows are grouped under big condensed day headers (“24 SEP”, “Yesterday”). Each row has: status glyph and word; workflow name (plus vN, <span class="t gap">needs API</span>); trigger icon (Manual, Webhook, Schedule, Replay, API); start time (relative, exact on hover); duration (ticking while running); a <b>ThreadBar</b> showing duration relative to the visible set on a log scale; a short run ID in mono with copy on hover; and ⋯ (Open, Open workflow, Replay, Cancel).</li>
       </ul></section>
@@ -1629,7 +1630,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
 
 <!-- ================= GAPS ================= -->
 <section class="ch" id="gaps">
-  <header><span class="n">07</span><h2>Backend gaps the design needs.</h2><p>Every item below is designed with a fallback that works on today's API and never shows invented data. The endpoints complete them. Each contract is written in the backend's existing style, checked against the backend plan, the contracts package and ADRs 004–040. Where a gap goes beyond an existing ADR, the table says so, because the repo rules require the ADR before the code.</p></header>
+  <header><span class="n">07</span><h2>Backend gaps the design needs.</h2><p>Every item below is designed with a fallback that works on today's API and never shows invented data. The endpoints complete them. Each contract is written in the backend's existing style, checked against the backend plan, the contracts package and ADRs 004–044. Where a gap goes beyond an existing ADR, the table says so, because the repo rules require the ADR before the code.</p></header>
 
   <h4>House rules every new endpoint follows</h4>
   <ul class="small">
@@ -1647,7 +1648,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Full webhook URL</td><td><code>endpointUrl</code> next to <code>endpointKey</code> on the provision and rotate-endpoint responses</td><td>The server knows its public <code>/hooks</code> origin; the browser doesn't (the web proxy only forwards <code>/v1</code>). Shown once, like the key.</td><td>Show the key and explain how to build the URL</td></tr>
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Step output</td><td><code>GET …/runs/:runId/attempts/:attemptId/output</code> · bounded, sanitized JSON</td><td>Keyed by the <code>attemptId</code> that events already carry in <code>outputRef {kind:'inline'}</code>. Artifact outputs keep using <code>/artifacts/:id/download</code>.</td><td>Artifact outputs only</td></tr>
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Run input</td><td>bounded <code>input</code> (or <code>inputRef</code>) on <code>GET …/runs/:runId</code></td><td>Compatible with <b>ADR 031</b>: replay still sends the input explicitly, and the UI only <i>prefills</i> it while the source input is still retained.</td><td>Replay asks for input and explains why</td></tr>
-      <tr><td><b style="color:var(--sal)">P1</b></td><td>Run statistics</td><td><code>GET /v1/workspaces/:workspaceId/run-statistics?createdAtFrom&amp;createdAtBefore&amp;bucket=hour|day</code> → <code>{asOf, totals, buckets[]}</code></td><td>Reuses the run-list filter names. A separate path avoids colliding with <code>runs/:runId</code>. Has to pass the production query-plan budget. The frontend architecture already asks for <code>asOf</code> semantics.</td><td>Paged queries, “100+” caps, 300-run loom</td></tr>
+      <tr><td><b style="color:var(--sal)">P1</b></td><td>Run statistics <span class="t ok">API ready</span></td><td><code>GET /v1/workspaces/:workspaceId/run-statistics?window=1h|6h|24h|7d&amp;breakdown=workflow</code> → <code>{asOf, current, window{duration, createdAtFrom, createdAtBefore, total, byStatus}, workflows}</code> · <code>run:read</code> · <code>authenticated_read</code></td><td><b>Delivered under ADR 044.</b> Fixed windows replace free ranges and buckets. One repeatable-read snapshot, a covering index (migration 0113), a 2-second statement budget and a query-plan test. The breakdown is capped at 50 workflows. A separate path avoids colliding with <code>runs/:runId</code>.</td><td>Delivered: Home, Runs, the Loom and the spine use it</td></tr>
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Richer workflow summary</td><td>additive <code>publishedVersionNumber</code>, <code>triggerKinds[]</code>, <code>lastRun{id,status,createdAt}</code></td><td>Additive fields. <code>lastRun</code> probably needs a denormalized projection (updated on run completion) so the list query stays within its plan budget.</td><td>“Live” without vN; lazy draft fetch for glyphs</td></tr>
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Readable step names</td><td>additive <code>displayName</code>, <code>description</code>, <code>icon</code> in the browser-safe definition projection</td><td><b>Open question (ADR 010):</b> presentation text should stay out of the compatibility-release fingerprint, so changing a wording isn't a compatibility event. Keeping the client registry is a valid alternative.</td><td>Client registry keyed by definition key</td></tr>
       <tr><td><b style="color:var(--sal)">P1</b></td><td>Read failure alert</td><td><code>GET …/workflows/:workflowId/failure-notification-policy</code> · <code>workflow:update</code></td><td>Same path as the existing PUT and DELETE, and the same capability as destination reads (ADR 025).</td><td>Write-only, labelled as such</td></tr>
@@ -1676,7 +1677,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
     <div><h4 style="color:var(--cyan)">3 · Operate</h4><p>Runs list with ThreadBars and fixed filters; run detail with the Thread, Graph and Events views, the step lens and artifact outputs; Home with the Loom and Needs attention.</p></div>
     <div><h4 style="color:var(--cyan)">4 · Build</h4><p>Workflows list with pattern glyphs and starters; the editor rework (add-step lens, edge interactions, inspector tabs, live apply, issues lens, publish weave-in, run lens); the workflow tabs.</p></div>
     <div><h4 style="color:var(--cyan)">5 · Admin &amp; entry</h4><p>Connections for all three providers; Team with the roles matrix; Alerts; workspace Settings; the sign-in family, invitation and picker on the Core stage.</p></div>
-    <div><h4 style="color:var(--cyan)">6 · API-gated</h4><p>Switch on each <span class="t gap">needs API</span> surface as its endpoint lands. P1 first: attempts and outputs, run input, stats.</p></div>
+    <div><h4 style="color:var(--cyan)">6 · API-gated</h4><p>Switch on each <span class="t gap">needs API</span> surface as its endpoint lands. P1 first: attempts and outputs, run input. Stats have landed (ADR 044).</p></div>
   </div>
   <h4 style="margin-top:34px">Every surface must meet these before it ships</h4>
   <ul class="small">

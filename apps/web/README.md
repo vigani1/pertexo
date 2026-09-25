@@ -3,10 +3,11 @@
 React 19 + TypeScript + Vite, in the existing pnpm workspace. Stages 1–6 are
 implemented: browser-safe contracts and transport, provider-only OIDC sign-in,
 session recovery/logout, workspace entry, workflow list/create and discovery,
-workspace creation/display-name editing, bounded recent-activity Overview, the
-bounded workflow editor with conflict-safe draft persistence, validation, node
-preview, typed visual input mappings, exact-version publishing, run start, live
-run detail and contract-backed workflow settings/operations.
+workspace creation/display-name editing, a Home with exact run statistics and
+the Loom, bounded recent-activity Overview, the bounded workflow editor with
+conflict-safe draft persistence, validation, node preview, typed visual input
+mappings, exact-version publishing, run start, live run detail and
+contract-backed workflow settings/operations.
 
 For the proposed implementation direction, read
 [Frontend architecture and implementation plan](ARCHITECTURE.md). It covers
