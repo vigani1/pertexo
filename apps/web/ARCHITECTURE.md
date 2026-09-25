@@ -668,7 +668,13 @@ resolving the previous outcome before issuing a new command.
    Quick add (a connection dropped on empty canvas, or “Add step after” on the
    step's ⋯ menu) is likewise one command that adds the step and its connection.
    A For each is projected as a container card around its structured body (ADR
-   020); the projection never changes the stored graph.
+   020); the projection never changes the stored graph. Its body is edited in
+   place: body steps are the container's React Flow children, positioned
+   relative to the body's corner, and every command resolves a step or
+   connection to its level (the workflow or a body, named by the For each steps
+   above it) through `model/graph-scopes.ts`, then writes that level back as one
+   undoable graph change. Connections never cross a body's edge; a body is
+   stored in the layout it is shown in before its first change.
 5. The save coordinator captures `{graph}` and the last acknowledged ETag,
    validates structure and sends `PUT .../draft` with `If-Match`.
 6. The accepted response updates the acknowledged baseline/ETag. Edits made
@@ -1668,8 +1674,47 @@ value. Commit only when separately authorized under root Git instructions.
   Versions tab, without a glyph or a divider under the hub bar. Component and
   model tests cover the delivery list, paging, failure and empty states,
   resolved and unresolved channel names and the lookup failure; the web suite
-  passes 59 files with 441 tests. The Slack step inspector and workflow settings
-  still show channel IDs.
+  passes 59 files with 441 tests.
+- For each bodies and channel names follow-up (2026-09-25). For each bodies are
+  edited on the canvas like the outer workflow. A body's steps are the
+  container's children; the container sizes itself around them
+  (`model/body-layout.ts`), grows while one is dragged and draws the body's
+  `item · ordinal` inputs, its `result`, the bounds, Add step and what the body
+  still needs. The nested-graph layer (`model/graph-scopes.ts`) indexes every
+  level, and the existing graph commands (`graph-commands.ts`,
+  `graph-copies.ts`) act on a step's own level: add (a For each placed from the
+  palette starts with an empty body, 100 items one at a time), quick add from a
+  body port or “Add step after” (the new step joins its body), connect (React
+  Flow's `isValidConnection` refuses a connection across a body's edge), move in
+  body coordinates, delete with the Undo toast (restoring into the body, or
+  nothing once the body is gone), duplicate (a copied For each gets fresh body
+  IDs) and inspector edits. Selection survives in bodies, and deleting a For
+  each around the inspected step asks about unfinished edits. Keyboard access
+  matches the canvas: body steps focus and open with Enter, ⌫ deletes them, the
+  For each inspector lists its body steps as buttons and offers “Add step to
+  body”, and a body step's Inputs tab offers only its body siblings to connect
+  and map. Inside a body, Insert data offers “This item” (the whole item or its
+  position) as `structured_input` mappings, and the “Loop item” source edits
+  them. ADR 020's body rules show as issues, never as fixes
+  (`model/body-rules.ts`): an empty body, a connection across its edge, more
+  than one last step (the one whose output is each item's result, marked “Gives
+  the result”) and steps off the way from the body's start to that end. Server
+  validation still decides; its findings inside a body now resolve to the body
+  step for Fix. The Slack step's Setup tab edits its channel ID and shows
+  `#name` beside it, or the ADR 046 reason it can't, once the field is left
+  (never per keystroke) and only for people with `connection:use`; a channel
+  from another source stays on the Inputs tab. The workflow Settings
+  failure-alert label and choices read “#channel-name via Connection” when the
+  name resolves. Both use the one lookup through
+  `failure-notifications/channel-names.public.ts`. Deliberately left out:
+  editing a For each's item and concurrency bounds (new ones start at 100 and
+  1), and moving existing steps into or out of a body. Unit tests cover the
+  nested-graph commands, body layout and rules, loop-item mappings and
+  body-issue targets; component tests cover drawing, keyboard building, mapping,
+  deletion with Undo and body issues, the Slack step's channel name and the
+  Settings label. The web suite passes 71 files with 530 tests; the For each and
+  Slack channel Chromium journeys were updated by reading them and weren't run
+  here.
 
 Order 2's visual kit includes the old colors/type/glass/button language, not
 every legacy component. Aurora and canvas details land where their real states
@@ -1958,7 +2003,7 @@ without a concrete new reason.
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Login and workspace selection                                   | Implemented, including first/additional workspace creation through the existing owner-assignment contract                                              |
 | Workflow list/create                                            | Implemented                                                                                                                                            |
-| Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline                                                                                                                           |
+| Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline, including For each bodies edited in place on the canvas                                                                  |
 | Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                                                      |
 | Run history                                                     | Implemented safe cursor list with workflow/status/UTC date filters and detail navigation                                                               |
 | Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, schedule toggles, webhook operations, the webhook delivery log and the current failure policy |
