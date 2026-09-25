@@ -98,9 +98,9 @@ production runtime.
 
 | Consumer role | Interface and factory | Actual consumer | SQL owner |
 | --- | --- | --- | --- |
-| API connection commands | `ConnectionManagementDatabase` plus `ConnectionTestDatabase`; `createApiConnectionDatabase` owns `close` | `apps/api/src/connections/ports.ts` and `apps/api/src/platform/connections/connection-runtime.module.ts` | Management, secret-rotation, and connection-test persistence modules |
+| API connection commands | `ConnectionManagementDatabase` plus `ConnectionTestDatabase` and the ADR 046 `ConnectionLookupDatabase`; `createApiConnectionDatabase` owns `close` | `apps/api/src/connections/ports.ts` and `apps/api/src/platform/connections/connection-runtime.module.ts` | Management, secret-rotation, connection-test, and lookup persistence modules |
 | Worker credential use | `ConnectionResolutionDatabase`; `createWorkerConnectionResolutionDatabase` owns `close` | `apps/worker/src/execution/provider-connection-runtime.ts`, composed by `node-runtime-capabilities.ts` | Resolution persistence plus the current-secret assertion in secret persistence |
-| Database compatibility and lifecycle fixtures | `ConnectionDatabase`; `createConnectionDatabase` | Database and composed worker integration support only | All five focused persistence modules through the same composed pool lease |
+| Database compatibility and lifecycle fixtures | `ConnectionDatabase`; `createConnectionDatabase` | Database and composed worker integration support only | All six focused persistence modules through the same composed pool lease |
 
 `connection-persistence.ts` is already a feature-local neutral leaf: it imports
 no composing factory or child persistence module and owns the shared contracts,
