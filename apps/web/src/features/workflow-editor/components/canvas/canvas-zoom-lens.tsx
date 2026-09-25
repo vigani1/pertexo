@@ -28,8 +28,8 @@ function minimapNodeFill(node: WorkflowFlowNode): string {
  * tokens, never hard-coded values; each step is drawn in its family colour
  * and the selected one is outlined.
  */
-export function CanvasZoomLens() {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
+export function CanvasZoomLens({ onFit }: Readonly<{ onFit: () => void }>) {
+  const { zoomIn, zoomOut } = useReactFlow();
   const reducedMotion = usePrefersReducedMotion();
   const duration = reducedMotion ? 0 : 200;
   return (
@@ -77,7 +77,7 @@ export function CanvasZoomLens() {
           size="icon-xs"
           variant="ghost"
           aria-label="Fit workflow to screen"
-          onClick={() => void fitView({ padding: 0.2, duration })}
+          onClick={onFit}
         >
           <MaximizeIcon />
         </Button>

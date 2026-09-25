@@ -2,7 +2,11 @@ import { LayersIcon, PlusIcon, SlidersHorizontalIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { CANVAS_COVER_ATTRIBUTE } from '../model/canvas-framing';
 import type { MobilePanel } from '../use-inspector-navigation';
+
+// The canvas frames steps in the area these lenses leave uncovered.
+const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
 
 /**
  * Places the editor's layers: the canvas fills the screen, and the command
@@ -43,13 +47,16 @@ export function EditorLayout({
     >
       {canvas}
       <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3">
-        <div className="pointer-events-auto">{bar}</div>
+        <div className="pointer-events-auto" {...covers}>
+          {bar}
+        </div>
         {banner}
         <div className="relative min-h-0 flex-1">
           {editable ? (
             <aside
               id="editor-panel-add"
               aria-label="Add a step"
+              {...covers}
               className={cn(
                 'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 max-h-[62svh] flex-col rounded-xl',
                 mobilePanel === 'add' ? 'flex' : 'hidden',
@@ -63,6 +70,7 @@ export function EditorLayout({
           <aside
             id="editor-panel-inspector"
             aria-label="Step panel"
+            {...covers}
             className={cn(
               'lens pointer-events-auto fixed inset-x-2 bottom-16 z-40 h-[68svh] flex-col rounded-xl',
               mobilePanel === 'inspector' ? 'flex' : 'hidden',
