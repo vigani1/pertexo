@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/editor-store-context';
 import { definitionIdentity } from '../../model/graph-adapter';
-import { isStartTrigger } from '../../model/step-catalog';
+import { isStartTrigger, placeableDefinitions } from '../../model/step-catalog';
 
 /**
  * An empty draft starts with a trigger: Webhook, Schedule or Manual. When
@@ -21,14 +21,13 @@ export function StartPicker({
 }>) {
   const empty = useEditorStore((state) => state.graph.nodes.length === 0);
   if (!empty) return null;
-  const triggers = definitions.filter(isStartTrigger);
+  // One choice per step type, at the version a new step would use.
+  const placeable = placeableDefinitions(definitions);
+  const triggers = placeable.filter(isStartTrigger);
   const steps =
     triggers.length > 0
       ? []
-      : definitions.filter(
-          (definition) =>
-            definition.available && definition.family !== 'trigger',
-        );
+      : placeable.filter((definition) => definition.family !== 'trigger');
   const copy = startCopy(editable, triggers.length > 0, steps.length > 0);
   return (
     <div className="pointer-events-none absolute inset-0 grid place-items-center p-4">

@@ -24,6 +24,7 @@ import {
 import {
   groupStepChoices,
   isStartTrigger,
+  placeableDefinitions,
 } from '@/features/workflow-editor/model/step-catalog';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -262,6 +263,44 @@ describe('editor graph commands', () => {
     expect(groups.map((group) => group.title)).toEqual(['Do something']);
     expect(groupStepChoices([definition], 'slack')[0]?.choices).toHaveLength(1);
     expect(groupStepChoices([definition], 'channel post')).toEqual([]);
+  });
+
+  it('offers one entry per step type, at its highest publishable version', () => {
+    const version = (
+      value: number,
+      extra: Partial<NodeDefinitionCatalogItem> = {},
+    ) =>
+      ({
+        ...definition,
+        definition: { key: 'core.merge', version: value },
+        family: 'logic',
+        ...extra,
+      }) satisfies NodeDefinitionCatalogItem;
+    const groups = groupStepChoices(
+      [
+        version(1),
+        version(3, { publishable: false }),
+        version(2),
+        version(4, { available: false }),
+        definition,
+      ],
+      '',
+    );
+    expect(
+      groups.flatMap((group) => group.choices.map((choice) => choice.identity)),
+    ).toEqual(['slack.send_message@1', 'core.merge@2']);
+    expect(
+      placeableDefinitions([
+        version(1, { publishable: false }),
+        version(2),
+      ]).map((item) => item.definition.version),
+    ).toEqual([2]);
+    expect(
+      placeableDefinitions([
+        version(1, { publishable: false }),
+        version(2, { publishable: false }),
+      ]).map((item) => item.definition.version),
+    ).toEqual([2]);
   });
 
   it('starts drafts only with triggers that can be placed and published', () => {

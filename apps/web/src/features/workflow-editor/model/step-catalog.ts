@@ -23,31 +23,62 @@ export type StepChoiceGroup = Readonly<{
 }>;
 
 /**
+ * One definition per step type, the way people pick steps: the catalog can
+ * list several versions of a key, and a new step uses the highest version
+ * that is available and publishable (or, when none can be published yet,
+ * the highest available one). Unavailable keys are left out; the result
+ * keeps the catalog's order of first appearance.
+ */
+export function placeableDefinitions(
+  definitions: readonly NodeDefinitionCatalogItem[],
+): readonly NodeDefinitionCatalogItem[] {
+  const chosen = new Map<string, NodeDefinitionCatalogItem>();
+  for (const candidate of definitions) {
+    if (!candidate.available) continue;
+    const key = candidate.definition.key;
+    const current = chosen.get(key);
+    if (current === undefined || preferVersion(candidate, current))
+      chosen.set(key, candidate);
+  }
+  return [...chosen.values()];
+}
+
+function preferVersion(
+  candidate: NodeDefinitionCatalogItem,
+  current: NodeDefinitionCatalogItem,
+): boolean {
+  if (candidate.publishable !== current.publishable)
+    return candidate.publishable;
+  return candidate.definition.version > current.definition.version;
+}
+
+/**
  * Placeable steps grouped under human headings and filtered by a search over
- * names, descriptions and keys. Unavailable definitions are left out.
+ * names, descriptions and keys: one entry per step type.
  */
 export function groupStepChoices(
   definitions: readonly NodeDefinitionCatalogItem[],
   query: string,
 ): readonly StepChoiceGroup[] {
   const needle = query.trim().toLowerCase();
-  const choices = definitions.flatMap((definition): StepChoice[] => {
-    if (!definition.available) return [];
-    const step = describeStep(definition.definition.key, definition.family);
-    const haystack =
-      `${step.name} ${step.description} ${definition.definition.key}`.toLowerCase();
-    if (needle !== '' && !haystack.includes(needle)) return [];
-    return [
-      {
-        identity: definitionIdentity(
-          definition.definition.key,
-          definition.definition.version,
-        ),
-        definition,
-        step,
-      },
-    ];
-  });
+  const choices = placeableDefinitions(definitions).flatMap(
+    (definition): StepChoice[] => {
+      const step = describeStep(definition.definition.key, definition.family);
+      const haystack =
+        `${step.name} ${step.description} ${definition.definition.key}`.toLowerCase();
+      if (needle !== '' && !haystack.includes(needle)) return [];
+      return [
+        {
+          identity: definitionIdentity(
+            definition.definition.key,
+            definition.definition.version,
+          ),
+          definition,
+          step,
+        },
+      ];
+    },
+  );
   return stepGroups.flatMap((group) => {
     const grouped = choices.filter(
       (choice) => choice.definition.family === group.family,
