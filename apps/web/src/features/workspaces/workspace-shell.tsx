@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccountMenu } from './components/shell/account-menu';
+import { ShellBreadcrumb } from './components/shell/shell-breadcrumb';
 import { WorkspaceBanners } from './components/shell/workspace-banners';
 import { WorkspaceMobileBar } from './components/shell/workspace-mobile-bar';
 import { WorkspaceSpine } from './components/shell/workspace-spine';
@@ -72,30 +73,15 @@ export function WorkspaceShell({
       />
       <div className="relative md:pl-21">
         <header className="flex items-center gap-2 px-4 pt-4 sm:px-6 md:px-8 md:pt-5">
-          <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
-            <ol className="flex min-w-0 items-center gap-2 text-[0.8rem] text-subtle-foreground">
-              <li className="min-w-0">
-                <WorkspaceSwitcher
-                  workspace={workspace}
-                  workspaces={workspaces}
-                />
-              </li>
-              {crumbs.map((crumb, index) => (
-                <li
-                  key={crumb.key}
-                  className="flex min-w-0 items-center gap-2"
-                  {...(index === crumbs.length - 1
-                    ? { 'aria-current': 'page' as const }
-                    : {})}
-                >
-                  <span aria-hidden="true" className="opacity-40">
-                    /
-                  </span>
-                  <span className="truncate">{crumb.label}</span>
-                </li>
-              ))}
-            </ol>
-          </nav>
+          <ShellBreadcrumb
+            root={
+              <WorkspaceSwitcher
+                workspace={workspace}
+                workspaces={workspaces}
+              />
+            }
+            crumbs={crumbs}
+          />
           <Button
             variant="ghost"
             size="icon"
