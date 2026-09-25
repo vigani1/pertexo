@@ -93,8 +93,8 @@ React Flow draws the graph; Zustand owns unsaved edits; neither executes nodes.
 | Tests                      | Vitest/Testing Library, MSW at first API slice, Playwright | Model, component/network, and real-browser integration seams              |
 
 React Hook Form is not installed in the delivered frontend. Existing forms keep
-their feature-owned controlled state and shared Zod parsing, including on-blur
-feedback, submit-time focus and on-change correction after a failed submit. A
+their feature-owned controlled state and shared Zod parsing, with submit-time
+messages and focus, and on-change correction of a field showing a message. A
 future RHF adoption must deliberately replace that ownership across a bounded
 form slice; it must not introduce a second form authority inside existing forms.
 Dependencies named as future additions are **not installed by this plan**;
@@ -592,17 +592,23 @@ Three different checks must stay distinct:
    checks improve feedback but never replace these rules.
 
 Static forms own their values in the feature and share one timing engine,
-`useFieldValidation` (`components/ui/use-field-validation.ts`): a field is
-checked when people leave it, then live while its message shows or after a
-failed submit; submit focuses the first invalid control in document order;
-server field errors (`errors[].path`, mapped by the feature to known fields only
-— never arbitrary object paths) land on the same fields through `showErrors`;
-and a field that goes from invalid to valid ties a brief knot. Plain text forms
-may use the thin `useFieldValues(rules, initial)` layer over it. Render every
-labelled control with `LabelledField` (`components/ui/field.tsx`, optional label
-action, trailing control and live-feedback slots), which links
-`aria-describedby`, sets `aria-invalid` and draws the `FieldThread`. Keep a
-form-level `Notice` for failures without a known path.
+`useFieldValidation` (`components/ui/use-field-validation.ts`): messages appear
+on submit (or an explicit action such as adding an email chip, `report`), never
+while people type or move between fields, so the form doesn't shift under them;
+a field that showed a message since the last submit is re-checked as people
+type, so it updates and clears once fixed; submit focuses the first invalid
+control in document order; and server field errors (`errors[].path`, mapped by
+the feature to known fields only — never arbitrary object paths) land on the
+same fields through `showErrors`. Plain text forms may use the thin
+`useFieldValues(rules, initial)` layer over it. Render every labelled control
+with `LabelledField` (`components/ui/field.tsx`, optional label action, trailing
+control and live-feedback slots), which links `aria-describedby` and sets
+`aria-invalid`; an invalid control draws its border in the error colour and the
+message sits below it — no line or glyph under the control. Keep a form-level
+`Notice` for failures without a known path. The editor's step panel has no
+submit (it applies valid values as people type), so its fields (`useLiveField`,
+`useLiveMappings`) show a problem once people leave the field or input row, then
+follow their typing until it's fixed.
 
 Node inspectors use **live apply**, not an Apply button. Each field keeps its
 own text (`use-live-field.ts`): a value that parses is committed straight into
@@ -1111,6 +1117,12 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
 - Keep every existing colour token. Added: `success` #8fe3c0, `warning` #f3c677,
   `raised` #212428, `subtle-foreground` #7f8b8e, `border-strong`. Cyan means
   brand, focus and _live work_ — never success.
+- Things people press are calmer than live work: `action` (a softer cyan,
+  `oklch(0.82 0.11 205)`, with `action-hover` and `action-foreground`) fills
+  primary buttons, checked controls, the current tab and the calendar day, and
+  is the focus `ring`; it never glows. The full `primary` cyan stays for live
+  edges, selection on the canvas, running counts and the Core. Inputs have a
+  neutral border (`control-border`); focus draws a soft ring, not a glow.
 - Radii: `sm` 6px, `md` 10px, `lg` 14px, `xl` 18px. Easing: `ease-unspool`.
 - Display type: Bricolage Grotesque at a condensed width, self-hosted from
   `@fontsource-variable/bricolage-grotesque/standard.css` (optical size, width
@@ -1152,9 +1164,9 @@ their own:
 
 | Concept        | Where                                                                     | Use                                                                                                                                                                                                                                                                                                                               |
 | -------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Field          | `components/ui/field.tsx`                                                 | `LabelledField` (label, optional label action, trailing control and live feedback; links hint and message), `FieldControl` draws the `FieldThread` (fray/knot)                                                                                                                                                                    |
+| Field          | `components/ui/field.tsx`                                                 | `LabelledField` (label, optional label action, trailing control and live feedback; links hint and message), `FieldControl` holds a control and anything inside its edges                                                                                                                                                          |
 | Deadline       | `components/ui/deadline-field.tsx`, `components/ui/calendar.tsx`          | `DeadlineField` for the Run and Replay lenses: None, In 1 hour, In 1 day or Pick a time, where a date (typed, or from a `Calendar` lens with past days disabled) and a 24-hour time are read on the person's clock with their time zone named. Never the browser's native picker; its value is local `datetime-local`-shaped text |
-| Validation     | `components/ui/use-field-validation.ts`                                   | `useFieldValidation`: the only message timing (blur → live, focus first invalid, server `errors[].path`, knot); `useFieldValues` is the thin values-and-rules layer for plain text forms                                                                                                                                          |
+| Validation     | `components/ui/use-field-validation.ts`                                   | `useFieldValidation`: the only message timing (on submit, then live until fixed; focus first invalid; server `errors[].path`); `useFieldValues` is the thin values-and-rules layer for plain text forms                                                                                                                           |
 | Confirmation   | `components/patterns/confirm-dialog.tsx`                                  | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `unconfirmed` turns confirm into the exact retry and Cancel into Close                                                                                                                                     |
 | Pending button | `components/ui/progress-button.tsx`                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                                                                                                                                                        |
 | Rename         | `components/patterns/inline-rename.tsx`                                   | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                                                                                                                                                        |
@@ -1177,15 +1189,19 @@ sheet, toggle-group, separator, kbd, empty (`Empty`, `EmptyMedia`, `EmptyTitle`,
 toast (`NotificationsProvider`, `useNotifications` with success/info/error/undo
 and `track` for progress → result), loading-orb, dialog (`center`, `top`). Other
 patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
-line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
-illustrations. Other libraries (`lib`): `format-time.ts` (all date/time/duration
-text — no feature-local `Intl.DateTimeFormat`; `formatDateTimeInZone` reads a
-time on a named clock with its zone name; `formatShortTime` is the locale's time
-to the minute, “Saved 14:31” and the stale line, while `formatClock` keeps
-seconds for instruments), `format-bytes.ts` (byte sizes for files and payloads),
-`format-initials.ts`, `api/api-error-copy.ts` (generic read/command failure
-sentences, uncertain outcome, forbidden, rate-limit and support reference
-helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
+line, actions), `CommandPalette`, `JsonTree`, `SystemState` (its art — a thread
+drawing, an icon or the Core — sits on the page, never in a framed box; in the
+shell the state reads from the left, a full screen centres it), thread
+illustrations. The Core's particles grow in number with its size and each is
+capped in size, so a large Core (sign-in) stays fine-grained. Other libraries
+(`lib`): `format-time.ts` (all date/time/duration text — no feature-local
+`Intl.DateTimeFormat`; `formatDateTimeInZone` reads a time on a named clock with
+its zone name; `formatShortTime` is the locale's time to the minute, “Saved
+14:31” and the stale line, while `formatClock` keeps seconds for instruments),
+`format-bytes.ts` (byte sizes for files and payloads), `format-initials.ts`,
+`api/api-error-copy.ts` (generic read/command failure sentences, uncertain
+outcome, forbidden, rate-limit and support reference helpers),
+`use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 #### Structure
 
@@ -1707,15 +1723,15 @@ value. Commit only when separately authorized under root Git instructions.
   key, observed completion releases it, and conflicting operations cannot reuse
   an earlier receipt. Authoritative unavailable settings refreshes remove cached
   rows/actions while transient failures keep stale data with Retry. Slack
-  create/rotation and workspace deletion forms validate on initial blur,
-  revalidate corrections after a failed submit, focus and describe
-  field-specific errors, and do not mark fields invalid for server failures.
-  Static deployment verification parses the effective SPA and asset location
-  blocks so their cache and security headers coexist despite Nginx `add_header`
-  inheritance. Validation presents both structural and catalog-compatibility
-  findings with guarded node navigation. Degraded run-event snapshot recovery
-  retains bounded server-directed `Retry-After` delays and cancels them on scope
-  disposal. Firefox/WebKit and the broader live-backend browser journey remain
+  create/rotation and workspace deletion forms validate on submit, revalidate
+  corrections as people type, focus and describe field-specific errors, and do
+  not mark fields invalid for server failures. Static deployment verification
+  parses the effective SPA and asset location blocks so their cache and security
+  headers coexist despite Nginx `add_header` inheritance. Validation presents
+  both structural and catalog-compatibility findings with guarded node
+  navigation. Degraded run-event snapshot recovery retains bounded
+  server-directed `Retry-After` delays and cancels them on scope disposal.
+  Firefox/WebKit and the broader live-backend browser journey remain
   outstanding; invitation OIDC/session/SSE behavior has controlled API-level
   integration evidence. Architecture and built-export gates pass. Contract
   build/typecheck and 73 contract tests pass; generated artifacts are current
@@ -3010,12 +3026,12 @@ create/resend/revoke. The UI may derive permitted options from the current
 workspace role for honest presentation; the database remains authoritative. No
 optimistic invitation, membership or role updates.
 
-The create dialog owns email/role scratch, validates on initial blur and again
-while correcting after submit, associates errors with controls and focuses the
-first invalid field. Confirmation explains assigned access, expiry and the
-recipient's sign-in/session consequence. Mutations retain exact body, revision
-and key across uncertain retries, block conflicting commands until resolution,
-and reconcile by refetch. Stale revision, duplicate, access loss and delivery
+The create dialog owns email/role scratch, validates on submit and again while
+correcting, associates errors with controls and focuses the first invalid field.
+Confirmation explains assigned access, expiry and the recipient's
+sign-in/session consequence. Mutations retain exact body, revision and key
+across uncertain retries, block conflicting commands until resolution, and
+reconcile by refetch. Stale revision, duplicate, access loss and delivery
 failure have distinct recovery. Authentication/permission loss removes cached
 protected rows and open commands; transient refresh failure keeps stale data and
 editing state with retry. Long addresses and roles remain usable on mobile and
