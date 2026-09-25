@@ -25,6 +25,7 @@ import { HomeHeader } from './components/home-header';
 import { HomeLoom } from './components/home-loom';
 import { RecentlyChanged } from './components/recently-changed';
 import { isNewWorkspace, type FirstThreadFacts } from './model/first-thread';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 /**
  * Home answers three questions at a glance: what's running (the Loom),
@@ -94,8 +95,11 @@ export function HomePage({
         <Empty>
           <EmptyTitle>Nothing to show for your role</EmptyTitle>
           <EmptyDescription>
-            Your role in {workspace.name} can’t see workflows or runs. Ask an
-            admin or owner if you need them.
+            {roleLimitSentence(
+              workspace.role,
+              'workflow:read',
+              `see workflows or runs in ${workspace.name}`,
+            )}
           </EmptyDescription>
         </Empty>
       </div>

@@ -226,7 +226,7 @@ describe('workspace home', () => {
     expect(within(main).getByText('as of', { exact: false })).toBeVisible();
     expect(within(main).queryByText(/\d\+/u)).not.toBeInTheDocument();
     expect(
-      await screen.findByRole('link', { name: 'Runs, 145 live' }),
+      await screen.findByRole('link', { name: 'Runs, 142 live' }),
     ).toBeVisible();
     expect(
       runQueries.some(

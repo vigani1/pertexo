@@ -122,18 +122,15 @@ describe('workflow settings: run duration', () => {
     expect(saves[1]?.graph.settings).toEqual({ maxRunDurationMs: 900_000 });
   });
 
-  it('shows the duration without offering changes to roles that can’t edit', async () => {
+  it('states the duration without offering changes to roles that can’t edit', async () => {
     installQueries([]);
     renderApp(settingsPath);
     const section = await screen.findByRole('region', { name: 'Run duration' });
     expect(
-      await within(section).findByRole('combobox', {
-        name: 'Maximum run duration',
-      }),
-    ).toHaveTextContent('1 hour');
-    expect(within(section).getByRole('combobox')).toBeDisabled();
-    expect(
-      within(section).getByText(/Your role can’t change this/u),
-    ).toBeVisible();
+      await within(section).findByText(/Runs stop after 1 hour in the draft/u),
+    ).toHaveTextContent(
+      'Your role (Owner) can’t change how long runs may take. Builders and admins can.',
+    );
+    expect(within(section).queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

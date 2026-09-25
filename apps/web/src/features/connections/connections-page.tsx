@@ -29,6 +29,7 @@ import { ConnectionDetailSheet } from './components/detail/connection-detail-she
 import { ProviderSockets } from './components/provider-sockets';
 import { connectionsInfiniteQueryOptions } from './connections.queries';
 import type { ConnectionsSearch } from './model/connections-search';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 function countByStatus(items: readonly ConnectionResponse[]) {
   let active = 0;
@@ -163,7 +164,11 @@ export function ConnectionsPage({
       <UnavailablePage
         heading="Connections"
         title="Connections are unavailable"
-        description="Your role can’t see this workspace’s connections."
+        description={roleLimitSentence(
+          workspace.role,
+          'connection:read',
+          'see this workspace’s connections',
+        )}
       />
     );
   if (connections.isError && isNotFound(connections.error))

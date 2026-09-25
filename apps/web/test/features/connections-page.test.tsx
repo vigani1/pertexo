@@ -742,7 +742,7 @@ describe('connections page', () => {
     renderApp(`/w/${workspaceId}/connections`);
     expect(
       await screen.findByText(
-        'Your role can’t see this workspace’s connections.',
+        'Your role (Viewer) can’t see this workspace’s connections. Operators, builders, admins and owners can.',
       ),
     ).toBeVisible();
     await waitFor(() => {

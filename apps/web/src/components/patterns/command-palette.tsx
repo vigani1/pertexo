@@ -88,7 +88,8 @@ export function CommandPalette({
             />
             <Kbd>Esc</Kbd>
           </label>
-          <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground">
+          {/* Always mounted; it only has children while nothing matches. */}
+          <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground empty:hidden">
             Nothing matches “{query}”.
           </Autocomplete.Empty>
           <Autocomplete.List className="max-h-[min(26rem,60svh)] overflow-y-auto overscroll-contain p-2 data-empty:p-0">

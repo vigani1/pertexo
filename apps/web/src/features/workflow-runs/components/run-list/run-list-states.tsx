@@ -1,3 +1,5 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
+import { roleLimitSentence } from '@/features/workspaces/roles.public';
 import { Link } from '@tanstack/react-router';
 import { BarredThread } from '@/components/patterns/thread-illustrations';
 import { Button } from '@/components/ui/button';
@@ -119,7 +121,9 @@ export function RunsUnavailable() {
 }
 
 /** No `run:read`: the page explains instead of showing empty lists. */
-export function RunsForbidden() {
+type WorkspaceRole = AccessibleWorkspace['role'];
+
+export function RunsForbidden({ role }: Readonly<{ role: WorkspaceRole }>) {
   return (
     <Empty>
       <EmptyMedia className="w-full max-w-56">
@@ -127,8 +131,7 @@ export function RunsForbidden() {
       </EmptyMedia>
       <EmptyTitle>Runs aren’t available for your role</EmptyTitle>
       <EmptyDescription>
-        Your role in this workspace can’t see workflow runs. Ask an admin or
-        owner if you need them.
+        {roleLimitSentence(role, 'run:read', 'see workflow runs')}
       </EmptyDescription>
     </Empty>
   );

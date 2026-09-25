@@ -149,7 +149,7 @@ export function runStatisticsQueryOptions(
   });
 }
 
-/** Running plus waiting runs for the spine badge, from the shared read. */
+/** Runs running now, for the spine badge, from the shared read. */
 export function liveRunCountQueryOptions(
   apiClient: ApiClient,
   userId: string,
@@ -157,8 +157,8 @@ export function liveRunCountQueryOptions(
 ) {
   return queryOptions({
     ...runStatisticsQueryOptions(apiClient, userId, workspaceId),
-    select: (statistics: RunStatistics) =>
-      statistics.current.running + statistics.current.waiting,
+    // The spine counts only what is running now, like its Core.
+    select: (statistics: RunStatistics) => statistics.current.running,
   });
 }
 

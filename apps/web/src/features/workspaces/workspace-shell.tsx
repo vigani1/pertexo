@@ -24,7 +24,7 @@ type WorkspaceShellProps = Readonly<{
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   workspaces: readonly AccessibleWorkspace[];
-  /** Running plus waiting runs; undefined when the role can't read runs. */
+  /** Runs running right now; undefined when the role can't read runs. */
   liveRunCount: number | undefined;
   /** Steps after the workspace in the breadcrumb, outermost first. */
   crumbs: readonly Readonly<{ key: string; label: ReactNode }>[];

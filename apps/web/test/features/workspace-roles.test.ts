@@ -12,6 +12,8 @@ import {
   canSuspendMember,
   canTransferOwnershipTo,
   ROLE_MATRIX,
+  roleLimitSentence,
+  rolesAllowedTo,
   WORKSPACE_ROLES,
 } from '@/features/workspaces/model/workspace-roles';
 // The platform policy is dependency-free; the matrix must never drift from it.
@@ -58,6 +60,21 @@ describe('roles matrix', () => {
         roles: expected,
       });
     }
+  });
+
+  it('names who holds each capability the way the policy grants it', () => {
+    for (const capability of capabilitiesForRole('owner'))
+      expect({ capability, roles: [...rolesAllowedTo(capability)] }).toEqual({
+        capability,
+        roles: ROLES.filter((role) =>
+          capabilitiesForRole(role).includes(capability),
+        ),
+      });
+    expect(
+      roleLimitSentence('operator', 'connection:manage', 'manage connections'),
+    ).toBe(
+      'Your role (Operator) can’t manage connections. Admins and owners can.',
+    );
   });
 
   it('offers only role changes and invitations the policy allows', () => {
