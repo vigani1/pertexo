@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatCountdown } from '../../src/lib/format-time';
+import { formatCountdown, formatShortTime } from '../../src/lib/format-time';
 import { useCountdown } from '../../src/lib/use-countdown';
 import { useNow } from '../../src/lib/use-now';
 
@@ -108,5 +108,23 @@ describe('formatCountdown', () => {
     expect(formatCountdown(24)).toBe('0:24');
     expect(formatCountdown(299.2)).toBe('5:00');
     expect(formatCountdown(-3)).toBe('0:00');
+  });
+});
+
+describe('formatShortTime', () => {
+  it('reads the time to the minute in the person’s locale, without seconds', () => {
+    const at = new Date(2026, 8, 24, 14, 31, 45);
+    const expected = new Intl.DateTimeFormat(undefined, {
+      timeStyle: 'short',
+    }).format(at);
+    expect(formatShortTime(at.toISOString())).toBe(expected);
+    expect(formatShortTime(at.getTime())).toBe(expected);
+    expect(formatShortTime(at.getTime())).toMatch(/31/u);
+    expect(formatShortTime(at.getTime())).not.toMatch(/45/u);
+  });
+
+  it('renders a dash for a missing or unreadable time', () => {
+    expect(formatShortTime(null)).toBe('—');
+    expect(formatShortTime('not a time')).toBe('—');
   });
 });

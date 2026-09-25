@@ -13,6 +13,9 @@ const clockFormatter = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
   second: '2-digit',
 });
+const shortTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  timeStyle: 'short',
+});
 const dayHeadingFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
   month: 'short',
@@ -44,6 +47,17 @@ export function formatDate(value: string | null | undefined): string {
 export function formatClock(value: string | null | undefined): string {
   const date = toDate(value);
   return date === undefined ? MISSING : clockFormatter.format(date);
+}
+
+/**
+ * Wall-clock time to the minute in the person's locale, e.g. 14:31 or
+ * 2:31 PM: when something last happened, where seconds are noise.
+ */
+export function formatShortTime(
+  value: string | number | null | undefined,
+): string {
+  const date = toDate(value);
+  return date === undefined ? MISSING : shortTimeFormatter.format(date);
 }
 
 /** "Today", "Yesterday" or "24 Sep" for grouping lists by day. */
