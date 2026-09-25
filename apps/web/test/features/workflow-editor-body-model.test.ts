@@ -132,6 +132,38 @@ describe('body graph commands', () => {
     ).toBeNull();
   });
 
+  it('moves the steps after a For each out of the way when its body grows', () => {
+    const graph: WorkflowGraphContract = {
+      ...emptyGraph,
+      nodes: [
+        {
+          ...step('loop', 'Each'),
+          definition: { key: 'core.foreach', version: 1 },
+          position: { x: 0, y: 0 },
+        },
+        { ...step('next', 'After'), position: { x: 352, y: 0 } },
+        { ...step('far', 'Far'), position: { x: 2400, y: 900 } },
+      ],
+    };
+    const next = addBodyStep(
+      graph,
+      'loop',
+      bodyStepDefinition,
+      { x: 400, y: 0 },
+      { nodeId: 'wide', edgeId: 'unused' },
+    );
+    if (next === null) throw new Error('expected a body step');
+    const after = next.nodes.find((node) => node.id === 'next');
+    // The body step 400px in widens the frame by far more than the gap.
+    expect(after?.position.x).toBeGreaterThan(352 + 300);
+    expect(after?.position.y).toBe(0);
+    // A step neither beside nor beneath the container stays where it was.
+    expect(next.nodes.find((node) => node.id === 'far')?.position).toEqual({
+      x: 2400,
+      y: 900,
+    });
+  });
+
   it('adds after a body step inside the same body, never outside it', () => {
     const graph = orderLoopGraph();
     const after = addBodyStep(

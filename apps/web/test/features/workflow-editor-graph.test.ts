@@ -151,9 +151,10 @@ describe('editor graph commands', () => {
     );
     expect(result.nodeIds).toEqual(['copy-1', 'copy-2']);
     const copies = result.graph.nodes.slice(-2);
+    // Just below the copied steps (80px cards and a 24px gap), clear of them.
     expect(copies.map((item) => item.position)).toEqual([
-      { x: 48, y: 48 },
-      { x: 48, y: 48 },
+      { x: 0, y: 104 },
+      { x: 0, y: 104 },
     ]);
     expect(copies[1]?.inputMappings).toEqual({
       amount: { kind: 'node_output', nodeId: 'copy-1', path: '$.amount' },
@@ -193,7 +194,11 @@ describe('editor graph commands', () => {
       ]),
     );
     expect(moved.nodes.map((item) => item.position.x)).toEqual([0, 10, 0, 40]);
-    expect(freePosition(graph, { x: 0, y: 0 })).toEqual({ x: 64, y: 64 });
+    // Every fixture step sits at the origin: a new one goes below them.
+    expect(freePosition(graph, { x: 0, y: 0 })).toEqual({ x: 0, y: 104 });
+    // A card is 224px wide, so a spot 200px to the right still collides.
+    expect(freePosition(graph, { x: 200, y: 0 })).toEqual({ x: 200, y: 104 });
+    expect(freePosition(graph, { x: 288, y: 0 })).toEqual({ x: 288, y: 0 });
     expect(updateWorkflowNode(graph, 'check', { disabled: false })).toBe(graph);
     expect(
       updateWorkflowNode(graph, 'check', { disabled: true }).nodes[1]?.disabled,

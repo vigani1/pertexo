@@ -1,5 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
-import { settleBodyLayout } from './body-layout';
+import { cardSize, overlaps, settleBodyLayout } from './body-layout';
 import { removeWorkflowElements } from './graph-commands';
 import {
   groupByScope,
@@ -17,8 +17,9 @@ type Position = Readonly<{ x: number; y: number }>;
 type CreateId = () => string;
 
 /**
- * Copies steps with fresh IDs, offset from the originals, each on its own
- * level. Connections between copied steps are copied too, and mappings that
+ * Copies steps with fresh IDs, each on its own level, placed just below the
+ * copied steps and clear of any other step (or `offset` from the originals
+ * when given). Connections between copied steps are copied too, and mappings that
  * read a copied step follow it. A copied For each gets a copy of its body,
  * with fresh IDs throughout, since IDs are unique across the workflow.
  */
@@ -26,7 +27,7 @@ export function duplicateWorkflowNodes(
   graph: WorkflowGraphContract,
   nodeIds: readonly string[],
   createId: CreateId = () => crypto.randomUUID(),
-  offset: Position = { x: 48, y: 48 },
+  offset?: Position,
 ): Readonly<{ graph: WorkflowGraphContract; nodeIds: readonly string[] }> {
   let next = graph;
   const copied: string[] = [];
@@ -48,15 +49,16 @@ function copySteps<Level extends GraphLevel>(
   level: Level,
   nodeIds: readonly string[],
   createId: CreateId,
-  offset: Position,
+  offset: Position | undefined,
 ): Readonly<{ level: Level; nodeIds: readonly string[] }> {
   const wanted = new Set(nodeIds);
   const sources = level.nodes.filter((node) => wanted.has(node.id));
   if (sources.length === 0) return { level, nodeIds: [] };
   const idMap = new Map(sources.map((node) => [node.id, createId()]));
+  const shift = offset ?? clearOffset(level, sources);
   const copies = sources.map((node) => ({
     ...copyStep(node, idMap, createId),
-    position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
+    position: { x: node.position.x + shift.x, y: node.position.y + shift.y },
   }));
   return {
     level: {
@@ -66,6 +68,38 @@ function copySteps<Level extends GraphLevel>(
     },
     nodeIds: copies.map((node) => node.id),
   };
+}
+
+const COPY_GAP = 24;
+
+/**
+ * How far down to move copies so none covers a step: at least the copied
+ * group's own height, then further while any copy would sit on another.
+ */
+function clearOffset(
+  level: GraphLevel,
+  sources: readonly WorkflowNode[],
+): Position {
+  const top = Math.min(...sources.map((node) => node.position.y));
+  const bottom = Math.max(
+    ...sources.map((node) => node.position.y + cardSize(node).height),
+  );
+  let y = bottom - top + COPY_GAP;
+  for (let attempt = 0; attempt <= level.nodes.length; attempt += 1) {
+    const blocked = sources.some((source) => {
+      const copy = {
+        x: source.position.x,
+        y: source.position.y + y,
+        ...cardSize(source),
+      };
+      return level.nodes.some((node) =>
+        overlaps(copy, { ...node.position, ...cardSize(node) }),
+      );
+    });
+    if (!blocked) break;
+    y += 80 + COPY_GAP;
+  }
+  return { x: 0, y: Math.round(y) };
 }
 
 /** A step under its new ID, reading copied steps instead of originals. */

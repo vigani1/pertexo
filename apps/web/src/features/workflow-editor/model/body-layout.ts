@@ -63,7 +63,7 @@ const sizes = new WeakMap<WorkflowNode, Size>();
 const layouts = new WeakMap<GraphLevel, ReadonlyMap<string, Position>>();
 
 /** How big a step is drawn: a card, or a container around its body. */
-function cardSize(node: WorkflowNode): Size {
+export function cardSize(node: WorkflowNode): Size {
   const cached = sizes.get(node);
   if (cached !== undefined) return cached;
   let size = CARD_ESTIMATE;
@@ -149,7 +149,7 @@ function freeSlot(depth: number, size: Size, placed: readonly Rect[]) {
   return { x, y };
 }
 
-function overlaps(left: Rect, right: Rect): boolean {
+export function overlaps(left: Rect, right: Rect): boolean {
   return (
     left.x < right.x + right.width &&
     right.x < left.x + left.width &&
@@ -178,6 +178,47 @@ export function settleBodyLayout<Level extends GraphLevel>(
   return nodes.some((node, index) => node !== level.nodes[index])
     ? { ...level, nodes }
     : level;
+}
+
+/**
+ * After a container grew (a step added to its body), moves the steps it
+ * would now cover out of the way: those to its right shift right by the
+ * extra width, those below it shift down by the extra height, so the steps
+ * after a For each keep their places relative to it.
+ */
+export function makeRoomAround<Level extends GraphLevel>(
+  level: Level,
+  containerId: string,
+  before: WorkflowNode,
+): Level {
+  const after = level.nodes.find((node) => node.id === containerId);
+  if (after === undefined) return level;
+  const was = { ...before.position, ...cardSize(before) };
+  const now = { ...after.position, ...cardSize(after) };
+  const wider = Math.max(0, now.width - was.width);
+  const taller = Math.max(0, now.height - was.height);
+  if (wider === 0 && taller === 0) return level;
+  const nodes = level.nodes.map((node) => {
+    if (node.id === containerId) return node;
+    const size = cardSize(node);
+    const beside =
+      node.position.x >= was.x + was.width &&
+      node.position.y < now.y + now.height &&
+      node.position.y + size.height > now.y;
+    const beneath =
+      node.position.y >= was.y + was.height &&
+      node.position.x < now.x + now.width &&
+      node.position.x + size.width > now.x;
+    if (!beside && !beneath) return node;
+    return {
+      ...node,
+      position: {
+        x: node.position.x + (beside ? wider : 0),
+        y: node.position.y + (beneath ? taller : 0),
+      },
+    };
+  });
+  return { ...level, nodes };
 }
 
 /**
