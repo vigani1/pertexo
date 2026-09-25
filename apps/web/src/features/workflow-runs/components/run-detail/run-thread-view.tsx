@@ -24,6 +24,10 @@ export function RunThreadView({
   onSelectStep: (key: string) => void;
 }>) {
   const span = view.endMs - view.startMs;
+  // Queued, or started without a step yet: the loading wave runs under the
+  // plan of steps until the first one starts.
+  const waiting =
+    active && view.rows.every((row) => row.status === 'not_started');
   if (view.rows.length === 0)
     return (
       <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl border border-white/6">
@@ -38,16 +42,17 @@ export function RunThreadView({
   return (
     <div
       className={cn(
-        'rounded-xl border border-white/6 px-2 pt-3 pb-2 sm:px-4',
+        'relative rounded-xl border border-white/6 px-2 pt-3 pb-2 sm:px-4',
         active && 'live-edge',
       )}
     >
+      {waiting ? <RunLoadingWave /> : null}
       <div
         aria-hidden="true"
         className="grid grid-cols-[9rem_minmax(0,1fr)] font-mono text-[0.66rem] text-subtle-foreground sm:grid-cols-[13rem_minmax(0,1fr)]"
       >
         <span />
-        <div className="relative mr-3 h-5 sm:mr-36">
+        <div className="relative mr-3 h-5 sm:mr-6">
           {view.ticks.map((tick) => (
             <span
               key={tick.offsetMs}
@@ -59,7 +64,7 @@ export function RunThreadView({
           ))}
         </div>
       </div>
-      <ol aria-label="Steps in this run" className="flex flex-col">
+      <ol aria-label="Steps in this run" className="relative flex flex-col">
         {view.rows.map((row) => {
           const selected = row.key === selectedKey;
           return (
@@ -96,7 +101,7 @@ export function RunThreadView({
                     )}
                   </span>
                 </span>
-                <span className="relative mr-3 h-full sm:mr-36">
+                <span className="relative mr-3 h-full sm:mr-6">
                   <ThreadTrack
                     view={view}
                     segments={row.segments}

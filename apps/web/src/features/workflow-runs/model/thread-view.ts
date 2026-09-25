@@ -5,6 +5,7 @@ import type {
   WorkflowRunSummary,
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { StatusTone } from '@/components/ui/status';
+import { describeStep } from '@/features/catalog/presentation.public';
 import { formatDurationMs } from '@/lib/format-time';
 import {
   describeNodeStatus,
@@ -62,15 +63,6 @@ const TICK_STEPS_MS = [
   43_200_000, 86_400_000,
 ];
 
-/** `core.http_request` → `Http request`. */
-export function humanizeDefinitionKey(key: string): string {
-  const name = key.split('.').at(-1) ?? key;
-  const words = name.replaceAll(/[_-]+/gu, ' ').trim();
-  return words === ''
-    ? key
-    : `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
-}
-
 type GraphLabel = Readonly<{ step: StepLabel; order: number }>;
 
 function graphLabels(
@@ -78,7 +70,8 @@ function graphLabels(
 ): ReadonlyMap<string, GraphLabel> {
   const labels = new Map<string, GraphLabel>();
   graph?.nodes.forEach((node, order) => {
-    const kind = humanizeDefinitionKey(node.definition.key);
+    // The catalog's name for the step type, the same words Build uses.
+    const kind = describeStep(node.definition.key).name;
     const label = node.label?.trim();
     labels.set(node.id, {
       step:

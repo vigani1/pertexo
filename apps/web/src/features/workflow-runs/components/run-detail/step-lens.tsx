@@ -31,7 +31,8 @@ function LensSection({
   );
 }
 
-function StepError({
+/** A step's error code as a sentence, what to do, and the code for support. */
+export function StepError({
   code,
   workspace,
 }: Readonly<{ code: string; workspace: AccessibleWorkspace }>) {

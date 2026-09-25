@@ -116,10 +116,9 @@ export function ThreadTrack({
     segment,
     placement: segmentPlacement(view, segment, nowMs),
   }));
-  const tagLeft = Math.max(
-    0,
-    ...placed.map(({ placement }) => placement.left + placement.width),
-  );
+  // The note sits above the thread where its latest segment starts, clear of
+  // the knots and frays that end each segment.
+  const tagLeft = placed.at(-1)?.placement.left ?? 0;
   return (
     <div aria-hidden="true" className="relative h-full min-w-0">
       {placed.map(({ segment, placement }, index) => {
@@ -148,12 +147,12 @@ export function ThreadTrack({
       })}
       <span
         className={cn(
-          'absolute top-1/2 hidden max-w-36 -translate-y-1/2 truncate pl-3 sm:block font-mono text-[0.7rem] whitespace-nowrap',
+          'absolute top-0.5 hidden max-w-60 truncate font-mono text-[0.68rem] leading-4 whitespace-nowrap sm:block',
           tone === 'failure' || tone === 'timeout'
             ? 'text-destructive/85'
             : 'text-subtle-foreground',
         )}
-        style={{ left: percent(Math.min(tagLeft, 100)) }}
+        style={{ left: `min(${percent(tagLeft)}, calc(100% - 10rem))` }}
       >
         {tag}
       </span>

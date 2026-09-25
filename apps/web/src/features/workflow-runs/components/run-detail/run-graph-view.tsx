@@ -7,12 +7,15 @@ import {
   Position,
   ReactFlow,
   getSmoothStepPath,
+  useReactFlow,
+  useStore,
+  useStoreApi,
   type Edge,
   type EdgeProps,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
-import { useMemo } from 'react';
+import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { projectRunGraph, type GraphStepStatus } from '../../model/run-graph';
@@ -42,6 +45,67 @@ type RunEdge = Edge<RunEdgeData, 'runEdge'>;
 const nodeTypes = Object.freeze({ runNode: WorkflowRunNode });
 const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
 
+/** Below this zoom, step names get too small to read. */
+const READABLE_ZOOM = 0.72;
+const FIT_OPTIONS = { padding: 0.12, maxZoom: 1 } as const;
+
+/** Centre on `focus`, but keep the view filled with the map where it can. */
+function clampCentre(
+  focus: number,
+  start: number,
+  length: number,
+  halfView: number,
+): number {
+  const low = start + halfView;
+  const high = start + length - halfView;
+  if (low > high) return start + length / 2;
+  return Math.min(Math.max(focus, low), high);
+}
+
+/**
+ * The map first fits whole (the `fitView` prop, once its steps are
+ * measured). When that shrinks them past reading size, this zooms back to a
+ * readable size around the focused step; people can still zoom out or pan
+ * to see the rest.
+ */
+function ReadableFit({
+  focusId,
+  onFitted,
+}: Readonly<{ focusId: string | undefined; onFitted: () => void }>) {
+  const flow = useReactFlow();
+  const store = useStoreApi();
+  const initialFitDone = useStore((state) => !state.fitViewQueued);
+  const refine = useEffectEvent(async () => {
+    const focus =
+      focusId === undefined ? undefined : flow.getInternalNode(focusId);
+    if (flow.getZoom() < READABLE_ZOOM && focus !== undefined) {
+      const { width, height } = store.getState();
+      const bounds = flow.getNodesBounds(flow.getNodes());
+      const { x, y } = focus.internals.positionAbsolute;
+      await flow.setCenter(
+        clampCentre(
+          x + (focus.measured.width ?? 0) / 2,
+          bounds.x,
+          bounds.width,
+          width / (2 * READABLE_ZOOM) - 24,
+        ),
+        clampCentre(
+          y + (focus.measured.height ?? 0) / 2,
+          bounds.y,
+          bounds.height,
+          height / (2 * READABLE_ZOOM) - 24,
+        ),
+        { zoom: READABLE_ZOOM },
+      );
+    }
+    onFitted();
+  });
+  useEffect(() => {
+    if (initialFitDone) void refine();
+  }, [initialFitDone]);
+  return null;
+}
+
 const edgeStrokeClass: Readonly<Partial<Record<StatusTone, string>>> = {
   live: '!stroke-primary',
   success: '!stroke-success/55',
@@ -68,6 +132,8 @@ export function RunGraphView({
   onSelectNode: (nodeId: string) => void;
 }>) {
   const projection = useMemo(() => projectRunGraph(graph, rows), [graph, rows]);
+  // Hidden until the first fit, so the map never jumps into place.
+  const [fitted, setFitted] = useState(false);
   const nodes = useMemo<RunNode[]>(
     () =>
       projection.nodes.map((node) => ({
@@ -110,13 +176,23 @@ export function RunGraphView({
         }}
         colorMode="dark"
         fitView
-        fitViewOptions={{ padding: 0.24 }}
+        fitViewOptions={FIT_OPTIONS}
         minZoom={0.35}
         maxZoom={1.6}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
+        className={cn(
+          'transition-opacity duration-150 motion-reduce:transition-none',
+          !fitted && 'opacity-0',
+        )}
       >
+        <ReadableFit
+          focusId={selectedNodeId ?? graph.nodes[0]?.id}
+          onFitted={() => {
+            setFitted(true);
+          }}
+        />
         <Controls
           position="bottom-right"
           showInteractive={false}
