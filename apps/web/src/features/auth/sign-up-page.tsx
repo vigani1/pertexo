@@ -12,7 +12,14 @@ import { PasswordCapabilityGate } from './components/stage/lens-states';
 import { resendVerificationEmail } from './native-auth.api';
 import { useCountdown } from '@/lib/use-countdown';
 
-export function SignUpPage({ apiClient }: Readonly<{ apiClient: ApiClient }>) {
+export function SignUpPage({
+  apiClient,
+  returnTo,
+}: Readonly<{
+  apiClient: ApiClient;
+  /** Kept through email verification so sign-in comes back here. */
+  returnTo?: string | undefined;
+}>) {
   const [sentTo, setSentTo] = useState<string>();
   const cooldown = useCountdown();
 
@@ -30,6 +37,7 @@ export function SignUpPage({ apiClient }: Readonly<{ apiClient: ApiClient }>) {
             <SignUpLens
               apiClient={apiClient}
               minimumPasswordLength={capabilities.password.minimumLength}
+              returnTo={returnTo}
               onCreated={(email) => {
                 cooldown.startSeconds(RESEND_COOLDOWN_SECONDS);
                 setSentTo(email);
@@ -40,7 +48,11 @@ export function SignUpPage({ apiClient }: Readonly<{ apiClient: ApiClient }>) {
               title="Check your inbox"
               cooldown={cooldown}
               resend={(signal) =>
-                resendVerificationEmail(apiClient, sentTo, signal)
+                resendVerificationEmail(
+                  apiClient,
+                  { email: sentTo, returnTo },
+                  signal,
+                )
               }
               footer={
                 <AuthLensFooter>

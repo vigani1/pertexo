@@ -27,6 +27,8 @@ type LoginPageProps = Readonly<{
   navigateToProvider?: (authorizationUrl: string) => void;
   onAuthenticated?: () => void;
   notice?: LoginNotice | undefined;
+  /** An allowlisted path to return to after sign-in. */
+  returnTo?: string | undefined;
 }>;
 
 export function LoginPage({
@@ -38,6 +40,7 @@ export function LoginPage({
     window.location.assign('/workspaces');
   },
   notice,
+  returnTo,
 }: LoginPageProps) {
   const capabilities = useQuery(
     authenticationCapabilitiesQueryOptions(apiClient),
@@ -83,7 +86,11 @@ export function LoginPage({
           title="Verify your email"
           cooldown={verificationCooldown}
           resend={(signal) =>
-            resendVerificationEmail(apiClient, view.email, signal)
+            resendVerificationEmail(
+              apiClient,
+              { email: view.email, returnTo },
+              signal,
+            )
           }
           footer={backToSignIn('Use another email')}
         >
@@ -101,7 +108,7 @@ export function LoginPage({
           submitLabel="Send link"
           pendingLabel="Sending…"
           send={(email, signal) =>
-            resendVerificationEmail(apiClient, email, signal)
+            resendVerificationEmail(apiClient, { email, returnTo }, signal)
           }
           describeFailure={resendFailure}
           onSent={(email) => {
@@ -123,6 +130,7 @@ export function LoginPage({
           onRequestVerificationLink={() => {
             setView({ kind: 'request-verification' });
           }}
+          returnTo={returnTo}
         />
       )}
     </AuthStage>

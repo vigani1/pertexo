@@ -7,9 +7,12 @@ import {
   readInvitation,
   resolveInvitation,
   startInvitationOidc,
+  verifyInvitationSession,
 } from './invitation-acceptance.api';
+import { isUnauthenticated } from '@/features/auth/session-identity.public';
 import {
   acceptanceFailure,
+  isProofExpired,
   DIFFERENT_INVITATION,
   NOT_JOINED_YET,
   SIGN_IN_AGAIN,
@@ -83,11 +86,29 @@ export function retireJourney(runtime: JourneyRuntime) {
   runtime.completion.current = undefined;
 }
 
+/**
+ * A fresh sign-in by the session authority proves the invited account
+ * without another click; a missing or older session leaves sign-in to people.
+ */
+async function verifyQuietly(
+  apiClient: ApiClient,
+  journey: InvitationAcceptanceJourney,
+  signal: AbortSignal,
+): Promise<InvitationAcceptanceJourney | undefined> {
+  if (journey.state !== 'sign_in_required') return undefined;
+  try {
+    return await verifyInvitationSession(apiClient, journey.csrfToken, signal);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Resolves the link token once, or reads the bound journey after reload. */
 async function bootstrapJourney(
   runtime: JourneyRuntime,
   signal: AbortSignal,
   ownership: number,
+  verifySession: boolean,
 ) {
   // Bootstrap outlives StrictMode's effect replay, so only ownership counts.
   const owned = () =>
@@ -96,11 +117,15 @@ async function bootstrapJourney(
   runtime.setError(undefined);
   try {
     const token = runtime.token.current;
-    const state =
+    const read =
       token === undefined
         ? await readInvitation(runtime.apiClient, signal)
         : await resolveInvitation(runtime.apiClient, token, signal);
+    const verified = verifySession
+      ? await verifyQuietly(runtime.apiClient, read, signal)
+      : undefined;
     if (!owned()) return;
+    const state = verified ?? read;
     runtime.token.current = undefined;
     runtime.setTokenAvailable(false);
     const retained = runtime.completion.current;
@@ -117,10 +142,47 @@ async function bootstrapJourney(
   }
 }
 
-export function startBootstrap(runtime: JourneyRuntime, ownership: number) {
+export function startBootstrap(
+  runtime: JourneyRuntime,
+  ownership: number,
+  verifySession: boolean,
+) {
   runtime.oidcController.current?.abort();
   const controller = replaceController(runtime.bootstrapController);
-  void bootstrapJourney(runtime, controller.signal, ownership);
+  void bootstrapJourney(runtime, controller.signal, ownership, verifySession);
+}
+
+/**
+ * Proves the invited account from this browser's session (ADR 043). No
+ * session goes to sign-in; an older one signs in again; both come back.
+ */
+export async function verifyJourneySession(
+  runtime: JourneyRuntime,
+  journey: InvitationAcceptanceJourney | undefined,
+  navigate: Readonly<{ signIn: () => void; signInAgain: () => void }>,
+) {
+  if (journey === undefined || journey.state === 'unavailable') return;
+  const controller = replaceController(runtime.oidcController);
+  const owned = snapshot(runtime);
+  runtime.setPending(true);
+  runtime.setError(undefined);
+  try {
+    const verified = await verifyInvitationSession(
+      runtime.apiClient,
+      journey.csrfToken,
+      controller.signal,
+    );
+    if (stillOwned(runtime, owned, controller.signal))
+      runtime.setJourney(verified);
+  } catch (cause) {
+    if (!stillOwned(runtime, owned, controller.signal)) return;
+    if (isUnauthenticated(cause)) navigate.signIn();
+    else if (isProofExpired(cause)) navigate.signInAgain();
+    else runtime.setError(acceptanceFailure(cause));
+  } finally {
+    if (stillOwned(runtime, owned, controller.signal))
+      runtime.setPending(false);
+  }
 }
 
 /** Verifies the invited account through the invitation's own sign-in. */

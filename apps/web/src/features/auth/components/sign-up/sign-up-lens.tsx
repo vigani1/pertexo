@@ -6,6 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, newPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { signUpFailure } from '../../model/auth-failure';
+import { returnToSearch } from '../../model/return-path';
 import { signUpWithEmail } from '../../native-auth.api';
 import { useAuthRequest } from '../../use-auth-request';
 import {
@@ -26,10 +27,13 @@ function nameProblem(value: string): string | undefined {
 export function SignUpLens({
   apiClient,
   minimumPasswordLength,
+  returnTo,
   onCreated,
 }: Readonly<{
   apiClient: ApiClient;
   minimumPasswordLength: number;
+  /** Kept through verification so sign-in comes back here. */
+  returnTo: string | undefined;
   onCreated: (email: string) => void;
 }>) {
   const fields = useFieldValues(
@@ -67,6 +71,7 @@ export function SignUpLens({
                   displayName: values.name.trim(),
                   email: values.email.trim(),
                   password: values.password,
+                  returnTo,
                 },
                 signal,
               ),
@@ -118,7 +123,10 @@ export function SignUpLens({
         />
       </AuthForm>
       <AuthLensFooter>
-        Already have an account? <Link to="/login">Sign in</Link>
+        Already have an account?{' '}
+        <Link to="/login" search={returnToSearch(returnTo)}>
+          Sign in
+        </Link>
       </AuthLensFooter>
     </AuthLens>
   );

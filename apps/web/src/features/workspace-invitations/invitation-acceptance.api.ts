@@ -4,6 +4,7 @@ import {
   invitationAcceptanceOidcRequestSchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
+  invitationAcceptanceSessionRequestSchema,
   oidcStartResponseSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
@@ -58,6 +59,28 @@ export function startInvitationOidc(
     response: {
       kind: 'json',
       decode: (value) => oidcStartResponseSchema.parse(value),
+    },
+  });
+}
+
+/**
+ * Proves the invited account from this browser's fresh sign-in by the
+ * session authority (ADR 043); answers the verified journey.
+ */
+export function verifyInvitationSession(
+  apiClient: ApiClient,
+  csrfToken: string,
+  signal?: AbortSignal,
+): Promise<InvitationAcceptanceJourney> {
+  return apiClient.request({
+    path: '/v1/invitation-acceptance/session',
+    method: 'POST',
+    headers: { 'X-Invitation-Csrf-Token': csrfToken },
+    body: invitationAcceptanceSessionRequestSchema.parse({}),
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => invitationAcceptanceJourneySchema.parse(value),
     },
   });
 }

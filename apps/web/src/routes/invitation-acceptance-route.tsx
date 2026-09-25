@@ -1,4 +1,5 @@
 import {
+  useLoaderData,
   useLocation,
   useNavigate,
   useRouteContext,
@@ -8,6 +9,7 @@ import { InvitationAcceptancePage } from '@/features/workspace-invitations/publi
 
 export function InvitationAcceptanceRoute() {
   const { apiClient } = useRouteContext({ from: '/invitations/accept' });
+  const { signInMethod } = useLoaderData({ from: '/invitations/accept' });
   const navigate = useNavigate();
   const hash = useLocation({ select: (location) => location.hash });
   const initialToken = readToken(hash);
@@ -34,14 +36,18 @@ export function InvitationAcceptanceRoute() {
     <InvitationAcceptancePage
       apiClient={apiClient}
       {...(initialToken === undefined ? {} : { initialToken })}
+      signInMethod={signInMethod}
       clearFragment={clearFragment}
       navigateToProvider={navigateToProvider}
       openWorkspace={openWorkspace}
       openSignIn={() => {
-        void navigate({ to: '/login' });
+        void navigate({ to: '/login', search: RETURN_HERE });
+      }}
+      openFreshSignIn={() => {
+        void navigate({ to: '/logout', search: RETURN_HERE });
       }}
       openSignUp={() => {
-        void navigate({ to: '/sign-up' });
+        void navigate({ to: '/sign-up', search: RETURN_HERE });
       }}
       openWorkspaceDiscovery={() => {
         void navigate({ to: '/workspaces' });
@@ -49,6 +55,9 @@ export function InvitationAcceptanceRoute() {
     />
   );
 }
+
+/** Sign-in, sign-up and verification all come back to the invitation. */
+const RETURN_HERE = { returnTo: '/invitations/accept' } as const;
 
 function readToken(hash: string): string | undefined {
   const value = hash.startsWith('#') ? hash.slice(1) : hash;
