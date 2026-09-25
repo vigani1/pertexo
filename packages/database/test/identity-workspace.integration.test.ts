@@ -2146,6 +2146,35 @@ describe('identity/workspace persistence', () => {
     expect(page.items.filter((item) => item.email === email)).toHaveLength(1);
   });
 
+  it('lists members and invitations side by side without a lock cycle', async () => {
+    // The Team page reads both at once; each read must succeed however the
+    // two interleave, and while an invitation is being created.
+    const teamWorkspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Concurrent team reads',
+      slug: `team-reads-${randomUUID().slice(0, 8)}`,
+      ownerUserId,
+    });
+    const reads = Array.from({ length: 24 }, (_, index) =>
+      index % 2 === 0
+        ? identityDatabase.listWorkspaceMembers(teamWorkspace.id, ownerUserId)
+        : identityDatabase.listWorkspaceInvitations(
+            teamWorkspace.id,
+            ownerUserId,
+          ),
+    );
+    const created = identityDatabase.createWorkspaceInvitation(
+      invitationCreateCommand(
+        teamWorkspace.id,
+        ownerUserId,
+        `${randomUUID()}@example.test`,
+      ),
+    );
+    const settled = await Promise.allSettled([...reads, created]);
+    expect(settled.filter((outcome) => outcome.status === 'rejected')).toEqual(
+      [],
+    );
+  });
+
   it('authorizes invitations from current roles and keeps workspace rows isolated', async () => {
     const invitationWorkspace = await identityDatabase.createWorkspaceWithOwner(
       {
