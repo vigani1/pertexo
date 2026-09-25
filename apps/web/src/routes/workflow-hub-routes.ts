@@ -13,12 +13,13 @@ import {
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
-import { PagePending } from './page-pending';
+import { WorkflowHubPending } from './page-pending';
 import { pageTitle } from './page-title';
 import {
   authoringPrefetches,
   prefetchResource,
-  settlePrefetches,
+  probeResource,
+  warmPrefetches,
 } from './route-context';
 import { workspaceScopeRoute } from './workspace-routes';
 
@@ -30,14 +31,18 @@ import { workspaceScopeRoute } from './workspace-routes';
 export const workflowHubRoute = createRoute({
   getParentRoute: () => workspaceScopeRoute,
   path: 'workflows/$workflowId',
+  pendingComponent: WorkflowHubPending,
   beforeLoad: ({ params }) => {
     const parsed = workflowIdentifierSchema.safeParse(params.workflowId);
     return { workflowId: parsed.success ? parsed.data : null };
   },
-  loader: async ({ context }) => {
+  // The summary decides whether the workflow exists; a missing one renders
+  // inside the workspace shell instead of the hub.
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
-    if (workflowId === null) return;
-    await settlePrefetches(context, [
+    if (workflowId === null) return { found: false };
+    return probeResource(
+      context,
       queryClient.query(
         workflowSummaryQueryOptions(
           apiClient,
@@ -46,9 +51,8 @@ export const workflowHubRoute = createRoute({
           workflowId,
         ),
       ),
-    ]);
+    );
   },
-  pendingComponent: PagePending,
   component: lazyRouteComponent(
     () => import('./workflow-hub-route'),
     'WorkflowHubRoute',
@@ -57,6 +61,7 @@ export const workflowHubRoute = createRoute({
 
 export const workflowBuildRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
+  pendingComponent: WorkflowHubPending,
   path: '/',
   loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
@@ -79,14 +84,15 @@ export const workflowBuildRoute = createRoute({
 
 export const workflowRunsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
+  pendingComponent: WorkflowHubPending,
   path: 'runs',
   validateSearch: (search) => sanitizeWorkflowRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
-  loader: async ({ context, deps }) => {
+  loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null || !workspace.capabilities.includes('run:read'))
       return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.infiniteQuery(
         workflowRunsInfiniteQueryOptions(apiClient, user.id, workspace.id, {
           ...deps,
@@ -106,11 +112,12 @@ export const workflowRunsRoute = createRoute({
 
 export const workflowTriggersRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
+  pendingComponent: WorkflowHubPending,
   path: 'triggers',
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.query(
         webhookTriggersQueryOptions(
           apiClient,
@@ -148,11 +155,12 @@ export const workflowTriggersRoute = createRoute({
 
 export const workflowVersionsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
+  pendingComponent: WorkflowHubPending,
   path: 'versions',
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.query(
         workflowVersionsQueryOptions(
           apiClient,
@@ -174,11 +182,12 @@ export const workflowVersionsRoute = createRoute({
 
 export const workflowSettingsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
+  pendingComponent: WorkflowHubPending,
   path: 'settings',
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('workflow:update')) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.query(
         failureNotificationDestinationsQueryOptions(
           apiClient,

@@ -15,6 +15,8 @@ import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.
 export type RouterContext = Readonly<{
   queryClient: QueryClient;
   apiClient: ApiClient;
+  /** Re-runs the current routes' session checks after a warmed read's 401. */
+  onSessionExpired: () => void;
 }>;
 
 function rethrowError(error: unknown): never {
@@ -89,22 +91,24 @@ export async function findWorkspace(
 }
 
 /**
- * Settles route prefetches. An expired session always signs out locally.
- * `tolerate` lets the page render its own recovery for other failures;
- * `strict` rethrows the first one to the route error boundary.
+ * Starts a page's reads without holding navigation: the page renders at once
+ * and each block shows its own skeleton, retrying on mount if its read
+ * failed. An expired session found here re-runs the route's session check,
+ * which signs out, so a warmed read keeps the loader's sign-in guarantee.
  */
-export async function settlePrefetches(
+export function warmPrefetches(
   context: RouterContext,
   reads: readonly Promise<unknown>[],
-  mode: 'tolerate' | 'strict' = 'tolerate',
-): Promise<void> {
-  const results = await Promise.allSettled(reads);
-  const failures = results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason as unknown] : [],
-  );
-  if (failures.some(isUnauthenticated)) await signOutLocally(context);
-  const [first] = failures;
-  if (mode === 'strict' && first !== undefined) rethrowError(first);
+): void {
+  void Promise.allSettled(reads).then((results) => {
+    if (
+      results.some(
+        (result) =>
+          result.status === 'rejected' && isUnauthenticated(result.reason),
+      )
+    )
+      context.onSessionExpired();
+  });
 }
 
 /** The step catalog and connections every workflow-building page reads. */
@@ -122,20 +126,43 @@ export function authoringPrefetches(
   ];
 }
 
+async function settleReads(
+  context: RouterContext,
+  reads: readonly Promise<unknown>[],
+): Promise<readonly unknown[]> {
+  const results = await Promise.allSettled(reads);
+  const failures = results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
+  // An expired session always signs out, whatever else failed.
+  if (failures.some(isUnauthenticated)) await signOutLocally(context);
+  return failures;
+}
+
 /**
- * Strict prefetch for one resource's page. A 404 (missing, or hidden by the
- * API's non-disclosing policy) renders the in-shell not-found page instead
- * of the route error boundary.
+ * Holds navigation until one resource's page has its data. A 404 (missing,
+ * or hidden by the API's non-disclosing policy) renders the in-shell
+ * not-found page; any other failure goes to the route error boundary.
  */
 export async function prefetchResource(
   context: RouterContext,
   reads: readonly Promise<unknown>[],
 ): Promise<Readonly<{ found: boolean }>> {
-  try {
-    await settlePrefetches(context, reads, 'strict');
-  } catch (error) {
-    if (isNotFound(error)) return { found: false };
-    rethrowError(error);
-  }
-  return { found: true };
+  const [first] = await settleReads(context, reads);
+  if (first === undefined) return { found: true };
+  if (isNotFound(first)) return { found: false };
+  return rethrowError(first);
+}
+
+/**
+ * Asks only whether a resource exists before its pages render: a 404 means
+ * not found and an expired session signs out, while any other failure is
+ * left to the pages, which show their own recovery.
+ */
+export async function probeResource(
+  context: RouterContext,
+  read: Promise<unknown>,
+): Promise<Readonly<{ found: boolean }>> {
+  const failures = await settleReads(context, [read]);
+  return { found: !failures.some(isNotFound) };
 }

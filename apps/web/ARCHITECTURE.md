@@ -512,11 +512,12 @@ query fields; local filtering of one page must not pretend to search all
 records.
 
 One query-options factory is used by a loader and its consuming hook. The loader
-calls `ensureQueryData`; the component reads the same key. Keep router preload
-staleness at zero so Query controls freshness; preload only critical data and
-start independent requests concurrently. A first implementation must explicitly
-choose whether stale cached content is shown while refreshed or freshness is
-required before entry; `ensureQueryData` alone is not a guarantee of freshness.
+warms the query (or, for a resource page, awaits it); the component reads the
+same key. Keep router preload staleness at zero so Query controls freshness;
+preload only critical data and start independent requests concurrently. A first
+implementation must explicitly choose whether stale cached content is shown
+while refreshed or freshness is required before entry; `ensureQueryData` alone
+is not a guarantee of freshness.
 [Router external-cache integration](https://tanstack.com/router/latest/docs/guide/external-data-loading).
 
 Canonical key hierarchy (ordinary readonly arrays, not a generic key framework):
@@ -1187,7 +1188,20 @@ support reference helpers), `use-prefers-reduced-motion.ts`,
   set document titles with `pageTitle`. Resource pages render `ResourceNotFound`
   inside the frame for missing runs or workflows; their loaders use
   `prefetchResource` (`routes/route-context.ts`), which turns a 404 into
-  `{ found: false }`.
+  `{ found: false }`, and the hub asks only whether its workflow exists
+  (`probeResource`).
+- Loading: every other loader warms its queries with `warmPrefetches` and
+  returns at once, so navigation never waits for list data; each block shows its
+  own skeleton. A warmed read that meets an expired session calls the router
+  context's `onSessionExpired`, which re-runs the scope's session check in
+  `beforeLoad` and signs out. What still blocks (the session and workspace
+  check, resource reads, lazy chunks) shows the router's pending component after
+  150 ms for at least 300 ms (`defaultPendingMs`/`defaultPendingMinMs`):
+  `PagePending` inside the shell, `WorkflowHubPending` in the hub,
+  `WorkspaceBootPage` (“Opening Northwind Ops…”, then “Still connecting…” after
+  2 s) for a cold workspace and `BootPage`/`OpeningPage` for public pages.
+  `Skeleton` and `SkeletonThread` stay invisible for their first 150 ms, so an
+  in-page skeleton never flashes either.
 - File placement is the same in every feature: `components/` holds components
   (and the Canvas scene a component owns); `model/` holds pure rules, types and
   the editor store with its React contexts; feature hooks (`use-*.ts`) sit at

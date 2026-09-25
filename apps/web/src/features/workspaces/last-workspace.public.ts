@@ -1,1 +1,5 @@
-export { landingWorkspace, rememberLastWorkspace } from './last-workspace';
+export {
+  knownWorkspaceName,
+  landingWorkspace,
+  rememberLastWorkspace,
+} from './last-workspace';

@@ -38,16 +38,16 @@ import {
   workspaceLifecycleOperationQueryOptions,
   workspaceMembersInfiniteQueryOptions,
 } from '@/features/workspaces/queries.public';
-import { PagePending } from './page-pending';
 import { pageTitle } from './page-title';
 import {
   findWorkspace,
   authoringPrefetches,
   loadCurrentUser,
   prefetchResource,
-  settlePrefetches,
+  warmPrefetches,
 } from './route-context';
 import { rootRoute } from './root-route';
+import { WorkspaceBootPage } from './system-pages';
 
 function assertWorkspaceOpenable(
   workspace: AccessibleWorkspace | null,
@@ -67,6 +67,8 @@ function assertWorkspaceOpenable(
 export const workspaceScopeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/w/$workspaceId',
+  // A cold start: the Core gathers while the session and workspace resolve.
+  pendingComponent: WorkspaceBootPage,
   beforeLoad: async ({ context, params }) => {
     const user = await loadCurrentUser(context);
     const workspace = await findWorkspace(context, user.id, params.workspaceId);
@@ -79,7 +81,6 @@ export const workspaceScopeRoute = createRoute({
 export const workspaceShellRoute = createRoute({
   getParentRoute: () => workspaceScopeRoute,
   id: 'shell',
-  pendingComponent: PagePending,
   component: lazyRouteComponent(
     () => import('./workspace-shell-route'),
     'WorkspaceShellRoute',
@@ -90,45 +91,14 @@ export const homeRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: '/',
   staticData: { crumb: 'Home' },
-  loader: async ({ context }) => {
+  // Every block warms its read without holding the page: the Loom may page
+  // through 300 runs, and each block shows its own skeleton and retries on
+  // mount if its warm-up read failed.
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);
-    // Warm the slower or secondary reads without holding the page: the Loom
-    // may page through 300 runs, and each block shows its own skeleton and
-    // retries on mount if its warm-up read failed.
-    const warm = (read: Promise<unknown>) => {
-      read.catch(() => undefined);
-    };
-    if (can('run:read')) {
-      warm(
-        queryClient.query(
-          runLoomQueryOptions(apiClient, user.id, workspace.id, 3_600_000),
-        ),
-      );
-      warm(
-        queryClient.query(
-          loomStatisticsQueryOptions(apiClient, user.id, workspace.id, '1h'),
-        ),
-      );
-    }
-    if (can('connection:read'))
-      warm(
-        queryClient.query(
-          connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
-        ),
-      );
-    if (can('workflow:update'))
-      warm(
-        queryClient.query(
-          failureNotificationDestinationsQueryOptions(
-            apiClient,
-            user.id,
-            workspace.id,
-          ),
-        ),
-      );
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       ...(can('run:read')
         ? [
             queryClient.query(
@@ -140,6 +110,17 @@ export const homeRoute = createRoute({
             queryClient.query(
               anyRunQueryOptions(apiClient, user.id, workspace.id),
             ),
+            queryClient.query(
+              runLoomQueryOptions(apiClient, user.id, workspace.id, 3_600_000),
+            ),
+            queryClient.query(
+              loomStatisticsQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+                '1h',
+              ),
+            ),
           ]
         : []),
       ...(can('workflow:read')
@@ -149,6 +130,24 @@ export const homeRoute = createRoute({
             ),
             queryClient.infiniteQuery(
               workflowsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+            ),
+          ]
+        : []),
+      ...(can('connection:read')
+        ? [
+            queryClient.query(
+              connectionDiscoveryQueryOptions(apiClient, user.id, workspace.id),
+            ),
+          ]
+        : []),
+      ...(can('workflow:update')
+        ? [
+            queryClient.query(
+              failureNotificationDestinationsQueryOptions(
+                apiClient,
+                user.id,
+                workspace.id,
+              ),
             ),
           ]
         : []),
@@ -168,9 +167,9 @@ export const workflowsRoute = createRoute({
   // filters shareable. Unknown values fall back to the defaults.
   validateSearch: (search) => parseWorkflowListSearch(search),
   loaderDeps: ({ search }) => ({ sort: search.sort }),
-  loader: async ({ context, deps }) => {
+  loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.infiniteQuery(
         workflowsInfiniteQueryOptions(
           apiClient,
@@ -199,10 +198,10 @@ export const runsRoute = createRoute({
   // opens the Runs page.
   validateSearch: (search) => sanitizeRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
-  loader: async ({ context, deps }) => {
+  loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('run:read')) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.infiniteQuery(
         workflowRunsInfiniteQueryOptions(
           apiClient,
@@ -253,10 +252,10 @@ export const connectionsRoute = createRoute({
   path: 'connections',
   staticData: { crumb: 'Connections' },
   validateSearch: (search) => parseConnectionsSearch(search),
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('connection:read')) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.infiniteQuery(
         connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
       ),
@@ -276,10 +275,10 @@ export const teamRoute = createRoute({
   path: 'team',
   staticData: { crumb: 'Team' },
   validateSearch: (search) => parseTeamSearch(search),
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('member:read')) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.infiniteQuery(
         workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
       ),
@@ -295,12 +294,12 @@ export const alertsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'alerts',
   staticData: { crumb: 'Alerts' },
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);
     if (!can('workflow:update')) return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.query(
         failureNotificationDestinationsQueryOptions(
           apiClient,
@@ -334,14 +333,14 @@ export const workspaceSettingsRoute = createRoute({
     return parsed.success ? { operationId: parsed.data } : {};
   },
   loaderDeps: ({ search }) => search,
-  loader: async ({ context, deps }) => {
+  loader: ({ context, deps }) => {
     const { apiClient, queryClient, user, workspace } = context;
     if (
       !workspace.capabilities.includes('workspace:manage') ||
       deps.operationId === undefined
     )
       return;
-    await settlePrefetches(context, [
+    warmPrefetches(context, [
       queryClient.query(
         workspaceLifecycleOperationQueryOptions(
           apiClient,
