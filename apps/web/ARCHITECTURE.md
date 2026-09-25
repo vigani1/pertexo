@@ -1137,10 +1137,11 @@ and `track` for progress → result), loading-orb, dialog (`center`, `top`). Oth
 patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
 line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
 illustrations. Other libraries (`lib`): `format-time.ts` (all date/time/duration
-text — no feature-local `Intl.DateTimeFormat`), `format-initials.ts`,
-`api/api-error-copy.ts` (generic read/command failure sentences, uncertain
-outcome, forbidden, rate-limit and support reference helpers),
-`use-prefers-reduced-motion.ts`, `use-online-status.ts`.
+text — no feature-local `Intl.DateTimeFormat`), `format-bytes.ts` (byte sizes
+for files and payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic
+read/command failure sentences, uncertain outcome, forbidden, rate-limit and
+support reference helpers), `use-prefers-reduced-motion.ts`,
+`use-online-status.ts`.
 
 #### Structure
 
@@ -1652,6 +1653,23 @@ value. Commit only when separately authorized under root Git instructions.
   or correctness. The score is not used as a completion gate. These counts
   describe the current uncommitted working tree, not the historical
   stage-specific counts above.
+- Triggers, connections and alerts follow-up (2026-09-25). Each webhook card on
+  the Triggers tab composes a “Recent deliveries” list
+  (`workflow-settings/components/triggers/webhook-deliveries.tsx`) from the ADR
+  045 delivery log: outcome words and tones from `model/delivery-outcome.ts`,
+  HTTP status and body size, relative and exact times, a link to the admitted
+  run, ten rows per page through `LoadMore`, the shared stale line and an honest
+  empty state. Alerts rows and the destination lens show `#channel-name` from
+  the ADR 046 lookup (`failure-notifications/use-slack-channel-names.ts`, one
+  query per connection and group of ten channels through
+  `connections/queries.public.ts`, fresh for five minutes) and otherwise the
+  channel ID with a short reason from `model/channel-names.ts`; a failed lookup
+  never fails the page. The empty Triggers tab uses the shared `Empty` like the
+  Versions tab, without a glyph or a divider under the hub bar. Component and
+  model tests cover the delivery list, paging, failure and empty states,
+  resolved and unresolved channel names and the lookup failure; the web suite
+  passes 59 files with 441 tests. The Slack step inspector and workflow settings
+  still show channel IDs.
 
 Order 2's visual kit includes the old colors/type/glass/button language, not
 every legacy component. Aurora and canvas details land where their real states
@@ -1936,19 +1954,19 @@ recorded below. Workspace invitations now follow the bounded design and ADR 038;
 do not reopen completed frontend architecture or repeat a whole-app audit
 without a concrete new reason.
 
-| Surface                                                         | Working-tree status                                                                                                             |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Login and workspace selection                                   | Implemented, including first/additional workspace creation through the existing owner-assignment contract                       |
-| Workflow list/create                                            | Implemented                                                                                                                     |
-| Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline                                                                                                    |
-| Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                               |
-| Run history                                                     | Implemented safe cursor list with workflow/status/UTC date filters and detail navigation                                        |
-| Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, triggers and the current failure policy                                |
-| Connections                                                     | Implemented safe cursor list plus Slack bot-token create/test/rotate and generic revocation; additional auth types remain gated |
-| Notification destinations                                       | Implemented safe list/create/version/status management using existing Slack or email connection references                      |
-| Workspace members                                               | Implemented capability-gated list, cursor pagination, bounded existing-member role changes and invitation management            |
-| Workspace general                                               | Implemented conditional display-name editing, read-only slug and asynchronous deletion/restore operation tracking               |
-| Artifact downloads and route fallbacks                          | Implemented; upload/asset browser deferred                                                                                      |
+| Surface                                                         | Working-tree status                                                                                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Login and workspace selection                                   | Implemented, including first/additional workspace creation through the existing owner-assignment contract                                              |
+| Workflow list/create                                            | Implemented                                                                                                                                            |
+| Editor, conflict handling, validate/publish/preview/run dialogs | Implemented bounded baseline                                                                                                                           |
+| Run detail                                                      | Implemented status, graph, events, cancellation and explicit exact-version replay                                                                      |
+| Run history                                                     | Implemented safe cursor list with workflow/status/UTC date filters and detail navigation                                                               |
+| Workflow settings                                               | Implemented rename, versions/restore/compare, lifecycle, schedule toggles, webhook operations, the webhook delivery log and the current failure policy |
+| Connections                                                     | Implemented safe cursor list plus Slack bot-token create/test/rotate and generic revocation; additional auth types remain gated                        |
+| Notification destinations                                       | Implemented safe list/create/version/status management using existing Slack or email connection references, with Slack channel names when they resolve |
+| Workspace members                                               | Implemented capability-gated list, cursor pagination, bounded existing-member role changes and invitation management                                   |
+| Workspace general                                               | Implemented conditional display-name editing, read-only slug and asynchronous deletion/restore operation tracking                                      |
+| Artifact downloads and route fallbacks                          | Implemented; upload/asset browser deferred                                                                                                             |
 
 The tables below describe target capabilities as well as existing ones. Do not
 infer that every listed action is already implemented.
