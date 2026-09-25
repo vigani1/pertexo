@@ -9,6 +9,7 @@ export {
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
+  WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   UserProfileCommandConflictError,
 } from './identity-workspace.js';

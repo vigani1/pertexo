@@ -1,19 +1,25 @@
 import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { MembershipRole } from './identity-workspace-contracts.js';
+import { parseIdentityUuid } from './identity-workspace-support.js';
+import { withTenantScopedClient } from './workspace.js';
 
 /*
- * The shared half of the existing-member commands (ADR 037 role change and
- * ADR 042 removal): the workspace-first lock order, the locked participant
- * rows, and the actor/workspace-scoped command receipt.
+ * The shared half of the existing-member commands (ADR 037 role change,
+ * ADR 042 removal and the ADR 047 membership lifecycle): the workspace-first
+ * lock order, the locked participant rows, the actor/workspace-scoped command
+ * receipt and the transaction that ties them together.
  */
 
 type MemberCommandReceiptTable =
   | 'workspace_member_role_command_receipts'
-  | 'workspace_member_removal_command_receipts';
+  | 'workspace_member_removal_command_receipts'
+  | 'workspace_member_departure_command_receipts'
+  | 'workspace_member_suspension_command_receipts'
+  | 'workspace_ownership_transfer_command_receipts';
 
 export const commandRevisionSchema = z.number().int().positive();
 export const commandKeySchema = z
@@ -166,7 +172,13 @@ export async function recordMemberCommandAudit(
     workspaceId: string;
     actorUserId: string;
     targetUserId: string;
-    action: 'workspace.member_role_changed' | 'workspace.member_removed';
+    action:
+      | 'workspace.member_role_changed'
+      | 'workspace.member_removed'
+      | 'workspace.member_left'
+      | 'workspace.member_suspended'
+      | 'workspace.member_reactivated'
+      | 'workspace.ownership_transferred';
     requestId: string | undefined;
     traceId: string | undefined;
     metadata: Readonly<Record<string, string | number>>;
@@ -186,6 +198,133 @@ export async function recordMemberCommandAudit(
       input.requestId ?? null,
       input.traceId ?? null,
       JSON.stringify(input.metadata),
+    ],
+  );
+}
+
+/** The participants a command was admitted with, as locked. */
+export type AdmittedMemberCommand = Readonly<{
+  actor: LockedMember;
+  target: LockedMember;
+}>;
+
+/** The validated workspace, actor and target identifiers of a command. */
+export type MemberCommandScope = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  targetUserId: string;
+}>;
+
+type MemberCommandResult = Readonly<Record<string, unknown>>;
+
+/**
+ * Runs one existing-member command in a tenant transaction: lock the
+ * participants, let the command admit its actor before any receipt is read,
+ * replay an exact retry from its receipt without rechecking the old state,
+ * and otherwise apply the change and complete the receipt in the same commit.
+ */
+export async function executeMemberCommand<Result extends MemberCommandResult>(
+  pool: Pool,
+  command: Readonly<{
+    table: MemberCommandReceiptTable;
+    workspaceId: string;
+    actorUserId: string;
+    targetUserId: string;
+    idempotencyKey: string;
+    /** The command body; identifiers are added to its request hash. */
+    request: Readonly<Record<string, string | number>>;
+    result: z.ZodType<Result>;
+    conflict: (
+      reason: 'actor_inactive' | 'idempotency_conflict',
+      message: string,
+    ) => Error;
+    admit: (
+      locked: Readonly<{
+        actor: LockedMember | undefined;
+        target: LockedMember | undefined;
+      }>,
+      scope: MemberCommandScope,
+    ) => AdmittedMemberCommand;
+    apply: (
+      client: PoolClient,
+      admitted: AdmittedMemberCommand,
+      scope: MemberCommandScope,
+    ) => Promise<Result>;
+  }>,
+): Promise<Result & Readonly<{ replayed: boolean }>> {
+  const scope: MemberCommandScope = Object.freeze({
+    workspaceId: parseIdentityUuid(command.workspaceId),
+    actorUserId: parseIdentityUuid(command.actorUserId),
+    targetUserId: parseIdentityUuid(command.targetUserId),
+  });
+  const keyHash = commandKeyHash(
+    commandKeySchema.parse(command.idempotencyKey),
+  );
+  const requestHash = commandRequestHash({ ...command.request, ...scope });
+  return withTenantScopedClient(
+    pool,
+    { workspaceId: scope.workspaceId, actorId: scope.actorUserId },
+    async (client) => {
+      const locked = await lockMemberCommandParticipants(
+        client,
+        scope.workspaceId,
+        scope.actorUserId,
+        scope.targetUserId,
+      );
+      if (!locked.workspaceActive)
+        throw command.conflict('actor_inactive', 'The workspace is not active');
+      const admitted = command.admit(locked, scope);
+      const receipt = await claimMemberCommandReceipt(client, command.table, {
+        ...scope,
+        keyHash,
+        requestHash,
+      });
+      if (!('claimId' in receipt)) {
+        if (receipt.requestHash !== requestHash)
+          throw command.conflict(
+            'idempotency_conflict',
+            'The idempotency key belongs to another member command',
+          );
+        const parsed = command.result.safeParse(receipt.resultRef);
+        if (receipt.status !== 'completed' || !parsed.success)
+          throw new Error('Workspace member command receipt is incomplete');
+        return Object.freeze({ ...parsed.data, replayed: true });
+      }
+      const result = command.result.parse(
+        await command.apply(client, admitted, scope),
+      );
+      await completeMemberCommandReceipt(
+        client,
+        command.table,
+        receipt.claimId,
+        result,
+      );
+      return Object.freeze({ ...result, replayed: false });
+    },
+  );
+}
+
+/** Writes one membership's role, status and advanced role revision. */
+export async function updateMembership(
+  client: PoolClient,
+  workspaceId: string,
+  change: Readonly<{
+    userId: string;
+    role: MembershipRole;
+    status: 'active' | 'suspended' | 'removed';
+    roleRevision: number;
+  }>,
+): Promise<void> {
+  await client.query(
+    `update app.workspace_memberships
+     set role=$3,status=$4,role_revision=$5,updated_at=clock_timestamp()
+     where workspace_id=$1 and user_id=$2`,
+    [
+      workspaceId,
+      change.userId,
+      change.role,
+      change.status,
+      change.roleRevision,
     ],
   );
 }

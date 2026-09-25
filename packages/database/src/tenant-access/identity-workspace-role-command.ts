@@ -8,27 +8,20 @@ import type {
 } from './identity-workspace-contracts.js';
 import { WorkspaceMemberRoleCommandConflictError } from './identity-workspace-errors.js';
 import {
-  claimMemberCommandReceipt,
-  completeMemberCommandReceipt,
-  isActiveMemberManager,
-  lockMemberCommandParticipants,
-  commandKeyHash,
-  commandKeySchema,
-  commandRequestHash,
   commandRevisionSchema,
+  executeMemberCommand,
+  isActiveMemberManager,
   recordMemberCommandAudit,
+  updateMembership,
 } from './identity-workspace-member-command.js';
 import { revokeUserSessions } from './identity-workspace-session-store.js';
-import { parseIdentityUuid } from './identity-workspace-support.js';
 import { canChangeWorkspaceMemberRole } from './workspace-policy.js';
-import { withTenantScopedClient } from './workspace.js';
 
 type RoleCommandStore = Pick<
   IdentityWorkspaceDatabase,
   'changeWorkspaceMemberRole'
 >;
 
-const RECEIPTS = 'workspace_member_role_command_receipts';
 const inputRole = z.enum(['admin', 'builder', 'operator', 'viewer']);
 const durableResult = z
   .object({
@@ -52,44 +45,27 @@ export function createIdentityWorkspaceRoleCommandStore(
   pool: Pool,
 ): RoleCommandStore {
   return Object.freeze({
-    changeWorkspaceMemberRole: async (raw: ChangeWorkspaceMemberRoleInput) => {
-      const workspaceId = parseIdentityUuid(raw.workspaceId);
-      const actorUserId = parseIdentityUuid(raw.actorUserId);
-      const targetUserId = parseIdentityUuid(raw.targetUserId);
+    changeWorkspaceMemberRole: (raw: ChangeWorkspaceMemberRoleInput) => {
       const role = inputRole.parse(raw.role);
       const expectedRoleRevision = commandRevisionSchema.parse(
         raw.expectedRoleRevision,
       );
-      const keyHash = commandKeyHash(
-        commandKeySchema.parse(raw.idempotencyKey),
-      );
-      const commandHash = commandRequestHash({
-        actorUserId,
-        expectedRoleRevision,
-        role,
-        targetUserId,
-        workspaceId,
-      });
-
-      return withTenantScopedClient(
-        pool,
-        { workspaceId, actorId: actorUserId },
-        async (client): Promise<WorkspaceMemberRoleChangeResult> => {
-          const { workspaceActive, actor, target } =
-            await lockMemberCommandParticipants(
-              client,
-              workspaceId,
-              actorUserId,
-              targetUserId,
-            );
-          if (!workspaceActive)
-            throw conflict('actor_inactive', 'The workspace is not active');
+      return executeMemberCommand(pool, {
+        table: 'workspace_member_role_command_receipts',
+        workspaceId: raw.workspaceId,
+        actorUserId: raw.actorUserId,
+        targetUserId: raw.targetUserId,
+        idempotencyKey: raw.idempotencyKey,
+        request: { expectedRoleRevision, role },
+        result: durableResult,
+        conflict,
+        admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))
             throw conflict(
               'actor_inactive',
               'The actor is no longer allowed to manage members',
             );
-          if (actorUserId === targetUserId)
+          if (scope.actorUserId === scope.targetUserId)
             throw conflict(
               'self_change',
               'Members cannot change their own role',
@@ -99,28 +75,13 @@ export function createIdentityWorkspaceRoleCommandStore(
               'target_missing',
               'The workspace member was not found',
             );
-
-          const receipt = await claimMemberCommandReceipt(client, RECEIPTS, {
-            workspaceId,
-            actorUserId,
-            targetUserId,
-            keyHash,
-            requestHash: commandHash,
-          });
-          if (!('claimId' in receipt)) {
-            if (receipt.requestHash !== commandHash)
-              throw conflict(
-                'idempotency_conflict',
-                'The idempotency key belongs to another member role command',
-              );
-            const parsed = durableResult.safeParse(receipt.resultRef);
-            if (receipt.status !== 'completed' || !parsed.success)
-              throw new Error(
-                'Workspace member role command receipt is incomplete',
-              );
-            return Object.freeze({ ...parsed.data, replayed: true });
-          }
-
+          return { actor, target };
+        },
+        apply: async (
+          client,
+          { actor, target },
+          scope,
+        ): Promise<Omit<WorkspaceMemberRoleChangeResult, 'replayed'>> => {
           if (target.status !== 'active' || target.user_status !== 'active')
             throw conflict(
               'target_inactive',
@@ -147,17 +108,15 @@ export function createIdentityWorkspaceRoleCommandStore(
             ? target.role_revision + 1
             : target.role_revision;
           if (changed) {
-            await client.query(
-              `update app.workspace_memberships
-               set role=$3,role_revision=$4,updated_at=clock_timestamp()
-               where workspace_id=$1 and user_id=$2`,
-              [workspaceId, targetUserId, role, nextRevision],
-            );
-            await revokeUserSessions(client, targetUserId);
+            await updateMembership(client, scope.workspaceId, {
+              userId: target.user_id,
+              role,
+              status: 'active',
+              roleRevision: nextRevision,
+            });
+            await revokeUserSessions(client, target.user_id);
             await recordMemberCommandAudit(client, {
-              workspaceId,
-              actorUserId,
-              targetUserId,
+              ...scope,
               action: 'workspace.member_role_changed',
               requestId: raw.requestId,
               traceId: raw.traceId,
@@ -169,21 +128,14 @@ export function createIdentityWorkspaceRoleCommandStore(
               },
             });
           }
-          const result = durableResult.parse({
-            userId: targetUserId,
+          return {
+            userId: target.user_id,
             role,
             roleRevision: nextRevision,
             changed,
-          });
-          await completeMemberCommandReceipt(
-            client,
-            RECEIPTS,
-            receipt.claimId,
-            result,
-          );
-          return Object.freeze({ ...result, replayed: false });
+          };
         },
-      );
+      });
     },
   });
 }

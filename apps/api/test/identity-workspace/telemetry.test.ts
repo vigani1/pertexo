@@ -102,6 +102,10 @@ describe('identity/workspace telemetry', () => {
       'workspace.members_list',
       'workspace.member_role_change',
       'workspace.member_removal',
+      'workspace.member_leave',
+      'workspace.member_suspend',
+      'workspace.member_reactivate',
+      'workspace.ownership_transfer',
       'workspace.request_deletion',
       'workspace.restore',
     ]);

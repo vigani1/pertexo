@@ -72,6 +72,9 @@ const expectedSuffix = [
   '0111_user_display_name.sql',
   '0113_workflow_run_statistics_index.sql',
   '0115_webhook_delivery_log.sql',
+  '0116_workspace_member_departure.sql',
+  '0117_workspace_member_suspension.sql',
+  '0118_workspace_ownership_transfer.sql',
 ] as const;
 
 interface FunctionMetadata {

@@ -84,6 +84,31 @@ export class WorkspaceMemberRemovalCommandConflictError extends Error {
   }
 }
 
+/** ADR 047 leave, suspend, reactivate and ownership transfer conflicts. */
+export type WorkspaceMembershipCommandConflictReason =
+  | 'actor_inactive'
+  | 'target_missing'
+  | 'target_removed'
+  | 'target_inactive'
+  | 'self_command'
+  | 'owner_target'
+  | 'owner_departure'
+  | 'command_forbidden'
+  | 'revision_conflict'
+  | 'idempotency_conflict';
+
+export class WorkspaceMembershipCommandConflictError extends Error {
+  public override readonly name = 'WorkspaceMembershipCommandConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceMembershipCommandConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export type UserProfileCommandConflictReason =
   'user_inactive' | 'revision_conflict' | 'idempotency_conflict';
 

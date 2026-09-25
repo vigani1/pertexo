@@ -264,7 +264,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0115_webhook_delivery_log.sql',
+          migrationHead: '0118_workspace_ownership_transfer.sql',
           role: expectedRole,
         });
       } finally {

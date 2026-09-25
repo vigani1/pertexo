@@ -42,6 +42,12 @@ import {
   userProfileUpdateRequestSchema,
   userProfileUpdateResponseSchema,
   workspaceResponseSchema,
+  workspaceLeaveRequestSchema,
+  workspaceLeaveResponseSchema,
+  workspaceMemberStatusRequestSchema,
+  workspaceMemberStatusResponseSchema,
+  workspaceOwnershipTransferRequestSchema,
+  workspaceOwnershipTransferResponseSchema,
 } from './http/identity-workspace.js';
 
 export * from './http/identity-workspace.js';
@@ -83,6 +89,24 @@ const schemas = Object.freeze({
   ),
   WorkspaceMemberRemovalResponse: jsonSchema(
     workspaceMemberRemovalResponseSchema,
+    'output',
+  ),
+  WorkspaceLeaveRequest: jsonSchema(workspaceLeaveRequestSchema, 'input'),
+  WorkspaceLeaveResponse: jsonSchema(workspaceLeaveResponseSchema, 'output'),
+  WorkspaceMemberStatusRequest: jsonSchema(
+    workspaceMemberStatusRequestSchema,
+    'input',
+  ),
+  WorkspaceMemberStatusResponse: jsonSchema(
+    workspaceMemberStatusResponseSchema,
+    'output',
+  ),
+  WorkspaceOwnershipTransferRequest: jsonSchema(
+    workspaceOwnershipTransferRequestSchema,
+    'input',
+  ),
+  WorkspaceOwnershipTransferResponse: jsonSchema(
+    workspaceOwnershipTransferResponseSchema,
     'output',
   ),
   ...workspaceInvitationContractSchemas,
@@ -248,37 +272,73 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       },
     },
     '/v1/workspaces/{workspaceId}/members/{userId}/role': {
-      post: {
-        operationId: 'changeWorkspaceMemberRole',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          pathParameter(),
-          memberPathParameter(),
-          csrfHeaderParameter(),
-          idempotencyHeaderParameter(),
-        ],
-        requestBody: jsonRequest('WorkspaceMemberRoleChangeRequest'),
-        responses: memberCommandResponses(
+      post: memberCommandOperation(
+        'changeWorkspaceMemberRole',
+        'WorkspaceMemberRoleChangeRequest',
+        memberCommandResponses(
           'Workspace member role change receipt',
           'WorkspaceMemberRoleChangeResponse',
         ),
-      },
+      ),
     },
     '/v1/workspaces/{workspaceId}/members/{userId}/remove': {
-      post: {
-        operationId: 'removeWorkspaceMember',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          pathParameter(),
-          memberPathParameter(),
-          csrfHeaderParameter(),
-          idempotencyHeaderParameter(),
-        ],
-        requestBody: jsonRequest('WorkspaceMemberRemovalRequest'),
-        responses: memberCommandResponses(
+      post: memberCommandOperation(
+        'removeWorkspaceMember',
+        'WorkspaceMemberRemovalRequest',
+        memberCommandResponses(
           'Workspace member removal receipt',
           'WorkspaceMemberRemovalResponse',
         ),
+      ),
+    },
+    '/v1/workspaces/{workspaceId}/members/{userId}/suspend': {
+      post: memberCommandOperation(
+        'suspendWorkspaceMember',
+        'WorkspaceMemberStatusRequest',
+        memberCommandResponses(
+          'Workspace member suspension receipt',
+          'WorkspaceMemberStatusResponse',
+        ),
+      ),
+    },
+    '/v1/workspaces/{workspaceId}/members/{userId}/reactivate': {
+      post: memberCommandOperation(
+        'reactivateWorkspaceMember',
+        'WorkspaceMemberStatusRequest',
+        memberCommandResponses(
+          'Workspace member reactivation receipt',
+          'WorkspaceMemberStatusResponse',
+        ),
+      ),
+    },
+    '/v1/workspaces/{workspaceId}/members/{userId}/transfer-ownership': {
+      post: memberCommandOperation(
+        'transferWorkspaceOwnership',
+        'WorkspaceOwnershipTransferRequest',
+        memberCommandResponses(
+          'Workspace ownership transfer receipt',
+          'WorkspaceOwnershipTransferResponse',
+        ),
+      ),
+    },
+    '/v1/workspaces/{workspaceId}/leave': {
+      post: {
+        operationId: 'leaveWorkspace',
+        security: [{ cookieSession: [] }],
+        parameters: lifecycleParameters(),
+        requestBody: jsonRequest('WorkspaceLeaveRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Workspace departure receipt',
+            'WorkspaceLeaveResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '409': responseReference('Conflict'),
+          '429': responseReference('RateLimited'),
+          '500': responseReference('Unexpected'),
+        },
       },
     },
     ...workspaceInvitationContractPaths,
@@ -320,6 +380,26 @@ function memberPathParameter() {
     in: 'path',
     required: true,
     schema: { type: 'string', format: 'uuid' },
+  } as const;
+}
+
+/** A POST command on one existing member (ADR 037, 042 and 047). */
+function memberCommandOperation(
+  operationId: string,
+  request: string,
+  responses: ReturnType<typeof memberCommandResponses>,
+) {
+  return {
+    operationId,
+    security: [{ cookieSession: [] }],
+    parameters: [
+      pathParameter(),
+      memberPathParameter(),
+      csrfHeaderParameter(),
+      idempotencyHeaderParameter(),
+    ],
+    requestBody: jsonRequest(request),
+    responses,
   } as const;
 }
 

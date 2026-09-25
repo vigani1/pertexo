@@ -68,6 +68,50 @@ const missingMemberRemovalPersistence: MemberRemovalPersistence = Object.freeze(
   },
 );
 
+type MembershipLifecyclePersistence = Required<
+  Pick<
+    IdentityWorkspacePersistence,
+    | 'leaveWorkspace'
+    | 'suspendWorkspaceMember'
+    | 'reactivateWorkspaceMember'
+    | 'transferWorkspaceOwnership'
+  >
+>;
+
+/** ADR 047 leave, suspend, reactivate and ownership transfer, as a whole. */
+export function membershipLifecyclePersistence(
+  persistence: IdentityWorkspacePersistence,
+): MembershipLifecyclePersistence {
+  if (
+    persistence.leaveWorkspace === undefined ||
+    persistence.suspendWorkspaceMember === undefined ||
+    persistence.reactivateWorkspaceMember === undefined ||
+    persistence.transferWorkspaceOwnership === undefined
+  )
+    return missingMembershipLifecyclePersistence;
+  return Object.freeze({
+    leaveWorkspace: persistence.leaveWorkspace.bind(persistence),
+    suspendWorkspaceMember:
+      persistence.suspendWorkspaceMember.bind(persistence),
+    reactivateWorkspaceMember:
+      persistence.reactivateWorkspaceMember.bind(persistence),
+    transferWorkspaceOwnership:
+      persistence.transferWorkspaceOwnership.bind(persistence),
+  });
+}
+
+const membershipLifecycleUnavailable = () =>
+  Promise.reject(
+    new Error('Workspace membership lifecycle persistence is not configured'),
+  );
+const missingMembershipLifecyclePersistence: MembershipLifecyclePersistence =
+  Object.freeze({
+    leaveWorkspace: membershipLifecycleUnavailable,
+    suspendWorkspaceMember: membershipLifecycleUnavailable,
+    reactivateWorkspaceMember: membershipLifecycleUnavailable,
+    transferWorkspaceOwnership: membershipLifecycleUnavailable,
+  });
+
 type ProfilePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'updateUserProfile'>
 >;

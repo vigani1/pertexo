@@ -18,7 +18,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0115_webhook_delivery_log.sql';
+export const EXPECTED_MIGRATION_HEAD = '0118_workspace_ownership_transfer.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

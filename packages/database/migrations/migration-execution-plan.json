@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0115_webhook_delivery_log.sql",
+  "transactionalThrough": "0118_workspace_ownership_transfer.sql",
   "migrations": {}
 }

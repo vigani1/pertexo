@@ -28,6 +28,7 @@ import {
   authenticatedSession,
   readCookie,
   readHeader,
+  requireSignInEvidence,
 } from './guards.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 import type { IdentitySessionAuthority, SessionCookiePolicy } from './ports.js';
@@ -101,17 +102,7 @@ export class InvitationAcceptanceController {
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
     requireEmptyBody(body);
-    const evidence = await this.sessions.signInEvidence?.(
-      readCookie(request, SESSION_COOKIE_NAME) ?? '',
-    );
-    if (evidence?.userId !== authenticatedSession(request).userId)
-      return throwApplicationError(
-        applicationError(
-          evidence === undefined
-            ? 'resource.not_found'
-            : 'auth.unauthenticated',
-        ),
-      );
+    const evidence = await requireSignInEvidence(request, this.sessions);
     response.header('Cache-Control', 'no-store');
     return this.acceptance.recordSessionProof({
       binding: readCookie(request, INVITATION_BINDING_COOKIE_NAME),

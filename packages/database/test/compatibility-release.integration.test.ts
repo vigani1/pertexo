@@ -287,7 +287,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0115_webhook_delivery_log.sql',
+        migrationHead: '0118_workspace_ownership_transfer.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -410,7 +410,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0115_webhook_delivery_log.sql',
+        migrationHead: '0118_workspace_ownership_transfer.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -575,7 +575,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0115_webhook_delivery_log.sql',
+          migrationHead: '0118_workspace_ownership_transfer.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -607,7 +607,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0115_webhook_delivery_log.sql',
+        migrationHead: '0118_workspace_ownership_transfer.sql',
       });
     } finally {
       await pool.end();

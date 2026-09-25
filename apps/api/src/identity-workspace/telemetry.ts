@@ -10,6 +10,10 @@ export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   workspaceMembersList: 'workspace.members_list',
   workspaceMemberRoleChange: 'workspace.member_role_change',
   workspaceMemberRemoval: 'workspace.member_removal',
+  workspaceMemberLeave: 'workspace.member_leave',
+  workspaceMemberSuspend: 'workspace.member_suspend',
+  workspaceMemberReactivate: 'workspace.member_reactivate',
+  workspaceOwnershipTransfer: 'workspace.ownership_transfer',
   workspaceRequestDeletion: 'workspace.request_deletion',
   workspaceRestore: 'workspace.restore',
 } as const);

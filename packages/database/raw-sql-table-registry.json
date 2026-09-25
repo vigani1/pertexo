@@ -1,5 +1,26 @@
 [
   {
+    "name": "workspace_member_departure_command_receipts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Workspace-scoped leave receipts replay exact uncertain retries and are purged with the workspace tenant rows."
+  },
+  {
+    "name": "workspace_member_suspension_command_receipts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Workspace-scoped suspend and reactivate receipts replay exact uncertain retries and are purged with the workspace tenant rows."
+  },
+  {
+    "name": "workspace_ownership_transfer_command_receipts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Workspace-scoped ownership transfer receipts replay exact uncertain retries and are purged with the workspace tenant rows."
+  },
+  {
     "name": "user_profile_command_receipts",
     "owner": "owner_role",
     "accessRoles": ["api_runtime_role"],

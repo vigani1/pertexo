@@ -14,6 +14,7 @@ import {
   WorkspaceMembersController,
   WorkspaceController,
 } from '../../src/identity-workspace/controllers.js';
+import { WorkspaceMembershipController } from '../../src/identity-workspace/membership-lifecycle-controller.js';
 import { NodeTestingController } from '../../src/node-testing/controller.js';
 import { LiveController } from '../../src/platform/health/live.controller.js';
 import { ReadyController } from '../../src/platform/health/ready.controller.js';
@@ -45,6 +46,10 @@ const routes: readonly (readonly [
   [WorkspaceMembersController, 'list', 'authenticated_read'],
   [WorkspaceMembersController, 'changeRole', 'ordinary_mutation'],
   [WorkspaceMembersController, 'remove', 'ordinary_mutation'],
+  [WorkspaceMembershipController, 'leave', 'ordinary_mutation'],
+  [WorkspaceMembershipController, 'suspend', 'ordinary_mutation'],
+  [WorkspaceMembershipController, 'reactivate', 'ordinary_mutation'],
+  [WorkspaceMembershipController, 'transferOwnership', 'ordinary_mutation'],
   [WorkspaceController, 'create', 'actor_mutation'],
   [WorkspaceController, 'rename', 'ordinary_mutation'],
   [WorkspaceController, 'requestDeletion', 'ordinary_mutation'],

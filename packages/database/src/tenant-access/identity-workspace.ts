@@ -15,6 +15,7 @@ export {
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
+  WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   WorkspaceInvitationCommandConflictError,
   InvitationAcceptanceConflictError,
@@ -23,6 +24,7 @@ export {
   type WorkspaceLifecycleConflictReason,
   type WorkspaceMemberRoleCommandConflictReason,
   type WorkspaceMemberRemovalCommandConflictReason,
+  type WorkspaceMembershipCommandConflictReason,
   type WorkspaceRenameCommandConflictReason,
 } from './identity-workspace-errors.js';
 import {
@@ -47,6 +49,7 @@ import { withTenantScopedClient } from './workspace.js';
 import { createIdentityWorkspaceMemberStore } from './identity-workspace-member-store.js';
 import { createIdentityWorkspaceRoleCommandStore } from './identity-workspace-role-command.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './identity-workspace-member-removal.js';
+import { createIdentityWorkspaceMembershipLifecycleStore } from './identity-workspace-membership-lifecycle.js';
 import { createIdentityWorkspaceProfileStore } from './identity-workspace-profile-store.js';
 import { createIdentityWorkspaceRenameStore } from './identity-workspace-rename-store.js';
 import { createIdentityWorkspaceInvitationStore } from './identity-workspace-invitation-store.js';
@@ -93,6 +96,11 @@ export {
   type WorkspaceMemberRoleChangeResult,
   type RemoveWorkspaceMemberInput,
   type WorkspaceMemberRemovalResult,
+  type LeaveWorkspaceInput,
+  type WorkspaceMemberStatusCommandInput,
+  type WorkspaceMemberStatusResult,
+  type TransferWorkspaceOwnershipInput,
+  type WorkspaceOwnershipTransferResult,
   type UpdateUserProfileInput,
   type UserProfileUpdateResult,
   type ChangeWorkspaceInvitationInput,
@@ -289,6 +297,7 @@ export function createIdentityWorkspaceDatabase(
     ...createIdentityWorkspaceMemberStore(pool),
     ...createIdentityWorkspaceRoleCommandStore(pool),
     ...createIdentityWorkspaceMemberRemovalStore(pool),
+    ...createIdentityWorkspaceMembershipLifecycleStore(pool),
     ...createIdentityWorkspaceProfileStore(pool),
     ...createIdentityWorkspaceRenameStore(pool),
     ...createIdentityWorkspaceInvitationStore(pool),

@@ -6,7 +6,10 @@ import {
   capabilitiesForRole,
   canChangeWorkspaceMemberRole,
   canInviteWorkspaceRole,
+  canLeaveWorkspace,
   canRemoveWorkspaceMember,
+  canSuspendWorkspaceMember,
+  canTransferWorkspaceOwnership,
   hasCapability,
   rolesForCapability,
   type AuthorizationCapability,
@@ -129,6 +132,24 @@ describe('workspace authorization policy', () => {
           canRemoveWorkspaceMember(actor, target),
           `${actor} removes ${target}`,
         ).toBe(expected);
+      }
+    }
+  });
+
+  it('encodes the leave, suspension and ownership transfer matrices', () => {
+    for (const actor of ROLES) {
+      expect(canLeaveWorkspace(actor), `${actor} leaves`).toBe(
+        actor !== 'owner',
+      );
+      for (const target of ROLES) {
+        expect(
+          canSuspendWorkspaceMember(actor, target),
+          `${actor} suspends ${target}`,
+        ).toBe(canRemoveWorkspaceMember(actor, target));
+        expect(
+          canTransferWorkspaceOwnership(actor, target),
+          `${actor} transfers to ${target}`,
+        ).toBe(actor === 'owner' && target !== 'owner');
       }
     }
   });

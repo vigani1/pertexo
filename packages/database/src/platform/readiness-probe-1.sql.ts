@@ -68,19 +68,15 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
           and workspace_attribute.attnum = any(table_index.indkey)
       ) as schema_compatible,
       (
-        to_regclass('app.users') is not null
-        and to_regclass('app.auth_identities') is not null
-        and to_regclass('app.auth_accounts') is not null
-        and to_regclass('app.auth_sessions') is not null
-        and to_regclass('app.auth_verifications') is not null
-        and to_regclass('app.sessions') is not null
-        and to_regclass('app.workspaces') is not null
-        and to_regclass('app.workspace_memberships') is not null
-        and to_regclass('app.workspace_member_role_command_receipts') is not null
-        and to_regclass('app.workspace_rename_command_receipts') is not null
-        and to_regclass('app.workspace_member_removal_command_receipts') is not null
-        and to_regclass('app.user_profile_command_receipts') is not null
-        and to_regclass('app.audit_events') is not null
+        not exists (
+          select 1 from (values ('users'), ('auth_identities'), ('auth_accounts'), ('auth_sessions'),
+            ('auth_verifications'), ('sessions'), ('workspaces'), ('workspace_memberships'),
+            ('workspace_member_role_command_receipts'), ('workspace_rename_command_receipts'),
+            ('workspace_member_removal_command_receipts'), ('workspace_member_departure_command_receipts'),
+            ('workspace_member_suspension_command_receipts'), ('workspace_ownership_transfer_command_receipts'),
+            ('user_profile_command_receipts'), ('audit_events')) required(table_name)
+          where to_regclass('app.' || required.table_name) is null
+        )
         and exists (
           select 1 from pg_attribute a
           where a.attrelid = to_regclass('app.users')
@@ -116,7 +112,8 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         not exists (
           select 1 from (values ('workspace_memberships'), ('workspace_member_role_command_receipts'),
             ('workspace_member_removal_command_receipts'), ('workspace_rename_command_receipts'),
-            ('audit_events')) forced(table_name)
+            ('workspace_member_departure_command_receipts'), ('workspace_member_suspension_command_receipts'),
+            ('workspace_ownership_transfer_command_receipts'), ('audit_events')) forced(table_name)
           left join pg_class c on c.oid = to_regclass('app.' || forced.table_name)
           where not coalesce(c.relrowsecurity and c.relforcerowsecurity, false)
         )
@@ -163,7 +160,9 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not exists (
           select 1 from (values ('workspace_rename_command_receipts'),
             ('workspace_member_role_command_receipts'),
-            ('workspace_member_removal_command_receipts')) receipt(table_name)
+            ('workspace_member_removal_command_receipts'), ('workspace_member_departure_command_receipts'),
+            ('workspace_member_suspension_command_receipts'),
+            ('workspace_ownership_transfer_command_receipts')) receipt(table_name)
           where not exists (
             select 1 from pg_policy policy
             where policy.polrelid = to_regclass('app.' || receipt.table_name)
@@ -200,7 +199,8 @@ export const READINESS_IDENTITY_AUTHORING_SQL = `
         and not exists (
           select 1 from (values ('workspace_member_role_command_receipts'),
             ('workspace_member_removal_command_receipts'), ('workspace_rename_command_receipts'),
-            ('user_profile_command_receipts')) receipt(table_name)
+            ('workspace_member_departure_command_receipts'), ('workspace_member_suspension_command_receipts'),
+            ('workspace_ownership_transfer_command_receipts'), ('user_profile_command_receipts')) receipt(table_name)
           where not has_table_privilege(current_user, 'app.' || receipt.table_name, 'SELECT')
              or not has_table_privilege(current_user, 'app.' || receipt.table_name, 'INSERT')
              or not has_column_privilege(current_user, 'app.' || receipt.table_name, 'status', 'UPDATE')

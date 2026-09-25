@@ -86,6 +86,7 @@ describe('member removal, self profile and return path contracts', () => {
       '/invitations/accept',
       '/account/security',
       `/w/${workspaceId}/account`,
+      `/w/${workspaceId}/team`,
     ])
       expect(authenticationReturnPathSchema.parse(path)).toBe(path);
     for (const path of [
@@ -98,6 +99,8 @@ describe('member removal, self profile and return path contracts', () => {
       '/account/security/../../admin',
       '/w/not-a-workspace/account',
       `/w/${workspaceId}/settings`,
+      `/w/${workspaceId}/team?invite=true`,
+      `/w/${workspaceId}/teams`,
       '/workspaces',
       'invitations/accept',
       '',

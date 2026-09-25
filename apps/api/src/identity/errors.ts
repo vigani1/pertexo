@@ -15,7 +15,8 @@ export type IdentityErrorCode =
   | 'identity.session_invalid'
   | 'identity.session_expired'
   | 'identity.session_revoked'
-  | 'identity.csrf_failed';
+  | 'identity.csrf_failed'
+  | 'identity.session_not_fresh';
 
 const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
   'identity.invalid_input': 'The identity request is invalid.',
@@ -39,6 +40,7 @@ const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
   'identity.session_expired': 'The session has expired.',
   'identity.session_revoked': 'The session has been revoked.',
   'identity.csrf_failed': 'The request could not be verified.',
+  'identity.session_not_fresh': 'Sign in again to continue.',
 };
 
 /** A mapping-ready error whose message never contains credential or provider data. */
@@ -55,7 +57,8 @@ export class IdentityError extends Error {
 }
 
 function defaultStatus(code: IdentityErrorCode): 400 | 401 | 403 | 503 {
-  if (code === 'identity.csrf_failed') return 403;
+  if (code === 'identity.csrf_failed' || code === 'identity.session_not_fresh')
+    return 403;
   if (code === 'identity.provider_unavailable') return 503;
   if (
     code === 'identity.session_invalid' ||
