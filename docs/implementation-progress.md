@@ -191,6 +191,25 @@ RLS, generated contracts, and deterministic catalog selection. They do not add
 profile administration, invitations, membership mutation, connection
 credentials, or a second connection resource.
 
+## Weft follow-up reads: delivery log and Slack channel names
+
+Two post-plan read surfaces close gaps the Weft frontend recorded, each behind
+its own ADR and implemented through contracts, database, API, integrations and
+web:
+
+| Surface | Route, authority and rate class | Decision and storage |
+| --- | --- | --- |
+| Webhook delivery log | `GET /v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/deliveries`; `workflow:read` guard plus the owner/admin/builder trigger-read check; `authenticated_read` | [ADR 045](./adr/045-webhook-delivery-log.md). Migration `0115_webhook_delivery_log.sql` adds outcome, HTTP status, signature and replay checks and body size to `app.webhook_trigger_deliveries`. Post-allowance rejections are recorded best effort in their own transaction; the 90-day retention class, RLS and purge are unchanged, and expired rows are never served. |
+| Slack channel names | `GET /v1/workspaces/:workspaceId/connections/:connectionId/slack/channels?channelIds=…`; `connection:use` guard and database check; `provider_test` | [ADR 046](./adr/046-slack-channel-name-resolution.md), extending ADR 023. Up to ten IDs per request resolve through `conversations.info` with the connection's bot token under the `connection.credential_accessed` audit fact; names are never stored and unresolved channels return a reason instead of an error. No migration. |
+
+Evidence: database integration tests on disposable databases
+(`webhook-triggers`, `webhook-trigger-prior-head`, `connection-lookup`), the
+direct-webhook HTTP integration test, API unit and coverage suites (the delivery
+recorder joins the priority cohort and the channel lookup the orchestration
+cohort), the Slack client tested against a mocked HTTP boundary, regenerated
+webhook and connection OpenAPI artifacts, and web component tests. Live Slack
+workspaces and deployed traffic were not exercised.
+
 ## Update protocol
 
 When a checkpoint changes status:
