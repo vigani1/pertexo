@@ -19,7 +19,7 @@ export default defineConfig({
         'src/identity-infrastructure/{oidc-adapter,oidc-request-validation,oidc-response-cleanup,oidc-secret-encryption}.ts',
         'src/identity-workspace/{module,persistence-capabilities,use-cases}.ts',
         'src/platform/identity/{better-auth-composition,identity-runtime.module,oidc-runtime}.ts',
-        'src/webhooks/ingress.ts',
+        'src/webhooks/{delivery-log,ingress}.ts',
         'src/workflow-authoring/{lifecycle-use-case,module,preconditions,rename-use-case,restore-version-use-case,use-cases}.ts',
       ],
       thresholds: {

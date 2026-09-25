@@ -15,7 +15,7 @@ export default defineConfig({
       reportsDirectory: '../../coverage/api-orchestration',
       include: [
         'src/application-error-mappers.ts',
-        'src/connections/connection-testing.ts',
+        'src/connections/{connection-testing,slack-channel-lookup}.ts',
         'src/workflow-runs/{sse-authorization-lifetime,statistics-use-case,use-cases}.ts',
       ],
       thresholds: {
