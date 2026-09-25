@@ -409,7 +409,9 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     await new Promise((resolve) => window.setTimeout(resolve, 1_800));
     expect(validations).toBe(1);
   });
+});
 
+describe('workflow editor run lens', { timeout: 30_000 }, () => {
   it('associates run-start validation with the input and focuses it', async () => {
     mockServer.use(...editorHandlers(() => undefined));
     renderApp(editorPath);

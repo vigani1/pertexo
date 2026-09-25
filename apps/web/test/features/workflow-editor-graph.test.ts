@@ -246,7 +246,9 @@ describe('editor graph commands', () => {
       targetLabel: 'Send Slack message',
     });
   });
+});
 
+describe('add-step choices', () => {
   it('groups placeable steps by human family names and hides unavailable ones', () => {
     const groups = groupStepChoices(
       [
