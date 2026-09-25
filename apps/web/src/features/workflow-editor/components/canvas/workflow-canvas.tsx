@@ -52,6 +52,7 @@ const edgeTypes = Object.freeze({ workflow: WorkflowEdge });
 const multiSelectionKeys = ['Meta', 'Control', 'Shift'];
 
 type Position = Readonly<{ x: number; y: number }>;
+type Size = Readonly<{ width: number; height: number }>;
 
 export type CanvasOverlays = Pick<
   CanvasDecorations,
@@ -102,6 +103,11 @@ export function WorkflowCanvas({
   // React Flow marks its own copy of a node selected before asking us. When
   // the editor's guard declines a selection, fresh node objects re-sync it.
   const [selectionResync, setSelectionResync] = useState(0);
+  // Measured sizes go back into every projection: React Flow's overview map
+  // draws the nodes we pass it, and a node without a size isn't drawn.
+  const [measuredSizes, setMeasuredSizes] = useState<ReadonlyMap<string, Size>>(
+    () => new Map(),
+  );
 
   const projection = useMemo(
     () =>
@@ -111,6 +117,7 @@ export function WorkflowCanvas({
         selectedEdgeIds,
         dragPositions,
         bodyIssues: forEachBodyIssues(graph),
+        measuredSizes,
       }),
     // selectionResync only forces fresh node objects for React Flow.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,6 +125,7 @@ export function WorkflowCanvas({
       definitions,
       dragPositions,
       graph,
+      measuredSizes,
       overlays,
       selectedEdgeIds,
       selectedNodeIds,
@@ -129,9 +137,13 @@ export function WorkflowCanvas({
     (changes: NodeChange<WorkflowFlowNode>[]) => {
       const moving = new Map<string, Position>();
       const settled = new Map<string, Position>();
+      const sized = new Map<string, Size>();
       let selection: Set<string> | undefined;
       for (const change of changes) {
-        if (change.type === 'select') {
+        if (change.type === 'dimensions') {
+          if (change.dimensions !== undefined)
+            sized.set(change.id, change.dimensions);
+        } else if (change.type === 'select') {
           selection ??= new Set(store.getState().selectedNodeIds);
           if (change.selected) selection.add(change.id);
           else selection.delete(change.id);
@@ -152,6 +164,8 @@ export function WorkflowCanvas({
         )
           setSelectionResync((current) => current + 1);
       }
+      if (sized.size > 0)
+        setMeasuredSizes((current) => new Map([...current, ...sized]));
       if (moving.size > 0)
         setDragPositions((current) => new Map([...current, ...moving]));
       if (settled.size === 0) return;
