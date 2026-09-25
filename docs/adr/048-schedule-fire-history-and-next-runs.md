@@ -4,6 +4,14 @@
 - **Date:** 2026-09-25
 - **Related:** ADR 013 (retention), ADR 014 (schedule timezone, DST and
   misfire), ADR 045 (webhook delivery log)
+- **Amended:** 2026-09-25 by [ADR 049](049-skip-misfire-on-time-window.md)
+
+> **Amendment note (2026-09-25).** Under [ADR 049](049-skip-misfire-on-time-window.md)
+> a `skip` schedule's on-time occurrence is admitted and recorded `accepted`
+> with its run, so the history shows it as a run. `skipped` means the `skip`
+> policy passed over an occurrence observed later than the on-time window, not
+> every occurrence of a `skip` schedule. The outcomes, reads and contracts
+> below are unchanged.
 
 ## Context
 
