@@ -110,6 +110,23 @@ export function runAttentionItems(
     }));
 }
 
+/**
+ * A run item that names where and why its latest run failed, when the run's
+ * reads say: "Send receipt · service unavailable · latest 14:12".
+ */
+export function withRunFailure(
+  item: AttentionItem,
+  failure: Readonly<{ step?: string; reason?: string }> | undefined,
+): AttentionItem {
+  if (failure === undefined) return item;
+  const facts = [failure.step, failure.reason].filter(
+    (fact): fact is string => fact !== undefined,
+  );
+  return facts.length === 0
+    ? item
+    : { ...item, detail: [...facts, item.detail].join(' · ') };
+}
+
 /** Workflows whose triggers are degraded or stopped with an error. */
 export function workflowAttentionItems(
   workflows: readonly WorkflowSummary[],

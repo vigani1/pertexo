@@ -6,7 +6,8 @@ import type { AttentionAction, AttentionItem } from '../model/needs-attention';
 import type { HomeBlockState } from '../model/home-block-state';
 import { HomeBlock } from './home-block';
 
-const MAX_ITEMS = 6;
+/** How many items Needs attention shows before "… more not shown". */
+export const NEEDS_ATTENTION_LIMIT = 6;
 
 function ActionLink({
   action,
@@ -74,7 +75,7 @@ export function NeedsAttention({
   /** Some problem-run reads hit their page limit. */
   moreFailedRuns: boolean;
 }>) {
-  const shown = items.slice(0, MAX_ITEMS);
+  const shown = items.slice(0, NEEDS_ATTENTION_LIMIT);
   const canReadRuns = workspace.capabilities.includes('run:read');
   return (
     <HomeBlock
@@ -127,10 +128,10 @@ export function NeedsAttention({
           ))}
         </ul>
       )}
-      {items.length > MAX_ITEMS || moreFailedRuns ? (
+      {items.length > NEEDS_ATTENTION_LIMIT || moreFailedRuns ? (
         <p className="border-t border-white/6 pt-2 text-xs text-subtle-foreground">
-          {items.length > MAX_ITEMS
-            ? `${String(items.length - MAX_ITEMS)} more not shown. `
+          {items.length > NEEDS_ATTENTION_LIMIT
+            ? `${String(items.length - NEEDS_ATTENTION_LIMIT)} more not shown. `
             : ''}
           {moreFailedRuns
             ? 'Counting the latest 100 problem runs of each kind.'
