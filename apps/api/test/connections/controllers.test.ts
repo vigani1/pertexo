@@ -7,6 +7,7 @@ import type {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
+  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
@@ -82,6 +83,11 @@ function controller() {
       }),
     ),
   };
+  const lookup = {
+    execute: vi.fn<LookupSlackChannelsUseCase['execute']>(() =>
+      Promise.resolve({ items: [] }),
+    ),
+  };
   return {
     instance: new ConnectionsController(
       list as unknown as ListConnectionsUseCase,
@@ -90,7 +96,9 @@ function controller() {
       rotate as unknown as RotateConnectionSecretUseCase,
       revoke as unknown as RevokeConnectionUseCase,
       test as unknown as TestConnectionUseCase,
+      lookup as unknown as LookupSlackChannelsUseCase,
     ),
+    lookup,
     list,
     read,
     create,
@@ -129,6 +137,37 @@ describe('connections controller public seam', () => {
       connectionId,
     });
     expect(readInput?.actor).toMatchObject({ actorId, workspaceId });
+  });
+
+  it('forwards a channel lookup with its guarded context and operation signal', async () => {
+    const { instance, lookup } = controller();
+    await instance.slackChannels(
+      request(),
+      { workspaceId, connectionId },
+      { channelIds: 'C0123,D0456' },
+    );
+    await instance.slackChannels(
+      request(),
+      { workspaceId, connectionId },
+      undefined,
+    );
+
+    const [first, second] = lookup.execute.mock.calls.map(([input]) => input);
+    expect(first).toMatchObject({
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      query: { channelIds: 'C0123,D0456' },
+    });
+    expect(first?.actor).toMatchObject({ actorId, workspaceId });
+    expect(first?.signal).toBeInstanceOf(AbortSignal);
+    expect(second?.query).toEqual({});
+    expect(() =>
+      instance.slackChannels(
+        request(),
+        { workspaceId, connectionId: 'not-a-connection' },
+        {},
+      ),
+    ).toThrow();
   });
 
   it('rejects unknown list query fields before delegating', () => {

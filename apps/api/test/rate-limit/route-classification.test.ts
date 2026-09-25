@@ -54,6 +54,7 @@ const routes: readonly (readonly [
   [ConnectionsController, 'rotate', 'connection_mutation'],
   [ConnectionsController, 'revoke', 'connection_mutation'],
   [ConnectionsController, 'test', 'provider_test'],
+  [ConnectionsController, 'slackChannels', 'provider_test'],
   [FailureNotificationDestinationsController, 'create', 'ordinary_mutation'],
   [FailureNotificationDestinationsController, 'list', 'authenticated_read'],
   [FailureNotificationDestinationsController, 'get', 'authenticated_read'],

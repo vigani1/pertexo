@@ -12,6 +12,8 @@ import {
   httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
+  slackChannelLookupQuerySchema,
+  slackChannelLookupResponseSchema,
 } from '../src/http/connections.js';
 
 const connection = {
@@ -182,6 +184,53 @@ describe('connection public contracts', () => {
       ).toBe(false);
   });
 
+  it('bounds Slack channel lookups and keeps unresolved states honest', () => {
+    expect(
+      slackChannelLookupQuerySchema.parse({ channelIds: 'C0123,G456,D789' }),
+    ).toEqual({ channelIds: ['C0123', 'G456', 'D789'] });
+    const eleven = Array.from(
+      { length: 11 },
+      (_, index) => `C${String(index)}`,
+    );
+    for (const channelIds of [
+      '',
+      'c0123',
+      'C0123,C0123',
+      'C0123,',
+      eleven.join(','),
+    ])
+      expect(
+        slackChannelLookupQuerySchema.safeParse({ channelIds }).success,
+      ).toBe(false);
+    expect(
+      slackChannelLookupQuerySchema.safeParse({
+        channelIds: 'C0123',
+        extra: 'x',
+      }).success,
+    ).toBe(false);
+    const resolved = { channelId: 'C0123', status: 'resolved', name: 'ops' };
+    const unresolved = {
+      channelId: 'D0123',
+      status: 'unresolved',
+      reason: 'not_a_channel',
+    };
+    expect(
+      slackChannelLookupResponseSchema.parse({ items: [resolved, unresolved] }),
+    ).toEqual({ items: [resolved, unresolved] });
+    for (const item of [
+      { ...resolved, reason: 'not_found' },
+      { ...unresolved, name: 'ops' },
+      { ...unresolved, reason: 'token_revoked' },
+      { ...resolved, name: '' },
+    ])
+      expect(
+        slackChannelLookupResponseSchema.safeParse({ items: [item] }).success,
+      ).toBe(false);
+    expect(connectionsClientContract.schemas).toHaveProperty(
+      'SlackChannelLookupResponse',
+    );
+  });
+
   it('publishes strict secret-free responses and the intended operations', () => {
     expect(
       connectionResponseSchema.safeParse({
@@ -210,6 +259,7 @@ describe('connection public contracts', () => {
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/test',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/versions',

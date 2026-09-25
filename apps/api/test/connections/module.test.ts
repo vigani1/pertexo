@@ -6,6 +6,7 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
+  LookupSlackChannelsUseCase,
   FailureNotificationDestinationsController,
   FailureNotificationDestinationUseCases,
   type ConnectionDependencies,
@@ -28,6 +29,8 @@ const dependencies = {
       Promise.reject(new Error('not exercised')),
     completeConnectionTest: () => Promise.reject(new Error('not exercised')),
     abandonConnectionTest: () => Promise.reject(new Error('not exercised')),
+    resolveConnectionLookupSecret: () =>
+      Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
   encryption: {
@@ -62,6 +65,7 @@ describe('connections Nest module', () => {
         expect.objectContaining({ provide: CreateConnectionUseCase }),
         expect.objectContaining({ provide: ListConnectionsUseCase }),
         expect.objectContaining({ provide: GetConnectionUseCase }),
+        expect.objectContaining({ provide: LookupSlackChannelsUseCase }),
         expect.objectContaining({
           provide: FailureNotificationDestinationUseCases,
         }),

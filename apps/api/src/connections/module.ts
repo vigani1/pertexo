@@ -17,6 +17,7 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
+  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
@@ -94,6 +95,16 @@ export class ConnectionsModule {
           dependencies.emailClient,
         ),
       },
+      {
+        provide: LookupSlackChannelsUseCase,
+        useValue: new LookupSlackChannelsUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          dependencies.encryption,
+          dependencies.slackClient,
+          telemetry,
+        ),
+      },
     ];
     if (dependencies.destinationPersistence !== undefined)
       providers.push({
@@ -120,6 +131,7 @@ export class ConnectionsModule {
         RotateConnectionSecretUseCase,
         RevokeConnectionUseCase,
         TestConnectionUseCase,
+        LookupSlackChannelsUseCase,
       ],
     };
   }

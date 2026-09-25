@@ -5,6 +5,7 @@ export const CONNECTION_OPERATION = Object.freeze({
   rotate: 'connection.secret.rotate',
   revoke: 'connection.revoke',
   test: 'connection.test',
+  slackChannelLookup: 'connection.slack_channel.lookup',
   destinationCreate: 'failure_notification_destination.create',
   destinationAppend: 'failure_notification_destination.version.append',
   destinationStatus: 'failure_notification_destination.status',

@@ -13,6 +13,7 @@ import {
 
 export const SLACK_API_ENDPOINTS = Object.freeze({
   authTest: 'https://slack.com/api/auth.test',
+  conversationsInfo: 'https://slack.com/api/conversations.info',
   sendMessage: 'https://slack.com/api/chat.postMessage',
 });
 
@@ -29,6 +30,24 @@ const slackResponseSchema = z
     error: slackErrorSchema.optional(),
   })
   .strip();
+/** ADR 046: only the requested conversation's identity and display name. */
+const slackConversationResponseSchema = z
+  .object({
+    ok: z.boolean(),
+    channel: z
+      .object({
+        id: slackChannelIdSchema,
+        name: z
+          .string()
+          .min(1)
+          .max(80)
+          .regex(/^[\p{L}\p{N}\p{M}._-]+$/u),
+      })
+      .strip()
+      .optional(),
+    error: slackErrorSchema.optional(),
+  })
+  .strip();
 
 export type SlackApiResult =
   | Readonly<{ kind: 'succeeded'; channelId: string; messageTs: string }>
@@ -38,12 +57,14 @@ export type SlackApiResult =
   | Readonly<{ kind: 'invalid_response' }>;
 
 type SlackApiFailure = Exclude<SlackApiResult, { kind: 'succeeded' }>;
-type SlackAcceptedEnvelope = Readonly<{
-  kind: 'accepted';
-  channelId?: string;
-  messageTs?: string;
-}>;
-type SlackEnvelopeResult = SlackApiFailure | SlackAcceptedEnvelope;
+type SlackEnvelope = Readonly<{ ok: boolean; error?: string | undefined }>;
+type SlackEnvelopeResult<Envelope> =
+  SlackApiFailure | Readonly<{ kind: 'accepted'; envelope: Envelope }>;
+type SlackRequestBody = Readonly<{ bytes: Uint8Array; contentType: string }>;
+
+export type SlackChannelLookupResult =
+  | Readonly<{ kind: 'succeeded'; channelId: string; name: string }>
+  | SlackApiFailure;
 
 export type SlackClient = Readonly<{
   sendMessage(
@@ -63,38 +84,50 @@ export type SlackClient = Readonly<{
       signal?: AbortSignal;
       beforeDispatch(): Promise<void>;
     }>,
-  ): Promise<
-    | Exclude<SlackApiResult, { kind: 'succeeded' }>
-    | Readonly<{ kind: 'succeeded' }>
-  >;
+  ): Promise<SlackApiFailure | Readonly<{ kind: 'succeeded' }>>;
+  /** ADR 046: one read-only `conversations.info` name lookup. */
+  lookupChannel(
+    input: Readonly<{
+      botToken: string;
+      channelId: string;
+      timeoutMillis: number;
+      signal?: AbortSignal;
+      beforeDispatch(): Promise<void>;
+    }>,
+  ): Promise<SlackChannelLookupResult>;
 }>;
+
+const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 
 export function createSlackClient(
   httpClient: Pick<SecureHttpClient, 'execute'>,
 ): SlackClient {
-  const execute = async (
+  const execute = async <Envelope extends SlackEnvelope>(
     endpoint: string,
     token: string,
-    body: Uint8Array | undefined,
-    timeoutMillis: number,
-    signal: AbortSignal | undefined,
-    beforeDispatch: () => Promise<void>,
-  ): Promise<SlackEnvelopeResult> => {
+    body: SlackRequestBody | undefined,
+    schema: z.ZodType<Envelope>,
+    options: Readonly<{
+      timeoutMillis: number;
+      signal?: AbortSignal | undefined;
+      beforeDispatch: () => Promise<void>;
+    }>,
+  ): Promise<SlackEnvelopeResult<Envelope>> => {
     const request: SecureHttpRequest = {
       url: endpoint,
       method: 'POST',
       headers: Object.freeze({
         accept: 'application/json',
         authorization: `Bearer ${token}`,
-        'content-type': 'application/json; charset=utf-8',
+        'content-type': body?.contentType ?? JSON_CONTENT_TYPE,
       }),
-      ...(body === undefined ? {} : { body }),
-      timeoutMillis,
+      ...(body === undefined ? {} : { body: body.bytes }),
+      timeoutMillis: options.timeoutMillis,
       maxRedirects: 0,
       maxResponseBytes: SLACK_SEND_MESSAGE_LIMITS.maxResponseBytes,
       sensitiveValues: [token],
-      ...(signal === undefined ? {} : { signal }),
-      beforeDispatch,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+      beforeDispatch: options.beforeDispatch,
     };
     const response = await httpClient.execute(request);
     try {
@@ -116,19 +149,13 @@ export function createSlackClient(
       } catch {
         return Object.freeze({ kind: 'invalid_response' });
       }
-      const parsed = slackResponseSchema.safeParse(decoded);
+      const parsed = schema.safeParse(decoded);
       if (!parsed.success) return Object.freeze({ kind: 'invalid_response' });
       if (!parsed.data.ok)
         return parsed.data.error === undefined
           ? Object.freeze({ kind: 'invalid_response' })
           : Object.freeze({ kind: 'rejected', error: parsed.data.error });
-      return Object.freeze({
-        kind: 'accepted',
-        ...(parsed.data.channel === undefined
-          ? {}
-          : { channelId: parsed.data.channel }),
-        ...(parsed.data.ts === undefined ? {} : { messageTs: parsed.data.ts }),
-      });
+      return Object.freeze({ kind: 'accepted', envelope: parsed.data });
     } finally {
       response.body.fill(0);
     }
@@ -136,7 +163,7 @@ export function createSlackClient(
 
   return Object.freeze({
     sendMessage: async (input) => {
-      const body = new TextEncoder().encode(
+      const bytes = new TextEncoder().encode(
         JSON.stringify({
           channel: input.channelId,
           text: input.text,
@@ -148,21 +175,21 @@ export function createSlackClient(
         const result = await execute(
           SLACK_API_ENDPOINTS.sendMessage,
           input.botToken,
-          body,
-          input.timeoutMillis,
-          input.signal,
-          input.beforeDispatch,
+          { bytes, contentType: JSON_CONTENT_TYPE },
+          slackResponseSchema,
+          input,
         );
         if (result.kind !== 'accepted') return result;
-        if (result.channelId === undefined || result.messageTs === undefined)
+        const { channel, ts } = result.envelope;
+        if (channel === undefined || ts === undefined)
           return Object.freeze({ kind: 'invalid_response' });
         return Object.freeze({
           kind: 'succeeded',
-          channelId: result.channelId,
-          messageTs: result.messageTs,
+          channelId: channel,
+          messageTs: ts,
         });
       } finally {
-        body.fill(0);
+        bytes.fill(0);
       }
     },
     authTest: async (input) => {
@@ -170,13 +197,38 @@ export function createSlackClient(
         SLACK_API_ENDPOINTS.authTest,
         input.botToken,
         undefined,
-        input.timeoutMillis,
-        input.signal,
-        input.beforeDispatch,
+        slackResponseSchema,
+        input,
       );
       return result.kind === 'accepted'
         ? Object.freeze({ kind: 'succeeded' as const })
         : result;
+    },
+    lookupChannel: async (input) => {
+      // conversations.info is a form-encoded read method.
+      const bytes = new TextEncoder().encode(
+        new URLSearchParams({ channel: input.channelId }).toString(),
+      );
+      try {
+        const result = await execute(
+          SLACK_API_ENDPOINTS.conversationsInfo,
+          input.botToken,
+          { bytes, contentType: 'application/x-www-form-urlencoded' },
+          slackConversationResponseSchema,
+          input,
+        );
+        if (result.kind !== 'accepted') return result;
+        const { channel } = result.envelope;
+        if (channel?.id !== input.channelId)
+          return Object.freeze({ kind: 'invalid_response' });
+        return Object.freeze({
+          kind: 'succeeded',
+          channelId: channel.id,
+          name: channel.name,
+        });
+      } finally {
+        bytes.fill(0);
+      }
     },
   });
 }

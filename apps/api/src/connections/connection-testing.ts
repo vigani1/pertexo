@@ -62,7 +62,7 @@ export class TestConnectionUseCase {
     private readonly encryption: ConnectionSecretEncryptionPort,
     private readonly httpClient: ConnectionHttpClient,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
-    private readonly slackClient?: ConnectionSlackClient,
+    private readonly slackClient?: Pick<ConnectionSlackClient, 'authTest'>,
     private readonly emailClient?: ConnectionEmailClient,
   ) {}
 

@@ -30,6 +30,7 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
+  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
@@ -51,6 +52,7 @@ export class ConnectionsController {
     private readonly rotateSecret: RotateConnectionSecretUseCase,
     private readonly revokeConnection: RevokeConnectionUseCase,
     private readonly testConnection: TestConnectionUseCase,
+    private readonly lookupSlackChannels: LookupSlackChannelsUseCase,
   ) {}
 
   @Get()
@@ -164,6 +166,31 @@ export class ConnectionsController {
       routeWorkspaceId: route.workspaceId,
       connectionId: route.connectionId,
     });
+  }
+
+  /** ADR 046: bounded channel-name lookup; never fails for one channel. */
+  @Get(':connectionId/slack/channels')
+  @RateLimit('provider_test')
+  @UseGuards(SessionAuthenticationGuard, ConnectionUseGuard)
+  public slackChannels(
+    @Req() request: ConnectionRequest,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = connectionIdParamSchema.parse(params);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
+    return withRequestOperationSignal(request, (signal) =>
+      this.lookupSlackChannels.execute({
+        ...context,
+        routeWorkspaceId: route.workspaceId,
+        connectionId: route.connectionId,
+        query: query ?? {},
+        signal,
+      }),
+    );
   }
 
   @Post(':connectionId/test')
