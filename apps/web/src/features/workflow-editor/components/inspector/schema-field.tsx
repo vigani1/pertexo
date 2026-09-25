@@ -9,6 +9,12 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import {
+  describeAmount,
+  toShownValue,
+  unitDisplay,
+} from '../../model/field-units';
 import {
   parseNumberField,
   withConfigValue,
@@ -160,28 +166,51 @@ function ConfigTextField(props: LiveFieldProps) {
   );
 }
 
+/**
+ * A number setting, typed in its shown unit: a millisecond timeout reads in
+ * seconds, with the unit beside the value and its bounds in words under it.
+ * The stepper moves one shown unit at a time.
+ */
 function ConfigNumberField(props: LiveFieldProps) {
-  const { field, id, form } = props;
+  const { field, id, form, value } = props;
   const live = useConfigText(
     props,
-    (current) => (typeof current === 'number' ? String(current) : ''),
+    (current) =>
+      typeof current === 'number'
+        ? String(toShownValue(current, field.unit))
+        : '',
     (text) => parseNumberField(field, text),
   );
   const errorId = `${id}-error`;
+  const unit = field.unit === undefined ? undefined : unitDisplay(field.unit);
+  const hint =
+    field.description ??
+    unitHint(field, typeof value === 'number' ? value : undefined);
   function nudge(direction: 1 | -1) {
     const current = Number(live.text);
     const base =
       live.text.trim() === '' || !Number.isFinite(current) ? 0 : current;
-    const next = base + direction;
+    const shownBound = (bound: number | undefined, fallback: number) =>
+      bound === undefined ? fallback : toShownValue(bound, field.unit);
     const bounded = Math.min(
-      field.maximum ?? Number.POSITIVE_INFINITY,
-      Math.max(field.minimum ?? Number.NEGATIVE_INFINITY, next),
+      shownBound(field.maximum, Number.POSITIVE_INFINITY),
+      Math.max(
+        shownBound(field.minimum, Number.NEGATIVE_INFINITY),
+        base + direction,
+      ),
     );
     live.change(String(bounded));
   }
   return (
     <Field data-invalid={live.error !== undefined}>
-      <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
+      <FieldLabel htmlFor={id}>
+        {field.label}
+        {field.unit === undefined ? null : (
+          <span className="sr-only">
+            {field.unit === 'bytes' ? ' (in bytes)' : ' (in seconds)'}
+          </span>
+        )}
+      </FieldLabel>
       <div className="flex items-center gap-1.5">
         <FieldControl
           state={live.error === undefined ? undefined : 'invalid'}
@@ -192,7 +221,14 @@ function ConfigNumberField(props: LiveFieldProps) {
             name={`config.${field.key}`}
             autoComplete="off"
             inputMode="decimal"
-            className="font-mono"
+            className={cn(
+              'font-mono',
+              unit === undefined
+                ? undefined
+                : unit.symbol === 's'
+                  ? 'pr-7'
+                  : 'pr-14',
+            )}
             value={live.text}
             disabled={!form.editable}
             aria-invalid={live.error !== undefined}
@@ -201,6 +237,14 @@ function ConfigNumberField(props: LiveFieldProps) {
               live.change(event.currentTarget.value);
             }}
           />
+          {unit === undefined ? null : (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-3 flex items-center font-mono text-xs text-subtle-foreground"
+            >
+              {unit.symbol}
+            </span>
+          )}
         </FieldControl>
         <Button
           type="button"
@@ -227,12 +271,29 @@ function ConfigNumberField(props: LiveFieldProps) {
           <PlusIcon />
         </Button>
       </div>
-      {field.description === undefined ? null : (
-        <FieldDescription>{field.description}</FieldDescription>
-      )}
+      {hint === undefined ? null : <FieldDescription>{hint}</FieldDescription>}
       {live.error === undefined ? null : (
         <FieldError id={errorId}>{live.error}</FieldError>
       )}
     </Field>
   );
+}
+
+/**
+ * Words for a unit setting's value and bounds: "That's 1.0 MB. Up to
+ * 10.0 MB." The value is said again only when words add something.
+ */
+function unitHint(
+  field: SchemaFieldSpec,
+  value: number | undefined,
+): string | undefined {
+  if (field.unit === undefined) return undefined;
+  const parts: string[] = [];
+  if (value !== undefined && field.unit !== 'milliseconds') {
+    const words = describeAmount(value, field.unit);
+    if (words !== `${String(value)} s`) parts.push(`That’s ${words}.`);
+  }
+  if (field.maximum !== undefined)
+    parts.push(`Up to ${describeAmount(field.maximum, field.unit)}.`);
+  return parts.length === 0 ? undefined : parts.join(' ');
 }

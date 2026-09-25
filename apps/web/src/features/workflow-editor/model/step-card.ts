@@ -1,7 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
 import { describeRecurrence } from '@/features/catalog/presentation.public';
-import { formatDurationMs } from '@/lib/format-time';
+import { describeAmount } from './field-units';
 import type { GraphLevel, WorkflowNode } from './graph-scopes';
 
 // What a step card says about its step, from the step's own setup and its
@@ -201,7 +201,7 @@ export function stepSummary(
     case 'core.wait':
       return typeof config.durationSeconds === 'number' &&
         config.durationSeconds > 0
-        ? waitWords(config.durationSeconds)
+        ? describeAmount(config.durationSeconds, 'seconds')
         : undefined;
     case 'core.schedule':
       return scheduleWords(config);
@@ -212,13 +212,6 @@ export function stepSummary(
     default:
       return undefined;
   }
-}
-
-function waitWords(seconds: number): string {
-  if (seconds % 86_400 === 0) return plural(seconds / 86_400, 'day');
-  if (seconds % 3_600 === 0) return plural(seconds / 3_600, 'hour');
-  if (seconds % 60 === 0) return plural(seconds / 60, 'minute');
-  return formatDurationMs(seconds * 1_000);
 }
 
 function scheduleWords(config: WorkflowNode['config']): string | undefined {
