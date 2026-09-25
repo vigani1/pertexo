@@ -133,7 +133,9 @@ export function useWebhookCommand({
   );
   const [unresolvedAttempt, setUnresolvedAttempt] =
     useState<UncertainWebhookCommand>();
-  const [error, setError] = useState<string>();
+  // The failure belongs to one webhook, so its card can show it by its button.
+  const [error, setError] =
+    useState<Readonly<{ triggerId: string; message: string }>>();
 
   async function execute(
     triggerId: string,
@@ -146,7 +148,7 @@ export function useWebhookCommand({
     const intent = `${command}:${endpointKey.trim()}`;
     const attempt = commands.begin(scope, intent);
     if (attempt === undefined) {
-      setError(unresolvedCommandMessage);
+      setError({ triggerId, message: unresolvedCommandMessage });
       return 'blocked' satisfies WebhookCommandOutcome;
     }
     return dispatch({
@@ -210,9 +212,11 @@ export function useWebhookCommand({
           ),
         });
       } catch {
-        setError(
-          'That worked, but the webhook list couldn’t refresh. Reload to see its latest state.',
-        );
+        setError({
+          triggerId: attempt.triggerId,
+          message:
+            'That worked, but the webhook list couldn’t refresh. Reload to see its latest state.',
+        });
       }
       return (
         awaitingAcknowledgement ? 'credentials' : 'complete'
@@ -229,7 +233,10 @@ export function useWebhookCommand({
         unresolvedAttemptRef.current = undefined;
         setUnresolvedAttempt(undefined);
       }
-      setError(settingsCommandError(cause, WEBHOOK_ACTIONS[attempt.command]));
+      setError({
+        triggerId: attempt.triggerId,
+        message: settingsCommandError(cause, WEBHOOK_ACTIONS[attempt.command]),
+      });
       return 'failed' satisfies WebhookCommandOutcome;
     } finally {
       setPending(undefined);

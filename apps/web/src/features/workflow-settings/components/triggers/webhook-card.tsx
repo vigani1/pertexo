@@ -24,6 +24,7 @@ export function WebhookCard({
   unresolved,
   onCommand,
   onRetryUnresolved,
+  failure,
   deliveries,
 }: Readonly<{
   trigger: WebhookTriggerHealthResponse;
@@ -34,6 +35,8 @@ export function WebhookCard({
   unresolved: UncertainWebhookCommand | undefined;
   onCommand: (command: WebhookCommand) => void;
   onRetryUnresolved: () => void;
+  /** Why the last command on this webhook failed, shown by its buttons. */
+  failure?: string | undefined;
   /** The recent delivery log, composed by the section that can read it. */
   deliveries?: ReactNode;
 }>) {
@@ -143,6 +146,11 @@ export function WebhookCard({
           )}
         </div>
       ) : null}
+      {failure === undefined ? null : (
+        <Notice role="alert" tone="destructive">
+          {failure}
+        </Notice>
+      )}
       {deliveries}
       <WebhookGuide />
     </article>
