@@ -190,9 +190,14 @@ function setup() {
   const setEnabled = vi
     .fn<ScheduleTriggerDatabase['setEnabled']>()
     .mockResolvedValue({ trigger, replayed: false });
+  const unused = () => Promise.reject(new Error('not a command or list'));
   return {
     list,
     setEnabled,
+    listOccurrences: vi.fn<ScheduleTriggerDatabase['listOccurrences']>(unused),
+    nextFireTimes: vi.fn<ScheduleTriggerDatabase['nextFireTimes']>(unused),
+    previewFireTimes:
+      vi.fn<ScheduleTriggerDatabase['previewFireTimes']>(unused),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   } satisfies ScheduleTriggerDatabase;

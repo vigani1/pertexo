@@ -108,6 +108,15 @@ const scheduleDatabase = {
   setEnabled: vi
     .fn<ScheduleTriggerDatabase['setEnabled']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
+  listOccurrences: vi
+    .fn<ScheduleTriggerDatabase['listOccurrences']>()
+    .mockRejectedValue(new Error('schedule business layer must not be called')),
+  nextFireTimes: vi
+    .fn<ScheduleTriggerDatabase['nextFireTimes']>()
+    .mockRejectedValue(new Error('schedule business layer must not be called')),
+  previewFireTimes: vi
+    .fn<ScheduleTriggerDatabase['previewFireTimes']>()
+    .mockRejectedValue(new Error('schedule business layer must not be called')),
   checkReadiness: vi
     .fn<ScheduleTriggerDatabase['checkReadiness']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
@@ -235,6 +244,12 @@ describe('feature guard provider resolution', () => {
       headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
       payload: {},
     });
+    const schedulePreview = await application.inject({
+      method: 'POST',
+      url: `${schedulePath}/preview`,
+      headers: { cookie: `pertexo_session=${'s'.repeat(43)}` },
+      payload: { config: { kind: 'interval', intervalMinutes: 15 } },
+    });
 
     expect(scheduleMutation.statusCode).toBe(403);
     expect(webhookMutation.statusCode).toBe(403);
@@ -246,9 +261,13 @@ describe('feature guard provider resolution', () => {
       code: 'auth.forbidden',
       detail: 'The request could not be verified.',
     });
+    // The side-effect-free preview still needs the CSRF proof of a POST.
+    expect(schedulePreview.statusCode).toBe(403);
+    expect(schedulePreview.json()).toMatchObject({ code: 'auth.forbidden' });
     expect(scheduleDatabase.setEnabled).not.toHaveBeenCalled();
+    expect(scheduleDatabase.previewFireTimes).not.toHaveBeenCalled();
     expect(webhookDatabase.provision).not.toHaveBeenCalled();
-    expect(authorizationLookup).toHaveBeenCalledTimes(2);
-    expect(sessionLookup).toHaveBeenCalledTimes(2);
+    expect(authorizationLookup).toHaveBeenCalledTimes(3);
+    expect(sessionLookup).toHaveBeenCalledTimes(3);
   });
 });

@@ -100,20 +100,34 @@ function cronParser(
   });
 }
 
+// Formatters are immutable and costly to construct; the minute-by-minute DST
+// scans below would otherwise build hundreds per occurrence. Keys are only
+// canonical IANA names (validated before use), so the cache stays bounded.
+const localPartsFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function localPartsFormatter(timezone: string): Intl.DateTimeFormat {
+  let formatter = localPartsFormatters.get(timezone);
+  if (formatter === undefined) {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    localPartsFormatters.set(timezone, formatter);
+  }
+  return formatter;
+}
+
 function localParts(
   date: Date,
   timezone: string,
 ): readonly [number, number, number, number, number, number] {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(date);
+  const parts = localPartsFormatter(timezone).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((part) => part.type === type)?.value);
   return [
@@ -296,4 +310,30 @@ export function resolveScheduleObservation(
     greatestDueAt: greatestCronOccurrence(recurrence, observedAt),
     nextAt: nextCronOccurrence(recurrence, observedAt),
   });
+}
+
+/** The most fire times one projection returns (ADR 048). */
+export const MAX_SCHEDULE_PROJECTION = 10;
+
+/**
+ * The next `count` instants a schedule fires after `observedAt`. Each one is
+ * exactly the `nextAt` the scanner persists when it observes the previous
+ * one, so timezone, DST and interval anchoring match the scheduler. This is
+ * a read-only projection; PostgreSQL state remains the authority (ADR 014).
+ */
+export function projectScheduleOccurrences(
+  recurrence: ScheduleRecurrence,
+  anchorAt: Date,
+  observedAt: Date,
+  count: number,
+): readonly Date[] {
+  if (!Number.isInteger(count) || count < 1 || count > MAX_SCHEDULE_PROJECTION)
+    throw new RangeError('Schedule projection count is out of bounds');
+  const occurrences: Date[] = [];
+  let cursor = observedAt;
+  while (occurrences.length < count) {
+    cursor = resolveScheduleObservation(recurrence, anchorAt, cursor).nextAt;
+    occurrences.push(cursor);
+  }
+  return Object.freeze(occurrences);
 }

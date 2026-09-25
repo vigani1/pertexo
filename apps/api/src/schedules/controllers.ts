@@ -5,10 +5,17 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { scheduleManagementCommandRequestSchema } from '@pertexo/contracts/schedules';
+import {
+  SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+  scheduleManagementCommandRequestSchema,
+  scheduleNextRunsQuerySchema,
+  scheduleOccurrenceListQuerySchema,
+  schedulePreviewRequestSchema,
+} from '@pertexo/contracts/schedules';
 import { z } from 'zod';
 
 import {
@@ -30,7 +37,7 @@ import { ScheduleManagementService } from './service.js';
 
 const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
 const routeSchema = z.object(routeShape).strict().readonly();
-const commandRouteSchema = z
+const triggerRouteSchema = z
   .object({ ...routeShape, triggerId: z.uuid() })
   .strict()
   .readonly();
@@ -49,6 +56,61 @@ export class ScheduleManagementController {
     return this.service.list({
       ...route,
       actorId: authenticatedSession(request).userId,
+    });
+  }
+
+  @Get(':triggerId/schedule/occurrences')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
+  public occurrences(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = triggerRouteSchema.parse(params);
+    const page = scheduleOccurrenceListQuerySchema.parse(query ?? {});
+    return this.service.listOccurrences({
+      ...route,
+      actorId: authenticatedSession(request).userId,
+      ...(page.limit === undefined ? {} : { limit: page.limit }),
+      ...(page.after === undefined ? {} : { after: page.after }),
+    });
+  }
+
+  @Get(':triggerId/schedule/next-runs')
+  @RateLimit('authenticated_read')
+  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
+  public nextRuns(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Query() query: unknown,
+  ) {
+    const route = triggerRouteSchema.parse(params);
+    const { count } = scheduleNextRunsQuerySchema.parse(query ?? {});
+    return this.service.nextRuns({
+      ...route,
+      actorId: authenticatedSession(request).userId,
+      count: count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+    });
+  }
+
+  /** Side-effect free, but computed per request like draft validation. */
+  @Post('schedules/preview')
+  @HttpCode(200)
+  @RateLimit('workflow_compile')
+  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard, CsrfProtectionGuard)
+  public preview(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = routeSchema.parse(params);
+    const input = schedulePreviewRequestSchema.parse(body);
+    return this.service.previewRuns({
+      ...route,
+      actorId: authenticatedSession(request).userId,
+      config: input.config,
+      count: input.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
     });
   }
 
@@ -89,7 +151,7 @@ export class ScheduleManagementController {
     body: unknown,
   ) {
     scheduleManagementCommandRequestSchema.parse(body);
-    const route = commandRouteSchema.parse(params);
+    const route = triggerRouteSchema.parse(params);
     const traceId = traceIdentifier(request);
     return this.service.setEnabled(
       {

@@ -14,6 +14,11 @@ import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
 } from './schedule-recurrence.js';
+import {
+  authorizeScheduleReader,
+  createScheduleTriggerReads,
+  type ScheduleTriggerReads,
+} from './schedule-trigger-reads.js';
 import { refreshWorkflowActivation } from './workflow-triggers.js';
 import { canManageWorkflowTrigger } from './trigger-management-access.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
@@ -63,7 +68,7 @@ export type ScheduleTriggerCommandResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface ScheduleTriggerDatabase {
+export interface ScheduleTriggerDatabase extends ScheduleTriggerReads {
   list(
     input: Readonly<{
       workspaceId: string;
@@ -89,26 +94,6 @@ export interface ScheduleTriggerDatabase {
 }
 
 export { ScheduleTriggerError } from './schedule-trigger-errors.js';
-
-async function authorizeScheduleReader(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  workflowId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-      join app.workflows workflow on workflow.workspace_id=membership.workspace_id
-     where membership.workspace_id=$1 and membership.user_id=$2 and workflow.id=$3
-       and membership.status='active'
-       and membership.role in ('owner','admin','builder','operator','viewer')
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId, workflowId],
-  );
-  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
-}
 
 function mapScheduleTrigger(
   row: Record<string, unknown>,
@@ -426,6 +411,7 @@ export function createScheduleTriggerDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    ...createScheduleTriggerReads(pool),
     list: (input: Parameters<ScheduleTriggerDatabase['list']>[0]) =>
       withTenantScopedClient(
         pool,

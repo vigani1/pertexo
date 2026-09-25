@@ -493,6 +493,192 @@
           "items"
         ],
         "additionalProperties": false
+      },
+      "ScheduleOccurrenceListResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                },
+                "recordedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "accepted",
+                    "skipped"
+                  ]
+                },
+                "runId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "scheduledAt",
+                "recordedAt",
+                "outcome",
+                "runId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "ScheduleFireTimesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "items": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                }
+              },
+              "required": [
+                "scheduledAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "observedAt",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "SchedulePreviewRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "config": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "cron"
+                  },
+                  "expression": {
+                    "type": "string",
+                    "minLength": 9,
+                    "maxLength": 255,
+                    "pattern": "^[^\\sH?#L]+(?: [^\\sH?#L]+){4}$"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "misfirePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "catch_up_once",
+                      "skip"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "expression",
+                  "timezone"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "interval"
+                  },
+                  "intervalMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 43200
+                  },
+                  "misfirePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "catch_up_once",
+                      "skip"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "intervalMinutes"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "config"
+        ],
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -548,6 +734,16 @@
       },
       "PreconditionRequired": {
         "description": "Idempotency key required",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limited",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -623,6 +819,258 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/occurrences": {
+      "get": {
+        "operationId": "listScheduleOccurrences",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained occurrence metadata, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleOccurrenceListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/next-runs": {
+      "get": {
+        "operationId": "listScheduleNextRuns",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Upcoming fire times of a published schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleFireTimesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules/preview": {
+      "post": {
+        "operationId": "previewScheduleRuns",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulePreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fire times an unsaved schedule rule would have if published now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleFireTimesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"

@@ -344,6 +344,8 @@ export function createScheduleTriggerTestEnvironment(
 
   return {
     actorId,
+    /** The API runtime role's connection, for RLS assertions. */
+    apiConnectionString: apiConfig.connectionString,
     checkpointFactory,
     close,
     get identity() {
