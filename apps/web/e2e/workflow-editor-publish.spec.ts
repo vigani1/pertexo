@@ -36,6 +36,15 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
   await installPublishRoutes(page, remote);
 
   await page.goto(editorUrl);
+  // No trigger is enabled in this catalog: the empty draft says what to add
+  // instead of “No issues”, and Publish waits for a step.
+  await expect(
+    page.getByRole('heading', { name: 'No triggers are enabled here' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Add a step to start' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Publish v1' })).toBeDisabled();
   await addStep(page, /Set fields/u).click();
   await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
   await page.locator('.react-flow__node').click();

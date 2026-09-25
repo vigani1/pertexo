@@ -56,6 +56,15 @@ export function groupStepChoices(
   });
 }
 
+/** A trigger a workflow can start with: placeable now and publishable later. */
+export function isStartTrigger(definition: NodeDefinitionCatalogItem): boolean {
+  return (
+    definition.family === 'trigger' &&
+    definition.available &&
+    definition.publishable
+  );
+}
+
 export function findDefinitionByIdentity(
   definitions: readonly NodeDefinitionCatalogItem[],
   identity: string,

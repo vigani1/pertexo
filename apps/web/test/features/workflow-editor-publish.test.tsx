@@ -22,12 +22,14 @@ import {
   runDetailHandlers,
   runId,
   runSummary,
+  setDefinition,
   user,
   validHandler,
   versionBody,
   versionId,
   workflowApi,
   workflowId,
+  workflowSummaryHandler,
   workspaceId,
 } from '../support/workflow-editor-fixtures';
 
@@ -193,32 +195,38 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(within(lens).getByText('1 connection added.')).toBeVisible();
   });
 
-  it('disables Run with a reason until something is published', async () => {
-    mockServer.use(...editorHandlers(() => undefined));
+  it('disables Run until something is published and Publish until the draft has a step', async () => {
     mockServer.use(
-      http.get(workflowApi, () =>
-        HttpResponse.json({
-          workflow: {
-            id: workflowId,
-            workspaceId,
-            name: 'Draft only',
-            lifecycleStatus: 'active',
-            lifecycleRevision: 1,
-            activationStatus: 'inactive',
-            publishedVersionId: null,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-          },
-        }),
-      ),
+      ...editorHandlers(() => undefined, {
+        definitions: [manualDefinition, setDefinition],
+      }),
     );
+    mockServer.use(validHandler(), workflowSummaryHandler('Draft only', null));
     renderApp(editorPath);
+    const event = userEvent.setup();
     await findCanvas();
     await screen.findByRole('heading', { name: 'Draft only' });
     expect(
       await screen.findByRole('button', { name: 'Run (publish first)' }),
     ).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByRole('button', { name: 'Publish v1' })).toBeVisible();
+    const publish = screen.getByRole('button', { name: 'Publish v1' });
+    expect(publish).toHaveAttribute('aria-disabled', 'true');
+    expect(publish).toHaveAccessibleDescription('Add a trigger to start');
+    expect(
+      await screen.findByRole('button', { name: 'Add a trigger to start' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'No issues' })).toBeNull();
+
+    await event.click(
+      within(screen.getByRole('list', { name: 'Triggers' })).getByRole(
+        'button',
+        { name: /Manual start/u },
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Publish v1' })).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: 'Add a trigger to start' }),
+    ).toBeNull();
   });
 });
 

@@ -43,7 +43,13 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     await findCanvas();
     expect(
-      screen.getByRole('heading', { name: 'Start with a trigger' }),
+      screen.getByRole('heading', { name: 'No triggers are enabled here' }),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole('list', { name: 'Available steps' })).getByRole(
+        'button',
+        { name: /Set fields/u },
+      ),
     ).toBeVisible();
     await event.click(addStepButton(/Set fields/u));
     expect(screen.getByText('Unsaved')).toBeVisible();

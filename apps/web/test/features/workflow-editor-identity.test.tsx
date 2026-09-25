@@ -12,6 +12,7 @@ import {
   editorPath,
   findCanvas,
   findPaused,
+  oneStepGraph,
   identityHandler,
   openRunLens,
   otherUser,
@@ -175,7 +176,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
   it('disposes retained command recovery when the routed editor scope exits', async () => {
     let runRequests = 0;
     let publishRequests = 0;
-    mockServer.use(...editorHandlers(() => undefined));
+    mockServer.use(...editorHandlers(() => undefined, { graph: oneStepGraph }));
     mockServer.use(
       validHandler(),
       http.post(`${workflowApi}/publish`, () => {

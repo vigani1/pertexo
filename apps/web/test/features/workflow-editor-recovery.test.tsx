@@ -14,6 +14,7 @@ import {
   etagA,
   findCanvas,
   findPaused,
+  oneStepGraph,
   identityHandler,
   openRunLens,
   otherUser,
@@ -113,7 +114,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
       etag: string | null;
       key: string | null;
     }>[] = [];
-    mockServer.use(...editorHandlers(() => undefined));
+    mockServer.use(...editorHandlers(() => undefined, { graph: oneStepGraph }));
     mockServer.use(
       identityHandler(() => identity),
       validHandler(),
@@ -255,7 +256,9 @@ describe(
       const accepted = deferred<Response>();
       let identity = user;
       let publishRequests = 0;
-      mockServer.use(...editorHandlers(() => undefined));
+      mockServer.use(
+        ...editorHandlers(() => undefined, { graph: oneStepGraph }),
+      );
       mockServer.use(
         http.get(`${api}/users/me`, () => HttpResponse.json(identity)),
         validHandler(),
