@@ -94,7 +94,7 @@ export function WorkflowHubBar({
     workflow === undefined ? undefined : describeWorkflowState(workflow);
   return (
     <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:flex-nowrap">
-      <div className="flex min-w-0 flex-1 items-center gap-3 xl:flex-none">
+      <div className="flex min-w-[min(100%,12rem)] flex-1 items-center gap-3 xl:flex-none">
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId: workspace.id }}

@@ -1,4 +1,5 @@
 import { CheckIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { StatusGlyph } from '@/components/ui/status';
@@ -15,7 +16,8 @@ export const ISSUES_CHIP_ID = 'editor-issues-chip';
 /**
  * The command bar's issue count. Opens and closes the bottom issues lens.
  * An empty draft says what to add first instead of claiming “No issues”,
- * unless the server found some.
+ * unless the server found some. On phones only the glyph and count show,
+ * so Run and Publish keep their room; the words stay for screen readers.
  */
 export function IssuesChip({
   state,
@@ -57,11 +59,16 @@ export function IssuesChip({
       ) : (
         <>
           <StatusGlyph tone="neutral" />
-          {hint.label}
+          <Words>{hint.label}</Words>
         </>
       )}
     </button>
   );
+}
+
+/** Words that fold away on phones, where the chip keeps only its glyph. */
+function Words({ children }: Readonly<{ children: ReactNode }>) {
+  return <span className="max-sm:sr-only">{children}</span>;
 }
 
 function ChipLabel({
@@ -72,29 +79,32 @@ function ChipLabel({
     return (
       <>
         <LoadingOrb />
-        Checking…
+        <Words>Checking…</Words>
       </>
     );
   if (count === undefined)
     return state.error === undefined ? (
-      'Not checked yet'
+      <>
+        <StatusGlyph tone="neutral" className="sm:hidden" />
+        <Words>Not checked yet</Words>
+      </>
     ) : (
       <>
         <StatusGlyph tone="attention" className="text-warning" />
-        Couldn’t check
+        <Words>Couldn’t check</Words>
       </>
     );
   if (count === 0)
     return (
       <>
         <CheckIcon data-icon="inline-start" />
-        No issues
+        <Words>No issues</Words>
       </>
     );
   return (
     <>
       <StatusGlyph tone="failure" />
-      {count} {count === 1 ? 'issue' : 'issues'}
+      {count} <Words>{count === 1 ? 'issue' : 'issues'}</Words>
     </>
   );
 }
