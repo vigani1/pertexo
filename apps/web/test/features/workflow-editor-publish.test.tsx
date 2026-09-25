@@ -163,6 +163,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
             id: workflowId,
             workspaceId,
             name: 'Invoice intake',
+            nameRevision: 1,
             lifecycleStatus: 'active',
             lifecycleRevision: 1,
             activationStatus: 'active',
