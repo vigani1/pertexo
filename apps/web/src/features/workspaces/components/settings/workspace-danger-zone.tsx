@@ -24,6 +24,26 @@ export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/**
+ * One action in the danger zone: what it does, with its button beside it on
+ * a wide screen, so every row lines up however long its sentence is.
+ */
+export function DangerAction({
+  title,
+  description,
+  children,
+}: Readonly<{ title: string; description: string; children: ReactNode }>) {
+  return (
+    <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="max-w-xl">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex">{children}</div>
+    </div>
+  );
+}
+
 /** Delete or restore the workspace, with its lifecycle operation. */
 export function WorkspaceLifecycleControls({
   apiClient,
@@ -56,17 +76,14 @@ export function WorkspaceLifecycleControls({
   return (
     <div className="flex flex-col gap-4">
       {showAction ? (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="max-w-xl">
-            <p className="text-sm font-semibold">
-              {pendingDeletion ? 'Restore workspace' : 'Delete workspace'}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {pendingDeletion
-                ? 'It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended; integrations stay off until they’re reconnected.'
-                : 'Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good.'}
-            </p>
-          </div>
+        <DangerAction
+          title={pendingDeletion ? 'Restore workspace' : 'Delete workspace'}
+          description={
+            pendingDeletion
+              ? 'It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended; integrations stay off until they’re reconnected.'
+              : 'Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good.'
+          }
+        >
           {pendingDeletion ? (
             <WorkspaceRestoreDialog
               workspaceName={workspace.name}
@@ -90,7 +107,7 @@ export function WorkspaceLifecycleControls({
               onRetry={command.retry}
             />
           )}
-        </div>
+        </DangerAction>
       ) : null}
       <WorkspaceLifecycleOperation
         operation={operation}

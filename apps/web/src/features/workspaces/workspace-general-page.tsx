@@ -127,9 +127,7 @@ export function WorkspaceGeneralPage({
             <span className="text-sm">{ROLE_NAMES[workspace.role]}</span>
           </Fact>
           <Fact term="Created">
-            <span className="font-mono text-sm">
-              {formatDate(workspace.createdAt)}
-            </span>
+            <span className="text-sm">{formatDate(workspace.createdAt)}</span>
           </Fact>
         </dl>
       </section>
