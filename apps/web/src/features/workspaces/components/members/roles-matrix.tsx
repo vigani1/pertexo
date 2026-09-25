@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import {
   ROLE_MATRIX,
   ROLE_NAMES,
+  ROLE_SHORT_NAMES,
   WORKSPACE_ROLES,
   withArticle,
   type WorkspaceRole,
@@ -40,13 +41,14 @@ export function RolesMatrix({
                 key={role}
                 scope="col"
                 className={cn(
-                  'w-11 pb-2 text-center font-mono text-[0.65rem] font-semibold tracking-wide text-subtle-foreground',
+                  'w-10 px-0.5 pb-2 text-center text-[0.68rem] font-semibold text-subtle-foreground sm:w-14',
                   role === yourRole && 'text-accent-foreground',
                 )}
               >
-                <abbr title={ROLE_NAMES[role]} className="no-underline">
-                  {ROLE_NAMES[role].slice(0, 3).toUpperCase()}
-                </abbr>
+                <span aria-hidden="true" className="sm:hidden">
+                  {ROLE_SHORT_NAMES[role]}
+                </span>
+                <span className="max-sm:sr-only">{ROLE_NAMES[role]}</span>
               </th>
             ))}
           </tr>

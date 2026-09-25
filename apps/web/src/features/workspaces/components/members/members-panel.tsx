@@ -20,7 +20,7 @@ import {
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/api-error-copy';
-import { MemberRoleManagement } from './member-role-management';
+import { MemberManagement } from './member-management';
 
 type MembersQuery = UseInfiniteQueryResult<
   InfiniteData<WorkspaceMembersResponse>
@@ -81,7 +81,7 @@ export function MembersPanel({
           onRetry={() => void query.refetch()}
         />
       ) : null}
-      <MemberRoleManagement
+      <MemberManagement
         apiClient={apiClient}
         user={user}
         workspace={workspace}

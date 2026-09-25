@@ -23,6 +23,15 @@ export const ROLE_NAMES: Readonly<Record<WorkspaceRole, string>> = {
   viewer: 'Viewer',
 };
 
+/** Whole words that fit a phone-width roles matrix column. */
+export const ROLE_SHORT_NAMES: Readonly<Record<WorkspaceRole, string>> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  builder: 'Build',
+  operator: 'Ops',
+  viewer: 'View',
+};
+
 /** One line per role, for pickers: what someone with it can do. */
 export const ROLE_SUMMARIES: Readonly<Record<WorkspaceRole, string>> = {
   owner: 'Everything, including renaming and deleting the workspace.',
@@ -100,22 +109,29 @@ export function assignableRoles(
   return [];
 }
 
-/** Not yourself, not the owner; admins manage only delegated roles. */
-export function canChangeRoleOf(
+/**
+ * Whom this person may manage, for presentation only (ADR 037 and ADR 042):
+ * not yourself, never the owner; owners manage anyone else, admins only
+ * builders, operators and viewers. The server stays authoritative.
+ */
+export function canRemoveMember(
   actor: Readonly<{ role: WorkspaceRole; userId: string }>,
   member: WorkspaceMember,
 ): boolean {
-  if (
-    member.userId === actor.userId ||
-    member.membershipStatus !== 'active' ||
-    member.role === 'owner'
-  )
-    return false;
+  if (member.userId === actor.userId || member.role === 'owner') return false;
   if (actor.role === 'owner') return true;
   return (
     actor.role === 'admin' &&
     DELEGATED_ROLES.some((role) => role === member.role)
   );
+}
+
+/** Role changes also need an active membership. */
+export function canChangeRoleOf(
+  actor: Readonly<{ role: WorkspaceRole; userId: string }>,
+  member: WorkspaceMember,
+): boolean {
+  return member.membershipStatus === 'active' && canRemoveMember(actor, member);
 }
 
 /** "an Admin", "a Builder". */

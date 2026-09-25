@@ -15,6 +15,9 @@ import {
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
   type WorkspaceMemberRoleChangeResponse,
+  workspaceMemberRemovalRequestSchema,
+  workspaceMemberRemovalResponseSchema,
+  type WorkspaceMemberRemovalResponse,
   workspaceInvitationCommandRequestSchema,
   workspaceInvitationCommandResponseSchema,
   workspaceInvitationCreateRequestSchema,
@@ -159,6 +162,27 @@ function invitationCommand(
   });
 }
 
+/** One existing-member command: a POST to the member's verb with its key. */
+function sendMemberCommand<Receipt>(
+  apiClient: ApiClient,
+  command: Readonly<{
+    workspaceId: string;
+    userId: string;
+    verb: 'role' | 'remove';
+    body: unknown;
+    idempotencyKey: string;
+    decode: (value: unknown) => Receipt;
+  }>,
+): Promise<Receipt> {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(command.workspaceId)}/members/${encodeURIComponent(command.userId)}/${command.verb}`,
+    method: 'POST',
+    body: command.body,
+    headers: { 'Idempotency-Key': command.idempotencyKey },
+    response: { kind: 'json', decode: command.decode },
+  });
+}
+
 export function changeWorkspaceMemberRole(
   apiClient: ApiClient,
   workspaceId: string,
@@ -169,19 +193,34 @@ export function changeWorkspaceMemberRole(
     idempotencyKey: string;
   }>,
 ): Promise<WorkspaceMemberRoleChangeResponse> {
-  const body = workspaceMemberRoleChangeRequestSchema.parse({
-    role: input.role,
-    expectedRoleRevision: input.expectedRoleRevision,
+  return sendMemberCommand(apiClient, {
+    workspaceId,
+    userId,
+    verb: 'role',
+    body: workspaceMemberRoleChangeRequestSchema.parse({
+      role: input.role,
+      expectedRoleRevision: input.expectedRoleRevision,
+    }),
+    idempotencyKey: input.idempotencyKey,
+    decode: (value) => workspaceMemberRoleChangeResponseSchema.parse(value),
   });
-  return apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(userId)}/role`,
-    method: 'POST',
-    body,
-    headers: { 'Idempotency-Key': input.idempotencyKey },
-    response: {
-      kind: 'json',
-      decode: (value) => workspaceMemberRoleChangeResponseSchema.parse(value),
-    },
+}
+
+export function removeWorkspaceMember(
+  apiClient: ApiClient,
+  workspaceId: string,
+  userId: string,
+  input: Readonly<{ expectedRoleRevision: number; idempotencyKey: string }>,
+): Promise<WorkspaceMemberRemovalResponse> {
+  return sendMemberCommand(apiClient, {
+    workspaceId,
+    userId,
+    verb: 'remove',
+    body: workspaceMemberRemovalRequestSchema.parse({
+      expectedRoleRevision: input.expectedRoleRevision,
+    }),
+    idempotencyKey: input.idempotencyKey,
+    decode: (value) => workspaceMemberRemovalResponseSchema.parse(value),
   });
 }
 

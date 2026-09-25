@@ -2,18 +2,29 @@ import type {
   AccountSecurityResponse,
   UserProfileResponse,
 } from '@pertexo/contracts/schemas/identity-workspace';
+import { PencilIcon } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import type { ApiClient } from '@/lib/api/client';
 import { formatInitials } from '@/lib/format-initials';
 import { AccountSection } from './account-section';
+import { DisplayNameForm } from './display-name-form';
 
-/** Who you are across workspaces: initials, name and email. */
+/** Who you are across workspaces: initials, an editable name and email. */
 export function AccountProfileSection({
+  apiClient,
   user,
   security,
+  onProfileChanged,
 }: Readonly<{
+  apiClient: ApiClient;
   user: UserProfileResponse;
   security: AccountSecurityResponse | undefined;
+  /** The name changed: reload everything that shows it. */
+  onProfileChanged: () => void;
 }>) {
+  const [editing, setEditing] = useState(false);
   const email = security?.email ?? user.email;
   return (
     <AccountSection id="account-profile-title" title="Profile">
@@ -24,15 +35,40 @@ export function AccountProfileSection({
         >
           {formatInitials(user.displayName || user.email)}
         </span>
-        <div className="min-w-0">
-          <p className="truncate font-heading text-xl font-semibold">
-            {user.displayName}
-          </p>
-          <p className="mt-0.5 text-[0.8rem] text-subtle-foreground">
-            Your name as teammates see it. Changing it isn’t available yet.
-          </p>
-        </div>
+        {editing ? null : (
+          <div className="min-w-0">
+            <p className="flex min-w-0 items-center gap-1">
+              <span className="truncate font-heading text-xl font-semibold">
+                {user.displayName}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Edit your name"
+                onClick={() => {
+                  setEditing(true);
+                }}
+              >
+                <PencilIcon aria-hidden="true" />
+              </Button>
+            </p>
+            <p className="mt-0.5 text-[0.8rem] text-subtle-foreground">
+              Your name as teammates see it.
+            </p>
+          </div>
+        )}
       </div>
+      {editing ? (
+        <DisplayNameForm
+          apiClient={apiClient}
+          user={user}
+          onClose={() => {
+            setEditing(false);
+          }}
+          onChanged={onProfileChanged}
+        />
+      ) : null}
       <dl className="grid gap-1">
         <dt className="text-[0.8rem] text-subtle-foreground">Email</dt>
         <dd className="flex flex-wrap items-center gap-2 text-sm">

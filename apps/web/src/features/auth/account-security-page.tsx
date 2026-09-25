@@ -42,10 +42,13 @@ export function AccountSecurityPage({
   apiClient,
   user,
   linkOutcome,
+  onProfileChanged,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   linkOutcome?: LinkOutcome;
+  /** The profile changed: reload whatever shows the person. */
+  onProfileChanged: () => void;
 }>) {
   const security = useQuery(accountSecurityQueryOptions(apiClient, user.id));
   const securityFailure = security.isError ? (
@@ -57,7 +60,7 @@ export function AccountSecurityPage({
   ) : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+    <div className="flex w-full max-w-3xl flex-col gap-8">
       <PageHeader>
         <div className="min-w-0">
           <PageHeaderTitle>Account &amp; security</PageHeaderTitle>
@@ -73,7 +76,12 @@ export function AccountSecurityPage({
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="flex flex-col gap-8 pt-8">
-          <AccountProfileSection user={user} security={security.data} />
+          <AccountProfileSection
+            apiClient={apiClient}
+            user={user}
+            security={security.data}
+            onProfileChanged={onProfileChanged}
+          />
           {securityFailure}
           {security.data === undefined ? null : (
             <AccountEmailSection
