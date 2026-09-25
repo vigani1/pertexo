@@ -34,8 +34,9 @@ export const ROLE_SHORT_NAMES: Readonly<Record<WorkspaceRole, string>> = {
 
 /** One line per role, for pickers: what someone with it can do. */
 export const ROLE_SUMMARIES: Readonly<Record<WorkspaceRole, string>> = {
-  owner: 'Everything, including renaming and deleting the workspace.',
-  admin: 'Everything except renaming or deleting the workspace.',
+  owner:
+    'Everything, including renaming, deleting and handing over the workspace.',
+  admin: 'Everything except renaming, deleting or handing over the workspace.',
   builder: 'Builds, tests and publishes workflows, and starts runs.',
   operator: 'Starts, cancels and replays runs, without changing workflows.',
   viewer: 'Sees workflows, runs and connections, and changes nothing.',
@@ -88,7 +89,7 @@ export const ROLE_MATRIX: readonly Readonly<{
     roles: ['owner', 'admin'],
   },
   {
-    ability: 'Rename or delete the workspace',
+    ability: 'Rename, delete or hand over the workspace',
     capabilities: ['workspace:manage'],
     roles: ['owner'],
   },
@@ -132,6 +133,37 @@ export function canChangeRoleOf(
   member: WorkspaceMember,
 ): boolean {
   return member.membershipStatus === 'active' && canRemoveMember(actor, member);
+}
+
+/** Suspension and reactivation follow the removal rules (ADR 047). */
+export function canSuspendMember(
+  actor: Readonly<{ role: WorkspaceRole; userId: string }>,
+  member: WorkspaceMember,
+): boolean {
+  return canRemoveMember(actor, member);
+}
+
+/** Only the owner hands over the workspace, to another active member. */
+export function canTransferOwnershipTo(
+  actor: Readonly<{ role: WorkspaceRole; userId: string }>,
+  member: WorkspaceMember,
+): boolean {
+  return (
+    actor.role === 'owner' &&
+    member.role !== 'owner' &&
+    member.userId !== actor.userId &&
+    member.membershipStatus === 'active'
+  );
+}
+
+/** Everyone but the owner may leave; the owner hands the workspace over first. */
+export function canLeaveWorkspace(role: WorkspaceRole): boolean {
+  return role !== 'owner';
+}
+
+/** How confirmations address a member: their first name, or "They". */
+export function firstNameOf(member: WorkspaceMember | undefined): string {
+  return member?.displayName.split(/\s+/u)[0] ?? 'They';
 }
 
 /** "an Admin", "a Builder". */

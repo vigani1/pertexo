@@ -389,7 +389,7 @@ describe('team: members', () => {
     const matrix = screen.getByRole('table');
     expect(
       within(matrix).getByRole('rowheader', {
-        name: 'Rename or delete the workspace',
+        name: 'Rename, delete or hand over the workspace',
       }),
     ).toBeVisible();
     // Full role names name every column; phones show whole short words.

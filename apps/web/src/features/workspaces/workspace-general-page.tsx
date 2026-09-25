@@ -8,7 +8,11 @@ import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDate } from '@/lib/format-time';
-import { WorkspaceDangerZone } from './components/settings/workspace-danger-zone';
+import {
+  DangerZone,
+  WorkspaceLifecycleControls,
+} from './components/settings/workspace-danger-zone';
+import { WorkspaceLeave } from './components/settings/workspace-leave';
 import { WorkspaceNameField } from './components/settings/workspace-name-field';
 import { ROLE_NAMES } from './model/workspace-roles';
 import {
@@ -30,7 +34,7 @@ function Fact({
 
 /**
  * Workspace settings: the name (edited in place), its address and identity,
- * then the lifecycle behind a clearly fenced danger zone.
+ * then deleting and leaving behind a clearly fenced danger zone.
  */
 export function WorkspaceGeneralPage({
   apiClient,
@@ -39,6 +43,7 @@ export function WorkspaceGeneralPage({
   operationId,
   onOperationChange,
   onWorkspaceChanged,
+  onLeft,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -46,6 +51,8 @@ export function WorkspaceGeneralPage({
   operationId?: string;
   onOperationChange: (operationId?: string) => void;
   onWorkspaceChanged: () => void;
+  /** The person left; their sessions have ended. */
+  onLeft: () => void;
 }>) {
   const queryClient = useQueryClient();
   const canManage = workspace.capabilities.includes('workspace:manage');
@@ -127,26 +134,33 @@ export function WorkspaceGeneralPage({
         </dl>
       </section>
 
-      {canManage ? (
-        <WorkspaceDangerZone
+      <DangerZone>
+        {canManage ? (
+          <WorkspaceLifecycleControls
+            apiClient={apiClient}
+            workspace={workspace}
+            operation={operationQuery.data}
+            operationLoading={
+              operationQuery.isPending && operationId !== undefined
+            }
+            operationReadError={operationQuery.isError}
+            onOperationAccepted={(id) => {
+              onOperationChange(id);
+            }}
+            onOperationDismissed={() => {
+              onOperationChange();
+            }}
+            onRetryOperationRead={() => {
+              void operationQuery.refetch();
+            }}
+          />
+        ) : null}
+        <WorkspaceLeave
           apiClient={apiClient}
           workspace={workspace}
-          operation={operationQuery.data}
-          operationLoading={
-            operationQuery.isPending && operationId !== undefined
-          }
-          operationReadError={operationQuery.isError}
-          onOperationAccepted={(id) => {
-            onOperationChange(id);
-          }}
-          onOperationDismissed={() => {
-            onOperationChange();
-          }}
-          onRetryOperationRead={() => {
-            void operationQuery.refetch();
-          }}
+          onLeft={onLeft}
         />
-      ) : null}
+      </DangerZone>
     </div>
   );
 }

@@ -8,6 +8,9 @@ import { absorbAddresses } from '@/features/workspaces/model/invite-addresses';
 import {
   assignableRoles,
   canChangeRoleOf,
+  canLeaveWorkspace as canLeave,
+  canSuspendMember,
+  canTransferOwnershipTo,
   ROLE_MATRIX,
   WORKSPACE_ROLES,
 } from '@/features/workspaces/model/workspace-roles';
@@ -15,6 +18,9 @@ import {
 import {
   canChangeWorkspaceMemberRole,
   canInviteWorkspaceRole,
+  canLeaveWorkspace,
+  canSuspendWorkspaceMember,
+  canTransferWorkspaceOwnership,
   capabilitiesForRole,
   ROLES,
 } from '../../../../packages/database/src/tenant-access/workspace-policy';
@@ -72,6 +78,34 @@ describe('roles matrix', () => {
         ).toBe(changeable);
       }
     }
+  });
+
+  it('offers suspension, ownership transfer and leaving only as the policy allows', () => {
+    const other = '22222222-2222-4222-8222-222222222222';
+    for (const actor of ROLES) {
+      expect(canLeave(actor)).toBe(canLeaveWorkspace(actor));
+      for (const target of ROLES) {
+        const actorView = { role: actor, userId: other };
+        expect(canSuspendMember(actorView, member(target))).toBe(
+          canSuspendWorkspaceMember(actor, target),
+        );
+        expect(canTransferOwnershipTo(actorView, member(target))).toBe(
+          canTransferWorkspaceOwnership(actor, target),
+        );
+      }
+    }
+    expect(
+      canTransferOwnershipTo(
+        { role: 'owner', userId: other },
+        { ...member('admin'), membershipStatus: 'suspended' },
+      ),
+    ).toBe(false);
+    expect(
+      canTransferOwnershipTo(
+        { role: 'owner', userId: 'self' },
+        member('admin', 'self'),
+      ),
+    ).toBe(false);
   });
 
   it('never offers changing your own role', () => {

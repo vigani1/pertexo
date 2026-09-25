@@ -103,3 +103,26 @@ export function rowOf(name: string) {
   if (row === null) throw new Error(`${name} row is unavailable`);
   return within(row);
 }
+
+/** A member command the handler saw: its key, body and path. */
+export type SentMemberCommand = Readonly<{
+  key: string | null;
+  body: unknown;
+  url: string;
+}>;
+
+/** Records each POST to one member command verb and answers it. */
+export function memberCommandHandler(
+  verb: string,
+  sent: SentMemberCommand[],
+  answer: (attempt: number) => Response,
+) {
+  return http.post(`${api}/members/:userId/${verb}`, async ({ request }) => {
+    sent.push({
+      key: request.headers.get('idempotency-key'),
+      body: await request.json(),
+      url: new URL(request.url).pathname,
+    });
+    return answer(sent.length);
+  });
+}

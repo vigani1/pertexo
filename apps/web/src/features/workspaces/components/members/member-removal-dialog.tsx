@@ -1,5 +1,9 @@
 import type { WorkspaceMember } from '@pertexo/contracts/schemas/identity-workspace';
-import { ConfirmDialog } from '@/components/patterns/confirm-dialog';
+import { firstNameOf } from '../../model/workspace-roles';
+import {
+  MemberCommandDialog,
+  type MemberCommandView,
+} from './member-command-dialog';
 
 /**
  * Confirms removing a member, listing what happens before anything is sent.
@@ -9,28 +13,21 @@ export function MemberRemovalDialog(
   props: Readonly<{
     member: WorkspaceMember | undefined;
     workspaceName: string;
-    pending: boolean;
-    locked: boolean;
-    retryAvailable: boolean;
-    error: string | undefined;
+    command: MemberCommandView;
     onClose: () => void;
     onConfirm: () => void;
-    onRetry: () => void;
-    onDismissUncertain: () => void;
   }>,
 ) {
   const { member } = props;
-  const name = member?.displayName ?? 'this member';
-  const firstName = member?.displayName.split(/\s+/u)[0] ?? 'They';
+  const firstName = firstNameOf(member);
   return (
-    <ConfirmDialog
-      open={member !== undefined}
-      onOpenChange={(open) => {
-        if (!open) props.onClose();
-      }}
-      locked={props.locked}
+    <MemberCommandDialog
+      member={member}
+      command={props.command}
+      onClose={props.onClose}
+      onConfirm={props.onConfirm}
       tone="destructive"
-      title={`Remove ${name} from ${props.workspaceName}?`}
+      title={`Remove ${member?.displayName ?? 'this member'} from ${props.workspaceName}?`}
       consequences={[
         `${firstName} loses access to this workspace’s workflows, runs and connections straight away.`,
         `${firstName} is signed out everywhere, including other workspaces, and signs in again.`,
@@ -39,15 +36,6 @@ export function MemberRemovalDialog(
       ]}
       confirmLabel="Remove member"
       pendingLabel="Removing…"
-      pending={props.pending}
-      confirmDisabled={member === undefined}
-      error={props.error}
-      onConfirm={props.onConfirm}
-      unconfirmed={
-        props.retryAvailable
-          ? { onRetry: props.onRetry, onDismiss: props.onDismissUncertain }
-          : undefined
-      }
     />
   );
 }

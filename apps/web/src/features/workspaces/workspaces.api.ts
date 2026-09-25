@@ -18,6 +18,15 @@ import {
   workspaceMemberRemovalRequestSchema,
   workspaceMemberRemovalResponseSchema,
   type WorkspaceMemberRemovalResponse,
+  workspaceLeaveRequestSchema,
+  workspaceLeaveResponseSchema,
+  type WorkspaceLeaveResponse,
+  workspaceMemberStatusRequestSchema,
+  workspaceMemberStatusResponseSchema,
+  type WorkspaceMemberStatusResponse,
+  workspaceOwnershipTransferRequestSchema,
+  workspaceOwnershipTransferResponseSchema,
+  type WorkspaceOwnershipTransferResponse,
   workspaceInvitationCommandRequestSchema,
   workspaceInvitationCommandResponseSchema,
   workspaceInvitationCreateRequestSchema,
@@ -168,7 +177,7 @@ function sendMemberCommand<Receipt>(
   command: Readonly<{
     workspaceId: string;
     userId: string;
-    verb: 'role' | 'remove';
+    verb: 'role' | 'remove' | 'suspend' | 'reactivate' | 'transfer-ownership';
     body: unknown;
     idempotencyKey: string;
     decode: (value: unknown) => Receipt;
@@ -221,6 +230,71 @@ export function removeWorkspaceMember(
     }),
     idempotencyKey: input.idempotencyKey,
     decode: (value) => workspaceMemberRemovalResponseSchema.parse(value),
+  });
+}
+
+/** ADR 047: suspends or reactivates a member at the revision people saw. */
+export function changeWorkspaceMemberStatus(
+  apiClient: ApiClient,
+  workspaceId: string,
+  userId: string,
+  input: Readonly<{
+    direction: 'suspend' | 'reactivate';
+    expectedRoleRevision: number;
+    idempotencyKey: string;
+  }>,
+): Promise<WorkspaceMemberStatusResponse> {
+  return sendMemberCommand(apiClient, {
+    workspaceId,
+    userId,
+    verb: input.direction,
+    body: workspaceMemberStatusRequestSchema.parse({
+      expectedRoleRevision: input.expectedRoleRevision,
+    }),
+    idempotencyKey: input.idempotencyKey,
+    decode: (value) => workspaceMemberStatusResponseSchema.parse(value),
+  });
+}
+
+/** ADR 047: hands the workspace to another member, fencing both. */
+export function transferWorkspaceOwnership(
+  apiClient: ApiClient,
+  workspaceId: string,
+  userId: string,
+  input: Readonly<{
+    expectedRoleRevision: number;
+    expectedOwnerRoleRevision: number;
+    idempotencyKey: string;
+  }>,
+): Promise<WorkspaceOwnershipTransferResponse> {
+  return sendMemberCommand(apiClient, {
+    workspaceId,
+    userId,
+    verb: 'transfer-ownership',
+    body: workspaceOwnershipTransferRequestSchema.parse({
+      expectedRoleRevision: input.expectedRoleRevision,
+      expectedOwnerRoleRevision: input.expectedOwnerRoleRevision,
+    }),
+    idempotencyKey: input.idempotencyKey,
+    decode: (value) => workspaceOwnershipTransferResponseSchema.parse(value),
+  });
+}
+
+/** ADR 047: the signed-in person leaves the workspace. */
+export function leaveWorkspace(
+  apiClient: ApiClient,
+  workspaceId: string,
+  idempotencyKey: string,
+): Promise<WorkspaceLeaveResponse> {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/leave`,
+    method: 'POST',
+    body: workspaceLeaveRequestSchema.parse({}),
+    headers: { 'Idempotency-Key': idempotencyKey },
+    response: {
+      kind: 'json',
+      decode: (value) => workspaceLeaveResponseSchema.parse(value),
+    },
   });
 }
 

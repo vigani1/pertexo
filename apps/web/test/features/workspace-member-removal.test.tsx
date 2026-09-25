@@ -1,4 +1,4 @@
-import { HttpResponse, http } from 'msw';
+import { HttpResponse } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   firstMemberId,
   identityHandlers,
   member,
+  memberCommandHandler,
   membersOf,
   noInvitations,
   ownerWorkspace,
@@ -17,25 +18,19 @@ import {
   secondMemberId,
   userId,
   workspaceId,
+  type SentMemberCommand,
 } from '../support/team-fixtures';
 
 const thirdMemberId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const workspaceName = ownerWorkspace.name;
 
-type Removal = Readonly<{ key: string | null; body: unknown; url: string }>;
+type Removal = SentMemberCommand;
 
 function removalHandler(
   removals: Removal[],
   answer: (attempt: number) => Response,
 ) {
-  return http.post(`${api}/members/:userId/remove`, async ({ request }) => {
-    removals.push({
-      key: request.headers.get('idempotency-key'),
-      body: await request.json(),
-      url: new URL(request.url).pathname,
-    });
-    return answer(removals.length);
-  });
+  return memberCommandHandler('remove', removals, answer);
 }
 
 function removalDialog() {
