@@ -30,11 +30,14 @@ export function SetupTab({
   definition,
   connections,
   form,
+  onOpenInputs,
 }: Readonly<{
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
   connections: readonly ConnectionResponse[];
   form: NodeFormApi;
+  /** Shows the Inputs tab, where a step with no setup is decided. */
+  onOpenInputs: () => void;
 }>) {
   const fields = useMemo(
     () => schemaFields(definition?.configSchema),
@@ -61,9 +64,26 @@ export function SetupTab({
   );
   const onlyJson = definition === undefined;
   const showJson = onlyJson || jsonMode;
+  // A step whose schema has nothing to set (Condition, say) is decided by
+  // its inputs: point there instead of offering an empty JSON object.
+  const nothingToSet =
+    !onlyJson &&
+    scheduleSchema === undefined &&
+    fields.length === 0 &&
+    Object.keys(node.config).length === 0 &&
+    schemaPropertyCount(definition.configSchema) === 0;
   return (
     <FieldGroup className="gap-4">
-      {showJson ? (
+      {nothingToSet ? (
+        <div className="flex flex-col items-start gap-1.5 text-sm text-muted-foreground">
+          <p>
+            Nothing to set up here. What this step does comes from its inputs.
+          </p>
+          <Button type="button" variant="link" onClick={onOpenInputs}>
+            Go to Inputs
+          </Button>
+        </div>
+      ) : showJson ? (
         <ConfigJsonEditor
           config={node.config}
           form={jsonForm}
@@ -82,7 +102,7 @@ export function SetupTab({
           form={form}
         />
       )}
-      {onlyJson ? null : (
+      {onlyJson || nothingToSet ? null : (
         <JsonModeToggle
           jsonMode={jsonMode}
           disabled={jsonMode && jsonScratch}
@@ -123,16 +143,6 @@ function SetupControls({
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
     );
   const propertyCount = schemaPropertyCount(configSchema);
-  if (
-    fields.length === 0 &&
-    Object.keys(config).length === 0 &&
-    propertyCount === 0
-  )
-    return (
-      <p className="text-sm text-muted-foreground">
-        Nothing to set up for this step. Its inputs decide what it does.
-      </p>
-    );
   return (
     <SchemaFieldList
       fields={fields}
