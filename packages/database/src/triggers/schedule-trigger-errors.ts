@@ -1,12 +1,16 @@
+const MESSAGES = Object.freeze({
+  not_found: 'Schedule trigger is not visible',
+  idempotency_conflict:
+    'Schedule trigger idempotency key conflicts with another request',
+  invalid_recurrence: 'Schedule recurrence cannot be scheduled',
+} as const);
+
 export class ScheduleTriggerError extends Error {
   public override readonly name = 'ScheduleTriggerError';
   public constructor(
-    public readonly code: 'idempotency_conflict' | 'not_found',
+    public readonly code: keyof typeof MESSAGES,
+    options?: ErrorOptions,
   ) {
-    super(
-      code === 'not_found'
-        ? 'Schedule trigger is not visible'
-        : 'Schedule trigger idempotency key conflicts with another request',
-    );
+    super(MESSAGES[code], options);
   }
 }

@@ -38,6 +38,9 @@ function request(
 function fixture() {
   const service = {
     list: vi.fn().mockResolvedValue({ items: [] }),
+    listOccurrences: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    nextRuns: vi.fn().mockResolvedValue({ observedAt: '', items: [] }),
+    previewRuns: vi.fn().mockResolvedValue({ observedAt: '', items: [] }),
     setEnabled: vi.fn().mockResolvedValue({ ok: true }),
   };
   return {
@@ -59,6 +62,97 @@ describe('schedule management controller public seam', () => {
       workflowId,
       actorId,
     });
+  });
+
+  it('forwards occurrence paging only when the client supplied it', async () => {
+    const { controller, service } = fixture();
+    const route = { workspaceId, workflowId, triggerId };
+
+    await controller.occurrences(request(), route, undefined);
+    await controller.occurrences(request(), route, {
+      limit: '5',
+      after: 'opaque-cursor',
+    });
+
+    expect(service.listOccurrences.mock.calls).toEqual([
+      [{ ...route, actorId }],
+      [{ ...route, actorId, limit: 5, after: 'opaque-cursor' }],
+    ]);
+  });
+
+  it.each([{ limit: '0' }, { limit: '101' }, { after: '' }, { sort: 'asc' }])(
+    'rejects an invalid occurrence query %j before reading',
+    (query) => {
+      const { controller, service } = fixture();
+      expect(() =>
+        controller.occurrences(
+          request(),
+          { workspaceId, workflowId, triggerId },
+          query,
+        ),
+      ).toThrow();
+      expect(service.listOccurrences).not.toHaveBeenCalled();
+    },
+  );
+
+  it('defaults next runs to three and bounds the count', async () => {
+    const { controller, service } = fixture();
+    const route = { workspaceId, workflowId, triggerId };
+
+    await controller.nextRuns(request(), route, {});
+    await controller.nextRuns(request(), route, { count: '10' });
+
+    expect(service.nextRuns.mock.calls).toEqual([
+      [{ ...route, actorId, count: 3 }],
+      [{ ...route, actorId, count: 10 }],
+    ]);
+    for (const query of [{ count: '0' }, { count: '11' }, { at: 'now' }])
+      expect(() => controller.nextRuns(request(), route, query)).toThrow();
+    expect(service.nextRuns).toHaveBeenCalledTimes(2);
+  });
+
+  it('previews only a strictly valid Schedule step setup', async () => {
+    const { controller, service } = fixture();
+    const config = {
+      kind: 'cron',
+      expression: '0 9 * * 1-5',
+      timezone: 'Europe/Paris',
+      misfirePolicy: 'skip',
+    };
+
+    await controller.preview(
+      request(),
+      { workspaceId, workflowId },
+      { config },
+    );
+    await controller.preview(
+      request(),
+      { workspaceId, workflowId },
+      { config, count: 1 },
+    );
+
+    expect(service.previewRuns.mock.calls).toEqual([
+      [{ workspaceId, workflowId, actorId, config, count: 3 }],
+      [{ workspaceId, workflowId, actorId, config, count: 1 }],
+    ]);
+    for (const body of [
+      undefined,
+      { config: { ...config, anchorAt: 'now' } },
+      { config: { kind: 'interval', intervalMinutes: 0 } },
+      { config, count: 11 },
+      { config, triggerId },
+    ])
+      expect(() =>
+        controller.preview(request(), { workspaceId, workflowId }, body),
+      ).toThrow();
+    expect(() =>
+      controller.preview(
+        request(),
+        { workspaceId, workflowId, triggerId },
+        { config },
+      ),
+    ).toThrow();
+    expect(service.previewRuns).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -128,9 +222,15 @@ describe('schedule management controller public seam', () => {
 
   it('keeps read and mutation guards in the reviewed order', () => {
     const reflector = new Reflector();
-    expect(guards(reflector, 'list')).toEqual([
+    for (const method of ['list', 'occurrences', 'nextRuns'] as const)
+      expect(guards(reflector, method)).toEqual([
+        SessionAuthenticationGuard,
+        ScheduleReadGuard,
+      ]);
+    expect(guards(reflector, 'preview')).toEqual([
       SessionAuthenticationGuard,
       ScheduleReadGuard,
+      CsrfProtectionGuard,
     ]);
     for (const method of ['enable', 'disable'] as const)
       expect(guards(reflector, method)).toEqual([
@@ -143,7 +243,8 @@ describe('schedule management controller public seam', () => {
 
 function guards(
   reflector: Reflector,
-  method: 'list' | 'enable' | 'disable',
+  method:
+    'list' | 'occurrences' | 'nextRuns' | 'preview' | 'enable' | 'disable',
 ): unknown[] {
   const candidate: unknown = Object.getOwnPropertyDescriptor(
     ScheduleManagementController.prototype,

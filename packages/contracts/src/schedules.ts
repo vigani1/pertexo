@@ -2,8 +2,14 @@ export * from './http/schedules.js';
 
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
+  scheduleFireTimeCountSchema,
+  scheduleFireTimesResponseSchema,
   scheduleManagementCommandRequestSchema,
   scheduleManagementCommandResponseSchema,
+  scheduleOccurrenceCursorSchema,
+  scheduleOccurrenceListResponseSchema,
+  scheduleOccurrencePageLimitSchema,
+  schedulePreviewRequestSchema,
   scheduleTriggerListResponseSchema,
 } from './http/schedules.js';
 import {
@@ -14,6 +20,7 @@ import {
   jsonResponse,
   jsonSchema,
   problemResponse,
+  queryParameter,
   responseReference,
   simpleUuidPathParameter as pathParameter,
 } from './openapi-primitives.js';
@@ -46,6 +53,15 @@ const schemas = Object.freeze({
     scheduleTriggerListResponseSchema,
     'output',
   ),
+  ScheduleOccurrenceListResponse: jsonSchema(
+    scheduleOccurrenceListResponseSchema,
+    'output',
+  ),
+  ScheduleFireTimesResponse: jsonSchema(
+    scheduleFireTimesResponseSchema,
+    'output',
+  ),
+  SchedulePreviewRequest: jsonSchema(schedulePreviewRequestSchema, 'input'),
 });
 const responses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
@@ -54,6 +70,7 @@ const responses = Object.freeze({
   NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
   PreconditionRequired: problemResponse('Idempotency key required'),
+  RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
 
@@ -63,6 +80,19 @@ export const schedulesClientContract = Object.freeze({
     {
       method: 'GET',
       path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/schedules',
+    },
+    {
+      method: 'GET',
+      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/occurrences',
+    },
+    {
+      method: 'GET',
+      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/next-runs',
+    },
+    {
+      method: 'POST',
+      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/schedules/preview',
+      requiredHeaders: ['X-CSRF-Token'],
     },
     {
       method: 'POST',
@@ -98,6 +128,15 @@ const command = {
   },
 } as const;
 
+const readProblems = {
+  '400': responseReference('BadRequest'),
+  '401': responseReference('Unauthenticated'),
+  '403': responseReference('Forbidden'),
+  '404': responseReference('NotFound'),
+  '429': responseReference('RateLimited'),
+  '500': responseReference('Unexpected'),
+} as const;
+
 export const schedulesOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Schedules API', version: '1.0.0' },
@@ -120,6 +159,63 @@ export const schedulesOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/occurrences':
+      {
+        get: {
+          operationId: 'listScheduleOccurrences',
+          security,
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            triggerParameter,
+            queryParameter('limit', scheduleOccurrencePageLimitSchema),
+            queryParameter('after', scheduleOccurrenceCursorSchema),
+          ],
+          responses: {
+            '200': jsonResponse(
+              'Retained occurrence metadata, newest first',
+              'ScheduleOccurrenceListResponse',
+            ),
+            ...readProblems,
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/next-runs':
+      {
+        get: {
+          operationId: 'listScheduleNextRuns',
+          security,
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            triggerParameter,
+            queryParameter('count', scheduleFireTimeCountSchema),
+          ],
+          responses: {
+            '200': jsonResponse(
+              'Upcoming fire times of a published schedule',
+              'ScheduleFireTimesResponse',
+            ),
+            ...readProblems,
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules/preview':
+      {
+        post: {
+          operationId: 'previewScheduleRuns',
+          security,
+          parameters: [workspaceParameter, workflowParameter, csrfParameter],
+          requestBody: jsonRequest('SchedulePreviewRequest'),
+          responses: {
+            '200': jsonResponse(
+              'Fire times an unsaved schedule rule would have if published now',
+              'ScheduleFireTimesResponse',
+            ),
+            ...readProblems,
+          },
+        },
+      },
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/enable':
       command,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/disable':

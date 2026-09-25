@@ -145,6 +145,12 @@ export type {
   ScheduleTriggerDatabase,
   ScheduleTriggerRecord,
 } from './triggers/schedule-trigger-database.js';
+export type {
+  ScheduleFireTimes,
+  ScheduleOccurrencePage,
+  ScheduleOccurrencePosition,
+  ScheduleOccurrenceRecord,
+} from './triggers/schedule-trigger-reads.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,

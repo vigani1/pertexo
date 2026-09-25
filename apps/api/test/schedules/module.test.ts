@@ -46,6 +46,9 @@ Module({
 
 const scheduleOperations = {
   list: vi.fn(),
+  listOccurrences: vi.fn(),
+  nextRuns: vi.fn(),
+  previewRuns: vi.fn(),
   setEnabled: vi.fn(),
 };
 const service = scheduleOperations as unknown as ScheduleManagementService;

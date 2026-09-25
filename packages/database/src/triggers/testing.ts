@@ -35,6 +35,12 @@ export {
   type ScheduleTriggerCommandResult,
   type ScheduleTriggerRecord,
 } from './schedule-triggers.js';
+export type {
+  ScheduleFireTimes,
+  ScheduleOccurrencePage,
+  ScheduleOccurrencePosition,
+  ScheduleOccurrenceRecord,
+} from './schedule-trigger-reads.js';
 export {
   parseScheduleRecurrence,
   resolveScheduleObservation,

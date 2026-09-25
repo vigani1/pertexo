@@ -1,5 +1,10 @@
 export type ScheduleOperation =
-  'schedule.list' | 'schedule.enable' | 'schedule.disable';
+  | 'schedule.list'
+  | 'schedule.occurrences'
+  | 'schedule.next_runs'
+  | 'schedule.preview'
+  | 'schedule.enable'
+  | 'schedule.disable';
 
 export interface ScheduleTelemetry {
   measure<T>(operation: ScheduleOperation, work: () => Promise<T>): Promise<T>;
