@@ -68,7 +68,13 @@ export function NodeTestPanel({
     ...(onSucceeded === undefined ? {} : { onSucceeded }),
   });
   const priorId = usePrior ? priorPreview?.id : undefined;
-  const canRun = test.pending === undefined && (test.observing || acknowledged);
+  // The switch asks people to accept real effects; a checked setup that
+  // can't change anything outside Pertexo needs no such promise.
+  const harmless =
+    test.check?.disclosure !== undefined &&
+    !test.check.disclosure.mayCauseExternalSideEffect;
+  const canRun =
+    test.pending === undefined && (test.observing || acknowledged || harmless);
 
   function run() {
     if (!canRun) return;
@@ -133,10 +139,12 @@ export function NodeTestPanel({
         <FieldDescription>
           {sideEffectSentence(stepSideEffect, test.check?.disclosure)}
         </FieldDescription>
-        <label className="flex items-center justify-between gap-3 text-sm font-medium">
-          <span>I understand this test runs for real</span>
-          <Switch checked={acknowledged} onCheckedChange={setAcknowledged} />
-        </label>
+        {harmless ? null : (
+          <label className="flex items-center justify-between gap-3 text-sm font-medium">
+            <span>I understand this test runs for real</span>
+            <Switch checked={acknowledged} onCheckedChange={setAcknowledged} />
+          </label>
+        )}
       </Field>
       <Button type="button" disabled={!canRun} onClick={run}>
         {test.pending === 'run' ? (

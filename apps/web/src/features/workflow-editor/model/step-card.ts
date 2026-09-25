@@ -75,17 +75,29 @@ export function portLinks(
   return links;
 }
 
-/** "true → Ask finance", "branch-02 ← Pull incidents", or just the port. */
+/**
+ * A port as people read it: "Branch 2" for `branch-02`, "Case 1" for
+ * `case-01`, "Otherwise" for a Switch's `default`; other ports as named.
+ */
+export function portName(port: string): string {
+  const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
+  if (numbered !== null)
+    return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;
+  return port === 'default' ? 'Otherwise' : port;
+}
+
+/** "true → Ask finance", "Branch 2 ← Pull incidents", or just the port. */
 export function portLinkLabel(
   port: string,
   side: Side,
   others: readonly string[] | undefined,
 ): string {
   const [first] = others ?? [];
-  if (first === undefined) return port;
+  const name = portName(port);
+  if (first === undefined) return name;
   const more =
     (others?.length ?? 0) > 1 ? ` +${String((others?.length ?? 1) - 1)}` : '';
-  return `${port} ${side === 'outputs' ? '→' : '←'} ${first}${more}`;
+  return `${name} ${side === 'outputs' ? '→' : '←'} ${first}${more}`;
 }
 
 type Configured = Readonly<{ ids: ReadonlySet<string>; minimum: number }>;

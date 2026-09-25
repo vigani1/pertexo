@@ -138,6 +138,21 @@ describe('workflow shape', () => {
     expect(layout.radius).toBe(2.4);
   });
 
+  it('draws unconnected steps where they sit, not as a stacked ⋮', () => {
+    const loose = graphOf([
+      { id: 'a', key: 'core.webhook', x: 0 },
+      { id: 'b', key: 'core.set', x: 280 },
+      { id: 'c', key: 'core.terminate', x: 560 },
+    ]);
+    const layout = layoutPatternGlyph(loose);
+    const ys = new Set(layout.nodes.map((node) => node.y));
+    const xs = layout.nodes.map((node) => node.x);
+    // One row, left to right, as on the canvas.
+    expect(ys.size).toBe(1);
+    expect(xs).toEqual([...xs].sort((left, right) => left - right));
+    expect(new Set(xs).size).toBe(3);
+  });
+
   it('always finishes laying out a draft with a cycle', () => {
     const cyclic = graph({
       ...graphOf([
