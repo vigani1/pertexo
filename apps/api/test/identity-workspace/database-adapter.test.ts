@@ -66,6 +66,7 @@ describe('identity/workspace database adapter', () => {
       email: 'person@example.test',
       displayName: 'Person',
       status: 'active' as const,
+      profileRevision: 2,
       createdAt: new Date('2026-08-20T12:00:00.000Z'),
       updatedAt: new Date('2026-08-21T12:00:00.000Z'),
     };

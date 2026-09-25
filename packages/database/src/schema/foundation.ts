@@ -26,6 +26,7 @@ export const users = appSchema.table(
     emailVerified: boolean('email_verified').default(false).notNull(),
     image: text('image'),
     status: varchar('status', { length: 32 }).notNull(),
+    profileRevision: integer('profile_revision').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

@@ -44,6 +44,49 @@ const missingRenamePersistence: RenamePersistence = Object.freeze({
     Promise.reject(new Error('Workspace rename persistence is not configured')),
 });
 
+type MemberRemovalPersistence = Required<
+  Pick<IdentityWorkspacePersistence, 'removeWorkspaceMember'>
+>;
+
+export function memberRemovalPersistence(
+  persistence: IdentityWorkspacePersistence,
+): MemberRemovalPersistence {
+  return persistence.removeWorkspaceMember === undefined
+    ? missingMemberRemovalPersistence
+    : Object.freeze({
+        removeWorkspaceMember:
+          persistence.removeWorkspaceMember.bind(persistence),
+      });
+}
+
+const missingMemberRemovalPersistence: MemberRemovalPersistence = Object.freeze(
+  {
+    removeWorkspaceMember: () =>
+      Promise.reject(
+        new Error('Workspace member removal persistence is not configured'),
+      ),
+  },
+);
+
+type ProfilePersistence = Required<
+  Pick<IdentityWorkspacePersistence, 'updateUserProfile'>
+>;
+
+export function profilePersistence(
+  persistence: IdentityWorkspacePersistence,
+): ProfilePersistence {
+  return persistence.updateUserProfile === undefined
+    ? missingProfilePersistence
+    : Object.freeze({
+        updateUserProfile: persistence.updateUserProfile.bind(persistence),
+      });
+}
+
+const missingProfilePersistence: ProfilePersistence = Object.freeze({
+  updateUserProfile: () =>
+    Promise.reject(new Error('User profile persistence is not configured')),
+});
+
 type AcceptancePersistence = Required<
   Pick<
     IdentityWorkspacePersistence,

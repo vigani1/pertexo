@@ -30,8 +30,20 @@ export type UserRecord = Readonly<{
   email: string;
   displayName: string;
   status: UserStatus;
+  profileRevision: number;
   createdAt: Date;
   updatedAt: Date;
+}>;
+export type UpdateUserProfileInput = Readonly<{
+  actorUserId: string;
+  displayName: string;
+  expectedRevision: number;
+  idempotencyKey: string;
+}>;
+export type UserProfileUpdateResult = Readonly<{
+  user: UserRecord;
+  changed: boolean;
+  replayed: boolean;
 }>;
 export type AuthIdentityRecord = Readonly<{
   id: string;
@@ -121,6 +133,15 @@ export type WorkspaceMemberRoleChangeResult = Readonly<{
   role: Exclude<MembershipRole, 'owner'>;
   roleRevision: number;
   changed: boolean;
+  replayed: boolean;
+}>;
+export type RemoveWorkspaceMemberInput = Omit<
+  ChangeWorkspaceMemberRoleInput,
+  'role'
+>;
+export type WorkspaceMemberRemovalResult = Readonly<{
+  userId: string;
+  roleRevision: number;
   replayed: boolean;
 }>;
 export type WorkspaceMembersPage = Readonly<{
@@ -349,6 +370,12 @@ export type IdentityWorkspaceDatabase = Readonly<{
   changeWorkspaceMemberRole(
     input: ChangeWorkspaceMemberRoleInput,
   ): Promise<WorkspaceMemberRoleChangeResult>;
+  removeWorkspaceMember(
+    input: RemoveWorkspaceMemberInput,
+  ): Promise<WorkspaceMemberRemovalResult>;
+  updateUserProfile(
+    input: UpdateUserProfileInput,
+  ): Promise<UserProfileUpdateResult>;
   listWorkspaceInvitations(
     workspaceId: string,
     actorId: string,

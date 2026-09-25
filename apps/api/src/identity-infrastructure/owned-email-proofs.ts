@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+import { authenticationReturnPathSchema } from '@pertexo/contracts/schemas/identity-workspace';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -30,7 +31,11 @@ export class OwnedEmailProofs {
     private readonly baseUrl: string,
   ) {}
 
-  /** Serves the verification link and lands the browser on sign-in. */
+  /**
+   * Serves the verification link and lands the browser on sign-in. A first
+   * verification keeps an allowlisted return path for after sign-in; the
+   * landing itself is always this origin's sign-in page.
+   */
   public async handle(request: Request): Promise<Response | undefined> {
     const url = new URL(request.url);
     if (url.pathname !== VERIFY_EMAIL_PATH) return undefined;
@@ -39,9 +44,12 @@ export class OwnedEmailProofs {
         ? await this.consume(url.searchParams.get('token') ?? '')
         : 'invalid';
     const landing = new URL('/login', this.baseUrl);
-    if (outcome === 'initial_verification')
+    const returnTo = allowlistedReturnPath(url.searchParams.get('returnTo'));
+    if (outcome === 'initial_verification') {
       landing.searchParams.set('verified', 'true');
-    else if (outcome === 'change_old')
+      if (returnTo !== undefined)
+        landing.searchParams.set('returnTo', returnTo);
+    } else if (outcome === 'change_old')
       landing.searchParams.set('emailChangePending', 'true');
     else if (outcome === 'change_new')
       landing.searchParams.set('emailChanged', 'true');
@@ -49,20 +57,50 @@ export class OwnedEmailProofs {
     return Response.redirect(landing, 302);
   }
 
-  /** Better Auth's verification hook; native sign-up waits for its commit. */
+  /**
+   * Better Auth's verification hook; native sign-up waits for its commit. A
+   * resend keeps the return path from its native callback URL.
+   */
   public async issueVerification(
     user: ProofUser,
     request: Request | undefined,
+    nativeUrl?: string,
   ): Promise<void> {
     if (request !== undefined && new URL(request.url).pathname === SIGN_UP_PATH)
       return;
-    await this.issue(user, 'initial_verification');
+    const callbackURL =
+      nativeUrl === undefined
+        ? undefined
+        : new URL(nativeUrl).searchParams.get('callbackURL');
+    await this.issue(
+      user,
+      'initial_verification',
+      undefined,
+      this.returnPathFrom(callbackURL),
+    );
+  }
+
+  /** The return path a sign-up asked for, read before its body is consumed. */
+  public async signUpReturnPath(request: Request): Promise<string | undefined> {
+    if (
+      new URL(request.url).pathname !== SIGN_UP_PATH ||
+      request.method !== 'POST'
+    )
+      return undefined;
+    const body: unknown = await request
+      .clone()
+      .json()
+      .catch(() => undefined);
+    return typeof body === 'object' && body !== null && 'callbackURL' in body
+      ? this.returnPathFrom(body.callbackURL)
+      : undefined;
   }
 
   /** Issues the first proof once native sign-up has committed the user. */
   public async issueAfterSignUp(
     request: Request,
     response: Response,
+    returnTo?: string,
   ): Promise<void> {
     if (
       new URL(request.url).pathname !== SIGN_UP_PATH ||
@@ -74,19 +112,25 @@ export class OwnedEmailProofs {
       await response.clone().json(),
     );
     if (parsed.success)
-      await this.issue(parsed.data.user, 'initial_verification');
+      await this.issue(
+        parsed.data.user,
+        'initial_verification',
+        undefined,
+        returnTo,
+      );
   }
 
   public async issue(
     user: ProofUser,
     purpose: 'initial_verification' | 'change_old',
     newEmail?: string,
+    returnTo?: string,
   ): Promise<void> {
     if (this.mail === disabledAuthenticationMail)
       throw new Error('Authentication mail delivery is not configured');
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + 55 * 60_000);
-    const url = this.url(token);
+    const url = this.url(token, returnTo);
     const mailInput = {
       purpose:
         purpose === 'change_old' ? 'email_change_confirmation' : 'verification',
@@ -195,11 +239,32 @@ export class OwnedEmailProofs {
     return outcome;
   }
 
-  private url(token: string): string {
+  private url(token: string, returnTo?: string): string {
     const url = new URL(VERIFY_EMAIL_PATH, this.baseUrl);
     url.searchParams.set('token', token);
+    if (returnTo !== undefined) url.searchParams.set('returnTo', returnTo);
     return url.toString();
   }
+
+  /**
+   * Accepts only this origin's sign-in callback, and from it only an
+   * allowlisted app path; anything else is dropped rather than redirected.
+   */
+  private returnPathFrom(callbackURL: unknown): string | undefined {
+    if (typeof callbackURL !== 'string') return undefined;
+    const origin = new URL(this.baseUrl).origin;
+    const parsed = URL.canParse(callbackURL, origin)
+      ? new URL(callbackURL, origin)
+      : undefined;
+    if (parsed?.origin !== origin || parsed.pathname !== '/login')
+      return undefined;
+    return allowlistedReturnPath(parsed.searchParams.get('returnTo'));
+  }
+}
+
+function allowlistedReturnPath(value: string | null): string | undefined {
+  const parsed = authenticationReturnPathSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function digest(token: string): Buffer {

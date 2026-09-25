@@ -4,9 +4,13 @@ import {
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
+  WorkspaceMemberRemovalCommandConflictError,
   WorkspaceRenameCommandConflictError,
   WorkspaceInvitationCommandConflictError,
   InvitationAcceptanceConflictError,
+  UserProfileCommandConflictError,
+  type WorkspaceMemberRoleCommandConflictReason,
+  type WorkspaceMemberRemovalCommandConflictReason,
 } from '@pertexo/database/api';
 import {
   applicationError,
@@ -51,25 +55,24 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
       safeDetail: 'The workspace cannot perform this lifecycle operation.',
     });
   }
-  if (error instanceof WorkspaceMemberRoleCommandConflictError) {
-    if (error.reason === 'target_missing')
-      return applicationError('resource.not_found');
-    if (error.reason === 'revision_conflict')
-      return applicationError('workspace.member_role_revision_conflict', {
-        safeDetail: 'The member role changed since it was loaded.',
-      });
-    if (error.reason === 'idempotency_conflict')
-      return applicationError('request.idempotency_conflict', {
-        safeDetail: 'The idempotency key was already used for another request.',
-      });
-    if (error.reason === 'target_inactive')
-      return applicationError('workspace.member_role_transition_conflict', {
+  if (error instanceof WorkspaceMemberRoleCommandConflictError)
+    return mapMemberCommandConflict(error.reason, {
+      revision: 'The member role changed since it was loaded.',
+      inactive: applicationError('workspace.member_role_transition_conflict', {
         safeDetail: 'Only an active member role can be changed.',
-      });
-    return applicationError('auth.forbidden', {
-      safeDetail: 'This member role transition is not allowed.',
+      }),
+      forbidden: 'This member role transition is not allowed.',
     });
-  }
+  if (error instanceof WorkspaceMemberRemovalCommandConflictError)
+    return mapMemberCommandConflict(error.reason, {
+      revision: 'The member changed since it was loaded.',
+      inactive: applicationError('workspace.member_removal_conflict', {
+        safeDetail: 'The member is no longer in this workspace.',
+      }),
+      forbidden: 'This member cannot be removed by you.',
+    });
+  if (error instanceof UserProfileCommandConflictError)
+    return mapProfileConflict(error);
   if (error instanceof WorkspaceRenameCommandConflictError) {
     if (error.reason === 'revision_conflict')
       return applicationError('workspace.revision_conflict', {
@@ -154,6 +157,48 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     });
   }
   return applicationError('internal.unexpected', { cause: error });
+}
+
+const IDEMPOTENCY_CONFLICT_DETAIL =
+  'The idempotency key was already used for another request.';
+
+/** ADR 037 and ADR 042 member commands share one conflict vocabulary. */
+function mapMemberCommandConflict(
+  reason:
+    | WorkspaceMemberRoleCommandConflictReason
+    | WorkspaceMemberRemovalCommandConflictReason,
+  copy: Readonly<{
+    revision: string;
+    inactive: ApplicationError;
+    forbidden: string;
+  }>,
+): ApplicationError {
+  if (reason === 'target_missing')
+    return applicationError('resource.not_found');
+  if (reason === 'revision_conflict')
+    return applicationError('workspace.member_role_revision_conflict', {
+      safeDetail: copy.revision,
+    });
+  if (reason === 'idempotency_conflict')
+    return applicationError('request.idempotency_conflict', {
+      safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
+    });
+  if (reason === 'target_inactive') return copy.inactive;
+  return applicationError('auth.forbidden', { safeDetail: copy.forbidden });
+}
+
+function mapProfileConflict(
+  error: UserProfileCommandConflictError,
+): ApplicationError {
+  if (error.reason === 'revision_conflict')
+    return applicationError('user.profile_revision_conflict', {
+      safeDetail: 'Your profile changed since it was loaded.',
+    });
+  if (error.reason === 'idempotency_conflict')
+    return applicationError('request.idempotency_conflict', {
+      safeDetail: IDEMPOTENCY_CONFLICT_DETAIL,
+    });
+  return applicationError('auth.unauthenticated');
 }
 
 function mapIdentityError(error: IdentityError): ApplicationError {

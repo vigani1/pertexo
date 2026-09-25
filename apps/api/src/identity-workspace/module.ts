@@ -18,8 +18,13 @@ import {
 import { OidcController, SessionController } from './auth-controllers.js';
 import { WorkspaceInvitationsController } from './invitation-management-controller.js';
 import { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
-import { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
+import {
+  InvitationAcceptanceController,
+  InvitationAcceptanceOidcController,
+} from './invitation-acceptance-controller.js';
 import { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
+import { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
+import { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 import { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 import {
   CsrfProtectionGuard,
@@ -44,7 +49,9 @@ import type {
 import {
   acceptancePersistence,
   invitationPersistence,
+  memberRemovalPersistence,
   missingInvitationTokenProtector,
+  profilePersistence,
   renamePersistence,
 } from './persistence-capabilities.js';
 import {
@@ -195,6 +202,7 @@ export class IdentityWorkspaceModule {
         ],
       },
       ...(oidc === undefined ? [] : oidcProviders(dependencies, oidc)),
+      invitationAcceptanceProvider(dependencies, oidc !== undefined),
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -222,9 +230,10 @@ export class IdentityWorkspaceModule {
         WorkspaceMembersController,
         WorkspaceInvitationsController,
         WorkspaceController,
+        InvitationAcceptanceController,
         ...(oidc === undefined
           ? []
-          : [OidcController, InvitationAcceptanceController]),
+          : [OidcController, InvitationAcceptanceOidcController]),
       ],
       providers,
       exports: [
@@ -238,15 +247,16 @@ export class IdentityWorkspaceModule {
         ListAccessibleWorkspacesUseCase,
         ListWorkspaceMembersUseCase,
         ChangeWorkspaceMemberRoleUseCase,
+        RemoveWorkspaceMemberUseCase,
+        UpdateUserProfileUseCase,
         WorkspaceInvitationManagementUseCase,
+        InvitationAcceptanceUseCase,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
         WorkspaceManageGuard,
         WorkspaceMemberManageGuard,
         WorkspaceMemberReadGuard,
-        ...(oidc === undefined
-          ? []
-          : [OidcLoginService, InvitationAcceptanceUseCase]),
+        ...(oidc === undefined ? [] : [OidcLoginService]),
       ],
     };
   }
@@ -329,32 +339,43 @@ function oidcProviders(
         ),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_CRYPTO, IDENTITY_CLOCK],
     },
-    {
-      provide: InvitationAcceptanceUseCase,
-      useFactory: (
-        persistence: IdentityWorkspaceDependencies['persistence'],
-        login: OidcLoginService,
-        identityCrypto: IdentityCrypto,
-        identityClock: IdentityClock,
-        sessions: IdentitySessionAuthority,
-      ) =>
-        new InvitationAcceptanceUseCase(
-          acceptancePersistence(persistence),
-          login,
-          identityCrypto,
-          identityClock,
-          dependencies.config,
-          sessions,
-        ),
-      inject: [
-        IDENTITY_WORKSPACE_PERSISTENCE,
-        OidcLoginService,
-        IDENTITY_CRYPTO,
-        IDENTITY_CLOCK,
-        OpaqueSessionService,
-      ],
-    },
   ];
+}
+
+/**
+ * Invitation acceptance runs under the active session authority. Legacy
+ * OIDC verification is one optional way to prove the recipient; a fresh
+ * sign-in by that authority is the other (ADR 043).
+ */
+function invitationAcceptanceProvider(
+  dependencies: IdentityWorkspaceDependencies,
+  withOidc: boolean,
+): Provider {
+  return {
+    provide: InvitationAcceptanceUseCase,
+    useFactory: (
+      persistence: IdentityWorkspaceDependencies['persistence'],
+      identityCrypto: IdentityCrypto,
+      identityClock: IdentityClock,
+      sessions: IdentitySessionAuthority,
+      login?: OidcLoginService,
+    ) =>
+      new InvitationAcceptanceUseCase(
+        acceptancePersistence(persistence),
+        login,
+        identityCrypto,
+        identityClock,
+        dependencies.config,
+        sessions,
+      ),
+    inject: [
+      IDENTITY_WORKSPACE_PERSISTENCE,
+      IDENTITY_CRYPTO,
+      IDENTITY_CLOCK,
+      OpaqueSessionService,
+      ...(withOidc ? [OidcLoginService] : []),
+    ],
+  };
 }
 
 function identityReadProviders(): Provider[] {
@@ -365,6 +386,30 @@ function identityReadProviders(): Provider[] {
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
       ) => new ChangeWorkspaceMemberRoleUseCase(persistence, telemetry),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: RemoveWorkspaceMemberUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) =>
+        new RemoveWorkspaceMemberUseCase(
+          memberRemovalPersistence(persistence),
+          telemetry,
+        ),
+      inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
+    },
+    {
+      provide: UpdateUserProfileUseCase,
+      useFactory: (
+        persistence: IdentityWorkspaceDependencies['persistence'],
+        telemetry: IdentityWorkspaceTelemetry,
+      ) =>
+        new UpdateUserProfileUseCase(
+          profilePersistence(persistence),
+          telemetry,
+        ),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {

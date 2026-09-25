@@ -18,7 +18,6 @@ import {
   workspaceCreateRequestSchema,
   workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
-  userProfileResponseSchema,
   workspaceMembersResponseSchema,
   type AccessibleWorkspacesResponse,
   type UserProfileResponse,
@@ -40,6 +39,7 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
+import { projectUserProfile } from './user-profile-use-case.js';
 
 const LIFECYCLE_VISIBLE_STATUSES = [
   'active',
@@ -107,14 +107,7 @@ export class GetCurrentUserUseCase {
             'The current user is no longer available',
           );
         }
-        return userProfileResponseSchema.parse({
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-          status: user.status,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        });
+        return projectUserProfile(user);
       },
     );
   }

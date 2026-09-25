@@ -6,6 +6,7 @@ import type {
   OidcProviderPort,
   ReplacementSessionCredential,
   SessionCookieBoundary,
+  SignInEvidence,
   SessionIssueInput,
   SessionIssueResult,
   SessionStorePort,
@@ -98,6 +99,33 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
       userId: string;
       role: 'admin' | 'builder' | 'operator' | 'viewer';
       roleRevision: number;
+      changed: boolean;
+      replayed: boolean;
+    }>
+  >;
+  removeWorkspaceMember?(
+    input: Readonly<{
+      workspaceId: string;
+      actorUserId: string;
+      targetUserId: string;
+      expectedRoleRevision: number;
+      idempotencyKey: string;
+      requestId?: string;
+      traceId?: string;
+    }>,
+  ): Promise<
+    Readonly<{ userId: string; roleRevision: number; replayed: boolean }>
+  >;
+  updateUserProfile?(
+    input: Readonly<{
+      actorUserId: string;
+      displayName: string;
+      expectedRevision: number;
+      idempotencyKey: string;
+    }>,
+  ): Promise<
+    Readonly<{
+      user: UserProfilePersistenceRecord;
       changed: boolean;
       replayed: boolean;
     }>
@@ -299,6 +327,7 @@ export type UserProfilePersistenceRecord = Readonly<{
   email: string;
   displayName: string;
   status: 'active' | 'suspended' | 'deleted';
+  profileRevision: number;
   createdAt: Date;
   updatedAt: Date;
 }>;
@@ -374,6 +403,12 @@ export interface IdentitySessionAuthority {
     token: string,
     cookieBoundary: SessionCookieBoundary,
   ): Promise<SessionIssueResult>;
+  /**
+   * The verified identity behind a browser session and when its credential
+   * was last presented. Only an authority whose sign-in verifies email can
+   * supply it; invitation acceptance uses it as fresh recipient evidence.
+   */
+  signInEvidence?(cookieValue: string): Promise<SignInEvidence>;
 }
 
 export type IdentityWorkspaceDependencies = Readonly<{

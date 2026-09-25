@@ -127,8 +127,9 @@ export function createBetterAuthRuntime(
           (await linking.handle(request)) ??
           (await emailProofs.handle(request));
         if (owned !== undefined) return owned;
+        const returnTo = await emailProofs.signUpReturnPath(request);
         const response = await auth.handler(request);
-        await emailProofs.issueAfterSignUp(request, response);
+        await emailProofs.issueAfterSignUp(request, response, returnTo);
         return response;
       },
     }),

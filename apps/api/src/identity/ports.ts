@@ -109,3 +109,14 @@ export type AuthenticatedSession = SessionLookup;
 export type ReplacementSessionCredential =
   | Readonly<{ authority: 'opaque'; tokenDigest: string }>
   | Readonly<{ authority: 'better_auth'; token: string }>;
+
+/**
+ * The verified identity behind a browser session and when that session was
+ * issued. Only an authority whose sign-in verifies email can supply it.
+ */
+export type SignInEvidence = Readonly<{
+  userId: string;
+  email: string;
+  emailVerified: boolean;
+  signedInAt: Date;
+}>;

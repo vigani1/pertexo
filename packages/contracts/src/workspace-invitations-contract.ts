@@ -15,6 +15,7 @@ import {
   invitationAcceptanceOidcRequestSchema,
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
+  invitationAcceptanceSessionRequestSchema,
   workspaceIdentifierSchema,
   workspaceInvitationCommandRequestSchema,
   workspaceInvitationCommandResponseSchema,
@@ -51,6 +52,10 @@ export const workspaceInvitationContractSchemas = Object.freeze({
   ),
   InvitationAcceptanceOidcRequest: jsonSchema(
     invitationAcceptanceOidcRequestSchema,
+    'input',
+  ),
+  InvitationAcceptanceSessionRequest: jsonSchema(
+    invitationAcceptanceSessionRequestSchema,
     'input',
   ),
   InvitationAcceptanceCompleteRequest: jsonSchema(
@@ -173,6 +178,27 @@ export const workspaceInvitationContractPaths = Object.freeze({
         ),
         '403': responseReference('Forbidden'),
         '409': responseReference('Conflict'),
+        '500': responseReference('Unexpected'),
+      },
+    },
+  },
+  '/v1/invitation-acceptance/session': {
+    post: {
+      operationId: 'verifyInvitationAcceptanceSession',
+      security: [{ cookieSession: [], invitationBinding: [] }],
+      parameters: [csrfHeaderParameter(), invitationCsrfHeaderParameter()],
+      requestBody: jsonRequest('InvitationAcceptanceSessionRequest'),
+      responses: {
+        '200': jsonResponse(
+          'Invitation journey verified by a fresh sign-in',
+          'InvitationAcceptanceJourney',
+        ),
+        '400': responseReference('BadRequest'),
+        '401': responseReference('Unauthenticated'),
+        '403': responseReference('Forbidden'),
+        '404': problemResponse('Invitation unavailable'),
+        '409': responseReference('Conflict'),
+        '429': responseReference('RateLimited'),
         '500': responseReference('Unexpected'),
       },
     },

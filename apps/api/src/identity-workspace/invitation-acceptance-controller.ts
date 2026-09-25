@@ -87,35 +87,37 @@ export class InvitationAcceptanceController {
     );
   }
 
-  @Post('oidc')
+  /**
+   * Verifies the invited account from a fresh sign-in by the active session
+   * authority (ADR 043), for deployments whose sign-in is not legacy OIDC.
+   */
+  @Post('session')
   @HttpCode(200)
   @RateLimit('identity_start')
-  public async oidc(
+  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  public async verifySession(
     @Req() request: IdentityWorkspaceRequest,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
-    if (
-      body === null ||
-      typeof body !== 'object' ||
-      Object.keys(body).length !== 0
-    )
-      return throwApplicationError(applicationError('request.invalid'));
-    const result = await this.acceptance.startOidc(
-      readCookie(request, INVITATION_BINDING_COOKIE_NAME),
-      readHeader(request, INVITATION_CSRF_HEADER),
+    requireEmptyBody(body);
+    const evidence = await this.sessions.signInEvidence?.(
+      readCookie(request, SESSION_COOKIE_NAME) ?? '',
     );
+    if (evidence?.userId !== authenticatedSession(request).userId)
+      return throwApplicationError(
+        applicationError(
+          evidence === undefined
+            ? 'resource.not_found'
+            : 'auth.unauthenticated',
+        ),
+      );
     response.header('Cache-Control', 'no-store');
-    response.header(
-      'set-cookie',
-      serializeOidcBindingCookie(
-        result.oidcBinding,
-        result.oidcBindingExpiresAt,
-        result.oidcBindingMaxAgeSeconds,
-        this.cookiePolicy,
-      ),
-    );
-    return result.response;
+    return this.acceptance.recordSessionProof({
+      binding: readCookie(request, INVITATION_BINDING_COOKIE_NAME),
+      csrfToken: readHeader(request, INVITATION_CSRF_HEADER),
+      evidence,
+    });
   }
 
   @Post('complete')
@@ -192,6 +194,51 @@ export class InvitationAcceptanceController {
     response.header('Cache-Control', 'no-store');
     response.header('set-cookie', clearBindingCookie(this.cookiePolicy));
   }
+}
+
+/** Legacy OIDC verification, registered only when OIDC is configured. */
+@Controller('v1/invitation-acceptance')
+export class InvitationAcceptanceOidcController {
+  public constructor(
+    private readonly acceptance: InvitationAcceptanceUseCase,
+    @Inject(SESSION_COOKIE_POLICY)
+    private readonly cookiePolicy: SessionCookiePolicy,
+  ) {}
+
+  @Post('oidc')
+  @HttpCode(200)
+  @RateLimit('identity_start')
+  public async oidc(
+    @Req() request: IdentityWorkspaceRequest,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ) {
+    requireEmptyBody(body);
+    const result = await this.acceptance.startOidc(
+      readCookie(request, INVITATION_BINDING_COOKIE_NAME),
+      readHeader(request, INVITATION_CSRF_HEADER),
+    );
+    response.header('Cache-Control', 'no-store');
+    response.header(
+      'set-cookie',
+      serializeOidcBindingCookie(
+        result.oidcBinding,
+        result.oidcBindingExpiresAt,
+        result.oidcBindingMaxAgeSeconds,
+        this.cookiePolicy,
+      ),
+    );
+    return result.response;
+  }
+}
+
+function requireEmptyBody(body: unknown): void {
+  if (
+    body === null ||
+    typeof body !== 'object' ||
+    Object.keys(body).length !== 0
+  )
+    throwApplicationError(applicationError('request.invalid'));
 }
 
 async function optionalUserId(

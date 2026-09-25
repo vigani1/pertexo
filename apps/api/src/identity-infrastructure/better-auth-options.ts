@@ -105,8 +105,8 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       sendOnSignUp: true,
       autoSignInAfterVerification: false,
       expiresIn: 60 * 60,
-      sendVerificationEmail: async ({ user }, request) =>
-        emailProofs.issueVerification(proofUser(user), request),
+      sendVerificationEmail: async ({ user, url }, request) =>
+        emailProofs.issueVerification(proofUser(user), request, url),
     },
     ...(input.socialProviders === undefined
       ? {}

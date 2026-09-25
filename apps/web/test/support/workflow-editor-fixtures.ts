@@ -29,6 +29,7 @@ export const user = {
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
   status: 'active',
+  revision: 1,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 };

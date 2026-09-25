@@ -34,9 +34,13 @@ import {
   workspaceLifecycleOperationResponseSchema,
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
+  workspaceMemberRemovalRequestSchema,
+  workspaceMemberRemovalResponseSchema,
   workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
   userProfileResponseSchema,
+  userProfileUpdateRequestSchema,
+  userProfileUpdateResponseSchema,
   workspaceResponseSchema,
 } from './http/identity-workspace.js';
 
@@ -55,6 +59,11 @@ const schemas = Object.freeze({
     'output',
   ),
   UserProfileResponse: jsonSchema(userProfileResponseSchema, 'output'),
+  UserProfileUpdateRequest: jsonSchema(userProfileUpdateRequestSchema, 'input'),
+  UserProfileUpdateResponse: jsonSchema(
+    userProfileUpdateResponseSchema,
+    'output',
+  ),
   WorkspaceResponse: jsonSchema(workspaceResponseSchema, 'output'),
   WorkspaceMembersResponse: jsonSchema(
     workspaceMembersResponseSchema,
@@ -66,6 +75,14 @@ const schemas = Object.freeze({
   ),
   WorkspaceMemberRoleChangeResponse: jsonSchema(
     workspaceMemberRoleChangeResponseSchema,
+    'output',
+  ),
+  WorkspaceMemberRemovalRequest: jsonSchema(
+    workspaceMemberRemovalRequestSchema,
+    'input',
+  ),
+  WorkspaceMemberRemovalResponse: jsonSchema(
+    workspaceMemberRemovalResponseSchema,
     'output',
   ),
   ...workspaceInvitationContractSchemas,
@@ -241,19 +258,27 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
           idempotencyHeaderParameter(),
         ],
         requestBody: jsonRequest('WorkspaceMemberRoleChangeRequest'),
-        responses: {
-          '200': jsonResponse(
-            'Workspace member role change receipt',
-            'WorkspaceMemberRoleChangeResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': problemResponse('Workspace member not found'),
-          '409': responseReference('Conflict'),
-          '429': responseReference('RateLimited'),
-          '500': responseReference('Unexpected'),
-        },
+        responses: memberCommandResponses(
+          'Workspace member role change receipt',
+          'WorkspaceMemberRoleChangeResponse',
+        ),
+      },
+    },
+    '/v1/workspaces/{workspaceId}/members/{userId}/remove': {
+      post: {
+        operationId: 'removeWorkspaceMember',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          pathParameter(),
+          memberPathParameter(),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
+        requestBody: jsonRequest('WorkspaceMemberRemovalRequest'),
+        responses: memberCommandResponses(
+          'Workspace member removal receipt',
+          'WorkspaceMemberRemovalResponse',
+        ),
       },
     },
     ...workspaceInvitationContractPaths,
@@ -295,6 +320,19 @@ function memberPathParameter() {
     in: 'path',
     required: true,
     schema: { type: 'string', format: 'uuid' },
+  } as const;
+}
+
+function memberCommandResponses(description: string, schema: string) {
+  return {
+    '200': jsonResponse(description, schema),
+    '400': responseReference('BadRequest'),
+    '401': responseReference('Unauthenticated'),
+    '403': responseReference('Forbidden'),
+    '404': problemResponse('Workspace member not found'),
+    '409': responseReference('Conflict'),
+    '429': responseReference('RateLimited'),
+    '500': responseReference('Unexpected'),
   } as const;
 }
 

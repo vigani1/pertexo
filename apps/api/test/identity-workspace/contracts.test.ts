@@ -30,7 +30,11 @@ import {
   workspaceMembersResponseSchema,
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
+  workspaceMemberRemovalRequestSchema,
+  workspaceMemberRemovalResponseSchema,
   userProfileResponseSchema,
+  userProfileUpdateRequestSchema,
+  userProfileUpdateResponseSchema,
   workspaceResponseSchema,
   workspaceRenameRequestSchema,
   workspaceRenameResponseSchema,
@@ -40,6 +44,7 @@ import {
   workspaceInvitationsResponseSchema,
   invitationAcceptanceResolveRequestSchema,
   invitationAcceptanceOidcRequestSchema,
+  invitationAcceptanceSessionRequestSchema,
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
   invitationAcceptanceReceiptSchema,
@@ -143,6 +148,14 @@ describe('identity/workspace generated contracts', () => {
         ),
         WorkspaceResponse: generated(workspaceResponseSchema, 'output'),
         UserProfileResponse: generated(userProfileResponseSchema, 'output'),
+        UserProfileUpdateRequest: generated(
+          userProfileUpdateRequestSchema,
+          'input',
+        ),
+        UserProfileUpdateResponse: generated(
+          userProfileUpdateResponseSchema,
+          'output',
+        ),
         WorkspaceMembersResponse: generated(
           workspaceMembersResponseSchema,
           'output',
@@ -153,6 +166,14 @@ describe('identity/workspace generated contracts', () => {
         ),
         WorkspaceMemberRoleChangeResponse: generated(
           workspaceMemberRoleChangeResponseSchema,
+          'output',
+        ),
+        WorkspaceMemberRemovalRequest: generated(
+          workspaceMemberRemovalRequestSchema,
+          'input',
+        ),
+        WorkspaceMemberRemovalResponse: generated(
+          workspaceMemberRemovalResponseSchema,
           'output',
         ),
         WorkspaceInvitationCreateRequest: generated(
@@ -177,6 +198,10 @@ describe('identity/workspace generated contracts', () => {
         ),
         InvitationAcceptanceOidcRequest: generated(
           invitationAcceptanceOidcRequestSchema,
+          'input',
+        ),
+        InvitationAcceptanceSessionRequest: generated(
+          invitationAcceptanceSessionRequestSchema,
           'input',
         ),
         InvitationAcceptanceCompleteRequest: generated(
@@ -218,12 +243,14 @@ describe('identity/workspace generated contracts', () => {
       '/v1/workspaces/{workspaceId}/members',
       '/v1/workspaces/{workspaceId}',
       '/v1/workspaces/{workspaceId}/members/{userId}/role',
+      '/v1/workspaces/{workspaceId}/members/{userId}/remove',
       '/v1/workspaces/{workspaceId}/invitations',
       '/v1/workspaces/{workspaceId}/invitations/{invitationId}/resend',
       '/v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke',
       '/v1/invitation-acceptance/resolve',
       '/v1/invitation-acceptance',
       '/v1/invitation-acceptance/oidc',
+      '/v1/invitation-acceptance/session',
       '/v1/invitation-acceptance/complete',
     ]);
     expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(

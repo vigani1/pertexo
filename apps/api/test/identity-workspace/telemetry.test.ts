@@ -95,11 +95,13 @@ describe('identity/workspace telemetry', () => {
       'oidc.callback',
       'session.logout',
       'user.profile_read',
+      'user.profile_update',
       'workspace.create',
       'workspace.rename',
       'workspace.accessible_list',
       'workspace.members_list',
       'workspace.member_role_change',
+      'workspace.member_removal',
       'workspace.request_deletion',
       'workspace.restore',
     ]);

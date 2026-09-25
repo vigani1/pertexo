@@ -9,6 +9,21 @@ export const oidcCallbackRequestSchema = z
 export const oidcStartResponseSchema = z
   .object({ authorizationUrl: z.url(), expiresAt: z.iso.datetime() })
   .strict();
+/**
+ * Where a sign-in may return. Only same-origin app paths matching these
+ * known routes are accepted: no scheme, host, `//`, query or fragment.
+ */
+const AUTHENTICATION_RETURN_PATHS = Object.freeze([
+  /^\/invitations\/accept$/u,
+  /^\/account\/security$/u,
+  /^\/w\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/account$/u,
+]);
+export const authenticationReturnPathSchema = z
+  .string()
+  .max(128)
+  .refine((path) =>
+    AUTHENTICATION_RETURN_PATHS.some((pattern) => pattern.test(path)),
+  );
 export const authenticationProviderSchema = z.enum([
   'google',
   'microsoft',
@@ -116,6 +131,9 @@ export const accountSecurityPasswordSetupResponseSchema = z
   .object({ configured: z.literal(true) })
   .strict();
 
+export type AuthenticationReturnPath = z.output<
+  typeof authenticationReturnPathSchema
+>;
 export type AuthenticationCapabilitiesResponse = z.output<
   typeof authenticationCapabilitiesResponseSchema
 >;

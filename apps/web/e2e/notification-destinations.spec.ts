@@ -62,6 +62,7 @@ test('creates, versions and disables a notification destination', async ({
         email: 'owner@example.test',
         displayName: 'Workspace Owner',
         status: 'active',
+        revision: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
       },

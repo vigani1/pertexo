@@ -24,7 +24,12 @@ export {
 } from './use-cases.js';
 export { DatabaseIdentityWorkspaceAdapter } from './database-adapter.js';
 export { WorkspaceInvitationManagementUseCase } from './invitation-management-use-cases.js';
-export { InvitationAcceptanceController } from './invitation-acceptance-controller.js';
+export {
+  InvitationAcceptanceController,
+  InvitationAcceptanceOidcController,
+} from './invitation-acceptance-controller.js';
+export { RemoveWorkspaceMemberUseCase } from './member-removal-use-case.js';
+export { UpdateUserProfileUseCase } from './user-profile-use-case.js';
 export { InvitationAcceptanceUseCase } from './invitation-acceptance-use-case.js';
 export { RenameWorkspaceUseCase } from './workspace-rename-use-case.js';
 export { mapIdentityWorkspaceError } from './errors.js';

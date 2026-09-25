@@ -59,7 +59,7 @@ async function createUser(
     const result = await pool.query(
       `insert into app.users (id, email, display_name, status)
        values ($1, $2, $3, 'active')
-       returning id, email, display_name, status, created_at, updated_at`,
+       returning id, email, display_name, status, profile_revision, created_at, updated_at`,
       [id, fields.email, fields.displayName],
     );
     return mapUser(result.rows[0] as Record<string, unknown>);
@@ -76,7 +76,7 @@ async function findUserById(
   userId: string,
 ): Promise<UserRecord | null> {
   const result = await pool.query(
-    `select id, email, display_name, status, created_at, updated_at
+    `select id, email, display_name, status, profile_revision, created_at, updated_at
      from app.users where id = $1`,
     [parseIdentityUuid(userId)],
   );
@@ -195,7 +195,8 @@ export function createIdentityWorkspaceIdentityStore(
         const existing = await client.query(
           `select
              u.id as user_id, u.email as user_email, u.display_name as user_display_name,
-             u.status as user_status, u.created_at as user_created_at,
+             u.status as user_status, u.profile_revision as user_profile_revision,
+             u.created_at as user_created_at,
              u.updated_at as user_updated_at,
              i.id as identity_id, i.issuer, i.provider_subject, i.profile_metadata,
              i.created_at as identity_created_at, i.updated_at as identity_updated_at
@@ -217,6 +218,7 @@ export function createIdentityWorkspaceIdentityStore(
               display_name: row.user_display_name,
               status: row.user_status,
               created_at: row.user_created_at,
+              profile_revision: row.user_profile_revision,
               updated_at: row.user_updated_at,
             }),
             identity: mapAuthIdentity({
@@ -233,7 +235,7 @@ export function createIdentityWorkspaceIdentityStore(
         const userResult = await client.query(
           `insert into app.users (id, email, display_name, status)
            values ($1, $2, $3, 'active')
-           returning id, email, display_name, status, created_at, updated_at`,
+           returning id, email, display_name, status, profile_revision, created_at, updated_at`,
           [generatePersistedId(), email, displayName],
         );
         const user = mapUser(userResult.rows[0] as Record<string, unknown>);
