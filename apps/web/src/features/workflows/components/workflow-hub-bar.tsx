@@ -8,7 +8,7 @@ import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { describeWorkflowState } from '../model/workflow-state';
-import { WorkflowNameField } from './workflow-name-field';
+import { WorkflowNameWithDialog } from './workflow-name-field';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -93,8 +93,10 @@ export function WorkflowHubBar({
   const state =
     workflow === undefined ? undefined : describeWorkflowState(workflow);
   return (
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:flex-nowrap">
-      <div className="flex min-w-[min(100%,12rem)] flex-1 items-center gap-3 xl:flex-none">
+    // On wide screens the tabs sit in a centre column of their own, so a
+    // long name or a busy action group never pushes them sideways.
+    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-2 py-2 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)]">
+      <div className="flex min-w-[min(100%,12rem)] flex-1 items-center gap-3 xl:min-w-0">
         <Link
           to="/w/$workspaceId/workflows"
           params={{ workspaceId: workspace.id }}
@@ -108,19 +110,18 @@ export function WorkflowHubBar({
           {workflow === undefined ? (
             <h1 className={TITLE_CLASS}>Workflow</h1>
           ) : (
-            <WorkflowNameField
+            <WorkflowNameWithDialog
               apiClient={apiClient}
               userId={userId}
               workspace={workspace}
               workflow={workflow}
-              className="w-[min(28rem,80vw)] gap-2 py-1"
             >
               <h1 className={TITLE_CLASS}>{workflow.name}</h1>
-            </WorkflowNameField>
+            </WorkflowNameWithDialog>
           )}
           <div className="flex min-w-0 items-center gap-2.5 font-mono text-[0.7rem] text-subtle-foreground">
             {state === undefined ? null : (
-              <Status tone={state.tone} className="text-[0.7rem]">
+              <Status tone={state.tone} className="font-sans text-[0.75rem]">
                 {state.label}
               </Status>
             )}
@@ -130,7 +131,7 @@ export function WorkflowHubBar({
       </div>
       <nav
         aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-white/6 bg-black/25 p-[3px] xl:order-none xl:mx-auto xl:w-auto"
+        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-white/6 bg-black/25 p-[3px] xl:order-none xl:w-auto"
       >
         {hubTabs(workspace).map((link) => (
           <Link
@@ -140,9 +141,10 @@ export function WorkflowHubBar({
             activeOptions={{ exact: true }}
             aria-current={link.tab === activeTab ? 'page' : undefined}
             className={cn(
-              'rounded-sm px-3 py-1.5 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60',
+              // Equal segments on a phone, so every tab fits without scrolling.
+              'flex-1 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60 sm:flex-none sm:px-3 sm:py-1.5',
               link.tab === activeTab &&
-                'bg-primary/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_22%,transparent)]',
+                'bg-action/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]',
             )}
           >
             {link.label}
@@ -150,7 +152,9 @@ export function WorkflowHubBar({
         ))}
       </nav>
       {actions === undefined ? null : (
-        <div className="flex items-center gap-1.5">{actions}</div>
+        <div className="flex items-center gap-1.5 xl:justify-self-end">
+          {actions}
+        </div>
       )}
     </header>
   );
