@@ -170,6 +170,9 @@ export function NodeInspector({
                 definition={definition}
                 connections={connections}
                 form={form}
+                onOpenInputs={() => {
+                  onTabChange('inputs');
+                }}
               />
               {isSlackStep(node) ? (
                 <SlackChannelField

@@ -19,6 +19,31 @@ import {
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
 describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
+  it('points a step with nothing to set up at its inputs', async () => {
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: graphWithMappingNodes(),
+        definitions: [
+          manualDefinition,
+          {
+            ...mappingDefinition,
+            configSchema: { type: 'object', properties: {} },
+          },
+        ],
+      }),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Target'));
+    expect(screen.getByText(/Nothing to set up here/u)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Edit as JSON' })).toBeNull();
+    await event.click(screen.getByRole('button', { name: 'Go to Inputs' }));
+    expect(screen.getByRole('tab', { name: 'Inputs' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
   it('applies typed input mappings live and saves them through the draft pipeline', async () => {
     let savedGraph: WorkflowGraphContract | undefined;
     mockServer.use(
