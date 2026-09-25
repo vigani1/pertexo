@@ -11,7 +11,10 @@ import type { WorkflowFlowNode } from '../../model/graph-adapter';
 export const handleClass =
   '!size-2.5 !border-[1.5px] !border-primary !bg-background !shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_50%,transparent)]';
 
-/** A step's presentation, the title on its card and the type under it. */
+/**
+ * A step's presentation, the title on its card and the type under it, with
+ * a few words from its setup when there are some ("Validate · 6 rules").
+ */
 export function cardIdentity(data: WorkflowFlowNode['data']): Readonly<{
   step: StepPresentation;
   title: string;
@@ -21,10 +24,11 @@ export function cardIdentity(data: WorkflowFlowNode['data']): Readonly<{
     data.definitionKey,
     data.family === 'unknown' ? undefined : data.family,
   );
+  const kind = data.label === undefined ? familyWord(step.family) : step.name;
   return {
     step,
     title: data.label ?? step.name,
-    type: data.label === undefined ? familyWord(step.family) : step.name,
+    type: data.summary === undefined ? kind : `${kind} · ${data.summary}`,
   };
 }
 

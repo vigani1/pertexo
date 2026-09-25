@@ -14,8 +14,13 @@ const noEdges: ReadonlySet<string> = new Set();
  * Short-lived canvas moments that mean something: the path of a passed test
  * flows for a few seconds, and a publish weaves its connections in execution
  * order. Timers are the external system; reduced motion is handled in CSS.
+ * Each step's card also keeps the output size of its last passed test in
+ * this session, when the output came back inline.
  */
 export function useCanvasEffects(graph: WorkflowGraphContract) {
+  const [testOutputBytes, setTestOutputBytes] = useState<
+    ReadonlyMap<string, number>
+  >(() => new Map());
   const [flow, setFlow] =
     useState<Readonly<{ edgeIds: ReadonlySet<string>; startedAt: number }>>();
   const [weave, setWeave] =
@@ -46,7 +51,14 @@ export function useCanvasEffects(graph: WorkflowGraphContract) {
   return {
     flowingEdgeIds: flow?.edgeIds ?? noEdges,
     weaveOrder: weave?.order ?? null,
-    showTestPath: (nodeId: string) => {
+    testOutputBytes,
+    showTestPath: (nodeId: string, outputBytes: number | undefined) => {
+      setTestOutputBytes((current) => {
+        const next = new Map(current);
+        if (outputBytes === undefined) next.delete(nodeId);
+        else next.set(nodeId, outputBytes);
+        return next;
+      });
       setFlow({
         edgeIds: upstreamEdgeIds(levelOf(graph, nodeId) ?? graph, nodeId),
         startedAt: Date.now(),

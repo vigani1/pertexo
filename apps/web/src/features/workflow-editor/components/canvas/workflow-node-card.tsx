@@ -14,17 +14,18 @@ import {
 } from './node-card-style';
 
 /**
- * A step on the canvas: family tile, title and human type, the port labels
- * of branching steps, and marks for issues, missing connections and steps
- * that are disabled. Only the selected card animates (its scan edge).
+ * A step on the canvas: family tile, title and human type (with a summary
+ * of its setup), the wired ports of branching steps, then one line of facts
+ * and marks for issues, missing connections and steps that are disabled.
+ * Only the selected card animates (its scan edge).
  */
 export function WorkflowNodeCard({
   data,
   selected,
 }: NodeProps<WorkflowFlowNode>) {
   const { step, title, type } = cardIdentity(data);
-  const branchingIn = data.inputPorts.length > 1;
-  const branchingOut = data.outputPorts.length > 1;
+  const branchingIn = data.branching.inputs;
+  const branchingOut = data.branching.outputs;
   return (
     <article
       data-selected={selected}
@@ -45,13 +46,23 @@ export function WorkflowNodeCard({
         />
       )}
       <CardHeading step={step} title={title} type={type} />
-      <NodeMarks data={data} />
       {branchingIn ? (
-        <PortRows title={title} ports={data.inputPorts} type="target" />
+        <PortRows
+          title={title}
+          ports={data.inputPorts}
+          side="inputs"
+          links={data.links.inputs}
+        />
       ) : null}
       {branchingOut ? (
-        <PortRows title={title} ports={data.outputPorts} type="source" />
+        <PortRows
+          title={title}
+          ports={data.outputPorts}
+          side="outputs"
+          links={data.links.outputs}
+        />
       ) : null}
+      <NodeMarks data={data} />
       {branchingOut || data.outputPorts[0] === undefined ? null : (
         <Handle
           id={data.outputPorts[0]}

@@ -1,12 +1,19 @@
 import { Handle, Position } from '@xyflow/react';
-import { ArrowRightToLineIcon, PlugIcon, PowerOffIcon } from 'lucide-react';
+import {
+  ArrowRightToLineIcon,
+  CheckIcon,
+  PlugIcon,
+  PowerOffIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   StepTile,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
+import { formatByteLength } from '@/lib/format-bytes';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../model/graph-adapter';
+import { portLinkLabel } from '../../model/step-card';
 import { handleClass } from './node-card-style';
 
 /**
@@ -46,12 +53,46 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
 }
 
 /**
- * Marks for steps that aren't in the catalog, need a connection and so on,
- * and for the step whose output is its For each body's result.
+ * One line of facts from real data, then any marks. Facts: the output size
+ * of the step's last passed test here and whether the latest check found
+ * nothing wrong with it. Marks: the step whose output is its For each
+ * body's result, steps that aren't in the catalog, need a connection, are
+ * disabled or deprecated.
  */
 export function NodeMarks({
   data,
 }: Readonly<{ data: WorkflowFlowNode['data'] }>) {
+  const facts: ReactNode[] = [];
+  if (data.testOutputBytes !== undefined)
+    facts.push(
+      <Mark key="test">
+        {formatByteLength(data.testOutputBytes)} last test
+      </Mark>,
+    );
+  if (data.checked && data.issueCount === 0 && !data.unsupported)
+    facts.push(
+      <Mark key="valid" tone="success">
+        <CheckIcon aria-hidden="true" />
+        valid
+      </Mark>,
+    );
+  const marks = stepMarks(data);
+  if (facts.length === 0 && marks.length === 0) return null;
+  return (
+    <div className="mt-2.5 flex flex-col gap-1.5">
+      {facts.length === 0 ? null : (
+        <div className="flex min-w-0 gap-1.5 [&>*:first-child]:min-w-0 [&>*:first-child]:shrink">
+          {facts}
+        </div>
+      )}
+      {marks.length === 0 ? null : (
+        <div className="flex flex-wrap gap-1.5">{marks}</div>
+      )}
+    </div>
+  );
+}
+
+function stepMarks(data: WorkflowFlowNode['data']): ReactNode[] {
   const marks: ReactNode[] = [];
   if (data.bodyResult)
     marks.push(
@@ -85,22 +126,24 @@ export function NodeMarks({
         {data.lifecycle === 'deprecated' ? 'Deprecated' : 'Needs migration'}
       </Mark>,
     );
-  return marks.length === 0 ? null : (
-    <div className="mt-2 flex flex-wrap gap-1.5">{marks}</div>
-  );
+  return marks;
 }
+
+const markTones = {
+  neutral: 'border-white/8 bg-white/4 text-muted-foreground',
+  success: 'border-success/20 bg-success/6 text-success',
+  warning: 'border-warning/30 bg-warning/8 text-warning',
+} as const;
 
 export function Mark({
   tone = 'neutral',
   children,
-}: Readonly<{ tone?: 'neutral' | 'warning'; children: ReactNode }>) {
+}: Readonly<{ tone?: keyof typeof markTones; children: ReactNode }>) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[0.62rem] leading-none [&_svg]:size-3',
-        tone === 'warning'
-          ? 'border-warning/30 bg-warning/8 text-warning'
-          : 'border-white/6 bg-white/4 text-muted-foreground',
+        'inline-flex max-w-full shrink-0 items-center gap-1 truncate rounded-[0.3125rem] border px-1.5 py-[0.1875rem] font-mono text-[0.75rem] leading-none [&_svg]:size-3.5 [&_svg]:shrink-0',
+        markTones[tone],
       )}
     >
       {children}
@@ -109,45 +152,38 @@ export function Mark({
 }
 
 /**
- * Labelled ports, one row each: true/false, case-01…, branch-01…, or a
- * loop's `done`. `label` shows a port under a name other than its ID.
+ * A branching step's ports, one labelled row each, as they're wired:
+ * "true → Ask finance", "branch-02 ← Pull incidents", or the bare port
+ * while nothing is connected. Handles sit on the card's edge beside them.
  */
 export function PortRows({
   title,
   ports,
-  type,
-  label = (port) => port,
+  side,
+  links,
 }: Readonly<{
   title: string;
   ports: readonly string[];
-  type: 'source' | 'target';
-  label?: (port: string) => string;
+  side: 'inputs' | 'outputs';
+  links: Readonly<Record<string, readonly string[]>>;
 }>) {
-  const output = type === 'source';
+  const output = side === 'outputs';
   return (
     <ul
-      className={cn(
-        '-mx-3 mt-2 flex flex-col gap-0.5 border-t border-white/6 pt-1.5',
-        output ? 'items-end' : 'items-start',
-      )}
+      className="mt-2.5 flex flex-col gap-1.5"
       aria-label={output ? 'Outputs' : 'Inputs'}
     >
       {ports.map((port) => (
-        <li
-          key={port}
-          className={cn(
-            'relative flex h-4.5 w-full items-center px-3 font-mono text-[0.64rem] text-muted-foreground',
-            output ? 'justify-end' : 'justify-start',
-          )}
-        >
-          {label(port)}
+        <li key={port} className="relative flex min-w-0 items-center">
+          <Mark>{portLinkLabel(port, side, links[port])}</Mark>
           <Handle
             id={port}
-            type={type}
+            type={output ? 'source' : 'target'}
             position={output ? Position.Right : Position.Left}
-            aria-label={`${title}: ${output ? 'output' : 'input'} ${label(port)}`}
+            aria-label={`${title}: ${output ? 'output' : 'input'} ${port}`}
             className={cn(
               handleClass,
+              output ? '!-right-3' : '!-left-3',
               port === 'false' || port === 'default'
                 ? '!border-secondary'
                 : undefined,

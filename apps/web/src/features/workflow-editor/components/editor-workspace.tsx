@@ -138,13 +138,26 @@ export function EditorWorkspace({
     () => paused,
   );
 
+  const checked =
+    issues.groups !== undefined &&
+    !issues.stale &&
+    !issues.checking &&
+    issues.error === undefined;
   const overlays = useMemo(
     () => ({
       issuesByNode: issues.countsByNode,
       flowingEdgeIds: effects.flowingEdgeIds,
       weaveOrder: effects.weaveOrder,
+      checked,
+      testOutputBytes: effects.testOutputBytes,
     }),
-    [effects.flowingEdgeIds, effects.weaveOrder, issues.countsByNode],
+    [
+      checked,
+      effects.flowingEdgeIds,
+      effects.testOutputBytes,
+      effects.weaveOrder,
+      issues.countsByNode,
+    ],
   );
   return (
     <EditorLayout
