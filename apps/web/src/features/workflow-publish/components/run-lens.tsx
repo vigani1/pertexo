@@ -4,7 +4,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import type { RunIntent } from '@/features/workflow-runs/commands.public';
 import { useRunInput } from '@/features/workflow-runs/run-input.public';
-import { DeadlineField } from './deadline-field';
+import { DeadlineField } from '@/components/ui/deadline-field';
 
 /**
  * Starts the published version with an input and an optional deadline,
