@@ -370,7 +370,12 @@ describe('workflow list', () => {
     expect(requests[0]?.body).toEqual({ expectedLifecycleRevision: 4 });
   });
 
-  it('reports a stale archive as a conflict, not an uncertain outcome', async () => {
+  async function archiveAgainstProblem(problem: {
+    code: string;
+    title: string;
+    extra?: Record<string, unknown>;
+  }) {
+    const keys: (string | null)[] = [];
     mockServer.use(
       ...discoveryHandlers(['workflow:create', 'workflow:publish']),
       draftHandler(),
@@ -380,22 +385,23 @@ describe('workflow list', () => {
         ],
         nextCursor: null,
       })),
-      http.post(`${api}/workflows/${workflowId}/archive`, () =>
-        HttpResponse.json(
+      http.post(`${api}/workflows/${workflowId}/archive`, ({ request }) => {
+        keys.push(request.headers.get('idempotency-key'));
+        return HttpResponse.json(
           {
-            type: 'urn:pertexo:problem:workflow.lifecycle_conflict',
-            title: 'Workflow lifecycle changed',
+            type: `urn:pertexo:problem:${problem.code}`,
+            title: problem.title,
             status: 409,
-            code: 'workflow.lifecycle_conflict',
-            requestId: 'lifecycle-conflict',
-            currentLifecycleRevision: 5,
+            code: problem.code,
+            requestId: 'archive-conflict',
+            ...problem.extra,
           },
           {
             status: 409,
             headers: { 'content-type': 'application/problem+json' },
           },
-        ),
-      ),
+        );
+      }),
     );
     renderApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
@@ -409,12 +415,41 @@ describe('workflow list', () => {
       name: 'Archive this workflow?',
     });
     await event.click(within(dialog).getByRole('button', { name: 'Archive' }));
+    return { dialog, event, keys };
+  }
+
+  it('reports a stale archive as a conflict and confirms again with a new key', async () => {
+    const { dialog, event, keys } = await archiveAgainstProblem({
+      code: 'workflow.lifecycle_conflict',
+      title: 'Workflow lifecycle changed',
+      extra: { currentLifecycleRevision: 5 },
+    });
     expect(
       await within(dialog).findByText(
         /This workflow changed since you opened/u,
       ),
     ).toBeVisible();
     expect(within(dialog).queryByText(/couldn’t confirm/u)).toBeNull();
+    await event.click(within(dialog).getByRole('button', { name: 'Archive' }));
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBeTruthy();
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
+  it('does not call a reused request key a workflow change', async () => {
+    const { dialog } = await archiveAgainstProblem({
+      code: 'request.idempotency_conflict',
+      title: 'Idempotency key reused',
+    });
+    expect(
+      await within(dialog).findByText(
+        'This request was already used with different details. Try again.',
+      ),
+    ).toBeVisible();
+    expect(within(dialog).queryByText(/This workflow changed/u)).toBeNull();
   });
 
   it('keeps archive out of the menu for people who can’t publish', async () => {
