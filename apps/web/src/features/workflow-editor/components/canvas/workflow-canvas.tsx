@@ -35,10 +35,15 @@ import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
 import { CanvasZoomLens } from './canvas-zoom-lens';
+import { ForEachNodeCard } from './for-each-node-card';
 import { WorkflowEdge } from './workflow-edge';
 import { WorkflowNodeCard } from './workflow-node-card';
 
-const nodeTypes = Object.freeze({ workflow: WorkflowNodeCard });
+// Module-level so React Flow never sees new node types between renders.
+const nodeTypes = Object.freeze({
+  workflow: WorkflowNodeCard,
+  forEach: ForEachNodeCard,
+});
 const edgeTypes = Object.freeze({ workflow: WorkflowEdge });
 const multiSelectionKeys = ['Meta', 'Control', 'Shift'];
 

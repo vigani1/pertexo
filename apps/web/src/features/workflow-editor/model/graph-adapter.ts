@@ -6,6 +6,20 @@ import { describeStep } from '@/features/catalog/presentation.public';
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 type Position = Readonly<{ x: number; y: number }>;
 
+/**
+ * A For each step's body as its card shows it (ADR 020): the steps that run
+ * once per item, the body's `item`/`ordinal` inputs and `result` output, and
+ * the bounds on items and concurrency. The graph itself is untouched.
+ */
+export type LoopSummary = Readonly<{
+  maxIterations: number;
+  maxConcurrency: number;
+  /** The body's steps, in stored order. */
+  steps: readonly Readonly<{ id: string; title: string }>[];
+  inputs: readonly string[];
+  outputs: readonly string[];
+}>;
+
 interface WorkflowNodeData extends Record<string, unknown> {
   label: string | undefined;
   definitionKey: string;
@@ -18,7 +32,8 @@ interface WorkflowNodeData extends Record<string, unknown> {
   missingConnections: number;
   disabled: boolean;
   unsupported: boolean;
-  loop: Readonly<{ maxIterations: number; maxConcurrency: number }> | null;
+  /** The For each body, or null when the step has none yet. */
+  loop: LoopSummary | null;
 }
 
 interface WorkflowEdgeData extends Record<string, unknown> {
@@ -32,7 +47,8 @@ interface WorkflowEdgeData extends Record<string, unknown> {
   intoIssue: boolean;
 }
 
-export type WorkflowFlowNode = Node<WorkflowNodeData, 'workflow'>;
+/** `forEach` draws a For each step as a container around its body. */
+export type WorkflowFlowNode = Node<WorkflowNodeData, 'workflow' | 'forEach'>;
 export type WorkflowFlowEdge = Edge<WorkflowEdgeData, 'workflow'>;
 
 export type WorkflowFlowProjection = Readonly<{
@@ -97,7 +113,7 @@ export function projectWorkflowGraph(
       );
       return {
         id: node.id,
-        type: 'workflow',
+        type: isForEach(node) ? 'forEach' : 'workflow',
         position: decorations.dragPositions.get(node.id) ?? node.position,
         selected: selectedNodes.has(node.id),
         data: {
@@ -115,13 +131,7 @@ export function projectWorkflowGraph(
           ).length,
           disabled: node.disabled === true,
           unsupported: definition === undefined,
-          loop:
-            node.structured === undefined
-              ? null
-              : {
-                  maxIterations: node.structured.maxIterations,
-                  maxConcurrency: node.structured.maxConcurrency,
-                },
+          loop: loopSummary(node),
         },
       } satisfies WorkflowFlowNode;
     }),
@@ -145,6 +155,32 @@ export function projectWorkflowGraph(
           },
         }) satisfies WorkflowFlowEdge,
     ),
+  };
+}
+
+const FOR_EACH_KEY = 'core.foreach';
+
+/** A For each step, drawn and inspected as a container for its body. */
+export function isForEach(
+  node: Pick<WorkflowNode, 'definition' | 'structured'>,
+): boolean {
+  return node.definition.key === FOR_EACH_KEY || node.structured !== undefined;
+}
+
+export function loopSummary(
+  node: Pick<WorkflowNode, 'structured'>,
+): LoopSummary | null {
+  const structured = node.structured;
+  if (structured === undefined) return null;
+  return {
+    maxIterations: structured.maxIterations,
+    maxConcurrency: structured.maxConcurrency,
+    steps: structured.body.nodes.map((step) => ({
+      id: step.id,
+      title: stepTitle(step),
+    })),
+    inputs: structured.body.inputPorts,
+    outputs: structured.body.outputPorts,
   };
 }
 
