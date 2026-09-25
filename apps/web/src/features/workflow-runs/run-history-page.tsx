@@ -19,7 +19,10 @@ import type { ApiClient } from '@/lib/api/client';
 import { LiveRunCounts } from './components/run-count';
 import { RunFilters } from './components/run-filters/run-filters';
 import { WorkflowPicker } from './components/run-filters/workflow-picker';
-import { RunsForbidden } from './components/run-list/run-list-states';
+import {
+  NoRunsYet,
+  RunsForbidden,
+} from './components/run-list/run-list-states';
 import { RunResults } from './components/run-list/run-results';
 import { RunsToolbar } from './components/run-list/runs-toolbar';
 import {
@@ -165,6 +168,14 @@ export function RunHistoryPage({
             query={query}
             runs={runs}
             variant="workspace"
+            noRuns={
+              <NoRunsYet
+                workspaceId={workspace.id}
+                canReadWorkflows={workspace.capabilities.includes(
+                  'workflow:read',
+                )}
+              />
+            }
           />
         </>
       ) : (

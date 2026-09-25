@@ -5,7 +5,10 @@ import type {
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { RunFilters } from './components/run-filters/run-filters';
-import { RunsForbidden } from './components/run-list/run-list-states';
+import {
+  NoWorkflowRunsYet,
+  RunsForbidden,
+} from './components/run-list/run-list-states';
 import { RunResults } from './components/run-list/run-results';
 import { RunsToolbar } from './components/run-list/runs-toolbar';
 import {
@@ -68,6 +71,12 @@ export function WorkflowRunsPage({
         query={query}
         runs={runs}
         variant="workflow"
+        noRuns={
+          <NoWorkflowRunsYet
+            workspaceId={workspace.id}
+            workflowId={workflowId}
+          />
+        }
       />
     </div>
   );
