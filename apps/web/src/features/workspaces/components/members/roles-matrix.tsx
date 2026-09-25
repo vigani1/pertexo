@@ -78,7 +78,7 @@ export function RolesMatrix({
                       className={cn(
                         'relative inline-block size-2.5 rounded-full',
                         allowed
-                          ? 'bg-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_70%,transparent)]'
+                          ? 'bg-action'
                           : 'border border-white/18 bg-card',
                       )}
                     />

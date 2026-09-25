@@ -27,7 +27,7 @@ export function StepSearch({
   return (
     <label
       className={cn(
-        'recessed-control flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border px-2.5 focus-within:border-primary',
+        'recessed-control flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border px-2.5',
         className,
       )}
     >

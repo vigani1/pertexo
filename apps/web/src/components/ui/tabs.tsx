@@ -23,7 +23,7 @@ export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       data-slot="tabs-trigger"
       className={cn(
         "relative inline-flex items-center gap-1.5 py-2.5 text-sm font-medium whitespace-nowrap text-subtle-foreground outline-none transition-colors hover:text-foreground focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground [&_svg:not([class*='size-'])]:size-4",
-        'after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary after:opacity-0 after:shadow-[0_0_10px_var(--primary)] after:transition-opacity data-active:after:opacity-100',
+        'after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-action after:opacity-0 after:transition-opacity data-active:after:opacity-100',
         className,
       )}
       {...props}
