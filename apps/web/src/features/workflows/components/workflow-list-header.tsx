@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import { PlusIcon } from 'lucide-react';
 import {
@@ -12,22 +13,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { countWorkflowStates } from '../model/workflow-list-view';
 
+/** The list's one primary action, with its N shortcut. */
+export function NewWorkflowButton({
+  onClick,
+}: Readonly<{ onClick: () => void }>) {
+  return (
+    <Button type="button" variant="primary" onClick={onClick}>
+      <PlusIcon aria-hidden="true" data-icon="inline-start" />
+      New workflow
+      <Kbd aria-hidden="true" className="hidden sm:inline-flex">
+        N
+      </Kbd>
+    </Button>
+  );
+}
+
 /**
  * Title, a mono line counting loaded workflows by state ("+" while more pages
- * exist, since counts cover only what's loaded) and the one primary action.
+ * exist, since counts cover only what's loaded) and the page's `actions`,
+ * e.g. `<NewWorkflowButton />`.
  */
 export function WorkflowListHeader({
   workflows,
   loading,
   hasMore,
-  showCreate,
-  onCreate,
+  actions,
 }: Readonly<{
   workflows: readonly WorkflowSummary[];
   loading: boolean;
   hasMore: boolean;
-  showCreate: boolean;
-  onCreate: () => void;
+  actions?: ReactNode;
 }>) {
   const more = hasMore ? '+' : '';
   const total = workflows.length;
@@ -66,17 +81,9 @@ export function WorkflowListHeader({
           </PageHeaderMeta>
         )}
       </div>
-      {showCreate ? (
-        <PageHeaderActions>
-          <Button type="button" variant="primary" onClick={onCreate}>
-            <PlusIcon aria-hidden="true" data-icon="inline-start" />
-            New workflow
-            <Kbd aria-hidden="true" className="hidden sm:inline-flex">
-              N
-            </Kbd>
-          </Button>
-        </PageHeaderActions>
-      ) : null}
+      {actions === undefined ? null : (
+        <PageHeaderActions>{actions}</PageHeaderActions>
+      )}
     </PageHeader>
   );
 }

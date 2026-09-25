@@ -101,6 +101,73 @@ describe('workflow versions tab', () => {
     expect(within(preview).getByText('Trigger · Webhook')).toBeVisible();
   });
 
+  it('compares any two versions by the steps added, removed or changed', async () => {
+    const third = '77777777-7777-4777-8777-777777777777';
+    const call = stepNode('call', 'http.request', 'Call API');
+    installQueries();
+    mockServer.use(
+      http.get(`${workflowApi}/versions`, () =>
+        HttpResponse.json({
+          items: [
+            version(olderVersionId, 1, {
+              ...emptyGraph,
+              nodes: [
+                stepNode('hook', 'core.webhook'),
+                stepNode('old', 'core.set', 'Tidy fields'),
+              ],
+            }),
+            version(versionId, 2, {
+              ...emptyGraph,
+              nodes: [stepNode('hook', 'core.webhook'), call],
+            }),
+            version(third, 3, {
+              ...emptyGraph,
+              nodes: [
+                stepNode('hook', 'core.webhook'),
+                { ...call, config: { url: 'https://example.test' } },
+                stepNode('notify', 'slack.send_message', 'Tell the team'),
+              ],
+            }),
+          ],
+          nextCursor: null,
+        }),
+      ),
+    );
+    renderApp(versionsPath);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Compare versions' }),
+    );
+    const sheet = await screen.findByRole('dialog', {
+      name: 'Compare versions',
+    });
+    const changes = within(sheet).getByRole('heading', {
+      name: 'Changes from v2 to v3',
+    }).parentElement;
+    if (changes === null) throw new Error('Expected the change summary');
+    expect(within(changes).getByText('Tell the team')).toBeVisible();
+    expect(within(changes).getByText('Changed')).toBeVisible();
+    expect(within(changes).getByText('Call API')).toBeVisible();
+    expect(within(changes).queryByText('Removed')).not.toBeInTheDocument();
+
+    await event.click(within(sheet).getByRole('combobox', { name: 'From' }));
+    await event.click(await screen.findByRole('option', { name: /^v1 ·/u }));
+    const wider = await within(sheet).findByRole('heading', {
+      name: 'Changes from v1 to v3',
+    });
+    expect(wider.parentElement).toHaveTextContent('Removed');
+    expect(wider.parentElement).toHaveTextContent('Tidy fields');
+    expect(wider.parentElement).not.toHaveTextContent('Changed');
+
+    await event.click(within(sheet).getByRole('combobox', { name: 'To' }));
+    await event.click(await screen.findByRole('option', { name: /^v1 ·/u }));
+    expect(
+      await within(sheet).findByText(
+        'Pick two different versions to see what changed.',
+      ),
+    ).toBeVisible();
+  });
+
   it('restores a version with a freshly read draft ETag', async () => {
     installQueries();
     mockServer.use(
@@ -112,6 +179,10 @@ describe('workflow versions tab', () => {
     );
     renderApp(versionsPath);
     await openRestore();
+    // One published version has nothing to compare against.
+    expect(
+      screen.queryByRole('button', { name: 'Compare versions' }),
+    ).not.toBeInTheDocument();
     expect(await screen.findByText('Draft restored from v1')).toBeVisible();
     await waitFor(() => {
       expect(

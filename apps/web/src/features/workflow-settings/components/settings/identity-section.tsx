@@ -1,4 +1,7 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
+import { WorkflowNameField } from '@/features/workflows/rename.public';
+import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
 import { CopyField } from '../copy-field';
 import {
@@ -21,22 +24,54 @@ function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
   );
 }
 
-/** The workflow's name, its ID for support and APIs, and its age. */
+function identityDescription(
+  workspace: AccessibleWorkspace,
+  workflow: WorkflowSummary | undefined,
+): string {
+  return workflow?.lifecycleStatus === 'archived' &&
+    workspace.capabilities.includes('workflow:update')
+    ? 'How this workflow is known. Restore it to rename it.'
+    : 'How this workflow is known.';
+}
+
+/**
+ * The workflow's name (renamed in place by its editors), its ID for support
+ * and APIs, and its age.
+ */
 export function IdentitySection({
+  apiClient,
+  userId,
+  workspace,
   query,
-}: Readonly<{ query: SettingsQuery<WorkflowSummary> }>) {
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  query: SettingsQuery<WorkflowSummary>;
+}>) {
   const workflow = visibleSettingsData(query);
   return (
     <SettingsSection
       title="Identity"
-      description="How this workflow is known. Renaming isn’t available yet."
+      description={identityDescription(workspace, workflow)}
     >
       <SettingsQueryState query={query} resource="This workflow" />
       {workflow === undefined ? null : (
         <dl className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-0.5 sm:col-span-2">
             <dt className="text-xs text-muted-foreground">Name</dt>
-            <dd className="text-base font-semibold">{workflow.name}</dd>
+            <dd>
+              <WorkflowNameField
+                apiClient={apiClient}
+                userId={userId}
+                workspace={workspace}
+                workflow={workflow}
+              >
+                <span className="min-w-0 text-base font-semibold break-words">
+                  {workflow.name}
+                </span>
+              </WorkflowNameField>
+            </dd>
           </div>
           <div className="sm:col-span-2">
             <CopyField

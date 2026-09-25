@@ -1,4 +1,8 @@
-import { workflowFailureNotificationPolicyRequestSchema } from '@pertexo/contracts/schemas/failure-notifications';
+import {
+  workflowFailureNotificationPolicyRequestSchema,
+  workflowFailureNotificationPolicyResponseSchema,
+  type WorkflowFailureNotificationPolicyResponse,
+} from '@pertexo/contracts/schemas/failure-notifications';
 import {
   scheduleManagementCommandResponseSchema,
   scheduleTriggerListResponseSchema,
@@ -98,6 +102,24 @@ export function commandWebhook(
     response: {
       kind: 'json',
       decode: (value) => webhookManagementCommandResponseSchema.parse(value),
+    },
+  });
+}
+
+/** Where this workflow's failure alerts go now; `destination` is null when off. */
+export function getFailureNotificationPolicy(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  signal?: AbortSignal,
+): Promise<WorkflowFailureNotificationPolicyResponse> {
+  return apiClient.request({
+    path: `${workflowPath(workspaceId, workflowId)}/failure-notification-policy`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) =>
+        workflowFailureNotificationPolicyResponseSchema.parse(value),
     },
   });
 }

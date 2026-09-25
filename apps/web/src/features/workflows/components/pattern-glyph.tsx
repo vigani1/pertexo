@@ -21,6 +21,7 @@ const FLOW_CLASS = {
  * A workflow's silhouette: dots for steps, curved threads for connections,
  * the trigger lit in cyan. `muted` draws an unpublished draft; `flow` sends
  * light along each thread, always or while its starter card is hovered.
+ * A workflow without steps draws the empty thread, never a blank gap.
  * Always decorative.
  */
 export function PatternGlyph({
@@ -40,6 +41,8 @@ export function PatternGlyph({
     () => layoutPatternGlyph(graph, SIZES[size]),
     [graph, size],
   );
+  if (layout.nodes.length === 0)
+    return <PatternGlyphPlaceholder state="empty" size={size} />;
   return (
     <svg
       aria-hidden="true"
@@ -110,13 +113,16 @@ export function PatternGlyph({
 }
 
 /**
- * The honest stand-in while a shape loads or when it can't be read: a faint
- * thread without invented steps.
+ * The honest stand-in while a shape loads, when it can't be read, or when
+ * the workflow has no steps yet: a faint thread without invented steps.
  */
 export function PatternGlyphPlaceholder({
   state,
   size = 'row',
-}: Readonly<{ state: 'loading' | 'unavailable'; size?: GlyphSize }>) {
+}: Readonly<{
+  state: 'loading' | 'unavailable' | 'empty';
+  size?: GlyphSize;
+}>) {
   const { width, height } = SIZES[size];
   const middle = height / 2;
   return (

@@ -2,6 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-wo
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ReactNode } from 'react';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
+import type { ApiClient } from '@/lib/api/client';
 import { HistoryControls } from './history-controls';
 import { SaveState } from './save-state';
 import { ShortcutSheet } from './shortcut-sheet';
@@ -11,6 +12,8 @@ import { ShortcutSheet } from './shortcut-sheet';
  * undo/redo, shortcuts and the publish feature's commands on the right.
  */
 export function EditorCommandBar({
+  apiClient,
+  userId,
   workspace,
   workflowId,
   workflow,
@@ -22,6 +25,8 @@ export function EditorCommandBar({
   onRedo,
   commands,
 }: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
   workflow: WorkflowSummary | undefined;
@@ -35,6 +40,8 @@ export function EditorCommandBar({
 }>) {
   return (
     <WorkflowHubBar
+      apiClient={apiClient}
+      userId={userId}
       workspace={workspace}
       workflowId={workflowId}
       workflow={workflow}

@@ -5,8 +5,10 @@ import { Link, type LinkProps } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Status } from '@/components/ui/status';
+import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { describeWorkflowState } from '../model/workflow-state';
+import { WorkflowNameField } from './workflow-name-field';
 
 export type WorkflowHubTab =
   'build' | 'runs' | 'triggers' | 'versions' | 'settings';
@@ -58,12 +60,18 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
   return tabs;
 }
 
+const TITLE_CLASS =
+  'truncate font-heading text-lg leading-tight font-semibold tracking-[-0.02em]';
+
 /**
  * The floating command bar shared by every tab of a workflow: identity on
- * the left, tabs in the middle, the active tab's own actions on the right.
- * `detail` sits under the name (e.g. the editor's save state).
+ * the left (editors rename it in place), tabs in the middle, the active
+ * tab's own actions on the right. `detail` sits under the name (e.g. the
+ * editor's save state).
  */
 export function WorkflowHubBar({
+  apiClient,
+  userId,
   workspace,
   workflowId,
   workflow,
@@ -71,6 +79,8 @@ export function WorkflowHubBar({
   detail,
   actions,
 }: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
   workflow: WorkflowSummary | undefined;
@@ -92,9 +102,19 @@ export function WorkflowHubBar({
           <ArrowLeftIcon aria-hidden="true" />
         </Link>
         <div className="min-w-0">
-          <h1 className="truncate font-heading text-lg leading-tight font-semibold tracking-[-0.02em]">
-            {workflow?.name ?? 'Workflow'}
-          </h1>
+          {workflow === undefined ? (
+            <h1 className={TITLE_CLASS}>Workflow</h1>
+          ) : (
+            <WorkflowNameField
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              workflow={workflow}
+              className="w-[min(28rem,80vw)] gap-2 py-1"
+            >
+              <h1 className={TITLE_CLASS}>{workflow.name}</h1>
+            </WorkflowNameField>
+          )}
           <div className="flex min-w-0 items-center gap-2.5 font-mono text-[0.7rem] text-subtle-foreground">
             {state === undefined ? null : (
               <Status tone={state.tone} className="text-[0.7rem]">

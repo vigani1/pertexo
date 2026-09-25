@@ -6,12 +6,16 @@ import {
   workflowLifecycleRequestSchema,
   workflowLifecycleResponseSchema,
   workflowListResponseSchema,
+  workflowNameConflictProblemSchema,
+  workflowRenameRequestSchema,
+  workflowRenameResponseSchema,
   workflowSummaryResponseSchema,
   type WorkflowCreateResponse,
   type WorkflowGraphContract,
   type WorkflowLifecycleResponse,
   type WorkflowListResponse,
   type WorkflowListQuery,
+  type WorkflowRenameResponse,
   type WorkflowSummary,
 } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { ApiClient } from '@/lib/api/client';
@@ -133,6 +137,38 @@ export function transitionWorkflowLifecycle(
     response: {
       kind: 'json',
       decode: (value) => workflowLifecycleResponseSchema.parse(value),
+    },
+  });
+}
+
+export type WorkflowRenameAttempt = Readonly<{
+  name: string;
+  expectedNameRevision: number;
+  idempotencyKey: string;
+}>;
+
+/**
+ * ADR 041: renames at the name revision the edit started from. A stale
+ * revision answers with the typed `workflow.name_conflict` problem.
+ */
+export function renameWorkflow(
+  apiClient: ApiClient,
+  workspaceId: string,
+  workflowId: string,
+  input: WorkflowRenameAttempt,
+): Promise<WorkflowRenameResponse> {
+  return apiClient.request({
+    path: `${workflowPath(workspaceId, workflowId)}/rename`,
+    method: 'POST',
+    headers: { 'Idempotency-Key': input.idempotencyKey },
+    body: workflowRenameRequestSchema.parse({
+      name: input.name,
+      expectedNameRevision: input.expectedNameRevision,
+    }),
+    decodeProblem: (value) => workflowNameConflictProblemSchema.parse(value),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowRenameResponseSchema.parse(value),
     },
   });
 }

@@ -23,7 +23,9 @@ import type { ApiClient } from '@/lib/api/client';
 import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../mutations/use-notification-commands';
 import { visibleSettingsData } from '../../model/settings-query';
+import { failureNotificationPolicyQueryOptions } from '../../workflow-settings.queries';
 import { SettingsQueryState, SettingsSection } from '../settings-section';
+import { CurrentAlertDestination } from './current-alert-destination';
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
@@ -49,8 +51,8 @@ function destinationOptions(
 }
 
 /**
- * Where this workflow's failures are announced. The API can't report the
- * current choice yet, so the section says so and each save replaces it.
+ * Where this workflow's failures are announced: the current choice, then a
+ * destination to send them to instead, or turning them off.
  */
 export function FailureAlertsSection({
   apiClient,
@@ -80,8 +82,19 @@ export function FailureAlertsSection({
     enabled: canSet && can('connection:read'),
     select: connectionNames,
   });
+  const policy = useQuery({
+    ...failureNotificationPolicyQueryOptions(
+      apiClient,
+      userId,
+      workspace.id,
+      workflowId,
+    ),
+    enabled: canSet,
+  });
+  const current = visibleSettingsData(policy);
   const commands = useFailureNotificationCommands({
     apiClient,
+    userId,
     workspaceId: workspace.id,
     workflowId,
   });
@@ -117,13 +130,19 @@ export function FailureAlertsSection({
       ) : (
         <>
           <SettingsQueryState
+            query={policy}
+            resource="The current alert destination"
+          />
+          {current === undefined ? null : (
+            <CurrentAlertDestination
+              destination={current.destination}
+              connectionNames={connections.data ?? NO_NAMES}
+            />
+          )}
+          <SettingsQueryState
             query={destinations}
             resource="Alert destinations"
           />
-          <p className="rounded-lg border border-border bg-white/[0.02] px-3 py-2.5 text-sm text-muted-foreground">
-            Pertexo can’t show the current choice yet. Saving here replaces
-            whatever was set before.
-          </p>
           {destinations.data !== undefined && options.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               There’s no enabled alert destination in this workspace yet.
@@ -171,7 +190,7 @@ export function FailureAlertsSection({
               <Button
                 type="button"
                 variant="outline"
-                disabled={commands.pending}
+                disabled={commands.pending || current?.destination === null}
                 onClick={() => void update()}
               >
                 Turn alerts off

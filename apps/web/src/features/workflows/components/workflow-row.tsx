@@ -91,6 +91,7 @@ export function WorkflowRow({
   workspace,
   workflow,
   runs,
+  onRename,
   onLifecycle,
 }: Readonly<{
   apiClient: ApiClient;
@@ -98,6 +99,7 @@ export function WorkflowRow({
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   runs: RecentRunTicks;
+  onRename: (workflow: WorkflowSummary) => void;
   onLifecycle: (workflow: WorkflowSummary) => void;
 }>) {
   const [observe, seen] = useSeenOnce<HTMLLIElement>();
@@ -176,6 +178,7 @@ export function WorkflowRow({
         <WorkflowRowMenu
           workspace={workspace}
           workflow={workflow}
+          onRename={onRename}
           onLifecycle={onLifecycle}
         />
       </div>
