@@ -175,6 +175,27 @@ describe('run page', () => {
     expect(screen.getByText('node.retry_scheduled')).toBeVisible();
   });
 
+  it('traces the breadcrumb back through Runs and the run’s workflow', async () => {
+    installRun({
+      run: retryingRun(),
+      nodes: [node('waiting', { resumeAt: secondsAgo(-60) })],
+      events: retryEvents(),
+    });
+    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const trail = await screen.findByRole(
+      'navigation',
+      { name: 'Breadcrumb' },
+      coldStart,
+    );
+    expect(
+      await within(trail).findByRole('link', { name: 'Runs' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/runs`);
+    expect(
+      within(trail).getByRole('link', { name: 'Customer onboarding' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
+    expect(within(trail).getByText('eeee…eeee')).toBeVisible();
+  });
+
   it('asks before stopping a run and confirms the request', async () => {
     let cancels = 0;
     installRun({

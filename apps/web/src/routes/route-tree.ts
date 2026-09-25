@@ -25,6 +25,7 @@ import {
   homeRoute,
   runDetailRoute,
   runsRoute,
+  shellCatchAllRoute,
   teamRoute,
   workflowsRoute,
   workspaceAccountRoute,
@@ -55,6 +56,7 @@ export const routeTree = rootRoute.addChildren([
       alertsRoute,
       workspaceSettingsRoute,
       workspaceAccountRoute,
+      shellCatchAllRoute,
     ]),
     workflowHubRoute.addChildren([
       workflowBuildRoute,

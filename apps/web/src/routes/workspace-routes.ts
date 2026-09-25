@@ -47,6 +47,7 @@ import {
   warmPrefetches,
 } from './route-context';
 import { rootRoute } from './root-route';
+import type { RunCrumb } from './breadcrumbs';
 import { WorkspaceBootPage } from './system-pages';
 
 function assertWorkspaceOpenable(
@@ -81,10 +82,30 @@ export const workspaceScopeRoute = createRoute({
 export const workspaceShellRoute = createRoute({
   getParentRoute: () => workspaceScopeRoute,
   id: 'shell',
+  // A page that doesn't exist inside a workspace keeps the spine and
+  // breadcrumb, so people can move on without reloading.
+  notFoundComponent: lazyRouteComponent(
+    () => import('./shell-not-found'),
+    'ShellNotFound',
+  ),
   component: lazyRouteComponent(
     () => import('./workspace-shell-route'),
     'WorkspaceShellRoute',
   ),
+});
+
+/** Any other address inside a workspace: the shell's not-found page. */
+export const shellCatchAllRoute = createRoute({
+  getParentRoute: () => workspaceShellRoute,
+  path: '$',
+  beforeLoad: () => {
+    notFound({ throw: true });
+  },
+  head: ({ match }) => ({
+    meta: [
+      { title: pageTitle('Page not found', match.context.workspace.name) },
+    ],
+  }),
 });
 
 export const homeRoute = createRoute({
@@ -227,16 +248,28 @@ export const runsRoute = createRoute({
 export const runDetailRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'runs/$runId',
-  staticData: { crumb: 'Run' },
-  loader: ({ context, params }) => {
+  // The breadcrumb names the run's workflow: "Runs / Invoice intake / 7f3a…".
+  loader: async ({
+    context,
+    params,
+  }): Promise<Readonly<{ found: boolean; run?: RunCrumb }>> => {
     const { apiClient, queryClient, user, workspace } = context;
     const runId = workflowRunIdentifierSchema.safeParse(params.runId);
     if (!runId.success) return { found: false };
-    return prefetchResource(context, [
-      queryClient.query(
-        workflowRunQueryOptions(apiClient, user.id, workspace.id, runId.data),
-      ),
-    ]);
+    const read = queryClient.query(
+      workflowRunQueryOptions(apiClient, user.id, workspace.id, runId.data),
+    );
+    const { found } = await prefetchResource(context, [read]);
+    if (!found) return { found };
+    const { run } = await read;
+    return {
+      found,
+      run: {
+        id: run.id,
+        workflowId: run.workflowId,
+        workflowName: run.workflowName ?? null,
+      },
+    };
   },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Run', match.context.workspace.name) }],
