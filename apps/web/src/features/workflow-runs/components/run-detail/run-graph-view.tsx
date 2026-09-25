@@ -37,6 +37,8 @@ interface RunNodeData extends Record<string, unknown> {
 interface RunEdgeData extends Record<string, unknown> {
   tone: StatusTone;
   active: boolean;
+  branch?: string;
+  skipped: boolean;
 }
 
 type RunNode = Node<RunNodeData, 'runNode'>;
@@ -47,7 +49,12 @@ const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
 
 /** Below this zoom, step names get too small to read. */
 const READABLE_ZOOM = 0.72;
-const FIT_OPTIONS = { padding: 0.12, maxZoom: 1 } as const;
+// Fitting never shrinks names below readable; a larger run pans instead.
+const FIT_OPTIONS = {
+  padding: 0.12,
+  maxZoom: 1,
+  minZoom: READABLE_ZOOM,
+} as const;
 
 /** Centre on `focus`, but keep the view filled with the map where it can. */
 function clampCentre(
@@ -153,7 +160,12 @@ export function RunGraphView({
         target: edge.target,
         targetHandle: edge.targetHandle,
         type: 'runEdge',
-        data: { tone: edge.tone, active: edge.active },
+        data: {
+          tone: edge.tone,
+          active: edge.active,
+          skipped: edge.skipped,
+          ...(edge.branch === undefined ? {} : { branch: edge.branch }),
+        },
       })),
     [projection],
   );
@@ -227,9 +239,11 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
       ))}
       <div className="px-3 pt-2.5 pb-2">
         <p className="truncate text-sm font-semibold">{data.label}</p>
-        <p className="mt-0.5 truncate text-xs text-subtle-foreground">
-          {data.kind}
-        </p>
+        {data.kind === data.label ? null : (
+          <p className="mt-0.5 truncate text-xs text-subtle-foreground">
+            {data.kind}
+          </p>
+        )}
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-white/6 px-3 py-2">
         <Status tone={data.tone}>{data.statusLabel}</Status>
@@ -265,7 +279,7 @@ function WorkflowRunEdge({
   targetX,
   targetY,
 }: EdgeProps<RunEdge>) {
-  const [path] = getSmoothStepPath({
+  const [path, labelX, labelY] = getSmoothStepPath({
     sourcePosition,
     sourceX,
     sourceY,
@@ -287,9 +301,22 @@ function WorkflowRunEdge({
         {...marker}
         className={cn(
           '!stroke-[1.5]',
-          edgeStrokeClass[tone] ?? '!stroke-muted-foreground/35',
+          // A path the run didn't take is dashed and quiet.
+          data?.skipped === true
+            ? '![stroke-dasharray:4_5] !stroke-muted-foreground/30'
+            : (edgeStrokeClass[tone] ?? '!stroke-muted-foreground/35'),
         )}
       />
+      {data?.branch === undefined ? null : (
+        <text
+          x={labelX}
+          y={labelY - 6}
+          textAnchor="middle"
+          className="fill-subtle-foreground font-mono text-[11px]"
+        >
+          {data.branch}
+        </text>
+      )}
       {data?.active === true ? (
         <circle
           r="2.5"

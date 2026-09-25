@@ -1,6 +1,9 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
 import type { PreviewRunSummary } from '@pertexo/contracts/schemas/node-testing';
-import { describeRecurrence } from '@/features/catalog/presentation.public';
+import {
+  describeRecurrence,
+  portName,
+} from '@/features/catalog/presentation.public';
 import { describeAmount } from './field-units';
 import type { GraphLevel, WorkflowNode } from './graph-scopes';
 
@@ -73,17 +76,6 @@ export function portLinks(
     (links[own.port] ??= []).push(titles.get(other.nodeId) ?? 'a step');
   }
   return links;
-}
-
-/**
- * A port as people read it: "Branch 2" for `branch-02`, "Case 1" for
- * `case-01`, "Otherwise" for a Switch's `default`; other ports as named.
- */
-export function portName(port: string): string {
-  const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
-  if (numbered !== null)
-    return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;
-  return port === 'default' ? 'Otherwise' : port;
 }
 
 /** "true → Ask finance", "Branch 2 ← Pull incidents", or just the port. */

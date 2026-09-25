@@ -218,3 +218,14 @@ export function describeRetryBehaviour(
 ): string {
   return retryWords[retryClass];
 }
+
+/**
+ * A port as people read it: "Branch 2" for `branch-02`, "Case 1" for
+ * `case-01`, "Otherwise" for a Switch's `default`; other ports as named.
+ */
+export function portName(port: string): string {
+  const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
+  if (numbered !== null)
+    return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;
+  return port === 'default' ? 'Otherwise' : port;
+}

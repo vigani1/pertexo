@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { StatusTone } from '@/components/ui/status';
 import type { ThreadRow, ThreadStepStatus } from './thread-view';
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep, portName } from '@/features/catalog/presentation.public';
 
 export type GraphStepStatus = ThreadStepStatus;
 
@@ -27,6 +27,10 @@ export type GraphLink = Readonly<{
   tone: StatusTone;
   /** Work is flowing into the target step right now. */
   active: boolean;
+  /** The branch this connection leaves from ("true", "Branch 2"), if any. */
+  branch?: string;
+  /** The run didn't take this path: its target was skipped. */
+  skipped: boolean;
 }>;
 
 // When one step ran several times, the map shows the most telling status.
@@ -126,6 +130,10 @@ export function projectRunGraph(
       targetHandle: edge.target.port,
       tone: target?.tone ?? 'neutral',
       active: target !== undefined && activeStatuses.has(target.status),
+      ...(edge.source.port === 'out'
+        ? {}
+        : { branch: portName(edge.source.port) }),
+      skipped: target?.status === 'skipped',
     };
   });
   return { nodes, edges };

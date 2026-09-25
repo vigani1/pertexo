@@ -8,7 +8,8 @@ import {
 import { formatByteLength } from '@/lib/format-bytes';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowNode } from '../../model/graph-adapter';
-import { portLinkLabel, portName } from '../../model/step-card';
+import { portName } from '@/features/catalog/presentation.public';
+import { portLinkLabel } from '../../model/step-card';
 import { handleClass } from './node-card-style';
 
 /**

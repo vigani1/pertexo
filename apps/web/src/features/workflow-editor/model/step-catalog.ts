@@ -176,3 +176,11 @@ export function findDefinitionByIdentity(
       ) === identity,
   );
 }
+
+/** The first step a search lists, which Enter adds. */
+export function firstStepChoice(
+  definitions: readonly NodeDefinitionCatalogItem[],
+  query: string,
+): StepChoice | undefined {
+  return groupStepChoices(definitions, query)[0]?.choices[0];
+}
