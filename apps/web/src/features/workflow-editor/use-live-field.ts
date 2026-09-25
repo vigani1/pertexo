@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { FieldParseResult } from './model/inspector-draft';
 
-type LiveFieldState<Value> = Readonly<{
-  text: string;
+type LiveFieldState<Value, Text> = Readonly<{
+  text: Text;
   applied: Value;
   error: string | undefined;
 }>;
@@ -12,9 +12,10 @@ type LiveFieldState<Value> = Readonly<{
  * straight into the draft through `commit`, while invalid text stays here as
  * scratch with its error. When the stored value changes from elsewhere
  * (undo, redo, a reload) the text follows it; typing never remounts the
- * field, so focus and cursor survive each applied keystroke.
+ * field, so focus and cursor survive each applied keystroke. `Text` is what
+ * people edit: a string for one field, or a small draft for a builder.
  */
-export function useLiveField<Value>({
+export function useLiveField<Value, Text = string>({
   value,
   format,
   parse,
@@ -23,13 +24,13 @@ export function useLiveField<Value>({
   equals = Object.is,
 }: Readonly<{
   value: Value;
-  format: (value: Value) => string;
-  parse: (text: string) => FieldParseResult<Value>;
+  format: (value: Value) => Text;
+  parse: (text: Text) => FieldParseResult<Value>;
   commit: (value: Value) => void;
   onScratchChange: (hasScratch: boolean) => void;
   equals?: (left: Value, right: Value) => boolean;
 }>) {
-  const [state, setState] = useState<LiveFieldState<Value>>(() => ({
+  const [state, setState] = useState<LiveFieldState<Value, Text>>(() => ({
     text: format(value),
     applied: value,
     error: undefined,
@@ -41,7 +42,7 @@ export function useLiveField<Value>({
     setState(current);
   }
 
-  function change(text: string) {
+  function change(text: Text) {
     const result = parse(text);
     if (result.ok) {
       setState({ text, applied: result.value, error: undefined });
