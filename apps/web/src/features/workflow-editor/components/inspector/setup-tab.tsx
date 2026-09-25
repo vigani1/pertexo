@@ -5,9 +5,11 @@ import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
+import { isForEach, loopSummary } from '../../model/graph-adapter';
 import { schemaFields } from '../../model/inspector-draft';
 import { ConfigJsonEditor } from './config-json-editor';
 import { ConnectionSlot } from './connection-slot';
+import { LoopBodySummary } from './loop-body-summary';
 import type { NodeFormApi } from '../../model/node-form';
 import { SchemaField } from './schema-field';
 
@@ -56,6 +58,7 @@ export function SetupTab({
   const showJson = onlyJson || jsonMode;
   return (
     <FieldGroup className="gap-4">
+      {isForEach(node) ? <LoopBodySummary loop={loopSummary(node)} /> : null}
       {showJson ? (
         <ConfigJsonEditor
           config={node.config}
