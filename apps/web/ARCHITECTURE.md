@@ -1197,7 +1197,10 @@ support reference helpers), `use-prefers-reduced-motion.ts`,
   `notFoundComponent` (`ShellNotFound`) renders with Go home and Search.
 - Breadcrumbs come from `useShellCrumbs` (`routes/breadcrumbs.tsx`): a page's
   `staticData.crumb`, or for a run the trail “Runs / <workflow> / <short ID>”
-  from the run loader's data, each step linking back up.
+  from the run loader's data, each step linking back up. The workspaces
+  feature's `ShellBreadcrumb` draws them; below 640 px the steps between the
+  workspace and the page fold into “…”, a button that opens them in a small
+  lens, so the page's own crumb stays readable.
 - Loading: every other loader warms its queries with `warmPrefetches` and
   returns at once, so navigation never waits for list data; each block shows its
   own skeleton. A warmed read that meets an expired session calls the router
