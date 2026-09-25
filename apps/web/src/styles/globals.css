@@ -168,6 +168,15 @@
   }
 }
 
+/* Menus, selects, popovers and toasts: small, read at a glance and often
+   over busy rows, so they're almost solid. Same edges as a lens. */
+@utility popup-lens {
+  background: color-mix(in srgb, var(--popover) 97%, transparent);
+  border: 1px solid var(--glass-border-subtle);
+  border-top-color: var(--glass-border-strong);
+  box-shadow: var(--shadow-lens);
+}
+
 /* Display type: Bricolage Grotesque at a condensed width, Weft's one real
    type change. Page titles, run sentences, the sign-in headline, day headers
    and lens titles. The font's width axis follows `font-stretch`; smaller
