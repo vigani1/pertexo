@@ -29,8 +29,22 @@ export function WorkspaceMark({
   );
 }
 
-/** A person's initials inside a thread ring coloured by their name. */
-export function PersonAvatar({
+// The same pairs for a thread ring: the conic gradient is drawn on the
+// ring's ::before, so its colour stops must be set there too (Tailwind's
+// gradient variables don't inherit into pseudo-elements).
+const RING_GRADIENTS = [
+  'before:from-primary before:via-secondary before:to-primary',
+  'before:from-secondary before:via-success before:to-secondary',
+  'before:from-success before:via-primary before:to-success',
+  'before:from-accent-foreground before:via-secondary before:to-accent-foreground',
+  'before:from-warning before:via-secondary before:to-warning',
+] as const;
+
+/**
+ * Initials inside a thread ring coloured by the name: people in Team and the
+ * account menu, and workspaces in the picker.
+ */
+export function RingMonogram({
   name,
   className,
 }: Readonly<{ name: string; className?: string }>) {
@@ -39,8 +53,8 @@ export function PersonAvatar({
       aria-hidden="true"
       className={cn(
         'relative grid size-8 shrink-0 place-items-center rounded-full bg-card font-heading text-[0.7rem] font-bold text-foreground',
-        'before:absolute before:-inset-0.5 before:rounded-full before:bg-conic before:[mask:radial-gradient(circle,transparent_calc(50%-2px),black_calc(50%-1.5px))]',
-        MARK_GRADIENTS[stableIndex(name, MARK_GRADIENTS.length)],
+        'before:absolute before:-inset-0.5 before:rounded-full before:bg-conic before:[mask:radial-gradient(closest-side,transparent_calc(100%-2px),black_calc(100%-1.5px))]',
+        RING_GRADIENTS[stableIndex(name, RING_GRADIENTS.length)],
         className,
       )}
     >

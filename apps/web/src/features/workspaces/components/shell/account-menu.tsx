@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PersonAvatar } from './workspace-mark';
+import { RingMonogram } from './workspace-mark';
 
 export function AccountMenu({
   user,
@@ -30,7 +30,7 @@ export function AccountMenu({
         aria-label={`Account menu for ${user.displayName}`}
         className="mt-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       >
-        <PersonAvatar name={user.displayName || user.email} />
+        <RingMonogram name={user.displayName || user.email} />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" className="w-64">
         <DropdownMenuGroup>

@@ -23,7 +23,7 @@ import {
   type ManagedRole,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
-import { PersonAvatar } from '../shell/workspace-mark';
+import { RingMonogram } from '../shell/workspace-mark';
 import { RoleSelect } from './role-select';
 
 /** What an actor may do to a member from the row's actions menu. */
@@ -127,7 +127,7 @@ function MemberRow({
   const feedback = control.feedback(member);
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-border py-3 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem]">
-      <PersonAvatar name={member.displayName} />
+      <RingMonogram name={member.displayName} />
       <div className="min-w-0">
         <p className="flex min-w-0 items-baseline gap-2">
           <span
