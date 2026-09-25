@@ -3,6 +3,7 @@ import { SearchIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { cn } from '@/lib/utils';
 import { groupStepChoices, type StepChoice } from '../../model/step-catalog';
+import { AddStepBundle } from './add-step-bundle';
 import { AddStepItem } from './add-step-item';
 
 /**
@@ -58,7 +59,10 @@ export function StepSearch({
   );
 }
 
-/** Placeable steps under their human group names, filtered by `query`. */
+/**
+ * Placeable steps under their human group names, filtered by `query`. While
+ * browsing, Switch, Parallel and Merge share one row that opens in place.
+ */
 export function StepChoiceList({
   definitions,
   query,
@@ -84,16 +88,22 @@ export function StepChoiceList({
       <section key={group.family} aria-labelledby={headingId} className="mt-3">
         <h3
           id={headingId}
-          className="px-1.5 text-[0.72rem] font-semibold text-subtle-foreground"
+          className="px-1.5 font-mono text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
         >
           {group.title}
         </h3>
         <ul className="mt-1 flex flex-col">
-          {group.choices.map((choice) => (
-            <li key={choice.identity}>
-              <AddStepItem choice={choice} onAdd={onPick} />
-            </li>
-          ))}
+          {group.entries.map((entry) =>
+            entry.kind === 'step' ? (
+              <li key={entry.choice.identity}>
+                <AddStepItem choice={entry.choice} onAdd={onPick} />
+              </li>
+            ) : (
+              <li key={entry.bundle.id}>
+                <AddStepBundle bundle={entry.bundle} onAdd={onPick} />
+              </li>
+            ),
+          )}
         </ul>
       </section>
     );

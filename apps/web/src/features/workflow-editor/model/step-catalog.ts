@@ -16,11 +16,40 @@ export type StepChoice = Readonly<{
   step: StepPresentation;
 }>;
 
+/**
+ * Several related steps offered as one row that opens in place to its
+ * members, the way the blueprint lists "Switch · Parallel · Merge".
+ */
+export type StepChoiceBundle = Readonly<{
+  id: string;
+  /** The members' names joined: "Switch · Parallel · Merge". */
+  name: string;
+  description: string;
+  choices: readonly StepChoice[];
+}>;
+
+/** One row of the add-step list: a step, or a bundle of related steps. */
+export type StepListEntry =
+  | Readonly<{ kind: 'step'; choice: StepChoice }>
+  | Readonly<{ kind: 'bundle'; bundle: StepChoiceBundle }>;
+
 export type StepChoiceGroup = Readonly<{
   family: StepFamily;
   title: string;
   choices: readonly StepChoice[];
+  /**
+   * The rows to show: while browsing, Switch, Parallel and Merge share one
+   * row; a search lists every match on its own, so each is reached directly.
+   */
+  entries: readonly StepListEntry[];
 }>;
+
+/** Branching steps that share one row while browsing, in this order. */
+const FLOW_BUNDLE = Object.freeze({
+  id: 'flows',
+  keys: Object.freeze(['core.switch', 'core.parallel', 'core.merge']),
+  description: 'Split and join branches',
+});
 
 /**
  * One definition per step type, the way people pick steps: the catalog can
@@ -83,8 +112,47 @@ export function groupStepChoices(
     const grouped = choices.filter(
       (choice) => choice.definition.family === group.family,
     );
-    return grouped.length === 0 ? [] : [{ ...group, choices: grouped }];
+    if (grouped.length === 0) return [];
+    const entries =
+      needle === ''
+        ? bundledEntries(grouped)
+        : grouped.map((choice) => ({ kind: 'step' as const, choice }));
+    return [{ ...group, choices: grouped, entries }];
   });
+}
+
+/**
+ * A group's rows with the branching steps folded into one bundle row where
+ * the first of them would sit. Fewer than two of them stay as plain rows.
+ */
+function bundledEntries(
+  choices: readonly StepChoice[],
+): readonly StepListEntry[] {
+  const members = FLOW_BUNDLE.keys.flatMap((key) => {
+    const member = choices.find(
+      (choice) => choice.definition.definition.key === key,
+    );
+    return member === undefined ? [] : [member];
+  });
+  const bundled = new Set(members);
+  const entries: StepListEntry[] = [];
+  for (const choice of choices) {
+    if (members.length < 2 || !bundled.has(choice)) {
+      entries.push({ kind: 'step', choice });
+      continue;
+    }
+    if (entries.some((entry) => entry.kind === 'bundle')) continue;
+    entries.push({
+      kind: 'bundle',
+      bundle: {
+        id: FLOW_BUNDLE.id,
+        name: members.map((member) => member.step.name).join(' · '),
+        description: FLOW_BUNDLE.description,
+        choices: members,
+      },
+    });
+  }
+  return entries;
 }
 
 /** A trigger a workflow can start with: placeable now and publishable later. */
