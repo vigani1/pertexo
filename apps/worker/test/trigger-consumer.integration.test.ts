@@ -145,6 +145,7 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
             },
             leaseDurationSeconds: 5,
             leaseOwner: 'schedule:redis-integration',
+            onTimeWindowSeconds: 300,
             pollIntervalMillis: 100,
             redisUrl: requireRedisUrl(),
             releaseCohort: 'core',

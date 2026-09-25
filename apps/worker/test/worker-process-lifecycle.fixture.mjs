@@ -141,6 +141,7 @@ const config = {
     batchSize: 25,
     leaseDurationSeconds: 30,
     leaseOwner: 'process-fixture',
+    onTimeWindowSeconds: 300,
     pollIntervalMillis: 250,
   },
 };

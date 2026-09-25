@@ -255,9 +255,12 @@ export function createScheduleTriggerTestEnvironment(
          (workspace_id,workflow_id,destination_id,updated_by) values($1,$2,$3,$4)`,
       [workspaceId, workflowId, notificationDestinationId, actorId],
     );
-    for (const [id, nodeId, policy, age] of [
-      [triggerId, 'schedule-main', 'catch_up_once', '10 minutes'],
-      [skipTriggerId, 'schedule-skip', 'skip', '3 minutes'],
+    // The skip schedule's one due occurrence is seven minutes late, beyond the
+    // default five-minute on-time window (ADR 049), so a scan records it
+    // skipped. It stays due after the catch-up schedule, which is claimed first.
+    for (const [id, nodeId, policy, intervalMinutes, age] of [
+      [triggerId, 'schedule-main', 'catch_up_once', 1, '10 minutes'],
+      [skipTriggerId, 'schedule-skip', 'skip', 60, '67 minutes'],
     ] as const) {
       const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
       await ownerQuery(
@@ -272,7 +275,7 @@ export function createScheduleTriggerTestEnvironment(
           nodeId,
           JSON.stringify({
             kind: 'interval',
-            intervalMinutes: 1,
+            intervalMinutes,
             misfirePolicy: policy,
           }),
           fingerprint,
@@ -281,9 +284,9 @@ export function createScheduleTriggerTestEnvironment(
       await ownerQuery(
         `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
            interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
-         values($1,$2,'interval',1,$3,$4,clock_timestamp()-$5::interval,
-           clock_timestamp()-$5::interval+interval '1 minute')`,
-        [id, workspaceId, policy, fingerprint, age],
+         values($1,$2,'interval',$6,$3,$4,clock_timestamp()-$5::interval,
+           clock_timestamp()-$5::interval+make_interval(mins=>$6))`,
+        [id, workspaceId, policy, fingerprint, age, intervalMinutes],
       );
     }
     if (sourceRunDatabase === undefined) return '';

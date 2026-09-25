@@ -107,6 +107,7 @@ const workerConfig = {
     batchSize: 25,
     leaseDurationSeconds: 30,
     leaseOwner: 'schedule:worker-test',
+    onTimeWindowSeconds: 300,
     pollIntervalMillis: 250,
   },
   redisUrl: 'redis://localhost:6379/0',

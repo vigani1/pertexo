@@ -50,6 +50,7 @@ beforeAll(async () => {
       leaseOwner,
       limit: 1,
       leaseSeconds: 30,
+      onTimeWindowSeconds: 300,
       checkpointFactory,
     });
   await schedule.identity.createUser({

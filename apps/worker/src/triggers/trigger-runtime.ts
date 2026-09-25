@@ -57,6 +57,7 @@ export type TriggerRuntimeOptions = Readonly<{
   leaseDurationSeconds: number;
   leaseOwner: string;
   observer?: QueueConsumerObserver;
+  onTimeWindowSeconds: number;
   pollIntervalMillis: number;
   redisUrl: string;
   releaseCohort: PlatformReleaseCohort;
@@ -101,6 +102,9 @@ function validateOptions(options: TriggerRuntimeOptions): void {
     !Number.isSafeInteger(options.pollIntervalMillis) ||
     options.pollIntervalMillis < 10 ||
     options.pollIntervalMillis > 60_000 ||
+    !Number.isSafeInteger(options.onTimeWindowSeconds) ||
+    options.onTimeWindowSeconds < 60 ||
+    options.onTimeWindowSeconds > 3_600 ||
     (options.backgroundTaskShutdownTimeoutMillis !== undefined &&
       (!Number.isSafeInteger(options.backgroundTaskShutdownTimeoutMillis) ||
         options.backgroundTaskShutdownTimeoutMillis < 1 ||
@@ -237,6 +241,7 @@ export async function createTriggerRuntime(
       ...(dependencies.logger === undefined
         ? {}
         : { logger: dependencies.logger }),
+      onTimeWindowSeconds: options.onTimeWindowSeconds,
       pollIntervalMillis: options.pollIntervalMillis,
       shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
       telemetry,

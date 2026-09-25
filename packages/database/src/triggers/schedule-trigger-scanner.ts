@@ -25,6 +25,10 @@ import {
   type PublishedWorkflowV2Projection,
 } from '../execution/published-workflow-reader.js';
 import {
+  scheduleOccurrenceDisposition,
+  type ScheduleOccurrenceDisposition,
+} from './schedule-misfire.js';
+import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
 } from './schedule-recurrence.js';
@@ -71,6 +75,11 @@ export interface ScheduleTriggerScanner {
       leaseOwner: string;
       limit: number;
       leaseSeconds: number;
+      /**
+       * ADR 049: how late, from 60 through 3,600 seconds, a `skip` schedule's
+       * greatest due occurrence may be observed and still be admitted.
+       */
+      onTimeWindowSeconds: number;
       checkpointFactory: ScheduleCheckpointFactory;
       signal?: AbortSignal;
     }>,
@@ -174,7 +183,12 @@ async function closeScheduleScannerLeases(
 }
 
 type ScanDueInput = Parameters<ScheduleTriggerScanner['scanDue']>[0];
-type ClaimOutcome = 'accepted' | 'deferred' | 'skipped';
+type ClaimOutcome = ScheduleOccurrenceDisposition | 'deferred';
+type ClaimedOccurrence = Readonly<{
+  disposition: ScheduleOccurrenceDisposition;
+  nextAt: Date;
+  scheduledAt: Date;
+}>;
 type ScannerResources = Readonly<{
   acceptancePool: Pool;
   claimPool: Pool;
@@ -220,70 +234,87 @@ async function claimDueSchedules(
   });
 }
 
+/**
+ * The single admission path for an admitted occurrence under either misfire
+ * policy: lease eligibility, the published version, the compatibility lock,
+ * and idempotent acceptance keyed by trigger and scheduled instant.
+ */
+async function admitScheduledRun(
+  transaction: WorkspaceTransaction,
+  claim: ScheduleClaim,
+  scheduledAt: Date,
+  compatibilityReleases: CompatibilityReleaseExpectationSet,
+  checkpointFactory: ScheduleCheckpointFactory,
+): Promise<string> {
+  const eligible = await transaction.db.execute<{ eligible: boolean }>(sql`
+    select app.schedule_claim_is_eligible(
+      ${claim.trigger_id},${claim.lease_token}) eligible
+  `);
+  if (eligible.rows[0]?.eligible !== true)
+    throw new ScheduleClaimLostError('Schedule is no longer eligible');
+  const version = await transaction.db.execute(sql<Record<string, unknown>>`
+    select id,workspace_id,workflow_id,version_number,schema_version,checksum,
+           executable_schema_version,executable_json,compatibility_release_epoch
+      from app.workflow_versions
+     where workspace_id=${claim.workspace_id}
+       and id=${claim.workflow_version_id}
+  `);
+  const classified = classifyPublishedWorkflowVersionRow(version.rows[0]);
+  if (classified.kind !== 'v2_projection')
+    throw new ScheduleClaimLostError('Schedule is no longer eligible');
+  const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
+    transaction.db,
+    compatibilityReleases,
+  );
+  const initial = checkpointFactory(
+    classified.workflowVersion,
+    currentCompatibilityRelease,
+  );
+  const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
+  const result = await acceptWorkflowRun(transaction, {
+    engineVersion: initial.engineVersion,
+    initialCheckpoint: initial.checkpoint,
+    keyHash: createHash('sha256').update(identity).digest('hex'),
+    operation: 'workflow.run.accept',
+    requestHash: createHash('sha256')
+      .update(`${identity}:${claim.config_fingerprint}`)
+      .digest('hex'),
+    scope: `schedule:${claim.trigger_id}`,
+    triggerType: 'schedule',
+    workflowId: claim.workflow_id,
+    workflowVersionId: claim.workflow_version_id,
+    runInput: {
+      schemaVersion: 1,
+      triggerId: claim.trigger_id,
+      nodeId: claim.node_id,
+      scheduledAt: scheduledAt.toISOString(),
+    },
+  });
+  return result.runId;
+}
+
 async function persistClaimedOccurrence(
   transaction: WorkspaceTransaction,
   claim: ScheduleClaim,
-  observation: ReturnType<typeof resolveScheduleObservation>,
+  occurrence: ClaimedOccurrence,
   compatibilityReleases: CompatibilityReleaseExpectationSet,
   checkpointFactory: ScheduleCheckpointFactory,
 ): Promise<void> {
-  const scheduledAt = observation.greatestDueAt;
-  if (scheduledAt === null)
-    throw new Error('A claimed occurrence must have a scheduled instant');
-  let runId: string | null = null;
-  if (claim.misfire_policy === 'catch_up_once') {
-    const eligible = await transaction.db.execute<{ eligible: boolean }>(sql`
-      select app.schedule_claim_is_eligible(
-        ${claim.trigger_id},${claim.lease_token}) eligible
-    `);
-    if (eligible.rows[0]?.eligible !== true)
-      throw new ScheduleClaimLostError('Schedule is no longer eligible');
-    const version = await transaction.db.execute(sql<Record<string, unknown>>`
-      select id,workspace_id,workflow_id,version_number,schema_version,checksum,
-             executable_schema_version,executable_json,compatibility_release_epoch
-        from app.workflow_versions
-       where workspace_id=${claim.workspace_id}
-         and id=${claim.workflow_version_id}
-    `);
-    const classified = classifyPublishedWorkflowVersionRow(version.rows[0]);
-    if (classified.kind !== 'v2_projection')
-      throw new ScheduleClaimLostError('Schedule is no longer eligible');
-    const currentCompatibilityRelease =
-      await lockExpectedCompatibilityReleaseSet(
-        transaction.db,
-        compatibilityReleases,
-      );
-    const initial = checkpointFactory(
-      classified.workflowVersion,
-      currentCompatibilityRelease,
-    );
-    const identity = `${claim.trigger_id}:${scheduledAt.toISOString()}`;
-    const result = await acceptWorkflowRun(transaction, {
-      engineVersion: initial.engineVersion,
-      initialCheckpoint: initial.checkpoint,
-      keyHash: createHash('sha256').update(identity).digest('hex'),
-      operation: 'workflow.run.accept',
-      requestHash: createHash('sha256')
-        .update(`${identity}:${claim.config_fingerprint}`)
-        .digest('hex'),
-      scope: `schedule:${claim.trigger_id}`,
-      triggerType: 'schedule',
-      workflowId: claim.workflow_id,
-      workflowVersionId: claim.workflow_version_id,
-      runInput: {
-        schemaVersion: 1,
-        triggerId: claim.trigger_id,
-        nodeId: claim.node_id,
-        scheduledAt: scheduledAt.toISOString(),
-      },
-    });
-    runId = result.runId;
-  }
+  const runId =
+    occurrence.disposition === 'accepted'
+      ? await admitScheduledRun(
+          transaction,
+          claim,
+          occurrence.scheduledAt,
+          compatibilityReleases,
+          checkpointFactory,
+        )
+      : null;
   const completed = await transaction.db.execute<{ completed: boolean }>(sql`
     select app.complete_trigger_schedule_claim(
-      ${claim.trigger_id},${claim.lease_token},${generatePersistedId()},${scheduledAt},
-      ${claim.misfire_policy === 'skip' ? 'skipped' : 'accepted'},
-      ${runId},${observation.nextAt}) completed
+      ${claim.trigger_id},${claim.lease_token},${generatePersistedId()},
+      ${occurrence.scheduledAt},${occurrence.disposition},${runId},
+      ${occurrence.nextAt}) completed
   `);
   if (completed.rows[0]?.completed !== true)
     throw new ScheduleClaimLostError('Schedule claim expired');
@@ -293,6 +324,7 @@ async function processScheduleClaim(
   resources: ScannerResources,
   remainingClaims: readonly ScheduleClaim[],
   input: ScanDueInput,
+  onTimeWindowSeconds: number,
 ): Promise<Readonly<{ kind: ClaimOutcome; lagSeconds: number }>> {
   const claim = remainingClaims[0];
   if (claim === undefined) throw new Error('Schedule claim is unavailable');
@@ -336,6 +368,16 @@ async function processScheduleClaim(
     }
     return Object.freeze({ kind: 'deferred', lagSeconds });
   }
+  const occurrence: ClaimedOccurrence = Object.freeze({
+    disposition: scheduleOccurrenceDisposition({
+      misfirePolicy: claim.misfire_policy,
+      scheduledAt: observation.greatestDueAt,
+      observedAt: claim.observed_at,
+      onTimeWindowSeconds,
+    }),
+    nextAt: observation.nextAt,
+    scheduledAt: observation.greatestDueAt,
+  });
   try {
     await withWorkspaceTransaction(
       resources.acceptancePool,
@@ -344,16 +386,13 @@ async function processScheduleClaim(
         persistClaimedOccurrence(
           transaction,
           claim,
-          observation,
+          occurrence,
           resources.compatibilityReleases,
           input.checkpointFactory,
         ),
       input.signal === undefined ? {} : { signal: input.signal },
     );
-    return Object.freeze({
-      kind: claim.misfire_policy === 'skip' ? 'skipped' : 'accepted',
-      lagSeconds,
-    });
+    return Object.freeze({ kind: occurrence.disposition, lagSeconds });
   } catch (error: unknown) {
     const aborted = cancellationFailure(input.signal);
     if (aborted !== undefined) {
@@ -391,6 +430,12 @@ async function scanDueSchedules(
   resources: ScannerResources,
   input: ScanDueInput,
 ): Promise<ScanDueSchedulesResult> {
+  const onTimeWindowSeconds = z
+    .number()
+    .int()
+    .min(60)
+    .max(3_600)
+    .parse(input.onTimeWindowSeconds);
   const batch = await claimDueSchedules(resources.claimPool, input);
   const outcomes = { accepted: 0, deferred: 0, skipped: 0 };
   let maxLagSeconds = 0;
@@ -399,6 +444,7 @@ async function scanDueSchedules(
       resources,
       batch.claims.slice(index),
       input,
+      onTimeWindowSeconds,
     );
     outcomes[outcome.kind] += 1;
     maxLagSeconds = Math.max(maxLagSeconds, outcome.lagSeconds);

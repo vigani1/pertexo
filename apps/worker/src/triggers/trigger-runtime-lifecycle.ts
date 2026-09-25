@@ -26,6 +26,7 @@ export type TriggerScannerLifecycleOptions = Readonly<{
   leaseDurationSeconds: number;
   leaseOwner: string;
   logger?: StructuredLogger;
+  onTimeWindowSeconds: number;
   pollIntervalMillis: number;
   shutdownTimeoutMillis: number;
   telemetry: TriggerRuntimeTelemetry;
@@ -97,6 +98,7 @@ async function runTriggerScanner(
         leaseOwner: options.leaseOwner,
         limit: options.batchSize,
         leaseSeconds: options.leaseDurationSeconds,
+        onTimeWindowSeconds: options.onTimeWindowSeconds,
         checkpointFactory: options.checkpointFactory,
         signal,
       });
