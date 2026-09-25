@@ -52,6 +52,27 @@ export function describeReadError(error: unknown, resource: string): string {
   return `${resource} couldn’t be loaded. Try again.`;
 }
 
+/**
+ * Why a read failed, for a state whose title already says what didn't load
+ * ("Members couldn’t be loaded"), so the sentence under it never repeats it.
+ */
+export function readFailureReason(error: unknown): string {
+  if (isApiError(error)) {
+    if (error.status === 403) return 'Your role no longer has access to this.';
+    if (error.kind === 'network')
+      return 'Pertexo couldn’t be reached. Check your connection and try again.';
+    if (error.kind === 'timeout')
+      return 'It took too long to answer. Try again.';
+    const seconds = retryAfterSeconds(error);
+    if (error.status === 429 && seconds !== undefined)
+      return `Too many requests. Try again in ${String(seconds)} s.`;
+    const reference = supportReference(error);
+    if ((error.status ?? 0) >= 500 && reference !== undefined)
+      return `Something went wrong on our side. Try again; if it keeps happening, quote reference ${reference.slice(0, 8)}.`;
+  }
+  return 'Something went wrong on our side. Try again.';
+}
+
 /** A sentence for a failed command whose domain codes the caller handled. */
 export function describeCommandError(error: unknown, action: string): string {
   if (isUncertainOutcome(error))

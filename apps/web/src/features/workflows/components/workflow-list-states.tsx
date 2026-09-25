@@ -8,7 +8,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import type { WorkflowView } from '../model/workflow-list-view';
 
 export function WorkflowListError({
@@ -22,9 +22,7 @@ export function WorkflowListError({
         <StatusGlyph tone="failure" className="text-destructive" />
       </EmptyMedia>
       <EmptyTitle>Workflows didn’t load</EmptyTitle>
-      <EmptyDescription>
-        {describeReadError(error, 'Workflows')}
-      </EmptyDescription>
+      <EmptyDescription>{readFailureReason(error)}</EmptyDescription>
       <EmptyActions>
         <Button type="button" disabled={retrying} onClick={onRetry}>
           <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />

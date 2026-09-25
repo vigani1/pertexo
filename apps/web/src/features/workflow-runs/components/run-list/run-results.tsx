@@ -5,7 +5,7 @@ import { LoadMore } from '@/components/patterns/load-more';
 import { StaleLine } from '@/components/patterns/stale-line';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/api-error';
-import { describeReadError } from '@/lib/api/api-error-copy';
+import { readFailureReason } from '@/lib/api/api-error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { filterRunsByTrigger } from '../../model/run-list';
 import {
@@ -59,7 +59,7 @@ export function RunResults({
   if (runs.length === 0 && query.isError)
     return (
       <RunsLoadError
-        description={describeReadError(query.error, 'Runs')}
+        description={readFailureReason(query.error)}
         retrying={query.isRefetching}
         onRetry={() => void query.refetch()}
       />
