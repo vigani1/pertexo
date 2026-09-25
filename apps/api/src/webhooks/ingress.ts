@@ -25,6 +25,11 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import {
+  REJECTED_ATTEMPT,
+  recordRejectedAttempt,
+  type RejectedAttempt,
+} from './delivery-log.js';
+import {
   createWebhookIngressTelemetry,
   type WebhookIngressTelemetry,
 } from './telemetry.js';
@@ -197,12 +202,16 @@ async function acceptWebhook(
     }
     throw error;
   }
+  // ADR 045: from here on every rejection is attributed to this endpoint.
+  const reject = (attempt: RejectedAttempt) =>
+    recordRejectedAttempt(dependencies.database, verification, body, attempt);
   const seconds = Number(timestamp);
   if (
     !Number.isSafeInteger(seconds) ||
     Math.abs(verification.databaseTime.getTime() / 1000 - seconds) >
       WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS
   ) {
+    await reject(REJECTED_ATTEMPT.staleTimestamp);
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
@@ -214,6 +223,7 @@ async function acceptWebhook(
     encryptionSignal,
   );
   if (verifiedSecretVersionId === undefined) {
+    await reject(REJECTED_ATTEMPT.signatureMismatch);
     await authenticationFailed(reply, requestId, telemetry);
     return;
   }
@@ -224,6 +234,7 @@ async function acceptWebhook(
       new TextDecoder('utf-8', { fatal: true }).decode(body),
     ) as unknown;
   } catch {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
     record(() => {
       telemetry.delivery('invalid_request');
     });
@@ -232,6 +243,7 @@ async function acceptWebhook(
   }
   const idempotency = optionalIdempotencyKey(request);
   if (idempotency === null) {
+    await reject(REJECTED_ATTEMPT.invalidRequest);
     record(() => {
       telemetry.delivery('invalid_request');
     });
@@ -248,6 +260,7 @@ async function acceptWebhook(
       verification,
       verifiedSecretVersionId,
       requestFingerprint: fingerprint,
+      bodyBytes: body.byteLength,
       ...(idempotency === undefined
         ? {}
         : { idempotencyKeyHash: sha256(idempotency) }),
@@ -266,44 +279,59 @@ async function acceptWebhook(
     });
     await reply.code(202).send(result);
   } catch (error) {
-    if (error instanceof WebhookDeliveryReplayMismatchError) {
-      record(() => {
-        telemetry.delivery('conflict');
-      });
-      record(() => {
-        telemetry.deduplication('conflict');
-      });
-      await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
-      return;
-    }
-    if (error instanceof WorkspaceRunQuotaExceededError) {
-      record(() => {
-        telemetry.delivery('rate_limited');
-      });
-      reply.header('retry-after', String(error.retryAfterSeconds));
-      await problem(reply, 429, 'webhook.rate_limited', requestId);
-      return;
-    }
-    if (error instanceof RegionalWriteAdmissionPausedError) {
-      record(() => {
-        telemetry.delivery('unavailable');
-      });
-      record(() => {
-        telemetry.health('degraded');
-      });
-      reply.header('retry-after', String(error.retryAfterSeconds));
-      await problem(reply, 503, 'webhook.unavailable', requestId);
-      return;
-    }
-    if (
-      error instanceof WebhookDeliveryIneligibleError ||
-      error instanceof WorkspaceRunAdmissionDeniedError
-    ) {
-      await authenticationFailed(reply, requestId, telemetry);
-      return;
-    }
-    throw error;
+    await rejectAcceptance(error, reply, requestId, telemetry, reject);
   }
+}
+
+/** Maps a refused acceptance to its response and delivery-log fact. */
+async function rejectAcceptance(
+  error: unknown,
+  reply: FastifyReply,
+  requestId: string,
+  telemetry: WebhookIngressTelemetry,
+  reject: (attempt: RejectedAttempt) => Promise<void>,
+): Promise<void> {
+  if (error instanceof WebhookDeliveryReplayMismatchError) {
+    await reject(REJECTED_ATTEMPT.conflict);
+    record(() => {
+      telemetry.delivery('conflict');
+    });
+    record(() => {
+      telemetry.deduplication('conflict');
+    });
+    await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
+    return;
+  }
+  if (error instanceof WorkspaceRunQuotaExceededError) {
+    await reject(REJECTED_ATTEMPT.throttled);
+    record(() => {
+      telemetry.delivery('rate_limited');
+    });
+    reply.header('retry-after', String(error.retryAfterSeconds));
+    await problem(reply, 429, 'webhook.rate_limited', requestId);
+    return;
+  }
+  if (error instanceof RegionalWriteAdmissionPausedError) {
+    // Tenant writes are paused, so this refusal is telemetry only.
+    record(() => {
+      telemetry.delivery('unavailable');
+    });
+    record(() => {
+      telemetry.health('degraded');
+    });
+    reply.header('retry-after', String(error.retryAfterSeconds));
+    await problem(reply, 503, 'webhook.unavailable', requestId);
+    return;
+  }
+  if (
+    error instanceof WebhookDeliveryIneligibleError ||
+    error instanceof WorkspaceRunAdmissionDeniedError
+  ) {
+    await reject(REJECTED_ATTEMPT.ineligible);
+    await authenticationFailed(reply, requestId, telemetry);
+    return;
+  }
+  throw error;
 }
 
 function diagnosticTraceparent(

@@ -92,6 +92,7 @@ const routes: readonly (readonly [
   [NodeTestingController, 'status', 'authenticated_read'],
   [NodeTestingController, 'test', 'preview_test'],
   [WebhookManagementController, 'list', 'authenticated_read'],
+  [WebhookManagementController, 'deliveries', 'authenticated_read'],
   [WebhookManagementController, 'provision', 'trigger_mutation'],
   [WebhookManagementController, 'rotateEndpoint', 'trigger_mutation'],
   [WebhookManagementController, 'rotateSecret', 'trigger_mutation'],

@@ -614,7 +614,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0113_workflow_run_statistics_index.sql',
+      migrationHead: '0115_webhook_delivery_log.sql',
     });
     await readinessPool.end();
   });

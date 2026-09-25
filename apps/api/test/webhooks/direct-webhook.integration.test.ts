@@ -340,6 +340,9 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
           webhookDatabase.consumeIngressLimit(endpointKeyHash),
         acceptVerifiedDelivery: (input) =>
           webhookDatabase.acceptVerifiedDelivery(input),
+        listDeliveries: (input) => webhookDatabase.listDeliveries(input),
+        recordRejectedDelivery: (input) =>
+          webhookDatabase.recordRejectedDelivery(input),
         close: () => Promise.resolve(),
       };
       const config: ApiConfig = {
@@ -511,7 +514,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   }
 
   it('proves atomic acceptance, exact replay, and replay conflict', async () => {
-    const { endpointKey, originalSecret } = await seedWebhook('atomic');
+    const { actorId, endpointKey, originalSecret, trigger, workflowId } =
+      await seedWebhook('atomic');
 
     const rawBody = Buffer.from(
       '{  "raw-byte-marker" : "payload-value", "nested" : {"ok":true} }\n',
@@ -562,9 +566,36 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       key,
     );
     expectProblem(changed, 409, 'webhook.idempotency_conflict');
+
+    // ADR 045: each attributed request left one metadata-only delivery fact.
+    const log = await service.listDeliveries({
+      workspaceId,
+      workflowId,
+      actorId,
+      triggerId: trigger.id,
+    });
+    expect(
+      log.items.map(({ outcome, httpStatus, replayCheck, runId }) => [
+        outcome,
+        httpStatus,
+        replayCheck,
+        runId,
+      ]),
+    ).toEqual([
+      ['conflict', 409, 'conflict', null],
+      ['replayed', 202, 'duplicate', runId],
+      ['replayed', 202, 'duplicate', runId],
+      ['replayed', 202, 'duplicate', runId],
+      ['accepted', 202, 'new', runId],
+    ]);
+    expect(log.items.at(-1)).toMatchObject({
+      signatureCheck: 'verified',
+      byteLength: rawBody.byteLength,
+    });
+    expect(log.nextCursor).toBeNull();
   }, 60_000);
 
-  it('rejects an authenticated malformed body without durable effects', async () => {
+  it('rejects an authenticated malformed body with only a delivery-log fact', async () => {
     const { endpointKey, originalSecret } = await seedWebhook('malformed');
     const beforeMalformed = await durableCounts();
     const malformed = await sendWebhook(
@@ -574,7 +605,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       'malformed-json',
     );
     expectProblem(malformed, 400, 'webhook.invalid_json');
-    expect(await durableCounts()).toEqual(beforeMalformed);
+    expect(await durableCounts()).toEqual(withOneMoreDelivery(beforeMalformed));
   }, 60_000);
 
   it('honors the previous-secret overlap and exact expiry boundary', async () => {
@@ -619,7 +650,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(currentBoundary.status).toBe(202);
   }, 60_000);
 
-  it('rolls back delivery state when workspace quota rejects admission', async () => {
+  it('rolls back admission but records the throttled delivery when quota rejects it', async () => {
     const { endpointKey, originalSecret } = await seedWebhook('quota');
     const accepted = await sendWebhook(
       endpointKey,
@@ -654,7 +685,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     );
     expectProblem(quota, 429, 'webhook.rate_limited');
     expect(quota.headers['retry-after']).toBe('5');
-    expect(await durableCounts()).toEqual(beforeQuota);
+    expect(await durableCounts()).toEqual(withOneMoreDelivery(beforeQuota));
   }, 60_000);
 
   it('keeps authentication material out of durable surfaces and queues references only', async () => {
@@ -935,6 +966,13 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       [workspaceId],
     );
     return result.rows[0];
+  }
+
+  function withOneMoreDelivery(
+    counts: Awaited<ReturnType<typeof durableCounts>>,
+  ) {
+    if (counts === undefined) throw new Error('Durable counts are missing');
+    return { ...counts, deliveries: counts.deliveries + 1 };
   }
 
   async function sendWebhook(

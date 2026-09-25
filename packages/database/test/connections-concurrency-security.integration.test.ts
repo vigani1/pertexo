@@ -407,7 +407,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0113_workflow_run_statistics_index.sql',
+        migrationHead: '0115_webhook_delivery_log.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -415,7 +415,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0113_workflow_run_statistics_index.sql',
+        migrationHead: '0115_webhook_delivery_log.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

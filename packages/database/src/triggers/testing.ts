@@ -18,6 +18,10 @@ export {
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
 } from './webhook-triggers.js';
+export type {
+  WebhookDeliveryPage,
+  WebhookDeliveryRecord,
+} from './webhook-trigger-deliveries.js';
 export { workflowTriggerProjection } from './workflow-trigger-projection.js';
 export {
   createScheduleTriggerScanner,

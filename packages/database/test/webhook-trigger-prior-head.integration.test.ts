@@ -340,6 +340,31 @@ describe('trigger hardening prior-head migration', () => {
       );
       await inspection.query('commit');
       expect(after.rows).toEqual(beforeRows);
+      await inspection.query('begin');
+      await inspection.query('set local role pertexo_owner');
+      await inspection.query("select set_config('app.workspace_id',$1,true)", [
+        ids.workspace,
+      ]);
+      const backfilled = await inspection.query<Record<string, unknown>>(
+        `select outcome,http_status,signature_check,replay_check,body_bytes,
+                workflow_run_id,dedupe_kind
+           from app.webhook_trigger_deliveries where id=$1`,
+        [ids.delivery],
+      );
+      await inspection.query('commit');
+      // ADR 045: a retained admitted delivery reads as accepted with an
+      // unknown size once the delivery log columns exist.
+      expect(backfilled.rows).toEqual([
+        {
+          outcome: 'accepted',
+          http_status: 202,
+          signature_check: 'verified',
+          replay_check: 'new',
+          body_bytes: null,
+          workflow_run_id: ids.run,
+          dedupe_kind: 'keyed',
+        },
+      ]);
 
       const api = new Pool({
         connectionString: roleUrl(apiBaseUrl),

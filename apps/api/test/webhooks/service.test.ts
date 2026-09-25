@@ -363,6 +363,8 @@ function setup(original: boolean) {
       }),
     consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
     acceptVerifiedDelivery: vi.fn(),
+    listDeliveries: vi.fn<WebhookTriggerDatabase['listDeliveries']>(),
+    recordRejectedDelivery: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined),
   } satisfies WebhookTriggerDatabase;
   const sealedInputs: Uint8Array[] = [];

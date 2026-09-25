@@ -135,6 +135,12 @@ const webhookDatabase = {
   acceptVerifiedDelivery: vi
     .fn<WebhookTriggerDatabase['acceptVerifiedDelivery']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
+  listDeliveries: vi
+    .fn<WebhookTriggerDatabase['listDeliveries']>()
+    .mockRejectedValue(new Error('webhook business layer must not be called')),
+  recordRejectedDelivery: vi
+    .fn<WebhookTriggerDatabase['recordRejectedDelivery']>()
+    .mockResolvedValue(undefined),
   close: vi.fn<WebhookTriggerDatabase['close']>().mockResolvedValue(undefined),
 } satisfies WebhookTriggerDatabase;
 const webhookKeys: WebhookEnvelopeKeyProvider = {

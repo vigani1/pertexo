@@ -723,6 +723,159 @@ describe('generic webhook ingress', () => {
     expect(database.acceptVerifiedDelivery).toHaveBeenCalledTimes(2);
   });
 
+  describe('delivery log (ADR 045)', () => {
+    const endpoint = {
+      workspaceId: verification.workspaceId,
+      triggerId: verification.triggerId,
+      endpointId: verification.endpointId,
+    };
+    const stale = String(Number(timestamp) - 301);
+    const staleSignature = `v1=${createHmac('sha256', currentSecret)
+      .update(stale)
+      .update('.')
+      .update('{}')
+      .digest('hex')}`;
+    const mismatch = `v1=${'0'.repeat(64)}`;
+    const verified = { signatureCheck: 'verified' } as const;
+    type Scenario = Readonly<{
+      name: string;
+      headers?: Readonly<Record<string, string>>;
+      body?: string;
+      acceptanceError?: Error;
+      status: number;
+      fact: Readonly<Record<string, string>>;
+    }>;
+
+    it.each<Scenario>([
+      {
+        name: 'a stale timestamp',
+        headers: {
+          'x-pertexo-timestamp': stale,
+          'x-pertexo-signature': staleSignature,
+        },
+        status: 401,
+        fact: {
+          outcome: 'authentication_failed',
+          signatureCheck: 'not_checked',
+          replayCheck: 'stale_timestamp',
+        },
+      },
+      {
+        name: 'a signature mismatch',
+        headers: { 'x-pertexo-signature': mismatch },
+        status: 401,
+        fact: {
+          outcome: 'authentication_failed',
+          signatureCheck: 'mismatch',
+          replayCheck: 'not_checked',
+        },
+      },
+      {
+        name: 'malformed JSON',
+        body: '{',
+        status: 400,
+        fact: {
+          ...verified,
+          outcome: 'invalid_request',
+          replayCheck: 'not_checked',
+        },
+      },
+      {
+        name: 'a malformed idempotency key',
+        headers: { 'idempotency-key': 'one,two' },
+        status: 400,
+        fact: {
+          ...verified,
+          outcome: 'invalid_request',
+          replayCheck: 'not_checked',
+        },
+      },
+      {
+        name: 'an idempotency conflict',
+        acceptanceError: new WebhookDeliveryReplayMismatchError(),
+        status: 409,
+        fact: { ...verified, outcome: 'conflict', replayCheck: 'conflict' },
+      },
+      {
+        name: 'run admission throttling',
+        acceptanceError: new WorkspaceRunQuotaExceededError(),
+        status: 429,
+        fact: { ...verified, outcome: 'rate_limited', replayCheck: 'new' },
+      },
+      {
+        name: 'an endpoint that stopped accepting',
+        acceptanceError: new WebhookDeliveryIneligibleError(),
+        status: 401,
+        fact: {
+          ...verified,
+          outcome: 'authentication_failed',
+          replayCheck: 'new',
+        },
+      },
+    ])('records $name as metadata with the same response', async (scenario) => {
+      const body = scenario.body ?? '{}';
+      const fixture = setup(undefined, scenario.acceptanceError);
+      const base = request(body, currentSecret);
+      const response = await fixture.application.inject({
+        ...base,
+        headers: { ...base.headers, ...scenario.headers },
+      });
+
+      expect(response.statusCode).toBe(scenario.status);
+      expect(
+        fixture.database.recordRejectedDelivery,
+      ).toHaveBeenCalledExactlyOnceWith({
+        endpoint,
+        ...scenario.fact,
+        bodyBytes: Buffer.byteLength(body),
+      });
+    });
+
+    it('records nothing it cannot attribute or while writes are paused', async () => {
+      const unknown = setup();
+      unknown.database.resolveVerification.mockResolvedValueOnce(null);
+      const limited = setup();
+      limited.database.consumeIngressLimit.mockRejectedValueOnce(
+        new WebhookIngressRateLimitExceededError(3),
+      );
+      const paused = setup(undefined, new RegionalWriteAdmissionPausedError());
+      const accepted = setup();
+      const fixtures = [unknown, limited, paused, accepted];
+      const responses = await Promise.all(
+        fixtures.map(({ application }) =>
+          application.inject(request('{"size":1}', currentSecret)),
+        ),
+      );
+
+      expect(responses.map(({ statusCode }) => statusCode)).toEqual([
+        401, 429, 503, 202,
+      ]);
+      for (const fixture of fixtures)
+        expect(fixture.database.recordRejectedDelivery).not.toHaveBeenCalled();
+      expect(accepted.database.acceptVerifiedDelivery).toHaveBeenCalledWith(
+        expect.objectContaining({ bodyBytes: 10 }),
+      );
+    });
+
+    it('keeps the response when the delivery log cannot be written', async () => {
+      const fixture = setup();
+      fixture.database.recordRejectedDelivery.mockRejectedValueOnce(
+        new Error('delivery log unavailable'),
+      );
+      const base = request('{}', currentSecret);
+      const response = await fixture.application.inject({
+        ...base,
+        headers: { ...base.headers, 'x-pertexo-signature': mismatch },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json<{ code: string }>().code).toBe(
+        'webhook.authentication_failed',
+      );
+      expect(response.body).not.toContain('delivery log unavailable');
+    });
+  });
+
   function setup(
     reference = verification,
     acceptanceError?: Error,
@@ -739,6 +892,7 @@ describe('generic webhook ingress', () => {
       acceptVerifiedDelivery: acceptanceError
         ? vi.fn().mockRejectedValue(acceptanceError)
         : vi.fn().mockResolvedValue(acceptance),
+      recordRejectedDelivery: vi.fn().mockResolvedValue(undefined),
     };
     const openedSecrets: Uint8Array[] = [];
     const openSecret = vi
