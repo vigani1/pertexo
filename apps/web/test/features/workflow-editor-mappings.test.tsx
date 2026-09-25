@@ -200,6 +200,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
       'true',
     );
 
+    await event.click(screen.getByRole('button', { name: 'Connect a step' }));
     await choose(event, 'Connect from step', 'Manual input');
     await choose(event, 'From output', 'out');
     await choose(event, 'Into input', 'in');

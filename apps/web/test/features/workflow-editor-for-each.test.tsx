@@ -225,6 +225,7 @@ describe('working inside a For each body', { timeout: 30_000 }, () => {
       });
     });
 
+    await event.click(screen.getByRole('button', { name: 'Connect a step' }));
     await event.click(screen.getByLabelText('Connect from step'));
     const options = await screen.findAllByRole('option');
     expect(options.map((option) => option.textContent)).toEqual([
