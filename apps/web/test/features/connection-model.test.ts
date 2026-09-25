@@ -7,6 +7,7 @@ import {
 import { parseConnectionsSearch } from '@/features/connections/model/connections-search';
 import {
   credentialErrors,
+  describeSavedCredential,
   toCreateRequest,
   type CredentialDraft,
 } from '@/features/connections/model/credential-draft';
@@ -110,6 +111,50 @@ describe('connection health in words', () => {
       title: 'The test failed: timed out.',
       detail: 'No answer arrived within 15 seconds.',
     });
+    // A code the app doesn't know yet still reads as words, never the code.
+    expect(
+      describeTestOutcome('http', {
+        ok: false,
+        httpStatus: null,
+        errorCode: 'http.request_failed',
+      }).title,
+    ).toBe('The test failed: request failed.');
+    expect(
+      describeConnectionHealth(
+        {
+          providerKey: 'http',
+          status: 'active',
+          health: health({ lastErrorCode: 'connection.test.tls_42' }),
+          updatedAt: '2026-09-24T11:00:00.000Z',
+        },
+        now,
+      ).text,
+    ).toBe('last test failed · the service reported a problem');
+  });
+
+  it('summarises a saved credential without showing it whole', () => {
+    expect(
+      describeSavedCredential({
+        provider: 'slack',
+        botToken: 'xoxb-1-abcd4f2a',
+      }),
+    ).toEqual({ term: 'Token', value: 'xoxb-••••••••4f2a' });
+    expect(
+      describeSavedCredential({
+        provider: 'email',
+        apiKey: 're_live_9Qx1',
+        fromEmail: 'billing@northwind.dev',
+      }).value,
+    ).toBe('re_••••••••9Qx1 · sends from billing@northwind.dev');
+    expect(
+      describeSavedCredential({
+        provider: 'http',
+        headers: [
+          { id: 'a', name: 'Authorization', value: 'Bearer secret' },
+          { id: 'b', name: '', value: '' },
+        ],
+      }),
+    ).toEqual({ term: 'Header', value: 'Authorization' });
   });
 });
 
