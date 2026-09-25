@@ -61,7 +61,7 @@ an individual request can use.
 
 | Feature area | What it lets a client do | Main code owner |
 | --- | --- | --- |
-| Login and workspace access | Sign in/out, read your profile and change your display name, create workspaces, list members, change their roles, remove them, and invite people. Access is checked against membership and role. | [identity-workspace](../apps/api/src/identity-workspace/), [identity](../apps/api/src/identity/), [workspaces](../apps/api/src/workspaces/) |
+| Login and workspace access | Sign in/out, read your profile and change your display name, create workspaces, list members, change their roles, suspend, reactivate and remove them, hand the workspace to another member, leave a workspace, and invite people. Access is checked against membership and role. | [identity-workspace](../apps/api/src/identity-workspace/), [identity](../apps/api/src/identity/), [workspaces](../apps/api/src/workspaces/) |
 | Workspace lifecycle | Request workspace deletion, restore a pending deletion where allowed, and poll the lifecycle operation. Dedicated background processes apply the operation. | [identity-workspace](../apps/api/src/identity-workspace/), [lifecycle command](../apps/lifecycle-command/src/) |
 | Connections | Create, rotate, revoke, and test saved HTTP, Slack, or email credentials, and look up Slack channel names with a saved bot token. | [connections](../apps/api/src/connections/) |
 | Node discovery | Read the catalog for the API's configured release, including node input/configuration schemas and availability flags. | [catalog](../apps/api/src/catalog/), [node-catalog](../packages/node-catalog/src/) |
@@ -75,8 +75,8 @@ an individual request can use.
 | Run failure notifications | Manage versioned destinations; read, set, and clear each workflow's notification policy through the API; record and deliver notification work separately from the run result. | [destination controller](../apps/api/src/connections/failure-notification-destinations.controller.ts), [worker handler](../apps/worker/src/execution/failure-notification-handler.ts) |
 
 Current API limits: there is no free-text run search endpoint, general connection
-list/get endpoint, or workspace list/get endpoint. Leaving a workspace,
-membership suspension and ownership transfer have no endpoint. Stored domain capabilities do not automatically imply public routes.
+list/get endpoint, or workspace list/get endpoint. Stored domain capabilities
+do not automatically imply public routes.
 Feature endpoints also require their configured runtime dependencies.
 
 ### Workflow building blocks
