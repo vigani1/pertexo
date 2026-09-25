@@ -61,7 +61,7 @@ function hubTabs(workspace: AccessibleWorkspace): readonly TabLink[] {
 }
 
 const TITLE_CLASS =
-  'truncate font-heading text-lg leading-tight font-semibold tracking-[-0.02em]';
+  'truncate font-display text-lg leading-tight tracking-[-0.01em] [--display-optical-size:19] [--display-width:84%]';
 
 /**
  * The floating command bar shared by every tab of a workflow: identity on

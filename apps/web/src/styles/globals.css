@@ -160,6 +160,18 @@
   }
 }
 
+/* Display type: Bricolage Grotesque at a condensed width, Weft's one real
+   type change. Page titles, run sentences, the sign-in headline, day headers
+   and lens titles. The font's width axis follows `font-stretch`; smaller
+   titles relax it through `--display-width` (lens titles run at 84%) and
+   `--display-optical-size` (the opsz axis, 72 for page titles). */
+@utility font-display {
+  font-family: var(--font-heading);
+  font-weight: 620;
+  font-stretch: var(--display-width, 76%);
+  font-variation-settings: 'opsz' var(--display-optical-size, 72);
+}
+
 @utility recessed-control {
   background: var(--control-background);
   border-color: var(--control-border);

@@ -200,7 +200,7 @@ export function RunHeader({
             onReconnect={onReconnect}
           />
         </div>
-        <PageHeaderTitle className="mt-2 text-3xl break-words sm:text-[2.5rem]">
+        <PageHeaderTitle className="mt-2 text-3xl break-words [--display-width:78%] sm:text-[2.5rem]">
           {sentence}
         </PageHeaderTitle>
         <RunFacts

@@ -33,7 +33,7 @@ export function WorkspaceFirstRun({
       <CoreOrb state="idle" className="-ml-4 size-28" />
       <h1
         id="first-workspace-title"
-        className="mt-2 text-4xl leading-[0.95] font-semibold tracking-[-0.035em] sm:text-5xl"
+        className="mt-2 font-display text-4xl leading-[0.95] tracking-[-0.035em] sm:text-5xl"
       >
         Create your workspace
       </h1>

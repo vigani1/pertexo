@@ -39,7 +39,7 @@ export function RunList({
         <section key={group.key} aria-labelledby={`runs-day-${group.key}`}>
           <h2
             id={`runs-day-${group.key}`}
-            className="mb-2 px-3 text-3xl leading-none font-semibold tracking-[-0.04em] text-foreground/90 [font-variation-settings:'wdth'_78]"
+            className="mb-2 px-3 font-display text-3xl leading-none tracking-[-0.03em] text-foreground/90 [--display-optical-size:30]"
           >
             {group.heading}
           </h2>
