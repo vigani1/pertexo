@@ -10,15 +10,20 @@ export function PopoverContent({
   align = 'start',
   sideOffset = 8,
   side = 'bottom',
+  anchor,
   ...props
 }: PopoverPrimitive.Popup.Props &
-  Pick<PopoverPrimitive.Positioner.Props, 'align' | 'side' | 'sideOffset'>) {
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    'align' | 'side' | 'sideOffset' | 'anchor'
+  >) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
         align={align}
         side={side}
         sideOffset={sideOffset}
+        anchor={anchor}
         className="z-50"
       >
         <PopoverPrimitive.Popup

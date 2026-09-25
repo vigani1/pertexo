@@ -4,6 +4,7 @@ import {
   useReactFlow,
   type Connection,
   type EdgeChange,
+  type FinalConnectionState,
   type NodeChange,
 } from '@xyflow/react';
 import {
@@ -24,11 +25,13 @@ import {
 import {
   connectWorkflowNodes,
   moveWorkflowNodes,
+  type PortRef,
 } from '../../model/graph-commands';
 import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../model/editor-store-context';
+import { gestureEndPoint, portDropSource } from '../../model/quick-add';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas-actions-context';
 import { CanvasZoomLens } from './canvas-zoom-lens';
@@ -49,7 +52,8 @@ export type CanvasOverlays = Pick<
 /**
  * The workflow drawn on the weave. Gestures become editor commands: drags
  * move steps as one change when they end, selection goes through the
- * editor's guard, and ⌫ is handled by the editor rather than React Flow.
+ * editor's guard, ⌫ is handled by the editor rather than React Flow, and a
+ * connection dropped on empty canvas asks which step to add there.
  */
 export function WorkflowCanvas({
   definitions,
@@ -59,6 +63,7 @@ export function WorkflowCanvas({
   onSelectNodes,
   onRemoveEdge,
   onDropStep,
+  onPortDrop,
   children,
 }: Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -68,6 +73,8 @@ export function WorkflowCanvas({
   onSelectNodes: (nodeIds: readonly string[]) => void;
   onRemoveEdge: (edgeId: string) => void;
   onDropStep: (identity: string, position: Position) => void;
+  /** A connection from `from` ended over empty canvas at `point`. */
+  onPortDrop: (from: PortRef, point: Position) => void;
   children?: ReactNode;
 }>) {
   const store = useEditorStoreApi();
@@ -171,6 +178,16 @@ export function WorkflowCanvas({
     [editable, store],
   );
 
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      const point = gestureEndPoint(event);
+      if (!editable || point === null) return;
+      const from = portDropSource(state, isOverStep(point));
+      if (from !== null) onPortDrop(from, point);
+    },
+    [editable, onPortDrop],
+  );
+
   const actions = useMemo(
     () => ({ editable, removeEdge: onRemoveEdge }),
     [editable, onRemoveEdge],
@@ -215,6 +232,7 @@ export function WorkflowCanvas({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectEnd={onConnectEnd}
           onPaneClick={(event) => {
             event.currentTarget
               .closest<HTMLElement>('[data-workflow-canvas]')
@@ -238,4 +256,13 @@ export function WorkflowCanvas({
       {children}
     </div>
   );
+}
+
+/** Whether a point in the viewport is over a step card rather than canvas. */
+function isOverStep(point: Position): boolean {
+  if (typeof document.elementFromPoint !== 'function') return false;
+  const step = document
+    .elementFromPoint(point.x, point.y)
+    ?.closest('.react-flow__node');
+  return step !== null && step !== undefined;
 }

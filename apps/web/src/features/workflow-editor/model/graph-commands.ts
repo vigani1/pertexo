@@ -32,6 +32,44 @@ export function addDefinitionNode(
   return { ...graph, nodes: [...graph.nodes, node] };
 }
 
+/** One end of a connection: a step and one of its ports. */
+export type PortRef = Readonly<{ nodeId: string; port: string }>;
+
+/**
+ * Adds a step and connects it from `from` as one change, so a single undo
+ * takes both back. The new step uses the input named like the source port
+ * when it has one (a Merge pairs `branch-03` with `branch-03`), otherwise its
+ * first input. Returns null when that isn't possible.
+ */
+export function addStepAfter(
+  graph: WorkflowGraphContract,
+  definition: NodeDefinitionCatalogItem,
+  position: Position,
+  from: PortRef,
+  ids: Readonly<{ nodeId: string; edgeId: string }> = {
+    nodeId: crypto.randomUUID(),
+    edgeId: crypto.randomUUID(),
+  },
+): WorkflowGraphContract | null {
+  const inputs = definition.ports.inputs;
+  const targetPort = inputs.includes(from.port) ? from.port : inputs[0];
+  if (
+    targetPort === undefined ||
+    !graph.nodes.some((node) => node.id === from.nodeId)
+  )
+    return null;
+  return connectWorkflowNodes(
+    addDefinitionNode(graph, definition, position, ids.nodeId),
+    {
+      source: from.nodeId,
+      sourceHandle: from.port,
+      target: ids.nodeId,
+      targetHandle: targetPort,
+    },
+    ids.edgeId,
+  );
+}
+
 export function moveWorkflowNode(
   graph: WorkflowGraphContract,
   nodeId: string,
@@ -231,6 +269,18 @@ export function duplicateWorkflowNodes(
     },
     nodeIds: copies.map((node) => node.id),
   };
+}
+
+/** A step card's usual size on the canvas, for placing steps near others. */
+export const STEP_CARD = Object.freeze({ width: 224, height: 64 });
+const STEP_GAP = 64;
+
+/** One card width and a gap to the right of `node`, on the same row. */
+export function positionAfter(
+  node: Pick<WorkflowNode, 'position'>,
+  width: number = STEP_CARD.width,
+): Position {
+  return { x: node.position.x + width + STEP_GAP, y: node.position.y };
 }
 
 const CARD_CLEARANCE = 40;
