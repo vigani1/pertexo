@@ -9,9 +9,11 @@ import type { GraphLevel, WorkflowNode } from '../../model/graph-scopes';
 import { ChoiceSelect } from './choice-select';
 
 /**
- * Connections into this step, with a keyboard way to add one: the canvas
- * drag is never the only way to wire steps. Only steps on the same level
- * (the workflow, or the same For each body) are offered.
+ * Connections into this step, kept apart from its input mapping: wiring
+ * decides when the step runs, inputs decide what it gets. "Connect a step"
+ * opens a keyboard way to add one, so the canvas drag is never the only
+ * way to wire steps. Only steps on the same level (the workflow, or the
+ * same For each body) are offered.
  */
 export function IncomingConnections({
   node,
@@ -28,6 +30,7 @@ export function IncomingConnections({
   onConnect: (connection: Connection) => void;
   onRemoveEdge: (edgeId: string) => void;
 }>) {
+  const [wiring, setWiring] = useState(false);
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [sourcePort, setSourcePort] = useState<string | null>(null);
   const [targetPort, setTargetPort] = useState<string | null>(null);
@@ -47,11 +50,17 @@ export function IncomingConnections({
   return (
     <section
       aria-labelledby={`incoming-${node.id}`}
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-3 border-t border-white/7 pt-4"
     >
-      <h3 id={`incoming-${node.id}`} className="text-sm font-semibold">
-        Connected from
-      </h3>
+      <div>
+        <h3 id={`incoming-${node.id}`} className="text-sm font-semibold">
+          Connected from
+        </h3>
+        <p className="mt-0.5 text-xs text-subtle-foreground">
+          Wiring decides when this step runs. Its inputs above decide what it
+          gets.
+        </p>
+      </div>
       {incoming.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nothing leads into this step yet.
@@ -84,7 +93,21 @@ export function IncomingConnections({
           ))}
         </ul>
       )}
-      {editable && others.length > 0 ? (
+      {editable && others.length > 0 && !wiring ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="w-fit"
+          onClick={() => {
+            setWiring(true);
+          }}
+        >
+          <LinkIcon data-icon="inline-start" />
+          Connect a step
+        </Button>
+      ) : null}
+      {editable && others.length > 0 && wiring ? (
         <FieldGroup className="gap-3 rounded-lg border border-white/7 bg-black/18 p-3">
           <Field>
             <FieldLabel htmlFor={`connect-source-${node.id}`}>
@@ -139,34 +162,46 @@ export function IncomingConnections({
               />
             </Field>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="w-fit"
-            disabled={
-              sourceId === null || sourcePort === null || targetPort === null
-            }
-            onClick={() => {
-              if (
-                sourceId === null ||
-                sourcePort === null ||
-                targetPort === null
-              )
-                return;
-              onConnect({
-                source: sourceId,
-                sourceHandle: sourcePort,
-                target: node.id,
-                targetHandle: targetPort,
-              });
-              setSourceId(null);
-              setSourcePort(null);
-            }}
-          >
-            <LinkIcon data-icon="inline-start" />
-            Connect
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={
+                sourceId === null || sourcePort === null || targetPort === null
+              }
+              onClick={() => {
+                if (
+                  sourceId === null ||
+                  sourcePort === null ||
+                  targetPort === null
+                )
+                  return;
+                onConnect({
+                  source: sourceId,
+                  sourceHandle: sourcePort,
+                  target: node.id,
+                  targetHandle: targetPort,
+                });
+                setSourceId(null);
+                setSourcePort(null);
+                setWiring(false);
+              }}
+            >
+              <LinkIcon data-icon="inline-start" />
+              Connect
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setWiring(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         </FieldGroup>
       ) : null}
     </section>
