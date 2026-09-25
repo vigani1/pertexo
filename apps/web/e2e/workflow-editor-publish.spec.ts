@@ -45,6 +45,17 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
     page.getByRole('button', { name: 'Add a step to start' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Publish v1' })).toBeDisabled();
+  // The chip opens the issues lens at the bottom of the editor, over the
+  // canvas, instead of a popover under the command bar.
+  await page.getByRole('button', { name: 'Add a step to start' }).click();
+  const issues = page.getByRole('region', { name: 'Issues' });
+  await expect(issues).toContainText('This draft has no steps yet');
+  const issuesBox = await issues.boundingBox();
+  expect((issuesBox?.y ?? 0) + (issuesBox?.height ?? 0)).toBeGreaterThan(
+    (page.viewportSize()?.height ?? 0) - 48,
+  );
+  await issues.getByRole('button', { name: 'Close issues' }).click();
+  await expect(issues).toBeHidden();
   await addStep(page, /Set fields/u).click();
   await expect.poll(() => remote.revision, { timeout: 4_000 }).toBe(2);
   await page.locator('.react-flow__node').click();
