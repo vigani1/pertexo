@@ -11,8 +11,7 @@ import { useState } from 'react';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import {
   anyRunQueryOptions,
-  attentionRunsQueryOptions,
-  runStatusCountsQueryOptions,
+  runStatisticsQueryOptions,
   workflowRunKeys,
 } from '@/features/workflow-runs/queries.public';
 import {
@@ -45,12 +44,8 @@ export function HomePage({
   const [refreshing, setRefreshing] = useState(false);
   const canReadRuns = workspace.capabilities.includes('run:read');
   const canReadWorkflows = workspace.capabilities.includes('workflow:read');
-  const counts = useQuery({
-    ...runStatusCountsQueryOptions(apiClient, user.id, workspace.id),
-    enabled: canReadRuns,
-  });
-  const attention = useQuery({
-    ...attentionRunsQueryOptions(apiClient, user.id, workspace.id),
+  const statistics = useQuery({
+    ...runStatisticsQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadRuns,
   });
   const anyRun = useQuery({
@@ -88,9 +83,7 @@ export function HomePage({
       <div className="flex flex-col gap-10">
         <HomeHeader
           workspace={workspace}
-          counts={undefined}
-          attention={undefined}
-          countsUpdatedAt={0}
+          statistics={undefined}
           refreshing={false}
           onRefresh={refresh}
         />
@@ -108,9 +101,7 @@ export function HomePage({
     <div className="flex flex-col gap-10">
       <HomeHeader
         workspace={workspace}
-        counts={counts.data}
-        attention={attention.data}
-        countsUpdatedAt={counts.dataUpdatedAt}
+        statistics={statistics.data}
         refreshing={refreshing}
         onRefresh={refresh}
       />
@@ -126,7 +117,6 @@ export function HomePage({
           apiClient={apiClient}
           userId={user.id}
           workspaceId={workspace.id}
-          counts={counts.data}
         />
       ) : null}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">

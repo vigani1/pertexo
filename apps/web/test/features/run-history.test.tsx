@@ -8,10 +8,12 @@ import {
   apiBase,
   fixtureIds,
   fixtureRun,
+  fixtureStatistics,
   fixtureWorkflow,
   identityHandlers,
   notFoundProblem,
   coldStart,
+  statisticsHandler,
 } from '../support/run-fixtures';
 
 const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
@@ -29,12 +31,10 @@ function workflowReads() {
   ];
 }
 
-/** Two pages of history; any status-filtered read is the header count. */
+/** Two pages of history, plus the statistics read behind the header. */
 function historyReads(requests: URLSearchParams[] = []) {
-  return http.get(`${apiBase}/runs`, ({ request }) => {
+  const history = http.get(`${apiBase}/runs`, ({ request }) => {
     const query = new URL(request.url).searchParams;
-    if (query.get('limit') === '100' && query.get('status') !== null)
-      return HttpResponse.json({ items: [], nextCursor: null });
     requests.push(query);
     return HttpResponse.json(
       query.get('after') === null
@@ -47,6 +47,7 @@ function historyReads(requests: URLSearchParams[] = []) {
           },
     );
   });
+  return [history, statisticsHandler()];
 }
 
 function latest(requests: readonly URLSearchParams[]) {
@@ -64,7 +65,7 @@ describe('workspace runs', () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       ...workflowReads(),
-      historyReads(),
+      ...historyReads(),
       http.get(`${apiBase}/runs/${firstRunId}`, () =>
         HttpResponse.json({
           run: fixtureRun(firstRunId, 'succeeded'),
@@ -109,12 +110,44 @@ describe('workspace runs', () => {
     });
   });
 
+  it('shows exact live counts in the header from one statistics read', async () => {
+    const requests: URLSearchParams[] = [];
+    const statistics: URLSearchParams[] = [];
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      ...workflowReads(),
+      statisticsHandler(
+        () =>
+          fixtureStatistics({
+            current: { running: 101, waiting: 7, queued: 0 },
+          }),
+        statistics,
+      ),
+      ...historyReads(requests),
+    );
+    renderApp(`/w/${workspaceId}/runs`);
+    const header = within(
+      (
+        await screen.findByRole(
+          'heading',
+          { level: 1, name: 'Runs' },
+          coldStart,
+        )
+      ).closest('header') ?? document.body,
+    );
+    expect(await header.findByText('101')).toBeVisible();
+    expect(header.getByText('7')).toBeVisible();
+    expect(header.queryByText(/\d\+/u)).not.toBeInTheDocument();
+    expect(statistics.map(String)).toEqual(['window=24h']);
+    expect(requests.every((query) => query.get('status') === null)).toBe(true);
+  });
+
   it('keeps filters in the URL and sends the chosen bounds', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       ...workflowReads(),
-      historyReads(requests),
+      ...historyReads(requests),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
@@ -171,7 +204,7 @@ describe('workspace runs', () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       ...workflowReads(),
-      historyReads(requests),
+      ...historyReads(requests),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
@@ -214,7 +247,7 @@ describe('workspace runs', () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       ...workflowReads(),
-      historyReads(requests),
+      ...historyReads(requests),
     );
     renderApp(
       `/w/${workspaceId}/runs?status=sideways&createdAtFrom=yesterday&workflowId=nope&unknown=1&trigger=webhook`,
@@ -408,7 +441,7 @@ describe('workspace runs', () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       ...workflowReads(),
-      historyReads(requests),
+      ...historyReads(requests),
     );
     const { router } = renderApp(
       `/w/${workspaceId}/workflows/${workflowId}/runs?workflowId=ignored`,

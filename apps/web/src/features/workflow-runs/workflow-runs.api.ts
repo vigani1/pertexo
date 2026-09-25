@@ -7,10 +7,14 @@ import {
   workflowRunResponseSchema,
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
+  workflowRunStatisticsQuerySchema,
+  workflowRunStatisticsResponseSchema,
   type WorkflowRunCancelResponse,
   type WorkflowRunListResponse,
   type WorkflowRunResponse,
   type WorkflowRunStartResponse,
+  type WorkflowRunStatisticsQuery,
+  type WorkflowRunStatisticsResponse,
 } from '@pertexo/contracts/schemas/workflow-runs';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from './model/run-search';
@@ -37,6 +41,24 @@ export function getWorkflowRunsPage(
     response: {
       kind: 'json',
       decode: (value) => workflowRunListResponseSchema.parse(value),
+    },
+  });
+}
+
+/** Exact counts for one server snapshot: current, windowed, per workflow. */
+export function getWorkflowRunStatistics(
+  apiClient: ApiClient,
+  workspaceId: string,
+  query: WorkflowRunStatisticsQuery,
+  signal?: AbortSignal,
+): Promise<WorkflowRunStatisticsResponse> {
+  const parsed = workflowRunStatisticsQuerySchema.parse(query);
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/run-statistics?${searchParams(parsed)}`,
+    ...(signal === undefined ? {} : { signal }),
+    response: {
+      kind: 'json',
+      decode: (value) => workflowRunStatisticsResponseSchema.parse(value),
     },
   });
 }

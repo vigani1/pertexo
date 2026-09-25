@@ -2,13 +2,13 @@ export {
   anyRunQueryOptions,
   attentionRunsQueryOptions,
   liveRunCountQueryOptions,
+  loomStatisticsQueryOptions,
   runLoomQueryOptions,
-  runStatusCountsQueryOptions,
+  runStatisticsQueryOptions,
   workflowRunKeys,
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
-  type AttentionRuns,
-  type RunStatusCounts,
+  type RunStatistics,
 } from './workflow-runs.queries';
 export {
   filtersFromSearch,

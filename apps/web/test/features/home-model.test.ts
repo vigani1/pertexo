@@ -5,6 +5,7 @@ import {
   firstThreadSteps,
   isNewWorkspace,
 } from '@/features/overview/model/first-thread';
+import { loomCaption } from '@/features/overview/model/loom-caption';
 import {
   destinationAttentionItems,
   runAttentionItems,
@@ -98,6 +99,42 @@ describe('loom', () => {
     });
     expect(model.lanes).toHaveLength(8);
     expect(model.hiddenLaneCount).toBe(2);
+  });
+
+  it('carries exact window totals only for lanes the statistics read knows', () => {
+    const model = shapeLoom(
+      [
+        run('r1', 'wf-a', 'succeeded', 50, 49),
+        run('r2', 'wf-b', 'failed', 30, 29),
+      ],
+      {
+        windowMs: 60 * minute,
+        nowMs: now,
+        laneTotals: new Map([['wf-a', 420]]),
+      },
+    );
+    expect(
+      model.lanes.map((lane) => [lane.key, lane.total ?? 'unknown']),
+    ).toEqual([
+      ['wf-b', 'unknown'],
+      ['wf-a', 420],
+    ]);
+  });
+
+  it('captions the Loom with the true total and says when it draws only some', () => {
+    const phrase = 'the last 24 hours';
+    expect(loomCaption({ phrase, capped: false, total: 1 })).toBe(
+      '1 run in the last 24 hours.',
+    );
+    expect(loomCaption({ phrase, capped: true, total: 1234 })).toBe(
+      '1234 runs in the last 24 hours. The Loom draws the latest 300; narrow the window to see every run.',
+    );
+    expect(loomCaption({ phrase, capped: true, total: undefined })).toBe(
+      'Showing the latest 300 runs in the last 24 hours. Narrow the window to see every run.',
+    );
+    expect(
+      loomCaption({ phrase, capped: false, total: undefined }),
+    ).toBeUndefined();
   });
 
   it('hit-tests the thread under the pointer', () => {

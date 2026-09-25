@@ -28,6 +28,8 @@ export type LoomLane = Readonly<{
   key: string;
   label: string;
   runs: readonly LoomRun[];
+  /** Every run of this workflow in the window, from the statistics read. */
+  total?: number;
 }>;
 
 export type LoomTick = Readonly<{ offsetMs: number; label: string }>;
@@ -98,7 +100,12 @@ function loomTicks(windowMs: number, nowMs: number): readonly LoomTick[] {
  */
 export function shapeLoom(
   runs: readonly WorkflowRunReadSummary[],
-  window: Readonly<{ windowMs: number; nowMs: number; maxLanes?: number }>,
+  window: Readonly<{
+    windowMs: number;
+    nowMs: number;
+    maxLanes?: number;
+    laneTotals?: ReadonlyMap<string, number>;
+  }>,
 ): LoomModel {
   const windowStart = window.nowMs - window.windowMs;
   const lanes = new Map<
@@ -132,11 +139,17 @@ export function shapeLoom(
   const maxLanes = window.maxLanes ?? LOOM_MAX_LANES;
   return {
     windowMs: window.windowMs,
-    lanes: ordered.slice(0, maxLanes).map((lane) => ({
-      key: lane.key,
-      label: lane.label,
-      runs: [...lane.runs].sort((left, right) => left.startMs - right.startMs),
-    })),
+    lanes: ordered.slice(0, maxLanes).map((lane) => {
+      const total = window.laneTotals?.get(lane.key);
+      return {
+        key: lane.key,
+        label: lane.label,
+        runs: [...lane.runs].sort(
+          (left, right) => left.startMs - right.startMs,
+        ),
+        ...(total === undefined ? {} : { total }),
+      };
+    }),
     runCount,
     liveCount,
     hiddenLaneCount: Math.max(0, ordered.length - maxLanes),

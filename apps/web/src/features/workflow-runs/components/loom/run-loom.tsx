@@ -34,17 +34,25 @@ export function RunLoom({
   windowMs,
   windowLabel,
   workspaceId,
+  laneTotals,
 }: Readonly<{
   runs: readonly WorkflowRunReadSummary[];
   windowMs: number;
   /** "the last hour", used in the accessible summary and empty state. */
   windowLabel: string;
   workspaceId: string;
+  /** Exact runs per workflow in the window, when the statistics read has them. */
+  laneTotals?: ReadonlyMap<string, number> | undefined;
 }>) {
   const nowMs = useNow(15_000, true);
   const model = useMemo(
-    () => shapeLoom(runs, { windowMs, nowMs }),
-    [runs, windowMs, nowMs],
+    () =>
+      shapeLoom(runs, {
+        windowMs,
+        nowMs,
+        ...(laneTotals === undefined ? {} : { laneTotals }),
+      }),
+    [runs, windowMs, nowMs, laneTotals],
   );
   const navigate = useNavigate();
   const [hover, setHover] = useState<Hover>();
@@ -103,7 +111,11 @@ export function RunLoom({
         ) : null}
         {hover === undefined ? null : <LoomLens hover={hover} nowMs={nowMs} />}
       </div>
-      <LoomRunList model={model} workspaceId={workspaceId} />
+      <LoomRunList
+        model={model}
+        workspaceId={workspaceId}
+        windowLabel={windowLabel}
+      />
     </div>
   );
 }

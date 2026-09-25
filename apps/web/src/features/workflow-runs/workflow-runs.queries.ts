@@ -1,4 +1,8 @@
-import type { WorkflowRunListResponse } from '@pertexo/contracts/schemas/workflow-runs';
+import type {
+  WorkflowRunListResponse,
+  WorkflowRunStatisticsResponse,
+  WorkflowRunStatisticsWindow,
+} from '@pertexo/contracts/schemas/workflow-runs';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
@@ -7,6 +11,7 @@ import type { RunStatus } from './model/run-status';
 import {
   getRunsSince,
   getWorkflowRun,
+  getWorkflowRunStatistics,
   getWorkflowRunsPage,
 } from './workflow-runs.api';
 
@@ -21,8 +26,18 @@ export const workflowRunKeys = {
     ] as const,
   detail: (userId: string, workspaceId: string, runId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'detail', runId] as const,
-  statusCounts: (userId: string, workspaceId: string) =>
-    [...workflowRunKeys.scope(userId, workspaceId), 'status-counts'] as const,
+  statistics: (
+    userId: string,
+    workspaceId: string,
+    window: WorkflowRunStatisticsWindow,
+    breakdown: 'none' | 'workflow',
+  ) =>
+    [
+      ...workflowRunKeys.scope(userId, workspaceId),
+      'statistics',
+      window,
+      breakdown,
+    ] as const,
   attention: (userId: string, workspaceId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'attention-24h'] as const,
   loom: (userId: string, workspaceId: string, windowMs: number) =>
@@ -31,23 +46,21 @@ export const workflowRunKeys = {
     [...workflowRunKeys.scope(userId, workspaceId), 'any'] as const,
 };
 
-/** One bounded page per status: counts saturate and show as "100+". */
-const COUNT_PAGE_SIZE = 100;
-const STATUS_COUNT_REFRESH_MS = 15_000;
+/** One bounded page per status for lists; counts come from statistics. */
+const STATUS_PAGE_SIZE = 100;
+const STATISTICS_REFRESH_MS = 15_000;
 const DAY_MS = 86_400_000;
 const LOOM_RUN_CAP = 300;
+const ACTIVE_RUN_STATUSES = ['running', 'waiting', 'queued'] as const;
 
-export type StatusSample = Readonly<{
+/** Exact counts from one server snapshot (ADR 044). */
+export type RunStatistics = WorkflowRunStatisticsResponse;
+
+type StatusSample = Readonly<{
   count: number;
   /** More runs exist than the page could hold. */
   more: boolean;
   runs: WorkflowRunListResponse['items'];
-}>;
-
-export type RunStatusCounts = Readonly<{
-  running: StatusSample;
-  waiting: StatusSample;
-  queued: StatusSample;
 }>;
 
 export type AttentionRuns = Readonly<{
@@ -61,6 +74,7 @@ export type LoomWindowRuns = Readonly<{
   asOf: number;
   windowMs: number;
   runs: WorkflowRunListResponse['items'];
+  /** More runs were created in the window than the Loom draws. */
   capped: boolean;
 }>;
 
@@ -86,7 +100,7 @@ function statusPages(
           apiClient,
           workspaceId,
           { ...filters, status },
-          { limit: COUNT_PAGE_SIZE, signal },
+          { limit: STATUS_PAGE_SIZE, signal },
         ),
       ),
     ),
@@ -111,48 +125,66 @@ export function workflowRunsInfiniteQueryOptions(
   });
 }
 
-/** Running, waiting and queued runs: the live counts in every header. */
-export function runStatusCountsQueryOptions(
+/**
+ * The live header counts: what is queued, running and waiting now, and every
+ * status over the last 24 hours. One request that the spine and the Home and
+ * Runs headers share, so they never disagree.
+ */
+export function runStatisticsQueryOptions(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
 ) {
   return queryOptions({
-    queryKey: workflowRunKeys.statusCounts(userId, workspaceId),
-    queryFn: async ({ signal }): Promise<RunStatusCounts> => {
-      const [running, waiting, queued] = await statusPages(
+    queryKey: workflowRunKeys.statistics(userId, workspaceId, '24h', 'none'),
+    queryFn: ({ signal }) =>
+      getWorkflowRunStatistics(
         apiClient,
         workspaceId,
-        ['running', 'waiting', 'queued'],
-        {},
+        { window: '24h' },
         signal,
-      );
-      if (
-        running === undefined ||
-        waiting === undefined ||
-        queued === undefined
-      )
-        throw new Error('Run status counts are incomplete.');
-      return { running, waiting, queued };
-    },
-    staleTime: STATUS_COUNT_REFRESH_MS,
-    refetchInterval: STATUS_COUNT_REFRESH_MS,
+      ),
+    staleTime: STATISTICS_REFRESH_MS,
+    refetchInterval: STATISTICS_REFRESH_MS,
   });
 }
 
-/**
- * Running plus waiting runs for the spine badge. It shares the status-count
- * read, so the spine and page headers never disagree.
- */
+/** Running plus waiting runs for the spine badge, from the shared read. */
 export function liveRunCountQueryOptions(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
 ) {
   return queryOptions({
-    ...runStatusCountsQueryOptions(apiClient, userId, workspaceId),
-    select: (counts: RunStatusCounts) =>
-      counts.running.count + counts.waiting.count,
+    ...runStatisticsQueryOptions(apiClient, userId, workspaceId),
+    select: (statistics: RunStatistics) =>
+      statistics.current.running + statistics.current.waiting,
+  });
+}
+
+/** The Loom's true totals for a window, with one row per busy workflow. */
+export function loomStatisticsQueryOptions(
+  apiClient: ApiClient,
+  userId: string,
+  workspaceId: string,
+  window: WorkflowRunStatisticsWindow,
+) {
+  return queryOptions({
+    queryKey: workflowRunKeys.statistics(
+      userId,
+      workspaceId,
+      window,
+      'workflow',
+    ),
+    queryFn: ({ signal }) =>
+      getWorkflowRunStatistics(
+        apiClient,
+        workspaceId,
+        { window, breakdown: 'workflow' },
+        signal,
+      ),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -187,7 +219,11 @@ export function attentionRunsQueryOptions(
   });
 }
 
-/** Every run in a rolling window for the Loom, capped at 300. */
+/**
+ * The runs the Loom draws: every run created in a rolling window, capped at
+ * 300, plus runs still active from before it so their threads reach the
+ * Core. Totals come from `loomStatisticsQueryOptions`, never from this list.
+ */
 export function runLoomQueryOptions(
   apiClient: ApiClient,
   userId: string,
@@ -198,13 +234,26 @@ export function runLoomQueryOptions(
     queryKey: workflowRunKeys.loom(userId, workspaceId, windowMs),
     queryFn: async ({ signal }): Promise<LoomWindowRuns> => {
       const asOf = Date.now();
-      const window = await getRunsSince(
-        apiClient,
-        workspaceId,
-        new Date(asOf - windowMs).toISOString(),
-        { cap: LOOM_RUN_CAP, signal },
-      );
-      return { asOf, windowMs, ...window };
+      const windowStart = new Date(asOf - windowMs).toISOString();
+      const [window, earlier] = await Promise.all([
+        getRunsSince(apiClient, workspaceId, windowStart, {
+          cap: LOOM_RUN_CAP,
+          signal,
+        }),
+        statusPages(
+          apiClient,
+          workspaceId,
+          ACTIVE_RUN_STATUSES,
+          { createdAtBefore: windowStart },
+          signal,
+        ),
+      ]);
+      return {
+        asOf,
+        windowMs,
+        runs: [...window.runs, ...earlier.flatMap(({ runs }) => runs)],
+        capped: window.capped,
+      };
     },
     staleTime: 15_000,
     refetchInterval: 30_000,

@@ -88,10 +88,35 @@ async function installRoutes(page: Page, workflowName?: string) {
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
     (route) => route.fulfill({ json: { workflow } }),
   );
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/run-statistics?**`,
+    (route) =>
+      route.fulfill({
+        json: {
+          asOf: '2026-09-15T10:00:00.000000Z',
+          current: { queued: 0, running: 2, waiting: 1 },
+          window: {
+            duration: '24h',
+            createdAtFrom: '2026-09-14T10:00:00.000000Z',
+            createdAtBefore: '2026-09-15T10:00:00.000000Z',
+            total: 0,
+            byStatus: {
+              queued: 0,
+              running: 0,
+              waiting: 0,
+              succeeded: 0,
+              failed: 0,
+              canceled: 0,
+              timed_out: 0,
+              outcome_unknown: 0,
+            },
+          },
+          workflows: null,
+        },
+      }),
+  );
   await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) => {
     const query = new URL(route.request().url()).searchParams;
-    if (query.get('limit') === '100' && query.get('status') !== null)
-      return route.fulfill({ json: { items: [], nextCursor: null } });
     const filtered = query.get('status') === 'succeeded';
     const after = query.get('after');
     return route.fulfill({
@@ -209,6 +234,11 @@ test('filters and paginates workspace history, then opens the exact run', async 
   ).toHaveAttribute('aria-current', 'page');
   await expect(
     page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Workspace' })
+      .getByRole('link', { name: 'Runs, 3 live' }),
   ).toBeVisible();
   await expect(page.getByText(firstRunId)).toHaveCount(0);
   await page.getByRole('button', { name: 'Load more' }).click();
