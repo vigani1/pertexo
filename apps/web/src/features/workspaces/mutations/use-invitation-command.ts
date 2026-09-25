@@ -70,7 +70,7 @@ function commandError(error: unknown, attempt: Attempt): string {
     return attempt.kind === 'create'
       ? `${attempt.email} already has a pending invitation or is a member.`
       : 'This invitation changed meanwhile. The list now shows its latest state.';
-  return describeCommandError(error, 'sending this invitation command');
+  return describeCommandError(error, `sending ${subject(attempt)}`);
 }
 
 /**

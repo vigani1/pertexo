@@ -53,6 +53,10 @@ export function InviteLens({
     onClose();
   });
   const pendingCount = emails.length + (draft.trim() === '' ? 0 : 1);
+  const failedEmails =
+    batch.rows
+      ?.filter((row) => row.delivery === 'failed')
+      .map((row) => row.email) ?? [];
 
   function reset() {
     setEmails([]);
@@ -174,16 +178,34 @@ export function InviteLens({
                 </Button>
               </>
             ) : (
-              <ProgressButton
-                type="button"
-                variant="primary"
-                pending={batch.sending}
-                pendingLabel="Sending…"
-                disabled={command.locked}
-                onClick={close}
-              >
-                Done
-              </ProgressButton>
+              <>
+                {/* Addresses that weren't sent go back into the form. */}
+                {failedEmails.length > 0 && !batch.sending ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={command.locked}
+                    onClick={() => {
+                      setEmails(failedEmails);
+                      setDraft('');
+                      batch.reset();
+                      validation.reset();
+                    }}
+                  >
+                    Back to edit
+                  </Button>
+                ) : null}
+                <ProgressButton
+                  type="button"
+                  variant="primary"
+                  pending={batch.sending}
+                  pendingLabel="Sending…"
+                  disabled={command.locked}
+                  onClick={close}
+                >
+                  Done
+                </ProgressButton>
+              </>
             )}
           </SheetFooter>
         </form>
