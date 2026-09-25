@@ -6,6 +6,9 @@ import {
   workflowRunReplayRequestSchema,
   workflowRunListResponseSchema,
   workflowRunStartRequestSchema,
+  workflowRunStatisticsQuerySchema,
+  workflowRunStatisticsResponseSchema,
+  WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
 } from '../src/http/workflow-runs.js';
 import {
   workflowRunsClientContract,
@@ -50,6 +53,7 @@ describe('workflow-run public contracts', () => {
   it('documents acceptance, cancellation, replay, reads and SSE independently', () => {
     expect(Object.keys(workflowRunsOpenApiDocument.paths)).toEqual([
       '/v1/workspaces/{workspaceId}/runs',
+      '/v1/workspaces/{workspaceId}/run-statistics',
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs',
       '/v1/workspaces/{workspaceId}/runs/{runId}',
       '/v1/workspaces/{workspaceId}/runs/{runId}/events',
@@ -139,5 +143,102 @@ describe('workflow-run public contracts', () => {
         nextCursor: null,
       }).items[0]?.workflowName,
     ).toBeNull();
+  });
+
+  it('accepts only fixed statistics windows and the workflow breakdown', () => {
+    expect(workflowRunStatisticsQuerySchema.parse({})).toEqual({});
+    expect(
+      workflowRunStatisticsQuerySchema.parse({
+        window: '7d',
+        breakdown: 'workflow',
+      }),
+    ).toEqual({ window: '7d', breakdown: 'workflow' });
+    for (const query of [
+      { window: '30d' },
+      { window: '2h' },
+      { breakdown: 'status' },
+      { createdAtFrom: '2026-09-25T00:00:00.000Z' },
+    ])
+      expect(workflowRunStatisticsQuerySchema.safeParse(query).success).toBe(
+        false,
+      );
+    const statistics =
+      workflowRunsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/run-statistics'
+      ].get;
+    expect(statistics.parameters.map(({ name }) => name)).toEqual([
+      'workspaceId',
+      'window',
+      'breakdown',
+    ]);
+    expect(workflowRunsClientContract.schemas).toHaveProperty(
+      'WorkflowRunStatisticsResponse',
+    );
+  });
+
+  it('describes one exact, bounded statistics snapshot', () => {
+    const counts = {
+      queued: 1,
+      running: 2,
+      waiting: 0,
+      succeeded: 40,
+      failed: 3,
+      canceled: 0,
+      timed_out: 1,
+      outcome_unknown: 0,
+    };
+    const response = {
+      asOf: '2026-09-25T12:00:00.123456Z',
+      current: { queued: 1, running: 2, waiting: 3 },
+      window: {
+        duration: '24h',
+        createdAtFrom: '2026-09-24T12:00:00.123456Z',
+        createdAtBefore: '2026-09-25T12:00:00.123456Z',
+        total: 47,
+        byStatus: counts,
+      },
+      workflows: {
+        items: [
+          {
+            workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            workflowName: 'Daily intake',
+            total: 47,
+            byStatus: counts,
+          },
+        ],
+        truncated: false,
+      },
+    };
+    expect(workflowRunStatisticsResponseSchema.parse(response)).toEqual(
+      response,
+    );
+    expect(
+      workflowRunStatisticsResponseSchema.parse({
+        ...response,
+        workflows: null,
+      }).workflows,
+    ).toBeNull();
+    const invalid = [
+      { ...response, current: { ...response.current, failed: 1 } },
+      { ...response, asOf: '2026-09-25T12:00:00Z' },
+      {
+        ...response,
+        window: { ...response.window, byStatus: { ...counts, failed: -1 } },
+      },
+      {
+        ...response,
+        workflows: {
+          truncated: true,
+          items: Array.from(
+            { length: WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT + 1 },
+            () => response.workflows.items[0],
+          ),
+        },
+      },
+    ];
+    for (const value of invalid)
+      expect(workflowRunStatisticsResponseSchema.safeParse(value).success).toBe(
+        false,
+      );
   });
 });

@@ -156,6 +156,80 @@ export const workflowRunListResponseSchema = z
   })
   .strict();
 
+/** Fixed statistics windows; every one lies well inside run retention. */
+export const workflowRunStatisticsWindowSchema = z.enum([
+  '1h',
+  '6h',
+  '24h',
+  '7d',
+]);
+export const workflowRunStatisticsBreakdownSchema = z.enum(['workflow']);
+/** Workflows returned by a per-workflow breakdown, busiest first. */
+export const WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT = 50;
+
+export const workflowRunStatisticsQuerySchema = z
+  .object({
+    window: workflowRunStatisticsWindowSchema.optional(),
+    breakdown: workflowRunStatisticsBreakdownSchema.optional(),
+  })
+  .strict();
+
+const workflowRunCountSchema = z.number().int().nonnegative();
+const workflowRunStatisticsTimestampSchema = z.iso.datetime({ precision: 6 });
+
+/** One exact count per run status. */
+export const workflowRunStatusCountsSchema = z
+  .object({
+    queued: workflowRunCountSchema,
+    running: workflowRunCountSchema,
+    waiting: workflowRunCountSchema,
+    succeeded: workflowRunCountSchema,
+    failed: workflowRunCountSchema,
+    canceled: workflowRunCountSchema,
+    timed_out: workflowRunCountSchema,
+    outcome_unknown: workflowRunCountSchema,
+  })
+  .strict();
+
+/** Runs that are not finished yet, whenever they were created. */
+export const workflowRunCurrentCountsSchema = workflowRunStatusCountsSchema
+  .pick({ queued: true, running: true, waiting: true })
+  .strict();
+
+export const workflowRunWorkflowStatisticsSchema = z
+  .object({
+    workflowId: z.uuid(),
+    workflowName: workflowNameSchema.nullable().optional(),
+    total: workflowRunCountSchema,
+    byStatus: workflowRunStatusCountsSchema,
+  })
+  .strict();
+
+export const workflowRunStatisticsResponseSchema = z
+  .object({
+    asOf: workflowRunStatisticsTimestampSchema,
+    current: workflowRunCurrentCountsSchema,
+    window: z
+      .object({
+        duration: workflowRunStatisticsWindowSchema,
+        createdAtFrom: workflowRunStatisticsTimestampSchema,
+        createdAtBefore: workflowRunStatisticsTimestampSchema,
+        total: workflowRunCountSchema,
+        byStatus: workflowRunStatusCountsSchema,
+      })
+      .strict(),
+    workflows: z
+      .object({
+        items: z
+          .array(workflowRunWorkflowStatisticsSchema)
+          .max(WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT),
+        truncated: z.boolean(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 export const workflowNodeRunSummarySchema = z
   .object({
     id: z.uuid(),
@@ -243,6 +317,18 @@ export type WorkflowRunReadSummary = z.output<
 export type WorkflowRunListQuery = z.output<typeof workflowRunListQuerySchema>;
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema
+>;
+export type WorkflowRunStatisticsWindow = z.output<
+  typeof workflowRunStatisticsWindowSchema
+>;
+export type WorkflowRunStatisticsQuery = z.output<
+  typeof workflowRunStatisticsQuerySchema
+>;
+export type WorkflowRunStatusCounts = z.output<
+  typeof workflowRunStatusCountsSchema
+>;
+export type WorkflowRunStatisticsResponse = z.output<
+  typeof workflowRunStatisticsResponseSchema
 >;
 export type WorkflowNodeRunSummary = z.output<
   typeof workflowNodeRunSummarySchema
