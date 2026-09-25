@@ -8,14 +8,18 @@ import { Link } from '@tanstack/react-router';
 import {
   CalendarClockIcon,
   MousePointerClickIcon,
+  PlayIcon,
   WebhookIcon,
   type LucideIcon,
 } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format-time';
-import { describeWorkflowState } from '../model/workflow-state';
+import { cn } from '@/lib/utils';
+import { canRunWorkflow, describeWorkflowState } from '../model/workflow-state';
 import {
   describeWorkflowPath,
   workflowTriggerKinds,
@@ -26,11 +30,15 @@ import { useSeenOnce } from '../use-seen-once';
 import { workflowShapeQueryOptions } from '../workflows.queries';
 import { PatternGlyph, PatternGlyphPlaceholder } from './pattern-glyph';
 import { RunStrip, RunStripPlaceholder } from './run-strip';
+import {
+  ROW_REVEAL_CLASS,
+  type WorkflowRowActions,
+} from './workflow-row-actions';
 import { WorkflowRowMenu } from './workflow-row-menu';
 
 /** Shared by the column header and rows so both stay aligned. */
 export const WORKFLOW_ROW_COLUMNS =
-  'grid-cols-[3.9rem_minmax(0,1fr)_2rem] lg:grid-cols-[3.9rem_minmax(0,1fr)_8.5rem_4.5rem_8.75rem_5.5rem_2rem]';
+  'grid-cols-[3.9rem_minmax(0,1fr)_auto] lg:grid-cols-[3.9rem_minmax(0,1fr)_8.5rem_4.5rem_8.75rem_5.5rem_6rem]';
 
 const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
@@ -85,22 +93,77 @@ function RowGlyph({
   );
 }
 
+/**
+ * Run: starts the published version and opens the new run. It appears on
+ * hover and focus like the ⋯ menu, and `R` on the focused row does the same.
+ */
+function RowRunButton({
+  workflow,
+  pending,
+  disabled,
+  onRun,
+}: Readonly<{
+  workflow: WorkflowSummary;
+  pending: boolean;
+  disabled: boolean;
+  onRun: (workflow: WorkflowSummary) => void;
+}>) {
+  return (
+    <ProgressButton
+      type="button"
+      size="sm"
+      variant="default"
+      aria-label={`Run ${workflow.name}`}
+      aria-keyshortcuts="R"
+      pending={pending}
+      pendingLabel="Starting…"
+      disabled={disabled}
+      icon={<PlayIcon aria-hidden="true" data-icon="inline-start" />}
+      // Phones keep the row to its name and facts; Run is in the ⋯ menu.
+      className={cn('hidden lg:inline-flex', !pending && ROW_REVEAL_CLASS)}
+      onClick={() => {
+        onRun(workflow);
+      }}
+    >
+      Run
+    </ProgressButton>
+  );
+}
+
+/** `R` on a focused row runs it, unless someone is typing or in a menu. */
+function runShortcut(
+  event: KeyboardEvent<HTMLElement>,
+  run: (() => void) | undefined,
+) {
+  if (
+    run === undefined ||
+    event.key.toLowerCase() !== 'r' ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.altKey ||
+    event.shiftKey ||
+    (event.target instanceof HTMLElement &&
+      event.target.closest('input, textarea, [role="menu"]') !== null)
+  )
+    return;
+  event.preventDefault();
+  run();
+}
+
 export function WorkflowRow({
   apiClient,
   userId,
   workspace,
   workflow,
   runs,
-  onRename,
-  onLifecycle,
+  actions,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   runs: RecentRunTicks;
-  onRename: (workflow: WorkflowSummary) => void;
-  onLifecycle: (workflow: WorkflowSummary) => void;
+  actions: WorkflowRowActions;
 }>) {
   const [observe, seen] = useSeenOnce<HTMLLIElement>();
   const shape = useQuery({
@@ -109,12 +172,22 @@ export function WorkflowRow({
   });
   const graph = shape.data;
   const state = describeWorkflowState(workflow);
+  const runnable = canRunWorkflow(workspace, workflow);
+  const run =
+    runnable && actions.runningId === undefined
+      ? () => {
+          actions.onRun(workflow);
+        }
+      : undefined;
 
   // One set of cells: on phones the facts wrap under the name; from `lg`
   // their wrapper dissolves (`contents`) so each fact takes its own column.
   return (
     <li
       ref={observe}
+      onKeyDown={(event) => {
+        runShortcut(event, run);
+      }}
       className={`group/row relative grid ${WORKFLOW_ROW_COLUMNS} items-center gap-x-4 gap-y-1.5 rounded-lg border-t border-border px-3 py-3 transition-colors duration-150 first:border-t-0 focus-within:bg-white/[0.03] hover:border-transparent hover:bg-white/[0.035] hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/6%)] motion-reduce:transition-none`}
     >
       <div className="row-span-2 lg:row-span-1">
@@ -174,12 +247,20 @@ export function WorkflowRow({
           </time>
         </div>
       </div>
-      <div className="relative z-10 col-start-3 row-start-1 justify-self-end lg:col-start-7">
+      <div className="relative z-10 col-start-3 row-start-1 flex items-center justify-end gap-1 lg:col-start-7">
+        {runnable ? (
+          <RowRunButton
+            workflow={workflow}
+            pending={actions.runningId === workflow.id}
+            disabled={actions.runningId !== undefined}
+            onRun={actions.onRun}
+          />
+        ) : null}
         <WorkflowRowMenu
           workspace={workspace}
           workflow={workflow}
-          onRename={onRename}
-          onLifecycle={onLifecycle}
+          actions={actions}
+          runnable={run !== undefined}
         />
       </div>
     </li>

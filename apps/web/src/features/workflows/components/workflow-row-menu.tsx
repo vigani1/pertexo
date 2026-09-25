@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PencilRulerIcon,
   CirclePlayIcon,
+  PlayIcon,
   SettingsIcon,
   ZapIcon,
 } from 'lucide-react';
@@ -22,24 +23,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Kbd } from '@/components/ui/kbd';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
 import { canRenameWorkflow } from '../model/workflow-rename';
+import {
+  ROW_REVEAL_CLASS,
+  type WorkflowRowActions,
+} from './workflow-row-actions';
 
 /**
- * The row's ⋯ menu: the hub tabs, renaming for editors, copying the ID
- * (never shown in the row) and archive/restore for people who can publish.
+ * The row's ⋯ menu: Run for people who can start it, the hub tabs, renaming
+ * for editors, copying the ID (never shown in the row) and archive/restore
+ * for people who can publish.
  */
 export function WorkflowRowMenu({
   workspace,
   workflow,
-  onRename,
-  onLifecycle,
+  actions,
+  runnable,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
-  onRename: (workflow: WorkflowSummary) => void;
-  onLifecycle: (workflow: WorkflowSummary) => void;
+  actions: WorkflowRowActions;
+  /** The published version can be started from here right now. */
+  runnable: boolean;
 }>) {
   const params = { workspaceId: workspace.id, workflowId: workflow.id };
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
@@ -54,12 +62,28 @@ export function WorkflowRowMenu({
         aria-label={`Actions for ${workflow.name}`}
         className={cn(
           buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-          'pointer-fine:opacity-0 pointer-fine:group-focus-within/row:opacity-100 pointer-fine:group-hover/row:opacity-100 aria-expanded:opacity-100',
+          ROW_REVEAL_CLASS,
         )}
       >
         <EllipsisIcon aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-52">
+        {runnable ? (
+          <>
+            <DropdownMenuItem
+              onClick={() => {
+                actions.onRun(workflow);
+              }}
+            >
+              <PlayIcon aria-hidden="true" />
+              Run
+              <Kbd aria-hidden="true" className="ml-auto">
+                R
+              </Kbd>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuLinkItem
           render={
             <Link to="/w/$workspaceId/workflows/$workflowId" params={params} />
@@ -118,7 +142,7 @@ export function WorkflowRowMenu({
         {canRenameWorkflow(workspace, workflow) ? (
           <DropdownMenuItem
             onClick={() => {
-              onRename(workflow);
+              actions.onRename(workflow);
             }}
           >
             <PencilIcon aria-hidden="true" />
@@ -140,7 +164,7 @@ export function WorkflowRowMenu({
           <DropdownMenuItem
             variant={archived ? 'default' : 'destructive'}
             onClick={() => {
-              onLifecycle(workflow);
+              actions.onLifecycle(workflow);
             }}
           >
             {archived ? (

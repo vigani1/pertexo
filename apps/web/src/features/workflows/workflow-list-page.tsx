@@ -36,6 +36,7 @@ import {
 import { availableStarters } from './model/workflow-starters';
 import { useListShortcuts } from './use-list-shortcuts';
 import { useRecentRunTicks } from './use-recent-run-ticks';
+import { useRunWorkflow } from './use-run-workflow';
 import type { StarterDraftWriter } from './workflows.mutations';
 import { workflowsInfiniteQueryOptions } from './workflows.queries';
 
@@ -82,6 +83,7 @@ export function WorkflowListPage({
   starterDraftWriter,
   onSearchChange,
   onCreated,
+  onRunStarted,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -91,6 +93,8 @@ export function WorkflowListPage({
   starterDraftWriter?: StarterDraftWriter | undefined;
   onSearchChange: (search: WorkflowListSearch) => void;
   onCreated: (workflowId: string) => void;
+  /** Opens a run started from a row. */
+  onRunStarted: (runId: string) => void;
 }>) {
   const sort = search.sort ?? 'updated';
   const canCreate = workspace.capabilities.includes('workflow:create');
@@ -119,6 +123,12 @@ export function WorkflowListPage({
   const [startChoice, setStartChoice] = useState<StartChoice>('blank');
   const [lifecycle, setLifecycle] = useState<LifecycleTarget>();
   const [renaming, setRenaming] = useState<WorkflowSummary>();
+  const runner = useRunWorkflow({
+    apiClient,
+    userId: user.id,
+    workspaceId: workspace.id,
+    onRunStarted,
+  });
 
   const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
   const starters =
@@ -197,9 +207,13 @@ export function WorkflowListPage({
           runs={runs}
           onQueryChange={setQuery}
           onSearchChange={onSearchChange}
-          onRename={setRenaming}
-          onLifecycle={(workflow) => {
-            setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
+          actions={{
+            onRename: setRenaming,
+            onLifecycle: (workflow) => {
+              setLifecycle({ workflow, intent: lifecycleIntentFor(workflow) });
+            },
+            onRun: (workflow) => void runner.run(workflow),
+            runningId: runner.pendingId,
           }}
         />
       ) : null}

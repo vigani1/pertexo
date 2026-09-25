@@ -1,3 +1,4 @@
+import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowSummary } from '@pertexo/contracts/schemas/workflow-authoring';
 import type { StatusTone } from '@/components/ui/status';
 
@@ -32,4 +33,16 @@ export function describeWorkflowState(
     case 'error':
       return { tone: 'failure', label: 'Error' };
   }
+}
+
+/** Whether this person can start the workflow's published version now. */
+export function canRunWorkflow(
+  workspace: Pick<AccessibleWorkspace, 'capabilities'>,
+  workflow: Pick<WorkflowSummary, 'lifecycleStatus' | 'publishedVersionId'>,
+): boolean {
+  return (
+    workspace.capabilities.includes('run:start') &&
+    workflow.lifecycleStatus === 'active' &&
+    workflow.publishedVersionId !== null
+  );
 }

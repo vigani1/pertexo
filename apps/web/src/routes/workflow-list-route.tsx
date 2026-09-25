@@ -29,6 +29,12 @@ export function WorkflowListRoute() {
           params: { workspaceId: workspace.id, workflowId },
         });
       }}
+      onRunStarted={(runId) => {
+        void navigate({
+          to: '/w/$workspaceId/runs/$runId',
+          params: { workspaceId: workspace.id, runId },
+        });
+      }}
     />
   );
 }
