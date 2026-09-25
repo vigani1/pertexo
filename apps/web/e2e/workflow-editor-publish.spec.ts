@@ -67,7 +67,12 @@ test('tests a step, publishes v1, and follows the exact accepted run', async ({
     .getByRole('switch', { name: 'I understand this test runs for real' })
     .click();
   await page.getByRole('button', { name: 'Run test' }).click();
-  await expect(page.getByText('Test passed')).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Test result' }).getByText('Test passed'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Last test' }).getByText('Test passed'),
+  ).toBeVisible();
   await expect(page.getByRole('group', { name: 'Test output' })).toContainText(
     'accepted',
   );
