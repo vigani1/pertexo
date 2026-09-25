@@ -616,6 +616,14 @@ the unfinished edit…”), asks Stay/Discard before a command would replace the
 inspected step (another step, undo/redo, deleting it) and asks before leaving
 the editor. No effect copies keystrokes between stores.
 
+The Inputs tab lists each mapping as a compact `field ← source` row
+(`input-mappings/mapping-summary.tsx`, words from `model/mapping-summary.ts`):
+the field, the source as a chip (a step › path, the run input, the loop item, a
+fixed value or an expression with its code under it) and the value type. The row
+is the disclosure button for its editor, which opens in place; rows that need
+attention and rows made there start open, and Fix opens the row it names before
+focusing its field.
+
 Catalog config/input/output schemas arrive as **JSON Schema documents**, not
 executable Zod schemas. Do not cast them to Zod or import server registrations.
 First implementation supports an explicit tested field subset (primitive fields,
@@ -666,10 +674,13 @@ resolving the previous outcome before issuing a new command.
 1. Query loads the saved draft **with its ETag** and the catalog release.
 2. The editor initializes its store once from that baseline. Background data
    changes are not an instruction to reset the store.
-3. The user selects an available catalog definition. An editor command assigns a
-   fresh graph-instance ID using browser UUID generation accepted by the shared
-   ID contract. The node records definition `{key, version}`, configVersion,
-   configuration, mappings, connection references and position as required.
+3. The user selects an available catalog definition (the add-step lens groups
+   steps under the blueprint's headings and, while browsing, folds Switch,
+   Parallel and Merge into one row that opens in place; a search lists each on
+   its own). An editor command assigns a fresh graph-instance ID using browser
+   UUID generation accepted by the shared ID contract. The node records
+   definition `{key, version}`, configVersion, configuration, mappings,
+   connection references and position as required.
 4. The graph adapter projects domain nodes/edges into React Flow. Gestures
    return domain commands; selection/measurement/viewport are not serialized.
    Node position is persisted. Deletion removes/repairs dependent graph
@@ -782,8 +793,13 @@ exact version displayed before submission; that guarantee needs an explicit
 version selection/precondition contract. Show the actual workflowVersionId from
 the accepted run response. Explicit replay has its own version/input contract.
 Never represent “Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as
-interchangeable actions. Side-effecting preview must be clearly
-labeled/confirmed; closing its panel is not execution cancellation.
+interchangeable actions. After a step test finishes, the bar under the canvas
+(`chrome/test-result-bar.tsx`) sums it up from the preview and the graph only:
+its status, the path into the step (`model/test-path.ts`), its duration and, for
+a failure, its reason, with View output opening the step's Test tab at the
+remembered result. The next edit to the draft puts it away. Side-effecting
+preview must be clearly labeled/confirmed; closing its panel is not execution
+cancellation.
 
 ## 9. Errors and recovery belong at the right level
 
@@ -1164,11 +1180,12 @@ patterns (`components/patterns`): `CoreOrb`, `PageHeader` (title, mono meta
 line, actions), `CommandPalette`, `JsonTree`, `SystemState`, thread
 illustrations. Other libraries (`lib`): `format-time.ts` (all date/time/duration
 text — no feature-local `Intl.DateTimeFormat`; `formatDateTimeInZone` reads a
-time on a named clock with its zone name), `format-bytes.ts` (byte sizes for
-files and payloads), `format-initials.ts`, `api/api-error-copy.ts` (generic
-read/command failure sentences, uncertain outcome, forbidden, rate-limit and
-support reference helpers), `use-prefers-reduced-motion.ts`,
-`use-online-status.ts`.
+time on a named clock with its zone name; `formatShortTime` is the locale's time
+to the minute, “Saved 14:31” and the stale line, while `formatClock` keeps
+seconds for instruments), `format-bytes.ts` (byte sizes for files and payloads),
+`format-initials.ts`, `api/api-error-copy.ts` (generic read/command failure
+sentences, uncertain outcome, forbidden, rate-limit and support reference
+helpers), `use-prefers-reduced-motion.ts`, `use-online-status.ts`.
 
 #### Structure
 
