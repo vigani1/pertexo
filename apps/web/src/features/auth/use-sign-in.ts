@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { providerName, type SocialProvider } from './model/social-provider';
 import {
+  isCredentialMismatch,
   isEmailNotVerified,
   providerStartFailure,
   rateLimitSeconds,
@@ -34,18 +35,25 @@ export function useSignIn({
   const rateLimit = useCountdown();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string>();
+  const [mismatch, setMismatch] = useState(false);
 
   function fail(error: unknown, message: string) {
     const seconds = rateLimitSeconds(error);
     if (seconds !== undefined) rateLimit.startSeconds(seconds);
     setFailure(message);
+    setMismatch(isCredentialMismatch(error));
+  }
+
+  function clearFailure() {
+    setFailure(undefined);
+    setMismatch(false);
   }
 
   async function withPassword(email: string, password: string) {
     if (pending) return false;
     const request = requests.begin();
     setPending(true);
-    setFailure(undefined);
+    clearFailure();
     try {
       await signInWithEmail(apiClient, { email, password }, request.signal);
       if (!request.isCurrent()) return false;
@@ -65,7 +73,7 @@ export function useSignIn({
     if (pending) return;
     const request = requests.begin();
     setPending(true);
-    setFailure(undefined);
+    clearFailure();
     try {
       const url = await startSocialAuthentication(
         apiClient,
@@ -85,6 +93,10 @@ export function useSignIn({
   return {
     pending,
     failure,
+    /** The failure is a refused email and password, so a reset may help. */
+    mismatch,
+    /** The values changed, so the last failure no longer describes them. */
+    clearFailure,
     waitSeconds: rateLimit.remainingSeconds,
     withPassword,
     withProvider,

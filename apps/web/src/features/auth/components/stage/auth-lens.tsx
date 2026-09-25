@@ -56,7 +56,7 @@ export function AuthLensFooter({ className, ...props }: ComponentProps<'p'>) {
   return (
     <p
       className={cn(
-        'mt-5 text-center text-[0.8rem] text-subtle-foreground [&_a]:font-semibold [&_a]:text-accent-foreground [&_a]:underline-offset-4 [&_a:hover]:underline',
+        'mt-5 text-center text-[0.8rem] text-subtle-foreground [&_a]:inline-link',
         className,
       )}
       {...props}

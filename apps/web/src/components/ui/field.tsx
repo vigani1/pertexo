@@ -127,16 +127,9 @@ export function LabelledField({
   return (
     <Field
       data-invalid={error === undefined ? undefined : true}
-      className={className}
+      className={cn(labelAction !== undefined && 'relative', className)}
     >
-      {labelAction === undefined ? (
-        <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      ) : (
-        <div className="flex items-baseline justify-between gap-3">
-          <FieldLabel htmlFor={id}>{label}</FieldLabel>
-          {labelAction}
-        </div>
-      )}
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <FieldControl
         className={cn(trailing !== undefined && '[&_[data-slot=input]]:pr-11')}
       >
@@ -157,6 +150,13 @@ export function LabelledField({
       )}
       {error === undefined ? null : (
         <FieldError id={errorId}>{error}</FieldError>
+      )}
+      {labelAction === undefined ? null : (
+        // Drawn on the label's row but reached after the control, so Tab
+        // goes from one field to the next before any "Forgot?".
+        <div className="absolute top-0 right-0 flex h-[1.2em] items-center text-[0.8rem]">
+          {labelAction}
+        </div>
       )}
     </Field>
   );

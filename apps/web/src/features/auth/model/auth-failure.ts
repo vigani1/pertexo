@@ -31,10 +31,16 @@ function isLostResponse(error: unknown): boolean {
 
 const TOO_MANY = 'Too many attempts. Wait a moment, then try again.';
 
+/** The email and password were refused (rather than the request failing). */
+export function isCredentialMismatch(error: unknown): boolean {
+  const status = nativeError(error)?.status;
+  return status === 401 || status === 400;
+}
+
 export function signInFailure(error: unknown): string {
   const failure = nativeError(error);
-  if (failure?.status === 401 || failure?.status === 400)
-    return 'That email and password don’t match. Try again, or reset your password.';
+  if (isCredentialMismatch(error))
+    return 'That email and password don’t match. Check them and try again.';
   if (failure?.status === 429) return TOO_MANY;
   if (failure?.status === 403)
     return 'Pertexo refused this sign-in. Reload the page and try again.';

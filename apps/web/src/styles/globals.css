@@ -239,6 +239,23 @@
   }
 }
 
+/* The one inline link: pale cyan, underlined, a bolder underline on hover.
+   Router links in running text and `Button variant="link"` share it. */
+@utility inline-link {
+  color: var(--accent-foreground);
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--accent-foreground) 35%,
+    transparent
+  );
+  text-underline-offset: 4px;
+  &:hover {
+    text-decoration-color: var(--accent-foreground);
+  }
+}
+
 /* Faint vertical warp threads behind page content. */
 @utility warp {
   background-image: repeating-linear-gradient(

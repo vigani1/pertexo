@@ -1,3 +1,4 @@
+import { useEffect, useEffectEvent } from 'react';
 import type { AuthenticationCapabilitiesResponse } from '@pertexo/contracts/schemas/identity-workspace';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,11 @@ export function SignInLens({
     onUnverified,
     returnTo,
   });
-  const fields = useFieldValues(fieldRules, { email: '', password: '' });
+  const fields = useFieldValues(
+    fieldRules,
+    { email: '', password: '' },
+    signIn.clearFailure,
+  );
   const providers = capabilities.socialProviders;
   const passwordEnabled = capabilities.password.enabled;
   const busy = signIn.pending || signIn.waitSeconds > 0;
@@ -64,6 +69,16 @@ export function SignInLens({
     );
     if (signedIn) fields.reset({ email: values.email, password: '' });
   }
+
+  // The fields were disabled while waiting, which drops focus; a refusal
+  // puts people back in the password, where they can fix it.
+  const failed = signIn.failure !== undefined && !signIn.pending;
+  const focusPassword = useEffectEvent(() => {
+    fields.focus('password');
+  });
+  useEffect(() => {
+    if (failed) focusPassword();
+  }, [failed]);
 
   return (
     <AuthLens pending={signIn.pending} aria-labelledby="login-title">
@@ -112,6 +127,13 @@ export function SignInLens({
           )}
           <AuthForm
             failure={signIn.failure}
+            failureAction={
+              signIn.mismatch ? (
+                <Link to="/forgot-password" className="inline-link">
+                  Reset your password
+                </Link>
+              ) : undefined
+            }
             pending={signIn.pending}
             pendingLabel="Signing in…"
             submitLabel="Sign in"
@@ -144,7 +166,7 @@ export function SignInLens({
                 <Link
                   to="/forgot-password"
                   aria-label="Forgot your password?"
-                  className="text-[0.78rem] font-medium text-accent-foreground underline-offset-4 hover:underline"
+                  className="inline-link"
                 >
                   Forgot?
                 </Link>
