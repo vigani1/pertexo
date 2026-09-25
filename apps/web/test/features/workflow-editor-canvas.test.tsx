@@ -1,4 +1,5 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
@@ -108,5 +109,47 @@ describe('workflow editor overview map', { timeout: 30_000 }, () => {
     ].map((node) => node.getAttribute('style') ?? '');
     expect(fills[0]).toContain('var(--primary)');
     expect(fills[1]).toContain('var(--success)');
+  });
+});
+
+describe('workflow editor command bar', { timeout: 30_000 }, () => {
+  it('folds undo, redo and the shortcuts into ⋯ for narrow screens', async () => {
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: graphWithMappingNodes(),
+        definitions: [manualDefinition, mappingDefinition],
+      }),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    const canvas = await findCanvas();
+    fireEvent.click(canvas.getByText('Target'));
+    screen.getByRole('region', { name: 'Workflow canvas' }).focus();
+    fireEvent.keyDown(window, { key: 'd', metaKey: true });
+    await waitFor(() => {
+      expect(canvas.getAllByText('Target')).toHaveLength(2);
+    });
+
+    await event.click(
+      screen.getByRole('button', { name: 'More editor actions' }),
+    );
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu).getByRole('menuitem', { name: /Redo/u }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await event.click(within(menu).getByRole('menuitem', { name: /Undo/u }));
+    await waitFor(() => {
+      expect(canvas.getAllByText('Target')).toHaveLength(1);
+    });
+
+    await event.click(
+      screen.getByRole('button', { name: 'More editor actions' }),
+    );
+    await event.click(
+      await screen.findByRole('menuitem', { name: /Keyboard shortcuts/u }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Keyboard shortcuts' }),
+    ).toBeVisible();
   });
 });

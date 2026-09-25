@@ -1,4 +1,5 @@
 import { KeyboardIcon } from 'lucide-react';
+import { useRef, type RefObject } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Kbd } from '@/components/ui/kbd';
 import {
@@ -7,6 +8,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const shortcuts: readonly Readonly<{
   keys: readonly string[];
@@ -23,20 +25,45 @@ const shortcuts: readonly Readonly<{
   { keys: ['?'], action: 'Show these shortcuts' },
 ];
 
-/** The "?" cheat sheet. Shortcuts never fire while you type in a field. */
+/**
+ * The "?" cheat sheet. Shortcuts never fire while you type in a field.
+ * Where its own button is hidden (a phone-width bar folds it into ⋯), the
+ * sheet opens beside `fallbackAnchor` instead.
+ */
 export function ShortcutSheet({
   open,
   onOpenChange,
-}: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
+  triggerClassName,
+  fallbackAnchor,
+}: Readonly<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerClassName?: string;
+  fallbackAnchor?: RefObject<HTMLElement | null>;
+}>) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
+        ref={triggerRef}
         aria-label="Keyboard shortcuts"
-        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+        className={cn(
+          buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+          triggerClassName,
+        )}
       >
         <KeyboardIcon />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
+      <PopoverContent
+        align="end"
+        className="w-80"
+        anchor={() => {
+          const trigger = triggerRef.current;
+          return trigger !== null && trigger.getClientRects().length > 0
+            ? trigger
+            : (fallbackAnchor?.current ?? trigger);
+        }}
+      >
         <PopoverTitle>Keyboard shortcuts</PopoverTitle>
         <dl className="mt-3 flex flex-col gap-2 text-sm">
           {shortcuts.map((shortcut) => (

@@ -186,6 +186,8 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(
       await screen.findByRole('heading', { name: 'Invoice intake' }),
     ).toBeVisible();
+    // The state line names the version that runs: "Live v7".
+    expect(await screen.findByText('v7')).toBeVisible();
     await event.click(
       await screen.findByRole('button', { name: 'Publish v8' }),
     );

@@ -350,6 +350,18 @@ test('floats the lenses over a full canvas across responsive layouts', async ({
     const barBox = await bar.boundingBox();
     if (width === 1440) expect(barBox?.height).toBeLessThanOrEqual(64);
     if (width === 390) expect(barBox?.height).toBeLessThanOrEqual(200);
+    // Phones fold undo, redo and shortcuts into ⋯ so Publish never clips.
+    const publishBox = await bar
+      .getByRole('button', { name: /^Publish/u })
+      .boundingBox();
+    expect((publishBox?.x ?? 0) + (publishBox?.width ?? 0)).toBeLessThanOrEqual(
+      width,
+    );
+    const more = bar.getByRole('button', { name: 'More editor actions' });
+    if (width < 640) {
+      await expect(more).toBeVisible();
+      await expect(bar.getByRole('button', { name: 'Undo' })).toBeHidden();
+    } else await expect(more).toBeHidden();
     const heading = bar.getByRole('heading', { name: longWorkflowName });
     const headingBox = await heading.boundingBox();
     expect((headingBox?.x ?? 0) + (headingBox?.width ?? 0)).toBeLessThanOrEqual(
