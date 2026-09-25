@@ -271,14 +271,16 @@ describe('run page', () => {
       await screen.findByRole('button', { name: 'Cancel run' }, coldStart),
     );
     const dialog = await screen.findByRole('dialog', {
-      name: 'Stop this run?',
+      name: 'Cancel this run?',
     });
     expect(
       within(dialog).getByText(/Steps that already finished aren’t undone./u),
     ).toBeVisible();
     expect(cancels).toBe(0);
-    await event.click(within(dialog).getByRole('button', { name: 'Stop run' }));
-    expect(await screen.findByText('Stopping the run')).toBeVisible();
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Cancel run' }),
+    );
+    expect(await screen.findByText('Canceling the run')).toBeVisible();
     expect(cancels).toBe(1);
   });
 

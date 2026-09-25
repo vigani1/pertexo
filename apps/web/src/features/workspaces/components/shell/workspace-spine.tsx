@@ -26,7 +26,7 @@ function SpineLink({
   const label =
     destination.badge === undefined
       ? destination.label
-      : `${destination.label}, ${String(destination.badge)} live`;
+      : `${destination.label}, ${String(destination.badge)} running`;
   return (
     <Tooltip>
       <TooltipTrigger
