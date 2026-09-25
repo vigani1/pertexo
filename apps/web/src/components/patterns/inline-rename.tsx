@@ -280,8 +280,9 @@ function SaveActions({
   let label = 'Save';
   if (retryAvailable) label = 'Try again';
   else if (accepted) label = 'Refresh';
+  // Like every dialog's footer: Cancel then the filled commit, on the right.
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap justify-end gap-2">
       {accepted ? null : (
         <Button
           type="button"
@@ -294,7 +295,7 @@ function SaveActions({
       )}
       <ProgressButton
         type="submit"
-        variant="default"
+        variant="primary"
         pending={pending || refreshPending}
         pendingLabel={pending ? 'Saving…' : 'Refreshing…'}
       >

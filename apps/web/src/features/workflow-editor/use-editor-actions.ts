@@ -8,7 +8,7 @@ import {
   type RemovedElements,
 } from './model/graph-commands';
 import { duplicateWorkflowNodes } from './model/graph-copies';
-import { scopeOf } from './model/graph-scopes';
+import { levelAt, scopeOf, type ScopePath } from './model/graph-scopes';
 
 export type EditorFocusTarget = Readonly<{
   nodeId: string;
@@ -37,6 +37,31 @@ export type EditorAction =
  * that would replace or rewrite the step being edited wait for the person
  * to discard the edit or stay; everything else runs immediately.
  */
+/** A little longer than an undo toast lives. */
+const UNDO_WATCH_MS = 10_000;
+
+function edgeExists(
+  graph: Parameters<typeof scopeOf>[0],
+  edgeId: string,
+  scope: ScopePath,
+): boolean {
+  return (
+    levelAt(graph, scope)?.edges.some((edge) => edge.id === edgeId) === true
+  );
+}
+
+/** Whether the steps (or, for connections only, the connections) are back. */
+function isRestored(
+  graph: Parameters<typeof scopeOf>[0],
+  removed: RemovedElements,
+): boolean {
+  if (removed.nodes.length > 0)
+    return removed.nodes.every((node) => scopeOf(graph, node.id) !== undefined);
+  return removed.edges.every((edge) =>
+    edgeExists(graph, edge.id, removed.scopes[edge.id] ?? []),
+  );
+}
+
 export function useEditorActions({
   store,
   isPaused,
@@ -80,7 +105,7 @@ export function useEditorActions({
           if (result.graph === state.graph) return;
           state.transact(result.graph);
           const generation = store.getState().generation;
-          notifications.undo({
+          const toast = notifications.undo({
             title: removalTitle(result.removed),
             onUndo: () => {
               const latest = store.getState();
@@ -91,6 +116,13 @@ export function useEditorActions({
                 );
             },
           });
+          // Undone another way (⌘Z): the toast's offer no longer applies.
+          const stop = store.subscribe((latest) => {
+            if (!isRestored(latest.graph, result.removed)) return;
+            notifications.dismiss(toast);
+            stop();
+          });
+          window.setTimeout(stop, UNDO_WATCH_MS);
           return;
         }
       }
