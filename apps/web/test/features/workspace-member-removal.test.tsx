@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
 import {
-  api,
   firstMemberId,
   identityHandlers,
   member,
