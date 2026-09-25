@@ -156,17 +156,28 @@ async function listWorkspaceMembers(
     pool,
     { workspaceId, actorId },
     async (client): Promise<WorkspaceMembersPage> => {
-      const actor = await client.query(
-        `select 1
-         from app.workspace_memberships m
-         join app.users u on u.id = m.user_id and u.status = 'active'
-         join app.workspaces w on w.id = m.workspace_id and w.status = 'active'
-         where m.workspace_id = $1 and m.user_id = $2 and m.status = 'active'
-           and m.role = any($3::text[])
-         for share of m, u, w`,
-        [workspaceId, actorId, [...rolesForCapability('member:read')]],
+      // The workspace first, then the actor's user and membership: the same
+      // order invitation and member commands lock in, so reads never close a
+      // lock cycle with them.
+      const workspace = await client.query(
+        `select 1 from app.workspaces w
+         where w.id = $1 and w.status = 'active'
+         for share of w`,
+        [workspaceId],
       );
-      if (actor.rowCount !== 1)
+      const actor =
+        workspace.rowCount === 1
+          ? await client.query(
+              `select 1
+               from app.workspace_memberships m
+               join app.users u on u.id = m.user_id and u.status = 'active'
+               where m.workspace_id = $1 and m.user_id = $2
+                 and m.status = 'active' and m.role = any($3::text[])
+               for share of m, u`,
+              [workspaceId, actorId, [...rolesForCapability('member:read')]],
+            )
+          : undefined;
+      if (actor?.rowCount !== 1)
         throw new WorkspaceAccessDeniedError(
           'Actor is no longer authorized for this workspace',
         );

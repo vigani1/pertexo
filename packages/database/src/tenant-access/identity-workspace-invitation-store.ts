@@ -122,13 +122,18 @@ function serializeInvitation(invitation: WorkspaceInvitationRecord) {
   });
 }
 
+// Locks always go workspace first, then the actor's user and membership,
+// as the member store does, so no two transactions can wait on each other in
+// a cycle. Reads take share locks: listing invitations while the members list
+// loads must not deadlock; commands take update locks and still serialize.
 async function lockAuthorizedActor(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
+  strength: 'update' | 'share' = 'update',
 ): Promise<MembershipRole> {
   const workspace = await client.query<{ status: string }>(
-    'select status from app.workspaces where id=$1 for update',
+    `select status from app.workspaces where id=$1 for ${strength}`,
     [workspaceId],
   );
   if (workspace.rows[0]?.status !== 'active')
@@ -145,7 +150,7 @@ async function lockAuthorizedActor(
        from app.users users
        join app.workspace_memberships membership on membership.user_id=users.id
       where users.id=$1 and membership.workspace_id=$2
-      for update of users,membership`,
+      for ${strength} of users,membership`,
     [actorUserId, workspaceId],
   );
   const row = actor.rows[0];
@@ -347,7 +352,7 @@ export function createIdentityWorkspaceInvitationStore(
         pool,
         { workspaceId, actorId: actorUserId },
         async (client) => {
-          await lockAuthorizedActor(client, workspaceId, actorUserId);
+          await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
           await expireInvitations(client, workspaceId);
           const values: unknown[] = [workspaceId, limit + 1];
           let after = '';
