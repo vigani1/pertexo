@@ -1,5 +1,9 @@
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts/schemas/schedules';
 
+// How the Schedule step's rule reads to people. It lives with the rest of the
+// step presentation so the editor's builder and the published trigger cards
+// say the same thing.
+
 type Recurrence = ScheduleTriggerHealthResponse['recurrence'];
 
 const DAY_NAMES = [
