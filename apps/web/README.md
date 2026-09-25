@@ -142,10 +142,11 @@ In short: one implementation per concept — `LabelledField` with
 `useFieldValidation` for every form, `ConfirmDialog` for every confirmation,
 `ProgressButton` for every pending command, `CopyButton` (and
 `useCopyToClipboard` in menus) for every copy, `Notice` and `StaleLine` for
-inline messages, and `useNow`/`useCountdown` for anything that ticks. Motion
-uses CSS, Canvas 2D (`CanvasScene`) and SVG only, stops off-screen and in hidden
-tabs, and renders still frames under reduced motion. No Motion, dropzone or 3D
-dependency is installed.
+inline messages, `DeadlineField` for every run deadline, `font-display` for
+every condensed title, and `useNow`/`useCountdown` for anything that ticks.
+Motion uses CSS, Canvas 2D (`CanvasScene`) and SVG only, stops off-screen and in
+hidden tabs, and renders still frames under reduced motion. No Motion, dropzone
+or 3D dependency is installed.
 
 Verification covers transport failures, browser bundle composition,
 unauthenticated redirects, OIDC start/error, workspace empty/error/deep-link
