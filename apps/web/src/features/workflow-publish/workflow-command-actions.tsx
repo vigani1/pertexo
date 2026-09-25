@@ -97,7 +97,8 @@ function summaryState(
 /**
  * The Build tab's commands in the hub bar: the issues chip, Run ▾ and the
  * one filled action, Publish vN. Each opens its own lens; the published stamp
- * follows a successful publish.
+ * follows a successful publish. The issues lens is the editor's to place, so
+ * whether it's open comes from the editor.
  */
 export function WorkflowCommandActions({
   apiClient,
@@ -109,8 +110,9 @@ export function WorkflowCommandActions({
   draft,
   commandSession,
   issues,
+  issuesOpen,
   triggersAvailable,
-  onCheckAgain,
+  onIssuesOpenChange,
   onFix,
   onPublished,
 }: Readonly<{
@@ -124,13 +126,13 @@ export function WorkflowCommandActions({
   draft: Readonly<{ generation: number; revision: number }>;
   commandSession: WorkflowCommandSession;
   issues: WorkflowIssuesView;
+  issuesOpen: boolean;
   /** The catalog offers a trigger to start an empty draft with. */
   triggersAvailable: boolean;
-  onCheckAgain: () => void;
+  onIssuesOpenChange: (open: boolean) => void;
   onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt) => void;
 }>) {
-  const [issuesOpen, setIssuesOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] = useState<PublicationReceipt>();
@@ -169,12 +171,9 @@ export function WorkflowCommandActions({
     <>
       <IssuesChip
         state={issues}
-        graph={graph}
         emptyHint={emptyHint}
         open={issuesOpen}
-        onOpenChange={setIssuesOpen}
-        onCheckAgain={onCheckAgain}
-        onFix={onFix}
+        onOpenChange={onIssuesOpenChange}
       />
       {canRun ? (
         <RunMenu

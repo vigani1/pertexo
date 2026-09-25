@@ -273,6 +273,11 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       screen.getByText('The workflow also has a general issue.'),
     ).toBeVisible();
     expect(screen.getByText('Whole workflow')).toBeVisible();
+    // The chip opens the issues lens at the bottom, not a popover.
+    const lens = screen.getByRole('region', { name: '2 issues' });
+    expect(
+      within(lens).getByText('Fix these before publishing.'),
+    ).toBeVisible();
     await event.click(
       screen.getByRole('button', {
         name: 'Fix: Count is required for this node.',
@@ -285,7 +290,14 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       'aria-selected',
       'true',
     );
-    expect(screen.getByRole('button', { name: '2 issues' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: '2 issues' })).toBeNull();
+    const chip = screen.getByRole('button', { name: '2 issues' });
+    expect(chip).toBeVisible();
+    await event.click(chip);
+    expect(chip).toHaveAttribute('aria-expanded', 'true');
+    await event.click(screen.getByRole('button', { name: 'Close issues' }));
+    expect(screen.queryByRole('region', { name: '2 issues' })).toBeNull();
+    expect(chip).toHaveFocus();
   });
 
   it('navigates compatibility and mapping findings to their step', async () => {

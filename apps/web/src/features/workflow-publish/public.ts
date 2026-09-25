@@ -1,4 +1,5 @@
 export { WorkflowCommandActions } from './workflow-command-actions';
+export { IssuesLens } from './components/issues-lens';
 export {
   NodeTestPanel,
   type NodeTestHandle,

@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
 import {
+  IssuesLens,
   useAutoValidation,
   useWorkflowCommandSession,
   WorkflowCommandActions,
@@ -193,6 +194,7 @@ function WorkflowEditorSession({
   );
   const actions = useEditorActions({ store, isPaused: verification.isPaused });
   const effects = useCanvasEffects(graph);
+  const triggersAvailable = definitions.some(isStartTrigger);
   const [compareOpen, setCompareOpen] = useState(false);
 
   return (
@@ -252,8 +254,9 @@ function WorkflowEditorSession({
                     draft={{ generation, revision }}
                     commandSession={commandSession}
                     issues={issues}
-                    triggersAvailable={definitions.some(isStartTrigger)}
-                    onCheckAgain={autoValidation.checkNow}
+                    issuesOpen={chrome.issuesOpen}
+                    triggersAvailable={triggersAvailable}
+                    onIssuesOpenChange={chrome.onIssuesOpenChange}
                     onFix={chrome.onFix}
                     onPublished={effects.weaveIn}
                   />
@@ -261,6 +264,19 @@ function WorkflowEditorSession({
               }
             />
           )}
+          bottomLens={(chrome) =>
+            paused ? null : (
+              <IssuesLens
+                open={chrome.issuesOpen}
+                state={issues}
+                graph={graph}
+                triggersAvailable={triggersAvailable}
+                onOpenChange={chrome.onIssuesOpenChange}
+                onCheckAgain={autoValidation.checkNow}
+                onFix={chrome.onFix}
+              />
+            )
+          }
           banner={
             <ConflictBar
               onCompare={() => {

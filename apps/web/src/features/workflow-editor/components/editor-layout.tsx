@@ -10,7 +10,8 @@ const covers = { [CANVAS_COVER_ATTRIBUTE]: '' };
 
 /**
  * Places the editor's layers: the canvas fills the screen, and the command
- * bar, add-step lens and inspector lens float above it. Under 1024px the two
+ * bar, add-step lens, inspector lens and the bottom lens (the issues
+ * lens) float above it. Under 1024px the two
  * lenses become bottom panels behind buttons. They stay mounted either way,
  * so unfinished edits and navigation guards survive switching panels.
  */
@@ -22,6 +23,7 @@ export function EditorLayout({
   inspector,
   inspectorOpen,
   overlay,
+  bottomLens,
   addStepCollapsed,
   editable,
   mobilePanel,
@@ -34,6 +36,8 @@ export function EditorLayout({
   inspector: ReactNode;
   inspectorOpen: boolean;
   overlay: ReactNode;
+  /** A lens at the bottom, between the zoom controls and the inspector. */
+  bottomLens: ReactNode;
   addStepCollapsed: boolean;
   editable: boolean;
   mobilePanel: MobilePanel;
@@ -43,7 +47,12 @@ export function EditorLayout({
   return (
     <div
       className="relative h-svh min-h-0 overflow-hidden bg-background"
-      style={{ '--editor-left-inset': leftInset } as CSSProperties}
+      style={
+        {
+          '--editor-left-inset': leftInset,
+          '--editor-right-inset': inspectorOpen ? '22.25rem' : '0.75rem',
+        } as CSSProperties
+      }
     >
       {canvas}
       <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-3">
@@ -81,6 +90,11 @@ export function EditorLayout({
             {inspector}
           </aside>
           {overlay}
+          {bottomLens === null ? null : (
+            <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-center lg:bottom-0 lg:left-[calc(var(--editor-left-inset)+10.25rem)] lg:right-[calc(var(--editor-right-inset)-0.75rem)]">
+              <div className="w-full max-w-xl">{bottomLens}</div>
+            </div>
+          )}
         </div>
       </div>
       <nav
