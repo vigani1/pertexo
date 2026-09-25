@@ -50,8 +50,10 @@ function particleSprite(rgb: Rgb): HTMLCanvasElement {
   const context = sprite.getContext('2d');
   if (context !== null) {
     const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+    // A bright core with a short falloff: a point of light, not a blur.
     gradient.addColorStop(0, `rgba(${key},1)`);
-    gradient.addColorStop(0.22, `rgba(${key},0.6)`);
+    gradient.addColorStop(0.18, `rgba(${key},0.8)`);
+    gradient.addColorStop(0.45, `rgba(${key},0.18)`);
     gradient.addColorStop(1, `rgba(${key},0)`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, 64, 64);
@@ -60,10 +62,15 @@ function particleSprite(rgb: Rgb): HTMLCanvasElement {
   return sprite;
 }
 
+// A large Core needs more, finer particles, or its grain turns into blurry
+// dots: the count grows with its size and each particle's size is capped.
+const MAX_PARTICLES = 4200;
+const MAX_PARTICLE_SIZE = 3.2;
+
 function particleCountFor(cssSize: number): number {
   if (cssSize <= 48) return 150;
   if (cssSize <= 140) return 520;
-  return 1400;
+  return Math.min(MAX_PARTICLES, Math.round(1400 * (cssSize / 180) ** 1.6));
 }
 
 function easeOutCubic(progress: number): number {
@@ -125,7 +132,7 @@ export class CoreOrbScene extends CanvasScene {
     const cosX = Math.cos(time * 0.05);
     const sinX = Math.sin(time * 0.05);
     const breathe = 0.95 + Math.sin(time * 0.5) * 0.05 * amplitude;
-    const baseSize = Math.max(1.1, radius / 34);
+    const baseSize = Math.min(MAX_PARTICLE_SIZE, Math.max(1.1, radius / 34));
     const assembly = this.#assemblyProgress(timeSeconds);
 
     this.#particles.forEach((particle, index) => {
