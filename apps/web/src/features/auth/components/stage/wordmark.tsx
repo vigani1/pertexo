@@ -6,7 +6,7 @@ export function Wordmark({ className }: Readonly<{ className?: string }>) {
     <span
       translate="no"
       className={cn(
-        'font-heading text-[1.625rem] leading-none font-semibold tracking-[-0.03em]',
+        'font-display text-[1.625rem] leading-none tracking-[-0.03em] [--display-optical-size:26] [--display-width:80%]',
         className,
       )}
     >

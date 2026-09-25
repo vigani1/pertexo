@@ -21,7 +21,7 @@ export function PageHeaderTitle({ className, ...props }: ComponentProps<'h1'>) {
     <h1
       data-slot="page-header-title"
       className={cn(
-        'text-4xl leading-[0.95] font-semibold tracking-[-0.035em] sm:text-[2.75rem]',
+        'font-display text-4xl leading-[0.95] tracking-[-0.035em] sm:text-[2.75rem]',
         className,
       )}
       {...props}

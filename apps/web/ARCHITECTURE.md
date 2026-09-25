@@ -1095,9 +1095,17 @@ palette, the particle orb, the aurora edge and glass stay — each with one job.
   `raised` #212428, `subtle-foreground` #7f8b8e, `border-strong`. Cyan means
   brand, focus and _live work_ — never success.
 - Radii: `sm` 6px, `md` 10px, `lg` 14px, `xl` 18px. Easing: `ease-unspool`.
-- Display type: Bricolage Grotesque (`font-heading`, self-hosted optical-size
-  variable font); Inter for interface text; JetBrains Mono for instruments
-  (times, durations, counts, short IDs) with tabular figures.
+- Display type: Bricolage Grotesque at a condensed width, self-hosted from
+  `@fontsource-variable/bricolage-grotesque/standard.css` (optical size, width
+  and weight axes; the `opsz`-only file has no width axis). The one
+  `font-display` utility sets it (weight 620, `font-stretch` 76%, `opsz` 72) for
+  page titles (`PageHeaderTitle`), the run sentence, the sign-in headline and
+  wordmark, day headers, system-state titles, the hub bar name and lens titles
+  (`SheetTitle`, `DialogTitle`, `AuthLensTitle`). Smaller titles relax it with
+  `--display-width` and `--display-optical-size` (lens titles use 84% and 24)
+  instead of adding variants. `font-heading` stays for small section headings.
+  Inter for interface text; JetBrains Mono for instruments (times, durations,
+  counts, short IDs) with tabular figures.
 - Textures: `warp` (page background threads), `weave` (canvas and run maps),
   `ambient` (two slow aurora blobs in the shell). All decorative layers are
   `aria-hidden` and motion stops under `prefers-reduced-motion`.
