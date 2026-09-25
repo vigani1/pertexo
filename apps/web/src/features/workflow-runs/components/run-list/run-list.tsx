@@ -8,7 +8,9 @@ import {
 } from '../../model/run-list';
 import { isActiveRunStatus } from '../../model/run-status';
 import { useNow } from '@/lib/use-now';
-import { RunRow, type RunListVariant } from './run-row';
+import { cn } from '@/lib/utils';
+import { RunRow } from './run-row';
+import { RUN_ROW_LAYOUT, type RunListVariant } from './run-row-layout';
 
 /**
  * The operator's log: runs grouped under local days, with durations that
@@ -75,12 +77,15 @@ function ColumnHeadings({ variant }: Readonly<{ variant: RunListVariant }>) {
   return (
     <div
       aria-hidden="true"
-      className="hidden grid-cols-[8.5rem_minmax(8rem,1fr)_6.5rem_6.5rem_5.5rem_minmax(4rem,7rem)_6.5rem_2rem] gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground lg:grid"
+      className={cn(
+        'hidden gap-x-4 border-b border-white/[0.055] px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground lg:grid',
+        RUN_ROW_LAYOUT[variant].grid,
+      )}
     >
       <span>Status</span>
-      <span>{variant === 'workspace' ? 'Workflow' : 'Started at'}</span>
+      <span>{variant === 'workspace' ? 'Workflow' : 'Started'}</span>
       <span>Trigger</span>
-      <span>Started</span>
+      {variant === 'workspace' ? <span>Started</span> : null}
       <span>Took</span>
       <span />
       <span>Run</span>

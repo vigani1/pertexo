@@ -23,7 +23,7 @@ import {
   RunsLoadError,
   RunsUnavailable,
 } from './run-list-states';
-import type { RunListVariant } from './run-row';
+import type { RunListVariant } from './run-row-layout';
 
 const HOUR_MS = 3_600_000;
 

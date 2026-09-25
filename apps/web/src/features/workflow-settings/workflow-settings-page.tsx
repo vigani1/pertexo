@@ -8,6 +8,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { FailureAlertsSection } from './components/settings/failure-alerts-section';
 import { IdentitySection } from './components/settings/identity-section';
 import { LifecycleSection } from './components/settings/lifecycle-section';
+import { RunDurationSection } from './components/settings/run-duration-section';
+import { visibleSettingsData } from './model/settings-query';
 
 type SettingsPageProps = Readonly<{
   apiClient: ApiClient;
@@ -16,7 +18,7 @@ type SettingsPageProps = Readonly<{
   workflowId: string;
 }>;
 
-/** Identity, failure alerts and lifecycle for one workflow. */
+/** Identity, failure alerts, run duration and lifecycle for one workflow. */
 export function WorkflowSettingsPage(props: SettingsPageProps) {
   return (
     <SettingsSession
@@ -48,6 +50,12 @@ function SettingsSession({
         userId={user.id}
         workspace={workspace}
         workflowId={workflowId}
+      />
+      <RunDurationSection
+        apiClient={apiClient}
+        userId={user.id}
+        workspace={workspace}
+        workflow={visibleSettingsData(summary)}
       />
       <LifecycleSection
         apiClient={apiClient}
