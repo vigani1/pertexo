@@ -91,7 +91,7 @@ function QuickAddContent({
       }
       className="flex max-h-[min(28rem,var(--available-height))] w-72 flex-col gap-3 p-3"
     >
-      <PopoverTitle className="truncate text-sm">{title}</PopoverTitle>
+      <PopoverTitle className="shrink-0 truncate text-sm">{title}</PopoverTitle>
       {request.from !== undefined && request.outputs.length > 1 ? (
         <div className="flex items-center gap-2">
           <FieldLabel htmlFor={portId} className="shrink-0">

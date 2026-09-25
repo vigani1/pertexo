@@ -1,12 +1,33 @@
 import { PlugIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { StepTile } from '@/features/catalog/presentation.public';
-import { cn } from '@/lib/utils';
 import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
 const lifecycleWords = {
   deprecated: 'Deprecated',
   migration_required: 'Needs migration',
 } as const;
+
+/** The shape every add-step row shares: a tile, its words and a trailing mark. */
+export const stepRowClass =
+  'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-ring/60';
+
+/** A row's name and one line about it, both cut to the row's width. */
+export function StepRowText({
+  name,
+  description,
+  children,
+}: Readonly<{ name: string; description: string; children?: ReactNode }>) {
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-[0.82rem] font-medium">{name}</span>
+      <span className="block truncate text-[0.72rem] leading-snug text-subtle-foreground">
+        {description}
+      </span>
+      {children}
+    </span>
+  );
+}
 
 /** One placeable step: click to drop it in view, or drag it onto the canvas. */
 export function AddStepItem({
@@ -24,10 +45,7 @@ export function AddStepItem({
     <button
       type="button"
       draggable
-      className={cn(
-        'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none [content-visibility:auto]',
-        'hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-ring/60',
-      )}
+      className={`${stepRowClass} [content-visibility:auto]`}
       onDragStart={(event) => {
         event.dataTransfer.setData(STEP_DRAG_TYPE, choice.identity);
         event.dataTransfer.effectAllowed = 'copy';
@@ -37,19 +55,13 @@ export function AddStepItem({
       }}
     >
       <StepTile step={step} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.82rem] font-medium">
-          {step.name}
-        </span>
-        <span className="block truncate text-[0.72rem] leading-snug text-subtle-foreground">
-          {step.description}
-        </span>
+      <StepRowText name={step.name} description={step.description}>
         {lifecycle === undefined ? null : (
           <span className="mt-0.5 block font-mono text-[0.62rem] text-warning">
             {lifecycle}
           </span>
         )}
-      </span>
+      </StepRowText>
       {needsConnection ? (
         <PlugIcon
           aria-label="Needs a connection"

@@ -3,13 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderApp } from '../support/render-app';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts/schemas/catalog';
+import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
 import {
+  addStepButton,
   editorHandlers,
   editorPath,
   findCanvas,
   graphWithMappingNodes,
   manualDefinition,
   mappingDefinition,
+  pressSave,
 } from '../support/workflow-editor-fixtures';
 
 /**
@@ -151,5 +155,76 @@ describe('workflow editor command bar', { timeout: 30_000 }, () => {
     expect(
       await screen.findByRole('dialog', { name: 'Keyboard shortcuts' }),
     ).toBeVisible();
+  });
+});
+
+const logicStep = (key: string) =>
+  ({
+    ...mappingDefinition,
+    definition: { key, version: 1 },
+    family: 'logic',
+  }) satisfies NodeDefinitionCatalogItem;
+
+describe('workflow editor add-step lens', { timeout: 30_000 }, () => {
+  it('opens Switch · Parallel · Merge in place, and a search finds each directly', async () => {
+    let saved: WorkflowGraphContract | undefined;
+    mockServer.use(
+      ...editorHandlers(
+        (_request, body) => {
+          saved = body.graph;
+        },
+        {
+          definitions: [
+            manualDefinition,
+            logicStep('core.condition'),
+            logicStep('core.merge'),
+            logicStep('core.parallel'),
+            logicStep('core.switch'),
+          ],
+        },
+      ),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    await findCanvas();
+    const lens = within(
+      screen.getByRole('complementary', { name: 'Add a step' }),
+    );
+    expect(lens.getByRole('heading', { name: 'Decide & flow' })).toBeVisible();
+    const bundle = addStepButton(/^Switch · Parallel · Merge/u);
+    expect(bundle).toHaveAttribute('aria-expanded', 'false');
+    expect(lens.queryByRole('button', { name: /^Parallel/u })).toBeNull();
+
+    bundle.focus();
+    await event.keyboard('{Enter}');
+    expect(bundle).toHaveAttribute('aria-expanded', 'true');
+    const members = within(
+      lens.getByRole('list', { name: 'Switch · Parallel · Merge' }),
+    );
+    expect(
+      members.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual([
+      expect.stringMatching(/^Switch/u),
+      expect.stringMatching(/^Parallel/u),
+      expect.stringMatching(/^Merge/u),
+    ]);
+    await event.click(members.getByRole('button', { name: /^Parallel/u }));
+    pressSave();
+    await waitFor(() => {
+      expect(saved?.nodes.map((node) => node.definition.key)).toEqual([
+        'core.parallel',
+      ]);
+    });
+
+    await event.type(
+      lens.getByRole('searchbox', { name: /^Search steps/u }),
+      'merge',
+    );
+    await waitFor(() => {
+      expect(
+        lens.queryByRole('button', { name: /Switch · Parallel/u }),
+      ).toBeNull();
+    });
+    expect(lens.getByRole('button', { name: /^Merge/u })).toBeVisible();
   });
 });

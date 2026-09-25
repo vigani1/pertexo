@@ -305,6 +305,44 @@ describe('add-step choices', () => {
     ).toEqual([2]);
   });
 
+  it('folds Switch, Parallel and Merge into one row while browsing, never while searching', () => {
+    const logic = (key: string) =>
+      ({
+        ...definition,
+        definition: { key, version: 1 },
+        family: 'logic',
+      }) satisfies NodeDefinitionCatalogItem;
+    const catalog = [
+      logic('core.condition'),
+      logic('core.merge'),
+      logic('core.parallel'),
+      logic('core.switch'),
+      logic('core.wait'),
+    ];
+    const [browsing] = groupStepChoices(catalog, '');
+    expect(
+      browsing?.entries.map((entry) =>
+        entry.kind === 'step' ? entry.choice.step.name : entry.bundle.name,
+      ),
+    ).toEqual(['Condition', 'Switch · Parallel · Merge', 'Wait']);
+    const bundle = browsing?.entries.find((entry) => entry.kind === 'bundle');
+    expect(
+      bundle?.kind === 'bundle'
+        ? bundle.bundle.choices.map((choice) => choice.identity)
+        : [],
+    ).toEqual(['core.switch@1', 'core.parallel@1', 'core.merge@1']);
+    expect(browsing?.choices).toHaveLength(5);
+
+    const [searching] = groupStepChoices(catalog, 'merge');
+    expect(searching?.entries).toEqual([
+      { kind: 'step', choice: searching?.choices[0] },
+    ]);
+    expect(searching?.choices[0]?.step.name).toBe('Merge');
+
+    const [alone] = groupStepChoices([logic('core.switch')], '');
+    expect(alone?.entries.map((entry) => entry.kind)).toEqual(['step']);
+  });
+
   it('starts drafts only with triggers that can be placed and published', () => {
     const trigger = {
       ...definition,
