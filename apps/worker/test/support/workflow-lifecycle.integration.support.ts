@@ -981,6 +981,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
         database: workerConfig,
         leaseDurationSeconds: 5,
         leaseOwner,
+        onTimeWindowSeconds: 300,
         pollIntervalMillis: 25,
         redisUrl: redisNamespace.redisUrl,
         releaseCohort: 'core',

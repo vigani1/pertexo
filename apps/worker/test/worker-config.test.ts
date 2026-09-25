@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { JOB_NAME } from '@pertexo/queue';
 
 import { parseWorkerConfig } from '../src/config/worker-config.js';
@@ -114,6 +115,7 @@ describe('parseWorkerConfig', () => {
         batchSize: 25,
         leaseDurationSeconds: 30,
         leaseOwner: 'schedule:worker-local',
+        onTimeWindowSeconds: 300,
         pollIntervalMillis: 250,
       },
       redisUrl: 'redis://:secret@localhost:6379/0',
@@ -450,6 +452,10 @@ describe('parseWorkerConfig', () => {
     ['TRIGGER_SCHEDULE_LEASE_SECONDS', '301'],
     ['TRIGGER_SCHEDULE_POLL_MILLIS', '9'],
     ['TRIGGER_SCHEDULE_POLL_MILLIS', '60001'],
+    ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS', '59'],
+    ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS', '3601'],
+    ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS', '300.5'],
+    ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS', 'five minutes'],
   ])('rejects an invalid trigger scanner bound (%s=%s)', (name, value) => {
     expect(() =>
       parseWorkerConfig({
@@ -461,6 +467,52 @@ describe('parseWorkerConfig', () => {
         [name]: value,
       }),
     ).toThrow(/invalid worker configuration/i);
+  });
+
+  it.each([
+    ['60', '60000', 60],
+    ['3600', '10', 3_600],
+  ])(
+    'accepts a schedule on-time window at its bounds (%s s, poll %s ms)',
+    (window, poll, expected) => {
+      expect(
+        parseWorkerConfig({
+          ...requiredEnvironment,
+          TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: window,
+          TRIGGER_SCHEDULE_POLL_MILLIS: poll,
+        }).triggerRuntime,
+      ).toMatchObject({
+        onTimeWindowSeconds: expected,
+        pollIntervalMillis: Number(poll),
+      });
+    },
+  );
+
+  it('never lets the schedule on-time window fall below the poll interval', () => {
+    // The individual bounds already imply this (a window of at least a minute,
+    // a poll of at most one), so it is shown with a poll past its own bound.
+    let thrown: unknown;
+    try {
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: '60',
+        TRIGGER_SCHEDULE_POLL_MILLIS: '60001',
+      });
+    } catch (error: unknown) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const cause = (thrown as Error).cause;
+    expect(cause).toBeInstanceOf(ZodError);
+    expect(
+      (cause as ZodError).issues.map(({ path, message }) => ({
+        path,
+        message,
+      })),
+    ).toContainEqual({
+      path: ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS'],
+      message: 'Schedule on-time window must not be shorter than its poll',
+    });
   });
 
   it('rejects a node-attempt heartbeat that cannot renew before lease expiry', () => {

@@ -455,6 +455,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'failed-scanner',
         limit: 1,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory: () => {
           throw new Error('permanent checkpoint failure');
         },
@@ -499,6 +500,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'blocked-scanner',
         limit: 1,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ claimed: 1, skipped: 1 });
@@ -514,12 +516,14 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'scanner-one',
         limit: 10,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
       schedule.scannerTwo.scanDue({
         leaseOwner: 'scanner-two',
         limit: 10,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
     ]);

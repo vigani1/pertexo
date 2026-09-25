@@ -30,6 +30,7 @@ beforeAll(async () => {
     leaseOwner: 'initial-skip-scanner',
     limit: 1,
     leaseSeconds: 30,
+    onTimeWindowSeconds: 300,
     checkpointFactory,
   });
   if (skippedScan.skipped !== 1) {
@@ -46,6 +47,7 @@ beforeAll(async () => {
     leaseOwner: 'initial-acceptance-scanner',
     limit: 1,
     leaseSeconds: 30,
+    onTimeWindowSeconds: 300,
     checkpointFactory,
   });
   if (acceptedScan.accepted !== 1) {
@@ -118,6 +120,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'dedupe-prerequisite-scanner',
         limit: 1,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ accepted: 1 });
@@ -141,6 +144,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       leaseOwner: 'duplicate-scanner',
       limit: 1,
       leaseSeconds: 30,
+      onTimeWindowSeconds: 300,
       checkpointFactory,
     });
     const duplicateFacts = await ownerQuery(
@@ -194,6 +198,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'quota-scanner',
         limit: 10,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ deferred: 1 });
@@ -230,6 +235,7 @@ describe('schedule trigger PostgreSQL slice', () => {
         leaseOwner: 'recovery-scanner',
         limit: 10,
         leaseSeconds: 30,
+        onTimeWindowSeconds: 300,
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ accepted: 1 });

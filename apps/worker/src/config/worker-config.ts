@@ -183,6 +183,13 @@ const workerConfigSchema = z
       .min(10)
       .max(60_000)
       .default(250),
+    // ADR 049: how late a `skip` schedule's occurrence may start and still run.
+    TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3_600)
+      .default(300),
     NODE_ATTEMPT_LEASE_SECONDS: z.coerce
       .number()
       .int()
@@ -258,6 +265,15 @@ const workerConfigSchema = z
         path: ['NODE_ATTEMPT_HEARTBEAT_MILLIS'],
         message: 'Node-attempt heartbeat must be shorter than its lease',
       });
+    if (
+      value.TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS * 1_000 <
+      value.TRIGGER_SCHEDULE_POLL_MILLIS
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS'],
+        message: 'Schedule on-time window must not be shorter than its poll',
+      });
   })
   .transform(
     ({
@@ -282,6 +298,7 @@ const workerConfigSchema = z
       TRIGGER_SCHEDULE_BATCH_SIZE,
       TRIGGER_SCHEDULE_LEASE_SECONDS,
       TRIGGER_SCHEDULE_POLL_MILLIS,
+      TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS,
       NODE_ATTEMPT_LEASE_SECONDS,
       NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
@@ -357,6 +374,7 @@ const workerConfigSchema = z
         batchSize: TRIGGER_SCHEDULE_BATCH_SIZE,
         leaseDurationSeconds: TRIGGER_SCHEDULE_LEASE_SECONDS,
         leaseOwner: `schedule:${WORKER_INSTANCE_ID}`,
+        onTimeWindowSeconds: TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS,
         pollIntervalMillis: TRIGGER_SCHEDULE_POLL_MILLIS,
       },
       redisUrl: REDIS_URL,

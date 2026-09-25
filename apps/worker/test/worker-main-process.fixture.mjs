@@ -90,6 +90,7 @@ const config = {
     batchSize: 1,
     leaseDurationSeconds: 30,
     leaseOwner: 'fixture',
+    onTimeWindowSeconds: 300,
     pollIntervalMillis: 100,
   },
 };

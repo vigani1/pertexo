@@ -225,6 +225,7 @@ describe('schedule claim concurrency', () => {
         checkpointFactory: schedule.checkpointFactory,
         leaseOwner: 'cancellation-recovery-scanner',
         leaseSeconds: 300,
+        onTimeWindowSeconds: 300,
         limit: 1,
         signal: controller.signal,
       });

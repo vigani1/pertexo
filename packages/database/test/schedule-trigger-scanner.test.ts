@@ -1,12 +1,42 @@
+import { createHash } from 'node:crypto';
+
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const seams = vi.hoisted(() => ({
+  acceptWorkflowRun: vi.fn(),
   pools: [] as {
     close: ReturnType<typeof vi.fn>;
     query: ReturnType<typeof vi.fn>;
   }[],
   workspaceTransaction: vi.fn(),
 }));
+
+// Admission itself is proven against PostgreSQL; here only its inputs and the
+// completion the scanner records are observed, at exact database instants.
+vi.mock('../src/execution/execution-acceptance.js', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  acceptWorkflowRun: (...arguments_: unknown[]) =>
+    seams.acceptWorkflowRun(...arguments_) as Promise<unknown>,
+}));
+vi.mock(
+  '../src/execution/published-workflow-reader.js',
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    classifyPublishedWorkflowVersionRow: () => ({
+      kind: 'v2_projection',
+      workflowVersion: { id: '00000000-0000-4000-8000-000000000005' },
+    }),
+  }),
+);
+vi.mock(
+  '../src/compatibility/compatibility-release.js',
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    lockExpectedCompatibilityReleaseSet: () => Promise.resolve({ epoch: 1 }),
+  }),
+);
 
 vi.mock('../src/platform/database-runtime.js', () => ({
   acquireDatabasePool: () => {
@@ -131,6 +161,7 @@ const scanInput = {
   leaseOwner: 'scanner-test',
   limit: 10,
   leaseSeconds: 30,
+  onTimeWindowSeconds: 300,
   checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
 } as const;
 
@@ -260,4 +291,198 @@ describe('schedule trigger scanner claim ownership', () => {
     ).toEqual(['fail', 'release']);
     expect(seams.workspaceTransaction).toHaveBeenCalledOnce();
   });
+});
+
+type RecordedStatement = Readonly<{ sql: string; params: unknown[] }>;
+
+const dialect = new PgDialect();
+const runId = '00000000-0000-4000-8000-000000000008';
+
+/** A workspace transaction that admits every eligible occurrence. */
+function recordAdmissionTransactions(): RecordedStatement[] {
+  const statements: RecordedStatement[] = [];
+  seams.workspaceTransaction.mockImplementation(
+    (
+      _pool: unknown,
+      _workspaceId: unknown,
+      operation: (transaction: unknown) => Promise<unknown>,
+    ) =>
+      operation({
+        db: {
+          execute: (statement: SQL) => {
+            const query = dialect.sqlToQuery(statement);
+            statements.push(query);
+            if (query.sql.includes('schedule_claim_is_eligible'))
+              return Promise.resolve({ rows: [{ eligible: true }] });
+            if (query.sql.includes('complete_trigger_schedule_claim'))
+              return Promise.resolve({ rows: [{ completed: true }] });
+            return Promise.resolve({ rows: [{}] });
+          },
+        },
+      }),
+  );
+  return statements;
+}
+
+/** Scheduled instant, disposition, run and next fire the claim completed with. */
+function completion(statements: readonly RecordedStatement[]) {
+  const completed = statements.filter(({ sql }) =>
+    sql.includes('complete_trigger_schedule_claim'),
+  );
+  expect(completed).toHaveLength(1);
+  const [, , , scheduledAt, disposition, completedRunId, nextAt] =
+    completed[0]?.params ?? [];
+  return { scheduledAt, disposition, runId: completedRunId, nextAt };
+}
+
+function hourlyClaim(policy: 'catch_up_once' | 'skip', observedAt: string) {
+  return claim(ids.triggerOne, ids.leaseOne, {
+    interval_minutes: 60,
+    misfire_policy: policy,
+    anchor_at: new Date('2026-01-01T00:00:00.000Z'),
+    next_fire_at: new Date('2026-01-01T01:00:00.000Z'),
+    observed_at: new Date(observedAt),
+  });
+}
+
+describe('schedule misfire disposition (ADR 049)', () => {
+  beforeEach(() => {
+    seams.pools.length = 0;
+    seams.workspaceTransaction.mockReset();
+    seams.acceptWorkflowRun.mockReset();
+    seams.acceptWorkflowRun.mockResolvedValue({ runId });
+  });
+
+  it.each([
+    ['skip', '2026-01-01T01:05:00.000Z', 'accepted'],
+    ['skip', '2026-01-01T01:05:00.001Z', 'skipped'],
+    ['catch_up_once', '2026-01-01T01:59:59.999Z', 'accepted'],
+  ] as const)(
+    'decides a %s occurrence observed at %s as %s',
+    async (policy, observedAt, disposition) => {
+      const statements = recordAdmissionTransactions();
+      const { scanner } = scannerWithClaims([hourlyClaim(policy, observedAt)]);
+
+      await expect(scanner.scanDue(scanInput)).resolves.toMatchObject({
+        claimed: 1,
+        accepted: disposition === 'accepted' ? 1 : 0,
+        skipped: disposition === 'skipped' ? 1 : 0,
+        deferred: 0,
+      });
+      expect(completion(statements)).toEqual({
+        scheduledAt: new Date('2026-01-01T01:00:00.000Z'),
+        disposition,
+        runId: disposition === 'accepted' ? runId : null,
+        nextAt: new Date('2026-01-01T02:00:00.000Z'),
+      });
+      expect(
+        statements.some(({ sql }) =>
+          sql.includes('schedule_claim_is_eligible'),
+        ),
+      ).toBe(disposition === 'accepted');
+      expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
+        disposition === 'accepted' ? 1 : 0,
+      );
+    },
+  );
+
+  it('admits an on-time skip occurrence exactly as catch-up admits it', async () => {
+    const identity = `${ids.triggerOne}:2026-01-01T01:00:00.000Z`;
+    for (const policy of ['skip', 'catch_up_once'] as const) {
+      recordAdmissionTransactions();
+      const { scanner } = scannerWithClaims([
+        hourlyClaim(policy, '2026-01-01T01:00:01.000Z'),
+      ]);
+      await expect(scanner.scanDue(scanInput)).resolves.toMatchObject({
+        accepted: 1,
+      });
+    }
+
+    const [skipInput, catchUpInput] = seams.acceptWorkflowRun.mock.calls.map(
+      ([, input]: unknown[]) => input,
+    );
+    expect(skipInput).toEqual(catchUpInput);
+    expect(skipInput).toMatchObject({
+      keyHash: createHash('sha256').update(identity).digest('hex'),
+      scope: `schedule:${ids.triggerOne}`,
+      triggerType: 'schedule',
+      runInput: { scheduledAt: '2026-01-01T01:00:00.000Z' },
+    });
+  });
+
+  it.each([
+    // 02:30 does not exist on 10 March 2030 in New York: the occurrence is
+    // the first valid instant after the gap, and lateness counts from there.
+    [
+      '30 2 * * *',
+      '2030-03-10T07:05:00.000Z',
+      '2030-03-10T07:00:00.000Z',
+      'accepted',
+    ],
+    [
+      '30 2 * * *',
+      '2030-03-10T07:05:00.001Z',
+      '2030-03-10T07:00:00.000Z',
+      'skipped',
+    ],
+    // 01:30 happens twice on 3 November 2030: the occurrence is the earlier
+    // instant, so seeing the repeated wall-clock time an hour on is late.
+    [
+      '30 1 * * *',
+      '2030-11-03T05:35:00.000Z',
+      '2030-11-03T05:30:00.000Z',
+      'accepted',
+    ],
+    [
+      '30 1 * * *',
+      '2030-11-03T06:31:00.000Z',
+      '2030-11-03T05:30:00.000Z',
+      'skipped',
+    ],
+  ] as const)(
+    'measures %s in New York observed at %s from its DST-resolved instant',
+    async (expression, observedAt, scheduledAt, disposition) => {
+      const statements = recordAdmissionTransactions();
+      const { scanner } = scannerWithClaims([
+        claim(ids.triggerOne, ids.leaseOne, {
+          recurrence_kind: 'cron',
+          cron_expression: expression,
+          timezone: 'America/New_York',
+          interval_minutes: null,
+          misfire_policy: 'skip',
+          anchor_at: new Date(
+            expression === '30 2 * * *'
+              ? '2030-03-09T12:00:00.000Z'
+              : '2030-11-02T12:00:00.000Z',
+          ),
+          next_fire_at: new Date(scheduledAt),
+          observed_at: new Date(observedAt),
+        }),
+      ]);
+
+      await scanner.scanDue(scanInput);
+      expect(completion(statements)).toMatchObject({
+        scheduledAt: new Date(scheduledAt),
+        disposition,
+      });
+      expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
+        disposition === 'accepted' ? 1 : 0,
+      );
+    },
+  );
+
+  it.each([59, 3_601, 300.5])(
+    'rejects an on-time window of %s seconds before claiming',
+    async (onTimeWindowSeconds) => {
+      const { queries, scanner } = scannerWithClaims([
+        hourlyClaim('skip', '2026-01-01T01:00:01.000Z'),
+      ]);
+
+      await expect(
+        scanner.scanDue({ ...scanInput, onTimeWindowSeconds }),
+      ).rejects.toThrow();
+      expect(queries).toEqual([]);
+      expect(seams.workspaceTransaction).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -42,6 +42,13 @@ the workspace to another member from a fresh sign-in
 `0116`–`0118`. Its evidence is in the
 [web architecture plan](../apps/web/ARCHITECTURE.md#implemented-slice-leaving-suspension-and-ownership-transfer).
 
+The schedule misfire correction (2026-09-25) makes a `skip` schedule run its
+occurrences on time and skip only the ones it missed
+([ADR 049](./adr/049-skip-misfire-on-time-window.md)). The scanner admits an
+on-time `skip` occurrence through the `catch_up_once` acceptance path, with the
+worker's `TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS` (default 300) bounding
+"on time". No migration is needed.
+
 ## Open production evidence
 
 - AWS IAM admission, immutable image/task invocation, versioned tenant buckets,
