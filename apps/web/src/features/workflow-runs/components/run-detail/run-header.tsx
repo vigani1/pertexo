@@ -1,12 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts/schemas/identity-workspace';
 import type { WorkflowRunReadSummary } from '@pertexo/contracts/schemas/workflow-runs';
 import { Link } from '@tanstack/react-router';
-import {
-  OctagonXIcon,
-  RefreshCwIcon,
-  RotateCcwIcon,
-  WorkflowIcon,
-} from 'lucide-react';
+import { OctagonXIcon, RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { CoreOrb } from '@/components/patterns/core-orb';
 import {
@@ -157,7 +152,9 @@ function RunActions({
   onReplay: () => void;
   onCancel: () => void;
 }>) {
-  const grow = compact ? 'flex-1' : undefined;
+  // Three actions share a phone's width: each takes its own width and the
+  // rest is shared, so none is cut off.
+  const grow = compact ? 'flex-auto px-3' : undefined;
   const buttons = (
     <>
       {canReplay ? (
@@ -176,10 +173,11 @@ function RunActions({
           type="button"
           variant="destructive"
           className={grow}
+          {...(compact ? { 'aria-label': 'Cancel run' } : {})}
           onClick={onCancel}
         >
           <OctagonXIcon aria-hidden="true" />
-          Cancel run
+          {compact ? 'Cancel' : 'Cancel run'}
         </Button>
       ) : null}
     </>
@@ -201,7 +199,6 @@ function RunActions({
           params={{ workspaceId, workflowId }}
           className={buttonVariants({ variant: 'outline', className: grow })}
         >
-          <WorkflowIcon aria-hidden="true" />
           Open workflow
         </Link>
       ) : null}
