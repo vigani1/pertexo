@@ -217,7 +217,7 @@ describe('step cards', () => {
       stepSummary(
         step('wait', 'core.wait', { config: { durationSeconds: 90 } }),
       ),
-    ).toBe('1m 30s');
+    ).toBe('90 s');
     expect(
       stepSummary(
         step('nightly', 'core.schedule', {

@@ -1,4 +1,11 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts/schemas/workflow-authoring';
+import {
+  describeAmount,
+  fieldLabel,
+  fieldUnit,
+  toStoredValue,
+  type FieldUnit,
+} from './field-units';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type NodeConfig = WorkflowNode['config'];
@@ -12,6 +19,8 @@ export type SchemaFieldSpec = Readonly<{
   options?: readonly string[];
   minimum?: number;
   maximum?: number;
+  /** A number stored in this unit, which the field shows in people's terms. */
+  unit?: FieldUnit;
 }>;
 
 /** A typed value ready for the graph, or a sentence saying what's wrong. */
@@ -49,6 +58,8 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
     const optionValue = Reflect.get(candidate, 'enum');
     const minimum = Reflect.get(candidate, 'minimum');
     const maximum = Reflect.get(candidate, 'maximum');
+    const unit =
+      type === 'string' || type === 'boolean' ? undefined : fieldUnit(key);
     const options =
       type === 'string' &&
       Array.isArray(optionValue) &&
@@ -58,34 +69,24 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
     return [
       {
         key,
-        label: typeof title === 'string' ? title : humanizeKey(key),
+        label: typeof title === 'string' ? title : fieldLabel(key),
         kind: type,
         required: required.has(key),
         ...(typeof description === 'string' ? { description } : {}),
         ...(options === undefined ? {} : { options }),
         ...(typeof minimum === 'number' ? { minimum } : {}),
         ...(typeof maximum === 'number' ? { maximum } : {}),
+        ...(unit === undefined ? {} : { unit }),
       } satisfies SchemaFieldSpec,
     ];
   });
 }
 
-/** `timeoutMillis` → "Timeout millis", `max_items` → "Max items". */
-function humanizeKey(key: string): string {
-  const words = key
-    .replaceAll(/([a-z0-9])([A-Z])/gu, '$1 $2')
-    .replaceAll(/[_-]+/gu, ' ')
-    .trim()
-    .toLowerCase();
-  return words === ''
-    ? key
-    : `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
-}
-
 /**
- * Parses number text. An empty optional field removes the property
+ * Parses number text, typed in the field's shown unit (seconds for a
+ * millisecond setting). An empty optional field removes the property
  * (`value: undefined`); partial text such as "-" or "1.5" for an integer is
- * reported rather than silently coerced.
+ * reported rather than silently coerced. Bounds read in the shown unit.
  */
 export function parseNumberField(
   field: SchemaFieldSpec,
@@ -95,20 +96,27 @@ export function parseNumberField(
     return field.required
       ? { ok: false, error: `${field.label} is required.` }
       : { ok: true, value: undefined };
-  const value = Number(text);
-  if (!Number.isFinite(value))
+  const shown = Number(text);
+  if (!Number.isFinite(shown))
     return { ok: false, error: `${field.label} must be a number.` };
+  const value = toStoredValue(shown, field.unit);
   if (field.kind === 'integer' && !Number.isInteger(value))
-    return { ok: false, error: `${field.label} must be a whole number.` };
+    return {
+      ok: false,
+      error:
+        field.unit === 'milliseconds'
+          ? `${field.label} can have at most 3 decimals.`
+          : `${field.label} must be a whole number.`,
+    };
   if (field.minimum !== undefined && value < field.minimum)
     return {
       ok: false,
-      error: `${field.label} must be at least ${String(field.minimum)}.`,
+      error: `${field.label} must be at least ${describeAmount(field.minimum, field.unit)}.`,
     };
   if (field.maximum !== undefined && value > field.maximum)
     return {
       ok: false,
-      error: `${field.label} can be at most ${String(field.maximum)}.`,
+      error: `${field.label} can be at most ${describeAmount(field.maximum, field.unit)}.`,
     };
   return { ok: true, value };
 }
