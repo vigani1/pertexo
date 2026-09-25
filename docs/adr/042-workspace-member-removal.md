@@ -3,6 +3,8 @@
 - **Status:** accepted
 - **Date:** 2026-09-25
 - **Extends:** ADR 037 (member role management) and ADR 004
+- **Extended:** 2026-09-25 by [ADR 047](047-workspace-membership-lifecycle.md),
+  which adds leaving, suspension and ownership transfer
 - **Amends:** ADR 038's rule that invitations never reactivate an inactive
   membership, for removed memberships only
 

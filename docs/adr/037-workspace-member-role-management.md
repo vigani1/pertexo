@@ -3,7 +3,9 @@
 - **Status:** accepted
 - **Date:** 2026-09-15
 - **Extended:** 2026-09-25 by [ADR 042](042-workspace-member-removal.md),
-  which adds member removal on the same revision, receipt and session rules
+  which adds member removal on the same revision, receipt and session rules,
+  and by [ADR 047](047-workspace-membership-lifecycle.md), which adds leaving,
+  suspension and ownership transfer
 
 ## Decision
 
