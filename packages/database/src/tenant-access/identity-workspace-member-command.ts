@@ -50,7 +50,7 @@ export type LockedMember = Readonly<{
  * Locks the workspace, then both users and memberships in identifier order,
  * matching the lock order of every other membership and lifecycle writer.
  */
-export async function lockMemberCommandParticipants(
+async function lockMemberCommandParticipants(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
@@ -103,7 +103,7 @@ type ClaimedReceipt =
   | Readonly<{ requestHash: string; status: string; resultRef: unknown }>;
 
 /** Claims a new receipt, or locks and returns the existing one for the key. */
-export async function claimMemberCommandReceipt(
+async function claimMemberCommandReceipt(
   client: PoolClient,
   table: MemberCommandReceiptTable,
   input: Readonly<{
@@ -149,7 +149,7 @@ export async function claimMemberCommandReceipt(
 }
 
 /** Records the applied result; a receipt completes exactly once. */
-export async function completeMemberCommandReceipt(
+async function completeMemberCommandReceipt(
   client: PoolClient,
   table: MemberCommandReceiptTable,
   claimId: string,
