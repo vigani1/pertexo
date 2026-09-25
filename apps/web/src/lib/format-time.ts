@@ -145,3 +145,46 @@ export function localUtcOffset(date = new Date()): string {
   const minutes = Math.abs(offsetMinutes) % 60;
   return `UTC${sign}${String(hours)}${minutes === 0 ? '' : `:${String(minutes).padStart(2, '0')}`}`;
 }
+
+const calendarDayFormatters = {
+  short: new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }),
+  long: new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }),
+} as const;
+const monthYearFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'long',
+  year: 'numeric',
+});
+const weekdayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+});
+
+/** A calendar day: "Thu, 25 Sep 2026" or, for screen readers, spelled out. */
+export function formatCalendarDay(
+  date: Date,
+  style: keyof typeof calendarDayFormatters = 'short',
+): string {
+  return calendarDayFormatters[style].format(date);
+}
+
+/** A calendar's month heading: "September 2026". */
+export function formatMonthYear(date: Date): string {
+  return monthYearFormatter.format(date);
+}
+
+/** Short weekday names from Monday: "Mon" … "Sun". */
+export function weekdayNames(): readonly string[] {
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, day) =>
+    weekdayFormatter.format(new Date(2024, 0, 1 + day)),
+  );
+}
