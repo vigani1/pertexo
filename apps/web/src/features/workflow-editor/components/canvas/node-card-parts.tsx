@@ -1,10 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
-import {
-  ArrowRightToLineIcon,
-  CheckIcon,
-  PlugIcon,
-  PowerOffIcon,
-} from 'lucide-react';
+import { ArrowRightToLineIcon, PlugIcon, PowerOffIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   StepTile,
@@ -67,13 +62,6 @@ export function NodeMarks({
     facts.push(
       <Mark key="test">
         {formatByteLength(data.testOutputBytes)} last test
-      </Mark>,
-    );
-  if (data.checked && data.issueCount === 0 && !data.unsupported)
-    facts.push(
-      <Mark key="valid" tone="success">
-        <CheckIcon aria-hidden="true" />
-        valid
       </Mark>,
     );
   const marks = stepMarks(data);
